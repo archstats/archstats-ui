@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    <Headline class="text-2xl mb-8 font-bold text-sky-500">Chord</Headline>
+    <Headline class="text-2xl mb-8 font-bold text-archstats-500">Chord</Headline>
     <p class="mb-4">The Chord View is meant to visualize the relationships between software components radially in a
       circle. <span
           class="font-semibold">By hovering over a component you can see its afferent and efferent couplings.</span></p>
@@ -21,7 +21,7 @@
       for more info.
     </p>
 
-    <div :id="chartId" ref="chart" class="border-2 border-sky-400 mt-12 w-[900px]"></div>
+    <div :id="chartId" ref="chart" class="border-2 border-archstats-400 mt-12 w-[900px]"></div>
   </div>
 
 </template>

@@ -1,10 +1,10 @@
 <template>
   <Card class="w-2/3 mt-24 bg-white">
-    <h1 class="text-lg ">Walk <span class="border-b-2 border-b-sky-500 inline-flex items-center gap-1" @click="toggleDirection">{{ column }}<Icon
+    <h1 class="text-lg ">Walk <span class="border-b-2 border-b-archstats-500 inline-flex items-center gap-1" @click="toggleDirection">{{ column }}<Icon
         icon="pencil" :size="12"/></span> <span class="font-mono font-normal">{{ component }}</span></h1>
     <div class="mt-8 mb-12 flex">
 
-      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-sky-500 outline-1" v-model="searchText"
+      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-500 outline-1" v-model="searchText"
              placeholder="Search..." @keyup.esc="closeModal">
 
     </div>

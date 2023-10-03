@@ -5,14 +5,14 @@
         class="fixed top-0 left-0 w-full h-full backdrop-blur-sm backdrop-brightness-50 flex justify-center align-middle"
         v-if="open" @click="close">
       <div class=" p-16 bg-white h-fit box-border w-1/2 mt-36 rounded" @click.stop>
-        <h1 class="text-3xl mb-8 font-bold text-sky-500">Select Git Repository</h1>
+        <h1 class="text-3xl mb-8 font-bold text-archstats-500">Select Git Repository</h1>
         <p class="text-red-600" v-if="error">{{ error }}</p>
         <p class="text-gray-500" v-else>Archstat Views supports the analysis of publicly available Git repositories.</p>
         <div class="mt-12 grid grid-cols-3 gap-8 mb-12">
 
           <label class="self-center">Repository:</label>
           <input v-model="repo"
-                 class="col-span-2 p-2 box-border bg-gray-100 border-sky-400 rounded border-2 outline-sky-700"
+                 class="col-span-2 p-2 box-border bg-gray-100 border-archstats-400 rounded border-2 outline-archstats-700"
                  placeholder="e.g. https://github.com/RyanSusana/elepy">
 
           <label class="self-center">Extensions:</label>
@@ -20,7 +20,7 @@
             <div v-for="selection in availableSelections" class="mr-6 flex ">
               <input type="checkbox" :value="selection.value"
                      v-model="selections"
-                     class="p-2 box-border bg-gray-100 border-sky-400 rounded border-2 outline-sky-700 mr-2">
+                     class="p-2 box-border bg-gray-100 border-archstats-400 rounded border-2 outline-archstats-700 mr-2">
               <div>{{ selection.label }}</div>
             </div>
           </div>

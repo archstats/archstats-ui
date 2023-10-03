@@ -1,7 +1,7 @@
 <template>
   <LongHover :time="1300">
     <template #main-content>
-      <button class="border-sky-500 border bg-sky-50 px-4 py-2 rounded-full cursor-pointer" @click.prevent="open = true">
+      <button class="border-archstats-500 border bg-archstats-50 px-4 py-2 rounded-full cursor-pointer" @click.prevent="open = true">
         {{ store.currentComponentScope.length }} / {{ store.allComponents.length }}
 
 
@@ -10,7 +10,7 @@
 
 
             <div class="w-2/3 p-8 bg-white rounded-md mt-12 shadow-xl h-fit" v-click-outside = "toggleOff">
-              <h1 class="text-xl text-sky-500  font-bold">Editing current scope</h1>
+              <h1 class="text-xl text-archstats-500  font-bold">Editing current scope</h1>
               <div class="my-4 h-0.5 bg-gray-200"></div>
               <ComponentTable :components = "store.allComponents" v-model:selected-components="selectedComponents" max-page-size="15"></ComponentTable>
 

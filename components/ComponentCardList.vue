@@ -4,7 +4,7 @@
     <div class="flex-shrink-0 border-b-2 py-4">
       <slot name="header"></slot>
       <div class="px-4 ">
-        <input class="w-full px-4 py-2 bg-gray-100  box-border outline-sky-500 outline-1" v-model="searchText" placeholder="Search...">
+        <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-500 outline-1" v-model="searchText" placeholder="Search...">
 
       </div>
     </div>
