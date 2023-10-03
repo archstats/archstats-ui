@@ -4,7 +4,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "generate": "nuxt generate -v",
+    "generate": "nuxt generate --loglevel info",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
