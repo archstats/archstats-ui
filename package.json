@@ -1,0 +1,45 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@pinia/nuxt": "^0.4.11",
+    "css.gg": "^2.1.1",
+    "d3": "^7.6.1",
+    "d3-force": "^3.0.0",
+    "gridjs": "^5.0.2",
+    "gridjs-vue": "^5.0.4",
+    "lucide": "^0.279.0",
+    "lucide-vue": "^0.279.0",
+    "lucide-vue-next": "^0.279.0",
+    "marked": "^9.0.3",
+    "mitt": "^3.0.1",
+    "pinia": "^2.1.6",
+    "redaxios": "^0.5.0",
+    "splitpanes": "^3.1.5",
+    "sql.js": "^1.8.0",
+    "typescript": "^4.7.4",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@nuxtjs/tailwindcss": "^6.8.0",
+    "@types/d3": "^7.4.0",
+    "@types/splitpanes": "^2.2.2",
+    "autoprefixer": "^10.4.8",
+    "google-charts": "^2.0.0",
+    "nuxt": "^3.7.0",
+    "postcss": "^8.4.14",
+    "tailwindcss": "^3.1.7",
+    "vitest": "^0.34.5"
+  },
+  "overrides": {
+    "vue": "latest"
+  }
+}
