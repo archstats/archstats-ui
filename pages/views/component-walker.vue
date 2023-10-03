@@ -144,9 +144,6 @@ import ComponentCardList from "~/components/ComponentCardList.vue";
 import Card from "~/components/ui/Card.vue";
 import {getOccurrencesForPathSegments, PathSegment, Relationship, stringToPath} from "~/utils/path";
 import PathTableRow from "~/components/PathTableRow.vue";
-import ActionsButton from "~/components/ui/ActionsButton.vue";
-import SecondaryButton from "~/components/ui/SecondaryButton.vue";
-import Button from "~/components/ui/Button.vue";
 import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
 
 

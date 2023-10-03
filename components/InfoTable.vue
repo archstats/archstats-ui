@@ -4,11 +4,11 @@
     <tbody>
 
     <tr v-for="info in elementNormalized">
-      <td class="pr-1">
+
+      <td class="mr-4 text-gray-500 flex gap-2">
         <LongHover v-if="definition.has(info.key)" :time="200">
           <template #main-content>
-            <Icon class="hover:text-sky-500 cursor-pointer text-gray-500"
-                  icon="info"/>
+            <span class="hover:text-sky-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
           </template>
           <template #hovered-content>
             <div class="absolute bg-gray-50 p-6 shadow-2xl w-96 z-10">
@@ -16,8 +16,9 @@
             </div>
           </template>
         </LongHover>
-      </td>
-      <td class="mr-4 text-gray-500 flex gap-2">{{ info.key }}</td>
+        <span v-else>{{info.key}}</span>
+
+        </td>
       <td class="w-12 overflow-hidden ">{{ round(info.value, 3) }}</td>
     </tr>
 

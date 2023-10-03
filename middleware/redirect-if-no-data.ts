@@ -3,7 +3,7 @@ const store = useDataStore();
 export default defineNuxtRouteMiddleware((to, from) => {
 
 
-    if (!store.hasData && to.path !== '/') {
-        return navigateTo('/')
+    if (!store.hasData && to.path !== '/load-data') {
+        return navigateTo('/load-data')
     }
 })

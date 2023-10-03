@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-24">
+  <div class="container mt-24 mx-auto">
     <ChordDiagram :components = "store.currentComponentScope" ></ChordDiagram>>
 
   </div>

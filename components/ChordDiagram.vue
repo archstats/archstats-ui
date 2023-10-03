@@ -21,7 +21,7 @@
       for more info.
     </p>
 
-    <div :id="chartId" ref="chart" class="border-2 border-sky-400 mt-12"></div>
+    <div :id="chartId" ref="chart" class="border-2 border-sky-400 mt-12 w-[900px]"></div>
   </div>
 
 </template>
@@ -40,13 +40,19 @@ const props = defineProps<{
   components: Component[]
 }>()
 
+const orderedComponents = computed(() => {
+  return props.components.sort((a, b) => {
+    return a.name.localeCompare(b.name)
+  })
+})
+
 const maxComponentsToShow = ref(100)
-watch(() => props.components, () => {
-  renderChart(resizedComponents(props.components, maxComponentsToShow.value))
+watch(() => orderedComponents.value, () => {
+  renderChart(resizedComponents(orderedComponents.value, maxComponentsToShow.value))
 })
 onMounted(() => {
   try {
-    renderChart(resizedComponents(props.components, maxComponentsToShow.value))
+    renderChart(resizedComponents(orderedComponents.value, maxComponentsToShow.value))
   } catch (e) {
     console.error(e)
   }
@@ -138,6 +144,7 @@ function renderChart(connectedComponents: Component[]) {
     const to = pieMap.get(conn.to.name)
     return {from, to, path: null}
   });
+  const line = d3.line().curve(d3.curveBundle.beta(0.85))
   const link = svg.append("g")
       .attr("stroke", colornone)
       .attr("stroke-width", 0.6)
@@ -148,7 +155,7 @@ function renderChart(connectedComponents: Component[]) {
       .join("path")
       .style("mix-blend-mode", "multiply")
       .attr("d", (d) => {
-        return d3.line().curve(d3.curveBundle.beta(0.1))([[d.from.x, d.from.y], [0, 0], [d.to.x, d.to.y]])
+        return line([[d.from.x, d.from.y], [0, 0], [d.to.x, d.to.y]])
       })
       .each(function (d) {
         d.path = this;

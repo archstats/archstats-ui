@@ -8,7 +8,17 @@ import "css.gg/icons/icons.css"
 import {computed} from "vue";
 
 
-import {Info, ChevronDown, ChevronUp, ChevronRight, MoreVertical, RotateCcw, Footprints, Pencil} from 'lucide-vue-next';
+import {
+  Info,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  MoreVertical,
+  RotateCcw,
+  Footprints,
+  Pencil,
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft
+} from 'lucide-vue-next';
 
 const props = defineProps(
     {
@@ -30,6 +40,8 @@ const iconComponent = computed(() => {
       return ChevronUp
     case "chevron-right":
       return ChevronRight
+    case "chevron-left":
+      return ChevronLeft
     case "more-vertical":
       return MoreVertical
     case "rotate":
@@ -38,6 +50,10 @@ const iconComponent = computed(() => {
       return Footprints
     case "pencil":
       return Pencil
+    case "arrow-left-to-line":
+      return ArrowLeftToLine
+    case "arrow-right-to-line":
+      return ArrowRightToLine
   }
 })
 

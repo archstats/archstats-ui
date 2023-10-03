@@ -35,13 +35,14 @@
   </div>
 
 
-  <div class="w-full flex border-2 border-sky-400 mt-4">
+  <div class="w-full flex border-2 border-sky-400 mt-4 w-[900px]">
     <div :id="chartId" class=" w-full"></div>
-    <div class="bg-gray-100 flex-auto py-20 px-12 w-96 overflow-hidden ">
+    <div class="bg-gray-100 flex-auto py-8 px-4 w-96 ">
 
-      <div class="" v-if="hoveredComponent || selectedComponent">
+      <div class="w-72" v-if="hoveredComponent || selectedComponent">
 
-        <ComponentInfoTable :component="hoveredComponent || selectedComponent"/>
+        <h3 class="w-full font-mono text-xs font-semibold py-4 overflow-x-scroll">{{ (hoveredComponent || selectedComponent).name }}</h3>
+        <ComponentInfoTable class="text-sm" :component="hoveredComponent || selectedComponent"/>
       </div>
 
     </div>
@@ -67,7 +68,7 @@ const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 const hoveredComponent = ref<Component>(null)
 const selectedComponent = ref<Component>(null)
 
-const outOfBandThreshold = ref<number>(0.25)
+const outOfBandThreshold = ref<number>(0.7)
 
 onMounted(() => {
   renderChart();
