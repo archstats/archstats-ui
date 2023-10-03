@@ -1,6 +1,6 @@
 <template>
   <Card class="w-2/3 mt-24 bg-white">
-    <h1 class="text-lg ">Walk <span class="border-b-2 border-b-sky-500 inline-flex items-center gap-1">{{ column }}<Icon
+    <h1 class="text-lg ">Walk <span class="border-b-2 border-b-sky-500 inline-flex items-center gap-1" @click="toggleDirection">{{ column }}<Icon
         icon="pencil" :size="12"/></span> <span class="font-mono font-normal">{{ component }}</span></h1>
     <div class="mt-8 mb-12 flex">
 
@@ -39,14 +39,30 @@ interface RawPath {
   shortest_path_length: number
 }
 
-const column = computed(() => 'to')
+const column = ref('from')
 const oppositeColumn = computed(() => column.value === 'from' ? 'to' : 'from')
 const loadedComponents = computed(() => {
-  const results = store.query(`
-    SELECT "${oppositeColumn.value}" as name, shortest_path_length, shortest_path
+  let query: string
+
+  if (column.value === 'from'){
+    query = `
+    SELECT "to" as name, shortest_path_length, shortest_path
     FROM component_connections_indirect
-    where "${column.value}" = '${props.component}'
-  `) as RawPath[]
+    WHERE "from" = '${props.component}'
+  `
+
+
+  }else{
+    query = `
+    SELECT "from" as name, shortest_path_length, shortest_path
+    FROM component_connections_indirect
+    WHERE "to" = '${props.component}'
+    `
+
+  }
+  const results = store.query(
+      query
+  ) as RawPath[]
 
   if (column.value === 'from')
     return results
@@ -55,10 +71,15 @@ const loadedComponents = computed(() => {
     return {
       name: r.name,
       shortest_path_length: r.shortest_path_length,
-      shortest_path: r.shortest_path.replaceAll('->', '<-'),
+      shortest_path: flipPath(r.shortest_path),
     }
   })
 })
+
+function flipPath(path: string): string {
+  const nodes = path.split(' -> ');
+  return nodes.reverse().join(' <- ');
+}
 const closeModal = inject(closeModalKey)
 
 const emit = defineEmits(['path-selected'])
@@ -77,5 +98,8 @@ const filteredComponents = computed(() => {
 function select(path: RawPath) {
   emit('path-selected', path.shortest_path)
   closeModal?.()
+}
+function toggleDirection(){
+  column.value = oppositeColumn.value
 }
 </script>
