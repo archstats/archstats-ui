@@ -1,3 +1,19 @@
+<style>
+input[type=range] {
+  -webkit-appearance: rating-level-indicator;
+  -moz-appearance: none;
+}
+
+input[type=range]::-webkit-slider-runnable-track,
+input[type=range]::-moz-range-track {
+  background-color: red;
+}
+
+input[type=range]::-webkit-slider-thumb,
+input[type=range]::-moz-range-thumb {
+  background-color: red;
+}
+</style>
 <template>
 
   <Headline class="text-2xl mb-4">Distance from main sequence</Headline>
@@ -33,6 +49,11 @@
     <input class="ml-4 w-12" type="number" v-model="outOfBandThreshold">
 
   </div>
+  <div class="flex gap-4">
+    <ArchstatsButton class="primary text-sm" @click="setScope">Set scope to components <span class="font-semibold">{{ isScopeOutside? 'outside':'inside'}}</span> of main sequence
+      <span class="rounded bg-white text-gray-500 px-2 py-1 ml-2">{{ isScopeOutside? nrOfComponents - nrOfComponentsInMainSequence: nrOfComponentsInMainSequence }}</span></ArchstatsButton>
+    <Checkbox v-model="isScopeOutside" class="mt-2">Inverse</Checkbox>
+  </div>
 
 
   <div class="w-full flex border-2 border-archstats-400 mt-4 w-[900px]">
@@ -41,7 +62,8 @@
 
       <div class="w-72" v-if="hoveredComponent || selectedComponent">
 
-        <h3 class="w-full font-mono text-xs font-semibold py-4 overflow-x-scroll">{{ (hoveredComponent || selectedComponent).name }}</h3>
+        <h3 class="w-full font-mono text-xs font-semibold py-4 overflow-x-scroll">
+          {{ (hoveredComponent || selectedComponent).name }}</h3>
         <ComponentInfoTable class="text-sm" :component="hoveredComponent || selectedComponent"/>
       </div>
 
@@ -58,6 +80,9 @@ import {computed, defineProps, onMounted, ref, watch} from "vue";
 import ComponentInfoTable from "../../InfoTable.vue";
 import Headline from "../../ui/Headline.vue";
 import Anchor from "../../ui/Anchor.vue";
+import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
+import Checkbox from "~/components/ui/Checkbox.vue";
+import {useDataStore} from "~/stores/data";
 
 const props = defineProps<{
   components: Component[],
@@ -65,8 +90,8 @@ const props = defineProps<{
 }>()
 const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 
-const hoveredComponent = ref<Component>(null)
-const selectedComponent = ref<Component>(null)
+const hoveredComponent = ref<Component | null>(null)
+const selectedComponent = ref<Component | null>(null)
 
 const outOfBandThreshold = ref<number>(0.7)
 
@@ -89,6 +114,17 @@ const nrOfComponents = computed(() => {
   return props.components.length
 })
 
+const isScopeOutside = ref(false)
+
+const store = useDataStore()
+function setScope(){
+
+  store.setCurrentScope(props.components.filter(component => {
+    const isOutside = component["distance_main_sequence"] > outOfBandThreshold.value
+    return isScopeOutside.value ? isOutside : !isOutside
+  }).map(c => c.name))
+
+}
 
 function renderChart() {
   const allComponents = props.components;
@@ -164,7 +200,7 @@ function renderChart() {
       .attr("cx", (d) => x(d.instability))
       .attr("cy", (d) => y(d.abstractness))
       .attr("r", d => nodeSizeScale(d[relativeSize]))
-      .attr("class", (component) => (hoveredComponent.value || selectedComponent.value)?.name === component.name ?  'fill-archstats-700': "fill-archstats-500")
+      .attr("class", (component) => (hoveredComponent.value || selectedComponent.value)?.name === component.name ? 'fill-archstats-700' : "fill-archstats-500")
       .style('stroke', '#000')
       .style('stroke-width', 1)
       .on("mouseout", (x, y) => {

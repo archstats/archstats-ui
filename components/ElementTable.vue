@@ -5,8 +5,8 @@
       <tr>
         <th class="px-2 py-1  h-full justify-center" v-if="selectableElements">
           <div class="flex gap-2 align-middle justify-center">
-            <input type="checkbox" :checked="selectedElements && selectedElements.length === allElements.length"
-                   @change="toggleSelectAll">
+            <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
+                      @update:model-value="toggleSelectAll"/>
           </div>
         </th>
         <th class="py-1 px-2 text-left cursor-pointer hover:text-archstats-500" @click="toggleSort('name')">Name <span
@@ -22,10 +22,12 @@
       </thead>
       <tbody>
       <tr v-for="element in pageOfElements" class="hover:bg-archstats-50" :class="{'cursor-pointer': clickableElements}"
-          @click="emit('clicked-element', element)">
-        <td v-if="selectableElements" class="px-2"><input type="checkbox"
-                                                          :checked="selectedElements.indexOf(element.name) !== -1"
-                                                          @click="checkboxToggle(element.name)"></td>
+          @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
+        <td v-if="selectableElements" class="px-2">
+          <Checkbox type="checkbox"
+                    :model-value="selectedElements.indexOf(element.name) !== -1"
+                    @click="checkboxToggle(element.name)"/>
+        </td>
         <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
 
         <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
@@ -34,16 +36,21 @@
       </tbody>
     </table>
   </div>
-  <div class="mt-8 flex justify-center">
-    <button class="mr-2 font-bold" @click="goToPage(currentPage - 1)">&lt;</button>
-    <span>{{ currentPage }}</span> / <span>{{ totalPages }}</span>
-    <button class="ml-2 font-bold" @click="goToPage(currentPage + 1)">&gt;</button>
+  <div class="mt-8 flex justify-center items-center">
+    <button class="mr-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage - 1)">
+      <Icon :size="20" icon="chevron-left"/>
+    </button>
+    <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
+    <button class="ml-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage + 1)">
+      <Icon :size="20" icon="chevron-right"/>
+    </button>
 
   </div>
 </template>
 <script setup lang="ts">
 import {round} from "~/utils/text";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
+import Checkbox from "~/components/ui/Checkbox.vue";
 
 interface Element {
   name: string,
@@ -52,13 +59,17 @@ interface Element {
 }
 
 const props = defineProps({
+  limit: {
+    type: Number,
+    default: -1
+  },
   columnRenderers: {
-    type: Object as () => { [column: string]: (data: number|string) => Component },
+    type: Object as () => { [column: string]: (data: number | string) => Component },
     default: () => ({})
   },
   clickableElements: {
     type: Boolean,
-    default: true
+    default: false
   },
   selectableElements: {
     type: Boolean,
@@ -78,6 +89,13 @@ const props = defineProps({
   }
 })
 
+const correctedLimit = computed(() => {
+  if (props.limit <= 0) {
+    return -1
+  }
+  return props.limit
+})
+
 const emit = defineEmits(["update:selected-elements", "clicked-element"])
 
 const sortSettings = ref({
@@ -91,6 +109,27 @@ const allElements: ComputedRef<Element[]> = computed(() => {
   return props.elements
 })
 
+const sortedElements = computed(() => {
+  return allElements.value.sort((a, b) => {
+    const aValue = a[sortSettings.value.column]
+    const bValue = b[sortSettings.value.column]
+    const multiplier = sortSettings.value.ascending ? 1 : -1
+    if (aValue < bValue) {
+      return -1 * multiplier
+    } else if (aValue > bValue) {
+      return 1 * multiplier
+    } else {
+      return 0
+    }
+  })
+})
+
+const limitedElements = computed(() => {
+  if (correctedLimit.value <= 0) {
+    return sortedElements.value
+  }
+  return sortedElements.value.slice(0, correctedLimit.value)
+})
 const elementLookup: ComputedRef<{
   [key: string]: Element
 }> = computed(() => {
@@ -105,9 +144,9 @@ watch(allElements, () => {
 })
 
 const columns = computed(() => {
-  const exampleElement = allElements.value[0];
+  const exampleElement = limitedElements.value[0];
 
-  if(!exampleElement) return []
+  if (!exampleElement) return []
   return Object.keys(exampleElement).filter(column => column !== "timestamp" && column !== "report_id" && column !== "name" && typeof exampleElement[column] === 'string' || typeof exampleElement[column] === 'number').map(
       column => ({
         name: column,
@@ -119,24 +158,14 @@ const columns = computed(() => {
 const pageOfElements = computed(() => {
   const pageSize = props.maxPageSize
   const page = currentPage.value - 1
-  return allElements.value
-      .sort((a, b) => {
-        const aValue = a[sortSettings.value.column]
-        const bValue = b[sortSettings.value.column]
-        const multiplier = sortSettings.value.ascending ? 1 : -1
-        if (aValue < bValue) {
-          return -1 * multiplier
-        } else if (aValue > bValue) {
-          return 1 * multiplier
-        } else {
-          return 0
-        }
-      }).slice(page * pageSize, (page + 1) * pageSize)
+  return limitedElements.value
+
+      .slice(page * pageSize, (page + 1) * pageSize)
 })
 
 const totalPages = computed(() => {
   const pageSize: number = props.maxPageSize
-  return Math.ceil(allElements.value.length / pageSize)
+  return Math.ceil(limitedElements.value.length / pageSize)
 })
 
 function checkboxToggle(element: string) {
@@ -174,10 +203,10 @@ function toggleSort(column: string) {
 
 // TODO fix this
 function toggleSelectAll() {
-  if (props.selectedElements.length === allElements.value.length) {
+  if (props.selectedElements.length === limitedElements.value.length) {
     setSelection([])
   } else {
-    setSelection(allElements.value.map(element => element.name))
+    setSelection(limitedElements.value.map(element => element.name))
   }
 }
 
