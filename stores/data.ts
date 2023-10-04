@@ -81,7 +81,9 @@ export const useDataStore = defineStore('data', {
     },
     actions: {
         async setViews(views: any) {
-            let SQL = await initSqlJs({});
+            let SQL = await initSqlJs({
+                locateFile: file => `/${file}`
+            });
             this.sqliteDatabase = new SQL.Database(views);
         },
         setCurrentScope(components: string[] | RawComponent[]) {
