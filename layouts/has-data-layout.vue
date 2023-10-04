@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import {Splitpanes, Pane} from 'splitpanes'
 import NavBar from "~/components/navbar/NavBar.vue";
-import ComponentScopeButton from "~/components/ComponentScopeButton.vue";
+import ComponentScopeButton from "~/components/ComponentScopeModal.vue";
 
 const navExpanded = ref(true)
 </script>

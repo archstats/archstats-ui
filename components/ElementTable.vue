@@ -22,7 +22,7 @@
       </thead>
       <tbody>
       <tr v-for="element in pageOfElements" class="hover:bg-archstats-50" :class="{'cursor-pointer': clickableElements}"
-          @click="emit('clicked-element', element)">
+          @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
         <td v-if="selectableElements" class="px-2"><input type="checkbox"
                                                           :checked="selectedElements.indexOf(element.name) !== -1"
                                                           @click="checkboxToggle(element.name)"></td>
@@ -34,10 +34,10 @@
       </tbody>
     </table>
   </div>
-  <div class="mt-8 flex justify-center">
-    <button class="mr-2 font-bold" @click="goToPage(currentPage - 1)">&lt;</button>
-    <span>{{ currentPage }}</span> / <span>{{ totalPages }}</span>
-    <button class="ml-2 font-bold" @click="goToPage(currentPage + 1)">&gt;</button>
+  <div class="mt-8 flex justify-center items-center">
+    <button class="mr-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage - 1)"><Icon :size="20" icon="chevron-left"/></button>
+    <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
+    <button class="ml-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage + 1)"><Icon :size="20" icon="chevron-right"/></button>
 
   </div>
 </template>
@@ -58,7 +58,7 @@ const props = defineProps({
   },
   clickableElements: {
     type: Boolean,
-    default: true
+    default: false
   },
   selectableElements: {
     type: Boolean,
