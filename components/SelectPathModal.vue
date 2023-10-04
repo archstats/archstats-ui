@@ -105,7 +105,7 @@ const filteredComponents = computed(() => {
 })
 
 function select(path: RawPath) {
-  emit('path-selected', path.shortest_path)
+  emit('path-selected', path?.shortest_path)
   closeModal?.()
 }
 
