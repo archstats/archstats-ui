@@ -93,9 +93,10 @@
             </div>
           </div>
           <div id="current-path" class="h-full w-full overflow-y-scroll">
-            <table class="overflow-x-scroll w-full  mb-12 text-xs">
+            <table class="overflow-x-scroll w-full  mb-12 text-xs" v-if="path">
               <tbody>
               <PathTableRow
+
                   v-for="(segment, i) in (path ?? [])"
                   :user-selected-position-in-path="positionInPath"
                   :segment="segment"
