@@ -236,10 +236,14 @@ function selectComponent(component: RawComponent) {
 }
 
 function pathSelected(addedPathRaw: string ){
+  console.debug("path selected", addedPathRaw)
   const compiledPath = stringToPath(addedPathRaw)
-  // clear path from the positionInPath onwards
+
+  console.debug("compiled path, slicing currentPath", compiledPath)
   path.value = path.value?.slice(0, positionInPath.value)
+  console.debug("path after slicing", path.value)
   path.value?.push(...compiledPath)
+  console.debug("path after pushing", path.value)
   selectIndex(path.value.length - 1)
   scrollToBottom()
 }
