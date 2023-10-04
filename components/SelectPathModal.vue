@@ -105,11 +105,8 @@ const filteredComponents = computed(() => {
 })
 
 function select(path: RawPath) {
-  console.debug("selecting path", path)
   emit('path-selected', path?.shortest_path)
-  console.debug("emitted path selected")
   closeModal?.()
-  console.debug("closed modal")
 }
 
 function toggleDirection() {
