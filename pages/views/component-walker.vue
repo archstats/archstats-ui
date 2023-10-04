@@ -61,7 +61,7 @@
 
         <Pane size="20" min-size="2" max-size="90" class="bg-gray-100 text-sm flex-grow   rounded-none flex flex-col">
 
-          <div class="bg-gray-200 py-2 px-2 flex justify-between">
+          <div v-if="path" class="bg-gray-200 py-2 px-2 flex justify-between">
             <h3 class="font-semibold self-center">Path</h3>
             <div class="flex gap-4">
 
@@ -92,8 +92,8 @@
               </ModalTrigger>
             </div>
           </div>
-          <div id="current-path" class="h-full w-full overflow-y-scroll">
-            <table class="overflow-x-scroll w-full  mb-12 text-xs" v-if="path">
+          <div v-if="path" id="current-path" class="h-full w-full overflow-y-scroll">
+            <table class="overflow-x-scroll w-full  mb-12 text-xs" >
               <tbody>
               <PathTableRow
 
