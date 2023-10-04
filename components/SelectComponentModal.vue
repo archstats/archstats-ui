@@ -1,7 +1,7 @@
 <template>
   <Card class="w-2/3 mt-24 bg-white">
     <div class="px-4 mt-8 mb-12">
-      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-500 outline-1" v-model="searchText" placeholder="Search..." @keyup.esc="closeModal">
+      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-tertiary-500 outline-1" v-model="searchText" placeholder="Search..." @keyup.esc="closeModal">
 
     </div>
     <div class="h-[512px]">

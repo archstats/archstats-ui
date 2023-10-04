@@ -1,5 +1,5 @@
 <template>
-  <Button class="text-white bg-archstats-500 hover:bg-archstats-400">
+  <Button class="text-white bg-archstats-primary-900 hover:bg-archstats-primary-700">
     <slot></slot>
   </Button>
 </template>

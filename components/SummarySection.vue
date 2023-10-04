@@ -1,12 +1,12 @@
 <template>
   <section class="my-20">
     <Headline>Summary</Headline>
-    <p class="text-2xl text-gray-400 leading-10">Your project <span class="text-archstats-500 font-semibold"
+    <p class="text-2xl text-archstats-primary-100 leading-10">Your project <span class="text-archstats-primary-500 font-semibold"
                                                           v-if="store.getProjectPrefixIfAny">{{ store.getProjectPrefixIfAny }}</span>
-      has <span class="text-archstats-500 font-semibold">{{ summary["component_count"].toLocaleString() }}</span>
-      components, <span class="text-archstats-500 font-semibold ">{{ summary["file_count"].toLocaleString() }}</span> files
+      has <span class="text-archstats-primary-500 font-semibold">{{ summary["component_count"].toLocaleString() }}</span>
+      components, <span class="text-archstats-primary-500 font-semibold ">{{ summary["file_count"].toLocaleString() }}</span> files
       and <span
-          class="text-archstats-500 font-semibold">{{ summary["line_count"].toLocaleString() }}</span> lines of code.</p>
+          class="text-archstats-primary-500 font-semibold">{{ summary["line_count"].toLocaleString() }}</span> lines of code.</p>
 
   </section>
 </template>

@@ -1,5 +1,5 @@
 <template>
-  <div class="my-36 container ">
+  <div class="my-36 container">
     <SummarySection/>
     <main>
       <Headline>Views</Headline>
@@ -44,3 +44,8 @@ definePageMeta({
   ]
 })
 </script>
+<style>
+body {
+  @apply bg-white
+}
+</style>

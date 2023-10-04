@@ -2,11 +2,11 @@
 
   <div>
 
-    <h1 class="mb-4 text-gray-500 whitespace-nowrap"><span class="font-mono text-gray-800">{{ connections.length }}</span>
-      {{ singularPlural }} <span class="font-mono text-gray-800">{{ to }}</span> from <span
-          class="font-mono  text-gray-800">{{ from }}</span></h1>
+    <h1 class="mb-4 text-archstats-primary-400 whitespace-nowrap"><span class="font-mono text-archstats-primary-900">{{ connections.length }}</span>
+      {{ singularPlural }} <span class="font-mono text-archstats-primary-900">{{ to }}</span> from <span
+          class="font-mono  text-archstats-primary-900">{{ from }}</span></h1>
     <div class="flex" v-for="connection in connections">
-      <DirectConnectionDetail class="font-mono text-gray-700 font-normal" v-bind="connection"
+      <DirectConnectionDetail class="font-mono text-archstats-primary-700  font-normal" v-bind="connection"
                               :expanded-by-default="connections.length < 3">{{ connection.file }}
       </DirectConnectionDetail>
     </div>

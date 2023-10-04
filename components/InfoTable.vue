@@ -1,14 +1,14 @@
 <template>
 
-  <table class="">
+  <table>
     <tbody>
 
     <tr v-for="info in elementNormalized">
 
-      <td class="mr-4 text-gray-500 flex gap-2">
+      <td class="mr-4 text-archstats-primary-200 flex gap-2">
         <LongHover v-if="definition.has(info.key)" :time="200">
           <template #main-content>
-            <span class="hover:text-archstats-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
+            <span class="hover:text-archstats-tertiary-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
           </template>
           <template #hovered-content>
             <div class="absolute bg-gray-50 p-6 shadow-2xl w-96 z-10">
@@ -19,7 +19,7 @@
         <span v-else>{{info.key}}</span>
 
         </td>
-      <td class="w-12 overflow-hidden ">{{ round(info.value, 3) }}</td>
+      <td class="w-12 overflow-hidden text-archstats-primary-900">{{ round(info.value, 3) }}</td>
     </tr>
 
 

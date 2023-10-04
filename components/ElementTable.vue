@@ -9,11 +9,11 @@
                    @change="toggleSelectAll">
           </div>
         </th>
-        <th class="py-1 px-2 text-left cursor-pointer hover:text-archstats-500" @click="toggleSort('name')">Name <span
+        <th class="py-1 px-2 text-left cursor-pointer hover:text-archstats-tertiary-500" @click="toggleSort('name')">Name <span
             v-if="sortSettings.column === 'name'"
             v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
         </th>
-        <th class="py-1 px-2 cursor-pointer cursor-pointer hover:text-archstats-500 text-left" v-for="column in columns"
+        <th class="py-1 px-2 cursor-pointer cursor-pointer hover:text-archstats-tertiary-500 text-left" v-for="column in columns"
             @click="toggleSort(column.name)"><span>{{
             column.name
           }}</span><span v-if="sortSettings.column === column.name"
@@ -21,7 +21,7 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="element in pageOfElements" class="hover:bg-archstats-50" :class="{'cursor-pointer': clickableElements}"
+      <tr v-for="element in pageOfElements" class="hover:bg-archstats-tertiary-50" :class="{'cursor-pointer': clickableElements}"
           @click="emit('clicked-element', element)">
         <td v-if="selectableElements" class="px-2"><input type="checkbox"
                                                           :checked="selectedElements.indexOf(element.name) !== -1"
