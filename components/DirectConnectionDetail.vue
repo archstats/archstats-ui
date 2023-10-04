@@ -6,11 +6,11 @@
       <div class="">
         <LongHover>
           <template #main-content>
-            <h5 class="font-mono hover:text-archstats-500 cursor-pointer z-1"><span class="select-none text-gray-400">{{reference_count}}x </span>{{ file }}</h5>
+            <h5 class="font-mono hover:text-archstats-500 cursor-pointer z-1 whitespace-nowrap"><span class="select-none text-gray-400">{{reference_count}}x </span>{{ file }}</h5>
           </template>
           <template #hovered-content>
             <div class="mt-1 mb-3 absolute bg-gray-100 p-4 shadow-2xl z-10">
-              <p>Referenced <span>{{ reference_count }}</span> time(s) on line number(s): <span class="font-bold">{{ lines }}</span></p>
+              <p >Referenced <span>{{ reference_count }}</span> time(s) on line number(s): <span class="font-bold">{{ lines }}</span></p>
             </div>
           </template>
         </LongHover>

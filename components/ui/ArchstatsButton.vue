@@ -25,7 +25,7 @@ const props = defineProps(
   @apply p-2 hover:bg-gray-300 hover:bg-opacity-50 rounded transition-all flex gap-[5px] items-center
 }
 .tertiary .icon {
-  @apply text-blue-500
+  @apply text-archstats-500
 }
 
 </style>

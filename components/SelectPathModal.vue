@@ -1,7 +1,15 @@
 <template>
   <Card class="w-2/3 mt-24 bg-white">
-    <h1 class="text-lg ">Walk <span class="border-b-2 border-b-archstats-500 inline-flex items-center gap-1" @click="toggleDirection">{{ column }}<Icon
-        icon="pencil" :size="12"/></span> <span class="font-mono font-normal">{{ component }}</span></h1>
+    <h1 class="text-lg ">Walk <span
+        class="border-b-2  inline-flex items-center cursor-pointer gap-1 w-10 text-center justify-center"
+        :class="{ 'text-blue-500': column == 'to','border-b-blue-500': column=='to',  'text-red-500': column == 'from', 'border-b-red-500': column=='from'}"
+        @click="toggleDirection">{{ column }}</span> <span
+        class="font-mono font-normal">{{ component }} <Icon class="inline"
+                                                            :class="{ 'text-blue-500': column == 'to', 'text-red-500': column == 'from'}"
+                                                            :icon="column == 'from' ? 'arrow-right-from-line' :'arrow-left-to-line'"
+                                                            :size="20"/> <span class="font-mono italic font-light">&lsaquo;component(s)&rsaquo;</span></span>
+
+    </h1>
     <div class="mt-8 mb-12 flex">
 
       <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-500 outline-1" v-model="searchText"
@@ -44,19 +52,19 @@ const oppositeColumn = computed(() => column.value === 'from' ? 'to' : 'from')
 const loadedComponents = computed(() => {
   let query: string
 
-  if (column.value === 'from'){
+  if (column.value === 'from') {
     query = `
-    SELECT "to" as name, shortest_path_length, shortest_path
-    FROM component_connections_indirect
-    WHERE "from" = '${props.component}'
-  `
+      SELECT "to" as name, shortest_path_length, shortest_path
+      FROM component_connections_indirect
+      WHERE "from" = '${props.component}'
+    `
 
 
-  }else{
+  } else {
     query = `
-    SELECT "from" as name, shortest_path_length, shortest_path
-    FROM component_connections_indirect
-    WHERE "to" = '${props.component}'
+      SELECT "from" as name, shortest_path_length, shortest_path
+      FROM component_connections_indirect
+      WHERE "to" = '${props.component}'
     `
 
   }
@@ -80,6 +88,7 @@ function flipPath(path: string): string {
   const nodes = path.split(' -> ');
   return nodes.reverse().join(' <- ');
 }
+
 const closeModal = inject(closeModalKey)
 
 const emit = defineEmits(['path-selected'])
@@ -99,7 +108,8 @@ function select(path: RawPath) {
   emit('path-selected', path.shortest_path)
   closeModal?.()
 }
-function toggleDirection(){
+
+function toggleDirection() {
   column.value = oppositeColumn.value
 }
 </script>

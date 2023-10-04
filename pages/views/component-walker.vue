@@ -15,14 +15,14 @@
   <Splitpanes>
 
     <Pane size="25" min-size="1" v-if="selectedComponent">
-      <ComponentCardList :components="afferentCoupling" @component-selected="walkTo('is depended on by', $event)">
+      <ComponentCardList :components="dependents" @component-selected="walkTo('is depended on by', $event)">
         <template #header>
           <div class="p-4 text-center">
             <h3 class="text-xl text-blue-500 mb-4 font-semibold">Afferent Coupling</h3>
             <p class="text-sm"><span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br>
               is referenced
-              <span class="text-blue-500 font-semibold">{{ totalAfferentCoupling }}</span> times by <span
-                  class="font-semibold text-blue-500">{{ afferentCoupling.length }}</span> other components.</p>
+              <span class="text-blue-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-blue-500 font-semibold">{{ selectedComponent['afferent_couplings'] }}</span> files by <span
+                  class="font-semibold text-blue-500">{{ dependents.length }}</span> other components.</p>
           </div>
         </template>
       </ComponentCardList>
@@ -90,10 +90,6 @@
                   <SelectComponentModal @component-selected="selectComponent"></SelectComponentModal>
                 </template>
               </ModalTrigger>
-
-
-
-              <!--              <Icon icon="more-vertical"></Icon>-->
             </div>
           </div>
           <div id="current-path" class="h-full w-full overflow-y-scroll">
@@ -117,14 +113,14 @@
 
 
     <Pane size="25" min-size="1" v-if="selectedComponent">
-      <ComponentCardList :components="efferentCoupling" @component-selected="walkTo('depends on', $event)">
+      <ComponentCardList :components="dependencies" @component-selected="walkTo('depends on', $event)">
         <template #header>
           <div class="p-4 text-center">
             <h3 class="text-xl text-red-500 mb-4 font-semibold">Efferent Coupling</h3>
             <p class="text-sm">
               <span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br> has
-              <span class="text-red-500 font-semibold">{{ totalEfferentCoupling }}</span> references to <span
-                class="font-semibold text-red-500">{{ efferentCoupling.length }}</span> other components.</p>
+              <span class="text-red-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-red-500 font-semibold">{{selectedComponent['efferent_couplings']}}</span> files to <span
+                class="font-semibold text-red-500">{{ dependencies.length }}</span> other components.</p>
           </div>
         </template>
       </ComponentCardList>
@@ -164,7 +160,7 @@ const path = ref<PathSegment[]>([{
 
 const pathOccurrences = computed(() => getOccurrencesForPathSegments(path.value))
 
-const afferentCoupling = computed(() => {
+const dependents = computed(() => {
   return store.query(`
     WITH connections_ignoring_files AS (SELECT "from", "to", sum(reference_count) AS count
     FROM component_connections_direct
@@ -177,11 +173,11 @@ const afferentCoupling = computed(() => {
   `) as RawComponent[]
 })
 
-const totalAfferentCoupling = computed(() => {
-  return afferentCoupling.value.reduce((acc, component) => acc + component["references"], 0)
+const totalReferencesAfferent = computed(() => {
+  return dependents.value.reduce((acc, component) => acc + component["references"], 0)
 })
 
-const efferentCoupling = computed(() => {
+const dependencies = computed(() => {
   return store.query(`
     WITH connections_ignoring_files AS (SELECT "from", "to", sum(reference_count) AS count
     FROM component_connections_direct
@@ -194,8 +190,8 @@ const efferentCoupling = computed(() => {
   `) as RawComponent[]
 })
 
-const totalEfferentCoupling = computed(() => {
-  return efferentCoupling.value.reduce((acc, component) => acc + component["references"], 0)
+const totalReferencesEfferent = computed(() => {
+  return dependencies.value.reduce((acc, component) => acc + component["references"], 0)
 })
 
 function walkTo(relationship: Relationship, component: RawComponent) {

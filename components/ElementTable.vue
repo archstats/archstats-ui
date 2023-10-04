@@ -27,7 +27,9 @@
                                                           :checked="selectedElements.indexOf(element.name) !== -1"
                                                           @click="checkboxToggle(element.name)"></td>
         <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
+
         <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
+
       </tr>
       </tbody>
     </table>
@@ -41,7 +43,7 @@
 </template>
 <script setup lang="ts">
 import {round} from "~/utils/text";
-import {computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
+import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
 
 interface Element {
   name: string,
@@ -50,6 +52,10 @@ interface Element {
 }
 
 const props = defineProps({
+  columnRenderers: {
+    type: Object as () => { [column: string]: (data: number|string) => Component },
+    default: () => ({})
+  },
   clickableElements: {
     type: Boolean,
     default: true

@@ -2,7 +2,7 @@
 
   <div>
 
-    <h1 class="mb-4 text-gray-500"><span class="font-mono text-gray-800">{{ connections.length }}</span>
+    <h1 class="mb-4 text-gray-500 whitespace-nowrap"><span class="font-mono text-gray-800">{{ connections.length }}</span>
       {{ singularPlural }} <span class="font-mono text-gray-800">{{ to }}</span> from <span
           class="font-mono  text-gray-800">{{ from }}</span></h1>
     <div class="flex" v-for="connection in connections">
