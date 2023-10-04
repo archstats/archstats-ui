@@ -96,7 +96,7 @@
             <table class="overflow-x-scroll w-full  mb-12 text-xs">
               <tbody>
               <PathTableRow
-                  v-for="(segment, i) in path"
+                  v-for="(segment, i) in (path ?? [])"
                   :user-selected-position-in-path="positionInPath"
                   :segment="segment"
                   :nr="i + 1"
