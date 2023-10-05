@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full overflow-x-scroll">
+  <div class="w-full overflow-x-scroll text-archstats-900">
     <table class="mb-4">
       <thead>
       <tr>
@@ -9,11 +9,11 @@
                       @update:model-value="toggleSelectAll"/>
           </div>
         </th>
-        <th class="py-1 px-2 text-left cursor-pointer hover:text-archstats-500" @click="toggleSort('name')">Name <span
+        <th class="py-1 px-2 text-left cursor-pointer hover:text-secondary-200" @click="toggleSort('name')">Name <span
             v-if="sortSettings.column === 'name'"
             v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
         </th>
-        <th class="py-1 px-2 cursor-pointer cursor-pointer hover:text-archstats-500 text-left" v-for="column in columns"
+        <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left" v-for="column in columns"
             @click="toggleSort(column.name)"><span>{{
             column.name
           }}</span><span v-if="sortSettings.column === column.name"
@@ -21,7 +21,7 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="element in pageOfElements" class="hover:bg-archstats-50" :class="{'cursor-pointer': clickableElements}"
+      <tr v-for="element in pageOfElements" class="hover:bg-secondary-50" :class="{'cursor-pointer': clickableElements}"
           @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
         <td v-if="selectableElements" class="px-2">
           <Checkbox type="checkbox"
@@ -37,11 +37,11 @@
     </table>
   </div>
   <div class="mt-8 flex justify-center items-center">
-    <button class="mr-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage - 1)">
+    <button class="mr-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage - 1)">
       <Icon :size="20" icon="chevron-left"/>
     </button>
     <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
-    <button class="ml-2 font-bold hover:text-archstats-500" @click="goToPage(currentPage + 1)">
+    <button class="ml-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage + 1)">
       <Icon :size="20" icon="chevron-right"/>
     </button>
 

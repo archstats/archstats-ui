@@ -1,7 +1,7 @@
 <template>
   <section class="my-20">
     <Headline>Summary</Headline>
-    <p class="text-2xl text-gray-400 leading-10">Your project <span class="text-archstats-500 font-semibold"
+    <p class="text-2xl text-archstats-100 leading-10">Your project <span class="text-archstats-500 font-semibold"
                                                           v-if="store.getProjectPrefixIfAny">{{ store.getProjectPrefixIfAny }}</span>
       has <span class="text-archstats-500 font-semibold">{{ summary["component_count"].toLocaleString() }}</span>
       components, <span class="text-archstats-500 font-semibold ">{{ summary["file_count"].toLocaleString() }}</span> files

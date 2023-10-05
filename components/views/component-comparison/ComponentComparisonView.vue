@@ -4,7 +4,7 @@
   <div class="mb-4">
     <label>Relative Component Size </label>
     <select v-model="relativeSize"
-            class="p-2 box-border bg-gray-100 border-archstats-400 rounded border-2 outline-archstats-700">
+            class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
       <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
     </select>
   </div>
@@ -133,9 +133,9 @@ function renderChart() {
       .attr("r", (d: any) => nodeSizeScale.value(d.radius))
       .attr("class", (d: any) => {
         if (d.component.name === hoveredComponent.value?.name) {
-          return 'fill-archstats-800'
+          return 'fill-tertiary-800'
         }
-        return 'fill-archstats-500';
+        return 'fill-tertiary-500';
       })
       .on("mousemove", (event: any, d: any) => {
         hoveredComponent.value = d.component

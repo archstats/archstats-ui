@@ -1,19 +1,3 @@
-<style>
-input[type=range] {
-  -webkit-appearance: rating-level-indicator;
-  -moz-appearance: none;
-}
-
-input[type=range]::-webkit-slider-runnable-track,
-input[type=range]::-moz-range-track {
-  background-color: red;
-}
-
-input[type=range]::-webkit-slider-thumb,
-input[type=range]::-moz-range-thumb {
-  background-color: red;
-}
-</style>
 <template>
 
   <Headline class="text-2xl mb-4">Distance from main sequence</Headline>
@@ -22,11 +6,13 @@ input[type=range]::-moz-range-thumb {
     stability for a module or component. Modules that are too abstract or too unstable tend to be farther from the main
     sequence and can be more difficult to work with.</p>
   <ul class="mb-4">
-    <li class="mb-2"><span class="text-archstats-500 font-semibold">Abstractness</span> refers to how much a software
+    <li class="mb-2"><span class="text-tertiary-500 font-semibold">Abstractness</span> refers to how much a
+      software
       component is
       removed from the details of its implementation.
     </li>
-    <li class="mb-2"><span class="text-archstats-500 font-semibold">Instability</span> refers to how likely a software
+    <li class="mb-2"><span class="text-tertiary-500 font-semibold">Instability</span> refers to how likely a
+      software
       component is to
       change over time.
     </li>
@@ -41,7 +27,8 @@ input[type=range]::-moz-range-thumb {
     <Anchor href="https://en.wikipedia.org/wiki/Software_package_metrics">here</Anchor>
     for more info.
   </p>
-  <p class="text-gray-600 text-sm">{{ nrOfComponentsInMainSequence }} of {{ nrOfComponents }} components are in the main
+  <p class="text-archstats-600 text-sm">{{ nrOfComponentsInMainSequence }} of {{ nrOfComponents }} components
+    are in the main
     sequence</p>
   <div class="mt-2 flex mb-8">
     <label class="mr-4">Main sequence threshold</label>
@@ -56,7 +43,7 @@ input[type=range]::-moz-range-thumb {
   </div>
 
 
-  <div class="w-full flex border-2 border-archstats-400 mt-4 w-[900px]">
+  <div class="w-full flex border-2 border-tertiary-400 mt-4 w-[900px]">
     <div :id="chartId" class=" w-full"></div>
     <div class="bg-gray-100 flex-auto py-8 px-4 w-96 ">
 
@@ -200,7 +187,7 @@ function renderChart() {
       .attr("cx", (d) => x(d.instability))
       .attr("cy", (d) => y(d.abstractness))
       .attr("r", d => nodeSizeScale(d[relativeSize]))
-      .attr("class", (component) => (hoveredComponent.value || selectedComponent.value)?.name === component.name ? 'fill-archstats-700' : "fill-archstats-500")
+      .attr("class", (component) => (hoveredComponent.value || selectedComponent.value)?.name === component.name ? 'fill-tertiary-700' : "fill-tertiary-500")
       .style('stroke', '#000')
       .style('stroke-width', 1)
       .on("mouseout", (x, y) => {

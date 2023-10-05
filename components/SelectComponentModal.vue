@@ -1,14 +1,14 @@
 <template>
   <Card class="w-2/3 mt-24 bg-white">
     <div class="px-4 mt-8 mb-12">
-      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-500 outline-1" v-model="searchText" placeholder="Search..." @keyup.esc="closeModal">
+      <input class="w-full px-4 py-2 bg-gray-100  box-border outline-archstats-900 outline-1 rounded" v-model="searchText" placeholder="Search..." @keyup.esc="closeModal">
 
     </div>
     <div class="h-[512px]">
       <ElementTable v-if="filteredComponents.length" @clicked-element='select' :selectable-elements="false" :clickable-elements="true" :max-page-size="12"
                     :elements="filteredComponents"/>
       <div v-else class="flex justify-center items-center h-96">
-        <p class="text-gray-500">No components found</p>
+        <p class="text-archstats-900">No components found</p>
       </div>
     </div>
 
@@ -19,7 +19,6 @@
 import {useDataStore} from "~/stores/data";
 import {RawComponent} from "~/utils/components";
 import Card from "~/components/ui/Card.vue";
-import useEmitter from "~/utils/useEmitter";
 import {closeModalKey} from "~/utils/modal";
 
 const store = useDataStore()

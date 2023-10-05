@@ -1,7 +1,7 @@
 <template>
   <div class="flex   text-white rounded overflow-clip">
-    <button class="transition-all w-full px-4 py-1 bg-archstats-500 overflow-ellipsis outline-0" @click="executeAction(selectedAction)">{{selectedAction.name}}</button>
-    <select v-model="selectedAction" class="w-4 bg-archstats-500 rounded-r outline-0 " >
+    <button class="transition-all w-full px-4 py-1 bg-tertiary-500 overflow-ellipsis outline-0" @click="executeAction(selectedAction)">{{selectedAction.name}}</button>
+    <select v-model="selectedAction" class="w-4 bg-tertiary-500 rounded-r outline-0 " >
       <option v-for="action in actions" :value="action">{{action.name}}</option>
     </select>
   </div>

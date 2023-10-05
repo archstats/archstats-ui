@@ -18,11 +18,11 @@
       <ComponentCardList :components="dependents" @component-selected="walkTo('is depended on by', $event)">
         <template #header>
           <div class="p-4 text-center">
-            <h3 class="text-xl text-blue-500 mb-4 font-semibold">Afferent Coupling</h3>
+            <h3 class="text-xl text-tertiary-500 mb-4 font-semibold">Afferent Coupling</h3>
             <p class="text-sm"><span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br>
               is referenced
-              <span class="text-blue-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-blue-500 font-semibold">{{ selectedComponent['afferent_couplings'] }}</span> files by <span
-                  class="font-semibold text-blue-500">{{ dependents.length }}</span> other components.</p>
+              <span class="text-tertiary-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-tertiary-500 font-semibold">{{ selectedComponent['afferent_couplings'] }}</span> files by <span
+                  class="font-semibold text-tertiary-500">{{ dependents.length }}</span> other components.</p>
           </div>
         </template>
       </ComponentCardList>
@@ -47,10 +47,10 @@
 
             <Card class="self-center relative">
               <ComponentInfoTable class="w-full" :component="selectedComponent"/>
-              <div class="absolute top-1/2 -right-40 font-semibold text-red-500 text-center ">
+              <div class="absolute top-1/2 -right-40 font-semibold text-secondary-500 text-center ">
                 <h2>Dependencies</h2>
               </div>
-              <div class="absolute top-1/2 -left-40 font-semibold text-blue-500">
+              <div class="absolute top-1/2 -left-40 font-semibold text-tertiary-500">
                 <h2>Dependents</h2>
               </div>
             </Card>
@@ -62,7 +62,7 @@
         <Pane size="20" min-size="2" max-size="90" class="bg-gray-100 text-sm flex-grow   rounded-none flex flex-col">
 
           <div v-if="path" class="bg-gray-200 py-2 px-2 flex justify-between">
-            <h3 class="font-semibold self-center">Path</h3>
+            <h3 class="font-semibold self-center text-archstats-900">Path</h3>
             <div class="flex gap-4">
 
               <ArchstatsButton icon="rotate" :icon-size="14" class="tertiary" @click="resetPath">
@@ -96,7 +96,6 @@
             <table class="overflow-x-scroll w-full  mb-12 text-xs" >
               <tbody>
               <PathTableRow
-
                   v-for="(segment, i) in (path ?? [])"
                   :user-selected-position-in-path="positionInPath"
                   :segment="segment"
@@ -117,11 +116,11 @@
       <ComponentCardList :components="dependencies" @component-selected="walkTo('depends on', $event)">
         <template #header>
           <div class="p-4 text-center">
-            <h3 class="text-xl text-red-500 mb-4 font-semibold">Efferent Coupling</h3>
+            <h3 class="text-xl text-secondary-500 mb-4 font-semibold">Efferent Coupling</h3>
             <p class="text-sm">
               <span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br> has
-              <span class="text-red-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-red-500 font-semibold">{{selectedComponent['efferent_couplings']}}</span> files to <span
-                class="font-semibold text-red-500">{{ dependencies.length }}</span> other components.</p>
+              <span class="text-secondary-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-secondary-500 font-semibold">{{selectedComponent['efferent_couplings']}}</span> files to <span
+                class="font-semibold text-secondary-500">{{ dependencies.length }}</span> other components.</p>
           </div>
         </template>
       </ComponentCardList>
