@@ -25,7 +25,7 @@ const props = defineProps(
   @apply p-3 transition-all bg-archstats-500 rounded text-white text-center items-center gap-3 hover:bg-archstats-400
 }
 .secondary {
-  @apply p-3 transition-all border rounded border-archstats-500 text-archstats-500 text-center items-center gap-3 hover:text-archstats-400 hover:border-archstats-400
+  @apply p-3 transition-all border rounded border-archstats-100 text-archstats-100 text-center items-center gap-3 hover:border-archstats-400
 }
 
 .tertiary {

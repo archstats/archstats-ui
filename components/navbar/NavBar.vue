@@ -3,7 +3,7 @@
     <div v-if="expanded" class="px-12 flex flex-col h-full justify-between">
       <main>
         <section class="mb-12">
-          <router-link to="/" class="text-archstats-500 text-xl">Archstats</router-link>
+          <router-link to="/" class="text-archstats-50 text-xl">Archstats</router-link>
         </section>
 
         <section>
@@ -18,11 +18,11 @@
 
 
       <footer>
-        <section class="">
+        <section>
           <ModalTrigger>
             <template #trigger>
               <ArchstatsButton class="secondary" icon="pencil">
-                <span class="text-gray-500 ">{{ store.currentComponentScope.length }} of {{ store.allComponents.length }} components in scope</span>
+                <span class="text-archstats-100">{{ store.currentComponentScope.length }} of {{ store.allComponents.length }} components in scope</span>
               </ArchstatsButton>
             </template>
 

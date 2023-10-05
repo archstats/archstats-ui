@@ -12,8 +12,8 @@ module.exports = {
         extend: {
             colors: {
                 'archstats': {
-                    50: '#bbc4dd',
-                    100: '#aeb8d6',
+                    50: '#F1F3F8',
+                    100: '#c9d0e4',
                     200: '#92a0c8',
                     300: '#8594c1',
                     400: '#6a7bc4',
