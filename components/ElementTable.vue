@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full overflow-x-scroll">
+  <div class="w-full overflow-x-scroll text-archstats-900">
     <table class="mb-4">
       <thead>
       <tr>
@@ -9,11 +9,11 @@
                    @change="toggleSelectAll">
           </div>
         </th>
-        <th class="py-1 px-2 text-left cursor-pointer hover:text-tertiary-500" @click="toggleSort('name')">Name <span
+        <th class="py-1 px-2 text-left cursor-pointer hover:text-secondary-200" @click="toggleSort('name')">Name <span
             v-if="sortSettings.column === 'name'"
             v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
         </th>
-        <th class="py-1 px-2 cursor-pointer cursor-pointer hover:text-tertiary-500 text-left" v-for="column in columns"
+        <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left" v-for="column in columns"
             @click="toggleSort(column.name)"><span>{{
             column.name
           }}</span><span v-if="sortSettings.column === column.name"
@@ -21,12 +21,12 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="element in pageOfElements" class="hover:bg-tertiary-50" :class="{'cursor-pointer': clickableElements}"
+      <tr v-for="element in pageOfElements" class="hover:bg-secondary-50" :class="{'cursor-pointer': clickableElements}"
           @click="emit('clicked-element', element)">
         <td v-if="selectableElements" class="px-2"><input type="checkbox"
                                                           :checked="selectedElements.indexOf(element.name) !== -1"
                                                           @click="checkboxToggle(element.name)"></td>
-        <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
+        <td class="py-1 px-2 font-semibold">{{ element.name || "unknown" }}</td>
 
         <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
 
@@ -34,16 +34,16 @@
       </tbody>
     </table>
   </div>
-  <div class="mt-8 flex justify-center">
+  <div class="mt-8 flex justify-center text-archstats-900">
     <button class="mr-2 font-bold" @click="goToPage(currentPage - 1)">&lt;</button>
-    <span>{{ currentPage }}</span> / <span>{{ totalPages }}</span>
+    <span>{{ currentPage }}</span> / <span >{{ totalPages }}</span>
     <button class="ml-2 font-bold" @click="goToPage(currentPage + 1)">&gt;</button>
 
   </div>
 </template>
 <script setup lang="ts">
 import {round} from "~/utils/text";
-import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
+import {Component, computed, ComputedRef, defineProps, ref, watch} from "vue";
 
 interface Element {
   name: string,

@@ -6,9 +6,9 @@
       </section>
 
       <section>
-        <h3 class="uppercase text-sm text-white mb-1">Views</h3>
+        <h3 class="uppercase text-sm text-archstats-200 mb-1">Views</h3>
         <ul>
-          <li v-for="(link, name) in views" class="hover:text-secondary-50 text-white whitespace-nowrap">
+          <li v-for="(link, name) in views" class="hover:text-secondary-100 text-white whitespace-nowrap">
             <router-link :to="link" active-class="text-secondary-400">{{name}}</router-link>
           </li>
         </ul>
