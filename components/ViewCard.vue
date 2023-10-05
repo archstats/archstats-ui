@@ -3,10 +3,10 @@
   >
     <div class="p-8">
       <CardHeadline>{{ name }}</CardHeadline>
-      <p class="text-archstats-primary-300">{{ description }}</p>
+      <p class="text-archstats-300">{{ description }}</p>
     </div>
-    <div class="bg-archstats-primary-900 relative">
-      <div class="h-full w-full absolute bg-archstats-primary-500 opacity-30"></div>
+    <div class="bg-archstats-900 relative">
+      <div class="h-full w-full absolute bg-archstats-500 opacity-30"></div>
       <NuxtImg v-if="image" :src="image" alt="" class=" h-full w-full object-cover"/>
     </div>
   </router-link>

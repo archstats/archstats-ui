@@ -2,7 +2,7 @@
   <div class="flex h-screen w-screen relative">
     <div class="relative h-full flex-shrink-0">
       <button
-          class="rounded-full absolute bg-archstats-primary-900 hover:text-archstats-secondary-50 text-archstats-secondary-500 p-4 left-full top-4 -translate-x-1/3 z-10 transition-all"
+          class="rounded-full absolute bg-archstats-900 hover:text-secondary-50 text-secondary-500 p-4 left-full top-4 -translate-x-1/3 z-10 transition-all"
           :class="{'hover:-translate-x-1/4': !navExpanded, 'text-white': !navExpanded}"
           @click="navExpanded =!navExpanded">
         <Icon :icon="navExpanded? 'chevron-left' : 'chevron-right'"></Icon>

@@ -6,12 +6,12 @@
           class="font-semibold">By hovering over a component you can see its afferent and efferent couplings.</span></p>
     <ul>
       <li class="mb-2">
-        The <span class="text-archstats-secondary-500 font-semibold">efferent couplings</span> or <span class="italic text-archstats-secondary-500">dependencies / outgoing connections</span>
+        The <span class="text-secondary-500 font-semibold">efferent couplings</span> or <span class="italic text-secondary-500">dependencies / outgoing connections</span>
         are the relationships between a component and the components that it depends on. They are
         represented by the red lines in the diagram.
       </li>
       <li class="mt-2">
-        The <span class="text-archstats-tertiary-500 font-semibold">afferent couplings</span> or <span class="italic text-archstats-tertiary-500">dependents / incoming connections</span>
+        The <span class="text-tertiary-500 font-semibold">afferent couplings</span> or <span class="italic text-tertiary-500">dependents / incoming connections</span>
         are the relationships between a component and
         the components that depend on it. They are represented by the blue lines in the diagram.
       </li>
@@ -21,7 +21,7 @@
       for more info.
     </p>
 
-    <div :id="chartId" ref="chart" class="border-2 border-archstats-tertiary-400 mt-12 w-[900px]"></div>
+    <div :id="chartId" ref="chart" class="border-2 border-tertiary-400 mt-12 w-[900px]"></div>
   </div>
 
 </template>

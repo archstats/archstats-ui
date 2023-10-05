@@ -10,13 +10,13 @@
         </template>
       </LongHover></td>
     <td class="w-8" v-else></td>
-    <td class="font-semibold pr-4 text-archstats-primary-200">{{ nr }}</td>
-    <td class="font-mono cursor-pointer hover:underline text-archstats-primary-900" @click="select">{{
+    <td class="font-semibold pr-4 text-archstats-200">{{ nr }}</td>
+    <td class="font-mono cursor-pointer hover:underline text-archstats-900" @click="select">{{
         segment.currentComponent
       }}
     </td>
-    <td class="font-semibold pl-4 flex text-archstats-primary-900"
-        :class="{'text-archstats-secondary-500': segment.relationship == 'depends on'}">
+    <td class="font-semibold pl-4 flex text-archstats-900"
+        :class="{'text-secondary-500': segment.relationship == 'depends on'}">
       <Icon v-if="segment.relationship" @click="expanded = !expanded" :icon="expanded ? 'chevron-down':'chevron-right'" class="cursor-pointer text-gray-700 mr-2" />
 
       <span>{{ segment.relationship }}</span>

@@ -12,7 +12,7 @@
         <div>
           <label class="mr-2">Search</label>
           <input type="search" v-model="search"
-                 class="p-2 box-border bg-gray-100 border-archstats-tertiary-400 rounded border-2 outline-archstats-tertiary-700">
+                 class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
         </div>
       </div>
     </div>

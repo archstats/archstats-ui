@@ -1,14 +1,14 @@
 <template>
   <div class="chart-container">
     <div class="text-gray-700 w-1/2">
-      <h2 class="text-3xl mb-4 font-bold text-archstats-tertiary-500">Coupling View</h2>
+      <h2 class="text-3xl mb-4 font-bold text-tertiary-500">Coupling View</h2>
       <p class=" mb-4 text-gray-700">The Coupling View depicts the following: </p>
       <ul class="mb-12 pl-8 flex flex-col gap-4">
-        <li><span class="text-archstats-tertiary-500 font-bold">Efferent and Afferent Couplings</span> between components. The connection flows in the direction of the arrow. The
+        <li><span class="text-tertiary-500 font-bold">Efferent and Afferent Couplings</span> between components. The connection flows in the direction of the arrow. The
           amount of connections between components is represented in the attraction between components, and the
           thickness of lines.
         </li>
-        <li><span class="text-archstats-tertiary-500 font-bold">Component Size</span> relative to other components. The relative size is configurable.</li>
+        <li><span class="text-tertiary-500 font-bold">Component Size</span> relative to other components. The relative size is configurable.</li>
       </ul>
     </div>
 
@@ -17,29 +17,29 @@
         <div>
           <label>Filter (RegEx) </label>
           <input type="text" v-model="filter"
-                 class="p-2 box-border bg-gray-100 border-archstats-tertiary-400 rounded border-2 outline-archstats-tertiary-700">
+                 class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
         </div>
         <div class="self-center">
           <input type="checkbox" v-model="inverse"
-                 class="p-2 box-border bg-gray-100 border-archstats-tertiary-400 rounded border-2 outline-archstats-tertiary-700">
+                 class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
           <label> Inverse</label>
         </div>
       </div>
       <div class="">
         <label>Max Connections </label>
         <input type="number" v-model="maxConnections"
-               class="p-2 box-border bg-gray-100 border-archstats-tertiary-400 w-20 rounded border-2 outline-archstats-tertiary-700">
+               class="p-2 box-border bg-gray-100 border-tertiary-400 w-20 rounded border-2 outline-tertiary-700">
       </div>
       <div>
         <label>Component Size </label>
         <select v-model="relativeSize"
-                class="p-2 box-border bg-gray-100 border-archstats-tertiary-400 rounded border-2 outline-archstats-tertiary-700">
+                class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
           <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
         </select>
       </div>
 
     </div>
-    <div :id="chartId" ref="chart" class="border-2 border-archstats-tertiary-400"></div>
+    <div :id="chartId" ref="chart" class="border-2 border-tertiary-400"></div>
     <div class="grid grid-cols-2 auto-cols-min auto-rows-min w-fit mt-2 text-gray-500">
       <div>{{ computedComponents.length }}/{{ components.length }}</div>
       <div>Components</div>
@@ -203,7 +203,7 @@ function renderChart(components: Component[], sizeProp = "afferent_couplings") {
   node.append("circle")
       .attr("stroke", "white")
       .attr("stroke-width", 1.5)
-      .attr("class", "fill-archstats-tertiary-500")
+      .attr("class", "fill-tertiary-500")
       .attr("r", d => nodeSizeScale(d[sizeProp]));
   node.append("text")
       .attr("x", 8)

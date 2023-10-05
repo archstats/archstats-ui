@@ -1,5 +1,5 @@
 <template>
-  <h1 class="text-xl text-archstats-primary-500 font-medium mb-8">
+  <h1 class="text-xl text-archstats-500 font-medium mb-8">
     <slot></slot>
   </h1>
 

@@ -22,10 +22,10 @@ const props = defineProps(
 </script>
 <style scoped>
 .tertiary {
-  @apply p-2 hover:bg-gray-300 hover:bg-opacity-50 rounded transition-all flex gap-[5px] items-center text-archstats-primary-900
+  @apply p-2 hover:bg-gray-300 hover:bg-opacity-50 rounded transition-all flex gap-[5px] items-center text-archstats-900
 }
 .tertiary .icon {
-  @apply text-archstats-primary-900
+  @apply text-archstats-900
 }
 
 </style>

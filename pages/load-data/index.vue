@@ -1,37 +1,37 @@
 <template>
   <div class="container">
     <div class="my-36 ">
-      <h1 class="text-5xl mb-12 font-bold text-archstats-primary-900">Archstat Views</h1>
+      <h1 class="text-5xl mb-12 font-bold text-archstats-900">Archstat Views</h1>
       <p class="mb-4">Archstat Views is a tool for presenting architectural views for your software. It's based on
         the
         <Anchor class="font-bold" href="http://github.com/RyanSusana/archstats">Archstats</Anchor>
         project. Archstat Views supports:
       </p>
       <ul class="mb-12 pl-8">
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Tree View</span> - A recursive view that<span
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Tree View</span> - A recursive view that<span
             class="font-semibold">&mdash;per directory&mdash;</span>shows where your stats are.
         </li>
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Connections View</span> - An interactive diagram that
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Connections View</span> - An interactive diagram that
           shows the amount of coupling between allComponents, along with a allComponents relative size.
         </li>
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Table View</span> - All stats presented in an
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Table View</span> - All stats presented in an
           indexed,
           user-friendly manner.
         </li>
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Summary View</span> - All stats presented in a
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Summary View</span> - All stats presented in a
           summarized<span
               class="font-semibold">&mdash;at glance&mdash;</span>manner.
         </li>
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Root View</span> - Shows a list of allComponents that
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Root View</span> - Shows a list of allComponents that
           are extended by other allComponents and their orphaned classes.
         </li>
-        <li class="mb-2"><span class="font-bold text-archstats-primary-700 ">Similarity View</span> - A UI that shows the
+        <li class="mb-2"><span class="font-bold text-archstats-700 ">Similarity View</span> - A UI that shows the
           similarity between allComponents.
         </li>
       </ul>
       <p class="mb-12">Archstat Views depends on the the output of <code
-          class="bg-archstats-primary-50 text-archstats-primary-800 text-sm  py-2 px-2 rounded"><span
-          class="text-archstats-primary-900 font-bold">archstats</span>
+          class="bg-archstats-50 text-archstats-800 text-sm  py-2 px-2 rounded"><span
+          class="text-archstats-900 font-bold">archstats</span>
         &lt;source-directory&gt;
         --all-views > <span class="font-bold">youroutputfile.json</span></code>.<br></p>
       <PrimaryButton @click="handleInput" class="mr-2">Import Archstats Data</PrimaryButton>

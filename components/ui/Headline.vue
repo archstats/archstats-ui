@@ -1,5 +1,5 @@
 <template>
-  <h1 class="text-5xl mb-12 font-extralight text-archstats-primary-700"><slot></slot></h1>
+  <h1 class="text-5xl mb-12 font-extralight text-archstats-700"><slot></slot></h1>
 </template>
 
 <script>
