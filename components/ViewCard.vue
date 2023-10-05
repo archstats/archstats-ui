@@ -7,7 +7,7 @@
     </div>
     <div class="bg-archstats-primary-900 relative">
       <div class="h-full w-full absolute bg-archstats-primary-500 opacity-30"></div>
-      <img :src="image || '~/assets/img/distance-main-sequence.png'" alt="" class=" h-full w-full object-cover">
+      <NuxtImg v-if="image" :src="image" alt="" class=" h-full w-full object-cover"/>
     </div>
   </router-link>
 </template>

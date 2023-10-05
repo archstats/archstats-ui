@@ -7,21 +7,25 @@
         <ViewCard
             name="Component Walker"
             path="/views/component-walker"
+            image="/img/component-walker.png"
             description="This view allows you to walk through your components one-by-one in a tree-like manner."
         />
         <ViewCard
             name="Component Comparison"
+            image="/img/component-comparison.png"
             path="/views/component-comparison"
             description="This view allows components to be compared with each other."
         />
         <ViewCard
             name="Distance to Main Sequence"
             path="/views/distance-main-sequence"
+            image="/img/distance-main-sequence.png"
             description="This view shows the distance of components to the main sequence."
         />
         <ViewCard
             name="Chord"
             path="/views/chord"
+            image="/img/chord.png"
             description="This view shows the connections between components in a chord diagram."
         />
       </div>
