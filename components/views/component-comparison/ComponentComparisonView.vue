@@ -73,7 +73,7 @@ onMounted(() => {
     renderChart();
 });
 
-watch(() => [hoveredComponent.value, relativeSize.value], () => {
+watch(() => [hoveredComponent.value, relativeSize.value, props.components], () => {
   renderChart();
 })
 

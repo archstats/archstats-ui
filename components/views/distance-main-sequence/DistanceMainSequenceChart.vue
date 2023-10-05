@@ -36,6 +36,11 @@
     <input class="ml-4 w-12" type="number" v-model="outOfBandThreshold">
 
   </div>
+  <div class="flex gap-4">
+    <ArchstatsButton class="primary text-sm" @click="setScope">Set scope to components <span class="font-semibold">{{ isScopeOutside? 'outside':'inside'}}</span> of main sequence
+      <span class="rounded bg-white text-gray-500 px-2 py-1 ml-2">{{ isScopeOutside? nrOfComponents - nrOfComponentsInMainSequence: nrOfComponentsInMainSequence }}</span></ArchstatsButton>
+    <Checkbox v-model="isScopeOutside" class="mt-2">Inverse</Checkbox>
+  </div>
 
 
   <div class="w-full flex border-2 border-tertiary-400 mt-4 w-[900px]">
@@ -62,6 +67,9 @@ import {computed, defineProps, onMounted, ref, watch} from "vue";
 import ComponentInfoTable from "../../InfoTable.vue";
 import Headline from "../../ui/Headline.vue";
 import Anchor from "../../ui/Anchor.vue";
+import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
+import Checkbox from "~/components/ui/Checkbox.vue";
+import {useDataStore} from "~/stores/data";
 
 const props = defineProps<{
   components: Component[],
@@ -69,8 +77,8 @@ const props = defineProps<{
 }>()
 const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 
-const hoveredComponent = ref<Component>(null)
-const selectedComponent = ref<Component>(null)
+const hoveredComponent = ref<Component | null>(null)
+const selectedComponent = ref<Component | null>(null)
 
 const outOfBandThreshold = ref<number>(0.7)
 
@@ -93,6 +101,17 @@ const nrOfComponents = computed(() => {
   return props.components.length
 })
 
+const isScopeOutside = ref(false)
+
+const store = useDataStore()
+function setScope(){
+
+  store.setCurrentScope(props.components.filter(component => {
+    const isOutside = component["distance_main_sequence"] > outOfBandThreshold.value
+    return isScopeOutside.value ? isOutside : !isOutside
+  }).map(c => c.name))
+
+}
 
 function renderChart() {
   const allComponents = props.components;
@@ -195,3 +214,4 @@ function renderChart() {
 
 }
 </script>
+
