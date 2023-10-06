@@ -46,7 +46,8 @@ const views = {
   "Component Walker": "/views/component-walker",
   "Component Comparison": "/views/component-comparison",
   "Distance to Main Sequence": "/views/distance-main-sequence",
-  "Chord": "/views/chord"
+  "Chord": "/views/chord",
+  "Component Matrix": "/views/matrix",
 }
 
 const props = defineProps<{
