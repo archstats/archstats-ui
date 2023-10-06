@@ -35,7 +35,7 @@
         &lt;source-directory&gt;
         --all-views > <span class="font-bold">youroutputfile.json</span></code>.<br></p>
       <PrimaryButton @click="handleInput" class="mr-2">Import Archstats Data</PrimaryButton>
-      <SelectGitRepository @onRepoSelected="repoChanged"/>
+<!--      <SelectGitRepository @onRepoSelected="repoChanged"/>-->
     </div>
 
   </div>
