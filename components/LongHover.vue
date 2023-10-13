@@ -1,6 +1,6 @@
 <template>
-  <div class="relative" @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter" @focusin="hasFocus = true" @focusout="hasFocus = false">
-    <div ref="main-content" @mouseenter="mouseEnter" >
+  <div class="relative w-full h-full" @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter" @focusin="hasFocus = true" @focusout="hasFocus = false">
+    <div ref="main-content" @mouseenter="mouseEnter" class="w-full h-full" >
       <slot name="main-content"></slot>
     </div>
     <div ref="hovered-content" v-if="shouldShow">

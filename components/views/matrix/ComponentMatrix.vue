@@ -1,63 +1,87 @@
 <template>
 
-  <div class="w-full h-[700px] ">
-    <table class="min-w-full p-8">
-      <thead class="">
-      <tr>
-        <th class="sticky top-0"></th>
-        <th></th>
-        <th class="font-semibold sticky top-0 bg-white" v-for="(component, i) in orderedComponents">
-          <div class="relative w-6 text-black justify-end items-center">
+  <div class="h-[768px] w-full p-4" :style="{'font-size': `${blockSize}px`}"
+  >
+        <table class="min-w-full p-8">
+          <thead class="">
+          <tr>
+            <th class="sticky top-0"></th>
+            <th></th>
+            <th class="font-semibold sticky top-0 bg-white pb-2" v-for="(component, i) in orderedComponents">
+              <div class="relative  text-black justify-end items-center"
+                   :style="{width: `${blockSize}px`, height: `${blockSize}px`, 'font-size': '0.8em'}">
 
-            <div class="">
+                <div class="">
+                  {{ i + 1 }}
+                </div>
+              </div>
+            </th>
+          </tr>
+          </thead>
+          <tbody class="overflow-hidden">
+          <tr v-for="(row, rowIndex) in orderedComponents" class="hover:bg-gray-100 overflow-clip py-0 "
+              :key="`${row.name}`" :style="{height:'1em'}">
+            <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2" ><span class="font-mono">{{
+                row.name
+              }}</span></td>
+            <td :style="{'font-size': '0.8em'}" class="sticky left-0 bg-white text-right pr-4 py-0 whitespace-nowrap"><span class="font-semibold">{{
+                rowIndex + 1
+              }}</span></td>
+            <td class="text-black border p-0" v-for="(column, columnIndex) in components"
+                :key="`${row.name} -> ${column.name}`" :style="{width: '1em', height:'1em'}">
+              <div class="w-full h-full">
+                <div
+                    v-if="rowIndex == columnIndex"
+                    class="bg-gray-300 w-full h-full"
+                ></div>
 
-              {{ i+1 }}
-            </div>
-          </div>
-        </th>
-      </tr>
-      </thead>
-      <tbody class="overflow-hidden">
-      <tr v-for="(current, currentIndex) in orderedComponents">
-        <td class=" left-0 bg-white text-left whitespace-nowrap pr-2"><span class="font-mono text-sm">{{
-            current.name
-          }}</span></td>
-        <td class="sticky left-0 bg-white text-right pr-4 whitespace-nowrap"><span class="font-semibold">{{
-            currentIndex+1
-          }}</span></td>
-        <td class="text-black border" v-for="(other, otherIndex) in components">
-          <div class="[&>*]:w-6 [&>*]:h-6">
-            <div class="bg-gray-300" v-if="currentIndex == otherIndex"></div>
+                <LongHover v-else
+                           class="w-full h-full"
+                >
+                  <template #main-content>
+                    <div
+                        class="w-full h-full"
+                        :class="{ [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true }">
 
-            <div v-else-if="currentIndex < otherIndex"
-                 :class="{ [tailwindBackgroundIndexVertical.get(`${current.name} -> ${other.name}`)]: true }"></div>
-            <div v-else
-                 :class="{ [tailwindBackgroundIndexHorizontal.get(`${current.name} -> ${other.name}`)]: true }"></div>
-          </div>
+                    </div>
+                  </template>
+                  <template #hovered-content>
+                    <div class="absolute bg-gray-100 rounded shadow z-10 p-4">
+                      <div class="text-xs">
+                        <div class="font-semibold mb-2 flex gap-1">
+                          <span>{{ row.name }}</span>
+                          <Icon icon="arrow-right"/>
+                          <span>{{ column.name }}</span>
+                        </div>
+                        <DirectConnectionDetails :from="row.name" :to="column.name"/>
+                      </div>
+                    </div>
 
-        </td>
-      </tr>
+                  </template>
+                </LongHover>
 
-      </tbody>
-    </table>
+              </div>
+
+            </td>
+          </tr>
+
+          </tbody>
+        </table>
+
   </div>
 
 
 </template>
 
 <script setup lang="ts">
-
+import VirtualScroller from 'primevue/virtualscroller';
 import {computed} from "vue";
 import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
 
 const store = useDataStore();
-const props = defineProps<{ components: RawComponent[] }>()
+const props = defineProps<{ components: RawComponent[], blockSize: number }>()
 
-
-const componentNamesFormattedForQuery = computed(() => {
-  return props.components.map(c => `'${c.name}'`).join(",")
-})
 
 type Connection = {
   from: string,
@@ -73,8 +97,32 @@ const connections = computed(() => {
   `) as Connection[]
 })
 
+const connectionIndex = computed(() => {
+  return connections.value.reduce((acc, connection) => {
+    acc.set(`${connection.from} -> ${connection.to}`, connection)
+    return acc
+  }, new Map<string, Connection>())
+})
+
+
 const orderedComponents = computed(() => {
-  return props.components.sort((a, b) => a.name.localeCompare(b.name))
+  return props.components
+})
+
+
+function makeMatrix(strings: string[]): string[][][] {
+  const matrix: string[][][] = [];
+  for (let i = 0; i < strings.length; i++) {
+    const row: string[][] = [];
+    for (let j = 0; j < strings.length; j++) {
+      row.push([strings[i], strings[j]]);
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
+const componentGrid = computed(() => {
+  return makeMatrix(orderedComponents.value.map(e => e.name))
 })
 
 const ranges = computed(() => {
@@ -88,12 +136,6 @@ const ranges = computed(() => {
   }
 })
 
-const connectionIndex = computed(() => {
-  return connections.value.reduce((acc, connection) => {
-    acc.set(`${connection.from} -> ${connection.to}`, connection)
-    return acc
-  }, new Map<string, Connection>())
-})
 
 const tailwindBackgroundIndexVertical = computed(() => {
   const index = new Map<string, string>()

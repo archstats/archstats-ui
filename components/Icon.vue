@@ -17,7 +17,7 @@ import {
   RotateCcw,
   Footprints,
   Pencil,
-  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -58,6 +58,10 @@ const iconComponent = computed(() => {
       return ArrowRightFromLine
     case "check":
       return Check
+    case "arrow-right":
+      return ArrowRight
+    case "arrow-left":
+      return ArrowLeft
   }
 })
 
