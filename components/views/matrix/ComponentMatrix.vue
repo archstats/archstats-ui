@@ -2,71 +2,68 @@
 
   <div class="h-[768px] w-full p-4" :style="{'font-size': `${blockSize}px`}"
   >
-        <table class="min-w-full p-8">
-          <thead class="">
-          <tr>
-            <th class="sticky top-0"></th>
-            <th></th>
-            <th class="font-semibold sticky top-0 bg-white pb-2" v-for="(component, i) in orderedComponents">
-              <div class="relative  text-black justify-end items-center"
-                   :style="{width: `${blockSize}px`, height: `${blockSize}px`, 'font-size': '0.8em'}">
+    <table class="min-w-full p-8">
+      <thead class="">
+      <tr>
+        <th class="sticky top-0"></th>
+        <th></th>
+        <th class="font-semibold sticky top-0 bg-white pb-2" v-for="(component, i) in orderedComponents">
+          <div class="relative  text-black justify-end items-center"
+               :style="{width: `${blockSize}px`, height: `${blockSize}px`, 'font-size': '0.8em'}">
 
-                <div class="">
-                  {{ i + 1 }}
-                </div>
-              </div>
-            </th>
-          </tr>
-          </thead>
-          <tbody class="overflow-hidden">
-          <tr v-for="(row, rowIndex) in orderedComponents" class="hover:bg-gray-100 overflow-clip py-0 "
-              :key="`${row.name}`" :style="{height:'1em'}">
-            <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2" ><span class="font-mono">{{
-                row.name
-              }}</span></td>
-            <td :style="{'font-size': '0.8em'}" class="sticky left-0 bg-white text-right pr-4 py-0 whitespace-nowrap"><span class="font-semibold">{{
-                rowIndex + 1
-              }}</span></td>
-            <td class="text-black border p-0" v-for="(column, columnIndex) in components"
-                :key="`${row.name} -> ${column.name}`" :style="{width: '1em', height:'1em'}">
-              <div class="w-full h-full">
+            <div class="">
+              {{ i + 1 }}
+            </div>
+          </div>
+        </th>
+      </tr>
+      </thead>
+      <tbody class="overflow-hidden">
+      <tr v-for="(row, rowIndex) in orderedComponents" class="hover:bg-gray-100 overflow-clip py-0 "
+          :key="`${row.name}`" :style="{height:'1em'}">
+        <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2"><span
+            class="font-mono">{{
+            row.name
+          }}</span></td>
+        <td :style="{'font-size': '0.8em'}" class="sticky left-0 bg-white text-right pr-4 py-0 whitespace-nowrap"><span
+            class="font-semibold">{{
+            rowIndex + 1
+          }}</span></td>
+        <td class="text-black border p-0" v-for="(column, columnIndex) in components"
+            :key="`${row.name} -> ${column.name}`" :style="{width: '1em', height:'1em'}">
+          <div class="w-full h-full">
+            <div
+                v-if="rowIndex == columnIndex"
+                class="bg-gray-300 w-full h-full"
+            ></div>
+
+            <LongHover v-else
+                       class="w-full h-full"
+            >
+              <template #default>
                 <div
-                    v-if="rowIndex == columnIndex"
-                    class="bg-gray-300 w-full h-full"
-                ></div>
+                    class="w-full h-full"
+                    :class="{ [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true }">
 
-                <LongHover v-else
-                           class="w-full h-full"
-                >
-                  <template #main-content>
-                    <div
-                        class="w-full h-full"
-                        :class="{ [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true }">
+                </div>
+              </template>
+              <template #hovered-content>
+                <div class="absolute bg-white rounded shadow z-10 p-4">
+                  <div class="text-xs">
+                    <DirectConnectionDetails :from="row.name" :to="column.name"/>
+                  </div>
+                </div>
 
-                    </div>
-                  </template>
-                  <template #hovered-content>
-                    <div class="absolute bg-gray-100 rounded shadow z-10 p-4">
-                      <div class="text-xs">
-                        <div class="font-semibold mb-2 flex gap-1">
-                          <span>{{ row.name }}</span>
-                          <Icon icon="arrow-right"/>
-                          <span>{{ column.name }}</span>
-                        </div>
-                        <DirectConnectionDetails :from="row.name" :to="column.name"/>
-                      </div>
-                    </div>
+              </template>
+            </LongHover>
 
-                  </template>
-                </LongHover>
+          </div>
 
-              </div>
+        </td>
+      </tr>
 
-            </td>
-          </tr>
-
-          </tbody>
-        </table>
+      </tbody>
+    </table>
 
   </div>
 
@@ -80,7 +77,22 @@ import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
 
 const store = useDataStore();
-const props = defineProps<{ components: RawComponent[], blockSize: number }>()
+const props = defineProps(
+    {
+      components: {
+        type: Array as PropType<RawComponent[]>,
+        required: true
+      },
+      blockSize: {
+        type: Number,
+        default: 16
+      },
+      scaleColorWith: {
+        type: String,
+        default: "coupling",
+      }
+    }
+)
 
 
 type Connection = {
@@ -88,13 +100,35 @@ type Connection = {
   to: string,
   references: number,
   coupling: number
+  shared_commits: number
 };
 const connections = computed(() => {
-  return store.query(`
-    SELECT "from", "to", sum(reference_count) AS "references", count(reference_count) AS "coupling"
-    FROM component_connections_direct
-    GROUP BY 1, 2;
-  `) as Connection[]
+  let qry: string;
+
+
+  if (store.hasView("git_component_shared_commits")) {
+    qry = `
+      select git."pair_1"                           as "from",
+             git."pair_2"                           as "to",
+             coalesce(sum(conn.reference_count), 0) as "references",
+             count(conn.reference_count)            as "coupling",
+
+             git.shared_commit_count                as "shared_commits"
+      from git_component_shared_commits git
+             left join component_connections_direct conn on pair_1 = "from" and pair_2 = "to"
+      where (git.shared_commit_count > 0 or conn.reference_count > 0)
+      group by 1, 2;
+    `
+  } else {
+    qry = `
+      SELECT "from", "to", sum(reference_count) AS "references", count(reference_count) AS "coupling"
+      FROM component_connections_direct
+      GROUP BY 1, 2;
+    `
+  }
+
+
+  return store.query(qry) as Connection[]
 })
 
 const connectionIndex = computed(() => {
@@ -121,26 +155,38 @@ function makeMatrix(strings: string[]): string[][][] {
   }
   return matrix;
 }
+
 const componentGrid = computed(() => {
   return makeMatrix(orderedComponents.value.map(e => e.name))
 })
 
-const ranges = computed(() => {
-  const couplingValues = connections.value.map(c => c.coupling)
-  const referenceValues = connections.value.map(c => c.references)
+const colorScaleProperty = computed(() => {
+  switch (props.scaleColorWith) {
+    case "shared_commits":
+      if (store.hasView("git_component_shared_commits")) {
+        return "shared_commits"
+      }
+    case "references":
+      return "references"
+    default:
+      return "coupling"
+  }
+})
+const colorScaleRange = computed(() => {
+  const couplingValues = connections.value.map(c => c[colorScaleProperty.value])
   return {
-    minCoupling: Math.min(...couplingValues),
-    maxCoupling: Math.max(...couplingValues),
-    minReferences: Math.min(...referenceValues),
-    maxReferences: Math.max(...referenceValues),
+    min: Math.min(...couplingValues),
+    max: Math.max(...couplingValues),
   }
 })
 
 
 const tailwindBackgroundIndexVertical = computed(() => {
   const index = new Map<string, string>()
+
+  const range = colorScaleRange.value;
   connectionIndex.value.forEach((connection, key) => {
-    const color = numberToTailwindScaledColor(connection.coupling, tailwindBgColorsVertical, ranges.value.minCoupling, ranges.value.maxCoupling)
+    const color = numberToTailwindScaledColor(connection[colorScaleProperty.value], tailwindBgColorsVertical, range.min, range.max)
     index.set(key, color)
   })
   return index;
@@ -148,8 +194,10 @@ const tailwindBackgroundIndexVertical = computed(() => {
 
 const tailwindBackgroundIndexHorizontal = computed(() => {
   const index = new Map<string, string>()
+
+  const range = colorScaleRange.value;
   connectionIndex.value.forEach((connection, key) => {
-    const color = numberToTailwindScaledColor(connection.coupling, tailwindBgColorsHorizontal, ranges.value.minCoupling, ranges.value.maxCoupling)
+    const color = numberToTailwindScaledColor(connection[colorScaleProperty.value], tailwindBgColorsHorizontal, range.min, range.max)
     index.set(key, color)
   })
   return index;
@@ -157,6 +205,7 @@ const tailwindBackgroundIndexHorizontal = computed(() => {
 
 
 const tailwindBgColorsHorizontal = [
+  "bg-tertiary-50",
   "bg-tertiary-100",
   "bg-tertiary-200",
   "bg-tertiary-300",
@@ -169,6 +218,7 @@ const tailwindBgColorsHorizontal = [
 ]
 
 const tailwindBgColorsVertical = [
+  "bg-secondary-50",
   "bg-secondary-100",
   "bg-secondary-200",
   "bg-secondary-300",
@@ -182,6 +232,9 @@ const tailwindBgColorsVertical = [
 // Given a number and a scale, return the corresponding tailwind class
 // like so red-100, red-200, red-300, etc.
 function numberToTailwindScaledColor(num: number, classes: string[], scaleMin: number, scaleMax: number) {
+  if (num === 0) {
+    return "bg-white"
+  }
   const range = scaleMax - scaleMin
   const step = range / classes.length
   const index = Math.floor((num - scaleMin) / step)

@@ -115,7 +115,7 @@ function setScope(){
 
 function renderChart() {
   const allComponents = props.components;
-  const relativeSize = 'afferent_couplings'
+  const relativeSize = 'afferent_coupling_count'
 
   const chart = d3.select(`#${chartId}`);
   chart.selectAll("*").remove();

@@ -1,10 +1,8 @@
 <template>
-  <div class="relative w-full h-full" @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter" @focusin="hasFocus = true" @focusout="hasFocus = false">
-    <div ref="main-content" @mouseenter="mouseEnter" class="w-full h-full" >
-      <slot name="main-content"></slot>
-    </div>
-    <div ref="hovered-content" v-if="shouldShow">
-      <slot class="absolute" name="hovered-content"></slot>
+  <div class="relative w-full h-full"  @mouseenter="mouseEnter"  @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter" @focusin="hasFocus = true" @focusout="hasFocus = false">
+    <slot name="default"></slot>
+    <div ref="hovered-content" class="absolute" v-if="shouldShow">
+      <slot name="hovered-content"></slot>
     </div>
   </div>
 

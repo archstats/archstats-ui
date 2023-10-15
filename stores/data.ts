@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import initSqlJs from 'sql.js';
 import {findCommonPrefix} from "~/utils/text";
 import {
     Component,
@@ -7,7 +8,7 @@ import {
     RawComponent,
     RawComponentConnection
 } from "~/utils/components";
-import initSqlJs from 'sql.js';
+
 import {Raw} from "@vue/reactivity";
 import {Definition} from "~/utils/definition";
 
@@ -35,7 +36,15 @@ export const useDataStore = defineStore('data', {
             return findCommonPrefix(this.allRawComponents.map(c => c.name).filter(c => c.trim() && !c.toLowerCase().includes("unknown")));
         },
         hasData: state => state.sqliteDatabase !== null,
-
+        hasView() {
+            return (viewName: string): boolean => {
+                return this.viewNames.includes(viewName);
+            }
+        },
+        viewNames(): string[] {
+            let results = this.query("SELECT name FROM sqlite_master WHERE type='table'") as {name: string}[]
+            return results.map(x => x.name) ;
+        },
         getView<T>() {
             return (viewName: string): T[] => {
                 return this.query(`SELECT *
@@ -82,7 +91,7 @@ export const useDataStore = defineStore('data', {
     actions: {
         async setViews(views: any) {
             let SQL = await initSqlJs({
-                locateFile: file => `/${file}`
+                locateFile: (file: string) => `/${file}`
             });
             this.sqliteDatabase = new SQL.Database(views);
         },

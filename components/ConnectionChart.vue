@@ -67,7 +67,7 @@ const props = defineProps<{
 const filter = ref('')
 const maxConnections = ref(30)
 const inverse = ref(false)
-const relativeSize = ref('afferent_couplings')
+const relativeSize = ref('afferent_coupling_count')
 
 
 const computedComponents = computed(() => {
@@ -122,7 +122,7 @@ function drag(simulation: Simulation<ComponentWithNodeDatum, ConnectionWithLinkD
       });
 }
 
-function renderChart(components: Component[], sizeProp = "afferent_couplings") {
+function renderChart(components: Component[], sizeProp = "afferent_coupling_count") {
   const width = 500, height = 225;
   const nodes: ComponentWithNodeDatum[] = components.map(c => {
     return {

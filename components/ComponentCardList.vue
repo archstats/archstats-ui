@@ -15,7 +15,7 @@
         <h1 class="text-xs font-mono font-bold mb-4 text-archstats-900" :title="component.name">{{ component.name }}</h1>
 
         <ComponentInfoTable class="w-full" :component="component"
-                            :only-show="['references', 'afferent_couplings', 'efferent_couplings', 'file_count']"
+                            :only-show="['references', 'afferent_coupling_count', 'efferent_coupling_count', 'file_count']"
         ></ComponentInfoTable>
       </Card>
     </div>
