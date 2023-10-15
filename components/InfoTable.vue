@@ -7,7 +7,7 @@
 
       <td class="mr-4 text-archstats-200 flex gap-2">
         <LongHover v-if="definition.has(info.key)" :time="200">
-          <template #main-content>
+          <template #default>
             <span class="hover:text-tertiary-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
           </template>
           <template #hovered-content>

@@ -21,7 +21,7 @@
             <h3 class="text-xl text-tertiary-500 mb-4 font-semibold">Afferent Coupling</h3>
             <p class="text-sm"><span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br>
               is referenced
-              <span class="text-tertiary-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-tertiary-500 font-semibold">{{ selectedComponent['afferent_couplings'] }}</span> files by <span
+              <span class="text-tertiary-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-tertiary-500 font-semibold">{{ selectedComponent['afferent_coupling_count'] }}</span> files by <span
                   class="font-semibold text-tertiary-500">{{ dependents.length }}</span> other components.</p>
           </div>
         </template>
@@ -45,8 +45,11 @@
               </template>
             </ModalTrigger>
 
-            <Card class="self-center relative">
-              <ComponentInfoTable class="w-full" :component="selectedComponent"/>
+            <Card class="self-center relative ">
+              <div class="h-[510px] overflow-y-scroll">
+
+                <ComponentInfoTable class="w-full" :component="selectedComponent"/>
+              </div>
               <div class="absolute top-1/2 -right-40 font-semibold text-secondary-500 text-center ">
                 <h2>Dependencies</h2>
               </div>
@@ -119,7 +122,7 @@
             <h3 class="text-xl text-secondary-500 mb-4 font-semibold">Efferent Coupling</h3>
             <p class="text-sm">
               <span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br> has
-              <span class="text-secondary-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-secondary-500 font-semibold">{{selectedComponent['efferent_couplings']}}</span> files to <span
+              <span class="text-secondary-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-secondary-500 font-semibold">{{selectedComponent['efferent_coupling_count']}}</span> files to <span
                 class="font-semibold text-secondary-500">{{ dependencies.length }}</span> other components.</p>
           </div>
         </template>

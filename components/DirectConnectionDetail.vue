@@ -5,12 +5,12 @@
 <!--            @click="iconClicked"/>-->
       <div class="">
         <LongHover>
-          <template #main-content>
+          <template #default>
             <h5 class="font-mono hover:text-archstats-200 cursor-pointer z-1 whitespace-nowrap"><span class="select-none text-archstats-200">{{reference_count}}x </span>{{ file }}</h5>
           </template>
           <template #hovered-content>
             <div class="mt-1 mb-3 absolute bg-gray-100 p-4 shadow-2xl z-10 rounded text-archstats-500">
-              <p >Referenced <span>{{ reference_count }}</span> time(s) on line number(s): <span class="font-bold">{{ lines }}</span></p>
+              <p class="whitespace-nowrap" >Referenced <span>{{ reference_count }}</span> time(s) on line number(s): <span class="font-bold">{{ lines }}</span></p>
             </div>
           </template>
         </LongHover>

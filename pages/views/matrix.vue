@@ -3,7 +3,7 @@
 
     <Headline class="mb-8">Component Matrix</Headline>
 
-    <div class="grid grid-cols-2 gap-1 w-1/2" >
+    <div class="grid grid-cols-2 gap-1 w-1/2">
       <label for="">Order by</label>
       <div class="inline-flex gap-2">
         <select v-model="orderBy"
@@ -26,14 +26,20 @@
         <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border outline-archstats-900 outline-1 rounded"
                v-model="maxComponentCount"> of {{ store.currentComponentScope.length }}
       </div>
+
+      <label for="">Scale color by</label>
+      <div class="inline-flex gap-2">
+        <select v-model="scaleColorWith"
+                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
+          <option v-for="stat in colorScaleOptions" :key="stat" :value="stat">{{ stat }}</option>
+        </select>
+
+      </div>
     </div>
 
 
-
-
-
     <div class=" w-full h-[768px] border overflow-scroll">
-      <ComponentMatrix :components="orderedComponents" :block-size="blockSize"></ComponentMatrix>
+      <ComponentMatrix :components="orderedComponents" :block-size="blockSize" :scale-color-with="scaleColorWith"></ComponentMatrix>
 
     </div>
 
@@ -60,8 +66,18 @@ definePageMeta({
   ]
 })
 
-const maxComponentCount = computed(() => {
-  return clamp(store.currentComponentScope.length, 0, 80)
+const maxComponentCount = ref(
+    clamp(store.currentComponentScope.length, 0, 80)
+)
+
+const scaleColorWith = ref("coupling")
+
+const colorScaleOptions = computed(() => {
+  if (store.hasView("git_component_shared_commits")) {
+    return ["coupling", "references", "shared_commits"]
+  } else {
+    return ["coupling", "references"]
+  }
 })
 const orderBy = ref("name")
 const reverse = ref(false)

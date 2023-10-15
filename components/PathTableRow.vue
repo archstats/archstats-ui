@@ -2,7 +2,7 @@
   <tr  :class="{'border-b-2':!expanded,'font-semibold': userSelectedPositionInPath == nr-1, 'opacity-40': nr-1 > userSelectedPositionInPath }">
     <td class="font-semibold w-8 text-gray-400 px-2 text-right" v-if="pathOccurrences > 1">
       <LongHover>
-        <template #main-content><span class="cursor-pointer">{{ pathOccurrences }}x</span></template>
+        <template #default><span class="cursor-pointer">{{ pathOccurrences }}x</span></template>
         <template #hovered-content>
           <div class="absolute bg-gray-50 w-52 font-normal text-gray-700 p-2 shadow z-10 text-center">
             <p>This component was seen <span class="font-bold">{{ pathOccurrences }}</span> time(s) before on this path.</p>
