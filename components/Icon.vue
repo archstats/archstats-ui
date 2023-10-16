@@ -9,6 +9,7 @@ import {computed} from "vue";
 
 
 import {
+  X,
   Info,
   ChevronDown,
   ChevronUp,
@@ -62,6 +63,8 @@ const iconComponent = computed(() => {
       return ArrowRight
     case "arrow-left":
       return ArrowLeft
+    case "x":
+      return X
   }
 })
 

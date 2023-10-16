@@ -36,15 +36,20 @@
                 v-if="rowIndex == columnIndex"
                 class="bg-gray-300 w-full h-full"
             ></div>
-
             <LongHover v-else
+                       :time="500"
                        class="w-full h-full"
+                       @hoverin="hoveredPair = {from: row.name, to: column.name}"
+                       @hoverout="hoveredPair = null"
             >
               <template #default>
                 <div
-                    class="w-full h-full"
-                    :class="{ [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true }">
-
+                    :class="[['w-full h-full flex items-center justify-center'], {
+                      // Set the background color based on the coupling value
+                      [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true,
+                      'border-2 border-gray-900': shouldHighlightOnHover(row.name, column.name),
+                    }]">
+                  <Icon class="text-gray-900" v-if="shouldHighlightOnHover(row.name, column.name)"  :size="8" icon="x" />
                 </div>
               </template>
               <template #hovered-content>
@@ -71,7 +76,6 @@
 </template>
 
 <script setup lang="ts">
-import VirtualScroller from 'primevue/virtualscroller';
 import {computed} from "vue";
 import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
@@ -126,8 +130,6 @@ const connections = computed(() => {
       GROUP BY 1, 2;
     `
   }
-
-
   return store.query(qry) as Connection[]
 })
 
@@ -137,6 +139,13 @@ const connectionIndex = computed(() => {
     return acc
   }, new Map<string, Connection>())
 })
+
+const hoveredPair: Ref<{ from: string, to: string } | null> = ref(null)
+
+function shouldHighlightOnHover(from: string, to: string) {
+  return hoveredPair.value &&
+      ((hoveredPair.value.from === from && hoveredPair.value.to === to) || (hoveredPair.value.from === to && hoveredPair.value.to === from))
+}
 
 
 const orderedComponents = computed(() => {
@@ -205,16 +214,16 @@ const tailwindBackgroundIndexHorizontal = computed(() => {
 
 
 const tailwindBgColorsHorizontal = [
-  "bg-tertiary-50",
-  "bg-tertiary-100",
-  "bg-tertiary-200",
-  "bg-tertiary-300",
-  "bg-tertiary-400",
-  "bg-tertiary-500",
-  "bg-tertiary-600",
-  "bg-tertiary-700",
-  "bg-tertiary-800",
-  "bg-tertiary-900",
+  "bg-archstats-50",
+  "bg-archstats-100",
+  "bg-archstats-200",
+  "bg-archstats-300",
+  "bg-archstats-400",
+  "bg-archstats-500",
+  "bg-archstats-600",
+  "bg-archstats-700",
+  "bg-archstats-800",
+  "bg-archstats-900",
 ]
 
 const tailwindBgColorsVertical = [
