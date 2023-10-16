@@ -1,5 +1,6 @@
 <template>
-  <div class="relative w-full h-full"  @mouseenter="mouseEnter"  @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter" @focusin="hasFocus = true" @focusout="hasFocus = false">
+  <div class="relative w-full h-full" @mouseenter="mouseEnter" @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter"
+       @focusin="hasFocus = true" @focusout="hasFocus = false">
     <slot name="default"></slot>
     <div ref="hovered-content" class="absolute" v-if="shouldShow">
       <slot name="hovered-content"></slot>
@@ -27,6 +28,9 @@ const mouseInTimer = ref<NodeJS.Timeout | null>(null)
 
 const isHovered = ref(false)
 const hasFocus = ref(false)
+const emits = defineEmits(["hoverin", "hoverout"])
+
+
 
 function mouseEnter() {
   mouseInTimer.value = setTimeout(() => {
@@ -45,6 +49,13 @@ const shouldShow = computed(() => {
   return isHovered.value || hasFocus.value || props.active
 })
 
+watch(shouldShow, (value) => {
+  if (value) {
+    emits("hoverin")
+  } else {
+    emits("hoverout")
+  }
+})
 
 
 </script>
