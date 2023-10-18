@@ -1,41 +1,27 @@
 <template>
   <div class="container">
-    <div class="my-36 ">
-      <h1 class="text-5xl mb-12 font-bold text-archstats-900">Archstat Views</h1>
-      <p class="mb-4">Archstat Views is a tool for presenting architectural views for your software. It's based on
-        the
-        <Anchor class="font-bold" href="http://github.com/RyanSusana/archstats">Archstats</Anchor>
-        project. Archstat Views supports:
-      </p>
-      <ul class="mb-12 pl-8">
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Tree View</span> - A recursive view that<span
-            class="font-semibold">&mdash;per directory&mdash;</span>shows where your stats are.
-        </li>
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Connections View</span> - An interactive diagram that
-          shows the amount of coupling between allComponents, along with a allComponents relative size.
-        </li>
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Table View</span> - All stats presented in an
-          indexed,
-          user-friendly manner.
-        </li>
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Summary View</span> - All stats presented in a
-          summarized<span
-              class="font-semibold">&mdash;at glance&mdash;</span>manner.
-        </li>
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Root View</span> - Shows a list of allComponents that
-          are extended by other allComponents and their orphaned classes.
-        </li>
-        <li class="mb-2"><span class="font-bold text-archstats-700 ">Similarity View</span> - A UI that shows the
-          similarity between allComponents.
-        </li>
-      </ul>
-      <p class="mb-12">Archstat Views depends on the the output of <code
-          class="bg-archstats-50 text-archstats-800 text-sm  py-2 px-2 rounded"><span
-          class="text-archstats-900 font-bold">archstats</span>
-        &lt;source-directory&gt;
-        --all-views > <span class="font-bold">youroutputfile.json</span></code>.<br></p>
-      <PrimaryButton @click="handleInput" class="mr-2">Import Archstats Data</PrimaryButton>
-<!--      <SelectGitRepository @onRepoSelected="repoChanged"/>-->
+    <div class="my-40 text-center ">
+      <div class="w-[550px] mx-auto">
+        <h3 class="text-gray-500">Welcome to</h3>
+        <h1 class="text-5xl mb-16 font-bold text-archstats-900">Archstats UI</h1>
+        <p class="mb-4">Archstats UI is a tool for visualizing architectural views and gathering insights for your
+          software. It's based on
+          the
+          <Anchor class="font-bold" href="http://github.com/archstats/archstats">Archstats</Anchor>
+          project. <br><br>To generate a DB export, run the following command in your repository:
+        </p>
+      </div>
+
+
+      <pre class="bg-archstats-50 text-archstats-800 text-sm font-mono py-6 px-6 rounded w-fit text-left mx-auto">
+<span class="text-archstats-900 font-bold">archstats</span> export sqlite <span
+          class="font-semibold">your_output.db</span> -e lines -e indentations -e git -e <select
+          @focus="selectHasBeenInteractedWith=true" :value="availableLanguages[currentLanguageIndex]" ref="language"
+          class="bg-archstats-50 outline-0  font-bold"><option
+          v-for="language in availableLanguages">{{ language }}</option></select>
+</pre>
+      <PrimaryButton @click="handleInput" class="mr-2 mt-12 text-xl py-4">Import DB file</PrimaryButton>
+      <!--      <SelectGitRepository @onRepoSelected="repoChanged"/>-->
     </div>
 
   </div>
@@ -55,13 +41,26 @@ export default {
   },
   computed: {
     ...mapState(useDataStore, ['components', 'hasData', 'test', 'componentConnections', "componentGraph"]),
+    availableLanguages() {
+      return ["java", "kotlin", "scala", "php", "csharp"]
+    }
   },
   data() {
     return {
-      componentScope: null
+      componentScope: null,
+      currentLanguageIndex: 0,
+      selectHasBeenInteractedWith: false
     }
   },
+  mounted() {
+    setInterval(() => {
+      if (this.selectHasBeenInteractedWith) return
+      this.currentLanguageIndex = (this.currentLanguageIndex + 1) % this.availableLanguages.length
+    }, 2000)
+
+  },
   methods: {
+
     ...mapActions(useDataStore, ['setViews']),
     async repoChanged(data) {
       await this.setViews(data)
