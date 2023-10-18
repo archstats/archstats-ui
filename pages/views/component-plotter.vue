@@ -1,43 +1,57 @@
 <template>
-  <SimplePage>
-    <Headline>Component Plotter</Headline>
-    <div class="">
+  <div class="flex">
+    <main class="h-screen w-full flex items-center justify-center px-20">
+      <ComponentPlotterDiagram class="flex-grow" :components="store.currentComponentScope"
+                               :x-axis-property="xAxisProperty"
+                               :y-axis-property="yAxisProperty"
+                               :radius-property="radiusProperty"
+                               :show-text="showText"
+      />
 
-    </div>
-    <div class="flex gap-2">
-      <label>X-axis</label>
-      <select v-model="xAxisProperty"
-              class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-        <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
-      </select>
+    </main>
+    <aside class="px-10 py-10 bg-archstats-100 h-screen">
+      <Headline class="text-xl">Component Plotter</Headline>
+      <div class="">
 
-    </div>
-    <div class="flex gap-2">
-      <label>Y-axis</label>
-      <select v-model="yAxisProperty"
-              class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-        <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
-      </select>
+      </div>
+      <div class="flex gap-2">
+        <label>X-axis</label>
+        <select v-model="xAxisProperty"
+                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
+          <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
+        </select>
 
-    </div>
+      </div>
+      <div class="flex gap-2">
+        <label>Y-axis</label>
+        <select v-model="yAxisProperty"
+                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
+          <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
+        </select>
 
-    <div class="flex gap-2">
-      <label>Radius</label>
+      </div>
 
-      <select v-model="radiusProperty"
-              class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-        <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
-      </select>
+      <div class="flex gap-2">
+        <label>Radius</label>
 
-    </div>
+        <select v-model="radiusProperty"
+                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
+          <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
+        </select>
 
-    <ComponentPlotterDiagram :components="store.currentComponentScope"
-                             :x-axis-property="xAxisProperty"
-                             :y-axis-property="yAxisProperty"
-                             :radius-property="radiusProperty"
-    ></ComponentPlotterDiagram>
+      </div>
+      <div class="flex gap-2 mt-2">
 
-  </SimplePage>
+        <Checkbox v-model="showText" class="inline">Show names</Checkbox>
+
+      </div>
+    </aside>
+
+  </div>
+
+
+
+
 </template>
 <script setup lang="ts">
 import SimplePage from "~/components/ui/SimplePage.vue";
@@ -55,9 +69,9 @@ definePageMeta({
 })
 
 const store = useDataStore();
-
-const xAxisProperty = ref("line_count")
-const yAxisProperty = ref("line_count")
+const showText = ref(false)
+const xAxisProperty = ref("instability")
+const yAxisProperty = ref("abstractness")
 const radiusProperty = ref("line_count")
 
 const distinctStats = computed(() => {

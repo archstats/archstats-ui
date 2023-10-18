@@ -6,7 +6,7 @@
     <tr v-for="info in elementNormalized">
 
       <td class="mr-4 text-archstats-200 flex gap-2">
-        <LongHover v-if="definition.has(info.key)" :time="200">
+        <LongHover v-if="definition.has(info.key)" :time="1000">
           <template #default>
             <span class="hover:text-tertiary-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
           </template>
