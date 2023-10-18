@@ -34,6 +34,13 @@
             image="/img/plotter.png"
             description="This view plots components in a 4d space."
         />
+        <ViewCard
+            name="Distance to Main Sequence"
+            path="/views/components/distance-main-sequence"
+            image="/img/distance-main-sequence.png"
+            description="This view shows the distance of components to the main sequence."
+        />
+
       </div>
     </main>
 

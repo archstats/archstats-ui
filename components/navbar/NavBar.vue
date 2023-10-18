@@ -50,6 +50,7 @@ const componentViews = {
   "Component Matrix": "/views/components/matrix",
   "Component Plotter": "/views/components/plotter",
   "Component Chord": "/views/components/chord",
+  "Distance to Main Sequence": "/views/components/distance-main-sequence",
 }
 
 const props = defineProps<{
