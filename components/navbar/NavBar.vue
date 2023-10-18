@@ -45,12 +45,12 @@ import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
 import {useDataStore} from "~/stores/data";
 
 const componentViews = {
-  "Component Walker": "/views/component-walker",
-  "Component Comparison": "/views/component-comparison",
-  "Component Matrix": "/views/matrix",
-  "Component Plotter": "/views/component-plotter",
-  "Component Chord": "/views/chord",
-  "Distance to Main Sequence": "/views/distance-main-sequence",
+  "Component Walker": "/views/components/walker",
+  "Component Comparison": "/views/components/comparison",
+  "Component Matrix": "/views/components/matrix",
+  "Component Plotter": "/views/components/plotter",
+  "Component Chord": "/views/components/chord",
+  "Distance to Main Sequence": "/views/components/distance-main-sequence",
 }
 
 const props = defineProps<{
