@@ -9,7 +9,7 @@
         <section>
           <h3 class="uppercase text-sm text-archstats-200 mb-1">Views</h3>
           <ul>
-            <li v-for="(link, name) in views" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap">
+            <li v-for="(link, name) in componentViews" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap">
               <router-link :to="link" active-class="text-secondary-400">{{ name }}</router-link>
             </li>
           </ul>
@@ -22,7 +22,9 @@
           <ModalTrigger>
             <template #trigger>
               <ArchstatsButton class="secondary" icon="pencil">
-                <span class="text-archstats-100">{{ store.currentComponentScope.length }} of {{ store.allComponents.length }} components in scope</span>
+                <span class="text-archstats-100">{{
+                    store.currentComponentScope.length
+                  }} of {{ store.allComponents.length }} components in scope</span>
               </ArchstatsButton>
             </template>
 
@@ -42,12 +44,13 @@ import ComponentScopeModal from "~/components/ComponentScopeModal.vue";
 import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
 import {useDataStore} from "~/stores/data";
 
-const views = {
+const componentViews = {
   "Component Walker": "/views/component-walker",
   "Component Comparison": "/views/component-comparison",
-  "Distance to Main Sequence": "/views/distance-main-sequence",
-  "Chord": "/views/chord",
   "Component Matrix": "/views/matrix",
+  "Component Plotter": "/views/component-plotter",
+  "Component Chord": "/views/chord",
+  "Distance to Main Sequence": "/views/distance-main-sequence",
 }
 
 const props = defineProps<{

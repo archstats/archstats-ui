@@ -37,8 +37,11 @@
 
   </div>
   <div class="flex gap-4">
-    <ArchstatsButton class="primary text-sm" @click="setScope">Set scope to components <span class="font-semibold">{{ isScopeOutside? 'outside':'inside'}}</span> of main sequence
-      <span class="rounded bg-white text-gray-500 px-2 py-1 ml-2">{{ isScopeOutside? nrOfComponents - nrOfComponentsInMainSequence: nrOfComponentsInMainSequence }}</span></ArchstatsButton>
+    <ArchstatsButton class="primary text-sm" @click="setScope">Set scope to components <span
+        class="font-semibold">{{ isScopeOutside ? 'outside' : 'inside' }}</span> of main sequence
+      <span class="rounded bg-white text-gray-500 px-2 py-1 ml-2">{{
+          isScopeOutside ? nrOfComponents - nrOfComponentsInMainSequence : nrOfComponentsInMainSequence
+        }}</span></ArchstatsButton>
     <Checkbox v-model="isScopeOutside" class="mt-2">Inverse</Checkbox>
   </div>
 
@@ -104,7 +107,8 @@ const nrOfComponents = computed(() => {
 const isScopeOutside = ref(false)
 
 const store = useDataStore()
-function setScope(){
+
+function setScope() {
 
   store.setCurrentScope(props.components.filter(component => {
     const isOutside = component["distance_main_sequence"] > outOfBandThreshold.value
@@ -121,9 +125,9 @@ function renderChart() {
   chart.selectAll("*").remove();
 
   const components = resizeConnectionsOnComponents(allComponents)
-  const margin = {top: 30, right: 30, bottom: 30, left: 30},
-      width = 500,
-      height = 500;
+  const margin = {top: 30, right: 30, bottom: 30, left: 30};
+  const width = 500;
+  const height = 500;
   const nodeSizes = components.map(node => node[relativeSize])
   const nodeSizeScale = d3.scaleLinear().domain([d3.min(nodeSizes), d3.max(nodeSizes)]).range([6.0, 20.0]);
 

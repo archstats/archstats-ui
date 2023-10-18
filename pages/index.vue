@@ -17,17 +17,30 @@
             description="This view allows components to be compared with each other."
         />
         <ViewCard
+            name="Component Matrix"
+            path="/views/matrix"
+            image="/img/matrix.png"
+            description="This view shows the connections between components in a matrix."
+        />
+        <ViewCard
+            name="Component Chord"
+            path="/views/chord"
+            image="/img/chord.png"
+            description="This view shows the connections between components in a chord diagram."
+        />
+        <ViewCard
+            name="Component Plotter"
+            path="/views/plotter"
+            image="/img/plotter.png"
+            description="This view plots components in a 4d space."
+        />
+        <ViewCard
             name="Distance to Main Sequence"
             path="/views/distance-main-sequence"
             image="/img/distance-main-sequence.png"
             description="This view shows the distance of components to the main sequence."
         />
-        <ViewCard
-            name="Chord"
-            path="/views/chord"
-            image="/img/chord.png"
-            description="This view shows the connections between components in a chord diagram."
-        />
+
       </div>
     </main>
 

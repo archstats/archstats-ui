@@ -8,7 +8,7 @@
 import {ref} from "vue";
 
 const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
-const chartElement = ref(null) as HTMLElement
+const chartElement= ref<HTMLElement | null>(null)
 
 defineExpose({
   chartId,
