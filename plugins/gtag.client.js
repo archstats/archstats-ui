@@ -1,5 +1,5 @@
 export default defineNuxtPlugin((nuxtApp) => {
-    const { gtagId } = useRuntimeConfig().public;
+    const gtagId = 'G-R0SYCE15ZY'
 
     function gtag() {
         window.dataLayer.push(arguments);

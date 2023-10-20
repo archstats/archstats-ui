@@ -7,17 +7,11 @@ export default defineNuxtConfig({
       enabled: true
     }
   },
-  runtimeConfig: {
-    public: {
-      gtagId: 'G-R0SYCE15ZY',
-    }
-  },
 
   modules: [
     '@pinia/nuxt',
     '@nuxtjs/tailwindcss',
     '@nuxt/image',
-    '@nuxtjs/google-analytics'
   ],
   nitro: {
     esbuild: {
