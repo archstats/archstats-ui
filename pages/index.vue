@@ -46,7 +46,6 @@ import Headline from "~/components/ui/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 
-
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
