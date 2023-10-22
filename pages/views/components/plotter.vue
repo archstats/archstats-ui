@@ -1,11 +1,16 @@
 <template>
   <div class="flex">
     <main class="h-screen w-full flex items-center justify-center px-20">
-      <ComponentPlotterDiagram class="flex-grow" :components="store.currentComponentScope"
+      <ComponentPlotterDiagram class="flex-grow"
+                               :all-components="store.allComponents"
+                               :componentsInScope="store.currentComponentScope"
                                :x-axis-property="xAxisProperty"
                                :y-axis-property="yAxisProperty"
                                :radius-property="radiusProperty"
                                :show-text="showText"
+                               :selected-components="selectedComponents"
+                               @components-selected="selectedComponents = $event;"
+
       />
 
     </main>
@@ -41,9 +46,11 @@
 
       </div>
       <div class="flex gap-2 mt-2">
-
         <Checkbox v-model="showText" class="inline">Show names</Checkbox>
+      </div>
 
+      <div class="">
+        <ArchstatsButton class="primary" @click="selectionToCurrentScope">Selection to current scope</ArchstatsButton>
       </div>
     </aside>
 
@@ -60,6 +67,7 @@ import {useDataStore} from "~/stores/data";
 import ComponentPlotterDiagram from "~/components/views/plotter/ComponentPlotterDiagram.vue";
 import Checkbox from "~/components/ui/Checkbox.vue";
 import {computed} from "vue";
+import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
 
 definePageMeta({
   layout: "has-data-layout",
@@ -73,6 +81,7 @@ const showText = ref(false)
 const xAxisProperty = ref("instability")
 const yAxisProperty = ref("abstractness")
 const radiusProperty = ref("line_count")
+const selectedComponents = ref<RawComponent[]>([])
 
 const distinctStats = computed(() => {
   const properties: { [key: string]: boolean } = {}
@@ -83,4 +92,10 @@ const distinctStats = computed(() => {
   })
   return Object.keys(properties).filter(k => !["report_id", "report_timestamp"].includes(k))
 })
+
+function selectionToCurrentScope() {
+  console.log(selectedComponents.value)
+  store.setCurrentScope(selectedComponents.value)
+  selectedComponents.value = []
+}
 </script>

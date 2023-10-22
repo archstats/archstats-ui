@@ -42,8 +42,8 @@ export const useDataStore = defineStore('data', {
             }
         },
         viewNames(): string[] {
-            let results = this.query("SELECT name FROM sqlite_master WHERE type='table'") as {name: string}[]
-            return results.map(x => x.name) ;
+            let results = this.query("SELECT name FROM sqlite_master WHERE type='table'") as { name: string }[]
+            return results.map(x => x.name);
         },
         getView<T>() {
             return (viewName: string): T[] => {
@@ -98,8 +98,9 @@ export const useDataStore = defineStore('data', {
         setCurrentScope(components: string[] | RawComponent[]) {
             if (components.length && typeof components[0] === 'object') {
                 this.currentComponentScopeIds = (components as RawComponent[]).map(c => c.name);
+            } else {
+                this.currentComponentScopeIds = components as string[];
             }
-            this.currentComponentScopeIds = components as string[];
         }
     },
 })

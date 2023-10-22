@@ -1,25 +1,32 @@
 <template>
   <div class="container">
     <div class="my-40 text-center ">
-      <div class="w-[550px] mx-auto">
-        <h3 class="text-gray-500">Welcome to</h3>
-        <h1 class="text-5xl mb-16 font-bold text-archstats-900">Archstats UI</h1>
-        <p class="mb-4">Archstats UI is a tool for visualizing architectural views and gathering insights for your
-          software. It's based on
-          the
-          <Anchor class="font-bold" href="http://github.com/archstats/archstats">Archstats</Anchor>
-          project. <br><br>To generate a DB export, run the following command in your repository:
-        </p>
+      <div class="flex flex-col justify-center items-center ">
+        <div class="max-w-[550px]">
+          <h3 class="text-gray-500">Welcome to</h3>
+          <h1 class="text-5xl mb-16 font-bold text-archstats-900">Archstats UI</h1>
+          <p class="mb-4">Archstats UI is a tool for visualizing architectural views and gathering insights for your
+            software. It's based on
+            the
+            <Anchor class="font-bold" href="http://github.com/archstats/archstats">Archstats</Anchor>
+            project. <br><br>To generate a DB, run the following command in your repository:
+          </p>
+
+        </div>
+
+        <code class="bg-archstats-50 mt-4 sm:text-xs text-archstats-800 text-sm font-mono py-6 px-6 rounded self-center leading-6   text-center inline">
+          <span class="text-archstats-900 font-bold">archstats</span> export sqlite <span class="font-semibold">your_output.db</span> -e lines -e indentations -e git -e <select
+            @focus="selectHasBeenInteractedWith=true" :value="availableLanguages[currentLanguageIndex]" ref="language"
+            class="bg-archstats-50 outline-0 inline font-bold">
+          <option
+              v-for="language in availableLanguages">{{ language }}
+          </option>
+        </select>
+        </code>
       </div>
 
 
-      <pre class="bg-archstats-50 text-archstats-800 text-sm font-mono py-6 px-6 rounded w-fit text-left mx-auto">
-<span class="text-archstats-900 font-bold">archstats</span> export sqlite <span
-          class="font-semibold">your_output.db</span> -e lines -e indentations -e git -e <select
-          @focus="selectHasBeenInteractedWith=true" :value="availableLanguages[currentLanguageIndex]" ref="language"
-          class="bg-archstats-50 outline-0  font-bold"><option
-          v-for="language in availableLanguages">{{ language }}</option></select>
-</pre>
+
       <PrimaryButton @click="handleInput" class="mr-2 mt-12 text-xl py-4">Import DB file</PrimaryButton>
       <!--      <SelectGitRepository @onRepoSelected="repoChanged"/>-->
     </div>
