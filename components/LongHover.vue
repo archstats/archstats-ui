@@ -21,6 +21,10 @@ const props = defineProps({
   active: {
     type: Boolean,
     default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -46,7 +50,7 @@ function mouseLeave() {
 }
 
 const shouldShow = computed(() => {
-  return isHovered.value || hasFocus.value || props.active
+  return !props.disabled &&(isHovered.value || hasFocus.value || props.active)
 })
 
 watch(shouldShow, (value) => {

@@ -1,8 +1,8 @@
 <template>
-  <div class=" border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false" tabindex="0">
-    <div class="flex justify-between items-center w-full h-full" @click="toggleDropdown">
+  <div class="w-fit border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false" tabindex="0">
+    <div class="flex justify-between items-center w-full h-full gap-2" @click="toggleDropdown">
       <slot :selectedOption="modelValue">
-        <span :class="{'text-gray-400': !modelValue }">{{ modelValue ? modelValue.name : placeholder }}</span>
+        <span :class="{'text-gray-400': !modelValue }">{{ modelValue ? getOptionName(modelValue) : placeholder }}</span>
       </slot>
 
       <Icon icon="chevron-down"></Icon>
@@ -10,11 +10,11 @@
 
 
     <div v-if="isDropdownOpen"
-         class="z-10 rounded w-full border-2 border-gray-200 absolute top-full left-0 max-h-[250px] bg-white overflow-y-auto">
-      <div v-for="(option, idx) in options" :key="option.name" @click="handleSelect(option)">
+         class="z-10 rounded border-2 border-gray-200 absolute top-full left-0 max-h-[250px] bg-white overflow-y-auto">
+      <div v-for="(option, idx) in options" :key="getOptionName(option)" @click="handleSelect(option)">
         <slot name="option" :option="option">
           <div class="px-4 py-2 hover:bg-gray-100">
-            {{ option.name }}
+            {{ getOptionName(option) }}
           </div>
         </slot>
       </div>
@@ -28,6 +28,14 @@ import {PropType} from "@vue/runtime-core";
 
 type Option = {
   name: string,
+} | string
+
+function getOptionName(option: Option) {
+  if (typeof option === 'string') {
+    return option;
+  } else {
+    return option.name;
+  }
 }
 
 // Props

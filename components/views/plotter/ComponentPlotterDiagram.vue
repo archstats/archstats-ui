@@ -137,7 +137,7 @@ const props = defineProps(
       },
       radiusProperty: {
         type: String,
-        default: 'line_count'
+        required: false,
       },
     }
 )
@@ -277,6 +277,7 @@ const yScale = computed(() => {
 
 // make a scale according to radiusProperty based in components
 const radiusScale = computed(() => {
+  if (props.radiusProperty == null) return () => 5
   const min = d3.min(props.allComponents, c => c[props.radiusProperty])
   const max = d3.max(props.allComponents, c => c[props.radiusProperty])
   return d3.scaleLinear().domain([min, max]).range([5, 20])
