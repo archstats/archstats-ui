@@ -46,17 +46,6 @@ import Headline from "~/components/ui/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 
-const select = ref(null);
-const options = [
-  {name: 'Component Walker', value: 'Component Walker'},
-  {name: 'Component Comparison', value: 'Component Comparison'},
-  {name: 'Component Matrix', value: 'Component Matrix'},
-  {name: 'Component Chord', value: 'Component Chord'},
-  {name: 'Component Plotter', value: 'Component Plotter'},
-  {name: 'Distance to Main Sequence', value: 'Distance to Main Sequence'},
-];
-
-
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
