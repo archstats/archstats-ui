@@ -2,9 +2,10 @@
   <div class="bg-archstats-900 h-full py-8 relative" :style="{'width': expanded ? 'fit-content' : '0'}">
     <div v-if="expanded" class="px-12 flex flex-col h-full justify-between">
       <main>
-        <section class="mb-12">
-          <router-link to="/" class="text-archstats-50 text-xl">Archstats</router-link>
-        </section>
+        <router-link to="/" class="mb-12 flex gap-4 h-12 items-center">
+          <img src="/img/archstats/archstats-logo-white.png" alt="Archstats Icon" class="h-full">
+          <h3 class="text-archstats-50 text-xl">Archstats</h3>
+        </router-link>
 
         <section>
           <h3 class="uppercase text-sm text-archstats-200 mb-1">Views</h3>

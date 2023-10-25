@@ -1,14 +1,5 @@
 <template>
-  <Headline class="text-2xl mb-4">Component Comparison</Headline>
-
-  <div class="mb-4">
-    <label>Relative Component Size </label>
-    <select v-model="relativeSize"
-            class="p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-      <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
-    </select>
-  </div>
-  <D3Chart class="h-96 border-2" ref="chartRef">
+  <D3Chart ref="chartRef">
         <D3ChartTooltip v-if="hoveredComponent">
           <div class="bg-gray-100  flex-auto p-2 overflow-hidden ">
             {{ hoveredComponent.name}}
@@ -16,7 +7,6 @@
           </div>
         </D3ChartTooltip>
   </D3Chart>
-
 </template>
 
 <script setup lang="ts">
@@ -36,20 +26,9 @@ const chartRef = ref(null);
 
 const props = defineProps<{
   components: Component[],
+  relativeSize: string
 }>()
 
-const relativeSize = ref('file_count')
-
-
-const distinctStats = computed(() => {
-  const properties = {}
-  props.components.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => k !== 'name')
-})
 
 const hoveredComponent = ref<RawComponent | null>(null)
 
@@ -57,7 +36,7 @@ type Node = { component: RawComponent; radius: number };
 const nodes: Ref<UnwrapRef<Node[]>> = computed(() => props.components.map(component => {
   return {
     component: component,
-    radius: component[relativeSize.value],
+    radius: component[props.relativeSize],
     x: Math.random() * 100,
     y: Math.random() * 100,
     vx: 0,
@@ -73,14 +52,14 @@ onMounted(() => {
     renderChart();
 });
 
-watch(() => [hoveredComponent.value, relativeSize.value, props.components], () => {
+watch(() => [hoveredComponent.value, props.relativeSize, props.components], () => {
   renderChart();
 })
 
 
 const minRadius = 5.0;
 const maxRadius = 40.0;
-const nodeSizes = computed(() => nodes.value.map(node => node.component[relativeSize.value]))
+const nodeSizes = computed(() => nodes.value.map(node => node.component[props.relativeSize]))
 const nodeSizeScale = computed(() => d3.scaleLinear().domain([d3.min(nodeSizes.value), d3.max(nodeSizes.value)]).range([minRadius, maxRadius]));
 const simulation = computed(() => d3.forceSimulation()
     .force("charge", d3.forceManyBody())
