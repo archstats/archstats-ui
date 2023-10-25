@@ -1,49 +1,56 @@
 <template>
-  <SimplePage>
 
-    <Headline class="mb-8">Component Matrix</Headline>
+  <div class="h-screen flex flex-col relative">
 
-    <div class="grid grid-cols-2 gap-1 w-1/2">
-      <label for="">Order by</label>
+
+  <div class="bg-gray-100 px-16 py-4 flex items-center gap-12 flex-shrink-0 ">
+
+    <div class="flex gap-2 items-center ">
+      <label class="font-semibold text-archstats-500">Order by</label>
       <div class="inline-flex gap-2">
-        <select v-model="orderBy"
-                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-          <option v-for="stat in distinctStats" :key="stat" :value="stat">{{ stat }}</option>
-        </select>
+        <SingleSelect v-model="orderBy" :options="distinctStats">
+        </SingleSelect>
 
         <Checkbox v-model="reverse" class="inline">Reverse</Checkbox>
       </div>
+    </div>
 
+    <div class="flex gap-2 items-center">
+      <label class="font-semibold text-archstats-500">Scale color by</label>
+      <div class="inline-flex gap-2">
+        <SingleSelect v-model="scaleColorWith" :options="colorScaleOptions">
+        </SingleSelect>
 
-      <label for="">Block Size</label>
+      </div>
+    </div>
+
+    <div class="flex gap-2 items-center ">
+      <label class="font-semibold text-archstats-500">Block Size</label>
       <div class="">
-        <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border outline-archstats-900 outline-1 rounded"
+        <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border  border-archstats-500 border outline-archstats-900 outline-1 rounded"
                v-model="blockSize"> px
       </div>
+    </div>
 
-      <label for="">Max Component Count</label>
+    <div class="flex gap-2 items-center">
+      <label class="font-semibold text-archstats-500">Max Component Count</label>
       <div class="">
-        <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border outline-archstats-900 outline-1 rounded"
+        <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border border-archstats-500 border  outline-archstats-900 outline-1 rounded"
                v-model="maxComponentCount"> of {{ store.currentComponentScope.length }}
       </div>
-
-      <label for="">Scale color by</label>
-      <div class="inline-flex gap-2">
-        <select v-model="scaleColorWith"
-                class=" p-2 box-border bg-gray-100 border-tertiary-400 rounded border-2 outline-tertiary-700">
-          <option v-for="stat in colorScaleOptions" :key="stat" :value="stat">{{ stat }}</option>
-        </select>
-
-      </div>
     </div>
 
 
-    <div class=" w-full h-[768px] border overflow-scroll">
-      <ComponentMatrix :components="orderedComponents" :block-size="blockSize" :scale-color-with="scaleColorWith"></ComponentMatrix>
 
-    </div>
+  </div>
 
-  </SimplePage>
+  <div class=" w-full flex-grow overflow-y-scroll">
+    <ComponentMatrix :components="orderedComponents" :block-size="blockSize"
+                     :scale-color-with="scaleColorWith"></ComponentMatrix>
+  </div>
+
+  </div>
+
 
 </template>
 
@@ -55,6 +62,7 @@ import ComponentMatrix from "~/components/views/matrix/ComponentMatrix.vue";
 import Headline from "~/components/ui/Headline.vue";
 import {computed} from "vue";
 import Checkbox from "~/components/ui/Checkbox.vue";
+import SingleSelect from "~/components/ui/SingleSelect.vue";
 
 const store = useDataStore();
 

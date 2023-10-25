@@ -7,7 +7,7 @@
       <tr>
         <th class="sticky top-0"></th>
         <th></th>
-        <th class="font-semibold sticky top-0 bg-white pb-2" v-for="(component, i) in orderedComponents">
+        <th class="font-semibold sticky top-0 bg-white pb-2 z-30" v-for="(component, i) in orderedComponents">
           <div class="relative  text-black justify-end items-center"
                :style="{width: `${blockSize}px`, height: `${blockSize}px`, 'font-size': '0.8em'}">
 
