@@ -1,5 +1,5 @@
 <template>
-  <div class=" bg-gray-100 px-16 py-4 flex items-center">
+  <div class="bg-gray-100 px-16 py-4 flex items-center">
     <div class="flex gap-2 items-center">
       <label class="text-archstats-500">Relative Size</label>
       <SingleSelect :options="distinctStats" v-model="relativeSize" class="w-64"></SingleSelect>
