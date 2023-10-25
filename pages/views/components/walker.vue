@@ -68,9 +68,21 @@
             <h3 class="font-semibold self-center text-archstats-900">Path</h3>
             <div class="flex gap-4">
 
+
+
               <ArchstatsButton icon="rotate" :icon-size="14" class="tertiary" @click="resetPath">
                 Reset path
               </ArchstatsButton>
+
+              <ModalTrigger>
+                <template #trigger>
+                  <ArchstatsButton icon="recycle" :icon-size="14" class="tertiary">Select Cycle</ArchstatsButton>
+                </template>
+
+                <template #modal>
+                  <SelectShortestCycleModal  @cycle-selected="cycleSelected($event.cycle)" ></SelectShortestCycleModal>
+                </template>
+              </ModalTrigger>
 
               <ModalTrigger>
                 <template #trigger>
@@ -144,6 +156,7 @@ import Card from "~/components/ui/Card.vue";
 import {getOccurrencesForPathSegments, PathSegment, Relationship, stringToPath} from "~/utils/path";
 import PathTableRow from "~/components/PathTableRow.vue";
 import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
+import SelectShortestCycleModal from "~/components/modals/SelectShortestCycleModal.vue";
 
 
 definePageMeta({
@@ -247,4 +260,11 @@ function pathSelected(addedPathRaw: string ){
   scrollToBottom()
 }
 
+
+function cycleSelected(cycle: string) {
+  const compiledPath = stringToPath(cycle)
+  path.value = compiledPath
+  selectIndex(path.value.length - 1)
+  scrollToBottom()
+}
 </script>

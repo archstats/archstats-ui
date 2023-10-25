@@ -18,7 +18,7 @@ import {
   RotateCcw,
   Footprints,
   Pencil,
-  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -33,6 +33,8 @@ const props = defineProps(
 
 const iconComponent = computed(() => {
   switch (props.icon) {
+    case "recycle":
+      return Recycle
     case "info":
       return Info
     case "chevron-down":
