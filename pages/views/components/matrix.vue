@@ -3,7 +3,7 @@
   <div class="h-screen flex flex-col relative">
 
 
-  <div class="bg-gray-100 px-16 py-4 flex items-center gap-12 flex-shrink-0 ">
+  <div class="bg-gray-100 px-16 py-4 flex items-center gap-12 flex-shrink-0 z-40">
 
     <div class="flex gap-2 items-center ">
       <label class="font-semibold text-archstats-500">Order by</label>
