@@ -33,7 +33,6 @@
 
 
       <PrimaryButton @click="handleInput" class="mr-2 mt-12 text-xl py-4">Import DB file</PrimaryButton>
-      <!--      <SelectGitRepository @onRepoSelected="repoChanged"/>-->
     </div>
 
   </div>
@@ -41,15 +40,13 @@
 <script>
 import {useDataStore} from "~/stores/data";
 import {mapActions, mapState} from "pinia";
-import PrimaryButton from "~/components/ui/PrimaryButton.vue";
-import SecondaryButton from "~/components/ui/SecondaryButton.vue";
-import SelectGitRepository from "~/components/SelectGitRepository.vue";
-import Anchor from "~/components/ui/Anchor.vue";
+import PrimaryButton from "~/components/ui/buttons/PrimaryButton.vue";
+import Anchor from "~/components/ui/common/Anchor.vue";
 
 export default {
   components: {
     Anchor,
-    SelectGitRepository, PrimaryButton
+    PrimaryButton
   },
   computed: {
     ...mapState(useDataStore, ['components', 'hasData', 'test', 'componentConnections', "componentGraph"]),

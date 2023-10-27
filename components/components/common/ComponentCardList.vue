@@ -23,8 +23,8 @@
 
 </template>
 <script setup lang="ts">
-import Card from "~/components/ui/Card.vue";
-import ComponentInfoTable from "~/components/InfoTable.vue";
+import Card from "~/components/ui/card/Card.vue";
+import ComponentInfoTable from "~/components/ui/tables/InfoTable.vue";
 import {RawComponent} from "~/utils/components";
 
 const props = defineProps<{

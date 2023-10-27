@@ -40,6 +40,9 @@
 <script setup lang="ts">
 
 import {PathSegment} from "~/utils/path";
+import LongHover from "~/components/ui/common/LongHover.vue";
+import Icon from "~/components/ui/common/Icon.vue";
+import DirectConnectionDetails from "~/components/components/coupling/direct/DirectConnectionDetails.vue";
 
 const props = defineProps<{
   segment: PathSegment,

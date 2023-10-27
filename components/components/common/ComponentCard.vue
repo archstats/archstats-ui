@@ -8,10 +8,10 @@
 </template>
 
 <script lang="ts" setup>
-import ComponentInfoTable from "~/components/InfoTable.vue";
+import ComponentInfoTable from "~/components/ui/tables/InfoTable.vue";
 import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
-import Card from "~/components/ui/Card.vue";
+import Card from "~/components/ui/card/Card.vue";
 
 const store = useDataStore();
 const props = defineProps<{

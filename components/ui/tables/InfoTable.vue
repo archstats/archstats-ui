@@ -32,6 +32,8 @@ import {computed, ComputedRef, defineProps} from "vue";
 import {RawComponent} from "~/utils/components";
 import {round} from "~/utils/text";
 import {useDataStore} from "~/stores/data";
+import LongHover from "~/components/ui/common/LongHover.vue";
+import Definition from "~/components/ui/common/Definition.vue";
 
 const store = useDataStore()
 const props = defineProps<{ component: RawComponent, onlyShow?: string[] }>()

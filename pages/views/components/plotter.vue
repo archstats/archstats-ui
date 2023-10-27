@@ -66,14 +66,14 @@
 
 </template>
 <script setup lang="ts">
-import SimplePage from "~/components/ui/SimplePage.vue";
-import Headline from "~/components/ui/Headline.vue";
+import SimplePage from "~/components/ui/common/SimplePage.vue";
+import Headline from "~/components/ui/common/Headline.vue";
 import {useDataStore} from "~/stores/data";
-import ComponentPlotterDiagram from "~/components/views/plotter/ComponentPlotterDiagram.vue";
-import Checkbox from "~/components/ui/Checkbox.vue";
+import ComponentPlotterDiagram from "~/components/components/plotter/ComponentPlotterDiagram.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
 import {computed} from "vue";
-import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
-import SingleSelect from "~/components/ui/SingleSelect.vue";
+import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
+import SingleSelect from "~/components/ui/common/SingleSelect.vue";
 
 definePageMeta({
   layout: "has-data-layout",

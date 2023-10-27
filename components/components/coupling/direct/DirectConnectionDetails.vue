@@ -42,7 +42,10 @@
 <script lang="ts" setup>
 import {useDataStore} from "~/stores/data";
 import {computed} from "vue";
-import Expandable from "~/components/ui/Expandable.vue";
+import Expandable from "~/components/ui/common/Expandable.vue";
+import Icon from "~/components/ui/common/Icon.vue";
+import GitSharedCommitSummary from "~/components/components/coupling/git/GitSharedCommitSummary.vue";
+import DirectConnectionDetail from "~/components/components/coupling/direct/DirectConnectionDetail.vue";
 
 const props = defineProps<{
   from: string,

@@ -14,6 +14,8 @@
 </template>
 <script setup lang="ts">
 
+import Icon from "~/components/ui/common/Icon.vue";
+
 const props = defineProps<{
   modelValue: boolean
 }>()

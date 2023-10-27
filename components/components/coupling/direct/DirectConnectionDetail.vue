@@ -1,8 +1,6 @@
 <template>
   <div class="font-normal">
     <div class="flex gap-2">
-<!--      <Icon class="text-gray-400 hover:text-tertiary-500 cursor-pointer" :icon="expanded ? 'chevron-down':'chevron-right'"-->
-<!--            @click="iconClicked"/>-->
       <div class="">
         <LongHover>
           <template #default>
@@ -27,6 +25,7 @@
 
 import {computed} from "vue";
 import {useDataStore} from "~/stores/data";
+import LongHover from "~/components/ui/common/LongHover.vue";
 
 const store = useDataStore();
 

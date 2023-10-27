@@ -27,6 +27,7 @@
 import "css.gg/icons/icons.css"
 import {defineProps, ref, computed} from "vue";
 import {Component} from "~/utils/components";
+import ElementTable from "~/components/ui/tables/ElementTable.vue";
 
 const props = defineProps({
   selectableComponents: {

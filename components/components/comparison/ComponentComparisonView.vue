@@ -13,13 +13,13 @@
 import *  as d3 from 'd3'
 
 
-import Headline from "../../ui/Headline.vue";
+import Headline from "../../ui/common/Headline.vue";
 import {computed, defineProps, getCurrentInstance, nextTick, onMounted, Ref, ref, UnwrapRef, watch} from "vue";
 import {Component, RawComponent} from "~/utils/components";
 import {SimulationNodeDatum} from "d3-force";
-import D3ChartTooltip from "../../ui/D3ChartTooltip.vue";
-import ComponentInfoTable from "../../InfoTable.vue";
-import D3Chart from "../../ui/D3Chart.vue";
+import D3ChartTooltip from "../../ui/d3/D3ChartTooltip.vue";
+import ComponentInfoTable from "../../ui/tables/InfoTable.vue";
+import D3Chart from "../../ui/d3/D3Chart.vue";
 
 
 const chartRef = ref(null);

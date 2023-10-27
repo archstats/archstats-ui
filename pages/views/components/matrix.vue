@@ -57,12 +57,12 @@
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
 import DistanceMainSequenceChart from "~/components/views/distance-main-sequence/DistanceMainSequenceChart.vue";
-import SimplePage from "~/components/ui/SimplePage.vue";
-import ComponentMatrix from "~/components/views/matrix/ComponentMatrix.vue";
-import Headline from "~/components/ui/Headline.vue";
+import SimplePage from "~/components/ui/common/SimplePage.vue";
+import ComponentMatrix from "~/components/components/matrix/ComponentMatrix.vue";
+import Headline from "~/components/ui/common/Headline.vue";
 import {computed} from "vue";
-import Checkbox from "~/components/ui/Checkbox.vue";
-import SingleSelect from "~/components/ui/SingleSelect.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
+import SingleSelect from "~/components/ui/common/SingleSelect.vue";
 
 const store = useDataStore();
 

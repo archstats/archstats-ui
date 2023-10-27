@@ -41,8 +41,9 @@
 </template>
 <script setup lang="ts">
 
-import ComponentScopeModal from "~/components/ComponentScopeModal.vue";
-import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
+import ModalTrigger from "~/components/ui/modals/ModalTrigger.vue";
+import ComponentScopeModal from "~/components/components/modals/ComponentScopeModal.vue";
+import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
 import {useDataStore} from "~/stores/data";
 
 const componentViews = {

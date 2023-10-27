@@ -50,7 +50,8 @@
 <script setup lang="ts">
 import {round} from "~/utils/text";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
-import Checkbox from "~/components/ui/Checkbox.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
+import Icon from "~/components/ui/common/Icon.vue";
 
 interface Element {
   name: string,

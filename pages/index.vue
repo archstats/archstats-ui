@@ -42,7 +42,7 @@
 
 </template>
 <script setup lang="ts">
-import Headline from "~/components/ui/Headline.vue";
+import Headline from "~/components/ui/common/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 
