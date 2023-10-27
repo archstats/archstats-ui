@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import Icon from "~/components/ui/common/Icon.vue";
 import {ref} from 'vue';
 import {PropType} from "@vue/runtime-core";
 

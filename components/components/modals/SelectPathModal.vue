@@ -31,10 +31,11 @@
 
 import {useDataStore} from "~/stores/data";
 import {RawComponent} from "~/utils/components";
-import Card from "~/components/ui/Card.vue";
+import Card from "~/components/ui/card/Card.vue";
 import useEmitter from "~/utils/useEmitter";
 import {closeModalKey} from "~/utils/modal";
 import {computed} from "vue";
+import ElementTable from "~/components/ui/tables/ElementTable.vue";
 
 const store = useDataStore()
 const props = defineProps<{

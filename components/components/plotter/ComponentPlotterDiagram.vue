@@ -101,11 +101,11 @@
 
 </template>
 <script setup lang="ts">
-import D3Chart from "~/components/ui/D3Chart.vue";
+import D3Chart from "~/components/ui/d3/D3Chart.vue";
 import {RawComponent} from "~/utils/components";
 import {PropType} from "@vue/runtime-core";
 import * as d3 from "d3";
-import Expandable from "~/components/ui/Expandable.vue";
+import Expandable from "~/components/ui/common/Expandable.vue";
 
 
 const props = defineProps(

@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
 import DistanceMainSequenceChart from "~/components/views/distance-main-sequence/DistanceMainSequenceChart.vue";
-import ChordDiagram from "~/components/ChordDiagram.vue";
+import ChordDiagram from "~/components/components/chord/ChordDiagram.vue";
 const store = useDataStore();
 
 definePageMeta({

@@ -79,6 +79,9 @@
 import {computed} from "vue";
 import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
+import LongHover from "~/components/ui/common/LongHover.vue";
+import Icon from "~/components/ui/common/Icon.vue";
+import DirectConnectionDetails from "~/components/components/coupling/direct/DirectConnectionDetails.vue";
 
 const store = useDataStore();
 const props = defineProps(

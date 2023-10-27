@@ -30,8 +30,8 @@
 import *  as d3 from "d3"
 import {computed, defineProps, onMounted, ref, watch} from "vue";
 import {Component, Connection, ConnectionType, resizeConnectionsOnComponents} from "~/utils/components";
-import Headline from "~/components/ui/Headline.vue";
-import Anchor from "~/components/ui/Anchor.vue";
+import Headline from "~/components/ui/common/Headline.vue";
+import Anchor from "~/components/ui/common/Anchor.vue";
 
 const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 

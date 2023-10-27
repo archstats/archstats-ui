@@ -12,8 +12,8 @@
 </template>
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
-import ComponentComparisonView from "~/components/views/component-comparison/ComponentComparisonView.vue";
-import SingleSelect from "~/components/ui/SingleSelect.vue";
+import ComponentComparisonView from "~/components/components/comparison/ComponentComparisonView.vue";
+import SingleSelect from "~/components/ui/common/SingleSelect.vue";
 
 const store = useDataStore();
 

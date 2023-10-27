@@ -33,11 +33,12 @@
 <script lang="ts" setup>
 import {useDataStore} from "~/stores/data";
 import {computed} from "vue";
-import PrimaryButton from "~/components/ui/PrimaryButton.vue";
-import SecondaryButton from "~/components/ui/SecondaryButton.vue";
+import PrimaryButton from "~/components/ui/buttons/PrimaryButton.vue";
+import SecondaryButton from "~/components/ui/buttons/SecondaryButton.vue";
 import {defineProps, ref} from "vue";
 import {Component} from "~/utils/components";
 import useCloseModal from "~/utils/modal";
+import ElementTable from "~/components/ui/tables/ElementTable.vue";
 
 const props = defineProps({})
 const store = useDataStore();

@@ -14,5 +14,7 @@
 
 <script setup lang="ts">
 
+import Icon from "~/components/ui/common/Icon.vue";
+
 const expanded = ref(false)
 </script>

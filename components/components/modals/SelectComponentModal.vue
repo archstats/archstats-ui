@@ -18,8 +18,9 @@
 
 import {useDataStore} from "~/stores/data";
 import {RawComponent} from "~/utils/components";
-import Card from "~/components/ui/Card.vue";
+import Card from "~/components/ui/card/Card.vue";
 import {closeModalKey} from "~/utils/modal";
+import ElementTable from "~/components/ui/tables/ElementTable.vue";
 
 const store = useDataStore()
 const props = defineProps<{

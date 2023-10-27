@@ -12,7 +12,7 @@
 </template>
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
-import Headline from "~/components/ui/Headline.vue";
+import Headline from "~/components/ui/common/Headline.vue";
 
 const store = useDataStore();
 

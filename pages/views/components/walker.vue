@@ -150,13 +150,16 @@ import {Splitpanes, Pane} from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
 import {computed} from "vue";
-import ComponentInfoTable from "~/components/InfoTable.vue";
-import ComponentCardList from "~/components/ComponentCardList.vue";
-import Card from "~/components/ui/Card.vue";
+import ComponentInfoTable from "~/components/ui/tables/InfoTable.vue";
+import ComponentCardList from "~/components/components/common/ComponentCardList.vue";
+import Card from "~/components/ui/card/Card.vue";
 import {getOccurrencesForPathSegments, PathSegment, Relationship, stringToPath} from "~/utils/path";
-import PathTableRow from "~/components/PathTableRow.vue";
-import ArchstatsButton from "~/components/ui/ArchstatsButton.vue";
-import SelectShortestCycleModal from "~/components/modals/SelectShortestCycleModal.vue";
+import PathTableRow from "~/components/components/walker/PathTableRow.vue";
+import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
+import SelectShortestCycleModal from "~/components/components/modals/SelectShortestCycleModal.vue";
+import ModalTrigger from "~/components/ui/modals/ModalTrigger.vue";
+import SelectComponentModal from "~/components/components/modals/SelectComponentModal.vue";
+import SelectPathModal from "~/components/components/modals/SelectPathModal.vue";
 
 
 definePageMeta({

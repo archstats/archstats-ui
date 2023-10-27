@@ -12,8 +12,8 @@
   </router-link>
 </template>
 <script setup lang="ts">
-import Headline from "~/components/ui/Headline.vue";
-import CardHeadline from "~/components/ui/CardHeadline.vue";
+import Headline from "~/components/ui/common/Headline.vue";
+import CardHeadline from "~/components/ui/card/CardHeadline.vue";
 
 defineProps({
   name: String,
