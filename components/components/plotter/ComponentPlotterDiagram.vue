@@ -31,6 +31,7 @@
       <g v-for="(component, index) in componentsInScope">
         <circle @mouseenter="hoverOver(index, $event)"
 
+                @click="componentClicked(component)"
                 :r="radiusScaledValues[index]"
                 :cx="xScaledValues[index]"
                 :cy="yScaledValues[index]"
@@ -106,6 +107,7 @@ import {RawComponent} from "~/utils/components";
 import {PropType} from "@vue/runtime-core";
 import * as d3 from "d3";
 import Expandable from "~/components/ui/common/Expandable.vue";
+import InfoTable from "~/components/ui/tables/InfoTable.vue";
 
 
 const props = defineProps(
@@ -142,7 +144,7 @@ const props = defineProps(
     }
 )
 
-const emit = defineEmits(['components-selected'])
+const emit = defineEmits(['components-selected', 'component-clicked'])
 const svg = ref<SVGSVGElement | null>(null)
 const svgPoint = computed(() => {
   return svg.value?.createSVGPoint()
@@ -248,8 +250,8 @@ function hoverOver(index: number, event: MouseEvent) {
 
   hoveredComponent.value = {
     index,
-    posX: domRect.x + domRect.width / 2,
-    posY: domRect.y + domRect.height / 2
+    posX: 10+ domRect.x + domRect.width / 2,
+    posY: 10+domRect.y + domRect.height / 2
   }
 }
 
@@ -329,4 +331,8 @@ onMounted(() => {
   drawXAxis()
   drawYAxis()
 })
+
+function componentClicked(c: RawComponent){
+  emit('component-clicked', c)
+}
 </script>

@@ -21,10 +21,13 @@
       <tbody class="overflow-hidden">
       <tr v-for="(row, rowIndex) in orderedComponents" class="hover:bg-gray-100 overflow-clip py-0 "
           :key="`${row.name}`" :style="{height:'1em'}">
-        <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2"><span
-            class="font-mono">{{
-            row.name
-          }}</span></td>
+        <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2">
+          <router-link :to="`/views/components/${row.name}`"
+                       class="font-mono">{{
+              row.name
+            }}
+          </router-link>
+        </td>
         <td :style="{'font-size': '0.8em'}" class="sticky left-0 bg-white text-right pr-4 py-0 whitespace-nowrap"><span
             class="font-semibold">{{
             rowIndex + 1
@@ -49,7 +52,7 @@
                       [( rowIndex < columnIndex ? tailwindBackgroundIndexVertical: tailwindBackgroundIndexHorizontal).get(`${row.name} -> ${column.name}`)]: true,
                       'border-2 border-gray-900': shouldHighlightOnHover(row.name, column.name),
                     }]">
-                  <Icon class="text-gray-900" v-if="shouldHighlightOnHover(row.name, column.name)"  :size="8" icon="x" />
+                  <Icon class="text-gray-900" v-if="shouldHighlightOnHover(row.name, column.name)" :size="8" icon="x"/>
                 </div>
               </template>
               <template #hovered-content>
@@ -186,9 +189,19 @@ const colorScaleProperty = computed(() => {
 })
 const colorScaleRange = computed(() => {
   const couplingValues = connections.value.map(c => c[colorScaleProperty.value])
+
+  let min=0, max=0;
+
+  couplingValues.forEach(value => {
+    if ( value < min) {
+      min = value
+    }
+    if ( value > max) {
+      max = value
+    }
+  })
   return {
-    min: Math.min(...couplingValues),
-    max: Math.max(...couplingValues),
+    min, max
   }
 })
 
@@ -246,6 +259,9 @@ const tailwindBgColorsVertical = [
 function numberToTailwindScaledColor(num: number, classes: string[], scaleMin: number, scaleMax: number) {
   if (num === 0) {
     return "bg-white"
+  }
+  if (num >= scaleMax) {
+    return classes[classes.length - 1]
   }
   const range = scaleMax - scaleMin
   const step = range / classes.length

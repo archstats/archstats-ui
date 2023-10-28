@@ -1,50 +1,56 @@
 <template>
-  <div class="w-full overflow-x-scroll text-archstats-900">
-    <table class="mb-4">
-      <thead>
-      <tr>
-        <th class="px-2 py-1  h-full justify-center" v-if="selectableElements">
-          <div class="flex gap-2 align-middle justify-center">
-            <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
-                      @update:model-value="toggleSelectAll"/>
-          </div>
-        </th>
-        <th class="py-1 px-2 text-left cursor-pointer hover:text-secondary-200" @click="toggleSort('name')">Name <span
-            v-if="sortSettings.column === 'name'"
-            v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
-        </th>
-        <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left" v-for="column in columns"
-            @click="toggleSort(column.name)"><span>{{
-            column.name
-          }}</span><span v-if="sortSettings.column === column.name"
-                         v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span></th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="element in pageOfElements" class="hover:bg-secondary-50" :class="{'cursor-pointer': clickableElements}"
-          @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
-        <td v-if="selectableElements" class="px-2">
-          <Checkbox type="checkbox"
-                    :model-value="selectedElements.indexOf(element.name) !== -1"
-                    @click="checkboxToggle(element.name)"/>
-        </td>
-        <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
+  <div class="flex flex-col justify-between">
 
-        <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
+    <div class="w-full overflow-x-scroll text-archstats-900">
+      <table class="mb-4">
+        <thead>
+        <tr>
+          <th class="px-2 py-1  h-full justify-center" v-if="selectableElements">
+            <div class="flex gap-2 align-middle justify-center">
+              <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
+                        @update:model-value="toggleSelectAll"/>
+            </div>
+          </th>
+          <th class="py-1 px-2 text-left cursor-pointer hover:text-secondary-200 whitespace-nowrap"
+              @click="toggleSort('name')">{{ nameColumn }} <span
+              v-if="sortSettings.column === 'name'"
+              v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
+          </th>
+          <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left whitespace-nowrap"
+              v-for="column in columns"
+              @click="toggleSort(column.name)"><span>{{
+              column.name
+            }}</span><span v-if="sortSettings.column === column.name"
+                           v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="element in pageOfElements" class="hover:bg-secondary-50"
+            :class="{'cursor-pointer': clickableElements}"
+            @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
+          <td v-if="selectableElements" class="px-2">
+            <Checkbox type="checkbox"
+                      :model-value="selectedElements.indexOf(element.name) !== -1"
+            />
+          </td>
+          <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
 
-      </tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="mt-8 flex justify-center items-center">
-    <button class="mr-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage - 1)">
-      <Icon :size="20" icon="chevron-left"/>
-    </button>
-    <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
-    <button class="ml-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage + 1)">
-      <Icon :size="20" icon="chevron-right"/>
-    </button>
+          <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
 
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-8 flex justify-center items-center">
+      <button class="mr-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage - 1)">
+        <Icon :size="20" icon="chevron-left"/>
+      </button>
+      <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
+      <button class="ml-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage + 1)">
+        <Icon :size="20" icon="chevron-right"/>
+      </button>
+
+    </div>
   </div>
 </template>
 <script setup lang="ts">
@@ -53,20 +59,22 @@ import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vu
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 
+type Key = string | number;
+
 interface Element {
-  name: string,
+  name: Key,
 
   [key: string | symbol]: any
 }
 
 const props = defineProps({
+  nameColumn: {
+    type: String,
+    default: "Name"
+  },
   limit: {
     type: Number,
     default: -1
-  },
-  columnRenderers: {
-    type: Object as () => { [column: string]: (data: number | string) => Component },
-    default: () => ({})
   },
   clickableElements: {
     type: Boolean,
@@ -85,8 +93,11 @@ const props = defineProps({
     default: 20
   },
   selectedElements: {
-    type: Array as () => string[],
+    type: Array as () => Key[],
     default: () => [],
+  },
+  onlyShowColumns: {
+    type: Array as () => string[],
   }
 })
 
@@ -131,13 +142,12 @@ const limitedElements = computed(() => {
   }
   return sortedElements.value.slice(0, correctedLimit.value)
 })
-const elementLookup: ComputedRef<{
-  [key: string]: Element
-}> = computed(() => {
-  return allElements.value.reduce((acc: { [key: string]: Element }, element) => {
-    acc[element.name] = element
-    return acc
-  }, {})
+const elementLookup: ComputedRef<Map<Key, Element>> = computed(() => {
+  const toReturn = new Map<Key, Element>()
+  allElements.value.forEach(element => {
+    toReturn.set(element.name, element)
+  })
+  return toReturn
 })
 
 watch(allElements, () => {
@@ -145,10 +155,20 @@ watch(allElements, () => {
 })
 
 const columns = computed(() => {
+  if (props.onlyShowColumns) {
+    return props.onlyShowColumns.map(column => ({
+      name: column,
+      type: typeof column,
+    }))
+  }
   const exampleElement = limitedElements.value[0];
 
   if (!exampleElement) return []
-  return Object.keys(exampleElement).filter(column => column !== "timestamp" && column !== "report_id" && column !== "name" && typeof exampleElement[column] === 'string' || typeof exampleElement[column] === 'number').map(
+  return Object.keys(exampleElement).filter(column => column !== "timestamp"
+      && column !== "report_id"
+      && column !== "name"
+      && typeof exampleElement[column] !== 'object'
+      && typeof exampleElement[column] !== 'array').map(
       column => ({
         name: column,
         type: typeof column,
@@ -169,7 +189,7 @@ const totalPages = computed(() => {
   return Math.ceil(limitedElements.value.length / pageSize)
 })
 
-function checkboxToggle(element: string) {
+function checkboxToggle(element: Key) {
   if (props.selectedElements.indexOf(element) === -1) {
     setSelection([...props.selectedElements, element])
   } else {
@@ -177,14 +197,16 @@ function checkboxToggle(element: string) {
   }
 }
 
-function setSelection(selection: string[]) {
-  const available = new Set(Object.keys(elementLookup.value))
+function setSelection(selection: Key[]) {
+  const available = new Set(elementLookup.value.keys())
+  const selectionSet = new Set(selection)
 
-  emit("update:selected-elements", intersect(available, new Set(selection)))
+  const newSelection = intersect(available, selectionSet);
+  emit("update:selected-elements", newSelection)
 }
 
-function intersect(a: Set<string>, b: Set<string>): string[] {
-  const result = new Set<string>()
+function intersect(a: Set<Key>, b: Set<Key>): Key[] {
+  const result = new Set<Key>()
   a.forEach(name => {
     if (b.has(name)) {
       result.add(name)
@@ -202,7 +224,6 @@ function toggleSort(column: string) {
   }
 }
 
-// TODO fix this
 function toggleSelectAll() {
   if (props.selectedElements.length === limitedElements.value.length) {
     setSelection([])
@@ -213,11 +234,6 @@ function toggleSelectAll() {
 
 function goToPage(page: number) {
   currentPage.value = Math.max(Math.min(page, totalPages.value), 1)
-}
-
-interface Column {
-  name: string
-  type: string
 }
 
 </script>

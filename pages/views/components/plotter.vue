@@ -2,8 +2,7 @@
   <div class="flex flex-col">
 
     <div class="h-20 bg-archstats-50 flex px-16 gap-8 items-center">
-      <ArchstatsButton class="primary h-fit" @click="selectionToCurrentScope">Selection to current scope
-      </ArchstatsButton>
+
       <div class="flex items-center gap-2">
         <label class="text-archstats-500">X-axis</label>
         <SingleSelect v-model="xAxisProperty" :options="distinctStats" class="">
@@ -23,6 +22,8 @@
 
       <Checkbox v-model="showText" class="inline">Show names</Checkbox>
 
+      <ArchstatsButton class="primary h-fit" @click="selectionToCurrentScope">Selection to current scope
+      </ArchstatsButton>
 
     </div>
     <div class="flex px-16 py-5 bg-gray-200 gap-4 items-center overflow-x-auto">
@@ -46,7 +47,8 @@
     </div>
 
     <main class="flex-grow items-center justify-center px-20 mt-10">
-      <ComponentPlotterDiagram class="mx-40"
+      <ComponentPlotterDiagram class="mx-40 h-[70vh]"
+                               @component-clicked="navToComponent($event)"
                                :all-components="store.allComponents"
                                :componentsInScope="store.currentComponentScope"
                                :x-axis-property="xAxisProperty"
@@ -74,6 +76,7 @@ import Checkbox from "~/components/ui/common/Checkbox.vue";
 import {computed} from "vue";
 import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
 import SingleSelect from "~/components/ui/common/SingleSelect.vue";
+import LongHover from "~/components/ui/common/LongHover.vue";
 
 definePageMeta({
   layout: "has-data-layout",
@@ -164,5 +167,10 @@ const presets = computed(() => {
 
 })
 
+const router = useRouter();
+function navToComponent(component: RawComponent) {
+  console.log("nav to component", component)
+  router.push("/views/components/" + component.name)
+}
 
 </script>

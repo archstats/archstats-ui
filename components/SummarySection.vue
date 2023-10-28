@@ -1,8 +1,7 @@
 <template>
   <section class="my-20">
     <Headline>Summary</Headline>
-    <p class="text-2xl text-archstats-200 leading-10">Your project <span class="text-archstats-500 font-semibold"
-                                                          v-if="store.getProjectPrefixIfAny">{{ store.getProjectPrefixIfAny }}</span>
+    <p class="text-2xl text-archstats-200 leading-10">Your project
       has <span class="text-archstats-500 font-semibold">{{ summary["component_count"].toLocaleString() }}</span>
       components, <span class="text-archstats-500 font-semibold ">{{ summary["file_count"].toLocaleString() }}</span> files
       and <span
@@ -13,6 +12,7 @@
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
 import Headline from "~/components/ui/common/Headline.vue";
+import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 
 const store = useDataStore();
 

@@ -35,6 +35,8 @@
 import {useDataStore} from "~/stores/data";
 import {computed} from "vue";
 import {round} from "~/utils/text";
+import GitSharedCommits from "~/components/components/coupling/git/GitSharedCommits.vue";
+import LongHover from "~/components/ui/common/LongHover.vue";
 
 const props = defineProps<{
   from: string,

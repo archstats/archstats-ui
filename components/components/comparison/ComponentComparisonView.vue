@@ -22,6 +22,8 @@ import ComponentInfoTable from "../../ui/tables/InfoTable.vue";
 import D3Chart from "../../ui/d3/D3Chart.vue";
 
 
+const router = useRouter();
+
 const chartRef = ref(null);
 
 const props = defineProps<{
@@ -53,7 +55,7 @@ onMounted(() => {
 });
 
 watch(() => [hoveredComponent.value, props.relativeSize, props.components], () => {
-  renderChart();
+renderChart();  renderChart();
 })
 
 
@@ -125,6 +127,10 @@ function renderChart() {
           hoveredComponent.value = null
         }, 10);
       })
+      .on("click", (event: any, d: any) => {
+
+        router.push(`/views/components/${d.component.name}`)
+      })
       .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
@@ -150,6 +156,7 @@ function renderChart() {
   }
 
 }
+
 
 </script>
 
