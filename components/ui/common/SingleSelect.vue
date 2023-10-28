@@ -42,7 +42,7 @@ function getOptionName(option: Option) {
 // Props
 const props = defineProps({
   modelValue: {
-    type: Object as PropType<Option>,
+    type: [String, Object] as PropType<Option>,
     default: null
   },
   options: {

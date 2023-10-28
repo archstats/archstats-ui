@@ -75,6 +75,10 @@ export const useDataStore = defineStore('data', {
             }
             return this.allComponents.filter(c => state.currentComponentScopeIds.includes(c.name));
         },
+
+        allComponentsIndex(): Map<string, Component> {
+            return this.componentGraph.components;
+        },
         allComponents(): Component[] {
             return Array.from(this.componentGraph.components.values());
         },
@@ -86,7 +90,21 @@ export const useDataStore = defineStore('data', {
         },
         componentConnections() {
             return this.query("SELECT * FROM component_connections_direct") as unknown as RawComponentConnection[]
-        }
+        },
+
+        componentSubGraph(state: any) {
+            const componentGraph = this.componentGraph;
+
+            return (components: string[]): Component[] => {
+                const componentsToReturn = Array(components.length);
+
+                components.forEach((component, index) => {
+                    componentsToReturn[index] = componentGraph.components.get(component)!;
+                })
+
+                return resizeConnectionsOnComponents(componentsToReturn);
+            }
+        },
     },
     actions: {
         async setViews(views: any) {

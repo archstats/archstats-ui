@@ -20,7 +20,7 @@ const props = defineProps<{
   modelValue: boolean
 }>()
 
-const emit = defineEmits(['update:modelValue', ])
+const emit = defineEmits(['update:modelValue', 'click' ])
 
 </script>
 <style scoped>

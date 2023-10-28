@@ -17,6 +17,10 @@ export function truncate(text, length, clamp = '...') {
 
 export function findCommonPrefix(strings: string[]): string {
 
+    if (strings.length === 1) {
+        return strings[0]; // Return the single string if there is only one.
+    }
+
     if (!strings.length) {
         return ""; // Return an empty string if the list is empty.
     }

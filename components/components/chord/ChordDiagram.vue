@@ -71,12 +71,12 @@ function renderChart(connectedComponents: Component[]) {
   const colornone = '#888'
   const width = 300, height = 300;
 
-  const data = [...connectedComponents.map(comp => {
+  const data = connectedComponents.map(comp => {
     return {
       ...comp,
       valueOf: () => 1
     }
-  })]
+  })
   const radius = Math.min(connectedComponents.length * 5, 90)
 
   const svg = chart.append("svg")

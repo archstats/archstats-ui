@@ -13,8 +13,6 @@ interface RawComponentConnection {
 
 interface ComponentGraph {
     components: Map<string, Component>;
-    originalComponents: RawComponent[];
-    originalConnections: RawComponentConnection[];
 }
 
 enum ConnectionType {
@@ -37,16 +35,15 @@ function createComponentGraph(components: RawComponent[], connections: RawCompon
     if (!components.length) {
         return {
             components: new Map(),
-            originalComponents: [],
-            originalConnections: [],
         }
     }
-    const allComponents: Component[] = [...components].map(c => ({
+    const allComponents: Component[] = components.map(c => ({
         ...c,
         connections: [],
     }));
     const graph: Map<string, Component> = new Map(allComponents.map(c => [c.name, c]));
     for (const component of allComponents) {
+        // @ts-ignore
         graph[component.name] = {
             ...component
         };
@@ -54,8 +51,8 @@ function createComponentGraph(components: RawComponent[], connections: RawCompon
 
     connections.forEach(connection => {
         let {from, to, count} = connection;
-        const fromComponent = graph[from];
-        const toComponent = graph[to];
+        const fromComponent = graph.get(from)!;
+        const toComponent = graph.get(to)!;
 
         fromComponent.connections.push({
             from: fromComponent,
@@ -72,8 +69,6 @@ function createComponentGraph(components: RawComponent[], connections: RawCompon
     })
     return {
         components: graph,
-        originalComponents: components,
-        originalConnections: connections,
     }
 }
 
@@ -99,13 +94,11 @@ interface RelatedComponent extends Component {
     distance: number;
     path: Component[]
 }
-
-
-function indirectRelatives(component: Component, directRelativesFn: (Component) => Component[]): RelatedComponent[] {
+function indirectRelatives(component: Component, directRelativesFn: (arg0: Component) => Component[]): RelatedComponent[] {
     const visited: Map<string, RelatedComponent> = new Map();
     const queue: RelatedComponent[] = [{...component, distance: 0, path: []}];
     while (queue.length > 0) {
-        const current = queue.shift();
+        const current = queue.shift()!;
         if (visited.has(current.name)) continue;
 
         visited.set(current.name, current);
@@ -153,7 +146,9 @@ function findCycles(successor: Component, component: Component, visited: Map<str
 }
 
 function allCyclesInGraph(graph: Component[]): string[][] {
-    let visited: {} = {};
+    let visited: {
+        [key: string]: string[]
+    } = {};
 
     for (const component of graph) {
         const theCycles = allCycles(component);
