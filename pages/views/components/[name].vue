@@ -36,8 +36,9 @@
           <Headline class="text-xl mb-2">Shortest Cycles</Headline>
           <p class="text-gray-500"><span class="font-mono text-archstats-800">{{ component.name }}</span> is part of
             <span class="text-archstats-800">{{ cyclesIncludedIn.length }}</span>+ short cycles.</p>
-          <ElementTable class="mt-4" v-model:selected-elements="selectedCycles" :limit="10"
+          <ElementTable class="mt-4 mb-20 h-[500px]" v-model:selected-elements="selectedCycles"
                         :selectable-elements="true"
+                        :max-page-size="12"
                         :elements="cyclesIncludedIn"></ElementTable>
         </div>
         <div v-if="selectedCycleGraph" class="items-center w-full">
