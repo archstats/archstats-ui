@@ -1,11 +1,11 @@
 <template>
   <D3Chart ref="chartRef">
-        <D3ChartTooltip v-if="hoveredComponent">
-          <div class="bg-gray-100  flex-auto p-2 overflow-hidden ">
-            {{ hoveredComponent.name}}
-            <ComponentInfoTable :component="hoveredComponent"/>
-          </div>
-        </D3ChartTooltip>
+    <D3ChartTooltip v-if="hoveredComponent">
+      <div class="bg-gray-100  flex-auto p-2 overflow-hidden ">
+        <div class="font-mono mb-2"> {{ hoveredComponent.name }}</div>
+        <ComponentInfoTable :component="hoveredComponent" :only-show="[relativeSize]"/>
+      </div>
+    </D3ChartTooltip>
   </D3Chart>
 </template>
 
@@ -49,13 +49,14 @@ const padding = 2; // separation between same-color nodes
 
 
 onMounted(() => {
-    renderChart();
-    // TODO figure out why this is necessary
-    renderChart();
+  renderChart();
+  // TODO figure out why this is necessary
+  renderChart();
 });
 
 watch(() => [hoveredComponent.value, props.relativeSize, props.components], () => {
-renderChart();  renderChart();
+  renderChart();
+  renderChart();
 })
 
 
@@ -135,7 +136,6 @@ function renderChart() {
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
-
 
 
   function dragstarted(event: any, d: any) {
