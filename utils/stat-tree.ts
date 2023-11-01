@@ -43,3 +43,15 @@ export function columnsToStats(columns: string[], separator = ":"): Stat[] {
 
     return stats;
 }
+
+
+export function getAllDescendants(stat: Stat): Stat[] {
+    const descendants: Stat[] = [];
+    if (stat.children) {
+        for (const child of stat.children) {
+            descendants.push(child);
+            descendants.push(...getAllDescendants(child));
+        }
+    }
+    return descendants;
+}

@@ -1,6 +1,6 @@
 <template>
 
-  <div class="w-fit border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
+  <div class="w-52 border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
        tabindex="0">
     <div class="flex justify-between items-center w-full h-full gap-2 whitespace-nowrap" @click="toggleDropdown">
 
@@ -12,7 +12,7 @@
 
     <div v-show="isDropdownOpen"
          class="z-10 rounded border-2 border-gray-200 absolute top-full left-0 max-h-[450px] min-w-[350px] bg-white overflow-y-auto px-4 py-4">
-      <stat-select-multi-node :stat="stats[0]" :selected-stats='selectedStats'
+      <stat-select-multi-node :stat="stats[0]" :selected-stats='renderedSelectedStats'
                               @select-stat="reactToSelect"></stat-select-multi-node>
     </div>
   </div>
@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 
-import {columnsToStats, Stat} from "~/utils/stat-tree";
+import {columnsToStats, getAllDescendants, Stat} from "~/utils/stat-tree";
 import StatSelectMultiNode from "~/components/ui/stat-select/StatSelectMultiNode.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import StatSelectOptionNode from "~/components/ui/stat-select/StatSelectOptionNode.vue";
@@ -32,7 +32,6 @@ const props = defineProps<{
   options: string[],
 }>()
 
-const selectedStats = ref(props.modelValue)
 
 const realStats = computed(() => {
   return selectedStats.value.filter(s => {
@@ -71,6 +70,7 @@ const statToParent = computed(() => {
   }
   return result
 })
+
 
 function reactToSelect(stat: string) {
   const isChecked = selectedStats.value?.includes(stat) ?? false
@@ -125,5 +125,27 @@ function getAncestors(stat: string) {
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value;
 };
+
+
+const selectedStats = ref(props.modelValue)
+
+const renderedSelectedStats = computed(() => {
+  const toReturn = new Set<string>(selectedStats.value)
+  const derived = new Set<string>()
+
+  for (const stat of stats.value) {
+    const descendantsThatMatter = getAllDescendants(stat).filter(s => s.isRealStat).map(s => s.fullName)
+
+    if (descendantsThatMatter.length === 0) continue;
+    const allDescendantsSelected = descendantsThatMatter.every(d => toReturn.has(d))
+    if (allDescendantsSelected) {
+      derived.add(stat.fullName)
+    }
+  }
+
+
+  return Array.from(toReturn).concat(Array.from(derived))
+})
+
 
 </script>
