@@ -36,7 +36,7 @@ const props = defineProps({
 let activeTab = ref(props.tabs[0].tabId)
 
 
-const openTab = (event: any, selectedTab: string) => {
+const openTab = (event: MouseEvent, selectedTab: string) => {
   activeTab.value = selectedTab
 }
 
