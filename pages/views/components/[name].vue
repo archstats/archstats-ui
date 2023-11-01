@@ -1,54 +1,49 @@
 <template>
-
   <SimplePage>
-
     <Headline>{{ component.name }}</Headline>
+    <TabPanel :tabs="tabConfig">
+      <template #info>
+        <section class="p-4">
+          <InfoTable :component="component"></InfoTable>
+        </section>
+      </template>
 
-    <section>
-      <InfoTable :component="component"></InfoTable>
-    </section>
+      <template #files>
+        <section class="p-4">
+            <div class="flex items-center  gap-2 justify-end mb-3">
+              <label class="text-archstats-500">Columns</label>
+              <MultiSelect :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
 
-    <section class="mt-20">
-      <div class="">
+            </div>
 
-        <Headline class="text-xl mb-4 it">Files</Headline>
+          <div class="w-full">
+            <ElementTable :elements="files"
+                          :only-show-columns="selectedStatsForFiles"
+                          :selectable-elements="false"
+                          v-model:selected-elements="selectedCycles"
+                          class="w-full"></ElementTable>
+          </div>
+        </section>
+      </template>
 
-        <div class="flex items-center gap-2">
-          <label class="text-archstats-500">Columns</label>
-          <MultiSelect :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
+      <template #cycles>
+        <section class="p-4">
 
-        </div>
-
-      </div>
-      <div class="w-full">
-        <ElementTable :elements="files"
-                      :only-show-columns="selectedStatsForFiles"
-                      :selectable-elements="false"
-                      v-model:selected-elements="selectedCycles"
-                      class="w-full"></ElementTable>
-      </div>
-    </section>
-
-    <section class="mt-20">
-
-      <div class="flex mt-4 h-full ">
-        <div class="w-1/2  h-full">
-          <Headline class="text-xl mb-2">Shortest Cycles</Headline>
-          <p class="text-gray-500"><span class="font-mono text-archstats-800">{{ component.name }}</span> is part of
-            <span class="text-archstats-800">{{ cyclesIncludedIn.length }}</span>+ short cycles.</p>
-          <ElementTable class="mt-4 mb-20 h-[500px]" v-model:selected-elements="selectedCycles"
-                        :selectable-elements="true"
-                        :max-page-size="12"
-                        :elements="cyclesIncludedIn"></ElementTable>
-        </div>
-        <div v-if="selectedCycleGraph" class="items-center w-full">
-          <ConnectionChart class="h-full" :components="selectedCycleGraph" relative-size="line_count"
-                           :connections="[]"/>
-        </div>
-      </div>
-    </section>
-
-
+          <div class="flex h-full ">
+            <div class="w-1/2  h-full">
+              <ElementTable class="h-[500px]" v-model:selected-elements="selectedCycles"
+                            :selectable-elements="true"
+                            :max-page-size="12"
+                            :elements="cyclesIncludedIn"></ElementTable>
+            </div>
+            <div v-if="selectedCycleGraph" class="items-center w-full">
+              <ConnectionChart class="h-full" :components="selectedCycleGraph" relative-size="line_count"
+                               :connections="[]"/>
+            </div>
+          </div>
+        </section>
+      </template>
+    </TabPanel>
 
 
   </SimplePage>
@@ -65,9 +60,8 @@ import InfoTable from "~/components/ui/tables/InfoTable.vue";
 import ElementTable from "~/components/ui/tables/ElementTable.vue";
 import {findCommonPrefix} from "#imports";
 import ConnectionChart from "~/components/components/ConnectionChart.vue";
-import Comparison from "~/pages/views/components/comparison.vue";
-import ComponentComparisonView from "~/components/components/comparison/ComponentComparisonView.vue";
 import MultiSelect from "~/components/ui/common/MultiSelect.vue";
+import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
 
 definePageMeta({
   layout: "has-data-layout",
@@ -77,6 +71,21 @@ definePageMeta({
 })
 const route = useRoute();
 const store = useDataStore();
+
+const tabConfig = [
+  {
+    title: "Info",
+    tabId: "info"
+  },
+  {
+    title: "Files",
+    tabId: "files"
+  },
+  {
+    title: "Cycles",
+    tabId: "cycles"
+  },
+]
 
 const nameInRoute = computed(() => route.params.name as string);
 
