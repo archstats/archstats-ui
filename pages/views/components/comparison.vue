@@ -2,7 +2,7 @@
   <div class="bg-gray-100 px-16 py-4 flex items-center">
     <div class="flex gap-2 items-center">
       <label class="text-archstats-500">Relative Size</label>
-      <SingleSelect :options="distinctStats" v-model="relativeSize" class="w-64"></SingleSelect>
+      <StatSelectSingle :options="distinctStats" v-model="relativeSize" class="w-64"></StatSelectSingle>
     </div>
   </div>
   <div class="p-8">
@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
 import ComponentComparisonView from "~/components/components/comparison/ComponentComparisonView.vue";
-import SingleSelect from "~/components/ui/common/SingleSelect.vue";
+import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 
 const store = useDataStore();
 

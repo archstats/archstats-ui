@@ -8,8 +8,8 @@
     <div class="flex gap-2 items-center ">
       <label class="font-semibold text-archstats-500">Order by</label>
       <div class="inline-flex gap-2">
-        <SingleSelect v-model="orderBy" :options="distinctStats">
-        </SingleSelect>
+        <StatSelectSingle v-model="orderBy" :options="distinctStats">
+        </StatSelectSingle>
 
         <Checkbox v-model="reverse" class="inline">Reverse</Checkbox>
       </div>
@@ -63,6 +63,7 @@ import Headline from "~/components/ui/common/Headline.vue";
 import {computed} from "vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import SingleSelect from "~/components/ui/common/SingleSelect.vue";
+import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 
 const store = useDataStore();
 
