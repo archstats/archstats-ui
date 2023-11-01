@@ -17,7 +17,7 @@
 
       <div class="flex items-center gap-2">
         <label for="">Columns</label>
-        <MultiSelect :options="distinctStats" v-model="selectedStats"></MultiSelect>
+        <StatSelectMulti :options="store.getDistinctComponentColumns" v-model="selectedStats"></StatSelectMulti>
       </div>
     </div>
     <ElementTable
@@ -45,6 +45,7 @@ import {Component} from "~/utils/components";
 import useCloseModal from "~/utils/modal";
 import ElementTable from "~/components/ui/tables/ElementTable.vue";
 import MultiSelect from "~/components/ui/common/MultiSelect.vue";
+import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
 
 const props = defineProps({})
 const store = useDataStore();
@@ -76,16 +77,6 @@ const filteredComponents = computed(() => {
 })
 
 
-const distinctStats = computed(() => {
-  const properties: { [key: string]: boolean } = {}
-  store.currentComponentScope.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => !["report_id", "report_timestamp", "name", "connections"].includes(k))
-})
-
-const selectedStats = ref<string[]>(distinctStats.value)
+const selectedStats = ref<string[]>(store.getDistinctComponentColumns)
 
 </script>

@@ -26,7 +26,7 @@ export const useDataStore = defineStore('data', {
 
         getDistinctComponentColumns() {
             const qry = this.query("SELECT name FROM PRAGMA_TABLE_INFO('components') order by 1") as { name: string }[];
-            return qry.map(x => x.name).filter(x => x !== 'report_id' && x !== 'timestamp' && x!== 'name');
+            return qry.map(x => x.name).filter(x => !["report_id", "report_timestamp", "name", "connections", "timestamp"].includes(x));
         },
 
         getComponentName(): (component: RawComponent | string) => string {
