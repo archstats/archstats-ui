@@ -3,16 +3,17 @@
     <Headline>Summary</Headline>
     <p class="text-2xl text-archstats-200 leading-10">Your project
       has <span class="text-archstats-500 font-semibold">{{ summary["component_count"].toLocaleString() }}</span>
-      components, <span class="text-archstats-500 font-semibold ">{{ summary["file_count"].toLocaleString() }}</span> files
+      components, <span class="text-archstats-500 font-semibold ">{{ summary["complexity:files"].toLocaleString() }}</span>
+      files
       and <span
-          class="text-archstats-500 font-semibold">{{ summary["line_count"].toLocaleString() }}</span> lines of code.</p>
+          class="text-archstats-500 font-semibold">{{ summary["complexity:lines"].toLocaleString() }}</span> lines of code.
+    </p>
 
   </section>
 </template>
 <script setup lang="ts">
 import {useDataStore} from "~/stores/data";
 import Headline from "~/components/ui/common/Headline.vue";
-import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 
 const store = useDataStore();
 

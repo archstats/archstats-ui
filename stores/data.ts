@@ -9,7 +9,6 @@ import {
     RawComponentConnection
 } from "~/utils/components";
 
-import {Raw} from "@vue/reactivity";
 import {Definition} from "~/utils/definition";
 
 
@@ -24,6 +23,11 @@ export const useDataStore = defineStore('data', {
         }
     },
     getters: {
+
+        getDistinctComponentColumns() {
+            const qry = this.query("SELECT name FROM PRAGMA_TABLE_INFO('components') order by 1") as { name: string }[];
+            return qry.map(x => x.name).filter(x => x !== 'report_id' && x !== 'timestamp' && x!== 'name');
+        },
 
         getComponentName(): (component: RawComponent | string) => string {
             const prefix = this.getProjectPrefixIfAny;

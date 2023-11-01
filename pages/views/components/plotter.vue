@@ -5,19 +5,19 @@
 
       <div class="flex items-center gap-2">
         <label class="text-archstats-500">X-axis</label>
-        <SingleSelect v-model="xAxisProperty" :options="distinctStats" class="">
-        </SingleSelect>
+        <StatSelectSingle v-model="xAxisProperty" :options="distinctStats" class="">
+        </StatSelectSingle>
       </div>
       <div class="flex items-center gap-2">
         <label class="text-archstats-500">Y-axis</label>
-        <SingleSelect v-model="yAxisProperty" :options="distinctStats" class="">
-        </SingleSelect>
+        <StatSelectSingle v-model="yAxisProperty" :options="distinctStats" class="">
+        </StatSelectSingle>
       </div>
 
       <div class="flex items-center gap-2">
         <label class="text-archstats-500">Radius</label>
-        <SingleSelect v-model="radiusProperty" :options="distinctStats" placeholder="Select statistic" class="">
-        </SingleSelect>
+        <StatSelectSingle v-model="radiusProperty" :options="distinctStats" placeholder="Select statistic" class="">
+        </StatSelectSingle>
       </div>
 
       <Checkbox v-model="showText" class="inline">Show names</Checkbox>
@@ -28,8 +28,6 @@
     </div>
     <div class="flex px-16 py-5 bg-gray-200 gap-4 items-center overflow-x-auto">
       <div class="text-archstats-500">Presets:</div>
-
-
       <LongHover v-for="preset in presets"
                  :disabled="!preset.description"
                  :time="1000"
@@ -68,15 +66,13 @@
 
 </template>
 <script setup lang="ts">
-import SimplePage from "~/components/ui/common/SimplePage.vue";
-import Headline from "~/components/ui/common/Headline.vue";
 import {useDataStore} from "~/stores/data";
 import ComponentPlotterDiagram from "~/components/components/plotter/ComponentPlotterDiagram.vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import {computed} from "vue";
 import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
-import SingleSelect from "~/components/ui/common/SingleSelect.vue";
 import LongHover from "~/components/ui/common/LongHover.vue";
+import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 
 definePageMeta({
   layout: "has-data-layout",
@@ -87,19 +83,14 @@ definePageMeta({
 
 const store = useDataStore();
 const showText = ref(false)
-const xAxisProperty = ref("instability")
-const yAxisProperty = ref("abstractness")
-const radiusProperty = ref<string | null>("line_count")
+const xAxisProperty = ref("modularity:instability")
+const yAxisProperty = ref("modularity:abstractness")
+const radiusProperty = ref<string | null>("line:count")
 const selectedComponents = ref<RawComponent[]>([])
 
 const distinctStats = computed(() => {
-  const properties: { [key: string]: boolean } = {}
-  store.currentComponentScope.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => !["report_id", "report_timestamp", "name"].includes(k))
+
+  return store.getDistinctComponentColumns.filter(k => !["report_id", "report_timestamp", "name"].includes(k))
 })
 
 function selectionToCurrentScope() {
