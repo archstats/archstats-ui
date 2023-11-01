@@ -160,7 +160,6 @@ const presets = computed(() => {
 
 const router = useRouter();
 function navToComponent(component: RawComponent) {
-  console.log("nav to component", component)
   router.push("/views/components/" + component.name)
 }
 
