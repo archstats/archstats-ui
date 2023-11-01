@@ -123,10 +123,10 @@ const connections = computed(() => {
              coalesce(sum(conn.reference_count), 0) as "references",
              count(conn.reference_count)            as "coupling",
 
-             git.shared_commit_count                as "shared_commits"
+             git.shared_commits                as "shared_commits"
       from git_component_shared_commits git
              left join component_connections_direct conn on pair_1 = "from" and pair_2 = "to"
-      where (git.shared_commit_count > 0 or conn.reference_count > 0)
+      where (git.shared_commits > 0 or conn.reference_count > 0)
       group by 1, 2;
     `
   } else {

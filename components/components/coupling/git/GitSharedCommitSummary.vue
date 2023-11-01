@@ -1,7 +1,9 @@
 <template>
   <div class="text-archstats-400">
     <div class="whitespace-nowrap inline">
-      Both components share <LongHover class="inline" ><span class="text-archstats-900 cursor-pointer underline underline-offset-3">{{ pairData.shared_commit_count }}</span>
+      Both components share <LongHover class="inline" ><span class="text-archstats-900 cursor-pointer underline underline-offset-3">{{
+        pairData.shared_commits
+      }}</span>
       <template #hovered-content>
         <div class="absolute bg-gray-100 p-4  z-30 rounded shadow">
           <div class="max-h-40 overflow-y-scroll">
@@ -13,7 +15,7 @@
       observed git log.
     </div>
 
-    <ul class="mt-2 list-disc ml-4" v-if="pairData.shared_commit_count">
+    <ul class="mt-2 list-disc ml-4" v-if="pairData.shared_commits">
       <li class="whitespace-nowrap"><span
           class="text-archstats-900">{{ round(pairData.percentage_of_all_commits_pair_1, 2) }}%</span> of all commits
         including
@@ -54,7 +56,7 @@ const pairData = computed(() => {
   `) as {
     pair_1: string,
     pair_2: string,
-    shared_commit_count: number
+    shared_commits: number
     percentage_of_all_commits_pair_1: number
     percentage_of_all_commits_pair_2: number
     [key: string]: number | string
