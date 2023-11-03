@@ -10,6 +10,7 @@ import {
 } from "~/utils/components";
 
 import {Definition} from "~/utils/definition";
+import {StatNameResolver} from "~/utils/stat_resolver";
 
 
 export const useDataStore = defineStore('data', {
@@ -23,6 +24,22 @@ export const useDataStore = defineStore('data', {
         }
     },
     getters: {
+
+        statNames(state: any) {
+            return (stats: string[]): string[] => {
+                return this.statNameResolver.getStatNames(stats);
+            }
+        },
+        statName(state: any) {
+            return (stat: string): string => {
+                return this.statNameResolver.getStatName(stat);
+            }
+        },
+
+        statNameResolver(state: any) {
+            // No breaking changes yet, so we can just return an empty resolver.
+            return new StatNameResolver("");
+        },
 
         getDistinctComponentColumns() {
             const qry = this.query("SELECT name FROM PRAGMA_TABLE_INFO('components') order by 1") as { name: string }[];

@@ -26,13 +26,13 @@
       </ArchstatsButton>
 
     </div>
-    <div class="flex px-16 py-5 bg-gray-200 gap-4 items-center overflow-x-auto">
+    <div class="flex flex-grow px-16 py-5 bg-gray-200 gap-4 items-center overflow-x-auto">
       <div class="text-archstats-500">Presets:</div>
       <LongHover v-for="preset in presets"
                  :disabled="!preset.description"
                  :time="1000"
            @click="selectPreset(preset)"
-           class="px-4 text-archstats-800 whitespace-nowrap py-1 cursor-pointer border border-archstats-500 transition-all bg-tertiary-50 rounded-full hover:bg-tertiary-100">
+           class="px-4 text-archstats-800 whitespace-nowrap py-1 w-fit cursor-pointer border border-archstats-500 transition-all bg-tertiary-50 rounded-full hover:bg-tertiary-100">
         {{ preset.name }}
 
         <template #hovered-content>
@@ -113,42 +113,42 @@ function selectPreset(preset: Preset) {
 }
 
 function statAvailable(stat: string) {
-  return distinctStats.value.includes(stat)
+  return distinctStats.value.includes(store.statName(stat))
 }
 
 const presets = computed(() => {
   let presetsToReturn: Preset[] = [
     {
-      name: "Distance to Main Sequence (DMS)", xAxis: "instability", yAxis: "abstractness", radius: 'line_count',
+      name: "Distance to Main Sequence (DMS)", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'complexity:lines',
       description: 'The main sequence is the ideal position for a component. It signifies a perfect balance between abstractness and instability. The closer a component is to the main sequence, the better.'
     },
     {
-      name: "Age vs Churn vs DMS", xAxis: "age_in_days", yAxis: "commit_count", radius: 'distance_main_sequence',
+      name: "Age vs Churn vs DMS", xAxis: "git:age_in_days", yAxis: "git:commits:total", radius: 'modularity:distance_main_sequence',
       description: 'Older components tend to have more churn. This is because they have been around for longer and have been changed more often. But if that component does not have a good balance between abstractness and instability, it is likely that further changes will be more painful.'
     },
     {
-      name: "Betweenness vs Churn", xAxis: "betweenness", yAxis: "commit_count"
+      name: "Betweenness vs Churn", xAxis: "graph:betweenness", yAxis: "git:commits:total"
     },
     {
-      name: "Betweenness vs Avg. Indentation", xAxis: "betweenness", yAxis: "indentation_avg"
+      name: "Betweenness vs Avg. Indentation", xAxis: "graph:betweenness", yAxis: "complexity:indentation:avg"
     },
     {
-      name: "Betweenness vs Max Indentation", xAxis: "betweenness", yAxis: "indentation_max"
+      name: "Betweenness vs Max Indentation", xAxis: "graph:betweenness", yAxis: "complexity:indentation:max"
     },
     {
-      name:"Avg. Indentation vs Line Count", yAxis: "line_count", xAxis: "indentation_avg"
+      name:"Avg. Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:avg"
     },
     {
-      name:"Max Indentation vs Line Count", yAxis: "line_count", xAxis: "indentation_max"
+      name:"Max Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:max"
     },
     {
-      name: "DMS vs Betweenness", xAxis: "instability", yAxis: "abstractness", radius: 'betweenness',
+      name: "DMS vs Betweenness", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'graph:betweenness',
     },
     {
-      name: "DMS vs Churn", xAxis: "instability", yAxis: "abstractness", radius: 'commit_count',
+      name: "DMS vs Churn", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'git:commits:total',
     },
     {
-      name: "Authors vs Churn", xAxis: "author_count", yAxis: "commit_count",
+      name: "Authors vs Churn", xAxis: "git:authors:total", yAxis: "git:commits:total",
     },
   ]
 

@@ -4,7 +4,8 @@
     <div class="flex-shrink-0 border-b-2 py-4">
       <slot name="header"></slot>
       <div class="px-4 ">
-        <input class="w-full px-4 py-2 bg-gray-100  box-border outline-tertiary-500 outline-1 rounded" v-model="searchText" placeholder="Search...">
+        <input class="w-full px-4 py-2 bg-gray-100  box-border outline-tertiary-500 outline-1 rounded"
+               v-model="searchText" placeholder="Search...">
 
       </div>
     </div>
@@ -12,10 +13,12 @@
 
       <Card class="h-96 mt-4" @click="select(component);" v-for="component in filteredComponents">
 
-        <h1 class="text-xs font-mono font-bold mb-4 text-archstats-900" :title="component.name">{{ component.name }}</h1>
+        <h1 class="text-xs font-mono font-bold mb-4 text-archstats-900" :title="component.name">{{
+            component.name
+          }}</h1>
 
         <ComponentInfoTable class="w-full" :component="component"
-                            :only-show="['references', 'afferent_coupling_count', 'efferent_coupling_count', 'file_count']"
+                            :only-show="store.statNames(['references', 'modularity:coupling:afferent', 'modularity:coupling:efferent', 'complexity:files'])"
         ></ComponentInfoTable>
       </Card>
     </div>
@@ -26,6 +29,7 @@
 import Card from "~/components/ui/card/Card.vue";
 import ComponentInfoTable from "~/components/ui/tables/InfoTable.vue";
 import {RawComponent} from "~/utils/components";
+import {useDataStore} from "~/stores/data";
 
 const props = defineProps<{
   components: RawComponent[]
@@ -33,6 +37,8 @@ const props = defineProps<{
 
 const searchText = ref("")
 const emit = defineEmits(["component-selected"]);
+
+const store = useDataStore();
 
 const filteredComponents = computed(() => {
   if (searchText.value.length < 3) {
