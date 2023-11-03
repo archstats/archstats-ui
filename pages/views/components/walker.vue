@@ -47,8 +47,8 @@
 
             <Card class="self-center relative ">
               <div class="h-[510px] overflow-y-scroll">
+                <ComponentInfoList :component="selectedComponent" :columns="store.getDistinctComponentColumns"></ComponentInfoList>
 
-                <ComponentInfoTable class="w-full" :component="selectedComponent"/>
               </div>
               <div class="absolute top-1/2 -right-40 font-semibold text-secondary-500 text-center ">
                 <h2>Dependencies</h2>
@@ -160,6 +160,7 @@ import SelectShortestCycleModal from "~/components/components/modals/SelectShort
 import ModalTrigger from "~/components/ui/modals/ModalTrigger.vue";
 import SelectComponentModal from "~/components/components/modals/SelectComponentModal.vue";
 import SelectPathModal from "~/components/components/modals/SelectPathModal.vue";
+import ComponentInfoList from "~/components/components/info-list/ComponentInfoList.vue";
 
 
 definePageMeta({
