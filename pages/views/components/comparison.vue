@@ -6,7 +6,8 @@
     </div>
   </div>
   <div class="p-8">
-    <ComponentComparisonView class="h-[60vh] w-[60vh] mx-auto" :components="components" :relative-size="relativeSize"></ComponentComparisonView>
+    <ComponentComparisonView class="h-[60vh] w-[60vh] mx-auto" :components="components"
+                             :relative-size="relativeSize"></ComponentComparisonView>
   </div>
 
 </template>
@@ -24,7 +25,7 @@ definePageMeta({
   ]
 })
 
-const relativeSize = ref("file_count")
+const relativeSize = ref(store.statName('complexity:files'))
 const components = computed(() => store.currentComponentScope)
 const distinctStats = computed(() => {
   const properties = {}

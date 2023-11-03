@@ -102,7 +102,6 @@
 
 </template>
 <script setup lang="ts">
-import D3Chart from "~/components/ui/d3/D3Chart.vue";
 import {RawComponent} from "~/utils/components";
 import {PropType} from "@vue/runtime-core";
 import * as d3 from "d3";
@@ -131,11 +130,11 @@ const props = defineProps(
 
       xAxisProperty: {
         type: String,
-        default: 'line_count'
+        default: 'complexity:lines'
       },
       yAxisProperty: {
         type: String,
-        default: 'line_count'
+        default: 'complexity:lines'
       },
       radiusProperty: {
         type: String,

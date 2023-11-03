@@ -21,7 +21,7 @@
             <h3 class="text-xl text-tertiary-500 mb-4 font-semibold">Afferent Coupling</h3>
             <p class="text-sm"><span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br>
               is referenced
-              <span class="text-tertiary-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-tertiary-500 font-semibold">{{ selectedComponent['afferent_coupling_count'] }}</span> files by <span
+              <span class="text-tertiary-500 font-semibold">{{ totalReferencesAfferent }}</span> times in  <span class="text-tertiary-500 font-semibold">{{ selectedComponent[store.statName("modularity:coupling:afferent")] }}</span> files by <span
                   class="font-semibold text-tertiary-500">{{ dependents.length }}</span> other components.</p>
           </div>
         </template>
@@ -134,7 +134,7 @@
             <h3 class="text-xl text-secondary-500 mb-4 font-semibold">Efferent Coupling</h3>
             <p class="text-sm">
               <span class="font-mono text-xs font-bold text">{{ selectedComponent.name }}</span><br> has
-              <span class="text-secondary-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-secondary-500 font-semibold">{{selectedComponent['efferent_coupling_count']}}</span> files to <span
+              <span class="text-secondary-500 font-semibold">{{ totalReferencesEfferent }}</span> references in <span class="text-secondary-500 font-semibold">{{selectedComponent[store.statName("modularity:coupling:efferent")]}}</span> files to <span
                 class="font-semibold text-secondary-500">{{ dependencies.length }}</span> other components.</p>
           </div>
         </template>
