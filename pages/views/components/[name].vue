@@ -4,17 +4,21 @@
     <TabPanel :tabs="tabConfig">
       <template #info>
         <section class="p-4">
-          <InfoTable :component="component"></InfoTable>
+          <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div v-for="stat in topLevelStats">
+              <ComponentInfo class="h-full" :stat="stat" :component="component"></ComponentInfo>
+            </div>
+          </div>
         </section>
       </template>
 
       <template #files>
         <section class="p-4">
-            <div class="flex items-center  gap-2 justify-end mb-3">
-              <label class="text-archstats-500">Columns</label>
-              <MultiSelect :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
+          <div class="flex items-center  gap-2 justify-end mb-3">
+            <label class="text-archstats-500">Columns</label>
+            <MultiSelect :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
 
-            </div>
+          </div>
 
           <div class="w-full">
             <ElementTable :elements="files"
@@ -56,12 +60,13 @@ import {useDataStore} from "~/stores/data";
 import SimplePage from "~/components/ui/common/SimplePage.vue";
 import Headline from "~/components/ui/common/Headline.vue";
 import {Component} from "~/utils/components";
-import InfoTable from "~/components/ui/tables/InfoTable.vue";
 import ElementTable from "~/components/ui/tables/ElementTable.vue";
-import {findCommonPrefix} from "#imports";
+import {columnsToStats, findCommonPrefix} from "#imports";
 import ConnectionChart from "~/components/components/ConnectionChart.vue";
 import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
+import {computed} from "vue";
+import ComponentInfo from "~/components/components/single-component/ComponentInfo.vue";
 
 definePageMeta({
   layout: "has-data-layout",
@@ -84,7 +89,7 @@ const tabConfig = [
   {
     title: "Cycles",
     tabId: "cycles"
-  },
+  }
 ]
 
 const nameInRoute = computed(() => route.params.name as string);
@@ -174,6 +179,10 @@ const selectedCycleGraph = computed(() => {
 
 
   return store.componentSubGraph(Array.from(components))
+})
+
+const topLevelStats = computed(() => {
+  return columnsToStats(store.getDistinctComponentColumns).filter(stat => stat.level === 1)
 })
 </script>
 
