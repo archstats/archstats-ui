@@ -1,6 +1,6 @@
 <template>
 
-  <div class="w-52 border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
+  <div class="w-[340px] border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
        tabindex="0">
     <div class="flex justify-between items-center w-full h-full gap-2 whitespace-nowrap" @click="toggleDropdown">
 
@@ -11,7 +11,7 @@
 
 
     <div v-show="isDropdownOpen"
-         class="z-10 rounded border-2 border-gray-200 absolute top-full left-0 max-h-[450px] min-w-[350px] bg-white overflow-y-auto px-4 py-4">
+         class="z-10 rounded border-2 border-gray-200 absolute top-full right-0 max-h-[450px]  w-[340px] overflow-x-auto bg-white overflow-y-auto px-4 py-4">
       <stat-select-multi-node :stat="stats[0]" :selected-stats='renderedSelectedStats'
                               @select-stat="reactToSelect"></stat-select-multi-node>
     </div>
