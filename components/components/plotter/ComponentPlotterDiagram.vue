@@ -25,7 +25,7 @@
     </div>
     <svg ref="svg" @mousedown="beginDragSelecting" @mouseup="doneDragSelecting" @mousemove="updateMouseCoords"
          :viewBox="`${-margin.left} ${-margin.top} ${width + (margin.left + margin.right)} ${height + (margin.top + margin.bottom)}`"
-         class="w-full h-full border border-gray-200 p-3">
+         class="w-full h-full border border-archstats-100 rounded p-3">
       >
 
       <g v-for="(component, index) in componentsInScope">

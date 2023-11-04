@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full" @mouseenter="mouseEnter" @mouseleave="mouseLeave" tabindex="0" @click="mouseEnter"
+  <div class="relative w-full h-full" @mouseenter="mouseEnter" @mouseleave="mouseLeave" tabindex="0"
        @focusin="hasFocus = true" @focusout="hasFocus = false">
     <slot name="default"></slot>
     <div ref="hovered-content" class="absolute" v-if="shouldShow">
