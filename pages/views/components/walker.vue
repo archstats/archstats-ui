@@ -45,7 +45,7 @@
               </template>
             </ModalTrigger>
 
-            <Card class="self-center relative ">
+            <div class="self-center relative ">
               <div class="h-[510px] overflow-y-scroll">
                 <ComponentInfoList :component="selectedComponent" :columns="store.getDistinctComponentColumns"></ComponentInfoList>
 
@@ -56,7 +56,7 @@
               <div class="absolute top-1/2 -left-40 font-semibold text-tertiary-500">
                 <h2>Dependents</h2>
               </div>
-            </Card>
+            </div>
           </div>
 
         </Pane>
