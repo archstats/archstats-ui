@@ -1,6 +1,6 @@
 <template>
   <div class="bg-archstats-900 h-full py-8 relative" :style="{'width': expanded ? 'fit-content' : '0'}">
-    <div v-if="expanded" class="px-12 flex flex-col h-full justify-between">
+    <div v-if="expanded" class="px-6 flex flex-col h-full justify-between">
       <main>
         <router-link to="/" class="mb-12 flex gap-4 h-12 items-center">
           <img src="/img/archstats/archstats-logo-white.png" alt="Archstats Icon" class="h-full">
@@ -22,10 +22,10 @@
         <section>
           <ModalTrigger>
             <template #trigger>
-              <ArchstatsButton class="secondary" icon="pencil">
-                <span class="text-archstats-100">{{
+              <ArchstatsButton class="secondary" icon="pencil" icon-size="16">
+                <span class="text-archstats-100 text-sm">{{
                     store.currentComponentScope.length
-                  }} of {{ store.allComponents.length }} components in scope</span>
+                  }} of {{ store.allComponents.length }} components</span>
               </ArchstatsButton>
             </template>
 
