@@ -37,67 +37,59 @@
 
   </div>
 </template>
-<script>
+<script lang="ts" setup>
 import {useDataStore} from "~/stores/data";
 import {mapActions, mapState} from "pinia";
 import PrimaryButton from "~/components/ui/buttons/PrimaryButton.vue";
 import Anchor from "~/components/ui/common/Anchor.vue";
 
-export default {
-  components: {
-    Anchor,
-    PrimaryButton
-  },
-  computed: {
-    ...mapState(useDataStore, ['components', 'hasData', 'test', 'componentConnections', "componentGraph"]),
-    availableLanguages() {
-      return ["java", "kotlin", "scala", "php", "csharp"]
-    }
-  },
-  data() {
-    return {
-      componentScope: null,
-      currentLanguageIndex: 0,
-      selectHasBeenInteractedWith: false
-    }
-  },
-  mounted() {
-    setInterval(() => {
-      if (this.selectHasBeenInteractedWith) return
-      this.currentLanguageIndex = (this.currentLanguageIndex + 1) % this.availableLanguages.length
-    }, 2000)
+const store = useDataStore();
+const currentLanguageIndex = ref(0);
+const selectHasBeenInteractedWith = ref(false);
 
-  },
-  methods: {
+const availableLanguages = ["java", "kotlin", "scala", "php", "csharp"]
 
-    ...mapActions(useDataStore, ['setViews']),
-    async repoChanged(data) {
-      await this.setViews(data)
-      await navigateTo("/")
-    },
-    clearData() {
-      this.repoChanged(null)
-    },
-    handleInput() {
-      const input = document.createElement('input');
-      input.type = 'file';
+useSeoMeta({
+  title: "Archstats - Insights for your software architecture",
+  description: "Archstats is a tool for visualizing architectural views and gathering insights for your software.",
+  ogDescription: "Archstats is a tool for visualizing architectural views and gathering insights for your software.",
 
-      input.onchange = e => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
+  ogImage: "/img/archstats/Archstats-updated-.jpg"
+})
 
-        reader.onload = (e) => {
-          const Uints = new Uint8Array(reader.result);
-          this.repoChanged(Uints)
-          input.remove();
-        };
-        reader.readAsArrayBuffer(file);
-      }
-      input.click();
-    },
+function handleInput() {
+  const input = document.createElement('input');
+  input.type = 'file';
 
+  input.onchange = e => {
+    // @ts-ignore
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      // @ts-ignore
+      const Uints = new Uint8Array(reader.result);
+      repoChanged(Uints)
+      input.remove();
+    };
+    reader.readAsArrayBuffer(file);
   }
+  input.click();
 }
+
+async function repoChanged(data: any) {
+  await store.setViews(data)
+  await navigateTo("/")
+}
+
+onMounted(() => {
+  setInterval(() => {
+    if (selectHasBeenInteractedWith.value) return
+    currentLanguageIndex.value = (currentLanguageIndex.value + 1) % availableLanguages.length
+  }, 2000)
+})
+
+
 </script>
 
 <style>
