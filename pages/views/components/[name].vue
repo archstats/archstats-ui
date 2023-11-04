@@ -1,4 +1,7 @@
 <template>
+  <Head>
+    <Meta title="Component"/>
+  </Head>
   <SimplePage>
     <Headline>{{ component.name }}</Headline>
     <TabPanel :tabs="tabConfig">
@@ -63,6 +66,17 @@ import ConnectionChart from "~/components/components/ConnectionChart.vue";
 import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
 
+const nameInRoute = computed(() => route.params.name as string);
+
+const component = computed<Component>(() => store.allComponents.find(c => c.name === nameInRoute.value)!)
+
+
+onMounted(() => {
+  useSeoMeta({
+    title: nameInRoute.value,
+  })
+})
+
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
@@ -87,9 +101,6 @@ const tabConfig = [
   },
 ]
 
-const nameInRoute = computed(() => route.params.name as string);
-
-const component = computed<Component>(() => store.allComponents.find(c => c.name === nameInRoute.value)!)
 
 const files = computed(() => {
   const files = store.query(`

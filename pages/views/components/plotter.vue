@@ -73,7 +73,10 @@ import {computed} from "vue";
 import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
 import LongHover from "~/components/ui/common/LongHover.vue";
 import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
-
+import {RawComponent} from "~/utils/components";
+useSeoMeta({
+  title: "Plotter",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
@@ -83,9 +86,9 @@ definePageMeta({
 
 const store = useDataStore();
 const showText = ref(false)
-const xAxisProperty = ref("modularity:instability")
-const yAxisProperty = ref("modularity:abstractness")
-const radiusProperty = ref<string | null>("line:count")
+const xAxisProperty = ref(store.statName("modularity:instability"))
+const yAxisProperty = ref(store.statName("modularity:abstractness"))
+const radiusProperty = ref<string | null>(store.statName('complexity:lines'))
 const selectedComponents = ref<RawComponent[]>([])
 
 const distinctStats = computed(() => {

@@ -20,4 +20,10 @@ import NavBar from "~/components/navbar/NavBar.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 
 const navExpanded = ref(true)
+
+useHead({
+  titleTemplate: (titleChunk) => {
+    return titleChunk ? `${titleChunk} - Archstats` : 'Archstats';
+  }
+})
 </script>

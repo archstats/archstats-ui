@@ -10,6 +10,9 @@ import DistanceMainSequenceChart from "~/components/views/distance-main-sequence
 import ChordDiagram from "~/components/components/chord/ChordDiagram.vue";
 const store = useDataStore();
 
+useSeoMeta({
+  title: "Chord",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
