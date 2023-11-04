@@ -11,6 +11,7 @@
   "dependencies": {
     "@nuxt/image": "^1.0.0-rc.3",
     "@pinia/nuxt": "^0.4.11",
+    "change-case": "^5.1.2",
     "css.gg": "^2.1.1",
     "d3": "^7.6.1",
     "d3-force": "^3.0.0",
