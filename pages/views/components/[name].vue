@@ -6,7 +6,7 @@
         <section class="p-4">
           <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             <div v-for="stat in topLevelStats">
-              <ComponentInfo class="h-full" :stat="stat" :component="component"></ComponentInfo>
+              <ComponentSinglePageInfo class="h-full" :stat="stat" :component="component"></ComponentSinglePageInfo>
             </div>
           </div>
         </section>
@@ -66,7 +66,7 @@ import ConnectionChart from "~/components/components/ConnectionChart.vue";
 import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
 import {computed} from "vue";
-import ComponentInfo from "~/components/components/single-component/ComponentInfo.vue";
+import ComponentSinglePageInfo from "~/components/components/single-component/ComponentSinglePageInfo.vue";
 
 definePageMeta({
   layout: "has-data-layout",

@@ -18,7 +18,7 @@
       </table>
     </div>
     <div v-for="child in categories">
-      <ComponentInfo :stat="child" :component="component"></ComponentInfo>
+      <ComponentSinglePageInfo :stat="child" :component="component"></ComponentSinglePageInfo>
     </div>
   </div>
 
