@@ -1,5 +1,5 @@
 <template>
-  <router-link :to="path" class="bg-gray-50 transition-all duration-200 rounded-xl grid grid-cols-2 overflow-clip shadow-md cursor"
+  <router-link :to="path" class="bg-gray-50 transition-all duration-200 rounded-xl grid grid-cols-2 overflow-clip shadow-md cursor hover:scale-[1.02] hover:shadow-xl"
   >
     <div class="p-8">
       <CardHeadline>{{ name }}</CardHeadline>
