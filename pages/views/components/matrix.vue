@@ -67,7 +67,9 @@ import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 
 const store = useDataStore();
 
-
+useSeoMeta({
+  title: "Matrix",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [

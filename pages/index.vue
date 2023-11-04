@@ -46,6 +46,9 @@ import Headline from "~/components/ui/common/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 
+useSeoMeta({
+  title: "Home",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [

@@ -17,7 +17,9 @@ import ComponentComparisonView from "~/components/components/comparison/Componen
 import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 
 const store = useDataStore();
-
+useSeoMeta({
+  title: "Comparison",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [

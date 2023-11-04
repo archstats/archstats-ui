@@ -162,7 +162,9 @@ import SelectComponentModal from "~/components/components/modals/SelectComponent
 import SelectPathModal from "~/components/components/modals/SelectPathModal.vue";
 import ComponentInfoList from "~/components/components/info-list/ComponentInfoList.vue";
 
-
+useSeoMeta({
+  title: "Walker",
+})
 definePageMeta({
   layout: "has-data-layout",
   middleware: [
