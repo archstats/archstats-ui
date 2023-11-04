@@ -1,7 +1,4 @@
 <template>
-  <Head>
-    <Meta title="Component"/>
-  </Head>
   <SimplePage>
     <Headline>{{ component.name }}</Headline>
     <TabPanel :tabs="tabConfig">
