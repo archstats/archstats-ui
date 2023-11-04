@@ -1,5 +1,5 @@
 <template>
-  <div class="my-36 container">
+  <div class="my-20 mx-12">
     <SummarySection/>
     <main>
       <Headline>Views</Headline>
