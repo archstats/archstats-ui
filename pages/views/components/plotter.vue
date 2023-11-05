@@ -26,13 +26,12 @@
       </ArchstatsButton>
 
     </div>
-    <div class="flex flex-grow px-16 pt-14 gap-4 items-center overflow-x-auto">
-      <div class="text-archstats-500">Presets:</div>
+    <div class="flex flex-grow px-16 py-5 gap-4 items-center overflow-x-auto bg-archstats-50">
       <LongHover v-for="preset in presets"
                  :disabled="!preset.description"
                  :time="1000"
                  @click="selectPreset(preset)"
-                 class="px-4 text-archstats-800 whitespace-nowrap py-1 w-fit cursor-pointer border border-archstats-500 transition-all bg-archstats-50 rounded-full hover:bg-archstats-100"
+                 class="px-4 text-archstats-800 whitespace-nowrap py-1 w-fit cursor-pointer border border-archstats-500 transition-all rounded-full hover:bg-archstats-100"
                  :class="{ 'border-secondary-500 bg-secondary-50 hover:bg-secondary-100 text-secondary-800': presetIsActive(preset)}"
       >
         {{ preset.name }}
@@ -45,7 +44,7 @@
 
     </div>
 
-    <main class="flex-grow items-center justify-center px-20 mt-4">
+    <main class="flex-grow items-center justify-center px-20 mt-20">
       <ComponentPlotterDiagram class="mx-40 h-[70vh]"
                                @component-clicked="navToComponent($event)"
                                :all-components="store.allComponents"

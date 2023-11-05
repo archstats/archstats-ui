@@ -1,6 +1,5 @@
 <template>
-  <div class="relative w-full h-full" @mouseenter="mouseEnter" @mouseleave="mouseLeave" tabindex="0"
-       @focusin="hasFocus = true" @focusout="hasFocus = false">
+  <div class="relative w-full h-full" @mouseenter="mouseEnter" @mouseleave="mouseLeave" tabindex="0">
     <slot name="default"></slot>
     <div ref="hovered-content" class="absolute" v-if="shouldShow">
       <slot name="hovered-content"></slot>
@@ -11,7 +10,6 @@
 </template>
 
 <script setup lang="ts">
-import {useDataStore} from "~/stores/data";
 
 const props = defineProps({
   time: {
