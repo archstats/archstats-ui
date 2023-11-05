@@ -26,15 +26,15 @@
       </ArchstatsButton>
 
     </div>
-    <div class="flex flex-grow px-16 py-5 bg-gray-200 gap-4 items-center overflow-x-auto">
-      <div class="text-archstats-500">Presets:</div>
+    <div class="flex flex-grow px-16 py-5 gap-4 items-center overflow-x-auto bg-archstats-50">
       <LongHover v-for="preset in presets"
                  :disabled="!preset.description"
                  :time="1000"
-           @click="selectPreset(preset)"
-           class="px-4 text-archstats-800 whitespace-nowrap py-1 w-fit cursor-pointer border border-archstats-500 transition-all bg-tertiary-50 rounded-full hover:bg-tertiary-100">
+                 @click="selectPreset(preset)"
+                 class="px-4 text-archstats-800 whitespace-nowrap py-1 w-fit cursor-pointer border border-archstats-500 transition-all rounded-full hover:bg-archstats-100"
+                 :class="{ 'border-secondary-500 bg-secondary-50 hover:bg-secondary-100 text-secondary-800': presetIsActive(preset)}"
+      >
         {{ preset.name }}
-
         <template #hovered-content>
           <div class="fixed w-96  p-4 bg-black shadow z-[1000] rounded text-sm">
             <div class="text-white whitespace-normal">{{ preset.description }}</div>
@@ -44,7 +44,7 @@
 
     </div>
 
-    <main class="flex-grow items-center justify-center px-20 mt-10">
+    <main class="flex-grow items-center justify-center px-20 mt-20">
       <ComponentPlotterDiagram class="mx-40 h-[70vh]"
                                @component-clicked="navToComponent($event)"
                                :all-components="store.allComponents"
@@ -74,6 +74,7 @@ import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
 import LongHover from "~/components/ui/common/LongHover.vue";
 import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
 import {RawComponent} from "~/utils/components";
+
 useSeoMeta({
   title: "Plotter",
 })
@@ -122,11 +123,17 @@ function statAvailable(stat: string) {
 const presets = computed(() => {
   let presetsToReturn: Preset[] = [
     {
-      name: "Distance to Main Sequence (DMS)", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'complexity:lines',
+      name: "Distance to Main Sequence (DMS)",
+      xAxis: "modularity:instability",
+      yAxis: "modularity:abstractness",
+      radius: 'complexity:lines',
       description: 'The main sequence is the ideal position for a component. It signifies a perfect balance between abstractness and instability. The closer a component is to the main sequence, the better.'
     },
     {
-      name: "Age vs Churn vs DMS", xAxis: "git:age_in_days", yAxis: "git:commits:total", radius: 'modularity:distance_main_sequence',
+      name: "Age vs Churn vs DMS",
+      xAxis: "git:age_in_days",
+      yAxis: "git:commits:total",
+      radius: 'modularity:distance_main_sequence',
       description: 'Older components tend to have more churn. This is because they have been around for longer and have been changed more often. But if that component does not have a good balance between abstractness and instability, it is likely that further changes will be more painful.'
     },
     {
@@ -139,16 +146,22 @@ const presets = computed(() => {
       name: "Betweenness vs Max Indentation", xAxis: "graph:betweenness", yAxis: "complexity:indentation:max"
     },
     {
-      name:"Avg. Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:avg"
+      name: "Avg. Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:avg"
     },
     {
-      name:"Max Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:max"
+      name: "Max Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:max"
     },
     {
-      name: "DMS vs Betweenness", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'graph:betweenness',
+      name: "DMS vs Betweenness",
+      xAxis: "modularity:instability",
+      yAxis: "modularity:abstractness",
+      radius: 'graph:betweenness',
     },
     {
-      name: "DMS vs Churn", xAxis: "modularity:instability", yAxis: "modularity:abstractness", radius: 'git:commits:total',
+      name: "DMS vs Churn",
+      xAxis: "modularity:instability",
+      yAxis: "modularity:abstractness",
+      radius: 'git:commits:total',
     },
     {
       name: "Authors vs Churn", xAxis: "git:authors:total", yAxis: "git:commits:total",
@@ -161,7 +174,13 @@ const presets = computed(() => {
 
 })
 
+function presetIsActive(preset: Preset) {
+  console.log(preset)
+  return xAxisProperty.value === preset.xAxis && yAxisProperty.value === preset.yAxis && radiusProperty.value === preset.radius
+}
+
 const router = useRouter();
+
 function navToComponent(component: RawComponent) {
   router.push("/views/components/" + component.name)
 }

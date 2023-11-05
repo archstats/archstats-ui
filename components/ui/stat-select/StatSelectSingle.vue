@@ -1,5 +1,5 @@
 <template>
-  <div class="w-fit border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
+  <div class="w-fit border border-archstats-500 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
        tabindex="0">
     <div class="flex justify-between items-center w-full h-full gap-2" @click="toggleDropdown">
 
