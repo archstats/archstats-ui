@@ -16,7 +16,7 @@
         <section class="p-4">
           <div class="flex items-center  gap-2 justify-end mb-3">
             <label class="text-archstats-500">Columns</label>
-            <MultiSelect :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
+            <StatSelectMulti :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
 
           </div>
 
@@ -67,6 +67,7 @@ import MultiSelect from "~/components/ui/common/MultiSelect.vue";
 import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
 import {computed} from "vue";
 import ComponentSinglePageInfo from "~/components/components/single-component/ComponentSinglePageInfo.vue";
+import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
 
 const nameInRoute = computed(() => route.params.name as string);
 
@@ -114,14 +115,11 @@ const files = computed(() => {
     [key: string]: any
   }[];
 
-  const fileNames = files.map(f => f.name)
-
-  const dir = findCommonPrefix(fileNames)
-
   return files.map(f => {
+
     return {
       ...f,
-      name: f.name.replace(dir, "../")
+      name: f.name.replace(f[store.statName("directory")], "..")
     }
   })
 })

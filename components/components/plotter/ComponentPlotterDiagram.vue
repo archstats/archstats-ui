@@ -107,6 +107,7 @@ import {PropType} from "@vue/runtime-core";
 import * as d3 from "d3";
 import Expandable from "~/components/ui/common/Expandable.vue";
 import InfoTable from "~/components/ui/tables/InfoTable.vue";
+import {useDataStore} from "~/stores/data";
 
 
 const props = defineProps(
@@ -254,8 +255,10 @@ function hoverOver(index: number, event: MouseEvent) {
   }
 }
 
+const store = useDataStore()
+
 const isDistanceMainSequence = computed(() => {
-  return props.xAxisProperty === "instability" && props.yAxisProperty === "abstractness"
+  return props.xAxisProperty === store.statName("modularity:instability")  && props.yAxisProperty === store.statName("modularity:abstractness")
 })
 
 function shouldShowText(idx: number) {
