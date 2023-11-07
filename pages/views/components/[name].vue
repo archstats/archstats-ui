@@ -6,7 +6,7 @@
         <section class="p-4">
           <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             <div v-for="stat in topLevelStats">
-              <ComponentSinglePageInfo class="h-full" :stat="stat" :component="component"></ComponentSinglePageInfo>
+              <ComponentInfoListNode class="h-full" :stat="stat" :component="component"></ComponentInfoListNode>
             </div>
           </div>
         </section>
@@ -41,7 +41,7 @@
                             :elements="cyclesIncludedIn"></ElementTable>
             </div>
             <div v-if="selectedCycleGraph" class="items-center w-full">
-              <ConnectionChart class="h-full" :components="selectedCycleGraph" relative-size="line_count"
+              <ConnectionChart class="h-full" :components="selectedCycleGraph"
                                :connections="[]"/>
             </div>
           </div>
@@ -68,6 +68,7 @@ import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
 import {computed} from "vue";
 import ComponentSinglePageInfo from "~/components/components/single-component/ComponentSinglePageInfo.vue";
 import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
+import ComponentInfoListNode from "~/components/components/info-list/ComponentInfoListNode.vue";
 
 const nameInRoute = computed(() => route.params.name as string);
 

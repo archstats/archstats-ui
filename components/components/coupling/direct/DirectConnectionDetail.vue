@@ -16,7 +16,6 @@
 
 import {computed} from "vue";
 import {useDataStore} from "~/stores/data";
-import LongHover from "~/components/ui/common/LongHover.vue";
 
 const store = useDataStore();
 
@@ -29,9 +28,7 @@ const props = defineProps<{
 }>()
 
 const lines = computed(() => {
-  console.log("lines", snippets.value)
   return toRanges(snippets.value.map(snippet => {
-    console.log("snippet", snippets.value)
     return parseInt(snippet.begin_position.split(":")[0]);
   })).join(", ")
 })
@@ -47,15 +44,7 @@ const snippets = computed(() =>
       end_position: string,
       content: string
     }[]))
-
-const expanded = ref(props.expandedByDefault)
-
-function iconClicked() {
-  expanded.value = !expanded.value
-}
-
 function toRanges(numbers: number[]): string[] {
-  console.log(numbers)
   const ranges: string[] = [];
   let start = numbers[0];
   let end = numbers[0];

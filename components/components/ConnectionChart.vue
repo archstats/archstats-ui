@@ -20,23 +20,18 @@ const chartId = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(2, 10)
 const props = defineProps<{
   components: Component[]
 }>()
-
-
-const relativeSize = ref('afferent_coupling_count')
-
-
 const computedComponents = computed(() => {
   return props.components
 })
 
 watch(() => props.components, () => {
-  renderChart(computedComponents.value, relativeSize.value);
+  renderChart(computedComponents.value);
 })
 onMounted(() => {
-  renderChart(computedComponents.value, relativeSize.value);
+  renderChart(computedComponents.value);
 });
 watchEffect(() => {
-  renderChart(computedComponents.value, relativeSize.value);
+  renderChart(computedComponents.value);
 });
 
 // @ts-ignore
@@ -66,7 +61,7 @@ function drag(simulation: Simulation<ComponentWithNodeDatum, ConnectionWithLinkD
       });
 }
 
-function renderChart(components: Component[], sizeProp = "afferent_coupling_count") {
+function renderChart(components: Component[]) {
   const width = 500, height = 500;
   const nodes: ComponentWithNodeDatum[] = components.map(c => {
     return {

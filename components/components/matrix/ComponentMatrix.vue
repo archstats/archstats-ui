@@ -230,7 +230,7 @@ const tailwindBackgroundIndexHorizontal = computed(() => {
 
 
 const tailwindBgColorsHorizontal = [
-  "bg-archstats-50",
+  // "bg-archstats-50",
   "bg-archstats-100",
   "bg-archstats-200",
   "bg-archstats-300",
@@ -243,7 +243,7 @@ const tailwindBgColorsHorizontal = [
 ]
 
 const tailwindBgColorsVertical = [
-  "bg-secondary-50",
+  // "bg-secondary-50",
   "bg-secondary-100",
   "bg-secondary-200",
   "bg-secondary-300",
