@@ -5,7 +5,7 @@
         pairData.shared_commits
       }}</span>
       <template #hovered-content>
-        <div class="absolute bg-gray-100 p-4  z-30 rounded shadow">
+        <div class="absolute bg-gray-100 border border-archstats-100 p-4  z-30 rounded shadow">
           <div class="max-h-40 overflow-y-scroll">
             <GitSharedCommits :from="from" :to="to"></GitSharedCommits>
           </div>
