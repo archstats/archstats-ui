@@ -1,7 +1,7 @@
 <template>
-  <div class="w-fit border border-archstats-500 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
+  <div class="w-fit border border-archstats-500 relative rounded cursor-pointer" @blur="isDropdownOpen=false"
        tabindex="0">
-    <div class="flex justify-between items-center w-full h-full gap-2" @click="toggleDropdown">
+    <div class="flex justify-between items-center px-4 py-3  w-full h-full gap-2" @click="toggleDropdown">
 
       <span :class="{'text-gray-400': !modelValue }">{{ modelValue }}</span>
 
@@ -10,7 +10,7 @@
 
 
     <div v-show="isDropdownOpen"
-         class="z-10 rounded border-2 border-gray-200 absolute top-full left-0 max-h-[450px] bg-white overflow-y-auto">
+         class="z-10 rounded border-2 border-gray-200 absolute top-full left-0 max-h-[450px] w-60 bg-white overflow-y-auto">
       <StatSelectOptionNode :stat="stats[0]" @select-stat="handleSelect($event)"></StatSelectOptionNode>
     </div>
   </div>

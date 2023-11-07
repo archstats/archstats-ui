@@ -19,7 +19,7 @@
       </tr>
       </thead>
       <tbody class="overflow-hidden">
-      <tr v-for="(row, rowIndex) in orderedComponents" class="hover:bg-gray-100 overflow-clip py-0 "
+      <tr v-for="(row, rowIndex) in orderedComponents" class="overflow-clip py-0 "
           :key="`${row.name}`" :style="{height:'1em'}">
         <td :style="{'font-size': '0.8em'}" class=" left-0 bg-white text-left whitespace-nowrap py-0 pr-2">
           <router-link :to="`/views/components/${row.name}`"

@@ -2,7 +2,11 @@
   <div class="h-20 bg-archstats-50 flex px-16 gap-8 items-center justify-between">
     <input placeholder="RegEx Search..." v-model="search" class="w-96 bg-white px-4 py-2 bg-gray-100  box-border border border-archstats-500 rounded font-mono">
 
-    <StatSelectMulti :options="store.getDistinctComponentColumns" v-model="selectedStats"></StatSelectMulti>
+    <div class="flex items-center gap-2">
+      <div class="text-archstats-500">Columns</div>
+      <StatSelectMulti :options="store.getDistinctComponentColumns" v-model="selectedStats"></StatSelectMulti>
+
+    </div>
 
   </div>
 

@@ -1,8 +1,8 @@
 <template>
 
-  <div class="w-[340px] border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur="isDropdownOpen=false"
+  <div class="w-[340px] border border-gray-400 relative rounded  cursor-pointer" @blur="isDropdownOpen=false"
        tabindex="0">
-    <div class="flex justify-between items-center w-full h-full gap-2 whitespace-nowrap" @click="toggleDropdown">
+    <div class="flex justify-between items-center w-full h-full px-4 py-3 gap-2 whitespace-nowrap" @click="toggleDropdown">
 
       <span :class="{'text-gray-400': !modelValue.length }">{{ modelValue.length }} of {{ allRealStats.length }} selected</span>
 

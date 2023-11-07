@@ -2,17 +2,8 @@
   <div class="font-normal">
     <div class="flex gap-2">
       <div class="">
-        <LongHover>
-          <template #default>
-            <h5 class="font-mono hover:text-archstats-200 cursor-pointer z-1 whitespace-nowrap"><span class="select-none text-archstats-200">{{reference_count}}x </span>{{ file }}</h5>
-          </template>
-          <template #hovered-content>
-            <div class="mt-1 mb-3 absolute bg-gray-100 p-4 shadow-2xl z-10 rounded text-archstats-500">
-              <p class="whitespace-nowrap" >Referenced <span>{{ reference_count }}</span> time(s) on line number(s): <span class="font-bold">{{ lines }}</span></p>
-            </div>
-          </template>
-        </LongHover>
-
+        <h5 class="font-mono z-1 whitespace-nowrap"><span
+            class="select-none text-archstats-200">{{ reference_count }}x </span>{{ file }}</h5>
       </div>
     </div>
 
@@ -38,14 +29,18 @@ const props = defineProps<{
 }>()
 
 const lines = computed(() => {
-  return toRanges(snippets.value.map(snippet => parseInt(snippet.begin_position.split(":")[0]))).join(", ")
+  console.log("lines", snippets.value)
+  return toRanges(snippets.value.map(snippet => {
+    console.log("snippet", snippets.value)
+    return parseInt(snippet.begin_position.split(":")[0]);
+  })).join(", ")
 })
 const snippets = computed(() =>
     (store.query(`
       SELECT *
       FROM snippets
       WHERE file = '${props.file}'
-        AND snippet_type = 'component_import'
+        AND snippet_type = '${store.statName('modularity:component:imports')}'
         AND content = '${props.to}'
     `) as {
       begin_position: string,
@@ -60,6 +55,7 @@ function iconClicked() {
 }
 
 function toRanges(numbers: number[]): string[] {
+  console.log(numbers)
   const ranges: string[] = [];
   let start = numbers[0];
   let end = numbers[0];
