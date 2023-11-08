@@ -92,10 +92,7 @@ const yAxisProperty = ref(store.statName("modularity:abstractness"))
 const radiusProperty = ref<string | null>(store.statName('complexity:lines'))
 const selectedComponents = ref<RawComponent[]>([])
 
-const distinctStats = computed(() => {
-
-  return store.getDistinctComponentColumns.filter(k => !["report_id", "report_timestamp", "name"].includes(k))
-})
+const distinctStats = computed(() => store.getDistinctComponentColumns)
 
 function selectionToCurrentScope() {
   store.setCurrentScope(selectedComponents.value)
@@ -128,6 +125,12 @@ const presets = computed(() => {
       yAxis: "modularity:abstractness",
       radius: 'complexity:lines',
       description: 'The main sequence is the ideal position for a component. It signifies a perfect balance between abstractness and instability. The closer a component is to the main sequence, the better.'
+    },
+    {
+      name: "DMS vs Code Changes",
+      xAxis: "modularity:instability",
+      yAxis: "modularity:abstractness",
+      radius: 'git:commits:total',
     },
     {
       name: "Age vs Churn vs DMS",
@@ -175,7 +178,6 @@ const presets = computed(() => {
 })
 
 function presetIsActive(preset: Preset) {
-  console.log(preset)
   return xAxisProperty.value === preset.xAxis && yAxisProperty.value === preset.yAxis && radiusProperty.value === preset.radius
 }
 
