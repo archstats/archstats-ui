@@ -130,6 +130,12 @@ const presets = computed(() => {
       description: 'The main sequence is the ideal position for a component. It signifies a perfect balance between abstractness and instability. The closer a component is to the main sequence, the better.'
     },
     {
+      name: "DMS vs Code Changes",
+      xAxis: "modularity:instability",
+      yAxis: "modularity:abstractness",
+      radius: 'git:commits:total',
+    },
+    {
       name: "Age vs Churn vs DMS",
       xAxis: "git:age_in_days",
       yAxis: "git:commits:total",
