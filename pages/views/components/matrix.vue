@@ -94,13 +94,7 @@ const orderBy = ref("name")
 const reverse = ref(false)
 
 const distinctStats = computed(() => {
-  const properties: { [key: string]: boolean } = {}
-  store.currentComponentScope.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => !["report_id", "report_timestamp"].includes(k))
+  return store.getDistinctComponentColumns
 })
 
 const orderedComponents = computed(() => {

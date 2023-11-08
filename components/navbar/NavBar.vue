@@ -51,7 +51,7 @@ const componentViews = {
   "Component Comparison": "/views/components/comparison",
   "Component Matrix": "/views/components/matrix",
   "Component Plotter": "/views/components/plotter",
-  "Component Chord": "/views/components/chord",
+  // "Component Chord": "/views/components/chord",
   "Component Table": "/views/components/table",
 }
 
