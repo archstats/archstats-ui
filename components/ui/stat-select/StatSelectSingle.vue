@@ -3,7 +3,7 @@
        tabindex="0">
     <div class="flex justify-between items-center px-4 py-3  w-full h-full gap-2" @click="toggleDropdown">
 
-      <span :class="{'text-gray-400': !modelValue }">{{ modelValue }}</span>
+      <span :class="{'text-gray-400': !modelValue }">{{ modelValue ?? "Select metric" }}</span>
 
       <Icon icon="chevron-down"></Icon>
     </div>

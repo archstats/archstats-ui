@@ -92,10 +92,7 @@ const yAxisProperty = ref(store.statName("modularity:abstractness"))
 const radiusProperty = ref<string | null>(store.statName('complexity:lines'))
 const selectedComponents = ref<RawComponent[]>([])
 
-const distinctStats = computed(() => {
-
-  return store.getDistinctComponentColumns.filter(k => !["report_id", "report_timestamp", "name"].includes(k))
-})
+const distinctStats = computed(() => store.getDistinctComponentColumns)
 
 function selectionToCurrentScope() {
   store.setCurrentScope(selectedComponents.value)
@@ -181,7 +178,6 @@ const presets = computed(() => {
 })
 
 function presetIsActive(preset: Preset) {
-  console.log(preset)
   return xAxisProperty.value === preset.xAxis && yAxisProperty.value === preset.yAxis && radiusProperty.value === preset.radius
 }
 

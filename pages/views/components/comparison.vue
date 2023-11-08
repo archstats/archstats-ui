@@ -2,7 +2,7 @@
   <div class="bg-gray-100 px-16 py-4 flex items-center">
     <div class="flex gap-2 items-center">
       <label class="text-archstats-500">Relative Size</label>
-      <StatSelectSingle :options="distinctStats" v-model="relativeSize" class="w-64"></StatSelectSingle>
+      <StatSelectSingle :options="store.getDistinctComponentColumns" v-model="relativeSize" class="w-64"></StatSelectSingle>
     </div>
   </div>
   <div class="p-8">
@@ -29,13 +29,5 @@ definePageMeta({
 
 const relativeSize = ref(store.statName('complexity:files'))
 const components = computed(() => store.currentComponentScope)
-const distinctStats = computed(() => {
-  const properties = {}
-  components.value.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => k !== 'name')
-})
+
 </script>
