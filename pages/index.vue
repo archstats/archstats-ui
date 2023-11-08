@@ -22,12 +22,12 @@
             image="/img/matrix.png"
             description="This view shows the connections between components in a matrix."
         />
-        <ViewCard
-            name="Component Chord"
-            path="/views/components/chord"
-            image="/img/chord.png"
-            description="This view shows the connections between components in a chord diagram."
-        />
+<!--        <ViewCard-->
+<!--            name="Component Chord"-->
+<!--            path="/views/components/chord"-->
+<!--            image="/img/chord.png"-->
+<!--            description="This view shows the connections between components in a chord diagram."-->
+<!--        />-->
         <ViewCard
             name="Component Plotter"
             path="/views/components/plotter"
