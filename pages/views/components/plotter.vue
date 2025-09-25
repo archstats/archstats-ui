@@ -87,9 +87,9 @@ definePageMeta({
 
 const store = useDataStore();
 const showText = ref(false)
-const xAxisProperty = ref(store.statName("modularity:instability"))
-const yAxisProperty = ref(store.statName("modularity:abstractness"))
-const radiusProperty = ref<string | null>(store.statName('complexity:lines'))
+const xAxisProperty = ref(store.statName("modularity__instability"))
+const yAxisProperty = ref(store.statName("modularity__abstractness"))
+const radiusProperty = ref<string | null>(store.statName('complexity__lines'))
 const selectedComponents = ref<RawComponent[]>([])
 
 const distinctStats = computed(() => store.getDistinctComponentColumns)
@@ -121,53 +121,53 @@ const presets = computed(() => {
   let presetsToReturn: Preset[] = [
     {
       name: "Distance to Main Sequence (DMS)",
-      xAxis: "modularity:instability",
-      yAxis: "modularity:abstractness",
-      radius: 'complexity:lines',
+      xAxis: "modularity__instability",
+      yAxis: "modularity__abstractness",
+      radius: 'complexity__lines',
       description: 'The main sequence is the ideal position for a component. It signifies a perfect balance between abstractness and instability. The closer a component is to the main sequence, the better.'
     },
     {
       name: "DMS vs Code Changes",
-      xAxis: "modularity:instability",
-      yAxis: "modularity:abstractness",
-      radius: 'git:commits:total',
+      xAxis: "modularity__instability",
+      yAxis: "modularity__abstractness",
+      radius: 'git__commits__total',
     },
     {
       name: "Age vs Churn vs DMS",
-      xAxis: "git:age_in_days",
-      yAxis: "git:commits:total",
-      radius: 'modularity:distance_main_sequence',
+      xAxis: "git__age_in_days",
+      yAxis: "git__commits:total",
+      radius: 'modularity__distance_main_sequence',
       description: 'Older components tend to have more churn. This is because they have been around for longer and have been changed more often. But if that component does not have a good balance between abstractness and instability, it is likely that further changes will be more painful.'
     },
     {
-      name: "Betweenness vs Churn", xAxis: "graph:betweenness", yAxis: "git:commits:total"
+      name: "Betweenness vs Churn", xAxis: "graph__betweenness", yAxis: "git__commits__total"
     },
     {
-      name: "Betweenness vs Avg. Indentation", xAxis: "graph:betweenness", yAxis: "complexity:indentation:avg"
+      name: "Betweenness vs Avg. Indentation", xAxis: "graph__betweenness", yAxis: "complexity__indentation__avg"
     },
     {
-      name: "Betweenness vs Max Indentation", xAxis: "graph:betweenness", yAxis: "complexity:indentation:max"
+      name: "Betweenness vs Max Indentation", xAxis: "graph__betweenness", yAxis: "complexity__indentation__max"
     },
     {
-      name: "Avg. Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:avg"
+      name: "Avg. Indentation vs Line Count", yAxis: "complexity__lines", xAxis: "complexity__indentation__avg"
     },
     {
-      name: "Max Indentation vs Line Count", yAxis: "complexity:lines", xAxis: "complexity:indentation:max"
+      name: "Max Indentation vs Line Count", yAxis: "complexity__lines", xAxis: "complexity__indentation__max"
     },
     {
       name: "DMS vs Betweenness",
-      xAxis: "modularity:instability",
-      yAxis: "modularity:abstractness",
-      radius: 'graph:betweenness',
+      xAxis: "modularity__instability",
+      yAxis: "modularity__abstractness",
+      radius: 'graph__betweenness',
     },
     {
       name: "DMS vs Churn",
-      xAxis: "modularity:instability",
-      yAxis: "modularity:abstractness",
-      radius: 'git:commits:total',
+      xAxis: "modularity__instability",
+      yAxis: "modularity__abstractness",
+      radius: 'git__commits__total',
     },
     {
-      name: "Authors vs Churn", xAxis: "git:authors:total", yAxis: "git:commits:total",
+      name: "Authors vs Churn", xAxis: "git__authors:total", yAxis: "git__commits__total",
     },
   ]
 

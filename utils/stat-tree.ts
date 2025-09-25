@@ -8,7 +8,7 @@ export interface Stat {
 }
 
 // Breaks down a hierarchical list of stats like to a tree
-export function columnsToStats(columns: string[], separator = ":"): Stat[] {
+export function columnsToStats(columns: string[], separator = "__"): Stat[] {
     const splittedColumns = columns.map(c => c.split(separator))
     const index = new Map<string, Stat>()
 

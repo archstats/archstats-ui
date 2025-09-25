@@ -37,7 +37,7 @@ const snippets = computed(() =>
       SELECT *
       FROM snippets
       WHERE file = '${props.file}'
-        AND snippet_type = '${store.statName('modularity:component:imports')}'
+        AND snippet_type = '${store.statName('modularity__component__imports')}'
         AND content = '${props.to}'
     `) as {
       begin_position: string,

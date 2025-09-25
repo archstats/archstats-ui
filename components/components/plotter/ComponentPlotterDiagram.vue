@@ -131,11 +131,11 @@ const props = defineProps(
 
       xAxisProperty: {
         type: String,
-        default: 'complexity:lines'
+        default: 'complexity__lines'
       },
       yAxisProperty: {
         type: String,
-        default: 'complexity:lines'
+        default: 'complexity__lines'
       },
       radiusProperty: {
         type: String,
@@ -258,7 +258,7 @@ function hoverOver(index: number, event: MouseEvent) {
 const store = useDataStore()
 
 const isDistanceMainSequence = computed(() => {
-  return props.xAxisProperty === store.statName("modularity:instability")  && props.yAxisProperty === store.statName("modularity:abstractness")
+  return props.xAxisProperty === store.statName("modularity__instability")  && props.yAxisProperty === store.statName("modularity__abstractness")
 })
 
 function shouldShowText(idx: number) {

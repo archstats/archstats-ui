@@ -1,13 +1,8 @@
 <template>
-  <div class="bg-gray-100 px-16 py-4 flex items-center">
-    <div class="flex gap-2 items-center">
-      <label class="text-archstats-500">Relative Size</label>
-      <StatSelectSingle :options="store.getDistinctComponentColumns" v-model="relativeSize" class="w-64"></StatSelectSingle>
-    </div>
-  </div>
-  <div class="p-8">
-    <ComponentComparisonView class="h-[60vh] w-[60vh] mx-auto" :components="components"
-                             :relative-size="relativeSize"></ComponentComparisonView>
+
+  <div class="p-8 h-full">
+
+    <ArcDiagram class="h-full overflow-y-scroll" :components="components"  :connections = "connections" relative-size="relativeSize"></ArcDiagram>
   </div>
 
 </template>
@@ -15,6 +10,7 @@
 import {useDataStore} from "~/stores/data";
 import ComponentComparisonView from "~/components/components/comparison/ComponentComparisonView.vue";
 import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
+import ArcDiagram from "~/components/components/arc/ArcDiagram.vue";
 
 const store = useDataStore();
 useSeoMeta({
@@ -29,5 +25,6 @@ definePageMeta({
 
 const relativeSize = ref(store.statName('complexity__files'))
 const components = computed(() => store.currentComponentScope)
+const connections = computed(() => store.currentComponentConnections)
 
 </script>

@@ -4,7 +4,6 @@
 </template>
 
 <script setup lang="ts">
-import "css.gg/icons/icons.css"
 import {computed} from "vue";
 
 

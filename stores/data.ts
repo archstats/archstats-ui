@@ -97,6 +97,11 @@ export const useDataStore = defineStore('data', {
             return this.allComponents.filter(c => state.currentComponentScopeIds.includes(c.name));
         },
 
+        currentComponentConnections(state: any): RawComponentConnection[] {
+            const currentComponentScopeIds = this.currentComponentScope.map(c => c.name);
+            return this.componentConnections.filter((c: RawComponentConnection) => currentComponentScopeIds.includes(c.from) && currentComponentScopeIds.includes(c.to));
+        },
+
         allComponentsIndex(): Map<string, Component> {
             return this.componentGraph.components;
         },

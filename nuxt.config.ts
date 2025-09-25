@@ -13,11 +13,14 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@nuxt/image',
   ],
+
   nitro: {
     esbuild: {
       options: {
         target: 'esnext'
       }
     }
-  }
+  },
+
+  compatibilityDate: '2024-12-09'
 })

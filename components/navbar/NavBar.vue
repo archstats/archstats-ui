@@ -22,7 +22,7 @@
         <section>
           <ModalTrigger>
             <template #trigger>
-              <ArchstatsButton class="secondary" icon="pencil" icon-size="16">
+              <ArchstatsButton class="secondary" icon="pencil" :icon-size="16">
                 <span class="text-archstats-100 text-sm">{{
                     store.currentComponentScope.length
                   }} of {{ store.allComponents.length }} components</span>
@@ -53,6 +53,8 @@ const componentViews = {
   "Component Plotter": "/views/components/plotter",
   // "Component Chord": "/views/components/chord",
   "Component Table": "/views/components/table",
+  // "Component Arc": "/views/components/arc",
+  // "Component Cousins": "/views/components/cousins"
 }
 
 const props = defineProps<{

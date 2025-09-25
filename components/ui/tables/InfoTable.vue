@@ -27,7 +27,6 @@
   </table>
 </template>
 <script setup lang="ts">
-import "css.gg/icons/icons.css"
 import {computed, ComputedRef, defineProps} from "vue";
 import {RawComponent} from "~/utils/components";
 import {round} from "~/utils/text";

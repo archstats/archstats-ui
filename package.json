@@ -12,7 +12,7 @@
     "@nuxt/image": "^1.0.0-rc.3",
     "@pinia/nuxt": "^0.4.11",
     "change-case": "^5.1.2",
-    "css.gg": "^2.1.1",
+    "css.gg": "^2.1.4",
     "d3": "^7.6.1",
     "d3-force": "^3.0.0",
     "gridjs": "^5.0.2",
@@ -26,7 +26,7 @@
     "pinia": "^2.1.6",
     "redaxios": "^0.5.0",
     "splitpanes": "^3.1.5",
-    "sql.js": "^1.8.0",
+    "sql.js": "^1.12.0",
     "typescript": "^4.7.4",
     "uuid": "^8.3.2"
   },

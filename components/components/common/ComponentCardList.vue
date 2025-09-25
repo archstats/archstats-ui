@@ -18,7 +18,7 @@
           }}</h1>
 
         <ComponentInfoTable class="w-full" :component="component"
-                            :only-show="store.statNames(['references', 'modularity:coupling:afferent', 'modularity:coupling:efferent', 'complexity:files'])"
+                            :only-show="store.statNames(['references', 'modularity__coupling__afferent', 'modularity__coupling__efferent', 'complexity__files'])"
         ></ComponentInfoTable>
       </Card>
     </div>

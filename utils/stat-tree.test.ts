@@ -11,7 +11,7 @@ describe('stat tree', () => {
         "a",
     ];
     it('should work', function () {
-        const stats = columnsToStats(input)
+        const stats = columnsToStats(input, ":")
         const getStat = (name: string) => stats.find(s => s.fullName === name)!
         const getChildren = (name: string) => getStat(name).children?.map(c => c.fullName)
 

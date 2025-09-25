@@ -47,6 +47,11 @@
           </div>
         </section>
       </template>
+
+      <template #influence>
+
+
+      </template>
     </TabPanel>
 
 
@@ -102,6 +107,10 @@ const tabConfig = [
   {
     title: "Cycles",
     tabId: "cycles"
+  },
+  {
+    title: "Influence",
+    tabId: "influence"
   }
 ]
 
