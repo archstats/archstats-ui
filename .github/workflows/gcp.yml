@@ -17,16 +17,16 @@ jobs:
       - name: 'Checkout Repository'
         uses: actions/checkout@v4
 
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v3'
         with:
           workload_identity_provider: 'projects/519889038683/locations/global/workloadIdentityPools/github/providers/github'
-
           service_account: 'test-gh@archstats.iam.gserviceaccount.com'
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
 
       - name: 'List GCS Buckets'
         id: 'list-buckets'
