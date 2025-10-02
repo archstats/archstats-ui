@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  list-gcs-buckets:
+  terraform:
     runs-on: ubuntu-latest
 
     permissions:
@@ -20,6 +20,9 @@ jobs:
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v3'
 
+      - uses: hashicorp/setup-terraform@v3
+        name: "Set up Terraform"
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -28,7 +31,22 @@ jobs:
           workload_identity_provider: 'projects/519889038683/locations/global/workloadIdentityPools/github/providers/github'
           service_account: 'test-gh@archstats.iam.gserviceaccount.com'
 
+      - name: Terraform Version
+        run: terraform version
 
-      - name: 'List GCS Buckets'
-        id: 'list-buckets'
-        run: 'gcloud storage ls'
+      - name: Terraform Init
+        id: terraform-init
+        run: |
+          terraform -chdir=terraform init 
+
+      - name: Terraform plan
+        id: terraform-plan
+        run: |
+          terraform -chdir=terraform plan 
+
+      - name: Terraform apply
+        if: inputs.terraform_apply == 'yes'
+        id: terraform-apply
+        run: |
+          terraform -chdir=terraform apply --auto-approve
+

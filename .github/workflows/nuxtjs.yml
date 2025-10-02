@@ -56,6 +56,21 @@ jobs:
         with:
           path: .output/public
 
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v3'
+
+        with:
+          workload_identity_provider: 'projects/519889038683/locations/global/workloadIdentityPools/github/providers/github'
+          service_account: 'test-gh@archstats.iam.gserviceaccount.com'
+
+      - id: 'upload-folder'
+        uses: 'google-github-actions/upload-cloud-storage@v3'
+        with:
+          path: '/.output/public'
+          destination: 'archstats-static-files/main'
+
+
   # Deployment job
   deploy:
     environment:
