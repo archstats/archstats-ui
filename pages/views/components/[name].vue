@@ -3,6 +3,9 @@
     <Headline>{{ component.name }}</Headline>
     <TabPanel :tabs="tabConfig">
       <template #info>
+        <GitActivityChart :end-date="Date.now()" :commits="gitCommits" class="">
+
+        </GitActivityChart>
         <section class="p-4">
           <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             <div v-for="stat in topLevelStats">
@@ -48,10 +51,12 @@
         </section>
       </template>
 
-      <template #influence>
+      <template #static-coupling>
 
+        <CousinsDiagram :component="component" color-scale="graph__betweenness" :all-components="components" :all-paths="connections" :direction="'from'"></CousinsDiagram>
 
       </template>
+
     </TabPanel>
 
 
@@ -74,6 +79,9 @@ import {computed} from "vue";
 import ComponentSinglePageInfo from "~/components/components/single-component/ComponentSinglePageInfo.vue";
 import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
 import ComponentInfoListNode from "~/components/components/info-list/ComponentInfoListNode.vue";
+import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
+import CousinsDiagram from "~/components/components/cousins/CousinsDiagram.vue";
+import type {GitCommit} from "~/utils/git";
 
 const nameInRoute = computed(() => route.params.name as string);
 
@@ -109,8 +117,12 @@ const tabConfig = [
     tabId: "cycles"
   },
   {
-    title: "Influence",
-    tabId: "influence"
+    title: "Static Coupling",
+    tabId: "static-coupling"
+  },
+  {
+    title: "Git",
+    tabId: "git"
   }
 ]
 
@@ -200,6 +212,26 @@ const selectedCycleGraph = computed(() => {
 const topLevelStats = computed(() => {
   return columnsToStats(store.getDistinctComponentColumns).filter(stat => stat.level === 1)
 })
+
+const gitCommits = computed(() => store.query(
+    `select commit_hash,
+            commit_time,
+            commit_message,
+            author_name,
+            author_email,
+            count(file)         as files_changed,
+            sum(file_additions) as additions,
+            sum(file_deletions) as deletions
+     from git_commits
+     where component = '${component.value.name}'
+     group by commit_hash
+    `
+) as GitCommit[]);
+
+
+const components = computed(() => store.currentComponentScope)
+
+const connections = computed(() => store.query(`select * from component_connections_indirect where "from" = '${component.value.name}' or "to" = '${component.value.name}'`))
 </script>
 
 <style scoped>

@@ -1,6 +1,20 @@
 <template>
   <div class="my-20 mx-12">
     <SummarySection/>
+
+    <section>
+      <Headline>Git activity</Headline>
+      <div class="">
+
+        <GitActivityChart
+
+            :end-date="new Date()"
+            :commits="gitCommits"
+            class="p-8 pb-24"
+        ></GitActivityChart>
+      </div>
+
+    </section>
     <main>
       <Headline>Views</Headline>
       <div class="grid grid-cols-2 gap-16 my-12 ">
@@ -45,10 +59,28 @@
 import Headline from "~/components/ui/common/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
+import {useDataStore} from "~/stores/data";
+import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
 
+const store = useDataStore();
+const gitCommits = computed(() => store.query(
+    `select commit_hash,
+            commit_time,
+            commit_message,
+            author_name,
+            author_email,
+            count(file)         as files_changed,
+            sum(file_additions) as additions,
+            sum(file_deletions) as deletions
+     from git_commits
+     group by commit_hash
+    `
+) as GitCommit[]);
 useSeoMeta({
   title: "Home",
 })
+
+
 definePageMeta({
   layout: "has-data-layout",
   middleware: [

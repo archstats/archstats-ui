@@ -9,6 +9,8 @@
           <path  d="M0,-5L10,0L0,5" class="stroke-archstats-800 fill-archstats-800"></path>
         </marker>
       </defs>
+      <rect :width="canvasSize" :height="canvasSize" fill="transparent"></rect>
+
 
       <circle v-for="ring in rings" :cx="canvasSize/2" :cy="canvasSize/2" :r="ring.radius"  class="fill-archstats-800"  fill-opacity="0.1" ></circle>
 
@@ -360,15 +362,15 @@ const rings = computed(() => {
 const transform = ref(d3.zoomIdentity);
 const viewBox = computed(() => {
   const { k, x, y } = transform.value;
-  const newCanvasSize = canvasSize / k;
-
-  return `${x - (newCanvasSize - canvasSize) / 2} ${y - (newCanvasSize - canvasSize) / 2} ${newCanvasSize} ${newCanvasSize}`;
+  // The correct calculation for both zoom and pan
+  return `${-x / k} ${-y / k} ${canvasSize / k} ${canvasSize / k}`;
 });
 const svgRef = useTemplateRef('svgRef');
 onMounted(() => {
   const svg = d3.select(svgRef.value);
 
   const zoom = d3.zoom()
+      .translateExtent([[0, 0], [canvasSize, canvasSize]])
       .on('zoom', (event) => {
         transform.value = event.transform;
       });
