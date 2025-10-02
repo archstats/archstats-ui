@@ -69,6 +69,7 @@ jobs:
         with:
           path: '.output/public'
           destination: 'archstats-static-files/main'
+          parent: false
 
 
   # Deployment job
