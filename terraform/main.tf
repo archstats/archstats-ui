@@ -11,6 +11,10 @@ resource "google_storage_bucket" "static_bucket" {
   # It's a recommended security best practice.
   uniform_bucket_level_access = true
 
+  website {
+    main_page_suffix = "index.html"
+  }
+
   # WARNING: Setting force_destroy to "true" will allow Terraform to delete
   # the bucket even if it contains objects. This is useful for development
   # but should be used with caution in production environments.
@@ -24,9 +28,13 @@ resource "google_compute_backend_bucket" "static_backend" {
   name        = "static-bucket-backend"
   description = "Backend service for the static files bucket"
   bucket_name = google_storage_bucket.static_bucket.name
-  enable_cdn  = true
+  enable_cdn  = false
 }
-
+resource "google_storage_bucket_iam_member" "bucket_1" {
+  bucket = google_storage_bucket.static_bucket.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
 
 # Create the URL map to route incoming requests.
 resource "google_compute_url_map" "urlmap" {
@@ -49,10 +57,12 @@ resource "google_compute_url_map" "urlmap" {
     content {
       name            = "${path_matcher.value}-matcher"
       default_service = google_compute_backend_bucket.static_backend.id
-
-      path_rule {
-        paths = ["/*"]
+      route_rules {
         service = google_compute_backend_bucket.static_backend.id
+        priority = 1
+        match_rules {
+          prefix_match = "/"
+        }
         route_action {
           url_rewrite {
             path_prefix_rewrite = "/${path_matcher.value}/"
