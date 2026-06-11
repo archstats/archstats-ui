@@ -16,6 +16,7 @@
               v-if="sortSettings.column === 'name'"
               v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
           </th>
+          <th class="py-1 px-2 text-left whitespace-nowrap" v-if="showGroups">Groups</th>
           <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left whitespace-nowrap"
               v-for="column in columns"
               @click="toggleSort(column.name)"><span>{{
@@ -28,12 +29,21 @@
         <tr v-for="element in pageOfElements" class="hover:bg-secondary-50"
             :class="{'cursor-pointer': clickableElements}"
             @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
-          <td v-if="selectableElements" class="px-2">
+          <td v-if="selectableElements" class="px-2" @click.stop="checkboxToggle(element.name)">
             <Checkbox type="checkbox"
                       :model-value="selectedElements.indexOf(element.name) !== -1"
             />
           </td>
           <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
+          <td class="py-1 px-2 whitespace-nowrap" v-if="showGroups">
+            <div class="flex flex-wrap gap-1">
+              <span v-for="g in getElementGroups(element.name)" :key="g.id"
+                    :style="{ backgroundColor: g.color }"
+                    class="text-[9px] text-white px-1.5 py-0.5 rounded font-semibold">
+                {{ g.name }}
+              </span>
+            </div>
+          </td>
 
           <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
 
@@ -58,6 +68,7 @@ import {round} from "~/utils/text";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
+import {useGroupsStore} from "~/stores/groups";
 
 type Key = string | number;
 
@@ -98,8 +109,20 @@ const props = defineProps({
   },
   onlyShowColumns: {
     type: Array as () => string[],
+  },
+  showGroups: {
+    type: Boolean,
+    default: false,
   }
 })
+
+const groupsStore = useGroupsStore()
+
+function getElementGroups(name: string) {
+  const cGroups = groupsStore.componentGroupIndex.get(name) || []
+  const fGroups = groupsStore.fileGroupIndex.get(name) || []
+  return [...cGroups, ...fGroups]
+}
 
 const correctedLimit = computed(() => {
   if (props.limit <= 0) {

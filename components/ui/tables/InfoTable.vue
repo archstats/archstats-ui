@@ -12,7 +12,7 @@
           </template>
           <template #hovered-content>
             <div class="absolute bg-gray-50 p-6 shadow-2xl w-96 z-10">
-              <Definition :definition="info.key" mode="short"/>
+              <Definition :definition="info.key" mode="long"/>
             </div>
           </template>
         </LongHover>
@@ -27,8 +27,9 @@
   </table>
 </template>
 <script setup lang="ts">
-import {computed, ComputedRef, defineProps} from "vue";
-import {RawComponent} from "~/utils/components";
+import { computed } from "vue";
+import type { ComputedRef } from "vue";
+import type { RawComponent } from "~/utils/components";
 import {round} from "~/utils/text";
 import {useDataStore} from "~/stores/data";
 import LongHover from "~/components/ui/common/LongHover.vue";

@@ -7,33 +7,57 @@
           <img src="~/assets/logo/archstats-100-logo.png" alt="Archstats logo" class="h-full w-28 object-contain">
         </router-link>
 
-        <section>
-          <h3 class="uppercase text-sm text-archstats-200 mb-1">Views</h3>
-          <ul>
-            <li v-for="(link, name) in componentViews" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap">
-              <router-link :to="link" active-class="text-secondary-400">{{ name }}</router-link>
-            </li>
-          </ul>
-        </section>
+        <div class="flex flex-col gap-6">
+          <section>
+            <h3 class="uppercase text-xs font-bold text-archstats-200 mb-2 tracking-wider">Components</h3>
+            <ul class="flex flex-col gap-1.5 pl-1">
+              <li v-for="(link, name) in componentViews" :key="name" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link :to="link" active-class="text-secondary-400 font-medium">{{ name }}</router-link>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="uppercase text-xs font-bold text-archstats-200 mb-2 tracking-wider">Git</h3>
+            <ul class="flex flex-col gap-1.5 pl-1">
+              <li v-for="(link, name) in gitViews" :key="name" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link :to="link" active-class="text-secondary-400 font-medium">{{ name }}</router-link>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="uppercase text-xs font-bold text-archstats-200 mb-2 tracking-wider">Files</h3>
+            <ul class="flex flex-col gap-1.5 pl-1">
+              <li v-for="(link, name) in fileViews" :key="name" class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link :to="link" active-class="text-secondary-400 font-medium">{{ name }}</router-link>
+              </li>
+            </ul>
+          </section>
+
+          <section v-if="isJavaProject">
+            <h3 class="uppercase text-xs font-bold text-archstats-200 mb-2 tracking-wider">Java</h3>
+            <ul class="flex flex-col gap-1.5 pl-1">
+              <li class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link to="/views/java/spring" active-class="text-secondary-400 font-medium">Spring Beans</router-link>
+              </li>
+              <li class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link to="/views/java/jpa" active-class="text-secondary-400 font-medium">JPA Persistence</router-link>
+              </li>
+              <li class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link to="/views/java/oop" active-class="text-secondary-400 font-medium">OOP Metrics</router-link>
+              </li>
+              <li class="hover:text-secondary-100 text-archstats-50 whitespace-nowrap text-sm">
+                <router-link to="/views/java/class-connections" active-class="text-secondary-400 font-medium">Class Connections</router-link>
+              </li>
+            </ul>
+          </section>
+        </div>
       </main>
 
 
-      <footer>
-        <section>
-          <ModalTrigger>
-            <template #trigger>
-              <ArchstatsButton class="secondary" icon="pencil" :icon-size="16">
-                <span class="text-archstats-100 text-sm">{{
-                    store.currentComponentScope.length
-                  }} of {{ store.allComponents.length }} components</span>
-              </ArchstatsButton>
-            </template>
-
-            <template #modal>
-              <ComponentScopeModal class="absolute"/>
-            </template>
-          </ModalTrigger>
-        </section>
+      <footer class="border-t border-archstats-800 pt-4 mt-2">
+        <GroupsManager />
       </footer>
 
     </div>
@@ -41,20 +65,38 @@
 </template>
 <script setup lang="ts">
 
-import ModalTrigger from "~/components/ui/modals/ModalTrigger.vue";
-import ComponentScopeModal from "~/components/components/modals/ComponentScopeModal.vue";
-import ArchstatsButton from "~/components/ui/buttons/ArchstatsButton.vue";
+import GroupsManager from "~/components/groups/GroupsManager.vue";
 import {useDataStore} from "~/stores/data";
+import {useJavaMetrics} from "~/composables/useJavaMetrics";
+
+const { isJavaProject } = useJavaMetrics();
 
 const componentViews = {
-  "Component Walker": "/views/components/walker",
-  "Component Comparison": "/views/components/comparison",
-  "Component Matrix": "/views/components/matrix",
-  "Component Plotter": "/views/components/plotter",
-  // "Component Chord": "/views/components/chord",
-  "Component Table": "/views/components/table",
-  // "Component Arc": "/views/components/arc",
-  // "Component Cousins": "/views/components/cousins"
+  "Walker": "/views/components/walker",
+  "Comparison": "/views/components/comparison",
+  "Matrix": "/views/components/matrix",
+  "Plotter": "/views/components/plotter",
+  "Chord": "/views/components/chord",
+  "Hotspots": "/views/components/hotspots",
+  "Clustering": "/views/components/clustering",
+  "Table": "/views/components/table",
+  "Cycles": "/views/components/cycles",
+  "Group Coupling": "/views/components/group-coupling",
+  // "Arc": "/views/components/arc",
+  // "Cousins": "/views/components/cousins"
+}
+
+const gitViews = {
+  "Coupling": "/views/git/coupling",
+  "Churn": "/views/git/churn",
+  "Timeline": "/views/git/timeline",
+  "Authors": "/views/git/authors",
+}
+
+const fileViews = {
+  "Table": "/views/files/table",
+  "Dependencies": "/views/files/dependencies",
+  "Treemap": "/views/files/treemap",
 }
 
 const props = defineProps<{

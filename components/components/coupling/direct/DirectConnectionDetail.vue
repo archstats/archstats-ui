@@ -1,15 +1,17 @@
 <template>
-  <div class="font-normal">
-    <div class="flex gap-2">
-      <div class="">
-        <h5 class="font-mono z-1 whitespace-nowrap"><span
-            class="select-none text-archstats-200">{{ reference_count }}x </span>{{ file }}</h5>
-      </div>
-    </div>
-
+  <div class="font-normal flex flex-wrap items-center gap-x-2">
+    <h5 class="font-mono z-1 whitespace-nowrap">
+      <span class="select-none text-slate-300">{{ reference_count }}x </span>
+      <router-link :to="`/views/files/${file}`" class="text-indigo-650 hover:underline font-bold">{{ file }}</router-link>
+    </h5>
+    <span v-if="lines" class="text-[9px] text-slate-450 select-none">
+      (lines: 
+      <SnippetPopover :file="file" :lines="lines">
+        <span class="text-slate-600 font-extrabold underline decoration-dotted hover:text-indigo-900 transition-colors">{{ lines }}</span>
+      </SnippetPopover>
+      )
+    </span>
   </div>
-
-
 </template>
 
 <script setup lang="ts">

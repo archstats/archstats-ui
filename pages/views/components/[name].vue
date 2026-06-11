@@ -1,96 +1,123 @@
 <template>
-  <SimplePage>
-    <Headline>{{ component.name }}</Headline>
-    <TabPanel :tabs="tabConfig">
-      <template #info>
-        <GitActivityChart :end-date="Date.now()" :commits="gitCommits" class="">
+  <div class="h-full flex flex-col p-6 overflow-hidden">
+    <ViewWorkspaceLayout
+      :title="component?.name || nameInRoute"
+      badge-text="Component Module"
+      badge-color-class="bg-blue-50 border-blue-100 text-blue-700"
+      :nodes-count="filesCount"
+      :connections-count="cyclesCount"
+      :stats-labels="{ nodes: 'Files', connections: 'Cycles' }"
+      :show-config="false"
+      :is-sidebar-open="false"
+    >
+      <!-- Action slot for Back to Hotspots -->
+      <template #actions>
+        <NuxtLink 
+          to="/views/components/hotspots" 
+          class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mr-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+          Back to Hotspots
+        </NuxtLink>
+      </template>
 
-        </GitActivityChart>
-        <section class="p-4">
-          <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-            <div v-for="stat in topLevelStats">
-              <ComponentInfoListNode class="h-full" :stat="stat" :component="component"></ComponentInfoListNode>
+      <!-- Visualizer slot for the main content grid and subpages -->
+      <template #visualizer>
+        <div class="w-full h-full flex flex-col md:flex-row gap-6 min-h-[480px] overflow-hidden">
+          
+          <!-- LEFT SIDEBAR: Grouped Navigation Menu (Desktop) -->
+          <div class="hidden md:flex flex-col gap-5 w-56 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 shadow-3xs overflow-y-auto">
+            <div v-for="group in categorizedTabs" :key="group.categoryName" class="flex flex-col gap-1.5">
+              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 select-none pb-1.5 border-b border-slate-50">
+                {{ group.categoryName }}
+              </span>
+              
+              <div class="flex flex-col gap-0.5">
+                <NuxtLink 
+                  v-for="tab in group.tabs" 
+                  :key="tab.tabId"
+                  :to="getTabUrl(tab.tabId)"
+                  class="text-[11px] font-bold px-3 py-2 rounded-xl transition-all tracking-wide flex items-center gap-2.5"
+                  :class="isTabActive(tab.tabId)
+                    ? 'bg-slate-800 text-white shadow-xs font-black' 
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/70'"
+                >
+                  <span 
+                    class="w-1.5 h-1.5 rounded-full shrink-0" 
+                    :class="[
+                      isTabActive(tab.tabId) ? 'bg-white' : '',
+                      !isTabActive(tab.tabId) && group.categoryName === 'Overview' ? 'bg-blue-400/80' : '',
+                      !isTabActive(tab.tabId) && group.categoryName === 'Relationships' ? 'bg-indigo-400/80' : '',
+                      !isTabActive(tab.tabId) && group.categoryName === 'Graph & Cycles' ? 'bg-emerald-400/80' : '',
+                    ]"
+                  ></span>
+                  {{ tab.title }}
+                </NuxtLink>
+              </div>
             </div>
           </div>
-        </section>
-      </template>
 
-      <template #files>
-        <section class="p-4">
-          <div class="flex items-center  gap-2 justify-end mb-3">
-            <label class="text-archstats-500">Columns</label>
-            <StatSelectMulti :options="distinctStatsForFiles" limit="" v-model="selectedStatsForFiles" placeholder=""/>
-
+          <!-- TOP BAR: Scrollable Tabs Menu (Mobile Viewports) -->
+          <div class="md:hidden w-full flex items-center gap-1.5 bg-white border border-slate-100 p-2.5 rounded-xl overflow-x-auto scrollbar-none shrink-0 shadow-3xs">
+            <NuxtLink 
+              v-for="tab in flattenedMobileTabs" 
+              :key="tab.tabId"
+              :to="getTabUrl(tab.tabId)"
+              class="text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-all tracking-wide flex-shrink-0"
+              :class="isTabActive(tab.tabId)
+                ? 'bg-slate-800 text-white shadow-xs' 
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'"
+            >
+              {{ tab.title }}
+            </NuxtLink>
           </div>
 
-          <div class="w-full">
-            <ElementTable :elements="files"
-                          :only-show-columns="selectedStatsForFiles"
-                          :selectable-elements="false"
-                          v-model:selected-elements="selectedCycles"
-                          class="w-full"></ElementTable>
+          <!-- MAIN CANVAS AREA -->
+          <div class="flex-1 min-w-0 bg-white border border-slate-100 rounded-2xl p-6 shadow-3xs overflow-y-auto">
+            <NuxtPage />
           </div>
-        </section>
+
+        </div>
       </template>
-
-      <template #cycles>
-        <section class="p-4">
-
-          <div class="flex h-full ">
-            <div class="w-1/2  h-full">
-              <ElementTable class="h-[500px]" v-model:selected-elements="selectedCycles"
-                            :selectable-elements="true"
-                            :max-page-size="12"
-                            :elements="cyclesIncludedIn"></ElementTable>
-            </div>
-            <div v-if="selectedCycleGraph" class="items-center w-full">
-              <ConnectionChart class="h-full" :components="selectedCycleGraph"
-                               :connections="[]"/>
-            </div>
-          </div>
-        </section>
-      </template>
-
-      <template #static-coupling>
-
-        <CousinsDiagram :component="component" color-scale="graph__betweenness" :all-components="components" :all-paths="connections" :direction="'from'"></CousinsDiagram>
-
-      </template>
-
-    </TabPanel>
-
-
-  </SimplePage>
-
+    </ViewWorkspaceLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from "vue"
+import { useRoute, useSeoMeta, definePageMeta } from "#imports"
+import { useDataStore } from "~/stores/data"
+import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
 
-import {useDataStore} from "~/stores/data";
-import SimplePage from "~/components/ui/common/SimplePage.vue";
-import Headline from "~/components/ui/common/Headline.vue";
-import {Component} from "~/utils/components";
-import ElementTable from "~/components/ui/tables/ElementTable.vue";
-import {columnsToStats, findCommonPrefix} from "#imports";
-import ConnectionChart from "~/components/components/ConnectionChart.vue";
-import MultiSelect from "~/components/ui/common/MultiSelect.vue";
-import TabPanel from "~/components/ui/tab-panel/tab-panel.vue";
-import {computed} from "vue";
-import ComponentSinglePageInfo from "~/components/components/single-component/ComponentSinglePageInfo.vue";
-import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
-import ComponentInfoListNode from "~/components/components/info-list/ComponentInfoListNode.vue";
-import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
-import CousinsDiagram from "~/components/components/cousins/CousinsDiagram.vue";
-import type {GitCommit} from "~/utils/git";
+const route = useRoute()
+const store = useDataStore()
 
-const nameInRoute = computed(() => route.params.name as string);
+const nameInRoute = computed(() => route.params.name as string)
+const component = computed(() => store.allComponents.find((c: any) => c.name === nameInRoute.value)!)
 
-const component = computed<Component>(() => store.allComponents.find(c => c.name === nameInRoute.value)!)
+const getMetric = (keyName: string): number => {
+  if (!component.value) return 0
+  const val = component.value[keyName] ?? 
+              component.value[keyName.toLowerCase()] ?? 
+              component.value[store.statName(keyName)] ?? 
+              component.value[store.statName(keyName.toLowerCase())]
+  return Number(val) || 0
+}
 
+const filesCount = computed(() => {
+  return getMetric('Complexity__files') || undefined
+})
+
+const cyclesCount = computed(() => {
+  return getMetric('Cycles__Short__count') || undefined
+})
 
 onMounted(() => {
   useSeoMeta({
-    title: nameInRoute.value,
+    title: `Component: ${nameInRoute.value}`,
+    description: `Architectural analysis details for module ${nameInRoute.value}`
   })
 })
 
@@ -100,140 +127,70 @@ definePageMeta({
     "redirect-if-no-data"
   ],
 })
-const route = useRoute();
-const store = useDataStore();
 
-const tabConfig = [
-  {
-    title: "Info",
-    tabId: "info"
-  },
-  {
-    title: "Files",
-    tabId: "files"
-  },
-  {
-    title: "Cycles",
-    tabId: "cycles"
-  },
-  {
-    title: "Static Coupling",
-    tabId: "static-coupling"
-  },
-  {
-    title: "Git",
-    tabId: "git"
-  }
-]
+const { isJavaProject, getJavaMetricsForComponent } = useJavaMetrics()
 
-
-const files = computed(() => {
-  const files = store.query(`
-    SELECT *
-    FROM files
-    WHERE component = '${component.value.name}'
-  `) as {
-    name: string,
-    [key: string]: any
-  }[];
-
-  return files.map(f => {
-
-    return {
-      ...f,
-      name: f.name.replace(f[store.statName("directory")], "..")
-    }
-  })
+const hasJavaMetrics = computed(() => {
+  if (!nameInRoute.value) return false
+  const metrics = getJavaMetricsForComponent(nameInRoute.value)
+  return metrics && (metrics.classes > 0 || metrics.springBeans > 0 || metrics.jpaEntities > 0)
 })
 
-interface Cycle {
-  name: number,
-  cycle_size: number,
-  cycle: string
+const categorizedTabs = computed(() => {
+  const overviewTabs = [
+    { title: "Info", tabId: "info" },
+    { title: "Files", tabId: "files" }
+  ]
+  if (isJavaProject.value && hasJavaMetrics.value) {
+    overviewTabs.push({ title: "Java Insights", tabId: "java" })
+  }
+
+  const relationshipTabs = [
+    { title: "Component Matrix", tabId: "component-matrix" },
+    { title: "External File Matrix", tabId: "external-file-matrix" },
+    { title: "Internal File Matrix", tabId: "internal-file-matrix" },
+    { title: "Git Activity", tabId: "git" }
+  ]
+
+  const graphTabs = [
+    { title: "Cycles", tabId: "cycles" },
+    { title: "Static Coupling", tabId: "static-coupling" },
+    { title: "Circle of Influence", tabId: "circle-of-influence" }
+  ]
+
+  return [
+    { categoryName: "Overview", tabs: overviewTabs },
+    { categoryName: "Relationships", tabs: relationshipTabs },
+    { categoryName: "Graph & Cycles", tabs: graphTabs }
+  ]
+})
+
+const flattenedMobileTabs = computed(() => {
+  return categorizedTabs.value.flatMap(group => group.tabs)
+})
+
+const getTabUrl = (tabId: string) => {
+  const base = `/views/components/${nameInRoute.value}`
+  if (tabId === "info") return base
+  return `${base}/${tabId}`
 }
 
-const cyclesIncludedIn = computed(() => {
-  const cycles = store.query(`
-    SELECT distinct cycle_nr as name, cycle_size, cycle
-    FROM component_cycles_shortest
-    WHERE component = '${component.value.name}'
-  `) as Cycle[];
-
-  return cycles
-})
-
-const cycleIndex = computed(() => {
-  const toReturn = new Map<number, Cycle>()
-  for (let i = 0; i < cyclesIncludedIn.value.length; i++) {
-    const c = cyclesIncludedIn.value[i]
-    toReturn.set(c.name, c)
-
+const isTabActive = (tabId: string) => {
+  const path = route.path.replace(/\/$/, "")
+  if (tabId === "info") {
+    return !["/files", "/cycles", "/static-coupling", "/git", "/java", "/component-matrix", "/external-file-matrix", "/internal-file-matrix", "/circle-of-influence"].some(suffix => path.endsWith(suffix))
   }
-  return toReturn
-})
-
-const distinctStatsForFiles = computed(() => {
-  const properties = {}
-  files.value.forEach(c => {
-    Object.keys(c).forEach(k => {
-      properties[k] = true
-    })
-  })
-  return Object.keys(properties).filter(k => k !== 'name')
-})
-
-const selectedStatsForFiles = ref<string[]>(distinctStatsForFiles.value)
-
-
-function cycleToComponents(cycle: Cycle): string[] {
-  if (!cycle) return []
-  return cycle.cycle.split('->').map(c => c.trim())
+  return path.endsWith(`/${tabId}`)
 }
-
-
-const selectedCycles = ref<number[]>([])
-
-const selectedCycleGraph = computed(() => {
-
-  if (!selectedCycles.value) return null
-
-  const cycles = new Array(selectedCycles.value.length)
-
-  selectedCycles.value.forEach((c, i) => {
-    cycles[i] = cycleIndex.value.get(c)
-  })
-
-  const components = new Set(cycles.flatMap(c => cycleToComponents(c)))
-
-
-  return store.componentSubGraph(Array.from(components))
-})
-
-const topLevelStats = computed(() => {
-  return columnsToStats(store.getDistinctComponentColumns).filter(stat => stat.level === 1)
-})
-
-const gitCommits = computed(() => store.query(
-    `select commit_hash,
-            commit_time,
-            commit_message,
-            author_name,
-            author_email,
-            count(file)         as files_changed,
-            sum(file_additions) as additions,
-            sum(file_deletions) as deletions
-     from git_commits
-     where component = '${component.value.name}'
-     group by commit_hash
-    `
-) as GitCommit[]);
-
-
-const components = computed(() => store.currentComponentScope)
-
-const connections = computed(() => store.query(`select * from component_connections_indirect where "from" = '${component.value.name}' or "to" = '${component.value.name}'`))
 </script>
 
 <style scoped>
-
+/* Scrollbar styling */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 </style>

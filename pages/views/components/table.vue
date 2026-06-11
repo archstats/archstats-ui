@@ -12,8 +12,17 @@
 
 
   <div class="mx-16 mt-8">
-    <ElementTable :elements="filteredComponents" :only-show-columns="selectedStats" :selectable-elements="false" :clickable-elements="true" @clickedElement="navToComponent" :max-page-size="20" ></ElementTable>
-
+    <ElementTable
+      :elements="filteredComponents"
+      :only-show-columns="selectedStats"
+      :selectable-elements="true"
+      :clickable-elements="true"
+      show-groups
+      v-model:selected-elements="selectedComponents"
+      @clicked-element="navToComponent"
+      :max-page-size="20"
+    />
+    <GroupsGroupActionBar :selected-items="selectedComponents" type="component" @clear="selectedComponents = []" />
   </div>
 
 </template>
@@ -29,8 +38,8 @@ import {RawComponent} from "~/utils/components";
 import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
 
 const store = useDataStore();
-
 const router = useRouter()
+const selectedComponents = ref<string[]>([])
 
 useSeoMeta({
   title: "Table",
@@ -46,8 +55,8 @@ const search = ref("")
 
 
 const filteredComponents = computed(() => {
-  if(!search.value.length) return store.currentComponentScope
-  return store.currentComponentScope.filter((c: RawComponent) => {
+  if(!search.value.length) return store.allComponents
+  return store.allComponents.filter((c: RawComponent) => {
     // Search name regex
     const reg = new RegExp(search.value, "i")
     return reg.test(c.name)

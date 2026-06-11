@@ -1,0 +1,19 @@
+creationTimestamp: '2025-10-01T06:58:25.220-07:00'
+defaultService: https://www.googleapis.com/compute/v1/projects/archstats/global/backendBuckets/test
+fingerprint: 1bH-kKqoGQg=
+hostRules:
+- hosts:
+  - '{commit}.archstats.dev'
+  pathMatcher: path-matcher-1
+id: 7811544318953426286
+kind: compute#urlMap
+name: test
+pathMatchers:
+- defaultService: https://www.googleapis.com/compute/v1/projects/archstats/global/backendBuckets/test
+  name: path-matcher-1
+  defaultRouteAction:
+    urlRewrite:
+      pathTemplateRewrite: /{commit}
+
+
+selfLink: https://www.googleapis.com/compute/v1/projects/archstats/global/urlMaps/test

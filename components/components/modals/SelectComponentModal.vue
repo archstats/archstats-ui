@@ -28,7 +28,7 @@ const props = defineProps<{
 }>()
 
 const loadedComponents = computed(() => {
-  return props.components ?? store.currentComponentScope ?? []
+  return props.components ?? store.allComponents ?? []
 })
 const closeModal = inject(closeModalKey)
 

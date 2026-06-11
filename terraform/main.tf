@@ -62,6 +62,10 @@ resource "google_compute_url_map" "urlmap" {
         priority = 1
         match_rules {
           prefix_match = "/"
+
+        }
+        match_rules {
+          prefix_match = "/*"
         }
         route_action {
           url_rewrite {

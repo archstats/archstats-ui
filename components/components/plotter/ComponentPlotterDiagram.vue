@@ -26,27 +26,41 @@
     <svg ref="svg" @mousedown="beginDragSelecting" @mouseup="doneDragSelecting" @mousemove="updateMouseCoords"
          :viewBox="`${-margin.left} ${-margin.top} ${width + (margin.left + margin.right)} ${height + (margin.top + margin.bottom)}`"
          class="w-full h-full border border-archstats-100 rounded p-3">
-      >
-
-      <g v-for="(component, index) in componentsInScope">
+      <!-- Gradient definitions for multi-group nodes -->
+      <defs>
+        <linearGradient
+          v-for="grad in multiColorGradients"
+          :key="grad.id"
+          :id="grad.id"
+        >
+          <stop
+            v-for="(stop, idx) in grad.stops"
+            :key="idx"
+            :offset="stop.offset"
+            :stop-color="stop.color"
+          />
+        </linearGradient>
+      </defs>
+      <g v-for="(component, index) in componentsInScope" :key="component.name">
         <circle @mouseenter="hoverOver(index, $event)"
-
-                @click="componentClicked(component)"
+                @click.stop="componentClicked($event, component)"
                 :r="radiusScaledValues[index]"
                 :cx="xScaledValues[index]"
                 :cy="yScaledValues[index]"
-                :class="[['stroke-archstats-800'],
-                {'fill-archstats-400': hoveredComponent?.index === index,
-                 'fill-archstats-500': hoveredComponent?.index !== index,
-                 'fill-secondary-300': selectingComponents.has(component.name) || selectedComponentsIndex.includes(component.name),
-                }]"
+                :fill="getCircleFill(component.name, index)"
+                class="stroke-archstats-800 transition-all duration-150"
+                :class="{
+                  'stroke-2 stroke-slate-950': hoveredComponent?.index === index || selectingComponents.has(component.name) || selectedComponentsIndex.includes(component.name),
+                  'pointer-events-none': !isNodeSelectable(component.name)
+                }"
+                :opacity="getComponentOpacity(component.name)"
                 :ref="el => circles[index] = el"
-
         />
         <text v-if="shouldShowText(index)"
               :x="xScaledValues[index] + radiusScaledValues[index] + 6"
               :y="yScaledValues[index] + radiusScaledValues[index] / 2"
-              class="text-xs text-white "
+              class="text-xs text-white transition-opacity duration-150"
+              :opacity="getComponentOpacity(component.name)"
         > {{ component.name }}
         </text>
 
@@ -103,11 +117,12 @@
 </template>
 <script setup lang="ts">
 import {RawComponent} from "~/utils/components";
-import {PropType} from "@vue/runtime-core";
+import {PropType, ComputedRef} from "vue";
 import * as d3 from "d3";
 import Expandable from "~/components/ui/common/Expandable.vue";
 import InfoTable from "~/components/ui/tables/InfoTable.vue";
 import {useDataStore} from "~/stores/data";
+import {useGroupsStore} from "~/stores/groups";
 
 
 const props = defineProps(
@@ -140,6 +155,22 @@ const props = defineProps(
       radiusProperty: {
         type: String,
         required: false,
+      },
+      searchQuery: {
+        type: String,
+        default: ''
+      },
+      hiddenGroups: {
+        type: Object as PropType<Set<string>>,
+        default: () => new Set<string>()
+      },
+      activeFilters: {
+        type: Object as PropType<Set<string>>,
+        default: () => new Set<string>()
+      },
+      hoveredGroupId: {
+        type: String as PropType<string | null>,
+        default: null
       },
     }
 )
@@ -205,7 +236,7 @@ function beginDragSelecting(event: MouseEvent) {
 
 function doneDragSelecting(event: MouseEvent) {
   const componentNames = Array.from(selectingComponents.value)
-  const components = props.componentsInScope.filter(c => componentNames.includes(c.name))
+  const components = props.componentsInScope.filter(c => componentNames.includes(c.name) && isNodeSelectable(c.name))
 
   emit('components-selected', components)
 
@@ -334,7 +365,97 @@ onMounted(() => {
   drawYAxis()
 })
 
-function componentClicked(c: RawComponent){
-  emit('component-clicked', c)
+const groupsStore = useGroupsStore()
+
+// ─── Multi-color gradients ───
+const multiColorGradients = computed(() => {
+  const seen = new Map<string, { id: string; stops: Array<{ offset: string; color: string }> }>()
+  for (const component of props.componentsInScope) {
+    const groups = groupsStore.componentGroupIndex.get(component.name) || []
+    const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
+    if (visGroups.length > 1) {
+      const colors = visGroups.map(g => g.color)
+      const key = colors.join('-')
+      if (!seen.has(key)) {
+        const stops: Array<{ offset: string; color: string }> = []
+        const n = colors.length
+        for (let i = 0; i < n; i++) {
+          stops.push({ offset: `${(i / n) * 100}%`, color: colors[i] })
+          stops.push({ offset: `${((i + 1) / n) * 100}%`, color: colors[i] })
+        }
+        seen.set(key, { id: `mg-plot-${key.replace(/[^a-zA-Z0-9]/g, '')}`, stops })
+      }
+    }
+  }
+  return Array.from(seen.values())
+})
+
+function isNodeSelectable(name: string): boolean {
+  if (props.searchQuery) {
+    const q = props.searchQuery.trim().toLowerCase()
+    if (!name.toLowerCase().includes(q)) return false
+  }
+
+  if (props.activeFilters.size > 0) {
+    const groups = groupsStore.componentGroupIndex.get(name) || []
+    const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
+    const hasActiveFilter = visGroups.some(g => props.activeFilters.has(g.id))
+    if (!hasActiveFilter) return false
+  }
+
+  return true
 }
+
+function getCircleFill(componentName: string, index: number): string {
+  if (selectingComponents.value.has(componentName) || selectedComponentsIndex.value.includes(componentName)) {
+    return '#38bdf8'
+  }
+  if (hoveredComponent.value?.index === index) {
+    return '#94a3b8'
+  }
+  const groups = groupsStore.componentGroupIndex.get(componentName) || []
+  const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
+  
+  if (visGroups.length === 0) return '#cbd5e1'
+  if (visGroups.length === 1) return visGroups[0].color
+  
+  const key = visGroups.map(g => g.color).join('-')
+  return `url(#mg-plot-${key.replace(/[^a-zA-Z0-9]/g, '')})`
+}
+
+function componentClicked(event: MouseEvent, c: RawComponent) {
+  if (!isNodeSelectable(c.name)) return
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    const idx = props.selectedComponents.findIndex(item => item.name === c.name);
+    const newSelection = [...props.selectedComponents];
+    if (idx >= 0) {
+      newSelection.splice(idx, 1);
+    } else {
+      newSelection.push(c);
+    }
+    emit('components-selected', newSelection);
+  } else {
+    emit('component-clicked', c);
+  }
+}
+
+const getComponentOpacity = (name: string) => {
+  if (props.searchQuery) {
+    const q = props.searchQuery.trim().toLowerCase();
+    if (!name.toLowerCase().includes(q)) return 0.05;
+  }
+
+  const groups = groupsStore.componentGroupIndex.get(name) || []
+  const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
+
+  if (props.hoveredGroupId) {
+    return visGroups.some(g => g.id === props.hoveredGroupId) ? 1 : 0.05
+  }
+
+  if (props.activeFilters.size > 0) {
+    return visGroups.some(g => props.activeFilters.has(g.id)) ? 1 : 0.05
+  }
+
+  return 1;
+};
 </script>

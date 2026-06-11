@@ -175,7 +175,7 @@ definePageMeta({
 
 const positionInPath = ref(0)
 const store = useDataStore();
-const selectedComponent = ref<RawComponent>(store.currentComponentScope[0])
+const selectedComponent = ref<RawComponent>(store.allComponents[0])
 const path = ref<PathSegment[]>([{
   currentComponent: selectedComponent.value.name,
 }])
@@ -219,7 +219,7 @@ const totalReferencesEfferent = computed(() => {
 function walkTo(relationship: Relationship, component: RawComponent) {
   path.value[positionInPath.value].relationship = relationship
   path.value[positionInPath.value].otherComponent = component.name
-  selectedComponent.value = store.currentComponentScope.find(c => c.name == component.name)!
+  selectedComponent.value = store.allComponents.find(c => c.name == component.name)!
   if (path.value.length !== positionInPath.value) {
     path.value = path.value.slice(0, positionInPath.value + 1)
   }
@@ -241,7 +241,7 @@ function selectIndex(index: number) {
   if (index > path.value.length || index < 0) {
     return
   }
-  selectedComponent.value = store.currentComponentScope.find(c => c.name == path.value[index].currentComponent)!
+  selectedComponent.value = store.allComponents.find(c => c.name == path.value[index].currentComponent)!
   positionInPath.value = index
 }
 

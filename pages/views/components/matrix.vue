@@ -36,7 +36,7 @@
       <label class="font-semibold text-archstats-500">Max Component Count</label>
       <div class="">
         <input type="number" class="w-20 px-4 py-2 bg-gray-100  box-border border-archstats-500 border  outline-archstats-900 outline-1 rounded"
-               v-model="maxComponentCount"> of {{ store.currentComponentScope.length }}
+               v-model="maxComponentCount"> of {{ store.allComponents.length }}
       </div>
     </div>
 
@@ -78,7 +78,7 @@ definePageMeta({
 })
 
 const maxComponentCount = ref(
-    clamp(store.currentComponentScope.length, 0, 80)
+    clamp(store.allComponents.length, 0, 80)
 )
 
 const scaleColorWith = ref("coupling")
@@ -98,7 +98,7 @@ const distinctStats = computed(() => {
 })
 
 const orderedComponents = computed(() => {
-  return store.currentComponentScope.sort((a, b) => {
+  return store.allComponents.sort((a, b) => {
     const aValue = a[orderBy.value]
     const bValue = b[orderBy.value]
     const multiplier = reverse.value ? -1 : 1
@@ -113,7 +113,7 @@ const orderedComponents = computed(() => {
 })
 
 
-const blockSize = ref(clamp(Math.floor(window.innerWidth / store.currentComponentScope.length), 12, 18))
+const blockSize = ref(clamp(Math.floor(window.innerWidth / store.allComponents.length), 12, 18))
 
 function clamp(num: number, min: number, max: number) {
   return num <= min ? min : num >= max ? max : num;

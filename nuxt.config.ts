@@ -14,6 +14,10 @@ export default defineNuxtConfig({
     '@nuxt/image',
   ],
 
+  experimental: {
+    appManifest: false
+  },
+
   nitro: {
     esbuild: {
       options: {
