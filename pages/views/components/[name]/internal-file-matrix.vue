@@ -283,52 +283,60 @@ const escapedName = computed(() => nameInRoute.value.replace(/'/g, "''"))
 // FILE MATRIX RELATIONSHIPS (INTERNAL)
 // ═══════════════════════════════════════════════════════
 
-const internalRelations = computed(() => {
-  if (!store.hasData || !store.hasView("file_matrix") || !store.hasView("files")) return []
-
-  // Get set of files in current component for classification
-  const componentFilesList = store.query<{ name: string }>(`
-    SELECT name 
-    FROM files 
-    WHERE component = '${escapedName.value}'
-  `)
-  const internalFilesSet = new Set(componentFilesList.map(f => f.name))
-
-  // Query relations involving files of this component
-  const rows = store.query<{
-    from: string
-    to: string
-    linguistic_similarity: number
-    git_co_changes: number
-    path_distance: number
-  }>(`
-    SELECT * 
-    FROM file_matrix 
-    WHERE "from" IN (SELECT name FROM files WHERE component = '${escapedName.value}') 
-      AND "to" IN (SELECT name FROM files WHERE component = '${escapedName.value}')
-  `)
-
-  const internal: any[] = []
-
-  rows.forEach((r, index) => {
-    const isFromInternal = internalFilesSet.has(r.from)
-    const isToInternal = internalFilesSet.has(r.to)
-
-    // Only internal-to-internal pairs
-    if (isFromInternal && isToInternal) {
-      internal.push({
-        id: `file-int-${index}`,
-        internalFile: r.from,
-        relatedFile: r.to,
-        linguisticSimilarity: r.linguistic_similarity || 0,
-        gitCoChanges: r.git_co_changes || 0,
-        pathDistance: r.path_distance
-      })
+const internalRelations = ref<any[]>([])
+watch(
+  () => [store.hasData, escapedName.value] as const,
+  async ([hasData, escName]) => {
+    if (!hasData || !store.hasView("file_matrix") || !store.hasView("files")) {
+      internalRelations.value = []
+      return
     }
-  })
 
-  return internal
-})
+    // Get set of files in current component for classification
+    const componentFilesList = await store.query<{ name: string }>(`
+      SELECT name 
+      FROM files 
+      WHERE component = '${escName}'
+    `)
+    const internalFilesSet = new Set(componentFilesList.map(f => f.name))
+
+    // Query relations involving files of this component
+    const rows = await store.query<{
+      from: string
+      to: string
+      linguistic_similarity: number
+      git_co_changes: number
+      path_distance: number
+    }>(`
+      SELECT * 
+      FROM file_matrix 
+      WHERE "from" IN (SELECT name FROM files WHERE component = '${escName}') 
+        AND "to" IN (SELECT name FROM files WHERE component = '${escName}')
+    `)
+
+    const internal: any[] = []
+
+    rows.forEach((r, index) => {
+      const isFromInternal = internalFilesSet.has(r.from)
+      const isToInternal = internalFilesSet.has(r.to)
+
+      // Only internal-to-internal pairs
+      if (isFromInternal && isToInternal) {
+        internal.push({
+          id: `file-int-${index}`,
+          internalFile: r.from,
+          relatedFile: r.to,
+          linguisticSimilarity: r.linguistic_similarity || 0,
+          gitCoChanges: r.git_co_changes || 0,
+          pathDistance: r.path_distance
+        })
+      }
+    })
+
+    internalRelations.value = internal
+  },
+  { immediate: true }
+)
 
 const filteredRelations = computed(() => {
   let list = [...internalRelations.value]

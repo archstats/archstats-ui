@@ -273,32 +273,40 @@ const escapedName = computed(() => nameInRoute.value.replace(/'/g, "''"))
 // COMPONENT MATRIX RELATIONSHIPS
 // ═══════════════════════════════════════════════════════
 
-const componentRelations = computed(() => {
-  if (!store.hasData || !store.hasView("component_matrix")) return []
-
-  const rows = store.query<{
-    from: string
-    to: string
-    linguistic_similarity: number
-    git_co_changes: number
-    path_distance: number
-  }>(`
-    SELECT * 
-    FROM component_matrix 
-    WHERE "from" = '${escapedName.value}' OR "to" = '${escapedName.value}'
-  `)
-
-  return rows.map((r, index) => {
-    const related = r.from === nameInRoute.value ? r.to : r.from
-    return {
-      id: `comp-rel-${index}`,
-      relatedComponent: related,
-      linguisticSimilarity: r.linguistic_similarity || 0,
-      gitCoChanges: r.git_co_changes || 0,
-      pathDistance: r.path_distance
+const componentRelations = ref<any[]>([])
+watch(
+  () => [store.hasData, escapedName.value, nameInRoute.value] as const,
+  async ([hasData, escName, name]) => {
+    if (!hasData || !store.hasView("component_matrix")) {
+      componentRelations.value = []
+      return
     }
-  })
-})
+
+    const rows = await store.query<{
+      from: string
+      to: string
+      linguistic_similarity: number
+      git_co_changes: number
+      path_distance: number
+    }>(`
+      SELECT * 
+      FROM component_matrix 
+      WHERE "from" = '${escName}' OR "to" = '${escName}'
+    `)
+
+    componentRelations.value = rows.map((r, index) => {
+      const related = r.from === name ? r.to : r.from
+      return {
+        id: `comp-rel-${index}`,
+        relatedComponent: related,
+        linguisticSimilarity: r.linguistic_similarity || 0,
+        gitCoChanges: r.git_co_changes || 0,
+        pathDistance: r.path_distance
+      }
+    })
+  },
+  { immediate: true }
+)
 
 const filteredRelations = computed(() => {
   let list = [...componentRelations.value]

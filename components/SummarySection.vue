@@ -183,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { useDataStore } from "~/stores/data"
 import Headline from "~/components/ui/common/Headline.vue"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
@@ -191,17 +191,26 @@ import { useJavaMetrics } from "~/composables/useJavaMetrics"
 const store = useDataStore()
 const { isJavaProject, isSpringProject, isJpaProject } = useJavaMetrics()
 
-const summary = computed(() => {
-  if (!store.hasData) return {}
-  try {
-    return store.getView<any>("summary").reduce((acc: any, item: any) => {
-      acc[item.name] = item.value
-      return acc
-    }, {})
-  } catch {
-    return {}
-  }
-})
+const summary = ref<Record<string, any>>({})
+watch(
+  () => store.hasData,
+  async (hasData) => {
+    if (!hasData) {
+      summary.value = {}
+      return
+    }
+    try {
+      const rows = await store.getView<any>("summary")
+      summary.value = rows.reduce((acc: any, item: any) => {
+        acc[item.name] = item.value
+        return acc
+      }, {})
+    } catch {
+      summary.value = {}
+    }
+  },
+  { immediate: true }
+)
 
 // Safe parsing helper
 const getVal = (key: string): number | null => {

@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watchEffect } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
@@ -133,7 +133,11 @@ const searchQuery = ref("")
 const isSidebarOpen = ref(true)
 const activeTab = ref("oop")
 
-const summary = computed(() => getJavaSummary())
+const summary = ref<any>({ classes: 0, methods: 0, fields: 0 })
+
+watchEffect(async () => {
+  summary.value = await getJavaSummary()
+})
 const badgeText = computed(() => `${summary.value.classes} Classes`)
 
 // Average ratios

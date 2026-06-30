@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import { useRoute, useSeoMeta, definePageMeta } from "#imports"
 import { useDataStore } from "~/stores/data"
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
@@ -130,11 +130,20 @@ definePageMeta({
 
 const { isJavaProject, getJavaMetricsForComponent } = useJavaMetrics()
 
-const hasJavaMetrics = computed(() => {
-  if (!nameInRoute.value) return false
-  const metrics = getJavaMetricsForComponent(nameInRoute.value)
-  return metrics && (metrics.classes > 0 || metrics.springBeans > 0 || metrics.jpaEntities > 0)
-})
+const hasJavaMetrics = ref(false)
+
+watch(
+  () => nameInRoute.value,
+  async (name) => {
+    if (!name) {
+      hasJavaMetrics.value = false
+      return
+    }
+    const metrics = await getJavaMetricsForComponent(name)
+    hasJavaMetrics.value = metrics && (metrics.classes > 0 || metrics.springBeans > 0 || metrics.jpaEntities > 0)
+  },
+  { immediate: true }
+)
 
 const categorizedTabs = computed(() => {
   const overviewTabs = [

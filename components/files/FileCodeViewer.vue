@@ -13,6 +13,13 @@
           >
             {{ detectedLanguageLabel }}
           </span>
+          <!-- Line highlight indicator -->
+          <span 
+            v-if="highlightStart > 0"
+            class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
+          >
+            L{{ highlightStart === highlightEnd ? highlightStart : `${highlightStart}-${highlightEnd}` }}
+          </span>
         </div>
 
         <!-- Copy Action Button -->
@@ -33,15 +40,27 @@
       </div>
 
       <!-- Editor Content -->
-      <div class="overflow-y-auto max-h-[600px] flex relative bg-[#282c34] rounded-b-3xl scroll-container-y">
+      <div ref="scrollContainerRef" class="overflow-y-auto max-h-[600px] flex items-start relative bg-[#282c34] rounded-b-3xl scroll-container-y">
         <!-- Gutter Line Numbers -->
-        <div class="sticky left-0 bg-[#21252b] text-right select-none text-[#5c6370] pl-5 pr-4 py-4 border-r border-[#181a1f] flex flex-col font-mono text-[11px] leading-[1.6] min-w-[3.5rem] shrink-0 font-bold z-10">
-          <span v-for="n in totalLines" :key="n">{{ n }}</span>
+        <div class="sticky left-0 bg-[#21252b] select-none text-[#5c6370] pl-5 pr-4 py-4 border-r border-[#181a1f] font-mono text-[11px] leading-[1.6] min-w-[3.5rem] shrink-0 font-bold z-10 m-0 overflow-hidden flex flex-col">
+          <span 
+            v-for="line in codeLines" 
+            :key="'num-' + line.number"
+            :ref="line.isHighlighted ? 'highlightedLineRef' : undefined"
+            class="text-right block"
+            :class="line.isHighlighted ? 'text-amber-400' : ''"
+          >{{ line.number }}</span>
         </div>
 
         <!-- Highlighted Code Body -->
         <div class="grow overflow-x-auto min-w-0">
-          <pre class="p-4 m-0 bg-[#282c34] font-mono text-[11px] leading-[1.6] scroll-container-x"><code class="hljs block whitespace-pre text-left" v-html="highlightedCode"></code></pre>
+          <pre class="p-4 m-0 bg-[#282c34] font-mono text-[11px] leading-[1.6] scroll-container-x"><code class="hljs block whitespace-pre text-left"><div 
+  v-for="line in codeLines" 
+  :key="'code-' + line.number"
+  class="w-full"
+  :class="line.isHighlighted ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-2 -ml-2 font-semibold' : ''"
+  v-html="line.html || ' '"
+></div></code></pre>
         </div>
       </div>
     </div>
@@ -49,7 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watch, onMounted, nextTick } from "vue"
+import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import hljs from "highlight.js"
 import "highlight.js/styles/atom-one-dark.css"
@@ -61,8 +81,11 @@ const props = defineProps({
   },
 })
 
+const route = useRoute()
 const store = useDataStore()
 const copied = ref(false)
+const scrollContainerRef = ref<HTMLElement | null>(null)
+const highlightedLineRef = ref<HTMLElement[] | null>(null)
 
 const escapedPath = computed(() => props.filePath.replace(/'/g, "''"))
 
@@ -71,24 +94,41 @@ const fileBasename = computed(() => {
   return parts[parts.length - 1] || props.filePath
 })
 
-// ── File Content Query ──────────────────────────────────────────
-const fileContents = computed(() => {
-  if (!store.hasData || !props.filePath) return ""
-  try {
-    const rows = store.query<any>(
-      `SELECT content FROM file_contents WHERE file = '${escapedPath.value}' LIMIT 1`
-    )
-    return rows.length > 0 ? rows[0].content : ""
-  } catch {
-    return ""
-  }
+// ── Parse hash for line highlighting ────────────────────────────
+const highlightStart = computed(() => {
+  const hash = route.hash || ''
+  // Matches #L23 or #L23-L25 or #L23-25
+  const match = hash.match(/^#L(\d+)/)
+  return match ? parseInt(match[1]) : 0
 })
 
-const totalLines = computed(() => {
-  if (!fileContents.value) return 0
-  const lines = fileContents.value.split("\n")
-  return lines.length
+const highlightEnd = computed(() => {
+  const hash = route.hash || ''
+  const rangeMatch = hash.match(/^#L\d+[-–]L?(\d+)/)
+  if (rangeMatch) return parseInt(rangeMatch[1])
+  return highlightStart.value
 })
+
+// ── File Content Query ──────────────────────────────────────────
+const fileContents = ref("")
+watch(
+  () => [store.hasData, props.filePath] as const,
+  async ([hasData, filePath]) => {
+    if (!hasData || !filePath) {
+      fileContents.value = ""
+      return
+    }
+    try {
+      const rows = await store.query<any>(
+        `SELECT content FROM file_contents WHERE file = '${escapedPath.value}' LIMIT 1`
+      )
+      fileContents.value = rows.length > 0 ? rows[0].content : ""
+    } catch {
+      fileContents.value = ""
+    }
+  },
+  { immediate: true }
+)
 
 // ── Language Detection ──────────────────────────────────────────
 function detectLanguage(filename: string): string {
@@ -172,18 +212,57 @@ const detectedLanguageLabel = computed(() => {
   return labels[lang] || lang
 })
 
-// ── Syntax Highlight Execution ──────────────────────────────────
-const highlightedCode = computed(() => {
-  if (!fileContents.value) return '<span class="text-slate-500 italic">No source code available for this file in database.</span>'
+// ── Per-line syntax highlighted code with highlight flags ────────
+const codeLines = computed(() => {
+  if (!fileContents.value) return []
+  
+  const rawLines = fileContents.value.split('\n')
   const lang = detectedLang.value
+  let highlightedHtml = ""
+  
   try {
     if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(fileContents.value, { language: lang }).value
+      highlightedHtml = hljs.highlight(fileContents.value, { language: lang }).value
+    } else {
+      highlightedHtml = hljs.highlightAuto(fileContents.value).value
     }
-    return hljs.highlightAuto(fileContents.value).value
-  } catch (e) {
-    console.error("Syntax highlighting error:", e)
-    return fileContents.value
+  } catch {
+    highlightedHtml = fileContents.value
+  }
+  
+  const htmlLines = highlightedHtml.split('\n')
+  const hStart = highlightStart.value
+  const hEnd = highlightEnd.value
+  
+  return rawLines.map((_, idx) => ({
+    number: idx + 1,
+    html: htmlLines[idx] ?? '',
+    isHighlighted: hStart > 0 && (idx + 1) >= hStart && (idx + 1) <= hEnd
+  }))
+})
+
+// ── Scroll to highlighted line ──────────────────────────────────
+function scrollToHighlighted() {
+  nextTick(() => {
+    if (highlightedLineRef.value && highlightedLineRef.value.length > 0 && scrollContainerRef.value) {
+      const el = highlightedLineRef.value[0]
+      const container = scrollContainerRef.value
+      const elTop = el.offsetTop
+      const containerHeight = container.clientHeight
+      container.scrollTop = Math.max(0, elTop - containerHeight / 3)
+    }
+  })
+}
+
+onMounted(() => {
+  if (highlightStart.value > 0) {
+    scrollToHighlighted()
+  }
+})
+
+watch(() => route.hash, () => {
+  if (highlightStart.value > 0) {
+    scrollToHighlighted()
   }
 })
 

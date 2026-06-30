@@ -586,9 +586,10 @@ function toRanges(numbers: number[]): string[] {
   return ranges
 }
 
-const selectedCycleEdges = computed((): EdgeDetail[] => {
-  if (!selectedCycle.value) return []
-  const nodes = selectedCycle.value.nodes
+const selectedCycleEdges = ref<EdgeDetail[]>([])
+watch(selectedCycle, async (cycle) => {
+  if (!cycle) { selectedCycleEdges.value = []; return }
+  const nodes = cycle.nodes
   const N = nodes.length
 
   const edges: EdgeDetail[] = []
@@ -599,17 +600,18 @@ const selectedCycleEdges = computed((): EdgeDetail[] => {
     const matchingConns = store.componentConnections.filter((c: any) => c.from === from && c.to === to)
     const refCount = matchingConns.reduce((sum: number, c: any) => sum + (Number(c.reference_count || c.count) || 0), 0)
     
-    const files = matchingConns.map((c: any) => {
+    const files: Array<{ file: string, count: number, lines: string }> = []
+    for (const c of matchingConns) {
       const filePath = c.file || "unknown"
       const count = Number(c.reference_count || c.count) || 0
       
-      const snippetRows = store.query(`
+      const snippetRows = await store.query<{ begin_position: string }>(`
         SELECT begin_position
         FROM snippets
         WHERE file = '${filePath}'
           AND snippet_type = '${store.statName('modularity__component__imports')}'
           AND content = '${to}'
-      `) as { begin_position: string }[]
+      `)
       
       const lineNumbers = snippetRows
         .map(s => parseInt(s.begin_position.split(":")[0]))
@@ -618,18 +620,20 @@ const selectedCycleEdges = computed((): EdgeDetail[] => {
         
       const linesStr = lineNumbers.length > 0 ? toRanges(lineNumbers).join(", ") : ""
       
-      return {
-        file: filePath,
-        count,
-        lines: linesStr
+      if (count > 0) {
+        files.push({
+          file: filePath,
+          count,
+          lines: linesStr
+        })
       }
-    }).filter(f => f.count > 0)
+    }
 
-    const pairQuery = store.query(`
+    const pairQuery = await store.query<{ shared_commits: number }>(`
       SELECT shared_commits 
       FROM git_component_shared_commits 
       WHERE (pair_1 = '${from}' AND pair_2 = '${to}') OR (pair_1 = '${to}' AND pair_2 = '${from}')
-    `) as { shared_commits: number }[]
+    `)
     const sharedCommits = pairQuery.length > 0 ? Number(pairQuery[0].shared_commits) : 0
 
     edges.push({
@@ -640,8 +644,8 @@ const selectedCycleEdges = computed((): EdgeDetail[] => {
       files
     })
   }
-  return edges
-})
+  selectedCycleEdges.value = edges
+}, { immediate: true })
 
 const sortedEdges = computed(() => {
   return [...selectedCycleEdges.value].sort((a, b) => a.referenceCount - b.referenceCount)

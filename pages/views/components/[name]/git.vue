@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue"
@@ -103,9 +103,10 @@ const store = useDataStore()
 
 const nameInRoute = computed(() => route.params.name as string)
 
-const gitCommits = computed(() => {
-  if (!store.hasData) return []
-  return store.query(
+const gitCommits = ref<GitCommit[]>([])
+watch(nameInRoute, async (name) => {
+  if (!store.hasData || !name) { gitCommits.value = []; return }
+  gitCommits.value = await store.query<GitCommit>(
     `select commit_hash,
             commit_time,
             commit_message,
@@ -115,11 +116,11 @@ const gitCommits = computed(() => {
             sum(file_additions) as additions,
             sum(file_deletions) as deletions
      from git_commits
-     where component = '${nameInRoute.value}'
+     where component = '${name}'
      group by commit_hash
     `
-  ) as GitCommit[]
-})
+  )
+}, { immediate: true })
 
 const totalAdditions = computed(() => {
   return gitCommits.value.reduce((acc, c) => acc + (Number(c.additions) || 0), 0)

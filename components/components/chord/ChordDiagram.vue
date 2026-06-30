@@ -518,14 +518,22 @@ const rootNodeLeaves = ref<any[]>([])
 
 const hasGitCoupling = computed(() => store.hasData && store.hasView('git_component_shared_commits'))
 
-const gitCouplingData = computed(() => {
-  if (!hasGitCoupling.value) return [];
-  return store.query(
-    `SELECT pair_1, pair_2, shared_commits, 
-            percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2
-     FROM git_component_shared_commits`
-  ) as any[];
-});
+const gitCouplingData = ref<any[]>([])
+watch(
+  () => hasGitCoupling.value,
+  async (hasGit) => {
+    if (!hasGit) {
+      gitCouplingData.value = []
+      return
+    }
+    gitCouplingData.value = await store.query(
+      `SELECT pair_1, pair_2, shared_commits, 
+              percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2
+       FROM git_component_shared_commits`
+    ) as any[]
+  },
+  { immediate: true }
+)
 
 const gitCouplingIndex = computed(() => {
   const index = new Map<string, any[]>();

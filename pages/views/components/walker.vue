@@ -149,7 +149,7 @@ import {RawComponent} from "~/utils/components";
 import {Splitpanes, Pane} from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 
-import {computed} from "vue";
+import {computed, ref, watch} from "vue";
 import ComponentInfoTable from "~/components/ui/tables/InfoTable.vue";
 import ComponentCardList from "~/components/components/common/ComponentCardList.vue";
 import Card from "~/components/ui/card/Card.vue";
@@ -182,35 +182,39 @@ const path = ref<PathSegment[]>([{
 
 const pathOccurrences = computed(() => getOccurrencesForPathSegments(path.value))
 
-const dependents = computed(() => {
-  return store.query(`
+const dependents = ref<RawComponent[]>([])
+watch(() => selectedComponent.value?.name, async (name) => {
+  if (!name) return
+  dependents.value = await store.query<RawComponent>(`
     WITH connections_ignoring_files AS (SELECT "from", "to", sum(reference_count) AS count
     FROM component_connections_direct
     GROUP BY 1, 2)
     SELECT c.*, conn.count as "references"
     FROM connections_ignoring_files conn
            LEFT JOIN components c ON c.name = conn."from"
-    WHERE "to" = '${selectedComponent.value.name}'
+    WHERE "to" = '${name}'
     ORDER BY count DESC
-  `) as RawComponent[]
-})
+  `)
+}, { immediate: true })
 
 const totalReferencesAfferent = computed(() => {
   return dependents.value.reduce((acc, component) => acc + component["references"], 0)
 })
 
-const dependencies = computed(() => {
-  return store.query(`
+const dependencies = ref<RawComponent[]>([])
+watch(() => selectedComponent.value?.name, async (name) => {
+  if (!name) return
+  dependencies.value = await store.query<RawComponent>(`
     WITH connections_ignoring_files AS (SELECT "from", "to", sum(reference_count) AS count
     FROM component_connections_direct
     GROUP BY 1, 2)
     SELECT c.*, conn.count as "references"
     FROM connections_ignoring_files conn
            LEFT JOIN components c ON c.name = conn."to"
-    WHERE "from" = '${selectedComponent.value.name}'
+    WHERE "from" = '${name}'
     ORDER BY count DESC
-  `) as RawComponent[]
-})
+  `)
+}, { immediate: true })
 
 const totalReferencesEfferent = computed(() => {
   return dependencies.value.reduce((acc, component) => acc + component["references"], 0)

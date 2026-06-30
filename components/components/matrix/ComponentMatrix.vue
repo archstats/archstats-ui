@@ -79,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed} from "vue";
+import {computed, ref, watchEffect} from "vue";
 import {RawComponent} from "~/utils/components";
 import {useDataStore} from "~/stores/data";
 import LongHover from "~/components/ui/common/LongHover.vue";
@@ -112,7 +112,8 @@ type Connection = {
   coupling: number
   shared_commits: number
 };
-const connections = computed(() => {
+const connections = ref<Connection[]>([])
+watchEffect(async () => {
   let qry: string;
 
 
@@ -136,7 +137,7 @@ const connections = computed(() => {
       GROUP BY 1, 2;
     `
   }
-  return store.query(qry) as Connection[]
+  connections.value = await store.query(qry) as Connection[]
 })
 
 const connectionIndex = computed(() => {

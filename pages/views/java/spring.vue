@@ -492,7 +492,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { ref, reactive, computed, watch, watchEffect, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRouter } from "vue-router"
 import * as d3 from "d3"
 import { useDataStore } from "~/stores/data"
@@ -534,7 +534,11 @@ let zoomBehavior: any = null
 let activeHighlightPathsFn: ((nodeId: string) => void) | null = null
 let activeResetHighlightFn: (() => void) | null = null
 
-const summary = computed(() => getJavaSummary())
+const summary = ref<any>({ springBeans: 0 })
+
+watchEffect(async () => {
+  summary.value = await getJavaSummary()
+})
 const badgeText = computed(() => `${summary.value.springBeans} Beans`)
 
 // ═══════════════════════════════════════════════════════
@@ -546,21 +550,28 @@ function getBasename(path: string): string {
 }
 
 // Build a full class-to-metadata map
-const classRegistry = computed(() => {
+const classRegistry = ref(new Map<
+  string,
+  { className: string; fullClass: string; file: string; component: string; role: string; isAbstract: boolean }
+>())
+watchEffect(async () => {
   const map = new Map<
     string,
     { className: string; fullClass: string; file: string; component: string; role: string; isAbstract: boolean }
   >()
-  if (!store.hasData) return map
+  if (!store.hasData) {
+    classRegistry.value = map
+    return
+  }
 
   try {
-    const filesWithClasses = store.query(`
+    const filesWithClasses = await store.query(`
       SELECT name as file, component, java_class, java_full_class, modularity__types__abstract
       FROM files 
       WHERE java_full_class != ''
     `) as any[]
 
-    const snippets = store.query(`
+    const snippets = await store.query(`
       SELECT file, snippet_type FROM snippets 
       WHERE snippet_type IN (
         'java__spring__controller', 'java__spring__service', 'java__spring__repository', 
@@ -595,7 +606,7 @@ const classRegistry = computed(() => {
   } catch (e) {
     console.error("classRegistry error:", e)
   }
-  return map
+  classRegistry.value = map
 })
 
 // fullClass -> className lookup
@@ -617,12 +628,16 @@ const shortToFull = computed(() => {
 })
 
 // Direct edges: className -> Map<className, referenceCount>
-const directEdges = computed(() => {
+const directEdges = ref(new Map<string, Map<string, number>>())
+watchEffect(async () => {
   const adj = new Map<string, Map<string, number>>()
-  if (!store.hasData || !store.hasView("java_class_connections_direct")) return adj
+  if (!store.hasData || !store.hasView("java_class_connections_direct")) {
+    directEdges.value = adj
+    return
+  }
 
   try {
-    const rawEdges = store.query(`
+    const rawEdges = await store.query(`
       SELECT \`from\`, \`to\`, reference_count FROM java_class_connections_direct
     `) as any[]
 
@@ -637,7 +652,7 @@ const directEdges = computed(() => {
   } catch (e) {
     console.error("directEdges error:", e)
   }
-  return adj
+  directEdges.value = adj
 })
 
 // Reverse edges: className -> Map<className, referenceCount>
@@ -714,12 +729,16 @@ const fileToClass = computed(() => {
 })
 
 // Build file -> Map<otherFile, { gitCoChanges, linguisticSimilarity }> index from file_matrix
-const fileMatrixIndex = computed(() => {
+const fileMatrixIndex = ref(new Map<string, Map<string, { gitCoChanges: number; linguisticSimilarity: number }>>())
+watchEffect(async () => {
   const index = new Map<string, Map<string, { gitCoChanges: number; linguisticSimilarity: number }>>()
-  if (!hasFileMatrix.value) return index
+  if (!hasFileMatrix.value) {
+    fileMatrixIndex.value = index
+    return
+  }
 
   try {
-    const rows = store.query(`
+    const rows = await store.query(`
       SELECT "from", "to", git_co_changes, linguistic_similarity
       FROM file_matrix
       WHERE git_co_changes > 0 OR linguistic_similarity > 0.3
@@ -756,7 +775,7 @@ const fileMatrixIndex = computed(() => {
   } catch (e) {
     console.error("fileMatrixIndex error:", e)
   }
-  return index
+  fileMatrixIndex.value = index
 })
 
 // ═══════════════════════════════════════════════════════

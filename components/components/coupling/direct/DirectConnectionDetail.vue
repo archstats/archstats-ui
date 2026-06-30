@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 
-import {computed} from "vue";
+import {computed, ref, watch} from "vue";
 import {useDataStore} from "~/stores/data";
 
 const store = useDataStore();
@@ -34,18 +34,32 @@ const lines = computed(() => {
     return parseInt(snippet.begin_position.split(":")[0]);
   })).join(", ")
 })
-const snippets = computed(() =>
-    (store.query(`
+const snippets = ref<{
+  begin_position: string,
+  end_position: string,
+  content: string
+}[]>([])
+watch(
+  () => [store.hasData, props.file, props.to] as const,
+  async ([hasData, file, to]) => {
+    if (!hasData || !file || !to) {
+      snippets.value = []
+      return
+    }
+    snippets.value = await store.query(`
       SELECT *
       FROM snippets
-      WHERE file = '${props.file}'
+      WHERE file = '${file}'
         AND snippet_type = '${store.statName('modularity__component__imports')}'
-        AND content = '${props.to}'
+        AND content = '${to}'
     `) as {
       begin_position: string,
       end_position: string,
       content: string
-    }[]))
+    }[]
+  },
+  { immediate: true }
+)
 function toRanges(numbers: number[]): string[] {
   const ranges: string[] = [];
   let start = numbers[0];

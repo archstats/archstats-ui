@@ -41,7 +41,7 @@
 
 <script lang="ts" setup>
 import {useDataStore} from "~/stores/data";
-import {computed} from "vue";
+import {computed, ref, watch} from "vue";
 import Expandable from "~/components/ui/common/Expandable.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import GitSharedCommitSummary from "~/components/components/coupling/git/GitSharedCommitSummary.vue";
@@ -62,17 +62,31 @@ const gitEnabled = computed(() => store.hasView("git_component_shared_commits"))
 const realFrom = computed(() => flipped.value ? props.to : props.from)
 const realTo = computed(() => flipped.value ? props.from : props.to)
 
-const connections = computed(() => {
-  return store.query(`
-    SELECT *
-    FROM component_connections_direct
-    WHERE "from" = '${realFrom.value}'
-      AND "to" = '${realTo.value}'
-  `) as {
-    from: string,
-    to: string,
-    reference_count: number
-    file: string
-  }[]
-})
+const connections = ref<{
+  from: string,
+  to: string,
+  reference_count: number
+  file: string
+}[]>([])
+watch(
+  () => [store.hasData, realFrom.value, realTo.value] as const,
+  async ([hasData, from, to]) => {
+    if (!hasData || !from || !to) {
+      connections.value = []
+      return
+    }
+    connections.value = await store.query(`
+      SELECT *
+      FROM component_connections_direct
+      WHERE "from" = '${from}'
+        AND "to" = '${to}'
+    `) as {
+      from: string,
+      to: string,
+      reference_count: number
+      file: string
+    }[]
+  },
+  { immediate: true }
+)
 </script>

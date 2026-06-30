@@ -34,7 +34,7 @@ import {RawComponent} from "~/utils/components";
 import Card from "~/components/ui/card/Card.vue";
 import useEmitter from "~/utils/useEmitter";
 import {closeModalKey} from "~/utils/modal";
-import {computed} from "vue";
+import {computed, ref, watchEffect} from "vue";
 import ElementTable from "~/components/ui/tables/ElementTable.vue";
 
 const store = useDataStore()
@@ -50,7 +50,8 @@ interface RawPath {
 
 const column = ref('from')
 const oppositeColumn = computed(() => column.value === 'from' ? 'to' : 'from')
-const loadedComponents = computed(() => {
+const loadedComponents = ref<RawPath[]>([])
+watchEffect(async () => {
   let query: string
 
   if (column.value === 'from') {
@@ -69,14 +70,16 @@ const loadedComponents = computed(() => {
     `
 
   }
-  const results = store.query(
+  const results = await store.query(
       query
   ) as RawPath[]
 
-  if (column.value === 'from')
-    return results
+  if (column.value === 'from') {
+    loadedComponents.value = results
+    return
+  }
 
-  return results.map(r => {
+  loadedComponents.value = results.map(r => {
     return {
       name: r.name,
       shortest_path_length: r.shortest_path_length,

@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watchEffect } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue"
@@ -119,9 +119,13 @@ const filePath = computed(() => {
 const escapedPath = computed(() => filePath.value.replace(/'/g, "''"))
 
 // ── Git Data ───────────────────────────────────────────────────
-const gitCommits = computed(() => {
-  if (!store.hasData) return []
-  return store.query<GitCommit>(
+const gitCommits = ref<GitCommit[]>([])
+watchEffect(async () => {
+  if (!store.hasData) {
+    gitCommits.value = []
+    return
+  }
+  gitCommits.value = await store.query<GitCommit>(
     `SELECT commit_hash, commit_time, commit_message, author_name, author_email, 1 as files_changed, file_additions as additions, file_deletions as deletions FROM git_commits WHERE file = '${escapedPath.value}' ORDER BY commit_time DESC`
   )
 })

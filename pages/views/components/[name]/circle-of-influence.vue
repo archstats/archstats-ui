@@ -195,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
+import { computed, ref, watch, watchEffect } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import CousinsDiagram from "~/components/components/cousins/CousinsDiagram.vue"
@@ -228,12 +228,13 @@ const pathSteps = computed(() => {
   return steps
 })
 
-const connections = computed(() => {
-  if (!store.hasData) return []
-  return store.query(
-    `select * from component_connections_indirect where "from" = '${nameInRoute.value}' or "to" = '${nameInRoute.value}'`
+const connections = ref<any[]>([])
+watch(nameInRoute, async (name) => {
+  if (!store.hasData || !name) { connections.value = []; return }
+  connections.value = await store.query(
+    `select * from component_connections_indirect where "from" = '${name}' or "to" = '${name}'`
   )
-})
+}, { immediate: true })
 
 // Reset zoom selection when direction of influence swaps
 watch(direction, () => {

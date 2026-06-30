@@ -133,21 +133,33 @@ import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 import {useDataStore} from "~/stores/data";
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
+import {ref, watch} from "vue";
 
 const store = useDataStore();
-const gitCommits = computed(() => store.query(
-    `select commit_hash,
-            commit_time,
-            commit_message,
-            author_name,
-            author_email,
-            count(file)         as files_changed,
-            sum(file_additions) as additions,
-            sum(file_deletions) as deletions
-     from git_commits
-     group by commit_hash
-    `
-) as GitCommit[]);
+const gitCommits = ref<GitCommit[]>([])
+watch(
+  () => store.hasData,
+  async (hasData) => {
+    if (!hasData) {
+      gitCommits.value = []
+      return
+    }
+    gitCommits.value = await store.query<GitCommit>(
+      `select commit_hash,
+              commit_time,
+              commit_message,
+              author_name,
+              author_email,
+              count(file)         as files_changed,
+              sum(file_additions) as additions,
+              sum(file_deletions) as deletions
+       from git_commits
+       group by commit_hash
+      `
+    )
+  },
+  { immediate: true }
+);
 useSeoMeta({
   title: "Home",
 })

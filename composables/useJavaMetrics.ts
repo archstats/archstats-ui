@@ -1,45 +1,72 @@
-import { computed } from "vue"
+import { ref, watch } from "vue"
 import { useDataStore } from "~/stores/data"
 
 export function useJavaMetrics() {
   const store = useDataStore()
 
   // Dynamic progressive enhancement checks
-  const isJavaProject = computed(() => {
-    if (!store.hasData) return false
-    try {
-      const summaryKeys = store.getView<{ name: string }>("summary") || []
-      return summaryKeys.some((item) => item.name && item.name.startsWith("java__"))
-    } catch {
-      return false
-    }
-  })
+  const isJavaProject = ref(false)
 
-  const isSpringProject = computed(() => {
-    if (!store.hasData) return false
-    try {
-      const summaryKeys = store.getView<{ name: string }>("summary") || []
-      return summaryKeys.some((item) => item.name && item.name.startsWith("java__spring__"))
-    } catch {
-      return false
-    }
-  })
+  watch(
+    () => store.hasData,
+    async (hasData) => {
+      if (!hasData) {
+        isJavaProject.value = false
+        return
+      }
+      try {
+        const summaryKeys = (await store.getView<{ name: string }>("summary")) || []
+        isJavaProject.value = summaryKeys.some((item) => item.name && item.name.startsWith("java__"))
+      } catch {
+        isJavaProject.value = false
+      }
+    },
+    { immediate: true }
+  )
 
-  const isJpaProject = computed(() => {
-    if (!store.hasData) return false
-    try {
-      const summaryKeys = store.getView<{ name: string }>("summary") || []
-      return summaryKeys.some((item) => item.name && item.name.startsWith("java__jpa__"))
-    } catch {
-      return false
-    }
-  })
+  const isSpringProject = ref(false)
+
+  watch(
+    () => store.hasData,
+    async (hasData) => {
+      if (!hasData) {
+        isSpringProject.value = false
+        return
+      }
+      try {
+        const summaryKeys = (await store.getView<{ name: string }>("summary")) || []
+        isSpringProject.value = summaryKeys.some((item) => item.name && item.name.startsWith("java__spring__"))
+      } catch {
+        isSpringProject.value = false
+      }
+    },
+    { immediate: true }
+  )
+
+  const isJpaProject = ref(false)
+
+  watch(
+    () => store.hasData,
+    async (hasData) => {
+      if (!hasData) {
+        isJpaProject.value = false
+        return
+      }
+      try {
+        const summaryKeys = (await store.getView<{ name: string }>("summary")) || []
+        isJpaProject.value = summaryKeys.some((item) => item.name && item.name.startsWith("java__jpa__"))
+      } catch {
+        isJpaProject.value = false
+      }
+    },
+    { immediate: true }
+  )
 
   // Safe fetch from summary table
-  const getSummaryVal = (key: string): number => {
+  const getSummaryVal = async (key: string): Promise<number> => {
     if (!store.hasData) return 0
     try {
-      const summary = store.getView<any>("summary") || []
+      const summary = (await store.getView<any>("summary")) || []
       const found = summary.find((item: any) => item.name === key)
       return found ? Number(found.value) || 0 : 0
     } catch {
@@ -48,7 +75,7 @@ export function useJavaMetrics() {
   }
 
   // Safe fetch for component columns
-  const getComponentMetric = (compName: string, colName: string): number => {
+  const getComponentMetric = async (compName: string, colName: string): Promise<number> => {
     if (!store.hasData) return 0
     try {
       const cols = store.getDistinctComponentColumns || []
@@ -57,7 +84,7 @@ export function useJavaMetrics() {
       if (!hasCol) return 0
       
       const escName = compName.replace(/'/g, "''")
-      const rows = store.query<any>(`SELECT ${colName} FROM components WHERE name = '${escName}' LIMIT 1`)
+      const rows = await store.query<any>(`SELECT ${colName} FROM components WHERE name = '${escName}' LIMIT 1`)
       return rows.length > 0 ? Number(rows[0][colName]) || 0 : 0
     } catch {
       return 0
@@ -65,15 +92,15 @@ export function useJavaMetrics() {
   }
 
   // Safe fetch for file columns
-  const getFileMetric = (fileName: string, colName: string): number => {
+  const getFileMetric = async (fileName: string, colName: string): Promise<number> => {
     if (!store.hasData || !store.hasView("files")) return 0
     try {
-      const rawCols = store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')")
+      const rawCols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')")
       const hasCol = rawCols.some(c => c.name.toLowerCase() === colName.toLowerCase())
       if (!hasCol) return 0
 
       const escName = fileName.replace(/'/g, "''")
-      const rows = store.query<any>(`SELECT ${colName} FROM files WHERE name = '${escName}' LIMIT 1`)
+      const rows = await store.query<any>(`SELECT ${colName} FROM files WHERE name = '${escName}' LIMIT 1`)
       return rows.length > 0 ? Number(rows[0][colName]) || 0 : 0
     } catch {
       return 0
@@ -81,56 +108,56 @@ export function useJavaMetrics() {
   }
 
   // Retrieve global Java summary statistics
-  const getJavaSummary = () => {
+  const getJavaSummary = async () => {
     return {
-      classes: getSummaryVal("java__class__declarations"),
-      methods: getSummaryVal("java__method_declarations"),
-      fields: getSummaryVal("java__field__declarations"),
-      springControllers: getSummaryVal("java__spring__controllers"),
-      springServices: getSummaryVal("java__spring__services"),
-      springRepositories: getSummaryVal("java__spring__repositories"),
-      springComponents: getSummaryVal("java__spring__components"),
-      springConfigurations: getSummaryVal("java__spring__configurations"),
-      springBeans: getSummaryVal("java__spring__beans"),
-      jpaEntities: getSummaryVal("java__jpa__entities"),
-      restTotal: getSummaryVal("java__spring__request_mappings__total")
+      classes: await getSummaryVal("java__class__declarations"),
+      methods: await getSummaryVal("java__method_declarations"),
+      fields: await getSummaryVal("java__field__declarations"),
+      springControllers: await getSummaryVal("java__spring__controllers"),
+      springServices: await getSummaryVal("java__spring__services"),
+      springRepositories: await getSummaryVal("java__spring__repositories"),
+      springComponents: await getSummaryVal("java__spring__components"),
+      springConfigurations: await getSummaryVal("java__spring__configurations"),
+      springBeans: await getSummaryVal("java__spring__beans"),
+      jpaEntities: await getSummaryVal("java__jpa__entities"),
+      restTotal: await getSummaryVal("java__spring__request_mappings__total")
     }
   }
 
   // Retrieve Java metrics for a specific component
-  const getJavaMetricsForComponent = (compName: string) => {
-    const classes = getComponentMetric(compName, "java__class__declarations")
-    const methods = getComponentMetric(compName, "java__method_declarations")
-    const fields = getComponentMetric(compName, "java__field__declarations")
+  const getJavaMetricsForComponent = async (compName: string) => {
+    const classes = await getComponentMetric(compName, "java__class__declarations")
+    const methods = await getComponentMetric(compName, "java__method_declarations")
+    const fields = await getComponentMetric(compName, "java__field__declarations")
 
     return {
       classes,
       methods,
       fields,
-      springControllers: getComponentMetric(compName, "java__spring__controllers"),
-      springServices: getComponentMetric(compName, "java__spring__services"),
-      springRepositories: getComponentMetric(compName, "java__spring__repositories"),
-      springComponents: getComponentMetric(compName, "java__spring__components"),
-      springConfigurations: getComponentMetric(compName, "java__spring__configurations"),
-      springBeans: getComponentMetric(compName, "java__spring__beans"),
-      jpaEntities: getComponentMetric(compName, "java__jpa__entities"),
-      restTotal: getComponentMetric(compName, "java__spring__request_mappings__total"),
+      springControllers: await getComponentMetric(compName, "java__spring__controllers"),
+      springServices: await getComponentMetric(compName, "java__spring__services"),
+      springRepositories: await getComponentMetric(compName, "java__spring__repositories"),
+      springComponents: await getComponentMetric(compName, "java__spring__components"),
+      springConfigurations: await getComponentMetric(compName, "java__spring__configurations"),
+      springBeans: await getComponentMetric(compName, "java__spring__beans"),
+      jpaEntities: await getComponentMetric(compName, "java__jpa__entities"),
+      restTotal: await getComponentMetric(compName, "java__spring__request_mappings__total"),
       avgMethodsPerClass: classes ? methods / classes : 0,
       avgFieldsPerClass: classes ? fields / classes : 0
     }
   }
 
   // Retrieve Java annotations and metrics for a specific file
-  const getJavaMetricsForFile = (fileName: string) => {
-    const classes = getFileMetric(fileName, "java__class__declarations")
-    const methods = getFileMetric(fileName, "java__method_declarations")
-    const fields = getFileMetric(fileName, "java__field__declarations")
+  const getJavaMetricsForFile = async (fileName: string) => {
+    const classes = await getFileMetric(fileName, "java__class__declarations")
+    const methods = await getFileMetric(fileName, "java__method_declarations")
+    const fields = await getFileMetric(fileName, "java__field__declarations")
 
     // Get snippets for annotations
     let snippets: { snippet_type: string; count: number }[] = []
     if (store.hasData && store.hasView("snippets")) {
       const escName = fileName.replace(/'/g, "''")
-      snippets = store.query<{ snippet_type: string; count: number }>(
+      snippets = await store.query<{ snippet_type: string; count: number }>(
         `SELECT snippet_type, count(*) as count FROM snippets WHERE file = '${escName}' AND snippet_type LIKE 'java__%' GROUP BY snippet_type`
       )
     }
@@ -149,12 +176,12 @@ export function useJavaMetrics() {
     if (snippetTypes.has("java__class__declaration") && roles.length === 0) roles.push("Class")
 
     // Get request mapping endpoints inside the file
-    const restGet = getFileMetric(fileName, "java__spring__request_mappings__get")
-    const restPost = getFileMetric(fileName, "java__spring__request_mappings__post")
-    const restPut = getFileMetric(fileName, "java__spring__request_mappings__put")
-    const restDelete = getFileMetric(fileName, "java__spring__request_mappings__delete")
-    const restPatch = getFileMetric(fileName, "java__spring__request_mappings__patch")
-    const restTotal = getFileMetric(fileName, "java__spring__request_mappings__total")
+    const restGet = await getFileMetric(fileName, "java__spring__request_mappings__get")
+    const restPost = await getFileMetric(fileName, "java__spring__request_mappings__post")
+    const restPut = await getFileMetric(fileName, "java__spring__request_mappings__put")
+    const restDelete = await getFileMetric(fileName, "java__spring__request_mappings__delete")
+    const restPatch = await getFileMetric(fileName, "java__spring__request_mappings__patch")
+    const restTotal = await getFileMetric(fileName, "java__spring__request_mappings__total")
 
     return {
       classes,
@@ -175,10 +202,10 @@ export function useJavaMetrics() {
   }
 
   // Get list of Spring Controllers and their rest mapping stats
-  const getSpringControllers = () => {
+  const getSpringControllers = async () => {
     if (!store.hasData || !store.hasView("files")) return []
     try {
-      const rawCols = store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')")
+      const rawCols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')")
       const hasTotal = rawCols.some(c => c.name === "java__spring__request_mappings__total")
       if (!hasTotal) return []
 
@@ -194,14 +221,14 @@ export function useJavaMetrics() {
         WHERE java__spring__request_mappings__total > 0
         ORDER BY total DESC
       `
-      return store.query<any>(query)
+      return await store.query<any>(query)
     } catch {
       return []
     }
   }
 
   // Get list of JPA Entities
-  const getJpaEntitiesList = () => {
+  const getJpaEntitiesList = async () => {
     if (!store.hasData || !store.hasView("snippets")) return []
     try {
       // Find files containing java__jpa__entity snippets
@@ -211,7 +238,7 @@ export function useJavaMetrics() {
         WHERE snippet_type = 'java__jpa__entity'
         ORDER BY entity_name
       `
-      return store.query<any>(query)
+      return await store.query<any>(query)
     } catch {
       return []
     }

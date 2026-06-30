@@ -249,7 +249,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watchEffect } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
@@ -269,8 +269,16 @@ const isSidebarOpen = ref(true)
 const activeTab = ref("jpa")
 const selectedJpaState = ref("managed")
 
-const summary = computed(() => getJavaSummary())
-const jpaEntities = computed(() => getJpaEntitiesList())
+const summary = ref<any>({ jpaEntities: 0 })
+const jpaEntities = ref<any[]>([])
+
+watchEffect(async () => {
+  summary.value = await getJavaSummary()
+})
+
+watchEffect(async () => {
+  jpaEntities.value = await getJpaEntitiesList()
+})
 const badgeText = computed(() => `${summary.value.jpaEntities} Entities`)
 
 // Filtered JPA List

@@ -94,10 +94,10 @@ const treemapDirCount = ref(0)
 const treemapTotalFiles = ref(0)
 const treemapSelectedDir = ref<Record<string, any> | null>(null)
 
-function buildTreemapHierarchy() {
+async function buildTreemapHierarchy() {
   if (!store.hasData || !store.hasView("directories")) return null
 
-  const dirs = store.query<Record<string, any>>("SELECT * FROM directories ORDER BY name")
+  const dirs = await store.query<Record<string, any>>("SELECT * FROM directories ORDER BY name")
   treemapDirCount.value = dirs.length
   treemapTotalFiles.value = dirs.reduce((sum, d) => sum + (Number(d.complexity__files) || 0), 0)
 
@@ -146,7 +146,7 @@ function getHealthColor(health: any): string {
   return "#dc2626"
 }
 
-function renderTreemap() {
+async function renderTreemap() {
   const svg = treemapSvgRef.value
   if (!svg) return
   const rect = svg.getBoundingClientRect()
@@ -155,7 +155,7 @@ function renderTreemap() {
 
   d3.select(svg).selectAll("*").remove()
 
-  const hierarchyData = buildTreemapHierarchy()
+  const hierarchyData = await buildTreemapHierarchy()
   if (!hierarchyData) return
 
   const root = d3.select(svg)

@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watchEffect } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 
@@ -114,17 +114,25 @@ const fileBasename = computed(() => {
 })
 
 // ── Imports Data ───────────────────────────────────────────────
-const outgoingImports = computed(() => {
-  if (!store.hasData) return []
-  return store.query<{ target: string; count: number }>(
+const outgoingImports = ref<{ target: string; count: number }[]>([])
+watchEffect(async () => {
+  if (!store.hasData) {
+    outgoingImports.value = []
+    return
+  }
+  outgoingImports.value = await store.query<{ target: string; count: number }>(
     `SELECT content as target, count(*) as count FROM snippets WHERE file = '${escapedPath.value}' AND snippet_type LIKE '%import%' GROUP BY content ORDER BY count DESC`
   )
 })
 
-const incomingRefs = computed(() => {
-  if (!store.hasData) return []
+const incomingRefs = ref<{ source: string; count: number }[]>([])
+watchEffect(async () => {
+  if (!store.hasData) {
+    incomingRefs.value = []
+    return
+  }
   const basename = fileBasename.value.replace(/'/g, "''")
-  return store.query<{ source: string; count: number }>(
+  incomingRefs.value = await store.query<{ source: string; count: number }>(
     `SELECT file as source, count(*) as count FROM snippets WHERE content LIKE '%${basename}%' AND snippet_type LIKE '%import%' AND file != '${escapedPath.value}' GROUP BY file ORDER BY count DESC`
   )
 })

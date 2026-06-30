@@ -33,8 +33,9 @@ interface Cycle {
 const store = useDataStore()
 const props = defineProps<{}>()
 
-const cycles = computed(() => {
-  return store.query(`
+const cycles = ref<Cycle[]>([])
+watchEffect(async () => {
+  cycles.value = await store.query(`
     select distinct cycle_nr as name, cycle_size, cycle
     from component_cycles_shortest
   `) as Cycle[]

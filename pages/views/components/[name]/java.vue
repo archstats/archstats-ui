@@ -692,7 +692,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import * as d3 from "d3"
 import { useDataStore } from "~/stores/data"
@@ -704,8 +704,15 @@ const { getJavaMetricsForComponent, getSpringControllers, getJpaEntitiesList } =
 
 const nameInRoute = computed(() => route.params.name as string)
 
-const javaMetrics = computed(() => {
-  return getJavaMetricsForComponent(nameInRoute.value)
+const javaMetrics = ref<any>({
+  classes: 0, methods: 0, fields: 0,
+  springControllers: 0, springServices: 0, springRepositories: 0,
+  springComponents: 0, springConfigurations: 0, springBeans: 0,
+  jpaEntities: 0, restTotal: 0, avgMethodsPerClass: 0, avgFieldsPerClass: 0
+})
+
+watchEffect(async () => {
+  javaMetrics.value = await getJavaMetricsForComponent(nameInRoute.value)
 })
 
 const encapsulationScore = computed(() => {
@@ -733,8 +740,12 @@ watch([fileSearch, roleFilter], () => {
 })
 
 // Detailed list of Java files in this component
-const javaFiles = computed(() => {
-  if (!store.hasData) return []
+const javaFiles = ref<any[]>([])
+watchEffect(async () => {
+  if (!store.hasData) {
+    javaFiles.value = []
+    return
+  }
   try {
     const escName = nameInRoute.value.replace(/'/g, "''")
     const query = `
@@ -749,7 +760,7 @@ const javaFiles = computed(() => {
         AND (java__class__declarations > 0 OR java__method_declarations > 0 OR name LIKE '%.java')
       ORDER BY complexity__lines DESC
     `
-    const list = store.query<any>(query)
+    const list = await store.query<any>(query)
 
     // Fetch annotations for files inside this component
     const snippetQuery = `
@@ -757,7 +768,7 @@ const javaFiles = computed(() => {
       FROM snippets
       WHERE component = '${escName}' AND snippet_type LIKE 'java__%'
     `
-    const snippets = store.query<any>(snippetQuery)
+    const snippets = await store.query<any>(snippetQuery)
     const fileRoles: Record<string, string[]> = {}
     snippets.forEach((s: any) => {
       if (!fileRoles[s.file]) fileRoles[s.file] = []
@@ -776,12 +787,12 @@ const javaFiles = computed(() => {
       }
     })
 
-    return list.map((f: any) => ({
+    javaFiles.value = list.map((f: any) => ({
       ...f,
       roles: fileRoles[f.name] || []
     }))
   } catch {
-    return []
+    javaFiles.value = []
   }
 })
 
@@ -818,12 +829,18 @@ const totalPages = computed(() => {
 })
 
 // Spring Controllers & JPA list filtering
-const componentControllers = computed(() => {
-  return getSpringControllers().filter((c: any) => c.component === nameInRoute.value)
+const componentControllers = ref<any[]>([])
+
+watchEffect(async () => {
+  const all = await getSpringControllers()
+  componentControllers.value = all.filter((c: any) => c.component === nameInRoute.value)
 })
 
-const componentJpaEntities = computed(() => {
-  return getJpaEntitiesList().filter((e: any) => e.component === nameInRoute.value)
+const componentJpaEntities = ref<any[]>([])
+
+watchEffect(async () => {
+  const all = await getJpaEntitiesList()
+  componentJpaEntities.value = all.filter((e: any) => e.component === nameInRoute.value)
 })
 
 const componentBeans = computed(() => {
@@ -868,8 +885,12 @@ watch(componentBeans, (beans) => {
 }, { immediate: true })
 
 // Simple class-to-file mapping registry
-const classToFileMap = computed(() => {
-  if (!store.hasData) return new Map<string, { file: string; component: string; roles: string[] }>()
+const classToFileMap = ref(new Map<string, { file: string; component: string; roles: string[] }>())
+watchEffect(async () => {
+  if (!store.hasData) {
+    classToFileMap.value = new Map<string, { file: string; component: string; roles: string[] }>()
+    return
+  }
   const m = new Map<string, { file: string; component: string; roles: string[] }>()
   try {
     const query = `
@@ -877,7 +898,7 @@ const classToFileMap = computed(() => {
       FROM snippets
       WHERE snippet_type IN ('java__class__declaration', 'java__interface__declaration', 'java__record__declaration', 'java__spring__controller', 'java__spring__service', 'java__spring__repository', 'java__spring__component', 'java__spring__configuration', 'java__jpa__entity')
     `
-    const rows = store.query<any>(query)
+    const rows = await store.query<any>(query)
     rows.forEach(r => {
       let roles: string[] = []
       if (r.snippet_type === "java__spring__controller") roles.push("Controller")
@@ -901,16 +922,20 @@ const classToFileMap = computed(() => {
   } catch (e) {
     console.error(e)
   }
-  return m
+  classToFileMap.value = m
 })
 
 // Trace imports and dependencies
-const selectedBeanWiring = computed(() => {
-  if (!selectedBean.value) return null
+const selectedBeanWiring = ref<any>(null)
+watchEffect(async () => {
+  if (!selectedBean.value) {
+    selectedBeanWiring.value = null
+    return
+  }
   const b = selectedBean.value
   try {
     const escName = b.name.replace(/'/g, "''")
-    const imports = store.query<any>(`
+    const imports = await store.query<any>(`
       SELECT content FROM snippets 
       WHERE file = '${escName}' AND snippet_type = 'java__import__declaration'
     `)
@@ -931,32 +956,33 @@ const selectedBeanWiring = computed(() => {
     })
 
     const beanClassName = getBasename(b.name).replace(".java", "")
-    const incoming = store.query<any>(`
+    const incoming = await store.query<any>(`
       SELECT DISTINCT file, component 
       FROM snippets 
       WHERE snippet_type = 'java__import__declaration' 
         AND (content LIKE '%.${beanClassName}' OR content LIKE '%.${beanClassName};')
     `)
 
-    return {
+    selectedBeanWiring.value = {
       name: beanClassName,
       internalDeps,
       externalDeps,
       incomingRefs: incoming.map((i: any) => ({ file: i.file, component: i.component }))
     }
   } catch {
-    return null
+    selectedBeanWiring.value = null
   }
 })
 
 // Architectural Audits
-const directRepoViolations = computed(() => {
+const directRepoViolations = ref<{ file: string; controllerName: string; importedClass: string; repoFile: string }[]>([])
+watchEffect(async () => {
   const violations: { file: string; controllerName: string; importedClass: string; repoFile: string }[] = []
-  javaFiles.value.forEach(f => {
+  for (const f of javaFiles.value) {
     if (f.roles.includes("Controller")) {
       try {
         const escName = f.name.replace(/'/g, "''")
-        const imports = store.query<any>(`
+        const imports = await store.query<any>(`
           SELECT content FROM snippets 
           WHERE file = '${escName}' AND snippet_type = 'java__import__declaration'
         `)
@@ -974,17 +1000,18 @@ const directRepoViolations = computed(() => {
         })
       } catch {}
     }
-  })
-  return violations
+  }
+  directRepoViolations.value = violations
 })
 
-const reverseLayerViolations = computed(() => {
+const reverseLayerViolations = ref<{ file: string; serviceName: string; importedClass: string; controllerFile: string }[]>([])
+watchEffect(async () => {
   const violations: { file: string; serviceName: string; importedClass: string; controllerFile: string }[] = []
-  javaFiles.value.forEach(f => {
+  for (const f of javaFiles.value) {
     if (f.roles.includes("Service")) {
       try {
         const escName = f.name.replace(/'/g, "''")
-        const imports = store.query<any>(`
+        const imports = await store.query<any>(`
           SELECT content FROM snippets 
           WHERE file = '${escName}' AND snippet_type = 'java__import__declaration'
         `)
@@ -1002,8 +1029,8 @@ const reverseLayerViolations = computed(() => {
         })
       } catch {}
     }
-  })
-  return violations
+  }
+  reverseLayerViolations.value = violations
 })
 
 const orphanedEntities = computed(() => {
@@ -1090,7 +1117,7 @@ function healthBadgeClass(val: number): string {
 // D3 WIRING DEPENDENCY GRAPH
 // ═══════════════════════════════════════════════════════
 
-function buildWiringGraphData() {
+async function buildWiringGraphData() {
   const nodes = new Map<string, any>()
   const edges: { source: string; target: string; isExternal: boolean }[] = []
 
@@ -1116,11 +1143,11 @@ function buildWiringGraphData() {
   })
 
   // 2. Scan imports for each local class to build edges
-  localClasses.forEach((f: any) => {
+  for (const f of localClasses) {
     const className = getBasename(f.name).replace(".java", "")
     try {
       const escName = f.name.replace(/'/g, "''")
-      const imports = store.query<any>(`
+      const imports = await store.query<any>(`
         SELECT content FROM snippets 
         WHERE file = '${escName}' AND snippet_type = 'java__import__declaration'
       `)
@@ -1185,7 +1212,7 @@ function buildWiringGraphData() {
     } catch (e) {
       console.error(e)
     }
-  })
+  }
 
   return {
     nodes: Array.from(nodes.values()),
@@ -1211,7 +1238,7 @@ function getRoleColor(role: string): string {
   return "#64748b"
 }
 
-function renderWiringGraph() {
+async function renderWiringGraph() {
   const svg = wiringSvgRef.value
   if (!svg) return
 
@@ -1223,7 +1250,7 @@ function renderWiringGraph() {
   d3.select(svg).selectAll("*").remove()
   if (wiringSimulation) wiringSimulation.stop()
 
-  const { nodes, edges } = buildWiringGraphData()
+  const { nodes, edges } = await buildWiringGraphData()
   if (nodes.length === 0) return
 
   const root = d3.select(svg)
@@ -1356,7 +1383,7 @@ function resetWiringZoom() {
   }
 }
 
-function updateGraphSelection() {
+async function updateGraphSelection() {
   const svg = wiringSvgRef.value
   if (!svg) return
   const selectedId = selectedBean.value ? getBasename(selectedBean.value.name).replace(".java", "") : null
@@ -1379,7 +1406,7 @@ function updateGraphSelection() {
 
   // Find connected nodes
   const connectedNodeIds = new Set<string>([selectedId])
-  const { edges } = buildWiringGraphData()
+  const { edges } = await buildWiringGraphData()
   
   edges.forEach(e => {
     const srcId = typeof e.source === "string" ? e.source : e.source.id

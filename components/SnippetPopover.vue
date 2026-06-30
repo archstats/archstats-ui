@@ -3,7 +3,7 @@
     ref="triggerRef" 
     class="inline-block relative cursor-pointer select-none"
     @mouseenter="showPopover" 
-    @mouseleave="hidePopover"
+    @mouseleave="scheduleHide"
   >
     <slot />
   </div>
@@ -13,14 +13,28 @@
       v-if="isOpen && fileContents" 
       ref="popoverRef"
       :style="popoverStyle"
-      class="bg-[#282c34] border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden font-mono text-[10px] leading-relaxed text-slate-300 pointer-events-none select-none z-[9999] animate-fade-in"
+      class="bg-[#282c34] border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden font-mono text-[10px] leading-relaxed text-slate-300 select-none z-[9999] animate-fade-in"
+      @mouseenter="cancelHide"
+      @mouseleave="scheduleHide"
     >
       <!-- Popover Header -->
-      <div class="px-3.5 py-1.5 bg-[#21252b] border-b border-[#181a1f] flex items-center justify-between text-[8.5px] text-slate-400 font-bold">
-        <span class="truncate max-w-[280px]" :title="file">{{ filename }}</span>
-        <span class="text-[8px] font-mono text-[#abb2bf] uppercase tracking-wider bg-[#282c34] border border-slate-700/30 px-1.5 py-0.2 rounded">
-          Lines {{ targetStart === targetEnd ? targetStart : `${targetStart}-${targetEnd}` }}
-        </span>
+      <div class="px-3.5 py-1.5 bg-[#21252b] border-b border-[#181a1f] flex items-center justify-between text-[8.5px] text-slate-400 font-bold gap-2">
+        <span class="truncate max-w-[200px]" :title="file">{{ filename }}</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="text-[8px] font-mono text-[#abb2bf] uppercase tracking-wider bg-[#282c34] border border-slate-700/30 px-1.5 py-0.2 rounded">
+            L{{ targetStart === targetEnd ? targetStart : `${targetStart}-${targetEnd}` }}
+          </span>
+          <router-link
+            :to="goToFileUrl"
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-[8px] font-extrabold text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded transition-colors cursor-pointer"
+            title="View file at this line"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-2.5 h-2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+            <span>Go to file</span>
+          </router-link>
+        </div>
       </div>
 
       <!-- Popover Body (Code snippet with highlighted lines) -->
@@ -52,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, watch } from "vue"
 import { useDataStore } from "~/stores/data"
 import hljs from "highlight.js"
 import "highlight.js/styles/atom-one-dark.css"
@@ -103,18 +117,26 @@ const targetStart = computed(() => parsedRange.value.start)
 const targetEnd = computed(() => parsedRange.value.end)
 
 // ── File Content Query ──────────────────────────────────────────
-const fileContents = computed(() => {
-  if (!store.hasData || !props.file) return ""
-  try {
-    const escaped = props.file.replace(/'/g, "''")
-    const rows = store.query<any>(
-      `SELECT content FROM file_contents WHERE file = '${escaped}' LIMIT 1`
-    )
-    return rows.length > 0 ? rows[0].content : ""
-  } catch {
-    return ""
-  }
-})
+const fileContents = ref("")
+watch(
+  () => [store.hasData, props.file] as const,
+  async ([hasData, file]) => {
+    if (!hasData || !file) {
+      fileContents.value = ""
+      return
+    }
+    try {
+      const escaped = file.replace(/'/g, "''")
+      const rows = await store.query<any>(
+        `SELECT content FROM file_contents WHERE file = '${escaped}' LIMIT 1`
+      )
+      fileContents.value = rows.length > 0 ? rows[0].content : ""
+    } catch {
+      fileContents.value = ""
+    }
+  },
+  { immediate: true }
+)
 
 const linesArray = computed(() => {
   if (!fileContents.value) return []
@@ -227,9 +249,28 @@ function showPopover() {
   isOpen.value = true
 }
 
+let hideTimeout: ReturnType<typeof setTimeout> | null = null
+
+function scheduleHide() {
+  hideTimeout = setTimeout(() => {
+    isOpen.value = false
+  }, 120)
+}
+
+function cancelHide() {
+  if (hideTimeout) {
+    clearTimeout(hideTimeout)
+    hideTimeout = null
+  }
+}
+
 function hidePopover() {
   isOpen.value = false
 }
+
+const goToFileUrl = computed(() => {
+  return `/views/files/${props.file}/contents#L${targetStart.value}`
+})
 </script>
 
 <style scoped>

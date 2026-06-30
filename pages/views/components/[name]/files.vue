@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
+import { computed, ref, watch, watchEffect } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 
@@ -124,20 +124,21 @@ const nameInRoute = computed(() => route.params.name as string)
 const fileSearchQuery = ref('')
 const activeFile = ref<any | null>(null)
 
-const files = computed(() => {
-  if (!store.hasData) return []
-  
-  const filesList = store.query(`
-    SELECT *
-    FROM files
-    WHERE component = '${nameInRoute.value}'
-  `) as {
+const files = ref<{
+  name: string,
+  [key: string]: any
+}[]>([])
+watch(nameInRoute, async (name) => {
+  if (!store.hasData || !name) { files.value = []; return }
+  files.value = await store.query<{
     name: string,
     [key: string]: any
-  }[]
-
-  return filesList
-})
+  }>(`
+    SELECT *
+    FROM files
+    WHERE component = '${name}'
+  `)
+}, { immediate: true })
 
 const filteredFiles = computed(() => {
   if (!fileSearchQuery.value.trim()) return files.value

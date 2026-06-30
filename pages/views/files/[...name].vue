@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue"
+import { computed, onMounted, ref, watchEffect } from "vue"
 import { useRoute, useSeoMeta, definePageMeta } from "#imports"
 import { useDataStore } from "~/stores/data"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
@@ -124,12 +124,16 @@ const fileBasename = computed(() => {
   return parts[parts.length - 1] || filePath.value
 })
 
-const fileData = computed(() => {
-  if (!store.hasData) return null
-  const results = store.query<Record<string, any>>(
+const fileData = ref<Record<string, any> | null>(null)
+watchEffect(async () => {
+  if (!store.hasData) {
+    fileData.value = null
+    return
+  }
+  const results = await store.query<Record<string, any>>(
     `SELECT * FROM files WHERE name = '${escapedPath.value}' LIMIT 1`
   )
-  return results.length > 0 ? results[0] : null
+  fileData.value = results.length > 0 ? results[0] : null
 })
 
 const getMetric = (keyName: string): number => {
@@ -146,9 +150,14 @@ const commitsCount = computed(() => {
   return getMetric('git__commits__total') || undefined
 })
 
-const javaMetrics = computed(() => {
-  if (!filePath.value) return null
-  return getJavaMetricsForFile(filePath.value)
+const javaMetrics = ref<any>(null)
+
+watchEffect(async () => {
+  if (!filePath.value) {
+    javaMetrics.value = null
+    return
+  }
+  javaMetrics.value = await getJavaMetricsForFile(filePath.value)
 })
 
 const hasJavaMetrics = computed(() => {

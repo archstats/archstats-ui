@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import * as d3 from "d3"
 import { useDataStore } from "~/stores/data"
@@ -337,9 +337,14 @@ const fileBasename = computed(() => {
   return parts[parts.length - 1] || filePath.value
 })
 
-const javaMetrics = computed(() => {
-  if (!filePath.value) return null
-  return getJavaMetricsForFile(filePath.value)
+const javaMetrics = ref<any>(null)
+
+watchEffect(async () => {
+  if (!filePath.value) {
+    javaMetrics.value = null
+    return
+  }
+  javaMetrics.value = await getJavaMetricsForFile(filePath.value)
 })
 
 const javaSnippets = computed(() => {

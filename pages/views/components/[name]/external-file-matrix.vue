@@ -286,62 +286,70 @@ const escapedName = computed(() => nameInRoute.value.replace(/'/g, "''"))
 // FILE MATRIX RELATIONSHIPS (EXTERNAL)
 // ═══════════════════════════════════════════════════════
 
-const externalRelations = computed(() => {
-  if (!store.hasData || !store.hasView("file_matrix") || !store.hasView("files")) return []
+const externalRelations = ref<any[]>([])
+watch(
+  () => [store.hasData, escapedName.value] as const,
+  async ([hasData, escName]) => {
+    if (!hasData || !store.hasView("file_matrix") || !store.hasView("files")) {
+      externalRelations.value = []
+      return
+    }
 
-  // Get set of files in current component for classification
-  const componentFilesList = store.query<{ name: string }>(`
-    SELECT name 
-    FROM files 
-    WHERE component = '${escapedName.value}'
-  `)
-  const internalFilesSet = new Set(componentFilesList.map(f => f.name))
+    // Get set of files in current component for classification
+    const componentFilesList = await store.query<{ name: string }>(`
+      SELECT name 
+      FROM files 
+      WHERE component = '${escName}'
+    `)
+    const internalFilesSet = new Set(componentFilesList.map(f => f.name))
 
-  // File to Component lookup map
-  const fileComponentList = store.query<{ name: string; component: string }>(`
-    SELECT name, component FROM files
-  `)
-  const fileComponentMap = new Map(fileComponentList.map(f => [f.name, f.component || ""]))
+    // File to Component lookup map
+    const fileComponentList = await store.query<{ name: string; component: string }>(`
+      SELECT name, component FROM files
+    `)
+    const fileComponentMap = new Map(fileComponentList.map(f => [f.name, f.component || ""]))
 
-  // Query relations involving files of this component
-  const rows = store.query<{
-    from: string
-    to: string
-    linguistic_similarity: number
-    git_co_changes: number
-    path_distance: number
-  }>(`
-    SELECT * 
-    FROM file_matrix 
-    WHERE "from" IN (SELECT name FROM files WHERE component = '${escapedName.value}') 
-       OR "to" IN (SELECT name FROM files WHERE component = '${escapedName.value}')
-  `)
+    // Query relations involving files of this component
+    const rows = await store.query<{
+      from: string
+      to: string
+      linguistic_similarity: number
+      git_co_changes: number
+      path_distance: number
+    }>(`
+      SELECT * 
+      FROM file_matrix 
+      WHERE "from" IN (SELECT name FROM files WHERE component = '${escName}') 
+         OR "to" IN (SELECT name FROM files WHERE component = '${escName}')
+    `)
 
-  const external: any[] = []
+    const external: any[] = []
 
-  rows.forEach((r, index) => {
-    const isFromInternal = internalFilesSet.has(r.from)
-    const isToInternal = internalFilesSet.has(r.to)
+    rows.forEach((r, index) => {
+      const isFromInternal = internalFilesSet.has(r.from)
+      const isToInternal = internalFilesSet.has(r.to)
 
-    // Skip internal-to-internal pairs
-    if (isFromInternal && isToInternal) return
+      // Skip internal-to-internal pairs
+      if (isFromInternal && isToInternal) return
 
-    const internalFile = isFromInternal ? r.from : r.to
-    const relatedFile = isFromInternal ? r.to : r.from
+      const internalFile = isFromInternal ? r.from : r.to
+      const relatedFile = isFromInternal ? r.to : r.from
 
-    external.push({
-      id: `file-ext-${index}`,
-      internalFile,
-      relatedFile,
-      relatedComponent: fileComponentMap.get(relatedFile) || "Unknown",
-      linguisticSimilarity: r.linguistic_similarity || 0,
-      gitCoChanges: r.git_co_changes || 0,
-      pathDistance: r.path_distance
+      external.push({
+        id: `file-ext-${index}`,
+        internalFile,
+        relatedFile,
+        relatedComponent: fileComponentMap.get(relatedFile) || "Unknown",
+        linguisticSimilarity: r.linguistic_similarity || 0,
+        gitCoChanges: r.git_co_changes || 0,
+        pathDistance: r.path_distance
+      })
     })
-  })
 
-  return external
-})
+    externalRelations.value = external
+  },
+  { immediate: true }
+)
 
 const filteredRelations = computed(() => {
   let list = [...externalRelations.value]
