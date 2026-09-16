@@ -80,7 +80,12 @@ jobs:
 
       - name: Windows installer tooling
         if: runner.os == 'Windows'
-        run: choco install nsis -y
+        run: |
+          choco install nsis -y
+          # choco updates the machine PATH, which this job never re-reads;
+          # without this Wails silently skips the installer ("makensis not found").
+          echo "C:\Program Files (x86)\NSIS" >> "$GITHUB_PATH"
+          "/c/Program Files (x86)/NSIS/makensis.exe" -VERSION
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
@@ -99,6 +104,10 @@ jobs:
           wails build -clean -platform ${{ matrix.platform }} $extra \
             -ldflags "-X main.version=${{ steps.version.outputs.version }}"
           ls -la build/bin
+          # Wails only warns when makensis is missing — make that a hard failure.
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            test -f "build/bin/${APP}-amd64-installer.exe" || { echo "NSIS installer was not produced"; exit 1; }
+          fi
 
       - name: Package
         env:
