@@ -4,7 +4,6 @@
 .nuxt
 .nitro
 .cache
-dist
 
 # Node dependencies
 node_modules
@@ -23,3 +22,14 @@ logs
 .env.*
 !.env.example
 /terraform/.terraform/
+
+# local dev workspace (release builds use published archstats module)
+go.work
+go.work.sum
+build/bin
+
+frontend/node_modules
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/auto-imports.d.ts
+frontend/components.d.ts

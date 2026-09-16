@@ -1,0 +1,254 @@
+name: Release Archstats Desktop
+
+# Pushing a tag vX.Y.Z builds every platform natively, packages the results,
+# VERIFIES each package (extract/install it and run the shipped binary's
+# --selfcheck, plus bundle/version checks), then opens a DRAFT GitHub Release
+# with a SHA-256 checksums.txt — you inspect and publish by hand.
+#
+# workflow_dispatch and the weekly schedule run the same build + package +
+# verify and only upload workflow artifacts: a canary that catches runner
+# image drift before release day.
+#
+# All builds are currently UNSIGNED (see tasks/release-pipeline.md): macOS
+# users must right-click → Open; Windows shows a SmartScreen warning.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  WAILS_VERSION: v2.12.0
+  NFPM_VERSION: v2.47.0
+  APP: archstats-desktop
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-universal, runner: macos-latest,     platform: darwin/universal, expected_files: 2 }
+          - { name: windows-amd64,   runner: windows-latest,   platform: windows/amd64,    expected_files: 2 }
+          - { name: linux-amd64,     runner: ubuntu-latest,    platform: linux/amd64,      expected_files: 3 }
+          - { name: linux-arm64,     runner: ubuntu-24.04-arm, platform: linux/arm64,      expected_files: 3 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+            number="${version#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+            # rpm forbids '-' in versions; keep dry-run package metadata valid.
+            number="0.0.0.dev${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "Building $version (${{ matrix.platform }})"
+
+      - name: Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@${{ env.NFPM_VERSION }}
+
+      - name: Windows installer tooling
+        if: runner.os == 'Windows'
+        run: choco install nsis -y
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Stamp product version
+        run: |
+          tmp=$(mktemp)
+          jq --arg v "${{ steps.version.outputs.number }}" '.info.productVersion = $v' wails.json > "$tmp"
+          mv "$tmp" wails.json
+
+      - name: Wails build
+        run: |
+          extra=""
+          if [ "$RUNNER_OS" = "Linux" ]; then extra="-tags webkit2_41"; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then extra="-nsis"; fi
+          wails build -clean -platform ${{ matrix.platform }} $extra \
+            -ldflags "-X main.version=${{ steps.version.outputs.version }}"
+          ls -la build/bin
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.number }}
+        run: |
+          mkdir -p out
+          base="${APP}-${VERSION}-${{ matrix.name }}"
+          case "$RUNNER_OS" in
+            macOS)
+              hdiutil create -volname "Archstats Desktop" -srcfolder "build/bin/${APP}.app" \
+                -ov -format UDZO "out/${base}.dmg"
+              ditto -c -k --keepParent "build/bin/${APP}.app" "out/${base}.zip"
+              ;;
+            Windows)
+              cp build/bin/${APP}-amd64-installer.exe "out/${base}-installer.exe"
+              (cd build/bin && 7z a "../../out/${base}-portable.zip" ${APP}.exe)
+              ;;
+            Linux)
+              tar -czf "out/${base}.tar.gz" -C build/bin "${APP}"
+              export GOARCH="${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}"
+              nfpm package --config nfpm.yaml --packager deb --target out/
+              nfpm package --config nfpm.yaml --packager rpm --target out/
+              ;;
+          esac
+          ls -la out
+          test "$(ls out | wc -l)" -eq "${{ matrix.expected_files }}"
+
+      # ---- Verification: everything below runs against the PACKAGED
+      # ---- artifacts, never the build directory.
+
+      - name: Verify (macOS)
+        if: runner.os == 'macOS'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.number }}
+        run: |
+          set -x
+          mnt=$(mktemp -d)
+          hdiutil attach out/*.dmg -mountpoint "$mnt" -nobrowse -quiet
+          app="$mnt/${APP}.app"
+          bin="$app/Contents/MacOS/${APP}"
+          test -d "$app"
+          lipo -archs "$bin" | grep -q x86_64
+          lipo -archs "$bin" | grep -q arm64
+          codesign --verify --deep --strict "$app"
+          plutil -lint "$app/Contents/Info.plist"
+          short=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")
+          test "$short" = "$VERSION_NUMBER"
+          test "$("$bin" --version)" = "${APP} ${VERSION}"
+          "$bin" --selfcheck
+          # Launch liveness: the runner has a GUI session; the app must still
+          # be alive after 10s (catches crash-on-launch / broken asset embed).
+          open -n "$app"
+          sleep 10
+          pgrep -f "$bin" >/dev/null
+          pkill -f "$bin" || true
+          sleep 2
+          hdiutil detach "$mnt" -quiet
+          # The zip must contain the same runnable bundle.
+          tmp=$(mktemp -d)
+          ditto -x -k out/*.zip "$tmp"
+          test "$("$tmp/${APP}.app/Contents/MacOS/${APP}" --version)" = "${APP} ${VERSION}"
+
+      - name: Verify (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = "${env:APP}"
+          # Silent NSIS install into a known directory, then run the INSTALLED exe.
+          $installer = (Get-ChildItem out\*-installer.exe | Select-Object -First 1).FullName
+          $dir = 'C:\archstats-verify'
+          Start-Process -FilePath $installer -ArgumentList '/S', "/D=$dir" -Wait
+          $exe = Join-Path $dir "$app.exe"
+          if (!(Test-Path $exe)) { throw "installed exe missing at $exe" }
+          Get-ChildItem $dir
+          # GUI-subsystem binary: no stdout, so the exit code is the contract.
+          $p = Start-Process -FilePath $exe -ArgumentList '--selfcheck' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "self-check failed with exit code $($p.ExitCode)" }
+          # Launch liveness.
+          $gui = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 10
+          if ($gui.HasExited) { throw "app exited early with $($gui.ExitCode)" }
+          Stop-Process -Id $gui.Id -Force
+          # Portable zip: extract and self-check too.
+          $zip = (Get-ChildItem out\*-portable.zip | Select-Object -First 1).FullName
+          7z x $zip -oC:\archstats-portable -y | Out-Null
+          $p = Start-Process -FilePath "C:\archstats-portable\$app.exe" -ArgumentList '--selfcheck' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "portable self-check failed with $($p.ExitCode)" }
+
+      - name: Verify (Linux)
+        if: runner.os == 'Linux'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -x
+          # .deb: a real install resolves the declared gtk/webkit deps too.
+          sudo apt-get install -y ./out/*.deb
+          test "$(${APP} --version)" = "${APP} ${VERSION}"
+          ${APP} --selfcheck
+          test -f /usr/share/applications/${APP}.desktop
+          test -f /usr/share/pixmaps/${APP}.png
+          # Launch liveness under a virtual display: still alive after 15s
+          # means timeout killed it (exit 124), anything else is a crash.
+          set +e
+          WEBKIT_DISABLE_COMPOSITING_MODE=1 xvfb-run -a timeout 15 ${APP}
+          rc=$?
+          set -e
+          test "$rc" -eq 124
+          # tar.gz
+          tmp=$(mktemp -d)
+          tar -xzf out/*.tar.gz -C "$tmp"
+          test "$("$tmp/${APP}" --version)" = "${APP} ${VERSION}"
+          # .rpm: install inside a Fedora container (Docker is on the runner).
+          docker run --rm -v "$PWD/out:/out:ro" fedora:latest bash -c \
+            "dnf install -y /out/*.rpm >/dev/null && ${APP} --selfcheck"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-${{ steps.version.outputs.version }}-${{ matrix.name }}
+          path: out/
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd out
+          test "$(ls | wc -l)" -eq 10   # 2 macOS + 2 Windows + 3 + 3 Linux
+          sha256sum -- * > checksums.txt
+          sha256sum -c checksums.txt
+          cat checksums.txt
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release create "$tag" out/* \
+            --repo "${{ github.repository }}" \
+            --title "Archstats Desktop $tag" \
+            --generate-notes \
+            --draft
