@@ -89,4 +89,8 @@ The pipeline is only "verifiable" if every stage produces something you can insp
 - **Repo visibility:** both repos are **public** (verified via `gh`) → Actions minutes free, macOS runners included.
 - **Versioning:** desktop app gets its own `v0.x` tag line in archstats-ui, independent of the CLI's tags. (Proposed; not yet confirmed.)
 - **Infra teardown timing:** still open — the GCS bucket + load balancer for app.archstats.io exist and cost money until `terraform destroy` runs (confirmed per action).
-- **Status:** Ryan reviewing this doc before step 1 (archstats `build.yml` fix + `v0.1.6`) begins.
+- **Status (2026-09-16, end of day):** DONE through step 4.
+  - archstats: pipeline rebuilt on native runners with archive-level smoke tests + weekly canary; **v0.1.6 released** (5 archives + SHA-256 checksums).
+  - archstats-ui: PR #68 merged; CI (3 OSes, build + tests + `--selfcheck`) green; release pipeline verified end to end — every package is opened/installed and its binary self-checked on its own OS (DMG mount/codesign/launch on macOS, silent NSIS install on Windows, deb install + xvfb launch + rpm-in-Fedora on Linux). **Draft `v0.1.0` created with 11 assets, awaiting Ryan's inspection + publish.**
+  - Lessons captured: choco PATH not visible to the running job (NSIS); Nuxt-template `.gitignore` `dist` entry hid the embed `.gitkeep`; Windows zip must be built from inside `dist/`.
+  - Next: publish v0.1.0 → macOS signing/notarization once the Apple account exists → Playwright UI smoke after the shell UI stabilizes → terraform destroy of the retired webapp infra.

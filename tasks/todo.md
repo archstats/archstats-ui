@@ -32,6 +32,6 @@ Plan: [`tasks/plan.md`](plan.md) · Spec: [`specs/desktop-app.md`](../specs/desk
 ## Phase 5 — Hardening, cleanup, retirement
 - [ ] T13: view-by-view parity QA sweep (checklist appended to plan)
 - [ ] T14: purge sql.js/worker/load-data/redaxios/google-charts/dup lucide/dead composable
-- [ ] T15: CI (go test + vitest + wails build macOS); release requires T2 merged upstream
+- [x] T15: CI + release pipeline ✅ 2026-09-16 — CI on ubuntu/windows/macos with `--selfcheck`; tag-driven release with per-package verification on every OS; draft `v0.1.0` produced (11 assets). Unsigned until Apple account exists. See tasks/release-pipeline.md
 - [ ] T16: retire app.archstats.io — remove terraform/ + deploy workflows; live infra teardown confirmed per-action
 - [ ] Checkpoint Complete: all spec success criteria 1–7 pass
