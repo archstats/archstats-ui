@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Archstats Desktop
+Comment=Architecture insight for your codebase
+Exec=archstats-desktop
+Icon=archstats-desktop
+Terminal=false
+Categories=Development;

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "archstats-desktop",
+  "outputfilename": "archstats-desktop",
+  "frontend:dir": "frontend",
+  "frontend:install": "npm ci",
+  "frontend:build": "npm run generate",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://localhost:3000",
+  "author": {
+    "name": "Ryan Susana"
+  },
+  "info": {
+    "companyName": "Archstats",
+    "productName": "Archstats Desktop",
+    "productVersion": "0.0.0",
+    "copyright": "Copyright © Ryan Susana",
+    "comments": "Architecture insight for your codebase"
+  }
+}

@@ -1,0 +1,36 @@
+# nfpm packaging config for Linux .deb / .rpm — used by the release workflow.
+# GOARCH and VERSION_NUMBER are provided by the workflow environment.
+name: archstats-desktop
+arch: ${GOARCH}
+platform: linux
+version: ${VERSION_NUMBER}
+section: devel
+priority: optional
+maintainer: Ryan Susana <ryansusana97@gmail.com>
+description: |
+  Archstats Desktop — architecture insight for your codebase.
+  Scans a workspace with the archstats engine and visualizes coupling,
+  hotspots, dependency cycles and git churn.
+vendor: Archstats
+homepage: https://github.com/archstats/archstats-ui
+license: Apache-2.0
+
+contents:
+  - src: ./build/bin/archstats-desktop
+    dst: /usr/bin/archstats-desktop
+    file_info:
+      mode: 0755
+  - src: ./build/linux/archstats-desktop.desktop
+    dst: /usr/share/applications/archstats-desktop.desktop
+  - src: ./build/appicon.png
+    dst: /usr/share/pixmaps/archstats-desktop.png
+
+overrides:
+  deb:
+    depends:
+      - libgtk-3-0
+      - libwebkit2gtk-4.1-0
+  rpm:
+    depends:
+      - gtk3
+      - webkit2gtk4.1

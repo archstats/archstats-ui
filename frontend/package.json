@@ -1,0 +1,53 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "cross-env NUXT_DIST_OUTPUT=1 nuxt generate --loglevel info",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nuxt/image": "^1.0.0-rc.3",
+    "@pinia/nuxt": "^0.4.11",
+    "change-case": "^5.1.2",
+    "css.gg": "^2.1.4",
+    "d3": "^7.6.1",
+    "d3-force": "^3.0.0",
+    "gridjs": "^5.0.2",
+    "gridjs-vue": "^5.0.4",
+    "highlight.js": "^11.11.1",
+    "lucide": "^0.279.0",
+    "lucide-vue": "^0.279.0",
+    "lucide-vue-next": "^0.279.0",
+    "luxon": "^3.4.3",
+    "marked": "^9.0.3",
+    "mitt": "^3.0.1",
+    "pinia": "^2.1.6",
+    "redaxios": "^0.5.0",
+    "splitpanes": "^3.1.5",
+    "sql.js": "^1.12.0",
+    "typescript": "^4.7.4",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@nuxtjs/tailwindcss": "^6.8.0",
+    "@types/d3": "^7.4.0",
+    "@types/luxon": "^3.3.2",
+    "@types/splitpanes": "^2.2.2",
+    "@types/sql.js": "^1.4.5",
+    "autoprefixer": "^10.4.8",
+    "cross-env": "^10.1.0",
+    "google-charts": "^2.0.0",
+    "nuxt": "^3.7.4",
+    "postcss": "^8.4.14",
+    "tailwindcss": "^3.1.7",
+    "vitest": "^0.34.5"
+  },
+  "overrides": {
+    "vue": "latest"
+  }
+}

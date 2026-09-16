@@ -1,0 +1,155 @@
+name: Release Archstats Desktop
+
+# Pushing a tag vX.Y.Z builds every platform natively, packages the results
+# and opens a DRAFT GitHub Release with a SHA-256 checksums.txt — you inspect
+# and publish by hand. workflow_dispatch does the same build + packaging but
+# only uploads workflow artifacts (pipeline verification without a release).
+#
+# All builds are currently UNSIGNED (see tasks/release-pipeline.md): macOS
+# users must right-click → Open; Windows shows a SmartScreen warning.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  WAILS_VERSION: v2.12.0
+  APP: archstats-desktop
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-universal, runner: macos-latest,     platform: darwin/universal }
+          - { name: windows-amd64,   runner: windows-latest,   platform: windows/amd64 }
+          - { name: linux-amd64,     runner: ubuntu-latest,    platform: linux/amd64 }
+          - { name: linux-arm64,     runner: ubuntu-24.04-arm, platform: linux/arm64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+            number="${version#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+            # rpm forbids '-' in versions; keep dry-run package metadata valid.
+            number="0.0.0.dev${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # Numeric form for package metadata (nfpm, Info.plist).
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "Building $version (${{ matrix.platform }})"
+
+      - name: Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Windows installer tooling
+        if: runner.os == 'Windows'
+        run: choco install nsis -y
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Stamp product version
+        run: |
+          tmp=$(mktemp)
+          jq --arg v "${{ steps.version.outputs.number }}" '.info.productVersion = $v' wails.json > "$tmp"
+          mv "$tmp" wails.json
+
+      - name: Wails build
+        run: |
+          extra=""
+          if [ "$RUNNER_OS" = "Linux" ]; then extra="-tags webkit2_41"; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then extra="-nsis"; fi
+          wails build -clean -platform ${{ matrix.platform }} $extra \
+            -ldflags "-X main.version=${{ steps.version.outputs.version }}"
+          ls -la build/bin
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.number }}
+        run: |
+          mkdir -p out
+          base="${APP}-${VERSION}-${{ matrix.name }}"
+          case "$RUNNER_OS" in
+            macOS)
+              hdiutil create -volname "Archstats Desktop" -srcfolder "build/bin/${APP}.app" \
+                -ov -format UDZO "out/${base}.dmg"
+              ditto -c -k --keepParent "build/bin/${APP}.app" "out/${base}.zip"
+              ;;
+            Windows)
+              cp build/bin/${APP}-amd64-installer.exe "out/${base}-installer.exe"
+              7z a "out/${base}-portable.zip" ./build/bin/${APP}.exe
+              ;;
+            Linux)
+              tar -czf "out/${base}.tar.gz" -C build/bin "${APP}"
+              export GOARCH="${{ matrix.platform == 'linux/arm64' && 'arm64' || 'amd64' }}"
+              nfpm package --config nfpm.yaml --packager deb --target out/
+              nfpm package --config nfpm.yaml --packager rpm --target out/
+              ;;
+          esac
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP }}-${{ steps.version.outputs.version }}-${{ matrix.name }}
+          path: out/
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd out
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release create "$tag" out/* \
+            --repo "${{ github.repository }}" \
+            --title "Archstats Desktop $tag" \
+            --generate-notes \
+            --draft
