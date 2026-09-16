@@ -65,6 +65,18 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then extra="-tags webkit2_41"; fi
           wails build -clean $extra
 
+      # Runs the freshly built app binary headlessly: real scan through the
+      # embedded cgo engine + queries. Proves the build works on this OS, not
+      # just that it linked.
+      - name: Self-check built binary
+        run: |
+          case "$RUNNER_OS" in
+            macOS)   bin=build/bin/archstats-desktop.app/Contents/MacOS/archstats-desktop ;;
+            Windows) bin=build/bin/archstats-desktop.exe ;;
+            Linux)   bin=build/bin/archstats-desktop ;;
+          esac
+          "$bin" --selfcheck
+
       - uses: actions/upload-artifact@v4
         with:
           name: archstats-desktop-${{ runner.os }}-unsigned-${{ github.sha }}

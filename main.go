@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/archstats/archstats-ui/app"
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/store"
+	"github.com/rs/zerolog"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -23,6 +26,26 @@ var assets embed.FS
 var version = "dev"
 
 func main() {
+	// Headless entry points used by the release pipeline to verify the
+	// packaged binary on every OS — handled before any window/webview init.
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "--version":
+			fmt.Printf("archstats-desktop %s\n", version)
+			return
+		case "--selfcheck":
+			if err := app.SelfCheck(version); err != nil {
+				fmt.Fprintln(os.Stderr, "self-check FAILED:", err)
+				os.Exit(1)
+			}
+			return
+		}
+	}
+
+	// The engine logs through zerolog's global logger at debug level by
+	// default — far too chatty for an app process.
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	log.Printf("archstats-desktop %s", version)
 	root, err := store.DefaultRoot()
 	if err != nil {
