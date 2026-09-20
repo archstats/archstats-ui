@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -57,24 +58,44 @@ func main() {
 	}
 	defer st.Close()
 
+	// Scans recorded as running belong to a previous process; nothing will
+	// ever finish them. Fail them now so the history is honest from the
+	// first frame.
+	if n, err := st.MarkInterruptedScans(); err != nil {
+		log.Printf("marking interrupted scans: %v", err)
+	} else if n > 0 {
+		log.Printf("marked %d interrupted scan(s) as failed", n)
+	}
+
 	scanSvc := scan.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
+	var appCtx context.Context
+	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx })
 
 	err = wails.Run(&options.App{
-		Title:  "Archstats Desktop",
-		Width:  1100,
-		Height: 800,
+		Title:     "Archstats Desktop",
+		Width:     1280,
+		Height:    800,
+		MinWidth:  960,
+		MinHeight: 600,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		// Wails only enables the macOS zoom (green) button when Mac options are
+		// present. The hidden-inset title bar lets the sidebar brand row carry
+		// the traffic lights; the frontend marks its own drag regions.
+		Mac: &mac.Options{
+			TitleBar: mac.TitleBarHiddenInset(),
+		},
 		OnStartup: func(ctx context.Context) {
+			appCtx = ctx
 			scanSvc.SetEmitter(func(event string, data ...any) {
 				runtime.EventsEmit(ctx, event, data...)
 			})
 		},
 		Bind: []interface{}{
-			app.NewWorkspaceService(st),
+			workspaceSvc,
 			app.NewScanService(scanSvc),
 			app.NewQueryService(querySvc),
 		},
