@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "archstats",
+      "url": "http://localhost:34115"
+    },
+    {
+      "name": "wails-dev",
+      "runtimeExecutable": "wails",
+      "runtimeArgs": ["dev"],
+      "port": 34115
+    }
+  ]
+}

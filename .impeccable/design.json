@@ -1,0 +1,971 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-17T21:30:00Z",
+  "title": "Design System: Archstats Desktop",
+  "extensions": {
+    "source": {
+      "tokens": "frontend/design/tokens.cjs",
+      "generated": "frontend/src/assets/tokens.css",
+      "generator": "frontend/scripts/gen-tokens.cjs (npm run tokens)",
+      "tailwind": "frontend/tailwind.config.js",
+      "base": "frontend/src/assets/index.css",
+      "charts": "frontend/src/composables/useChartTheme.ts",
+      "appearance": "prefers-color-scheme (Tailwind darkMode: media), color-scheme: light dark"
+    },
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Logo Orange",
+        "canonical": "#E08A19",
+        "dark": "#F0A033",
+        "variable": "--c-accent-500",
+        "tonalRamp": [
+          "#5A3409",
+          "#7A470B",
+          "#9F5D0C",
+          "#C4740F",
+          "#E08A19",
+          "#F2A33A",
+          "#FBBE5F",
+          "#FFD596",
+          "#FFE9C7",
+          "#FFF6E8"
+        ],
+        "tonalRampDark": [
+          "#3A2A12",
+          "#4A3413",
+          "#6B4A17",
+          "#8E621C",
+          "#C48425",
+          "#F0A033",
+          "#F5B155",
+          "#F8C27C",
+          "#FBD4A3",
+          "#FDE7CB"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Orange Lift",
+        "canonical": "#F2A33A",
+        "dark": "#C48425",
+        "variable": "--c-accent-400"
+      },
+      "accent-pressed": {
+        "role": "primary",
+        "displayName": "Orange Press",
+        "canonical": "#C4740F",
+        "dark": "#F5B155",
+        "variable": "--c-accent-600"
+      },
+      "accent-link": {
+        "role": "primary",
+        "displayName": "Orange Ink",
+        "canonical": "#9F5D0C",
+        "dark": "#F8C27C",
+        "variable": "--c-accent-700"
+      },
+      "accent-tint": {
+        "role": "primary",
+        "displayName": "Orange Tint",
+        "canonical": "#FFF6E8",
+        "dark": "#3A2A12",
+        "variable": "--c-accent-50"
+      },
+      "accent-selection": {
+        "role": "primary",
+        "displayName": "Orange Selection",
+        "canonical": "#FFD596",
+        "dark": "#8E621C",
+        "variable": "--c-accent-200 (dark: --c-accent-300)"
+      },
+      "accent-tint-edge": {
+        "role": "primary",
+        "displayName": "Orange Edge",
+        "canonical": "#FBBE5F",
+        "dark": "#8E621C",
+        "variable": "--c-accent-300"
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "Ink on Orange",
+        "canonical": "#1F2329",
+        "dark": "#1E2026",
+        "variable": "--c-on-accent"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "#FFFFFF",
+        "dark": "#1E2026",
+        "variable": "--c-surface"
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Ground",
+        "canonical": "#F7F8FA",
+        "dark": "#262932",
+        "variable": "--c-neutral-50",
+        "tonalRamp": [
+          "#15171B",
+          "#1E2026",
+          "#262932",
+          "#343944",
+          "#4B515E",
+          "#6C7280",
+          "#9AA1AF",
+          "#CED3DC",
+          "#E3E6EC",
+          "#EEF0F4",
+          "#F7F8FA"
+        ],
+        "tonalRampDark": [
+          "#262932",
+          "#2B2F38",
+          "#363A45",
+          "#444956",
+          "#656B79",
+          "#8B919E",
+          "#B0B5BF",
+          "#D5D9E0",
+          "#E3E6EB",
+          "#F5F6F8",
+          "#FFFFFF"
+        ]
+      },
+      "surface-hover": {
+        "role": "neutral",
+        "displayName": "Surface Hover",
+        "canonical": "#EEF0F4",
+        "dark": "#2B2F38",
+        "variable": "--c-neutral-100"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E3E6EC",
+        "dark": "#363A45",
+        "variable": "--c-neutral-200"
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#CED3DC",
+        "dark": "#444956",
+        "variable": "--c-neutral-300"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1E2026",
+        "dark": "#F5F6F8",
+        "variable": "--c-neutral-900"
+      },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Ink Strong",
+        "canonical": "#262932",
+        "dark": "#D5D9E0",
+        "variable": "--c-neutral-800"
+      },
+      "ink-body": {
+        "role": "neutral",
+        "displayName": "Ink Body",
+        "canonical": "#4B515E",
+        "dark": "#B0B5BF",
+        "variable": "--c-neutral-600"
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Ink Secondary",
+        "canonical": "#6C7280",
+        "dark": "#8B919E",
+        "variable": "--c-neutral-500"
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "#9AA1AF",
+        "dark": "#656B79",
+        "variable": "--c-neutral-400"
+      },
+      "data-blue": {
+        "role": "tertiary",
+        "displayName": "Data Blue",
+        "canonical": "#3D74EA",
+        "dark": "#6293EE",
+        "variable": "--c-blue-500",
+        "tonalRamp": [
+          "#172F66",
+          "#1D3C85",
+          "#234AA8",
+          "#2C5DD0",
+          "#3D74EA",
+          "#5F8BF1",
+          "#8FAEF7",
+          "#B9CCFB",
+          "#DCE6FD",
+          "#EEF3FF"
+        ],
+        "tonalRampDark": [
+          "#1B2640",
+          "#213052",
+          "#2A4272",
+          "#365699",
+          "#4A73C6",
+          "#6293EE",
+          "#7FA8F3",
+          "#9EBDF6",
+          "#BDD2F9",
+          "#DCE7FC"
+        ]
+      },
+      "data-green": {
+        "role": "tertiary",
+        "displayName": "Data Green",
+        "canonical": "#3E9B5F",
+        "dark": "#58B27A",
+        "variable": "--c-green-500",
+        "tonalRamp": [
+          "#1A4129",
+          "#215233",
+          "#27663E",
+          "#2F7E4C",
+          "#3E9B5F",
+          "#57B27C",
+          "#7FCA9E",
+          "#AEDFC1",
+          "#D5EFDF",
+          "#EDF8F1"
+        ],
+        "tonalRampDark": [
+          "#1B2E23",
+          "#203A2A",
+          "#2A4F38",
+          "#34664A",
+          "#418A5F",
+          "#58B27A",
+          "#77C494",
+          "#99D4AE",
+          "#BCE3C8",
+          "#DDF1E3"
+        ]
+      },
+      "data-green-ink": {
+        "role": "tertiary",
+        "displayName": "Green Ink",
+        "canonical": "#2F7E4C",
+        "dark": "#99D4AE",
+        "variable": "--c-green-700"
+      },
+      "data-amber": {
+        "role": "tertiary",
+        "displayName": "Data Amber",
+        "canonical": "#D48D1E",
+        "dark": "#E0A43A",
+        "variable": "--c-amber-500",
+        "tonalRamp": [
+          "#55370F",
+          "#6F4711",
+          "#8F5B12",
+          "#B37315",
+          "#D48D1E",
+          "#E7AC33",
+          "#F5C85A",
+          "#FCDE8C",
+          "#FEEFC6",
+          "#FFF8E6"
+        ],
+        "tonalRampDark": [
+          "#352A10",
+          "#423412",
+          "#5E4917",
+          "#7E621E",
+          "#B0862A",
+          "#E0A43A",
+          "#EAB65B",
+          "#F1C77F",
+          "#F6D8A5",
+          "#FAE9CC"
+        ]
+      },
+      "data-red": {
+        "role": "tertiary",
+        "displayName": "Data Red",
+        "canonical": "#DA4E4E",
+        "dark": "#E86464",
+        "variable": "--c-red-500",
+        "tonalRamp": [
+          "#612020",
+          "#7C2727",
+          "#9B2F2F",
+          "#C03A3A",
+          "#DA4E4E",
+          "#E56A6A",
+          "#EE8F8F",
+          "#F5B8B8",
+          "#FADADA",
+          "#FDEFEF"
+        ],
+        "tonalRampDark": [
+          "#3A1D1D",
+          "#4A2222",
+          "#6A2C2C",
+          "#8C3838",
+          "#BC4A4A",
+          "#E86464",
+          "#EF8383",
+          "#F4A2A2",
+          "#F8C1C1",
+          "#FBDFDF"
+        ]
+      },
+      "data-red-ink": {
+        "role": "tertiary",
+        "displayName": "Red Ink",
+        "canonical": "#9B2F2F",
+        "dark": "#F4A2A2",
+        "variable": "--c-red-700"
+      },
+      "data-violet": {
+        "role": "tertiary",
+        "displayName": "Data Violet",
+        "canonical": "#7759DB",
+        "dark": "#9581E6",
+        "variable": "--c-violet-500",
+        "tonalRamp": [
+          "#31245E",
+          "#3E2D78",
+          "#4E3898",
+          "#6146BE",
+          "#7759DB",
+          "#9078E6",
+          "#AE9BEF",
+          "#CDC0F6",
+          "#E6DFFB",
+          "#F3F0FD"
+        ],
+        "tonalRampDark": [
+          "#261F3F",
+          "#2E2650",
+          "#3F336F",
+          "#524390",
+          "#7160B8",
+          "#9581E6",
+          "#AC9BEC",
+          "#C3B6F1",
+          "#D9D1F6",
+          "#ECE8FA"
+        ]
+      }
+    },
+    "heatRamp": {
+      "purpose": "Sequential heat for hotspot fills, cool to hot",
+      "steps": [
+        "--c-neutral-300",
+        "--c-accent-200",
+        "--c-accent-400",
+        "--c-red-400",
+        "--c-red-700"
+      ]
+    },
+    "groupColors": {
+      "purpose": "User-defined group palette, inherited from the groups store; fills group dots and membership tags",
+      "source": "frontend/src/stores/groups.ts",
+      "format": "hsl()"
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title, one per page (Overview, first-run heading)."
+      },
+      "stat": {
+        "displayName": "Stat value",
+        "purpose": "The six readings in the dashboard strip; the only number set above body size."
+      },
+      "title": {
+        "displayName": "Panel title",
+        "purpose": "Panel and modal headings (Structure, Activity, Views, Groups)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Nav rows, buttons, inputs, menu items, table cells, descriptions; 500 for emphasis."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Stat labels, axis labels, table headers, toolbar meta, secondary descriptions."
+      },
+      "overline": {
+        "displayName": "Section title",
+        "purpose": "Uppercase family and section titles in the rail, panels, and inspector; the only uppercase text."
+      },
+      "mono": {
+        "displayName": "Mono evidence",
+        "purpose": "Paths, timestamps, identifiers, numbers, tags, counts. Tabular numerals."
+      }
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "file": "/fonts/InterVariable.woff2",
+        "weights": "100 900 (variable)",
+        "features": "cv11, ss01, calt",
+        "hosted": "self"
+      },
+      {
+        "family": "Inter",
+        "file": "/fonts/InterVariable-Italic.woff2",
+        "weights": "100 900 (variable italic)",
+        "hosted": "self"
+      },
+      {
+        "family": "JetBrains Mono",
+        "files": [
+          "/fonts/JetBrainsMono-Regular.woff2",
+          "/fonts/JetBrainsMono-Medium.woff2",
+          "/fonts/JetBrainsMono-SemiBold.woff2"
+        ],
+        "weights": "400, 500, 600",
+        "features": "calt, zero, tabular-nums",
+        "hosted": "self"
+      }
+    ],
+    "shadows": [
+      {
+        "name": "hairline",
+        "value": "0 0 0 1px rgb(var(--c-neutral-200))",
+        "purpose": "Panels, menus' base ring, thumbnails, the stats strip; Tailwind shadow/shadow-md resolve to this."
+      },
+      {
+        "name": "control-ring",
+        "value": "0 0 0 1px rgb(var(--c-neutral-300))",
+        "purpose": "Buttons, inputs, chips, checkboxes at rest; lifts to neutral-400 on hover."
+      },
+      {
+        "name": "float",
+        "value": "0 8px 24px -8px rgb(var(--c-shadow-rgb) / 0.24), 0 0 0 1px rgb(var(--c-neutral-200))",
+        "purpose": "Menus, popovers, tooltips, modal card. Tailwind shadow-lg and larger resolve to this."
+      },
+      {
+        "name": "float-dark",
+        "value": "0 12px 32px -8px rgb(var(--c-shadow-rgb) / 0.6), 0 0 0 1px rgb(var(--c-neutral-200))",
+        "purpose": "The float shadow in the dark appearance (shadow-rgb is 0 0 0)."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid rgb(var(--c-accent-400)); outline-offset: 1px",
+        "purpose": "Every :focus-visible element."
+      },
+      {
+        "name": "input-focus",
+        "value": "0 0 0 2px rgb(var(--c-accent-400))",
+        "purpose": "Inputs on focus, replacing the control ring."
+      },
+      {
+        "name": "nav-active-bar",
+        "value": "inset 2px 0 0 rgb(var(--c-accent-500))",
+        "purpose": "The 2px orange bar on the active rail row and selected inspector row."
+      },
+      {
+        "name": "none",
+        "value": "none",
+        "purpose": "Tailwind shadow-sm and smaller resolve to none; nothing in the layout flow casts a shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-default",
+        "value": "150ms",
+        "purpose": "All color and transform transitions on controls."
+      },
+      {
+        "name": "ease-default",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Default easing for state transitions."
+      },
+      {
+        "name": "ui-in",
+        "value": "160ms cubic-bezier(0.2, 0, 0, 1); from opacity 0 translateY(-2px)",
+        "purpose": "Menus, popovers, and modals entering."
+      },
+      {
+        "name": "shell-sweep",
+        "value": "1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "purpose": "Indeterminate scan progress along the scan button or collapsed rail; pulses opacity under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "window-min",
+        "value": "960px",
+        "purpose": "Native window minimum; no layout below it."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Dashboard strip 3 to 6 columns, panels 1 to 2 columns."
+      },
+      {
+        "name": "2xl",
+        "value": "1536px",
+        "purpose": "Toolbar hints become visible."
+      }
+    ],
+    "sizes": [
+      {
+        "name": "rail-width",
+        "value": "240px"
+      },
+      {
+        "name": "rail-collapsed",
+        "value": "20px"
+      },
+      {
+        "name": "toolbar-height",
+        "value": "40px"
+      },
+      {
+        "name": "inspector-width",
+        "value": "340px"
+      },
+      {
+        "name": "inspector-tabs-height",
+        "value": "36px"
+      },
+      {
+        "name": "control-height",
+        "value": "28px"
+      },
+      {
+        "name": "control-height-sm",
+        "value": "24px"
+      },
+      {
+        "name": "nav-row-height",
+        "value": "26px"
+      },
+      {
+        "name": "directory-row-height",
+        "value": "56px"
+      },
+      {
+        "name": "table-header-height",
+        "value": "32px"
+      },
+      {
+        "name": "table-row-height",
+        "value": "28px"
+      },
+      {
+        "name": "tag-height",
+        "value": "20px"
+      },
+      {
+        "name": "checkbox-size",
+        "value": "14px"
+      },
+      {
+        "name": "icon-size",
+        "value": "14px to 16px, stroke 1.75"
+      },
+      {
+        "name": "content-max-width",
+        "value": "1200px (dashboard only)"
+      },
+      {
+        "name": "detail-tab-strip-height",
+        "value": "36px"
+      },
+      {
+        "name": "detail-overview-column",
+        "value": "1040px"
+      },
+      {
+        "name": "stat-cell-padding",
+        "value": "12px 16px"
+      },
+      {
+        "name": "stat-value-size",
+        "value": "22px"
+      },
+      {
+        "name": "history-aside-width",
+        "value": "260px"
+      },
+      {
+        "name": "neighbour-row-height",
+        "value": "32px"
+      },
+      {
+        "name": "code-line-height",
+        "value": "20px"
+      },
+      {
+        "name": "code-viewer-header-height",
+        "value": "32px"
+      },
+      {
+        "name": "zoom-overlay-inset",
+        "value": "16px"
+      },
+      {
+        "name": "scope-chip-max-width",
+        "value": "260px"
+      }
+    ],
+    "health": {
+      "source": "frontend/src/composables/useHealth.ts",
+      "thresholds": {
+        "codeHealth": {
+          "good": ">= 8",
+          "warn": ">= 5",
+          "bad": "< 5"
+        },
+        "hotspot": {
+          "good": "< 40",
+          "warn": "< 70",
+          "bad": ">= 70"
+        }
+      },
+      "levels": {
+        "good": {
+          "label": "Healthy",
+          "text": "--c-green-700",
+          "dot": "--c-green-500",
+          "canvas": "chartTheme().green"
+        },
+        "warn": {
+          "label": "Watch",
+          "text": "--c-amber-700",
+          "dot": "--c-amber-500",
+          "canvas": "chartTheme().amber"
+        },
+        "bad": {
+          "label": "Alert",
+          "text": "--c-red-700",
+          "dot": "--c-red-500",
+          "canvas": "chartTheme().red"
+        },
+        "none": {
+          "label": "—",
+          "text": "--c-neutral-500",
+          "dot": "--c-neutral-300",
+          "canvas": "chartTheme().hairlineStrong"
+        }
+      }
+    },
+    "codeSyntax": {
+      "source": "frontend/src/components/files/FileCodeViewer.vue",
+      "comment": "--c-neutral-500 italic",
+      "keyword": "--c-violet-700",
+      "string": "--c-green-700",
+      "number": "--c-amber-700",
+      "function": "--c-blue-700",
+      "type": "--c-blue-800",
+      "attribute": "--c-neutral-800",
+      "meta": "--c-amber-800",
+      "deletion": "--c-red-700",
+      "highlightedLine": "background --c-accent-50, inset 2px 0 0 --c-accent-500"
+    },
+    "patterns": {
+      "clickModel": "click selects and fills the inspector; dblclick, Enter or the inspector Open button navigates; every name is a router-link; hover only tooltips",
+      "counts": "toolbar meta in mono: 'Components 52' at rest, '12 of 52' while scope or search narrows the rows",
+      "sharedParts": [
+        "components/detail/DetailFrame.vue",
+        "components/detail/StatStrip.vue",
+        "components/shell/ScopeBar.vue",
+        "components/git/CommitHistory.vue",
+        "components/git/MonthlyChangesChart.vue",
+        "components/coupling/PairTable.vue",
+        "components/coupling/NeighbourList.vue",
+        "components/ui/common/EmptyState.vue",
+        "components/ui/common/LoadingState.vue",
+        "components/ui/common/ZoomControls.vue",
+        "components/files/FileCodeViewer.vue",
+        "composables/useHealth.ts",
+        "stores/scope.ts"
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default control: surface fill with a hairline-strong ring. Every select trigger is this.",
+      "html": "<button class=\"ds-btn\">Configure</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 4px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; color: rgb(var(--c-neutral-800, 38 41 50)); background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); cursor: pointer; transition: background-color 150ms cubic-bezier(0.2,0,0,1), color 150ms; } .ds-btn:hover { background: rgb(var(--c-neutral-50, 247 248 250)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-btn:active { background: rgb(var(--c-neutral-100, 238 240 244)); } .ds-btn:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; } .ds-btn:disabled { opacity: .5; cursor: default; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one orange control per region (Scan again, Choose folder). Dark ink on orange, no ring.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg>Scan again</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 4px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; color: rgb(var(--c-on-accent, 31 35 41)); background: rgb(var(--c-accent-500, 224 138 25)); cursor: pointer; transition: background-color 150ms cubic-bezier(0.2,0,0,1); } .ds-btn-primary:hover { background: rgb(var(--c-accent-400, 242 163 58)); } .ds-btn-primary:active { background: rgb(var(--c-accent-600, 196 116 15)); } .ds-btn-primary:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Quiet Icon Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Transparent icon affordance for collapse, close, and pagination; 24px small variant shown.",
+      "html": "<button class=\"ds-btn-quiet\" aria-label=\"Collapse sidebar\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M9 3v18\"/><path d=\"m16 15-3-3 3-3\"/></svg></button>",
+      "css": ".ds-btn-quiet { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; color: rgb(var(--c-neutral-500, 108 114 128)); background: transparent; cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-btn-quiet:hover { background: rgb(var(--c-neutral-100, 238 240 244)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-btn-quiet:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-small",
+      "description": "Toolbar search: 24px, hairline-strong ring, search glyph at left, orange 2px ring on focus.",
+      "html": "<label class=\"ds-search\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input class=\"ds-input\" type=\"search\" placeholder=\"Search components\"></label>",
+      "css": ".ds-search { position: relative; display: inline-flex; align-items: center; } .ds-search > svg { position: absolute; left: 8px; color: rgb(var(--c-neutral-400, 154 161 175)); pointer-events: none; } .ds-input { width: 224px; height: 24px; padding: 0 6px 0 28px; border: 0; border-radius: 4px; font-family: 'Inter', system-ui, sans-serif; font-size: 12px; color: rgb(var(--c-neutral-900, 30 32 38)); background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); outline: none; transition: box-shadow 150ms; } .ds-input::placeholder { color: rgb(var(--c-neutral-400, 154 161 175)); } .ds-input:hover { box-shadow: 0 0 0 1px rgb(var(--c-neutral-400, 154 161 175)); } .ds-input:focus { box-shadow: 0 0 0 2px rgb(var(--c-accent-400, 242 163 58)); caret-color: rgb(var(--c-accent-500, 224 138 25)); }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "View-mode switch: options on a surface-hover track; the active option lifts to surface with a hairline ring.",
+      "html": "<div class=\"ds-seg\" role=\"group\"><button class=\"ds-seg-opt\" aria-pressed=\"true\">Matrix</button><button class=\"ds-seg-opt\">List</button><button class=\"ds-seg-opt\">Graph</button></div>",
+      "css": ".ds-seg { display: inline-flex; align-items: center; height: 28px; padding: 2px; border-radius: 4px; background: rgb(var(--c-neutral-100, 238 240 244)); } .ds-seg-opt { height: 100%; padding: 0 10px; border: 0; border-radius: 3px; font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 500; line-height: 1; color: rgb(var(--c-neutral-600, 75 81 94)); background: transparent; cursor: pointer; transition: color 150ms, background-color 150ms; } .ds-seg-opt:hover { color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-seg-opt[aria-pressed=\"true\"] { color: rgb(var(--c-neutral-900, 30 32 38)); background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-200, 227 230 236)); } .ds-seg-opt:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Group Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filter chip with a group color dot and mono count; active is orange tint with an orange edge.",
+      "html": "<button class=\"ds-chip is-active\"><span class=\"ds-chip-dot\" style=\"background: hsl(210, 80%, 55%)\"></span>core<span class=\"ds-chip-n\">12</span></button> <button class=\"ds-chip\"><span class=\"ds-chip-dot\" style=\"background: hsl(160, 70%, 42%)\"></span>api<span class=\"ds-chip-n\">4</span></button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 0; border-radius: 4px; font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 500; line-height: 1; color: rgb(var(--c-neutral-700, 52 57 68)); background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); cursor: pointer; transition: background-color 150ms; } .ds-chip:hover { background: rgb(var(--c-neutral-50, 247 248 250)); } .ds-chip.is-active { color: rgb(var(--c-neutral-900, 30 32 38)); background: rgb(var(--c-accent-50, 255 246 232)); box-shadow: 0 0 0 1px rgb(var(--c-accent-300, 251 190 95)); } .ds-chip-dot { width: 8px; height: 8px; border-radius: 9999px; } .ds-chip-n { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-chip:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Count Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Mono count or family marker on the surface-hover tone (21, Java, Spring).",
+      "html": "<span class=\"ds-tag\">21</span> <span class=\"ds-tag\">Java</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 3px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; color: rgb(var(--c-neutral-700, 52 57 68)); background: rgb(var(--c-neutral-100, 238 240 244)); }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A hairline-ringed surface panel with a 15px/600 title and a key/value list in mono.",
+      "html": "<div class=\"ds-panel\"><h2 class=\"ds-panel-title\">Structure</h2><dl class=\"ds-kv\"><dt>Average indentation</dt><dd>1.26</dd><dt>Component imports</dt><dd>48</dd><dt>Lines per file</dt><dd>219</dd></dl></div>",
+      "css": ".ds-panel { width: 280px; padding: 16px; border-radius: 6px; background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-200, 227 230 236)); font-family: 'Inter', system-ui, sans-serif; } .ds-panel-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; line-height: 20px; color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-kv { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 16px; row-gap: 4px; margin: 0; font-size: 13px; line-height: 18px; } .ds-kv dt { color: rgb(var(--c-neutral-500, 108 114 128)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-kv dd { margin: 0; text-align: right; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: rgb(var(--c-neutral-800, 38 41 50)); }"
+    },
+    {
+      "name": "View Toolbar",
+      "kind": "nav",
+      "refersTo": "toolbar",
+      "description": "The 40px tool-window header: title, mono count, controls pushed right, hairline below.",
+      "html": "<header class=\"ds-toolbar\"><h2 class=\"ds-toolbar-title\">Architectural Hotspots</h2><span class=\"ds-toolbar-meta\">Components <b>1</b></span><div class=\"ds-toolbar-right\"><button class=\"ds-toolbar-btn\">Configure</button></div></header>",
+      "css": ".ds-toolbar { display: flex; align-items: center; gap: 12px; width: 520px; height: 40px; padding: 0 12px; border-bottom: 1px solid rgb(var(--c-neutral-200, 227 230 236)); background: rgb(var(--c-surface, 255 255 255)); font-family: 'Inter', system-ui, sans-serif; } .ds-toolbar-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1; color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-toolbar-meta { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; line-height: 1; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-toolbar-meta b { font-weight: 400; color: rgb(var(--c-neutral-800, 38 41 50)); } .ds-toolbar-right { margin-left: auto; display: flex; gap: 8px; } .ds-toolbar-btn { height: 24px; padding: 0 8px; border: 0; border-radius: 4px; font: 500 12px 'Inter', system-ui, sans-serif; color: rgb(var(--c-neutral-800, 38 41 50)); background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); cursor: pointer; } .ds-toolbar-btn:hover { background: rgb(var(--c-neutral-50, 247 248 250)); }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-row",
+      "description": "Rail section on ground: overline family title and 26px rows; the active row is orange-tinted with a 2px inset bar.",
+      "html": "<nav class=\"ds-rail\"><h3 class=\"ds-rail-title\">Components</h3><a class=\"ds-rail-row\" href=\"#\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18M15 3v18\"/></svg>Matrix</a><a class=\"ds-rail-row is-active\" href=\"#\" aria-current=\"page\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\"/></svg>Hotspots</a><a class=\"ds-rail-row\" href=\"#\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3v18M3 12h18\"/></svg>Clustering</a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; width: 224px; padding: 8px; background: rgb(var(--c-neutral-50, 247 248 250)); border-right: 1px solid rgb(var(--c-neutral-200, 227 230 236)); font-family: 'Inter', system-ui, sans-serif; } .ds-rail-title { margin: 0 0 4px; padding: 0 8px; font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: .04em; text-transform: uppercase; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-rail-row { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 4px; font-size: 13px; line-height: 1; color: rgb(var(--c-neutral-800, 38 41 50)); text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-rail-row svg { color: rgb(var(--c-neutral-400, 154 161 175)); flex-shrink: 0; } .ds-rail-row:hover { background: rgb(var(--c-neutral-100, 238 240 244)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-rail-row.is-active { font-weight: 500; color: rgb(var(--c-neutral-900, 30 32 38)); background: rgb(var(--c-accent-50, 255 246 232)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500, 224 138 25)); } .ds-rail-row:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Menu",
+      "kind": "custom",
+      "refersTo": "menu",
+      "description": "Floating select menu: the only shadowed layer; items hover on surface-hover, the chosen item sits on orange tint.",
+      "html": "<div class=\"ds-menu\" role=\"listbox\"><button class=\"ds-menu-item is-active\" role=\"option\" aria-selected=\"true\">Lines of code</button><button class=\"ds-menu-item\" role=\"option\">Max indentation</button><button class=\"ds-menu-item\" role=\"option\">Instability</button></div>",
+      "css": ".ds-menu { display: flex; flex-direction: column; width: 220px; padding: 4px; border-radius: 6px; background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 8px 24px -8px rgb(var(--c-shadow-rgb, 15 18 28) / 0.24), 0 0 0 1px rgb(var(--c-neutral-200, 227 230 236)); font-family: 'Inter', system-ui, sans-serif; } .ds-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border: 0; border-radius: 4px; font-size: 13px; text-align: left; color: rgb(var(--c-neutral-800, 38 41 50)); background: transparent; cursor: pointer; transition: background-color 150ms; } .ds-menu-item:hover, .ds-menu-item:focus-visible { background: rgb(var(--c-neutral-100, 238 240 244)); color: rgb(var(--c-neutral-900, 30 32 38)); outline: none; } .ds-menu-item.is-active { background: rgb(var(--c-accent-50, 255 246 232)); }"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Ink-on-dark tooltip for D3 marks and controls.",
+      "html": "<div class=\"ds-tooltip\">com.archstats.core<br><span>LOC 1,204 · Max indent 7</span></div>",
+      "css": ".ds-tooltip { display: inline-block; padding: 6px 8px; border-radius: 4px; font-family: 'Inter', system-ui, sans-serif; font-size: 12px; line-height: 16px; color: rgb(var(--c-surface, 255 255 255)); background: rgb(var(--c-neutral-900, 30 32 38)); box-shadow: 0 8px 24px -8px rgb(var(--c-shadow-rgb, 15 18 28) / 0.24), 0 0 0 1px rgb(var(--c-neutral-200, 227 230 236)); } .ds-tooltip span { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; opacity: .8; }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": "table-cell",
+      "description": "Sticky 32px header in label style, 28px rows, mono names and right-aligned mono numbers, orange-tint selection.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Component</th><th class=\"num\">LOC</th><th class=\"num\">Instability</th></tr></thead><tbody><tr><td class=\"name\">core</td><td class=\"num\">12,480</td><td class=\"num\">0.31</td></tr><tr class=\"is-selected\"><td class=\"name\">api.http</td><td class=\"num\">3,102</td><td class=\"num\">0.88</td></tr><tr><td class=\"name\">storage.sqlite</td><td class=\"num\">1,940</td><td class=\"num\">0.12</td></tr></tbody></table>",
+      "css": ".ds-table { width: 420px; border-collapse: collapse; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; } .ds-table th { height: 32px; padding: 0 8px; text-align: left; font-size: 12px; font-weight: 500; white-space: nowrap; color: rgb(var(--c-neutral-500, 108 114 128)); background: rgb(var(--c-surface, 255 255 255)); border-bottom: 1px solid rgb(var(--c-neutral-200, 227 230 236)); } .ds-table td { height: 28px; padding: 0 8px; white-space: nowrap; color: rgb(var(--c-neutral-800, 38 41 50)); border-bottom: 1px solid rgb(var(--c-neutral-100, 238 240 244)); } .ds-table .name { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-table .num { text-align: right; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: rgb(var(--c-neutral-700, 52 57 68)); } .ds-table th.num { font-family: 'Inter', system-ui, sans-serif; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-table tbody tr:hover td { background: rgb(var(--c-neutral-50, 247 248 250)); } .ds-table tbody tr.is-selected td { background: rgb(var(--c-accent-50, 255 246 232)); }"
+    },
+    {
+      "name": "Detail Frame",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "The one detail surface for a component, file or author: toolbar with back, breadcrumb, mono title, kind tag and mono key stats; a 36px tab strip with an orange underline on the active tab.",
+      "html": "<div class=\"ds-detail\"><header class=\"ds-detail-bar\"><button class=\"ds-detail-back\" aria-label=\"Back\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/></svg></button><nav class=\"ds-crumbs\"><a href=\"#\">Components</a><span class=\"ds-crumb-sep\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></span><h2 class=\"ds-detail-title\">com.fedex.qp.common.entity.user</h2></nav><span class=\"ds-detail-kind\">Component</span><span class=\"ds-detail-stats\">Files <b>21</b><i>·</i>Lines <b>8,644</b><i>·</i>Commits <b>180</b></span></header><nav class=\"ds-tabs\" role=\"tablist\"><a class=\"ds-tab is-active\" href=\"#\">Overview</a><a class=\"ds-tab\" href=\"#\">Dependencies</a><a class=\"ds-tab\" href=\"#\">Files <span class=\"ds-tab-count\">21</span></a><a class=\"ds-tab\" href=\"#\">History</a><a class=\"ds-tab\" href=\"#\">Cycles <span class=\"ds-tab-count\">36</span></a></nav></div>",
+      "css": ".ds-detail { background: rgb(var(--c-surface, 255 255 255)); font-family: 'Inter', system-ui, sans-serif; font-size: 13px; color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-detail-bar { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-200, 227 230 236)); } .ds-detail-back { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: rgb(var(--c-neutral-700, 75 81 94)); cursor: pointer; margin-left: -4px; } .ds-detail-back:hover { background: rgb(var(--c-neutral-100, 238 240 244)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; } .ds-crumbs a { color: rgb(var(--c-neutral-500, 108 114 128)); text-decoration: none; transition: color 150ms; } .ds-crumbs a:hover { color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-crumb-sep { display: inline-flex; color: rgb(var(--c-neutral-300, 206 211 220)); } .ds-detail-title { margin: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-detail-kind { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 3px; background: rgb(var(--c-neutral-100, 238 240 244)); color: rgb(var(--c-neutral-700, 75 81 94)); font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 500; } .ds-detail-stats { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 12px; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-detail-stats b { font-weight: 400; color: rgb(var(--c-neutral-800, 38 41 50)); } .ds-detail-stats i { font-style: normal; color: rgb(var(--c-neutral-300, 206 211 220)); } .ds-tabs { display: flex; align-items: stretch; gap: 16px; height: 36px; padding: 0 16px; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-200, 227 230 236)); } .ds-tab { display: inline-flex; align-items: center; gap: 6px; padding: 0 2px; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 12px; font-weight: 500; color: rgb(var(--c-neutral-500, 108 114 128)); text-decoration: none; transition: color 150ms; } .ds-tab:hover { color: rgb(var(--c-neutral-800, 38 41 50)); } .ds-tab.is-active { color: rgb(var(--c-neutral-900, 30 32 38)); border-bottom-color: rgb(var(--c-accent-500, 224 138 25)); } .ds-tab:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; } .ds-tab-count { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: rgb(var(--c-neutral-400, 154 161 175)); }"
+    },
+    {
+      "name": "Stat Strip",
+      "kind": "card",
+      "refersTo": "stat-cell",
+      "description": "The one headline strip every overview opens with: label over a 22px tabular value in neutral ink, a level dot for health and hotspot scores.",
+      "html": "<dl class=\"ds-strip\"><div class=\"ds-stat\"><dt>Code Health</dt><dd><span class=\"ds-dot is-good\"></span>8.3</dd></div><div class=\"ds-stat\"><dt>Hotspot Score</dt><dd><span class=\"ds-dot is-warn\"></span>45</dd></div><div class=\"ds-stat\"><dt>Line Count</dt><dd>8,644</dd></div><div class=\"ds-stat\"><dt>File Count</dt><dd>21</dd></div><div class=\"ds-stat\"><dt>Commit Count</dt><dd>180</dd></div><div class=\"ds-stat\"><dt>Author Count</dt><dd>15</dd></div></dl>",
+      "css": ".ds-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; border-radius: 6px; background: rgb(var(--c-surface, 255 255 255)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-200, 227 230 236)); font-family: 'Inter', system-ui, sans-serif; } .ds-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 12px 16px; } .ds-stat + .ds-stat { box-shadow: inset 1px 0 0 rgb(var(--c-neutral-200, 227 230 236)); } .ds-stat dt { font-size: 12px; line-height: 16px; color: rgb(var(--c-neutral-500, 108 114 128)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-stat dd { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 22px; font-weight: 500; line-height: 28px; font-variant-numeric: tabular-nums; color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-dot { width: 8px; height: 8px; border-radius: 9999px; background: rgb(var(--c-neutral-300, 206 211 220)); flex: none; } .ds-dot.is-good { background: rgb(var(--c-green-500, 62 155 95)); } .ds-dot.is-warn { background: rgb(var(--c-amber-500, 212 141 30)); } .ds-dot.is-bad { background: rgb(var(--c-red-500, 218 78 78)); }"
+    },
+    {
+      "name": "Scope Chip",
+      "kind": "chip",
+      "refersTo": "scope-chip",
+      "description": "The active-scope chip in the toolbar: the group's dot, its name, and a clear button. Absent when no scope is set.",
+      "html": "<span class=\"ds-scope\"><span class=\"ds-scope-dot\"></span><span class=\"ds-scope-name\">payments-core</span><button class=\"ds-scope-clear\" aria-label=\"Clear scope\"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></button></span> <span class=\"ds-meta\">Components <b>12 of 52</b></span>",
+      "css": ".ds-scope { display: inline-flex; align-items: center; gap: 6px; height: 24px; max-width: 260px; padding: 0 8px; border-radius: 4px; background: rgb(var(--c-accent-50, 255 246 232)); color: rgb(var(--c-neutral-900, 30 32 38)); box-shadow: 0 0 0 1px rgb(var(--c-accent-300, 251 190 95)); font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 500; line-height: 1; vertical-align: middle; } .ds-scope-dot { width: 8px; height: 8px; border-radius: 9999px; background: rgb(var(--c-violet-500, 119 89 219)); flex: none; } .ds-scope-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-scope-clear { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-right: -4px; border: 0; border-radius: 3px; background: transparent; color: rgb(var(--c-neutral-500, 108 114 128)); cursor: pointer; } .ds-scope-clear:hover { background: rgb(var(--c-neutral-200, 227 230 236)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-scope-clear:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; } .ds-meta { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 12px; color: rgb(var(--c-neutral-500, 108 114 128)); vertical-align: middle; margin-left: 8px; } .ds-meta b { font-weight: 400; color: rgb(var(--c-neutral-800, 38 41 50)); }"
+    },
+    {
+      "name": "Empty State",
+      "kind": "custom",
+      "refersTo": "empty-state",
+      "description": "An empty canvas or table names the reason and offers the button that clears it; the same block with the alert icon carries errors.",
+      "html": "<div class=\"ds-empty\"><span class=\"ds-empty-icon\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/><rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/><rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/><path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/><path d=\"M12 12V8\"/></svg></span><p class=\"ds-empty-title\">Nothing matches</p><p class=\"ds-empty-text\">The active scope and search leave nothing to show. Clear one of them.</p><div class=\"ds-empty-actions\"><button class=\"ds-empty-btn\">Clear search</button><button class=\"ds-empty-btn\">Clear scope</button></div></div>",
+      "css": ".ds-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; padding: 40px 24px; text-align: center; font-family: 'Inter', system-ui, sans-serif; } .ds-empty-icon { display: inline-flex; color: rgb(var(--c-neutral-300, 206 211 220)); } .ds-empty-title { margin: 0; font-size: 13px; font-weight: 500; line-height: 18px; color: rgb(var(--c-neutral-700, 75 81 94)); } .ds-empty-text { margin: 0; max-width: 42ch; font-size: 12px; line-height: 16px; color: rgb(var(--c-neutral-500, 108 114 128)); } .ds-empty-actions { display: flex; gap: 8px; margin-top: 8px; } .ds-empty-btn { height: 24px; padding: 0 8px; border: 0; border-radius: 4px; background: rgb(var(--c-surface, 255 255 255)); color: rgb(var(--c-neutral-800, 38 41 50)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 150ms, color 150ms; } .ds-empty-btn:hover { background: rgb(var(--c-neutral-50, 247 248 250)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-empty-btn:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    },
+    {
+      "name": "Zoom Controls",
+      "kind": "button",
+      "refersTo": "button-small",
+      "description": "The one zoom overlay for every canvas: zoom in, zoom out and reset as small icon buttons stacked 16px from the bottom-right corner.",
+      "html": "<div class=\"ds-zoom\"><button class=\"ds-zoom-btn\" aria-label=\"Zoom in\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/><path d=\"M11 8v6\"/><path d=\"M8 11h6\"/></svg></button><button class=\"ds-zoom-btn\" aria-label=\"Zoom out\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/><path d=\"M8 11h6\"/></svg></button><button class=\"ds-zoom-btn\" aria-label=\"Reset view\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/></svg></button></div>",
+      "css": ".ds-zoom { display: inline-flex; flex-direction: column; gap: 4px; } .ds-zoom-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: rgb(var(--c-surface, 255 255 255)); color: rgb(var(--c-neutral-700, 75 81 94)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-300, 206 211 220)); cursor: pointer; transition: background-color 150ms, box-shadow 150ms; } .ds-zoom-btn:hover { background: rgb(var(--c-neutral-50, 247 248 250)); box-shadow: 0 0 0 1px rgb(var(--c-neutral-400, 154 161 175)); color: rgb(var(--c-neutral-900, 30 32 38)); } .ds-zoom-btn:active { background: rgb(var(--c-neutral-100, 238 240 244)); } .ds-zoom-btn:focus-visible { outline: 2px solid rgb(var(--c-accent-400, 242 163 58)); outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Tool Window",
+    "overview": "**Creative North Star: \"The Tool Window\"**\n\nArchstats Desktop is an instrument, not a dashboard. Every screen reads like a tool window in a modern IDE: flat surfaces separated by one-pixel hairlines, a single 13px type family, evidence set in monospace, and one orange that marks the primary action and the current selection and nothing else. The bar it is judged against is the JetBrains New UI and Linear, played straight; a category-fluent user must trust every control on sight. Nothing on screen may read as decoration.\n\nThe world is built as two complete palettes, light and dark, that follow the OS (`prefers-color-scheme`); the dark set is re-tuned per step, not inverted. The navy of the old identity survives only as the cool tint in the gray ramp and in the logo. Content sits on pure white (or the dark content ground), while the rail and the right-hand inspector sit one step down on the panel ground, so structure is legible without a single drop shadow. The visualizations are the product; the chrome exists to reach them and then recede.\n\nThe build refuses the card-deck arrangement (icon tile, eyebrow, big number, colored halo), badges and emoji, and gradients. Depth comes from tonal steps and hairlines; a shadow appears only under a floating layer.",
+    "keyCharacteristics": [
+      "Flat, tonal layering: content on surface, rail and inspector one step down on ground; hairlines are the only structure.",
+      "One accent (logo orange) for the primary action, focus, caret, selection, progress, and the active row; blue, green, amber, red, violet are data-only ramps.",
+      "One type family, Inter, at a 13px/18px base with exactly two emphasis weights (500, 600); JetBrains Mono for every identifier, path, timestamp, and number.",
+      "Dense, keyboard-first controls: 28px buttons and inputs, 24px in toolbars, 26px nav rows, a 40px view toolbar.",
+      "Both appearances shipped from one token file, generated into CSS variables; the same utility classes render either palette.",
+      "One click model and one detail frame: a click selects, a double-click opens, every name is a link, and component, file and author each land in the same breadcrumb-and-tabs frame."
+    ],
+    "rules": [
+      {
+        "name": "The One Orange Rule",
+        "body": "Orange appears only as the primary action, the focus ring, the caret, the selection wash, the progress sweep, and the active row's bar and tint. If orange is on a label, an icon, or a heading, it is a defect.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data-Only Hue Rule",
+        "body": "Blue, green, amber, red, and violet exist for data (chart marks, churn bars, danger) and never color chrome, labels, or navigation. Every Tailwind color family (slate, gray, indigo, sky, emerald, rose, purple, …) resolves to one of the seven ramps, so a stray utility cannot introduce an eighth hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-on-Orange Rule",
+        "body": "Orange carries dark ink in both appearances; never white text on the accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Weights Rule",
+        "body": "Emphasis is 500; titles are 600. Requests for bold, extrabold, or black collapse to 600 at the Tailwind layer; requests for thin or light collapse to 400.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Evidence Rule",
+        "body": "Any identifier, path, hash, timestamp, or number the user might copy or compare is set in JetBrains Mono with tabular numerals. Prose stays in Inter.",
+        "section": "typography"
+      },
+      {
+        "name": "The 10px Floor Rule",
+        "body": "The smallest size on the scale is 10px/14px and it is reserved for D3 labels; chrome never drops below 11px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Detail Frame Rule",
+        "body": "An entity has one detail surface: toolbar (back, breadcrumb, title, kind, stats), tab strip, body. No second rail, no pill strip, no hero header.",
+        "section": "layout"
+      },
+      {
+        "name": "The Two-Tab Rule",
+        "body": "A tab strip is drawn only when there are two or more tabs; a lone tab is rendered as its content with no strip.",
+        "section": "layout"
+      },
+      {
+        "name": "The Float-Only Shadow Rule",
+        "body": "A shadow means the element is floating above the window (menu, popover, tooltip, modal). If it is in the layout flow, it gets a hairline.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Ground Step Rule",
+        "body": "Secondary regions (rail, inspector, hover states) sit one tone below Surface; there is no third tone in the chrome.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Click Model Rule",
+        "body": "Single click selects and fills the inspector; double-click, Enter, or the inspector's \"Open\" button goes to detail; hover only shows the tooltip. Every name rendered anywhere is a link to its detail.",
+        "section": "components"
+      },
+      {
+        "name": "The One Strip Rule",
+        "body": "Every overview opens with one hairline-framed stat strip, label over a 22px tabular value in neutral ink; a level dot marks health and hotspot scores. There are no stat tiles.",
+        "section": "components"
+      },
+      {
+        "name": "The Scope Chip Rule",
+        "body": "A saved-group scope is announced once, as the active chip in the toolbar, and every count it narrows reads \"N of M\".",
+        "section": "components"
+      },
+      {
+        "name": "The Switch, Not Family Rule",
+        "body": "Grain, representation and period are segmented controls in the toolbar, never sibling views.",
+        "section": "components"
+      },
+      {
+        "name": "The Reason Rule",
+        "body": "A loading state names what is being read; an empty state names why it is empty and offers the button that clears the cause.",
+        "section": "components"
+      },
+      {
+        "name": "The Loaded Rows Rule",
+        "body": "Search filters loaded rows and its placeholder names the grain.",
+        "section": "components"
+      },
+      {
+        "name": "The Crowded Label Rule",
+        "body": "A dense graph labels its hubs (the top twenty by degree), the selection, the traced path and search hits; every other node gets its name on hover. Packed circles label what fits and truncate the rest.",
+        "section": "components"
+      },
+      {
+        "name": "The Evidence Column Rule",
+        "body": "Coupling is shown as a pair table whose columns are the evidence (Refs, Hops, Shared, Co-change, Similarity, Path), sortable and paginated, never as a prose verdict.",
+        "section": "components"
+      },
+      {
+        "name": "The One Health Rule",
+        "body": "Health and hotspot thresholds and colors come from `useHealth()` alone; no view carries its own.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do compose every view from the tool-window frame: 40px toolbar, visualizer, optional 340px inspector on Ground.",
+      "Do draw structure with 1px hairlines (neutral-200 for boundaries, neutral-300 rings on controls) and reserve the float shadow for menus, popovers, tooltips, and modals.",
+      "Do set identifiers, paths, timestamps, counts, and numeric cells in JetBrains Mono with tabular numerals.",
+      "Do mark selection with Orange Tint plus a 2px orange inset bar (rail rows, inspector rows) or Orange Tint alone (table rows, chips, menu items), always with neutral ink.",
+      "Do use the `.ui-*` vocabulary (`ui-btn`, `ui-input`, `ui-segmented`, `ui-chip`, `ui-tag`, `ui-panel`, `ui-toolbar`, `ui-menu`, `ui-tooltip`, `ui-popover`, `ui-table`, `ui-kv`, `ui-label`, `ui-section-title`) before writing new utility stacks.",
+      "Do read chart colors through `chartTheme()` so diagrams follow the OS appearance.",
+      "Do keep controls at 28px (24px in toolbars) and rows at 26–28px; the density is the point.",
+      "Do ship both appearances from `frontend/design/tokens.cjs` and regenerate `tokens.css` with `npm run tokens`.",
+      "Do wire every canvas and table to the click model: click selects, double-click or \"Open\" navigates, and every name is a router link.",
+      "Do build detail pages on `DetailFrame`, overviews on `StatStrip`, coupling on `PairTable`, history on `CommitHistory`, and canvases on `ZoomControls`, `LoadingState` and `EmptyState`.",
+      "Do read health and hotspot levels from `useHealth()` and give every empty state its reason."
+    ],
+    "donts": [
+      "Don't put orange on labels, icons, headings, or chart marks that are not the heat ramp.",
+      "Don't color chrome or navigation with blue, green, amber, red, or violet; they are data ramps.",
+      "Don't use card-deck stat tiles (icon tile, eyebrow, big number, colored halo); the stats strip is one hairline frame with label/value pairs.",
+      "Don't add gradients, emoji, badges, or pill-shaped labels; counts are mono tags at 20px.",
+      "Don't set chrome text below 11px, or use a weight other than 400, 500, 600.",
+      "Don't put a shadow on anything in the layout flow, including panels, thumbnails, and the inspector.",
+      "Don't load fonts, icons, or images from the network; Inter, JetBrains Mono, and Lucide are bundled.",
+      "Don't render white text on the orange accent; the accent carries dark ink in both appearances.",
+      "Don't hardcode hex in a component or diagram; every color is a `--c-*` variable so the dark appearance stays complete.",
+      "Don't fork a view per grain or per source, add a second zoom overlay, or draw a tab strip for a single tab.",
+      "Don't put a stat in a tile, a scope in a banner, or a count outside the mono toolbar meta."
+    ]
+  }
+}

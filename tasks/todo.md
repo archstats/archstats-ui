@@ -24,10 +24,10 @@ Plan: [`tasks/plan.md`](plan.md) · Spec: [`specs/desktop-app.md`](../specs/desk
 - [x] Checkpoint B: core flow verified live under `wails dev` ✅ 2026-08-10 — create workspace → scan → open snapshot → dashboard/files table/file detail(+contents)/chord/clustering/cycles/hotspots/authors all render real data. KNOWN pre-existing breakage (revamp-era async-query-in-computed): churn, timeline, plotter, walker, treemap, git author pages, several [name]/java pages — sweep running as part of T13
 
 ## Phase 4 — IDE shell & workspace UX
-- [ ] T9: workspace sidebar + native folder picker + empty state (replaces load-data page)
-- [ ] T10: scan button + progress events + scan history + snapshot switching + delete scan
+- [x] T9: workspace sidebar + native folder picker + empty state (replaces load-data page) ✅ 2026-09-17 — switcher popover, `SelectFolder` binding, teaching first-run panel; interim `/open` page removed
+- [x] T10: scan button + progress events + scan history + snapshot switching + delete scan ✅ 2026-09-17 — in-place progress readout, auto-open rule, inline confirms, interrupted scans marked failed at startup
 - ~~T11: tabs + splitpanes shell~~ — deferred to v2 (plan-gate decision 2026-08-10)
-- [ ] T12: wire `groups.initForProject(workspaceId)` — groups persist per workspace
+- [x] T12: wire `groups.initForProject(workspaceId)` — groups persist per workspace ✅ 2026-09-17 — called from `workspaces.select()`
 
 ## Phase 5 — Hardening, cleanup, retirement
 - [ ] T13: view-by-view parity QA sweep (checklist appended to plan)

@@ -33,3 +33,7 @@ frontend/dist/*
 !frontend/dist/.gitkeep
 frontend/auto-imports.d.ts
 frontend/components.d.ts
+
+# Impeccable review captures are scratch, regenerated each round. Anchored
+# nowhere: the frontend keeps its own, and the root rule did not reach it.
+**/.impeccable/review/
