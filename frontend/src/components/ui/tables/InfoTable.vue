@@ -1,31 +1,25 @@
+
 <template>
-
-  <table>
-    <tbody>
-
-    <tr v-for="info in elementNormalized">
-
-      <td class="mr-4 text-archstats-200 flex gap-2">
-        <LongHover v-if="definition.has(info.key)" :time="1000">
+  <dl class="ui-kv">
+    <template v-for="info in elementNormalized" :key="info.key">
+      <dt>
+        <LongHover v-if="definition.has(info.key)" :time="700">
           <template #default>
-            <span class="hover:text-tertiary-500 cursor-pointer">{{ definition.get(info.key).name }}</span>
+            <span class="cursor-help underline decoration-dotted decoration-neutral-300 underline-offset-2">{{ definition.get(info.key).name }}</span>
           </template>
           <template #hovered-content>
-            <div class="absolute bg-gray-50 p-6 shadow-2xl w-96 z-10">
+            <div class="ui-popover absolute z-20 w-80 p-3 text-base leading-5 text-neutral-800">
               <Definition :definition="info.key" mode="long"/>
             </div>
           </template>
         </LongHover>
-        <span v-else>{{info.key}}</span>
-
-        </td>
-      <td class="w-12 overflow-hidden text-archstats-900">{{ round(info.value, 3) }}</td>
-    </tr>
-
-
-    </tbody>
-  </table>
+        <span v-else>{{ info.key }}</span>
+      </dt>
+      <dd>{{ round(info.value, 3) }}</dd>
+    </template>
+  </dl>
 </template>
+
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ComputedRef } from "vue";

@@ -1,11 +1,8 @@
 <template>
-  <Button class="text-white bg-archstats-900 hover:bg-archstats-700">
+  <Button class="ui-btn-primary">
     <slot></slot>
   </Button>
 </template>
 <script setup>
 import Button from "./Button.vue";
 </script>
-<style>
-
-</style>

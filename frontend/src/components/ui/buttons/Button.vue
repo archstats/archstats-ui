@@ -1,15 +1,9 @@
 <template>
-  <button class=" px-8 py-2 rounded transition-all rounded box-border">
+  <button type="button" class="ui-btn">
     <slot></slot>
   </button>
 </template>
 
 <script>
-export default {
-  name: "Button"
-}
+export default { name: "Button" }
 </script>
-
-<style scoped>
-
-</style>

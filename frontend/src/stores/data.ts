@@ -1,4 +1,4 @@
-import {defineStore} from 'pinia'
+import {acceptHMRUpdate, defineStore} from 'pinia'
 import {findCommonPrefix} from "~/utils/text";
 import {
     Component,
@@ -30,6 +30,7 @@ export const useDataStore = defineStore('data', {
         _componentConnections: RawComponentConnection[];
         _allCyclesExpanded: any[];
         _distinctComponentColumns: string[];
+        _fileComponents: Array<{ name: string; component: string | null }>;
         _initialized: boolean;
         _openScanId: string | null;
     } => {
@@ -40,6 +41,7 @@ export const useDataStore = defineStore('data', {
             _componentConnections: [],
             _allCyclesExpanded: [],
             _distinctComponentColumns: [],
+            _fileComponents: [],
             _initialized: false,
             _openScanId: null,
         }
@@ -87,6 +89,8 @@ export const useDataStore = defineStore('data', {
             return findCommonPrefix(this.allRawComponents.map(c => c.name).filter(c => c.trim() && !c.toLowerCase().includes("unknown")));
         },
         hasData: state => state._openScanId !== null && state._initialized,
+        /** Changes whenever a different snapshot is open; views key their caches and picks on it. */
+        datasetKey: state => state._openScanId,
         hasView() {
             return (viewName: string): boolean => {
                 return this.viewNames.includes(viewName);
@@ -100,6 +104,25 @@ export const useDataStore = defineStore('data', {
         },
         allCyclesExpanded(state: any): any[] {
             return state._allCyclesExpanded;
+        },
+        // file path -> component name, for every file in the snapshot.
+        fileComponentIndex(state: any): Map<string, string> {
+            const m = new Map<string, string>();
+            for (const f of state._fileComponents as Array<{ name: string; component: string | null }>) {
+                if (f.component) m.set(f.name, f.component);
+            }
+            return m;
+        },
+
+        // component name -> its file paths, the inverse of fileComponentIndex.
+        componentFilesIndex(state: any): Map<string, string[]> {
+            const m = new Map<string, string[]>();
+            for (const f of state._fileComponents as Array<{ name: string; component: string | null }>) {
+                if (!f.component) continue;
+                const list = m.get(f.component);
+                if (list) list.push(f.name); else m.set(f.component, [f.name]);
+            }
+            return m;
         },
 
         allComponentsIndex(): Map<string, Component> {
@@ -155,6 +178,21 @@ export const useDataStore = defineStore('data', {
             await this._initializeState();
         },
 
+        // Leaves no snapshot open: the shell shows its empty/scanning panel
+        // and every view watching hasData tears down. Used when the active
+        // workspace has nothing to show yet.
+        closeScan() {
+            this._openScanId = null;
+            this._initialized = false;
+            this._viewNames = [];
+            this._definitions = new Map();
+            this._allRawComponents = [];
+            this._componentConnections = [];
+            this._allCyclesExpanded = [];
+            this._distinctComponentColumns = [];
+            this._fileComponents = [];
+        },
+
         async _initializeState() {
             // Populate viewNames
             const viewResults = await this.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table'");
@@ -193,6 +231,13 @@ export const useDataStore = defineStore('data', {
                 this._allRawComponents = await this.getView<RawComponent>("components");
             } catch {
                 this._allRawComponents = [];
+            }
+
+            // Populate the file -> component index
+            try {
+                this._fileComponents = await this.query<{ name: string; component: string | null }>("SELECT name, component FROM files");
+            } catch {
+                this._fileComponents = [];
             }
 
             // Populate componentConnections
@@ -254,3 +299,7 @@ export const useDataStore = defineStore('data', {
         },
     },
 })
+
+// See the note in stores/draft.ts: without this, an action or getter added
+// while the dev server runs is missing from the live store until a reload.
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useDataStore, import.meta.hot));

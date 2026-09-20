@@ -1,37 +1,23 @@
+
 <template>
   <div>
-    <div class="text-archstats-900 w-fit ml-5" v-if="!stat.children?.length" @click="emit('select-stat', stat.fullName)">
-      <Checkbox :model-value="isChecked">
-        {{ stat.name }}
-      </Checkbox>
+    <div class="ml-5 w-fit py-0.5" v-if="!stat.children?.length" @click="emit('select-stat', stat.fullName)">
+      <Checkbox :model-value="isChecked">{{ stat.name }}</Checkbox>
     </div>
 
     <div v-else>
-      <div class="flex items-center gap-1 select-none">
-
-        <Icon v-if="stat.children?.length" :icon="expanded ? 'chevron-down' : 'chevron-right'"
-              class="cursor-pointer text-archstats-300 hover:text-archstats-500" :size="16"
-              @click="expanded=!expanded"></Icon>
+      <div class="flex select-none items-center gap-1 py-0.5">
+        <Icon v-if="stat.children?.length" :icon="expanded ? 'chevron-down' : 'chevron-right'" class="cursor-pointer text-neutral-400 hover:text-neutral-700" :size="14" @click="expanded=!expanded"></Icon>
         <Checkbox :model-value="isChecked" @update:model-value="emit('select-stat', stat.fullName)">
-          <span :class="['text-archstats-500', {
-        'font-semibold': stat.level <= 1,
-        'text-archstats-700':stat.level<=1,
-        'text-base': stat.level >= 1
-      }]">{{ stat.name || "All" }}</span>
+          <span :class="stat.level <= 1 ? 'font-medium text-neutral-800' : 'text-neutral-700'">{{ stat.name || "All" }}</span>
         </Checkbox>
-
-
       </div>
-      <div v-show="expanded" :style="{'padding-left': `${(stat.level + 1) * 18}px`}" v-for="child in orderedChildren">
-        <StatSelectMultiNode :selected-stats="selectedStats" :stat="child"
-                             @select-stat="emit('select-stat', $event)"></StatSelectMultiNode>
+      <div v-show="expanded" :style="{'padding-left': `${(stat.level + 1) * 14}px`}" v-for="child in orderedChildren" :key="child.fullName">
+        <StatSelectMultiNode :selected-stats="selectedStats" :stat="child" @select-stat="emit('select-stat', $event)"></StatSelectMultiNode>
       </div>
     </div>
   </div>
-
-
 </template>
-
 <script setup lang="ts">
 import {Stat} from "~/utils/stat-tree";
 import Icon from "~/components/ui/common/Icon.vue";

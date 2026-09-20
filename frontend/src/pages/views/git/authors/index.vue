@@ -1,349 +1,251 @@
 <template>
   <ViewWorkspaceLayout
-    title="Git Authors"
-    :badge-text="badgeText"
+    :queryable="false"
+    title="Authors"
     v-model:search-query="searchQuery"
+    search-placeholder="Search authors"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
     :tabs="tabs"
-    sidebar-width="380px"
-    :show-config="false"
+    sidebar-width="300px"
   >
-    <!-- Visualizer Slot -->
-    <template #visualizer>
-      <div class="w-full h-full flex flex-col gap-6 p-6 overflow-y-auto scroll-container">
-        <!-- Stacked Horizontal Bar Chart -->
-        <div class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs">
-          <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Author Contributions (Top 20)</h4>
-          <svg ref="authorBarSvgRef" class="w-full" :style="{ height: authorBarHeight + 'px' }"></svg>
-        </div>
+    <template #stats>
+      <span v-if="rows.length" title="Everyone in the git history, including authors of files that no longer exist">
+        In git history
+        <span class="text-neutral-800">
+          <template v-if="filtered.length !== rows.length">{{ formatNumber(filtered.length) }} of </template>{{ formatNumber(rows.length) }}
+        </span>
+      </span>
+    </template>
 
-        <!-- Authors Table -->
-        <div class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs">
-          <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">All Authors</h4>
-          <div class="overflow-x-auto">
-            <table class="w-full text-[10px] font-medium text-slate-700">
-              <thead>
-                <tr class="border-b border-slate-100">
-                  <th
-                    v-for="col in authorTableCols"
-                    :key="col.key"
-                    @click="toggleAuthorSort(col.key)"
-                    class="text-left px-3 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-slate-600 transition-colors select-none"
-                  >
-                    {{ col.label }}
-                    <span v-if="authorSortKey === col.key" class="ml-0.5 text-slate-500">{{ authorSortDir === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="sortedAuthorsForTable.length === 0">
-                  <td :colspan="authorTableCols.length" class="text-center py-8 text-slate-400 italic">No authors match search.</td>
-                </tr>
-                <tr
-                  v-else
-                  v-for="author in sortedAuthorsForTable"
-                  :key="author.name"
-                  class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
-                  @click="router.push('/views/git/authors/' + encodeURIComponent(author.name))"
-                >
-                  <td class="px-3 py-2 font-bold text-indigo-600 hover:text-indigo-800 font-mono truncate max-w-[180px]">{{ author.name }}</td>
-                  <td class="px-3 py-2 font-mono text-slate-500 truncate max-w-[180px]">{{ author.email }}</td>
-                  <td class="px-3 py-2 font-mono font-bold text-slate-900">{{ author.commits }}</td>
-                  <td class="px-3 py-2 font-mono text-emerald-600">+{{ author.additions }}</td>
-                  <td class="px-3 py-2 font-mono text-rose-500">-{{ author.deletions }}</td>
-                  <td class="px-3 py-2 font-mono text-slate-600">{{ author.files_changed }}</td>
-                  <td class="px-3 py-2 font-mono text-slate-600">{{ author.components_changed }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <template #switches>
+      <div class="ui-segmented" role="group" aria-label="Period">
+        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
       </div>
     </template>
 
-    <!-- SIDEBAR TAB: Authors -->
-    <template #tab-authors>
-      <div class="flex flex-col gap-5 select-none">
-        <div class="flex flex-col gap-1">
-          <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Author Insights</h3>
-          <p class="text-[10px] text-slate-500 leading-relaxed mt-1">
-            Contributor breakdown and activity analysis. Click an author to view their detailed timeline and commit history.
-          </p>
-        </div>
-
-        <!-- Time Period Toggle -->
-        <div class="flex flex-col gap-2">
-          <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Time Period</span>
-          <div class="flex gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50">
-            <button
-              v-for="period in authorTimePeriods"
-              :key="period.value"
-              @click="authorTimePeriod = period.value"
-              class="flex-1 px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all duration-150 cursor-pointer text-center"
-              :class="authorTimePeriod === period.value ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-800'"
+    <template #visualizer>
+      <LoadingState v-if="loading" text="Reading authors…"/>
+      <EmptyState v-else-if="error" title="Could not read authors" :text="error" icon="alert"/>
+      <EmptyState
+        v-else-if="rows.length === 0"
+        title="No authors in this snapshot"
+        text="The scan has no git author data. Scan a git checkout to see who contributes."
+        icon="users"
+      />
+      <EmptyState v-else-if="filtered.length === 0" title="No authors match" :text="`Nothing matches “${searchQuery}”.`" icon="search">
+        <button type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
+      </EmptyState>
+      <div v-else class="min-h-0 grow overflow-auto">
+        <table class="ui-table">
+          <thead>
+            <tr>
+              <th
+                v-for="col in columns"
+                :key="col.key"
+                :class="[col.align === 'right' ? 'text-right' : '', col.width]"
+                :aria-sort="sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+              >
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 hover:text-neutral-900"
+                  :class="{ 'text-neutral-900': sortKey === col.key }"
+                  @click="toggleSort(col.key)"
+                >
+                  {{ col.label }}
+                  <Icon v-if="sortKey === col.key" :icon="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" :size="12"/>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="a in sorted"
+              :key="a.name"
+              class="is-clickable"
+              :class="{ 'is-selected': a.name === selectedName }"
+              tabindex="0"
+              @click="selectedName = a.name"
+              @dblclick="open(a.name)"
+              @keydown.enter.prevent="open(a.name)"
             >
-              {{ period.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Top 5 Authors -->
-        <div class="flex flex-col gap-2">
-          <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Top Contributors</h4>
-          <div class="flex flex-col gap-2">
-            <div
-              v-for="author in topAuthors"
-              :key="author.name"
-              class="bg-white border border-slate-200/60 rounded-2xl p-3.5 shadow-3xs flex flex-col gap-2 cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
-              @click="router.push('/views/git/authors/' + encodeURIComponent(author.name))"
-            >
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                  {{ author.name.charAt(0).toUpperCase() }}
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span class="text-[11px] font-bold text-indigo-600 truncate">{{ author.name }}</span>
-                  <span class="text-[9px] text-slate-400 font-mono truncate">{{ author.email }}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-3 text-[9px] font-mono text-slate-500 border-t border-slate-100 pt-2">
-                <span><strong class="text-slate-800">{{ author.commits }}</strong> commits</span>
-                <span class="text-emerald-600">+{{ author.additions }}</span>
-                <span class="text-rose-500">-{{ author.deletions }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+              <td class="max-w-0">
+                <router-link
+                  :to="detailRoute(a.name)"
+                  class="block truncate text-neutral-900 hover:underline"
+                  :title="a.email ? `${a.name} · ${a.email}` : a.name"
+                  @click.stop
+                >{{ a.name }}</router-link>
+              </td>
+              <td class="is-num text-right">
+                <span class="inline-flex items-center justify-end gap-2">
+                  <span>{{ formatNumber(a.commits) }}</span>
+                  <span class="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-neutral-200" aria-hidden="true">
+                    <span class="block h-full rounded-full bg-neutral-500" :style="{ width: barWidth(a.commits) }"></span>
+                  </span>
+                </span>
+              </td>
+              <td class="is-num text-right">
+                <span class="text-green-700">{{ formatSigned(a.additions) }}</span>
+                <span class="ml-1.5 text-red-700">{{ formatSigned(-a.deletions) }}</span>
+              </td>
+              <td class="is-num text-right">{{ formatNumber(a.files) }}</td>
+              <td class="is-num text-right">{{ formatNumber(a.components) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+    </template>
+
+    <template #tab-author>
+      <template v-if="selected">
+        <div class="flex flex-col gap-1">
+          <router-link :to="detailRoute(selected.name)" class="truncate text-base font-semibold text-neutral-900 hover:underline">{{ selected.name }}</router-link>
+          <span v-if="selected.email" class="truncate font-mono text-sm text-neutral-500" :title="selected.email">{{ selected.email }}</span>
+        </div>
+        <section v-for="p in periods" :key="p.id" class="flex flex-col gap-2">
+          <h3 class="ui-section-title" :class="{ 'text-neutral-900': p.id === period }">{{ p.title }}</h3>
+          <dl class="ui-kv">
+            <dt>Commits</dt><dd>{{ formatNumber(selected.byPeriod[p.id].commits) }}</dd>
+            <dt>Lines added</dt><dd class="text-green-700">{{ formatSigned(selected.byPeriod[p.id].additions) }}</dd>
+            <dt>Lines removed</dt><dd class="text-red-700">{{ formatSigned(-selected.byPeriod[p.id].deletions) }}</dd>
+            <dt>Files</dt><dd>{{ formatNumber(selected.byPeriod[p.id].files) }}</dd>
+            <dt>Components</dt><dd>{{ formatNumber(selected.byPeriod[p.id].components) }}</dd>
+          </dl>
+        </section>
+        <div class="pt-1">
+          <router-link :to="detailRoute(selected.name)" class="ui-btn ui-btn-sm ui-btn-primary">
+            <Icon icon="arrow-up-right" :size="13"/>
+            <span>Open</span>
+          </router-link>
+        </div>
+      </template>
+      <p v-else class="text-sm leading-4 text-neutral-500">Select an author to see their commits, lines, files and components for every period. Double-click or press Enter to open the author.</p>
     </template>
   </ViewWorkspaceLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
-import * as d3 from "d3"
+import { computed, ref } from "vue"
+import { useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { formatNumber, formatSigned } from "~/utils/format"
+import Icon from "~/components/ui/common/Icon.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
 
 const store = useDataStore()
 const router = useRouter()
 
-
 const searchQuery = ref("")
 const isSidebarOpen = ref(true)
-const activeTab = ref("authors")
-const tabs = [
-  { id: "authors", label: "Authors" }
-]
+const activeTab = ref("author")
+const tabs = [{ id: "author", label: "Author" }]
 
-const badgeText = computed(() => `${authorsData.value.length} Authors`)
+// git_authors columns: git__<metric>__total and git__<metric>__last_<n>_days.
+const periods = [
+  { id: "total", label: "Total", title: "All time", suffix: "__total" },
+  { id: "180", label: "180 d", title: "Last 180 days", suffix: "__last_180_days" },
+  { id: "90", label: "90 d", title: "Last 90 days", suffix: "__last_90_days" },
+  { id: "30", label: "30 d", title: "Last 30 days", suffix: "__last_30_days" },
+] as const
+type PeriodId = (typeof periods)[number]["id"]
+const period = ref<PeriodId>("total")
 
-// ═══════════════════════════════════════════
-// AUTHORS
-// ═══════════════════════════════════════════
-const authorBarSvgRef = ref<SVGSVGElement | null>(null)
-const authorTimePeriod = ref("total")
-const authorSortKey = ref("commits")
-const authorSortDir = ref<"asc" | "desc">("desc")
-
-const authorTimePeriods = [
-  { value: "total", label: "Total" },
-  { value: "last_30_days", label: "30d" },
-  { value: "last_90_days", label: "90d" },
-  { value: "last_180_days", label: "180d" }
-]
-
-interface AuthorRow {
+interface PeriodStats { commits: number; additions: number; deletions: number; files: number; components: number }
+interface AuthorRow extends PeriodStats {
   name: string
   email: string
-  commits: number
-  additions: number
-  deletions: number
-  files_changed: number
-  components_changed: number
-  [key: string]: any
+  byPeriod: Record<PeriodId, PeriodStats>
 }
 
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const authorsData = ref<AuthorRow[]>([])
-watch([() => store.hasData, authorTimePeriod, searchQuery], async ([hasData]) => {
-  if (!hasData) {
-    authorsData.value = []
-    return
+// One query for the whole view; period and search work on the loaded rows.
+const { data: raw, loading, error } = useAsyncQuery<Record<string, any>[]>(
+  () => store.hasView("git_authors")
+    ? store.query<Record<string, any>>("SELECT * FROM git_authors")
+    : Promise.resolve([]),
+  [],
+  { initial: [] },
+)
+
+function statsFor(r: Record<string, any>, suffix: string): PeriodStats {
+  const n = (metric: string) => Number(r[`git__${metric}${suffix}`]) || 0
+  return {
+    commits: n("commits"),
+    additions: n("additions"),
+    deletions: n("deletions"),
+    files: n("unique_file_changes"),
+    components: n("unique_component_changes"),
   }
-  try {
-    const raw = await store.query<any>(`SELECT * FROM git_authors ORDER BY git__commits__total DESC`)
-    const suffix = authorTimePeriod.value === "total" ? "__total" : `__${authorTimePeriod.value}`
-    const mapped = raw.map((r: any) => ({
-      name: r.name || r.author_name || "",
-      email: r.email || r.author_email || "",
-      commits: Number(r[`git__commits${suffix}`] || r.git__commits__total) || 0,
-      additions: Number(r[`git__additions${suffix}`] || r.git__additions__total) || 0,
-      deletions: Number(r[`git__deletions${suffix}`] || r.git__deletions__total) || 0,
-      files_changed: Number(r[`git__files_changed${suffix}`] || r.git__files_changed__total) || 0,
-      components_changed: Number(r[`git__components_changed${suffix}`] || r.git__components_changed__total) || 0
-    }))
+}
 
-    const q = searchQuery.value.trim().toLowerCase()
-    authorsData.value = !q ? mapped : mapped.filter((a: AuthorRow) =>
-      a.name.toLowerCase().includes(q) ||
-      a.email.toLowerCase().includes(q)
-    )
-  } catch { authorsData.value = [] }
-}, { immediate: true })
+const rows = computed<AuthorRow[]>(() => raw.value.map(r => {
+  const byPeriod = Object.fromEntries(periods.map(p => [p.id, statsFor(r, p.suffix)])) as Record<PeriodId, PeriodStats>
+  return {
+    name: String(r.author_name ?? ""),
+    email: String(r.author_email ?? ""),
+    byPeriod,
+    ...byPeriod[period.value],
+  }
+}))
 
-const topAuthors = computed(() => {
-  // Always get top authors based on total commits (from the time period select)
-  return [...authorsData.value]
-    .sort((a, b) => b.commits - a.commits)
-    .slice(0, 5)
+const filtered = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return rows.value
+  return rows.value.filter(a => a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
 })
 
-const authorTableCols = [
-  { key: "name", label: "Name" },
-  { key: "email", label: "Email" },
-  { key: "commits", label: "Commits" },
-  { key: "additions", label: "Additions" },
-  { key: "deletions", label: "Deletions" },
-  { key: "files_changed", label: "Files" },
-  { key: "components_changed", label: "Components" }
+type SortKey = "name" | "commits" | "lines" | "files" | "components"
+const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
+  { key: "name", label: "Author" },
+  { key: "commits", label: "Commits", align: "right", width: "w-[140px]" },
+  { key: "lines", label: "Lines", align: "right", width: "w-[160px]" },
+  { key: "files", label: "Files", align: "right", width: "w-[80px]" },
+  { key: "components", label: "Components", align: "right", width: "w-[110px]" },
 ]
+const sortKey = ref<SortKey>("commits")
+const sortDir = ref<"asc" | "desc">("desc")
 
-function toggleAuthorSort(key: string) {
-  if (authorSortKey.value === key) {
-    authorSortDir.value = authorSortDir.value === "asc" ? "desc" : "asc"
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === "asc" ? "desc" : "asc"
   } else {
-    authorSortKey.value = key
-    authorSortDir.value = "desc"
+    sortKey.value = key
+    sortDir.value = key === "name" ? "asc" : "desc"
   }
 }
 
-const sortedAuthorsForTable = computed(() => {
-  const data = [...authorsData.value]
-  const key = authorSortKey.value as keyof AuthorRow
-  const dir = authorSortDir.value === "asc" ? 1 : -1
-  return data.sort((a, b) => {
-    const av = a[key], bv = b[key]
-    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir
+function sortValue(a: AuthorRow, key: SortKey): number | string {
+  if (key === "name") return a.name.toLowerCase()
+  if (key === "lines") return a.additions + a.deletions
+  return a[key]
+}
+
+const sorted = computed(() => {
+  const dir = sortDir.value === "asc" ? 1 : -1
+  const key = sortKey.value
+  return [...filtered.value].sort((a, b) => {
+    const av = sortValue(a, key), bv = sortValue(b, key)
+    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir || a.name.localeCompare(b.name)
     return String(av).localeCompare(String(bv)) * dir
   })
 })
 
-const authorBarHeight = computed(() => Math.max(200, authorsData.value.slice(0, 20).length * 28 + 60))
-
-function renderAuthorBarChart() {
-  const svg = authorBarSvgRef.value
-  if (!svg) return
-  const container = svg.parentElement
-  if (!container) return
-
-  const data = authorsData.value.slice(0, 20)
-  const width = container.clientWidth
-  const height = authorBarHeight.value
-  const margin = { top: 10, right: 30, bottom: 20, left: 140 }
-  const innerW = width - margin.left - margin.right
-  const innerH = height - margin.top - margin.bottom
-
-  d3.select(svg).selectAll("*").remove()
-  d3.select(svg).attr("viewBox", `0 0 ${width} ${height}`)
-
-  if (data.length === 0) return
-
-  const y = d3.scaleBand().domain(data.map(d => d.name)).range([0, innerH]).padding(0.3)
-  const maxVal = d3.max(data, d => d.additions + d.deletions) || 1
-  const x = d3.scaleLinear().domain([0, maxVal]).range([0, innerW])
-
-  const g = d3.select(svg).append("g").attr("transform", `translate(${margin.left},${margin.top})`)
-
-  // Additions bars
-  g.selectAll(".bar-add")
-    .data(data)
-    .join("rect")
-    .attr("x", 0)
-    .attr("y", d => y(d.name)!)
-    .attr("width", d => x(d.additions))
-    .attr("height", y.bandwidth())
-    .attr("fill", "#22c55e")
-    .attr("rx", 3)
-    .attr("fill-opacity", 0.8)
-
-  // Deletions bars stacked
-  g.selectAll(".bar-del")
-    .data(data)
-    .join("rect")
-    .attr("x", d => x(d.additions))
-    .attr("y", d => y(d.name)!)
-    .attr("width", d => x(d.deletions))
-    .attr("height", y.bandwidth())
-    .attr("fill", "#ef4444")
-    .attr("rx", 3)
-    .attr("fill-opacity", 0.8)
-
-  // Y axis
-  g.append("g")
-    .call(d3.axisLeft(y).tickSize(0))
-    .call(g => g.select(".domain").remove())
-    .call(g => g.selectAll("text")
-      .attr("fill", "#334155")
-      .attr("font-size", "9px")
-      .attr("font-weight", "700")
-      .attr("font-family", "ui-monospace, monospace")
-      .each(function () {
-        const text = d3.select(this).text()
-        if (text.length > 20) d3.select(this).text(text.slice(0, 18) + "..")
-      })
-    )
-
-  // X axis
-  g.append("g")
-    .attr("transform", `translate(0,${innerH})`)
-    .call(d3.axisBottom(x).ticks(5).tickFormat(d => {
-      const v = Number(d)
-      return v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
-    }))
-    .call(g => g.select(".domain").attr("stroke", "#e2e8f0"))
-    .call(g => g.selectAll("text").attr("fill", "#94a3b8").attr("font-size", "8px"))
+// The commit bar is scaled against the busiest author in the period across
+// every row, so searching never rescales it.
+const maxCommits = computed(() => rows.value.reduce((m, a) => Math.max(m, a.commits), 0) || 1)
+function barWidth(commits: number): string {
+  return commits > 0 ? `${Math.max(4, (commits / maxCommits.value) * 100)}%` : "0%"
 }
 
-// ═══════════════════════════════════════════
-// LIFECYCLE & WATCHERS
-// ═══════════════════════════════════════════
-let resizeObserver: ResizeObserver | null = null
+const selectedName = ref<string | null>(null)
+const selected = computed(() => rows.value.find(a => a.name === selectedName.value) ?? null)
 
-onMounted(() => {
-  renderAuthorBarChart()
-
-  resizeObserver = new ResizeObserver(() => {
-    renderAuthorBarChart()
-  })
-
-  if (authorBarSvgRef.value?.parentElement) {
-    resizeObserver.observe(authorBarSvgRef.value.parentElement)
-  }
-})
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect()
-})
-
-watch([authorsData, authorTimePeriod], () => {
-  nextTick(() => renderAuthorBarChart())
-})
+function detailRoute(name: string): string {
+  return `/views/git/authors/${encodeURIComponent(name)}`
+}
+function open(name: string) {
+  router.push(detailRoute(name))
+}
 </script>
-
-<style scoped>
-.scroll-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scroll-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-.scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-</style>

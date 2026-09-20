@@ -1,423 +1,219 @@
 <template>
   <div class="flex flex-col gap-3">
-    <!-- Trigger Button -->
-    <button
-      @click="isModalOpen = true"
-      class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-archstats-800/80 hover:bg-archstats-700/80 border border-archstats-700/50 hover:border-archstats-600/50 transition-all cursor-pointer group"
-    >
-      <div class="flex items-center gap-2.5">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"
-             class="w-4 h-4 text-archstats-400 group-hover:text-archstats-200 transition-colors shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-        </svg>
-        <span class="text-xs font-bold text-archstats-200 group-hover:text-archstats-50 transition-colors">Manage Groups</span>
-      </div>
-      <span
-        v-if="groupsStore.allGroups.length > 0"
-        class="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-archstats-700/60 text-archstats-300"
-      >
-        {{ groupsStore.allGroups.length }}
+    <button type="button" class="ui-btn w-full justify-between font-normal" @click="open">
+      <span class="flex items-center gap-2">
+        <Icon icon="layers" :size="14" class="text-neutral-500"/>
+        <span>Groups</span>
       </span>
+      <span v-if="groupsStore.groups.length > 0" class="ui-tag">{{ groupsStore.groups.length }}</span>
     </button>
 
-    <!-- ═══════════════════════════════════════════════════ -->
-    <!-- MODAL WORKSPACE                                    -->
-    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- The manager: one list of groups on the left, the selected group on the right.
+         A group is a set of components and files; a Java class is its file. -->
     <Teleport to="body">
       <Transition name="modal">
-        <div
-          v-if="isModalOpen"
-          class="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6"
-          @keydown.escape="closeModal"
-        >
-          <!-- Backdrop -->
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeModal" />
-
-          <!-- Modal Card -->
-          <div
-            class="relative w-full max-w-[960px] h-[min(720px,85vh)] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-modal-in"
-            @click.stop
-          >
-            <!-- ── Header ──────────────────────────────── -->
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-              <div class="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"
-                     class="w-5 h-5 text-slate-400">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-                </svg>
-                <h2 class="text-base font-bold text-slate-800 tracking-tight">Groups Manager</h2>
-                <span class="text-[10px] font-bold font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {{ groupsStore.allGroups.length }} group{{ groupsStore.allGroups.length === 1 ? '' : 's' }}
-                </span>
+        <div v-if="isOpen" class="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6" @keydown.escape="close">
+          <div class="absolute inset-0 bg-neutral-950/40" @click="close"/>
+          <div class="ui-popover animate-modal-in relative flex h-[min(720px,85vh)] w-full max-w-[980px] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Groups" @click.stop>
+            <header class="flex shrink-0 items-center gap-3 px-5 py-3 hairline-b">
+              <Icon icon="layers" :size="16" class="text-neutral-500"/>
+              <h2 class="text-base font-semibold text-neutral-900">Groups</h2>
+              <span class="text-sm text-neutral-500">{{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? '' : 's' }} · {{ groupsStore.dimensions.length }} {{ groupsStore.dimensions.length === 1 ? 'lens' : 'lenses' }}</span>
+              <div class="ml-auto flex items-center gap-1.5">
+                <button type="button" class="ui-btn ui-btn-sm" title="Import groups from a JSON file" @click="fileInputRef?.click()">
+                  <Icon icon="folder" :size="13" class="text-neutral-500"/><span>Import</span>
+                </button>
+                <button type="button" class="ui-btn ui-btn-sm" :disabled="groupsStore.groups.length === 0" title="Export every group as JSON" @click="handleExport">
+                  <Icon icon="download" :size="13" class="text-neutral-500"/><span>Export</span>
+                </button>
+                <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden" @change="handleImport"/>
+                <span class="ui-toolbar-sep"></span>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="close"><Icon icon="x" :size="14"/></button>
               </div>
-              <button
-                @click="closeModal"
-                class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
+            </header>
+
+            <p v-if="importError" class="flex items-center gap-2 px-5 py-2 text-sm text-red-700 hairline-b" role="alert">
+              <Icon icon="alert" :size="13"/><span>{{ importError }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="importError = null">Dismiss</button>
+            </p>
+            <!-- What the selected group's lens is worth right now. Every
+                 number here is drift that would otherwise surface months
+                 later as a map quietly missing components. -->
+            <div v-if="selected" class="flex items-center gap-2 px-5 py-2 hairline-b">
+              <span class="ui-label shrink-0">{{ selected.dimension }}</span>
+              <LensHealth :lens="selected.dimension" @open-group="select($event.id)" @review="select($event.id)"/>
             </div>
 
-            <!-- ── Body: Master-Detail Dual Pane ──────── -->
-            <div class="flex flex-1 min-h-0">
-              <!-- ─── LEFT PANE: Group Directory ─────── -->
-              <div class="w-[280px] shrink-0 border-r border-slate-100 flex flex-col bg-slate-50/50">
-                <!-- Search -->
-                <div class="px-4 py-3 border-b border-slate-100">
-                  <div class="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                         class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
-                    <input
-                      v-model="groupSearchQuery"
-                      class="w-full pl-8 pr-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all placeholder:text-slate-400"
-                      placeholder="Search groups…"
-                    />
-                  </div>
+            <div class="flex min-h-0 grow">
+              <!-- ── Group list ─────────────────────────── -->
+              <aside class="flex w-[300px] shrink-0 flex-col bg-ground hairline-r">
+                <div class="flex items-center gap-2 p-3 hairline-b">
+                  <label class="relative flex min-w-0 grow items-center">
+                    <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
+                    <input v-model="groupSearch" type="search" class="ui-input ui-input-sm w-full pl-7" placeholder="Find a group" aria-label="Find a group"/>
+                  </label>
+                  <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="startCreate">
+                    <Icon icon="plus" :size="13"/><span>New</span>
+                  </button>
                 </div>
 
-                <!-- Directory -->
-                <div class="flex-1 overflow-y-auto scroll-container px-2 py-2">
-                  <!-- Component Groups Section -->
-                  <div class="mb-3">
-                    <div class="flex items-center justify-between px-2 py-1.5">
-                      <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Component Groups</span>
-                      <button
-                        @click="startCreate('component')"
-                        class="text-[9px] font-bold text-violet-500 hover:text-violet-700 cursor-pointer transition-colors"
-                      >+ Create</button>
-                    </div>
-                    <div v-if="filteredComponentGroups.length === 0" class="px-2 py-2">
-                      <p class="text-[10px] text-slate-400 italic">No component groups{{ groupSearchQuery ? ' matching' : '' }}</p>
-                    </div>
+                <div class="min-h-0 grow overflow-y-auto py-2">
+                  <div v-if="groupsStore.groups.length === 0" class="flex flex-col gap-1 px-4 py-8 text-center">
+                    <span class="text-sm font-medium text-neutral-800">No groups yet</span>
+                    <span class="text-sm text-neutral-500">Select components, files or classes in any view and press ⌘G, or create one here.</span>
+                  </div>
+                  <div v-else-if="filteredBuckets.length === 0" class="px-4 py-8 text-center text-sm text-neutral-500">No group matches “{{ groupSearch }}”.</div>
+                  <template v-for="bucket in filteredBuckets" :key="bucket.dimension">
+                    <div class="ui-section-title px-4 pb-1 pt-2">{{ bucket.dimension }}</div>
                     <button
-                      v-for="group in filteredComponentGroups"
-                      :key="group.id"
-                      class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer"
-                      :class="selectedGroup?.id === group.id
-                        ? 'bg-violet-50 border border-violet-200 shadow-sm'
-                        : 'hover:bg-white border border-transparent hover:border-slate-200/60 hover:shadow-sm'"
-                      @click="selectGroup(group)"
+                      v-for="g in bucket.groups"
+                      :key="g.id"
+                      type="button"
+                      class="group flex w-full items-center gap-2.5 px-4 py-1.5 text-left transition-colors hover:bg-neutral-100"
+                      :class="{ 'bg-neutral-100 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]': selectedId === g.id }"
+                      @click="select(g.id)"
                     >
-                      <span
-                        class="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white/50"
-                        :style="{ backgroundColor: group.color }"
-                      />
-                      <div class="flex-1 min-w-0">
-                        <span class="text-xs font-semibold text-slate-700 truncate block leading-tight">{{ group.name }}</span>
-                        <span class="text-[10px] text-slate-400 leading-tight">{{ group.members.length }} member{{ group.members.length !== 1 ? 's' : '' }}</span>
-                      </div>
+                      <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
+                      <span class="min-w-0 grow truncate text-sm font-medium text-neutral-900">{{ g.name }}</span>
+                      <span class="shrink-0 font-mono text-xs text-neutral-400">{{ summary(g) }}</span>
                     </button>
-                  </div>
-
-                  <!-- File Groups Section -->
-                  <div>
-                    <div class="flex items-center justify-between px-2 py-1.5">
-                      <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">File Groups</span>
-                      <button
-                        @click="startCreate('file')"
-                        class="text-[9px] font-bold text-violet-500 hover:text-violet-700 cursor-pointer transition-colors"
-                      >+ Create</button>
-                    </div>
-                    <div v-if="filteredFileGroups.length === 0" class="px-2 py-2">
-                      <p class="text-[10px] text-slate-400 italic">No file groups{{ groupSearchQuery ? ' matching' : '' }}</p>
-                    </div>
-                    <button
-                      v-for="group in filteredFileGroups"
-                      :key="group.id"
-                      class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer"
-                      :class="selectedGroup?.id === group.id
-                        ? 'bg-violet-50 border border-violet-200 shadow-sm'
-                        : 'hover:bg-white border border-transparent hover:border-slate-200/60 hover:shadow-sm'"
-                      @click="selectGroup(group)"
-                    >
-                      <span
-                        class="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white/50"
-                        :style="{ backgroundColor: group.color }"
-                      />
-                      <div class="flex-1 min-w-0">
-                        <span class="text-xs font-semibold text-slate-700 truncate block leading-tight">{{ group.name }}</span>
-                        <span class="text-[10px] text-slate-400 leading-tight">{{ group.members.length }} member{{ group.members.length !== 1 ? 's' : '' }}</span>
-                      </div>
-                    </button>
-                  </div>
+                  </template>
                 </div>
-              </div>
+              </aside>
 
-              <!-- ─── RIGHT PANE: Editor ─────────────── -->
-              <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <!-- ── Empty State (no selection, no creation) ── -->
-                <div
-                  v-if="!selectedGroup && !creatingType"
-                  class="flex-1 flex flex-col items-center justify-center text-center px-8 gap-4"
-                >
-                  <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                         class="w-7 h-7 text-slate-400">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-                    </svg>
+              <!-- ── Detail ───────────────────────────────── -->
+              <section class="flex min-w-0 grow flex-col overflow-hidden">
+                <!-- New group form -->
+                <form v-if="creating" class="flex flex-col gap-4 p-6" @submit.prevent="confirmCreate">
+                  <h3 class="text-base font-semibold text-neutral-900">New group</h3>
+                  <div class="flex flex-wrap items-end gap-3">
+                    <label class="flex flex-col gap-1">
+                      <span class="ui-label">Name</span>
+                      <input ref="createNameRef" v-model="newName" type="text" class="ui-input w-64" placeholder="Audits, Controllers, Billing…" required/>
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="ui-label">Lens</span>
+                      <input v-model="newDimension" type="text" class="ui-input w-44" list="groups-dimensions" placeholder="Domain, Layer…"/>
+                    </label>
+                    <datalist id="groups-dimensions"><option v-for="d in groupsStore.dimensions" :key="d" :value="d"/></datalist>
                   </div>
-                  <div>
-                    <h3 class="text-sm font-bold text-slate-700">Select or Create a Group</h3>
-                    <p class="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
-                      Choose a group from the left panel to edit its settings and members, or create a new one.
-                    </p>
+                  <div class="flex items-center gap-2">
+                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!newName.trim()">Create</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="creating = false">Cancel</button>
+                    <span class="text-sm text-neutral-500">Members are added next, or from any view's selection.</span>
                   </div>
-                  <div class="flex gap-8 mt-4">
-                    <div class="flex flex-col items-center gap-1.5">
-                      <span class="text-xl font-black text-slate-700 font-mono">{{ groupsStore.componentGroups.length }}</span>
-                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Component</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-1.5">
-                      <span class="text-xl font-black text-slate-700 font-mono">{{ groupsStore.fileGroups.length }}</span>
-                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">File</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-1.5">
-                      <span class="text-xl font-black text-slate-700 font-mono">{{ totalMemberCount }}</span>
-                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Members</span>
-                    </div>
-                  </div>
+                </form>
+
+                <!-- Nothing selected -->
+                <div v-else-if="!selected" class="flex grow flex-col items-center justify-center gap-2 p-8 text-center">
+                  <Icon icon="layers" :size="28" class="text-neutral-300"/>
+                  <span class="text-sm font-medium text-neutral-800">Pick a group to edit it</span>
+                  <span class="max-w-sm text-sm text-neutral-500">A group is any set of components and files. Whole components follow the code; single files pin exactly what you chose.</span>
                 </div>
 
-                <!-- ── Creation Mode ── -->
-                <div v-else-if="creatingType" class="flex-1 flex flex-col px-6 py-6 gap-5">
-                  <div>
-                    <h3 class="text-sm font-bold text-slate-800">
-                      Create {{ creatingType === 'component' ? 'Component' : 'File' }} Group
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Set a name and color for your new group.</p>
+                <!-- Selected group -->
+                <template v-else>
+                  <div class="flex shrink-0 flex-col gap-3 px-6 pb-4 pt-5 hairline-b">
+                    <div class="flex items-center gap-3">
+                      <span class="h-3.5 w-3.5 shrink-0 rounded-full" :style="{ backgroundColor: selected.color }"></span>
+                      <input
+                        v-model="editName"
+                        type="text"
+                        class="ui-input min-w-0 grow text-base font-semibold"
+                        aria-label="Group name"
+                        @blur="saveName"
+                        @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+                      />
+                      <button type="button" class="ui-btn ui-btn-sm" :title="`Edit the ${selected.dimension} lens in the builder`" @click="editInBuilder(selected.dimension)">
+                        <Icon icon="pencil" :size="13" class="text-neutral-500"/><span>Edit in builder</span>
+                      </button>
+                      <button type="button" class="ui-btn ui-btn-sm" :class="{ 'is-active': scope.groupIds.includes(selected.id) }" :aria-pressed="scope.groupIds.includes(selected.id)" title="Filter every view to this group" @click="scope.toggleGroup(selected.id)">
+                        <Icon icon="scale" :size="13" class="text-neutral-500"/><span>{{ scope.groupIds.includes(selected.id) ? 'Scoped' : 'Scope' }}</span>
+                      </button>
+                      <button v-if="!deleteConfirming" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Delete this group" @click="deleteConfirming = true">
+                        <Icon icon="trash" :size="13"/>
+                      </button>
+                      <template v-else>
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete">Delete {{ selected.name }}</button>
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="deleteConfirming = false">Keep</button>
+                      </template>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+                      <label class="flex items-center gap-2">
+                        <span class="ui-label">Lens</span>
+                        <input :value="selected.dimension" type="text" class="ui-input ui-input-sm w-40" list="groups-dimensions" aria-label="Lens" @change="saveDimension(($event.target as HTMLInputElement).value)"/>
+                        <datalist id="groups-dimensions"><option v-for="d in groupsStore.dimensions" :key="d" :value="d"/></datalist>
+                      </label>
+                      <div class="flex items-center gap-2">
+                        <span class="ui-label">Colour</span>
+                        <div class="flex items-center gap-1" role="radiogroup" aria-label="Colour">
+                          <button
+                            v-for="c in GROUP_COLOR_PALETTE"
+                            :key="c"
+                            type="button"
+                            role="radio"
+                            :aria-checked="selected.color === c"
+                            :aria-label="c"
+                            class="h-4 w-4 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1"
+                            :class="selected.color === c ? 'ring-2 ring-neutral-900 ring-offset-1 ring-offset-surface' : ''"
+                            :style="{ backgroundColor: c }"
+                            @click="groupsStore.updateGroup(selected.id, { color: c })"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <!-- Name -->
-                  <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group Name</label>
-                    <input
-                      ref="createNameInputRef"
-                      v-model="newGroupName"
-                      class="w-full max-w-sm px-3.5 py-2.5 text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all placeholder:text-slate-300"
-                      placeholder="e.g. Core Domain, Payment Module…"
-                      @keydown.enter="confirmCreate"
-                      @keydown.escape="cancelCreate"
+                  <div class="flex shrink-0 flex-col gap-2 px-6 py-3 hairline-b">
+                    <GroupDefinition
+                      :query="selected.query"
+                      :mode="selected.mode ?? 'fixed'"
+                      :size="selected.members.length"
+                      :candidates="watchlist?.extra ?? null"
+                      :describe="describe"
+                      @query="saveQuery"
+                      @mode="setMode"
+                      @accept="acceptCandidates"
+                      @unwatch="groupsStore.clearProvenance(selected.id)"
                     />
                   </div>
 
-                  <!-- Color -->
-                  <div class="flex flex-col gap-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Color</label>
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        v-for="color in COLOR_PALETTE"
-                        :key="color"
-                        class="w-7 h-7 rounded-full transition-all duration-150 cursor-pointer"
-                        :class="newGroupColor === color
-                          ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
-                          : 'hover:scale-110 hover:ring-2 hover:ring-offset-1 hover:ring-slate-200'"
-                        :style="{ backgroundColor: color }"
-                        @click="newGroupColor = color"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Actions -->
-                  <div class="flex gap-2 mt-2">
-                    <button
-                      @click="confirmCreate"
-                      :disabled="!newGroupName.trim()"
-                      class="px-5 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl transition-all cursor-pointer disabled:cursor-not-allowed shadow-sm"
-                    >
-                      Create Group
-                    </button>
-                    <button
-                      @click="cancelCreate"
-                      class="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-
-                <!-- ── Edit Mode ── -->
-                <div v-else-if="selectedGroup" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <!-- Group Settings Bar -->
-                  <div class="px-6 py-4 border-b border-slate-100 shrink-0">
-                    <div class="flex items-start justify-between gap-4">
-                      <div class="flex-1 min-w-0">
-                        <!-- Inline Name Edit -->
-                        <div class="flex items-center gap-2 mb-2">
-                          <span
-                            class="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-offset-2 ring-slate-200 transition-colors"
-                            :style="{ backgroundColor: selectedGroup.color }"
-                          />
-                          <input
-                            v-model="editName"
-                            @blur="saveNameIfChanged"
-                            @keydown.enter="($event.target as HTMLInputElement)?.blur()"
-                            class="text-base font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-violet-400 focus:outline-none transition-all py-0.5 px-1 -ml-1 min-w-0 flex-1"
-                          />
-                        </div>
-
-                        <!-- Color Swatches (Compact) -->
-                        <div class="flex flex-wrap gap-1.5 mt-1">
-                          <button
-                            v-for="color in COLOR_PALETTE"
-                            :key="color"
-                            class="w-5 h-5 rounded-full transition-all duration-150 cursor-pointer"
-                            :class="selectedGroup.color === color
-                              ? 'ring-2 ring-offset-1 ring-slate-400 scale-110'
-                              : 'hover:scale-110 opacity-60 hover:opacity-100'"
-                            :style="{ backgroundColor: color }"
-                            @click="changeColor(color)"
-                          />
-                        </div>
+                  <div class="flex min-h-0 grow">
+                    <!-- Members as a tree: component, then the files that put it there -->
+                    <div class="flex min-w-0 grow flex-col">
+                      <div class="flex shrink-0 items-center gap-2 px-6 pb-2 pt-3">
+                        <h3 class="ui-section-title">Members</h3>
+                        <span class="font-mono text-xs text-neutral-400">{{ summary(selected) }}</span>
+                        <label v-if="tree.length > 6" class="relative ml-auto flex items-center">
+                          <Icon icon="search" :size="12" class="pointer-events-none absolute left-2 text-neutral-400"/>
+                          <input v-model="memberSearch" type="search" class="ui-input ui-input-sm w-44 pl-6" placeholder="Filter members" aria-label="Filter members"/>
+                        </label>
                       </div>
-
-                      <div class="flex items-center gap-2 shrink-0">
-                        <router-link
-                          :to="`/views/groups/${selectedGroup.id}`"
-                          class="text-[10px] font-bold px-3 py-1.5 rounded-lg border border-sky-200 text-sky-700 bg-sky-50 hover:bg-sky-100 hover:text-sky-850 transition-all cursor-pointer flex items-center gap-1 shadow-3xs select-none"
-                          @click="closeModal"
-                        >
-                          <span>Open Details</span>
-                          <span>↗</span>
-                        </router-link>
-
-                        <!-- Delete Button -->
-                        <button
-                          @click="confirmDelete"
-                          class="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer select-none"
-                          :class="deleteConfirming
-                            ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
-                            : 'text-red-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200'"
-                        >
-                          {{ deleteConfirming ? 'Click to confirm delete' : 'Delete' }}
-                        </button>
+                      <div class="min-h-0 grow overflow-y-auto px-4 pb-4">
+                        <div v-if="tree.length === 0" class="flex flex-col gap-1 px-2 py-8 text-center">
+                          <span class="text-sm font-medium text-neutral-800">Empty group</span>
+                          <span class="text-sm text-neutral-500">Edit it in the builder, or select things in any view and choose “Add to”.</span>
+                        </div>
+                        <ul v-else class="flex flex-col">
+                          <li v-for="row in visibleTree" :key="row.key" class="flex flex-col">
+                            <div class="group flex items-center gap-2 rounded-sm px-2 py-1 hover:bg-neutral-50">
+                              <Icon :icon="row.kind === 'component' ? 'component' : 'file-code'" :size="13" class="shrink-0 text-neutral-400"/>
+                              <span class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="row.name">{{ row.label }}</span>
+                              <span class="shrink-0 font-mono text-xs text-neutral-400">{{ row.note }}</span>
+                            </div>
+                            <ul v-if="row.files.length" class="ml-4 flex flex-col hairline-l">
+                              <li v-for="f in row.files" :key="f" class="group flex items-center gap-2 rounded-sm py-0.5 pl-3 pr-2 hover:bg-neutral-50">
+                                <Icon icon="file-code" :size="12" class="shrink-0 text-neutral-400"/>
+                                <span class="min-w-0 truncate font-mono text-sm text-neutral-700" :title="f">{{ fileLabel(f) }}</span>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   </div>
-
-                  <!-- ── Dual-Column Member Manager ── -->
-                  <div class="flex-1 flex min-h-0 overflow-hidden">
-                    <!-- Left: Current Members -->
-                    <div class="flex-1 flex flex-col border-r border-slate-100 min-w-0">
-                      <div class="px-4 py-2.5 border-b border-slate-100 shrink-0 flex items-center justify-between">
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                          Current Members ({{ selectedGroup.members.length }})
-                        </span>
-                      </div>
-                      <div class="px-3 py-2 border-b border-slate-50 shrink-0">
-                        <input
-                          v-model="memberSearchQuery"
-                          class="w-full px-2.5 py-1.5 text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-300 transition-all placeholder:text-slate-400"
-                          placeholder="Filter members…"
-                        />
-                      </div>
-                      <div class="flex-1 overflow-y-auto scroll-container">
-                        <div v-if="filteredCurrentMembers.length === 0" class="px-4 py-6 text-center">
-                          <p class="text-[10px] text-slate-400 italic">
-                            {{ selectedGroup.members.length === 0 ? 'No members yet' : 'No members match filter' }}
-                          </p>
-                        </div>
-                        <div
-                          v-for="member in filteredCurrentMembers"
-                          :key="member"
-                          class="group flex items-center justify-between px-3 py-1.5 hover:bg-red-50/50 transition-colors border-b border-slate-50 last:border-0"
-                        >
-                          <span class="text-[11px] font-mono text-slate-600 truncate mr-2" :title="member">
-                            {{ displayName(member) }}
-                          </span>
-                          <button
-                            @click="removeMember(member)"
-                            class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-0.5 rounded cursor-pointer shrink-0"
-                            title="Remove member"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Right: Database Search to Add -->
-                    <div class="flex-1 flex flex-col min-w-0">
-                      <div class="px-4 py-2.5 border-b border-slate-100 shrink-0">
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                          Add from Database
-                        </span>
-                      </div>
-                      <div class="px-3 py-2 border-b border-slate-50 shrink-0">
-                        <input
-                          v-model="dbSearchQuery"
-                          class="w-full px-2.5 py-1.5 text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/15 focus:border-violet-300 transition-all placeholder:text-slate-400"
-                          :placeholder="selectedGroup.type === 'component' ? 'Search components…' : 'Search files…'"
-                        />
-                      </div>
-                      <div class="flex-1 overflow-y-auto scroll-container">
-                        <div v-if="dbSearchQuery.length < 2" class="px-4 py-6 text-center">
-                          <p class="text-[10px] text-slate-400 italic">Type at least 2 characters to search</p>
-                        </div>
-                        <div v-else-if="availableItems.length === 0" class="px-4 py-6 text-center">
-                          <p class="text-[10px] text-slate-400 italic">No matching items found</p>
-                        </div>
-                        <template v-else>
-                          <div
-                            v-for="item in availableItems"
-                            :key="item"
-                            class="group flex items-center justify-between px-3 py-1.5 hover:bg-green-50/50 transition-colors border-b border-slate-50 last:border-0"
-                          >
-                            <span class="text-[11px] font-mono text-slate-600 truncate mr-2" :title="item">
-                              {{ displayName(item) }}
-                            </span>
-                            <button
-                              @click="addMember(item)"
-                              class="opacity-0 group-hover:opacity-100 text-green-500 hover:text-green-700 text-[10px] font-bold transition-all px-1.5 py-0.5 rounded cursor-pointer shrink-0 hover:bg-green-100"
-                            >
-                              + Add
-                            </button>
-                          </div>
-                          <div v-if="dbSearchHitLimit" class="px-4 py-2 text-center">
-                            <p class="text-[9px] text-slate-400 italic">Showing first 100 results — refine your search</p>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── Footer ──────────────────────────────── -->
-            <div class="flex items-center justify-between px-6 py-3 bg-slate-50 border-t border-slate-100 shrink-0">
-              <div class="flex gap-2">
-                <button
-                  @click="triggerImport"
-                  class="text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:bg-white px-3 py-1.5 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                >
-                  Import JSON
-                </button>
-                <button
-                  @click="handleExport"
-                  class="text-[10px] font-bold text-slate-500 hover:text-slate-700 hover:bg-white px-3 py-1.5 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                >
-                  Export JSON
-                </button>
-                <input
-                  ref="fileInputRef"
-                  type="file"
-                  accept=".json"
-                  class="hidden"
-                  @change="handleImport"
-                />
-              </div>
-              <button
-                @click="closeModal"
-                class="px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-              >
-                Close
-              </button>
+                </template>
+              </section>
             </div>
           </div>
         </div>
@@ -427,228 +223,228 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
-import { useGroupsStore, type SavedGroup } from '~/stores/groups'
+import { computed, nextTick, ref, watch } from 'vue'
+import Icon from '~/components/ui/common/Icon.vue'
+import LensHealth from '~/components/groups/LensHealth.vue'
+import GroupDefinition from '~/components/groups/GroupDefinition.vue'
+import { DEFAULT_DIMENSION, GROUP_COLOR_PALETTE, componentMembers, fileMembers, hasMember, units, useGroupsStore, type GroupMode, type SavedGroup, type UnitKind } from '~/stores/groups'
+import { generalise, parseQuery, runQuery } from '~/utils/query'
+import { detectSeparator } from '~/utils/studio'
 import { useDataStore } from '~/stores/data'
+import { useScopeStore } from '~/stores/scope'
 
 const groupsStore = useGroupsStore()
 const dataStore = useDataStore()
+const scope = useScopeStore()
 
-const COLOR_PALETTE = [
-  'hsl(210, 80%, 55%)',
-  'hsl(160, 70%, 42%)',
-  'hsl(340, 75%, 55%)',
-  'hsl(45, 90%, 50%)',
-  'hsl(270, 65%, 58%)',
-  'hsl(15, 85%, 55%)',
-  'hsl(190, 75%, 45%)',
-  'hsl(330, 65%, 50%)',
-  'hsl(95, 60%, 45%)',
-  'hsl(240, 55%, 60%)',
-  'hsl(30, 80%, 52%)',
-  'hsl(175, 65%, 40%)',
-]
-
-// ═══════════════════════════════════════════════════════
-// MODAL STATE
-// ═══════════════════════════════════════════════════════
-
-const isModalOpen = ref(false)
-const selectedGroup = ref<SavedGroup | null>(null)
-const groupSearchQuery = ref('')
-
-// ── Edit State ────────────────────────────────────────
+const isOpen = ref(false)
+const selectedId = ref<string | null>(null)
+const selected = computed<SavedGroup | null>(() => (selectedId.value ? groupsStore.getGroupById(selectedId.value) ?? null : null))
+const groupSearch = ref('')
+const memberSearch = ref('')
 const editName = ref('')
 const deleteConfirming = ref(false)
-const memberSearchQuery = ref('')
-const dbSearchQuery = ref('')
-
-// ── Create State ──────────────────────────────────────
-const creatingType = ref<'component' | 'file' | null>(null)
-const newGroupName = ref('')
-const newGroupColor = ref(COLOR_PALETTE[0])
-const createNameInputRef = ref<HTMLInputElement | null>(null)
-
-// ── File Input ────────────────────────────────────────
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const importError = ref<string | null>(null)
 
-// ── Data Caches ───────────────────────────────────────
-const allFilesCache = ref<string[]>([])
+// ── Open / close ───────────────────────────────────────
+function open() {
+  isOpen.value = true
+  // A `where` clause asks the snapshot for numbers. Loading them here means
+  // the preview under the editor is right on the first keystroke rather than
+  // silently matching nothing until they arrive.
+  void groupsStore.ensureMetrics()
+  if (!selectedId.value && groupsStore.groups.length) select(groupsStore.groups[0].id)
+}
+function close() {
+  isOpen.value = false
+  creating.value = false
+  deleteConfirming.value = false
+  groupSearch.value = ''
+  memberSearch.value = ''
+}
+// ── Defining a group by a query ─────────────────────────────────────────
 
-// ═══════════════════════════════════════════════════════
-// COMPUTED
-// ═══════════════════════════════════════════════════════
+const universe = computed(() => Array.from(dataStore.componentFilesIndex.keys()))
 
-const totalMemberCount = computed(() =>
-  groupsStore.allGroups.reduce((sum, g) => sum + g.members.length, 0)
-)
-
-const filteredComponentGroups = computed(() => {
-  const q = groupSearchQuery.value.toLowerCase().trim()
-  if (!q) return groupsStore.componentGroups
-  return groupsStore.componentGroups.filter(g => g.name.toLowerCase().includes(q))
+/** What a fixed group's own query would catch now, if it still has one. */
+const watchlist = computed(() => {
+  const g = selected.value
+  if (!g || g.mode !== 'fixed' || !g.foundBy) return null
+  const held = new Set(componentMembers(g))
+  const r = runQuery(parseQuery(g.foundBy.query), {
+    components: universe.value,
+    files: Array.from(dataStore.fileComponentIndex.keys()),
+    componentSep: detectSeparator(universe.value),
+  })
+  const extra = r.components.filter(id => !held.has(id))
+  return extra.length ? { extra: extra.length, ids: extra } : null
 })
 
-const filteredFileGroups = computed(() => {
-  const q = groupSearchQuery.value.toLowerCase().trim()
-  if (!q) return groupsStore.fileGroups
-  return groupsStore.fileGroups.filter(g => g.name.toLowerCase().includes(q))
+/** The shortest patterns that say exactly what it already holds. */
+function describe(): string | null {
+  const g = selected.value
+  if (!g) return null
+  const members = componentMembers(g)
+  if (!members.length) return null
+  const out = generalise(members, universe.value, detectSeparator(universe.value))
+  // Falling back to the names themselves is still a query, and still reports
+  // when one of them stops matching.
+  return out.text || members.join('\n')
+}
+
+function saveQuery(text: string) {
+  const g = selected.value
+  if (!g) return
+  groupsStore.setQuery(g.id, text, g.mode === 'fixed' ? 'fixed' : 'live')
+}
+
+function setMode(mode: GroupMode) {
+  const g = selected.value
+  if (!g?.query) return
+  groupsStore.setQuery(g.id, g.query, mode)
+}
+
+/** Take what the watchlist found. Offered, never applied on its own. */
+function acceptCandidates() {
+  const g = selected.value
+  if (!g || !watchlist.value) return
+  groupsStore.addMembersToGroup(g.id, units('component', watchlist.value.ids))
+}
+
+function select(id: string) {
+  selectedId.value = id
+  creating.value = false
+  deleteConfirming.value = false
+  memberSearch.value = ''
+  editName.value = groupsStore.getGroupById(id)?.name ?? ''
+}
+watch(() => selected.value?.name, (name) => { if (name !== undefined) editName.value = name })
+watch(() => groupsStore.groups.length, () => { if (selectedId.value && !groupsStore.getGroupById(selectedId.value)) selectedId.value = null })
+
+// ── List ───────────────────────────────────────────────
+const filteredBuckets = computed(() => {
+  const q = groupSearch.value.trim().toLowerCase()
+  if (!q) return groupsStore.groupsByDimension
+  return groupsStore.groupsByDimension
+    .map(b => ({ dimension: b.dimension, groups: b.groups.filter(g => g.name.toLowerCase().includes(q) || b.dimension.toLowerCase().includes(q)) }))
+    .filter(b => b.groups.length > 0)
 })
 
-const filteredCurrentMembers = computed(() => {
-  if (!selectedGroup.value) return []
-  const q = memberSearchQuery.value.toLowerCase().trim()
-  const members = selectedGroup.value.members
-  if (!q) return members
-  return members.filter(m => m.toLowerCase().includes(q) || displayName(m).toLowerCase().includes(q))
-})
+/** "3 components · 12 files": whole components, then files listed on their own. */
+function summary(g: SavedGroup): string {
+  const c = componentMembers(g).length
+  const f = fileMembers(g).length
+  const parts: string[] = []
+  if (c) parts.push(`${c} component${c === 1 ? '' : 's'}`)
+  if (f) parts.push(`${f} file${f === 1 ? '' : 's'}`)
+  return parts.join(' · ') || 'empty'
+}
 
-const availableItems = computed(() => {
-  if (!selectedGroup.value || dbSearchQuery.value.length < 2) return []
+// ── Detail edits ──────────────────────────────────────
+function saveName() {
+  if (!selected.value) return
+  const name = editName.value.trim()
+  if (name && name !== selected.value.name) groupsStore.updateGroup(selected.value.id, { name })
+  else editName.value = selected.value.name
+}
+function saveDimension(value: string) {
+  if (!selected.value) return
+  const dimension = value.trim() || DEFAULT_DIMENSION
+  if (dimension !== selected.value.dimension) groupsStore.updateGroup(selected.value.id, { dimension })
+}
+function confirmDelete() {
+  if (!selected.value) return
+  const id = selected.value.id
+  scope.removeGroup(id)
+  groupsStore.deleteGroup(id)
+  selectedId.value = null
+  deleteConfirming.value = false
+}
 
-  const q = dbSearchQuery.value.toLowerCase().trim()
-  const currentMembers = new Set(selectedGroup.value.members)
+// ── Members tree ──────────────────────────────────────
+interface TreeRow { key: string; kind: UnitKind; name: string; label: string; note: string; files: string[] }
 
-  let sourceItems: string[]
-  if (selectedGroup.value.type === 'component') {
-    sourceItems = dataStore.allComponents.map(c => c.name)
-  } else {
-    sourceItems = allFilesCache.value
+function fileLabel(path: string): string {
+  return path.split('/').pop() ?? path
+}
+
+const tree = computed<TreeRow[]>(() => {
+  const g = selected.value
+  if (!g) return []
+  const rows: TreeRow[] = []
+  const whole = new Set(componentMembers(g))
+  const byComponent = new Map<string, string[]>()
+  const loose: string[] = []
+  for (const f of fileMembers(g)) {
+    const c = dataStore.fileComponentIndex.get(f)
+    if (!c) { loose.push(f); continue }
+    byComponent.set(c, [...(byComponent.get(c) ?? []), f])
   }
-
-  const results: string[] = []
-  for (const item of sourceItems) {
-    if (currentMembers.has(item)) continue
-    if (item.toLowerCase().includes(q) || displayName(item).toLowerCase().includes(q)) {
-      results.push(item)
-      if (results.length >= 100) break
+  const names = new Set<string>([...whole, ...byComponent.keys()])
+  for (const c of Array.from(names).sort()) {
+    const total = (dataStore.componentFilesIndex.get(c) ?? []).length
+    if (whole.has(c)) {
+      rows.push({ key: 'c:' + c, kind: 'component', name: c, label: c, note: total ? `all ${total} files` : 'whole component', files: [] })
+    } else {
+      const files = (byComponent.get(c) ?? []).sort()
+      rows.push({ key: 'p:' + c, kind: 'component', name: c, label: c, note: `${files.length} of ${total || '?'} files`, files })
     }
   }
-  return results
+  for (const f of loose.sort()) rows.push({ key: 'f:' + f, kind: 'file', name: f, label: fileLabel(f), note: 'no component', files: [] })
+  return rows
 })
 
-const dbSearchHitLimit = computed(() =>
-  availableItems.value.length >= 100
-)
+const visibleTree = computed(() => {
+  const q = memberSearch.value.trim().toLowerCase()
+  if (!q) return tree.value
+  return tree.value
+    .map(r => ({ ...r, files: r.files.filter(f => f.toLowerCase().includes(q)) }))
+    .filter(r => r.name.toLowerCase().includes(q) || r.files.length > 0)
+})
 
-// ═══════════════════════════════════════════════════════
-// METHODS
-// ═══════════════════════════════════════════════════════
-
-function displayName(raw: string): string {
-  if (!raw) return raw
-  return dataStore.getComponentName ? dataStore.getComponentName(raw) : raw
+const router = useRouter()
+function editInBuilder(dimension: string) {
+  close()
+  router.push({ path: "/views/dimensions", query: { build: dimension } })
 }
 
-function closeModal() {
-  isModalOpen.value = false
-  selectedGroup.value = null
-  creatingType.value = null
+
+// ── Create ────────────────────────────────────────────
+const creating = ref(false)
+const newName = ref('')
+const newDimension = ref(DEFAULT_DIMENSION)
+const createNameRef = ref<HTMLInputElement | null>(null)
+
+function startCreate() {
+  creating.value = true
   deleteConfirming.value = false
-  groupSearchQuery.value = ''
-  memberSearchQuery.value = ''
-  dbSearchQuery.value = ''
+  newName.value = ''
+  newDimension.value = selected.value?.dimension ?? DEFAULT_DIMENSION
+  nextTick(() => createNameRef.value?.focus())
 }
-
-function selectGroup(group: SavedGroup) {
-  selectedGroup.value = group
-  editName.value = group.name
-  deleteConfirming.value = false
-  creatingType.value = null
-  memberSearchQuery.value = ''
-  dbSearchQuery.value = ''
-}
-
-function saveNameIfChanged() {
-  if (!selectedGroup.value) return
-  const trimmed = editName.value.trim()
-  if (trimmed && trimmed !== selectedGroup.value.name) {
-    groupsStore.updateGroup(selectedGroup.value.id, { name: trimmed })
-  }
-}
-
-function changeColor(color: string) {
-  if (!selectedGroup.value) return
-  groupsStore.updateGroup(selectedGroup.value.id, { color })
-}
-
-function confirmDelete() {
-  if (!selectedGroup.value) return
-  if (!deleteConfirming.value) {
-    deleteConfirming.value = true
-    return
-  }
-  const id = selectedGroup.value.id
-  groupsStore.deleteGroup(id)
-  selectedGroup.value = null
-  deleteConfirming.value = false
-}
-
-function removeMember(member: string) {
-  if (!selectedGroup.value) return
-  groupsStore.removeMembersFromGroup(selectedGroup.value.id, [member])
-}
-
-function addMember(member: string) {
-  if (!selectedGroup.value) return
-  groupsStore.addMembersToGroup(selectedGroup.value.id, [member])
-}
-
-// ── Creation ──────────────────────────────────────────
-
-function startCreate(type: 'component' | 'file') {
-  creatingType.value = type
-  selectedGroup.value = null
-  newGroupName.value = ''
-  newGroupColor.value = COLOR_PALETTE[0]
-  nextTick(() => createNameInputRef.value?.focus())
-}
-
-function cancelCreate() {
-  creatingType.value = null
-  newGroupName.value = ''
-}
-
 function confirmCreate() {
-  const name = newGroupName.value.trim()
-  if (!creatingType.value || !name) return
-  const created = groupsStore.createGroup(creatingType.value, name)
-  // Apply chosen color
-  if (newGroupColor.value !== created.color) {
-    groupsStore.updateGroup(created.id, { color: newGroupColor.value })
-  }
-  creatingType.value = null
-  newGroupName.value = ''
-  // Auto-select the newly created group
-  selectGroup(created)
+  const name = newName.value.trim()
+  if (!name) return
+  const created = groupsStore.createGroup(name, [], newDimension.value)
+  creating.value = false
+  select(created.id)
 }
 
-// ── Import / Export ──────────────────────────────────
-
-function triggerImport() {
-  fileInputRef.value?.click()
-}
-
+// ── Import / Export ───────────────────────────────────
 function handleImport(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-
   const reader = new FileReader()
   reader.onload = () => {
-    try {
-      groupsStore.importGroups(reader.result as string, 'merge')
-    } catch (e) {
-      console.error('Import failed:', e)
-    }
+    try { groupsStore.importGroups(reader.result as string, 'merge'); importError.value = null } catch (e) { importError.value = 'That file is not an Archstats groups export. Nothing was imported.'; console.error('Import failed:', e) }
   }
   reader.readAsText(file)
   input.value = ''
 }
-
 function handleExport() {
-  const json = groupsStore.exportGroups()
-  const blob = new Blob([json], { type: 'application/json' })
+  const blob = new Blob([groupsStore.exportGroups()], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -656,70 +452,22 @@ function handleExport() {
   a.click()
   URL.revokeObjectURL(url)
 }
-
-// ═══════════════════════════════════════════════════════
-// LIFECYCLE
-// ═══════════════════════════════════════════════════════
-
-// Load file names cache when modal opens (for file group member management)
-watch(isModalOpen, async (open) => {
-  if (open) {
-    try {
-      const rows = await dataStore.query<{ name: string }>('SELECT name FROM files ORDER BY name')
-      allFilesCache.value = rows.map(r => r.name)
-    } catch (e) {
-      allFilesCache.value = []
-    }
-  }
-})
-
-// Keep selected group in sync if the underlying store changes
-watch(() => groupsStore.allGroups, () => {
-  if (selectedGroup.value) {
-    const updated = groupsStore.allGroups.find(g => g.id === selectedGroup.value!.id)
-    if (updated) {
-      selectedGroup.value = updated
-    }
-  }
-}, { deep: true })
 </script>
 
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.18s ease;
 }
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
 }
-
 @keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.98) translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 .animate-modal-in {
-  animation: modalIn 0.22s ease-out forwards;
-}
-
-.scroll-container::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-.scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scroll-container::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 3px;
-}
-.scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 </style>

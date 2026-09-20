@@ -1,21 +1,25 @@
 <template>
-  <div 
-    ref="triggerRef" 
+  <div
+    v-if="!inline"
+    ref="triggerRef"
     class="inline-block relative cursor-pointer select-none"
-    @mouseenter="showPopover" 
+    @mouseenter="showPopover"
     @mouseleave="scheduleHide"
   >
     <slot />
   </div>
+  <p v-if="inline && !fileContents" class="text-sm text-neutral-500">Source not available for this file.</p>
 
-  <Teleport to="body">
-    <div 
-      v-if="isOpen && fileContents" 
+  <!-- `inline` renders the same snippet in flow instead of as a hover popover. -->
+  <Teleport to="body" :disabled="inline">
+    <div
+      v-if="(inline || isOpen) && fileContents"
       ref="popoverRef"
-      :style="popoverStyle"
-      class="bg-[#282c34] border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden font-mono text-[10px] leading-relaxed text-slate-300 select-none z-[9999] animate-fade-in"
-      @mouseenter="cancelHide"
-      @mouseleave="scheduleHide"
+      :style="inline ? undefined : popoverStyle"
+      class="bg-[#282c34] border border-slate-700/50 overflow-hidden font-mono text-[10px] leading-relaxed text-slate-300 select-none"
+      :class="inline ? 'w-full rounded' : 'rounded-2xl shadow-xl z-[9999] animate-fade-in'"
+      @mouseenter="inline ? undefined : cancelHide()"
+      @mouseleave="inline ? undefined : scheduleHide()"
     >
       <!-- Popover Header -->
       <div class="px-3.5 py-1.5 bg-[#21252b] border-b border-[#181a1f] flex items-center justify-between text-[8.5px] text-slate-400 font-bold gap-2">
@@ -75,8 +79,10 @@ const props = withDefaults(defineProps<{
   file: string
   lines: string | number
   margin?: number
+  inline?: boolean
 }>(), {
-  margin: 3
+  margin: 3,
+  inline: false
 })
 
 const store = useDataStore()
@@ -269,7 +275,7 @@ function hidePopover() {
 }
 
 const goToFileUrl = computed(() => {
-  return `/views/files/${props.file}/contents#L${targetStart.value}`
+  return `/views/files/${props.file}/source#L${targetStart.value}`
 })
 </script>
 

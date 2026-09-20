@@ -1,0 +1,196 @@
+<template>
+  <div class="flex h-full min-h-0 flex-col">
+    <!-- Controls row: period on the left, counts on the right. -->
+    <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
+      <div class="ui-segmented" role="group" aria-label="Period">
+        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
+      </div>
+      <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
+        <span>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
+        <span class="text-neutral-300">·</span>
+        <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(authors.length) }}</span></span>
+        <span class="text-neutral-300">·</span>
+        <span class="font-mono text-green-700">{{ formatSigned(totals.additions) }}</span>
+        <span class="font-mono text-red-700">{{ formatSigned(-totals.deletions) }}</span>
+        <template v-if="span">
+          <span class="text-neutral-300">·</span>
+          <span class="font-mono">{{ span }}</span>
+        </template>
+      </span>
+    </div>
+
+    <LoadingState v-if="loading" text="Reading commit history…"/>
+    <EmptyState v-else-if="error" title="Could not read commits" :text="error" icon="alert"/>
+    <EmptyState v-else-if="allCommits.length === 0" title="No commits recorded" :text="emptyText" icon="git-branch"/>
+    <div v-else class="flex min-h-0 grow overflow-hidden">
+      <!-- Left: calendar and the commit list. -->
+      <div class="flex min-w-0 grow flex-col overflow-y-auto">
+        <div class="shrink-0 overflow-x-auto px-4 pb-3 pt-4 hairline-b">
+          <GitActivityChart :start-date="chartStart" :end-date="chartEnd" :commits="commits"/>
+        </div>
+        <div v-if="monthly && commits.length > 0" class="shrink-0 px-4 pb-3 pt-4 hairline-b">
+          <h3 class="ui-section-title mb-2">Lines added and removed by month</h3>
+          <MonthlyChangesChart :commits="commits" :height="140"/>
+        </div>
+        <EmptyState v-if="commits.length === 0" title="No commits in this period" text="Widen the period to see earlier activity."/>
+        <table v-else class="ui-table">
+          <thead>
+            <tr>
+              <th class="w-[72px]">Commit</th>
+              <th>Message</th>
+              <th class="w-[160px]">Author</th>
+              <th class="w-[110px] text-right">Date</th>
+              <th class="w-[60px] text-right">Files</th>
+              <th class="w-[120px] text-right">Lines</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in visibleCommits" :key="c.commit_hash">
+              <td class="is-num"><span :title="c.commit_hash">{{ shortHash(c.commit_hash) }}</span></td>
+              <td class="max-w-0"><span class="block truncate" :title="c.commit_message">{{ firstLine(c.commit_message) }}</span></td>
+              <td class="max-w-0">
+                <router-link :to="authorRoute(c.author_name)" class="block truncate text-neutral-800 hover:text-neutral-900 hover:underline" :title="c.author_email">{{ c.author_name || 'Unknown' }}</router-link>
+              </td>
+              <td class="is-num text-right">{{ formatDate(c.commit_time) }}</td>
+              <td class="is-num text-right">{{ formatNumber(c.files_changed) }}</td>
+              <td class="is-num text-right">
+                <span class="text-green-700">{{ formatSigned(c.additions) }}</span>
+                <span class="ml-1.5 text-red-700">{{ formatSigned(-Number(c.deletions || 0)) }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="commits.length > visibleCommits.length" class="flex shrink-0 items-center justify-center py-3">
+          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 100">Show more <span class="font-mono text-neutral-500">{{ formatNumber(commits.length - visibleCommits.length) }} left</span></button>
+        </div>
+      </div>
+
+      <!-- Right: contributors for the period. -->
+      <aside class="flex w-[260px] shrink-0 flex-col overflow-y-auto bg-ground hairline-l">
+        <h3 class="ui-section-title px-4 pb-2 pt-4">Contributors</h3>
+        <ul class="flex flex-col">
+          <li v-for="a in visibleAuthors" :key="a.name">
+            <router-link :to="authorRoute(a.name)" class="flex h-8 items-center gap-3 px-4 transition-colors hover:bg-neutral-100">
+              <span class="min-w-0 flex-1 truncate text-base text-neutral-800" :title="a.email">{{ a.name }}</span>
+              <span class="font-mono text-sm tabular-nums text-neutral-600">{{ formatNumber(a.count) }}</span>
+              <span class="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-200">
+                <span class="block h-full rounded-full bg-neutral-500" :style="{ width: `${Math.max(4, (a.count / maxAuthorCount) * 100)}%` }"></span>
+              </span>
+            </router-link>
+          </li>
+        </ul>
+        <button v-if="authors.length > visibleAuthors.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 mb-4 mt-2 self-start" @click="showAllAuthors = true">Show all {{ authors.length }}</button>
+      </aside>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from "vue";
+import { useDataStore } from "~/stores/data";
+import type { GitCommit } from "~/utils/git";
+import { formatDate } from "~/utils/time";
+import { formatNumber, formatSigned, shortHash } from "~/utils/format";
+import { useAsyncQuery } from "~/composables/useAsyncQuery";
+import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
+import MonthlyChangesChart from "~/components/git/MonthlyChangesChart.vue";
+import EmptyState from "~/components/ui/common/EmptyState.vue";
+import LoadingState from "~/components/ui/common/LoadingState.vue";
+
+// One commit history for components, files and authors: the caller supplies
+// the WHERE predicate (already escaped through sqlLiteral) and the rest is
+// identical everywhere. `monthly` adds the additions/deletions bars by month
+// between the calendar and the list (the Activity view uses it).
+const props = defineProps<{
+  where: string
+  emptyText?: string
+  monthly?: boolean
+}>()
+
+const store = useDataStore()
+
+const periods = [
+  { id: "all", label: "All", days: 0 },
+  { id: "1y", label: "1 y", days: 365 },
+  { id: "180d", label: "180 d", days: 180 },
+  { id: "90d", label: "90 d", days: 90 },
+  { id: "30d", label: "30 d", days: 30 },
+] as const
+const period = ref<(typeof periods)[number]["id"]>("all")
+const limit = ref(100)
+const showAllAuthors = ref(false)
+
+const { data: allCommits, loading, error } = useAsyncQuery<GitCommit[]>(
+  () => store.query<GitCommit>(`
+    select commit_hash, commit_time, commit_message, author_name, author_email,
+           count(file) as files_changed, sum(file_additions) as additions, sum(file_deletions) as deletions
+    from git_commits
+    where ${props.where}
+    group by commit_hash
+    order by commit_time desc`),
+  [() => props.where],
+  { initial: [] },
+)
+
+watch([() => props.where, period], () => { limit.value = 100; showAllAuthors.value = false })
+
+const now = new Date()
+const periodDays = computed(() => periods.find(p => p.id === period.value)?.days ?? 0)
+
+const commits = computed(() => {
+  if (!periodDays.value) return allCommits.value
+  const cutoff = now.getTime() - periodDays.value * 86400000
+  return allCommits.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
+})
+
+const visibleCommits = computed(() => commits.value.slice(0, limit.value))
+
+const totals = computed(() => commits.value.reduce((acc, c) => {
+  acc.additions += Number(c.additions) || 0
+  acc.deletions += Number(c.deletions) || 0
+  return acc
+}, { additions: 0, deletions: 0 }))
+
+const authors = computed(() => {
+  const counts = new Map<string, { name: string; email: string; count: number }>()
+  for (const c of commits.value) {
+    const name = c.author_name || "Unknown"
+    const entry = counts.get(name) ?? { name, email: c.author_email || "", count: 0 }
+    entry.count++
+    counts.set(name, entry)
+  }
+  return Array.from(counts.values()).sort((a, b) => b.count - a.count)
+})
+const visibleAuthors = computed(() => showAllAuthors.value ? authors.value : authors.value.slice(0, 8))
+const maxAuthorCount = computed(() => authors.value[0]?.count || 1)
+
+// The calendar covers the selected period ending today; with no period it
+// shows the last year of recorded activity, so an old repository is not an
+// empty grid.
+const lastCommit = computed(() => {
+  const times = allCommits.value.map(c => new Date(c.commit_time).getTime()).filter(t => !Number.isNaN(t))
+  return times.length ? new Date(Math.max(...times)) : now
+})
+const chartEnd = computed(() => periodDays.value ? now : (lastCommit.value < now ? lastCommit.value : now))
+const chartStart = computed(() => {
+  const days = periodDays.value || 365
+  return new Date(chartEnd.value.getTime() - days * 86400000)
+})
+
+const span = computed(() => {
+  if (commits.value.length === 0) return ""
+  const times = commits.value.map(c => new Date(c.commit_time).getTime()).filter(t => !Number.isNaN(t))
+  if (times.length === 0) return ""
+  const first = new Date(Math.min(...times))
+  const last = new Date(Math.max(...times))
+  return `${formatDate(first)} – ${formatDate(last)}`
+})
+
+function firstLine(message: string | null | undefined): string {
+  return (message || "").split("\n")[0]
+}
+
+function authorRoute(name: string | null | undefined): string {
+  return `/views/git/authors/${encodeURIComponent(name || "")}`
+}
+</script>

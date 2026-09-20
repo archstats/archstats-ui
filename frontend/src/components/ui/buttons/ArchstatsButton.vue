@@ -1,10 +1,10 @@
+
 <template>
-  <button class="flex">
-    <Icon :icon="icon" class='icon' :size="iconSize" v-if="icon"/>
-    <span class="self-center flex-grow"><slot></slot></span>
+  <button type="button" class="ui-btn">
+    <Icon :icon="icon" class="icon shrink-0 text-neutral-500" :size="iconSize" v-if="icon"/>
+    <span class="truncate"><slot></slot></span>
   </button>
 </template>
-
 <script setup lang="ts">
 
 import Icon from "~/components/ui/common/Icon.vue";
@@ -23,19 +23,11 @@ const props = defineProps(
 )
 </script>
 <style scoped>
-.primary{
-  @apply p-3 transition-all bg-archstats-500 rounded text-white text-center items-center gap-3 hover:bg-archstats-400
-}
-.secondary {
-  @apply p-3 transition-all border rounded border-archstats-100 text-archstats-100 text-center items-center gap-3 hover:border-archstats-400
-}
-
-.tertiary {
-  @apply p-2 hover:bg-gray-300 hover:bg-opacity-50 rounded transition-all flex gap-[5px] items-center text-archstats-900
-}
-
-.tertiary .icon {
-  @apply text-archstats-900
-}
-
+/* Variant classes callers still pass; written out because @apply cannot see
+   component-layer classes from a scoped block. */
+.primary { color: rgb(var(--c-on-accent)); background: rgb(var(--c-accent-500)); box-shadow: none; }
+.primary:hover { background: rgb(var(--c-accent-400)); color: rgb(var(--c-on-accent)); }
+.tertiary { background: transparent; box-shadow: none; color: rgb(var(--c-neutral-600)); }
+.tertiary:hover { background: rgb(var(--c-neutral-100)); color: rgb(var(--c-neutral-900)); }
+.tertiary .icon { color: rgb(var(--c-neutral-500)); }
 </style>

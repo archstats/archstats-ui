@@ -1,6 +1,5 @@
 <template>
-  <component :is="iconComponent" :size="props.size"></component>
-
+  <component :is="iconComponent" :size="props.size" :stroke-width="1.75" aria-hidden="true"></component>
 </template>
 
 <script setup lang="ts">
@@ -17,7 +16,10 @@ import {
   RotateCcw,
   Footprints,
   Pencil,
-  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search,
+  Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
+  Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
+  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -68,6 +70,92 @@ const iconComponent = computed(() => {
       return X
     case "search":
       return Search
+    case "settings":
+      return Settings2
+    case "panel-right":
+      return PanelRight
+    case "panel-right-close":
+      return PanelRightClose
+    case "filter":
+      return Filter
+    case "maximize":
+      return Maximize2
+    case "minimize":
+      return Minimize2
+    case "zoom-in":
+      return ZoomIn
+    case "zoom-out":
+      return ZoomOut
+    case "plus":
+      return Plus
+    case "minus":
+      return Minus
+    case "trash":
+      return Trash2
+    case "folder":
+      return FolderOpen
+    case "layers":
+      return Layers
+    case "network":
+      return Network
+    case "git-branch":
+      return GitBranch
+    case "table":
+      return Table2
+    case "eye":
+      return Eye
+    case "eye-off":
+      return EyeOff
+    case "focus":
+      return Focus
+    case "boxes":
+      return Boxes
+    case "route":
+      return Milestone
+    case "help":
+      return HelpCircle
+    case "alert":
+      return AlertTriangle
+    case "bookmark":
+      return Bookmark
+    case "copy":
+      return Copy
+    case "arrow-up-right":
+      return ArrowUpRight
+    case "file-text":
+      return FileText
+    case "file-code":
+      return FileCode2
+    case "history":
+      return History
+    case "user":
+      return User
+    case "users":
+      return Users
+    case "git-commit":
+      return GitCommit
+    case "link":
+      return Link2
+    case "external-link":
+      return ExternalLink
+    case "list-tree":
+      return ListTree
+    case "flame":
+      return Flame
+    case "scale":
+      return Scale
+    case "refresh":
+      return RefreshCw
+    case "component":
+      return Component
+    case "folder-closed":
+      return Folder
+    case "braces":
+      return Braces
+    case "waypoints":
+      return Workflow
+    case "download":
+      return Download
   }
 })
 

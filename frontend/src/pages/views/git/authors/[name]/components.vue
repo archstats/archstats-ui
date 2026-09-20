@@ -1,77 +1,82 @@
 <template>
-  <div class="w-full flex flex-col gap-6">
-    <section class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs flex flex-col gap-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-2">
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 tracking-tight">Components Contributed To</h3>
-          <p class="text-xs text-slate-400">All components this author has committed code to, ranked by activity</p>
-        </div>
-        <span class="text-xs font-semibold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl">
-          {{ componentRows.length }} components
-        </span>
+  <div class="flex min-h-0 grow flex-col">
+    <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
+      <div class="relative flex items-center">
+        <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
+        <input v-model="search" type="search" placeholder="Search components" class="ui-input ui-input-sm w-64 pl-7" aria-label="Search components">
       </div>
+      <span class="ui-toolbar-meta ml-auto">
+        <template v-if="search.trim()">{{ formatNumber(filtered.length) }} of {{ formatNumber(rows.length) }}</template>
+        <template v-else>{{ formatNumber(rows.length) }} components</template>
+      </span>
+    </div>
 
-      <div v-if="componentRows.length === 0" class="text-slate-400 italic text-sm py-12 text-center">
-        No component data recorded for this author.
-      </div>
-
-      <div v-else class="w-full overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="border-b border-slate-100">
-              <th
-                v-for="col in columns"
-                :key="col.key"
-                class="text-[10px] font-black text-slate-400 uppercase tracking-widest py-2.5 cursor-pointer hover:text-slate-600 transition-colors select-none"
-                :class="col.align === 'right' ? 'text-right pl-4' : 'pr-4'"
-                @click="toggleSort(col.key)"
-              >
-                <span class="inline-flex items-center gap-1">
-                  {{ col.label }}
-                  <svg v-if="sortKey === col.key" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-2.5 h-2.5 transition-transform" :class="sortDir === 'desc' ? '' : 'rotate-180'">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in sortedRows"
-              :key="row.component"
-              class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer group"
-              @click="navigateTo(`/views/components/${row.component}`)"
-            >
-              <td class="text-xs font-bold text-slate-700 py-3 pr-4 group-hover:text-slate-900 transition-colors">
-                {{ store.getComponentName(row.component) }}
-              </td>
-              <td class="text-xs font-black font-mono text-slate-800 py-3 pl-4 text-right">{{ Number(row.commits).toLocaleString() }}</td>
-              <td class="text-xs font-black font-mono text-emerald-600 py-3 pl-4 text-right">+{{ Number(row.additions).toLocaleString() }}</td>
-              <td class="text-xs font-black font-mono text-rose-600 py-3 pl-4 text-right">-{{ Number(row.deletions).toLocaleString() }}</td>
-              <td class="text-xs font-mono text-slate-500 py-3 pl-4 text-right">{{ formatDate(row.first_commit) }}</td>
-              <td class="text-xs font-mono text-slate-500 py-3 pl-4 text-right">{{ formatDate(row.last_commit) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <LoadingState v-if="loading" text="Reading components…"/>
+    <EmptyState v-else-if="error" title="Could not read components" :text="error" icon="alert"/>
+    <EmptyState v-else-if="rows.length === 0" title="No components recorded" :text="`${name} has no commits attributed to a component in this snapshot.`" icon="boxes"/>
+    <EmptyState v-else-if="filtered.length === 0" title="No components match" :text="`0 of ${rows.length} match “${search.trim()}”.`" icon="search">
+      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">Clear search</button>
+    </EmptyState>
+    <div v-else class="min-h-0 grow overflow-y-auto">
+      <table class="ui-table">
+        <thead>
+          <tr>
+            <th v-for="col in columns" :key="col.key" class="cursor-pointer select-none hover:text-neutral-900" :class="[col.align === 'right' ? 'text-right' : '', col.width]" @click="toggleSort(col.key)">
+              <span class="inline-flex items-center gap-1">{{ col.label }}<Icon v-if="sortKey === col.key" :icon="sortAsc ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in sorted" :key="row.component">
+            <td class="max-w-0">
+              <router-link v-if="row.component" :to="`/views/components/${row.component}`" class="block truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="row.component">{{ row.component }}</router-link>
+              <span v-else class="block truncate text-sm text-neutral-400">No component</span>
+            </td>
+            <td class="is-num text-right">{{ formatNumber(row.commits) }}</td>
+            <td class="is-num text-right">
+              <span class="text-green-700">{{ formatSigned(row.additions) }}</span>
+              <span class="ml-1.5 text-red-700">{{ formatSigned(-row.deletions) }}</span>
+            </td>
+            <td class="is-num text-right">
+              <span class="inline-flex items-center gap-1.5" :class="levelTextClass(healthLevel(row.health))">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(healthLevel(row.health))"></span>{{ formatHealth(row.health) }}
+              </span>
+            </td>
+            <td class="is-num text-right">
+              <span class="inline-flex items-center gap-1.5" :class="levelTextClass(hotspotLevel(row.hotspot))">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(hotspotLevel(row.hotspot))"></span>{{ formatHotspot(row.hotspot) }}
+              </span>
+            </td>
+            <td class="is-num text-right">{{ formatDate(row.first_commit) }}</td>
+            <td class="is-num text-right">{{ formatDate(row.last_commit) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
-import { useRoute, useRouter } from "vue-router"
+import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { sqlLiteral } from "~/utils/sql"
+import { formatNumber, formatSigned } from "~/utils/format"
+import { formatDate } from "~/utils/time"
+import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot } from "~/composables/useHealth"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
+import Icon from "~/components/ui/common/Icon.vue"
 
 const route = useRoute()
-const router = useRouter()
-const navigateTo = (path: string) => router.push(path)
 const store = useDataStore()
 
-const authorName = computed(() => route.params.name as string)
-const escapedName = computed(() => authorName.value.replace(/'/g, "''"))
+const name = computed(() => String(route.params.name ?? ""))
+const search = ref("")
+watch(name, () => { search.value = "" })
 
-interface ComponentRow {
+interface QueryRow {
   component: string
   commits: number
   additions: number
@@ -79,70 +84,98 @@ interface ComponentRow {
   first_commit: string
   last_commit: string
 }
-
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const componentRows = ref<ComponentRow[]>([])
-watch([() => store.hasData, escapedName], async ([hasData]) => {
-  if (!hasData) {
-    componentRows.value = []
-    return
-  }
-  componentRows.value = await store.query<ComponentRow>(
-    `SELECT component,
-            count(DISTINCT commit_hash) as commits,
-            sum(file_additions) as additions,
-            sum(file_deletions) as deletions,
-            min(commit_time) as first_commit,
-            max(commit_time) as last_commit
-     FROM git_commits
-     WHERE author_name = '${escapedName.value}'
-     GROUP BY component
-     ORDER BY commits DESC`
-  )
-}, { immediate: true })
-
-const columns = [
-  { key: "component", label: "Component", align: "left" },
-  { key: "commits", label: "Commits", align: "right" },
-  { key: "additions", label: "Additions", align: "right" },
-  { key: "deletions", label: "Deletions", align: "right" },
-  { key: "first_commit", label: "First Commit", align: "right" },
-  { key: "last_commit", label: "Last Commit", align: "right" }
-]
-
-const sortKey = ref("commits")
-const sortDir = ref<"asc" | "desc">("desc")
-
-function toggleSort(key: string) {
-  if (sortKey.value === key) {
-    sortDir.value = sortDir.value === "asc" ? "desc" : "asc"
-  } else {
-    sortKey.value = key
-    sortDir.value = "desc"
-  }
+interface Row extends QueryRow {
+  health: number | null
+  hotspot: number | null
 }
 
-const sortedRows = computed(() => {
-  const rows = [...componentRows.value]
-  const key = sortKey.value as keyof ComponentRow
-  const dir = sortDir.value === "asc" ? 1 : -1
-  return rows.sort((a, b) => {
-    const aVal = a[key]
-    const bVal = b[key]
-    if (typeof aVal === "string" && typeof bVal === "string") {
-      return aVal.localeCompare(bVal) * dir
-    }
-    return (Number(aVal) - Number(bVal)) * dir
-  })
+const { data: queried, loading, error } = useAsyncQuery<QueryRow[]>(
+  () => store.query<QueryRow>(`
+    SELECT component,
+           count(DISTINCT commit_hash) AS commits,
+           sum(file_additions) AS additions,
+           sum(file_deletions) AS deletions,
+           min(commit_time) AS first_commit,
+           max(commit_time) AS last_commit
+    FROM git_commits
+    WHERE author_name = ${sqlLiteral(name.value)}
+    GROUP BY component
+    ORDER BY commits DESC`),
+  [name],
+  { initial: [] },
+)
+
+function score(component: any, key: string): number | null {
+  if (!component) return null
+  const v = component[key] ?? component[store.statName(key)]
+  if (v === null || v === undefined || v === "") return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+// Health and hotspot come from the components already loaded in the store.
+const rows = computed<Row[]>(() => queried.value.map(r => {
+  const c = store.allComponentsIndex.get(r.component)
+  return {
+    ...r,
+    component: r.component || "",
+    commits: Number(r.commits) || 0,
+    additions: Number(r.additions) || 0,
+    deletions: Number(r.deletions) || 0,
+    health: score(c, "codesmells__code_health"),
+    hotspot: score(c, "codesmells__hotspot_score"),
+  }
+}))
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return rows.value
+  return rows.value.filter(r => r.component.toLowerCase().includes(q))
 })
 
-function formatDate(timeString: string | number) {
-  if (!timeString) return "—"
-  const date = new Date(timeString)
-  return isNaN(date.getTime()) ? String(timeString) : date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+type SortKey = "component" | "commits" | "lines" | "health" | "hotspot" | "first_commit" | "last_commit"
+const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
+  { key: "component", label: "Component" },
+  { key: "commits", label: "Commits", align: "right", width: "w-[90px]" },
+  { key: "lines", label: "Lines", align: "right", width: "w-[150px]" },
+  { key: "health", label: "Health", align: "right", width: "w-[90px]" },
+  { key: "hotspot", label: "Hotspot", align: "right", width: "w-[90px]" },
+  { key: "first_commit", label: "First", align: "right", width: "w-[110px]" },
+  { key: "last_commit", label: "Last", align: "right", width: "w-[110px]" },
+]
+
+const sortKey = ref<SortKey>("commits")
+const sortAsc = ref(false)
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortAsc.value = !sortAsc.value
+  } else {
+    sortKey.value = key
+    sortAsc.value = key === "component"
+  }
 }
+
+function sortValue(r: Row, key: SortKey): number | string {
+  switch (key) {
+    case "component": return r.component
+    case "lines": return r.additions + r.deletions
+    case "health": return r.health ?? -Infinity
+    case "hotspot": return r.hotspot ?? -Infinity
+    case "first_commit": return new Date(r.first_commit).getTime() || 0
+    case "last_commit": return new Date(r.last_commit).getTime() || 0
+    default: return r[key]
+  }
+}
+
+const sorted = computed(() => {
+  const dir = sortAsc.value ? 1 : -1
+  const key = sortKey.value
+  return [...filtered.value].sort((a, b) => {
+    const av = sortValue(a, key)
+    const bv = sortValue(b, key)
+    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * dir
+    return (Number(av) - Number(bv)) * dir
+  })
+})
 </script>

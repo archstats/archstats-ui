@@ -1,12 +1,12 @@
+
 <template>
-  <div class="flex   text-white rounded overflow-clip">
-    <button class="transition-all w-full px-4 py-1 bg-tertiary-500 overflow-ellipsis outline-0" @click="executeAction(selectedAction)">{{selectedAction.name}}</button>
-    <select v-model="selectedAction" class="w-4 bg-tertiary-500 rounded-r outline-0 " >
-      <option v-for="action in actions" :value="action">{{action.name}}</option>
+  <div class="ui-btn p-0 overflow-hidden">
+    <button type="button" class="h-full px-2.5 text-base font-medium hover:bg-neutral-50" @click="executeAction(selectedAction)">{{ selectedAction.name }}</button>
+    <select v-model="selectedAction" class="h-full w-6 cursor-pointer appearance-none border-l border-neutral-200 bg-transparent text-center text-neutral-500 outline-none hover:bg-neutral-50" aria-label="More actions">
+      <option v-for="action in actions" :value="action">{{ action.name }}</option>
     </select>
   </div>
 </template>
-
 <script setup lang="ts">
 import {defineProps, ref, watch, watchEffect} from "vue";
 

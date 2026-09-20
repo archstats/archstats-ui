@@ -31,6 +31,12 @@ export default defineNuxtConfig({
 
   modules: ["@pinia/nuxt", "@nuxtjs/tailwindcss"],
 
+  // Our own entry so the shell's base-layer rules (selection, scrollbars,
+  // progress) ship alongside Tailwind's layers.
+  tailwindcss: {
+    cssPath: "~/assets/index.css",
+  },
+
   experimental: {
     appManifest: false,
     // Default 'automatic' reloads the whole app on a lazy-chunk load error,

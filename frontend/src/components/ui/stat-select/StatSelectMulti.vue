@@ -1,24 +1,15 @@
+
 <template>
-
-  <div class="w-[340px] border border-gray-400 relative rounded  cursor-pointer" @blur="isDropdownOpen=false"
-       tabindex="0">
-    <div class="flex justify-between items-center w-full h-full px-4 py-3 gap-2 whitespace-nowrap" @click="toggleDropdown">
-
-      <span :class="{'text-gray-400': !modelValue.length }">{{ modelValue.length }} of {{ allRealStats.length }} selected</span>
-
-      <Icon icon="chevron-down"></Icon>
-    </div>
-
-
-    <div v-show="isDropdownOpen"
-         class="z-10 rounded border-2 border-gray-200 absolute top-full right-0 max-h-[450px]  w-[340px] overflow-x-auto bg-white overflow-y-auto px-4 py-4">
-      <stat-select-multi-node :stat="stats[0]" :selected-stats='renderedSelectedStats'
-                              @select-stat="reactToSelect"></stat-select-multi-node>
+  <div class="relative inline-block" tabindex="-1" @focusout="onFocusOut">
+    <button type="button" class="ui-btn min-w-[200px] justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen" @click="toggleDropdown">
+      <span :class="{ 'text-neutral-400': !modelValue.length }">{{ modelValue.length }} of {{ allRealStats.length }} columns</span>
+      <Icon icon="chevron-down" :size="14" class="shrink-0 text-neutral-400"></Icon>
+    </button>
+    <div v-show="isDropdownOpen" class="ui-popover absolute right-0 top-full z-50 mt-1 max-h-[450px] w-[340px] overflow-y-auto p-2 animate-in">
+      <stat-select-multi-node :stat="stats[0]" :selected-stats='renderedSelectedStats' @select-stat="reactToSelect"></stat-select-multi-node>
     </div>
   </div>
-
 </template>
-
 <script setup lang="ts">
 
 import {columnsToStats, getAllDescendants, Stat} from "~/utils/stat-tree";
@@ -120,6 +111,12 @@ function getAncestors(stat: string) {
   }
 
   return parents
+}
+
+const onFocusOut = (e: FocusEvent) => {
+  const next = e.relatedTarget as Node | null
+  const root = e.currentTarget as HTMLElement
+  if (!next || !root.contains(next)) isDropdownOpen.value = false
 }
 
 const toggleDropdown = () => {

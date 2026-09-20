@@ -1,16 +1,14 @@
+
 <template>
-
-  <div class="flex items-center justify-center gap-2 group" @click="emit('update:modelValue', !modelValue); emit('click')">
-    <div class="w-4 h-4 cursor-pointer" >
-      <div class="w-full h-full rounded flex justify-center items-center transition-all  border-secondary-500 border group-hover:bg-secondary-50"
-      >
-        <Icon class="text-secondary-500 transition-all duration-150 ease-in-out" :class="{'opacity-0': !modelValue, 'scale-0': !modelValue}" :size="24" icon="check"></Icon>
-      </div>
-    </div>
-
-    <slot></slot>
+  <div class="group inline-flex cursor-pointer select-none items-center gap-2" role="checkbox" :aria-checked="modelValue" tabindex="0"
+       @click="emit('update:modelValue', !modelValue); emit('click')"
+       @keydown.space.prevent="emit('update:modelValue', !modelValue); emit('click')">
+    <span class="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-xs transition-colors"
+          :class="modelValue ? 'bg-accent-500 text-on-accent' : 'bg-surface shadow-[0_0_0_1px_rgb(var(--c-neutral-300))] group-hover:shadow-[0_0_0_1px_rgb(var(--c-neutral-400))]'">
+      <Icon v-if="modelValue" icon="check" :size="11" class="stroke-[3]"/>
+    </span>
+    <span class="text-base text-neutral-800"><slot></slot></span>
   </div>
-
 </template>
 <script setup lang="ts">
 

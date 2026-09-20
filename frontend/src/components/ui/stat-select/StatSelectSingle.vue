@@ -1,107 +1,51 @@
+
 <template>
   <div ref="containerRef" class="relative inline-block text-left">
-    <!-- Trigger Button -->
-    <div 
-      @click="toggleDropdown"
-      class="flex items-center justify-between gap-2.5 px-3.5 py-2 bg-white border border-slate-200 hover:border-archstats-400 hover:bg-slate-50 active:bg-slate-100 rounded-lg shadow-xs cursor-pointer select-none transition-all duration-150 text-xs font-bold text-slate-700 min-w-[170px]"
-    >
-      <span class="truncate" :class="{'text-slate-400 font-medium': !modelValue}">
-        {{ modelValue ? store.statNiceName(modelValue) : placeholder }}
-      </span>
-      <Icon icon="chevron-down" class="text-slate-400 transition-transform duration-200 shrink-0" :class="{'rotate-180': isDropdownOpen}" :size="14" />
-    </div>
+    <button type="button" @click="toggleDropdown" class="ui-btn min-w-[132px] max-w-[220px] justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen">
+      <span class="truncate" :class="{ 'text-neutral-400': !modelValue }">{{ modelValue ? store.statNiceName(modelValue) : placeholder }}</span>
+      <Icon icon="chevron-down" class="shrink-0 text-neutral-400 transition-transform" :class="{ 'rotate-180': isDropdownOpen }" :size="14"/>
+    </button>
 
-    <!-- Dropdown Portal Container -->
-    <div 
-      v-show="isDropdownOpen" 
-      class="absolute top-full mt-1.5 z-50 flex gap-2 pointer-events-auto"
-      :class="alignRight ? 'right-0 flex-row-reverse' : 'left-0 flex-row'"
-    >
-      <!-- Dropdown Card -->
-      <div class="w-72 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[400px] border-slate-200/80">
-        <!-- Search Header -->
-        <div class="p-2.5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
-          <Icon icon="search" class="text-slate-400 flex-shrink-0" :size="14" />
-          <input 
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search metrics..."
-            class="bg-transparent border-none outline-none text-xs text-slate-700 w-full placeholder-slate-400 focus:ring-0 py-0.5"
-            @click.stop
-          />
-          <button 
-            v-show="searchQuery" 
-            class="text-slate-400 hover:text-slate-600 transition-colors shrink-0"
-            @click.stop="searchQuery = ''"
-          >
-            <Icon icon="x" :size="12" />
+    <!-- Out of the layout entirely: see useAnchoredPanel. -->
+    <Teleport to="body">
+      <div v-if="isDropdownOpen" ref="panelRef" class="flex gap-2" :class="alignRight ? 'flex-row-reverse' : 'flex-row'" :style="panelStyle">
+      <div class="ui-popover flex w-72 flex-col overflow-hidden animate-in" :style="{ maxHeight: Math.min(400, space) + 'px' }">
+        <div class="flex items-center gap-2 border-b border-neutral-200 px-2.5 py-2">
+          <Icon icon="search" class="shrink-0 text-neutral-400" :size="14"/>
+          <input v-model="searchQuery" type="text" placeholder="Search metrics" class="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400" @click.stop/>
+          <button v-show="searchQuery" type="button" class="shrink-0 text-neutral-400 hover:text-neutral-700" aria-label="Clear" @click.stop="searchQuery = ''">
+            <Icon icon="x" :size="12"/>
           </button>
         </div>
-
-        <!-- Scrollable Tree Container -->
-        <div class="overflow-y-auto flex-grow py-2 max-h-[340px] px-2 custom-scrollbar">
-          <div v-if="stats.length > 0 && stats[0].children?.length" class="space-y-1">
-            <StatSelectOptionNode 
-              :stat="stats[0]" 
-              :selected-stat="modelValue" 
-              :search-query="searchQuery"
-              @select-stat="handleSelect($event)"
-              @hover-stat="hoveredStat = $event"
-            />
+        <div class="min-h-0 flex-grow overflow-y-auto p-1">
+          <div v-if="stats.length > 0 && stats[0].children?.length">
+            <StatSelectOptionNode :stat="stats[0]" :selected-stat="modelValue" :search-query="searchQuery" @select-stat="handleSelect($event)" @hover-stat="hoveredStat = $event"/>
           </div>
-          <div v-else class="px-4 py-8 text-center text-xs text-slate-400 font-medium italic">
-            No matching metrics found
-          </div>
+          <div v-else class="px-3 py-8 text-center text-sm text-neutral-400">No matching metrics</div>
         </div>
       </div>
 
-      <!-- Description Hover Card -->
-      <div 
-        v-if="hoveredStat && hoveredStat.isRealStat"
-        class="w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 flex flex-col justify-between max-h-[400px] overflow-y-auto animate-fade-in border-slate-200/80"
-      >
-        <div class="space-y-3">
-          <!-- Category path / Breadcrumb -->
-          <div class="text-[9px] font-bold uppercase tracking-wider text-archstats-400 truncate">
-            {{ getStatCategoryPath(hoveredStat.fullName) }}
-          </div>
-          
-          <!-- Stat Name -->
-          <h4 class="text-slate-800 font-extrabold text-sm leading-snug">
-            {{ store.statNiceName(hoveredStat.fullName) }}
-          </h4>
-          
-          <!-- Divider -->
-          <div class="h-[1px] bg-slate-100 w-full"></div>
-          
-          <!-- Descriptions -->
-          <div class="space-y-2">
-            <p v-if="getStatDefinition(hoveredStat.fullName)?.short" class="text-slate-600 text-xs leading-relaxed font-medium">
-              {{ getStatDefinition(hoveredStat.fullName)?.short }}
-            </p>
-            <p v-if="getStatDefinition(hoveredStat.fullName)?.long" class="text-slate-400 text-[10px] leading-relaxed italic">
-              {{ getStatDefinition(hoveredStat.fullName)?.long }}
-            </p>
-            <p v-if="!getStatDefinition(hoveredStat.fullName)?.short && !getStatDefinition(hoveredStat.fullName)?.long" class="text-slate-400 text-[10px] italic">
-              No description available for this metric.
-            </p>
-          </div>
+      <div v-if="hoveredStat && hoveredStat.isRealStat" class="ui-popover flex w-72 flex-col justify-between overflow-y-auto p-3 animate-in" :style="{ maxHeight: Math.min(400, space) + 'px' }">
+        <div class="flex flex-col gap-2">
+          <div class="truncate text-xs text-neutral-500">{{ getStatCategoryPath(hoveredStat.fullName) }}</div>
+          <h4 class="text-base font-semibold leading-5 text-neutral-900">{{ store.statNiceName(hoveredStat.fullName) }}</h4>
+          <div class="h-px w-full bg-neutral-200"></div>
+          <p v-if="getStatDefinition(hoveredStat.fullName)?.short" class="text-base leading-5 text-neutral-700">{{ getStatDefinition(hoveredStat.fullName)?.short }}</p>
+          <p v-if="getStatDefinition(hoveredStat.fullName)?.long" class="text-sm leading-4 text-neutral-500">{{ getStatDefinition(hoveredStat.fullName)?.long }}</p>
+          <p v-if="!getStatDefinition(hoveredStat.fullName)?.short && !getStatDefinition(hoveredStat.fullName)?.long" class="text-sm text-neutral-400">No description available for this metric.</p>
         </div>
-        
-        <!-- Metric ID / Key -->
-        <div class="mt-4 pt-2.5 border-t border-slate-50 flex items-center justify-between">
-          <span class="text-[9px] font-mono text-slate-400 break-all select-all py-0.5 px-1.5 bg-slate-50 rounded border border-slate-100 leading-normal">
-            {{ hoveredStat.fullName }}
-          </span>
+        <div class="mt-3 border-t border-neutral-200 pt-2">
+          <span class="ui-tag select-all break-all">{{ hoveredStat.fullName }}</span>
         </div>
       </div>
-    </div>
+      </div>
+    </Teleport>
   </div>
 </template>
-
 <script setup lang="ts">
 import Icon from "~/components/ui/common/Icon.vue";
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useAnchoredPanel } from "~/composables/useAnchoredPanel";
 import { PropType } from "@vue/runtime-core";
 import { columnsToStats, Stat } from "~/utils/stat-tree";
 import { useDataStore } from "~/stores/data";
@@ -137,12 +81,16 @@ const isDropdownOpen = ref(false);
 const searchQuery = ref('');
 const hoveredStat = ref<Stat | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const panelRef = ref<HTMLElement | null>(null);
 
-// Click outside detection
+const { style: panelStyle, space } = useAnchoredPanel(containerRef, isDropdownOpen, props.alignRight ? "right" : "left");
+
+// Click outside detection. The panel is no longer inside the trigger, so
+// "outside" has to mean outside both of them.
 const handleClickOutside = (event: MouseEvent) => {
-  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
-    isDropdownOpen.value = false;
-  }
+  const target = event.target as Node;
+  if (containerRef.value?.contains(target) || panelRef.value?.contains(target)) return;
+  isDropdownOpen.value = false;
 };
 
 onMounted(() => {
@@ -193,26 +141,3 @@ const getStatCategoryPath = (fullName: string) => {
 };
 </script>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.15s ease-out forwards;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-</style>

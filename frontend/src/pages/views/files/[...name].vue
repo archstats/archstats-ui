@@ -1,220 +1,90 @@
 <template>
-  <div class="h-full flex flex-col p-6 overflow-hidden">
-    <ViewWorkspaceLayout
-      :title="fileBasename"
-      badge-text="File"
-      badge-color-class="bg-violet-50 border-violet-100 text-violet-700"
-      :nodes-count="linesCount"
-      :connections-count="commitsCount"
-      :stats-labels="{ nodes: 'Lines of Code', connections: 'Commits' }"
-      :show-config="false"
-      :is-sidebar-open="false"
-    >
-      <!-- Action slot for Back to Table -->
-      <template #actions>
-        <div class="flex items-center gap-3">
-          <router-link 
-            v-if="fileData?.component"
-            :to="`/views/components/${fileData.component}`" 
-            class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-800 transition-colors bg-sky-50/70 border border-sky-100 rounded-lg px-2.5 py-1"
-          >
-            <span>📦</span>
-            <span>Component: {{ fileData.component }}</span>
-          </router-link>
-          <router-link 
-            to="/views/files/table" 
-            class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-            Back to Explorer
-          </router-link>
-        </div>
-      </template>
-
-      <!-- Visualizer slot for the main content grid and subpages -->
-      <template #visualizer>
-        <div class="w-full h-full flex flex-col md:flex-row gap-6 min-h-[480px] overflow-hidden">
-          
-          <!-- LEFT SIDEBAR: Grouped Navigation Menu (Desktop) -->
-          <div class="hidden md:flex flex-col gap-5 w-56 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 shadow-3xs overflow-y-auto">
-            <div v-for="group in categorizedTabs" :key="group.categoryName" class="flex flex-col gap-1.5">
-              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 select-none pb-1.5 border-b border-slate-50">
-                {{ group.categoryName }}
-              </span>
-              
-              <div class="flex flex-col gap-0.5">
-                <router-link 
-                  v-for="tab in group.tabs" 
-                  :key="tab.tabId"
-                  :to="getTabUrl(tab.tabId)"
-                  class="text-[11px] font-bold px-3 py-2 rounded-xl transition-all tracking-wide flex items-center gap-2.5"
-                  :class="isTabActive(tab.tabId)
-                    ? 'bg-slate-800 text-white shadow-xs font-black' 
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/70'"
-                >
-                  <span 
-                    class="w-1.5 h-1.5 rounded-full shrink-0" 
-                    :class="[
-                      isTabActive(tab.tabId) ? 'bg-white' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Overview' ? 'bg-violet-400/80' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Revisions' ? 'bg-indigo-400/80' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Structure' ? 'bg-emerald-400/80' : '',
-                    ]"
-                  ></span>
-                  {{ tab.title }}
-                </router-link>
-              </div>
-            </div>
-          </div>
-
-          <!-- TOP BAR: Scrollable Tabs Menu (Mobile Viewports) -->
-          <div class="md:hidden w-full flex items-center gap-1.5 bg-white border border-slate-100 p-2.5 rounded-xl overflow-x-auto scrollbar-none shrink-0 shadow-3xs">
-            <router-link 
-              v-for="tab in flattenedMobileTabs" 
-              :key="tab.tabId"
-              :to="getTabUrl(tab.tabId)"
-              class="text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-all tracking-wide flex-shrink-0"
-              :class="isTabActive(tab.tabId)
-                ? 'bg-slate-800 text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'"
-            >
-              {{ tab.title }}
-            </router-link>
-          </div>
-
-          <!-- MAIN CANVAS AREA -->
-          <div class="flex-1 min-w-0 bg-white border border-slate-100 rounded-2xl p-6 shadow-3xs overflow-y-auto">
-            <NuxtPage />
-          </div>
-
-        </div>
-      </template>
-    </ViewWorkspaceLayout>
-  </div>
+  <DetailFrame
+    :title="fileBasename"
+    mono
+    kind="File"
+    :crumbs="crumbs"
+    :stats="stats"
+    :tabs="tabs"
+    fallback="/views/metrics?grain=files"
+  >
+    <template #actions>
+      <router-link v-if="file?.component" :to="`/views/components/${file.component}`" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
+        <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>Component</span>
+      </router-link>
+    </template>
+    <EmptyState v-if="store.hasData && !loading && !file" title="File not in this snapshot" :text="`${filePath} was not found in the open scan.`" icon="file-text">
+      <router-link to="/views/metrics?grain=files" class="ui-btn ui-btn-sm">All files</router-link>
+    </EmptyState>
+    <NuxtPage v-else/>
+  </DetailFrame>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watchEffect } from "vue"
-import { useRoute } from "vue-router"
+import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { useFileRoute } from "~/composables/useFileRoute"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
+import { formatNumber } from "~/utils/format"
+import DetailFrame, { type DetailCrumb, type DetailStat, type DetailTab } from "~/components/detail/DetailFrame.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import Icon from "~/components/ui/common/Icon.vue"
 
-const route = useRoute()
 const store = useDataStore()
-const { isJavaProject, getJavaMetricsForFile } = useJavaMetrics()
+const { filePath, escapedPath, fileBasename } = useFileRoute()
 
-// Resolving filePath from name parameter (supports catch-all route segments)
-const filePath = computed(() => {
-  const parts = route.params.name
-  let list = Array.isArray(parts) ? [...parts] : [parts as string]
-  const last = list[list.length - 1]
-  if (["contents", "git", "imports", "java"].includes(last)) {
-    list.pop()
-  }
-  return list.join('/')
+type FileRow = Record<string, any>
+
+const { data: file, loading } = useAsyncQuery<FileRow | null>(
+  async () => {
+    if (!filePath.value) return null
+    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`)
+    return rows[0] ?? null
+  },
+  [escapedPath],
+  { initial: null },
+)
+
+const crumbs = computed<DetailCrumb[]>(() => {
+  const list: DetailCrumb[] = [{ label: "Files", to: "/views/metrics?grain=files" }]
+  const component = file.value?.component
+  if (component) list.push({ label: String(component), to: `/views/components/${component}` })
+  return list
 })
 
-const escapedPath = computed(() => filePath.value.replace(/'/g, "''"))
-
-const fileBasename = computed(() => {
-  const parts = filePath.value.split('/')
-  return parts[parts.length - 1] || filePath.value
-})
-
-const fileData = ref<Record<string, any> | null>(null)
-watchEffect(async () => {
-  if (!store.hasData) {
-    fileData.value = null
-    return
-  }
-  const results = await store.query<Record<string, any>>(
-    `SELECT * FROM files WHERE name = '${escapedPath.value}' LIMIT 1`
-  )
-  fileData.value = results.length > 0 ? results[0] : null
-})
-
-const getMetric = (keyName: string): number => {
-  if (!fileData.value) return 0
-  const val = fileData.value[keyName] ?? fileData.value[keyName.toLowerCase()]
-  return Number(val) || 0
-}
-
-const linesCount = computed(() => {
-  return getMetric('complexity__lines') || undefined
-})
-
-const commitsCount = computed(() => {
-  return getMetric('git__commits__total') || undefined
-})
-
-const javaMetrics = ref<any>(null)
-
-watchEffect(async () => {
-  if (!filePath.value) {
-    javaMetrics.value = null
-    return
-  }
-  javaMetrics.value = await getJavaMetricsForFile(filePath.value)
-})
-
-const hasJavaMetrics = computed(() => {
-  if (!javaMetrics.value) return false
-  return javaMetrics.value.classes > 0 || javaMetrics.value.roles.length > 0 || javaMetrics.value.rest.total > 0
-})
-
-
-const categorizedTabs = computed(() => {
-  const overviewTabs = [
-    { title: "Info", tabId: "info" },
-    { title: "Source Code", tabId: "contents" }
-  ]
-
-  const revisionsTabs = [
-    { title: "Git History", tabId: "git" }
-  ]
-
-  const structureTabs = [
-    { title: "Imports", tabId: "imports" }
-  ]
-  if (isJavaProject.value && hasJavaMetrics.value) {
-    structureTabs.push({ title: "Java Insights", tabId: "java" })
-  }
-
+const stats = computed<DetailStat[]>(() => {
+  const row = file.value
+  if (!row) return []
   return [
-    { categoryName: "Overview", tabs: overviewTabs },
-    { categoryName: "Revisions", tabs: revisionsTabs },
-    { categoryName: "Structure", tabs: structureTabs }
+    { label: "Lines", value: formatNumber(row.complexity__lines) },
+    { label: "Commits", value: formatNumber(row.git__commits__total) },
+    { label: "Authors", value: formatNumber(row.git__authors__total) },
   ]
 })
 
-const flattenedMobileTabs = computed(() => {
-  return categorizedTabs.value.flatMap(group => group.tabs)
-})
+// The Java tab only exists when the engine found something Java-shaped in
+// this file; the per-file metrics call answers that.
+const { getJavaMetricsForFile } = useJavaMetrics()
+const { data: hasJava } = useAsyncQuery<boolean>(
+  async () => {
+    if (!filePath.value) return false
+    const m = await getJavaMetricsForFile(filePath.value)
+    return !!m && (m.classes > 0 || m.roles.length > 0 || m.rest.total > 0)
+  },
+  [filePath],
+  { initial: false },
+)
 
-const getTabUrl = (tabId: string) => {
+const tabs = computed<DetailTab[]>(() => {
   const base = `/views/files/${filePath.value}`
-  if (tabId === "info") return base
-  return `${base}/${tabId}`
-}
-
-const isTabActive = (tabId: string) => {
-  const path = route.path.replace(/\/$/, "")
-  if (tabId === "info") {
-    return !["/contents", "/git", "/imports", "/java"].some(suffix => path.endsWith(suffix))
-  }
-  return path.endsWith(`/${tabId}`)
-}
+  const list: DetailTab[] = [
+    { id: "overview", label: "Overview", to: base, exact: true },
+    { id: "source", label: "Source", to: `${base}/source` },
+    { id: "imports", label: "Imports", to: `${base}/imports` },
+    { id: "history", label: "History", to: `${base}/history` },
+  ]
+  if (hasJava.value) list.push({ id: "java", label: "Java", to: `${base}/java` })
+  return list
+})
 </script>
-
-<style scoped>
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

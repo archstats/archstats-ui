@@ -1,6 +1,5 @@
 <template>
-  <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg inline-block">
-    <h2 class="text-base font-semibold mb-3 text-gray-700">Commit Activity</h2>
+  <div class="inline-block">
     <div class="chart-layout">
       <div class="year-labels">
         <div v-for="label in yearLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
@@ -30,7 +29,7 @@
           <div class="w-full h-full rounded-sm"></div>
           <div
               v-if="day.date"
-              class="absolute bottom-full mb-2 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              class="ui-tooltip absolute bottom-full z-10 mb-1.5 w-max opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none"
           >
             {{ day.commits.length }} commits on {{ formatDate(day.date) }}
           </div>

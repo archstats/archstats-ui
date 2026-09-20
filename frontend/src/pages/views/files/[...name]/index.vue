@@ -1,242 +1,166 @@
 <template>
-  <div class="flex flex-col gap-6">
-    <!-- File Identity Card -->
-    <section class="bg-gradient-to-r from-slate-50 to-slate-100/50 border border-slate-100/70 rounded-3xl p-6 shadow-xs select-none">
-      <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">File Identity</div>
-      <div class="flex flex-col gap-2">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-bold font-mono text-slate-800 tracking-tight break-all">{{ filePath }}</span>
-        </div>
-        <div class="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-400">
-          <span v-if="fileData?.component">
-            Component: <strong class="text-slate-650">{{ store.getComponentName(fileData.component) }}</strong>
-          </span>
-          <span v-if="fileData?.component" class="text-slate-300">•</span>
-          <span v-if="fileData?.directory">
-            Directory: <strong class="text-slate-600 font-mono">{{ fileData.directory }}</strong>
-          </span>
-        </div>
-      </div>
-    </section>
+  <div class="min-h-0 grow overflow-y-auto">
+    <LoadingState v-if="loading" text="Reading file…"/>
+    <EmptyState v-else-if="error" title="Could not read file" :text="error" icon="alert"/>
+    <EmptyState v-else-if="!file" title="File not in this snapshot" :text="`${filePath} was not found in the open scan.`" icon="file-text"/>
+    <div v-else class="mx-auto w-full max-w-[1040px] px-6 pb-10 pt-5">
+      <!-- Stat strip: one hairline frame, six readings. -->
+      <StatStrip :cells="strip"/>
 
-    <!-- KPI Cards Grid -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Lines of Code</span>
-        <div class="text-xl font-bold text-slate-800 mt-1 font-mono">{{ formatNum(getFileMetric('complexity__lines')) }}</div>
-      </div>
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Code Health</span>
-        <div class="text-xl font-bold mt-1">
-          <span :class="healthBadgeClass(getFileMetric('codesmells__code_health'))">
-            {{ formatVal(getFileMetric('codesmells__code_health'), 1) }}
-          </span>
+      <!-- Metrics: every numeric column, grouped by family. -->
+      <section class="mt-5 pt-5 hairline-t">
+        <h2 class="ui-section-title">Metrics</h2>
+        <EmptyState v-if="metricGroups.length === 0" title="No metrics recorded" text="The engine stored no numeric columns for this file."/>
+        <div v-else class="mt-3 grid gap-x-8 gap-y-5 md:grid-cols-2">
+          <div v-for="group in metricGroups" :key="group.id">
+            <h3 class="ui-label mb-2">{{ group.label }}</h3>
+            <dl class="ui-kv">
+              <template v-for="m in group.metrics" :key="m.key">
+                <dt :title="m.key">{{ m.label }}</dt>
+                <dd>{{ m.value }}</dd>
+              </template>
+            </dl>
+          </div>
         </div>
-      </div>
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Hotspot</span>
-        <div class="text-xl font-bold mt-1">
-          <span :class="hotspotBadgeClass(getFileMetric('codesmells__hotspot_score'))">
-            {{ formatVal(getFileMetric('codesmells__hotspot_score'), 3) }}
-          </span>
+      </section>
+
+      <!-- Siblings: the other files in the same component. -->
+      <section class="mt-5 pt-5 hairline-t">
+        <div class="flex items-baseline gap-2">
+          <h2 class="ui-section-title">Siblings</h2>
+          <span v-if="file.component" class="font-mono text-xs text-neutral-500">{{ file.component }}</span>
         </div>
-      </div>
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Commits</span>
-        <div class="text-xl font-bold text-slate-800 mt-1 font-mono">{{ formatNum(getFileMetric('git__commits__total')) }}</div>
-      </div>
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Authors</span>
-        <div class="text-xl font-bold text-slate-800 mt-1 font-mono">{{ formatNum(getFileMetric('git__authors__total')) }}</div>
-      </div>
-      <div class="bg-white border border-slate-150 rounded-3xl p-5 shadow-3xs transition-all hover:shadow-2xs select-none">
-        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Age (days)</span>
-        <div class="text-xl font-bold text-slate-800 mt-1 font-mono">{{ formatNum(getFileMetric('git__age_in_days')) }}</div>
-      </div>
+        <EmptyState v-if="!file.component" title="No component" text="This file is not assigned to a component, so it has no siblings."/>
+        <LoadingState v-else-if="siblingsLoading" text="Reading files…"/>
+        <EmptyState v-else-if="siblingsError" title="Could not read siblings" :text="siblingsError" icon="alert"/>
+        <div v-else class="mt-3 overflow-hidden rounded-lg hairline">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th class="w-[90px] text-right">Lines</th>
+                <th class="w-[90px] text-right">Health</th>
+                <th class="w-[90px] text-right">Commits</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in siblings" :key="s.name" :class="{ 'is-selected': s.name === filePath }">
+                <td class="max-w-0">
+                  <router-link :to="`/views/files/${s.name}`" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="s.name">{{ basename(s.name) }}</router-link>
+                </td>
+                <td class="is-num text-right">{{ formatNumber(s.complexity__lines) }}</td>
+                <td class="is-num text-right">
+                  <span class="inline-flex items-center gap-1.5" :class="levelTextClass(healthLevel(s.codesmells__code_health))">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(s.codesmells__code_health))"></span>
+                    <span>{{ formatHealth(s.codesmells__code_health) }}</span>
+                  </span>
+                </td>
+                <td class="is-num text-right">{{ formatNumber(s.git__commits__total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
-
-    <!-- All Metrics — grouped by prefix -->
-    <section class="bg-white border border-slate-150 rounded-3xl p-6 shadow-3xs">
-      <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 select-none">All Metrics</div>
-      <div class="flex flex-col gap-2">
-        <details 
-          v-for="(metrics, group) in groupedMetrics" 
-          :key="group" 
-          class="border border-slate-100 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
-        >
-          <summary class="px-4 py-3 bg-slate-50/50 cursor-pointer text-[10px] font-black text-slate-650 uppercase tracking-wider hover:bg-slate-50 transition-colors select-none">
-            {{ group }}
-            <span class="text-[9px] text-slate-400 font-bold normal-case ml-2">({{ metrics.length }} metrics)</span>
-          </summary>
-          <div class="divide-y divide-slate-50">
-            <div 
-              v-for="m in metrics" 
-              :key="m.key" 
-              class="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/30 transition-colors"
-            >
-              <span class="text-[10.5px] font-bold text-slate-600">{{ m.label }}</span>
-              <span class="text-sm font-black font-mono text-slate-850">{{ m.displayValue }}</span>
-            </div>
-          </div>
-        </details>
-      </div>
-    </section>
-
-    <!-- Sibling Files in same component -->
-    <section v-if="siblingFiles.length > 0" class="bg-white border border-slate-150 rounded-3xl p-6 shadow-3xs">
-      <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 select-none">
-        Sibling Files in {{ fileData?.component ? store.getComponentName(fileData.component) : 'Component' }}
-      </div>
-      <div class="flex flex-col gap-1.5 max-h-[400px] overflow-y-auto scrollbar-thin">
-        <router-link 
-          v-for="sibling in siblingFiles" 
-          :key="sibling.name" 
-          :to="`/views/files/${sibling.name}`"
-          class="flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-100 hover:border-slate-200/80 hover:bg-slate-50/40 transition-all group"
-        >
-          <span class="text-[10.5px] font-bold text-slate-700 group-hover:text-slate-900 truncate mr-4 font-mono">{{ sibling.name }}</span>
-          <div class="flex items-center gap-3 flex-shrink-0 select-none">
-            <span class="text-[9px] font-mono font-bold text-slate-400">{{ formatNum(Number(sibling.complexity__lines) || 0) }} LOC</span>
-            <span 
-              class="text-[9px] font-black px-1.5 py-0.5 rounded-md"
-              :class="healthBadgeClass(Number(sibling.codesmells__code_health) || 0)"
-            >
-              {{ formatVal(Number(sibling.codesmells__code_health) || 0, 1) }}
-            </span>
-          </div>
-        </router-link>
-      </div>
-    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-import { useRoute } from "vue-router"
+import StatStrip from "~/components/detail/StatStrip.vue"
+import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { useFileRoute } from "~/composables/useFileRoute"
+import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot, type HealthLevel } from "~/composables/useHealth"
+import { formatNumber } from "~/utils/format"
+import { sqlLiteral } from "~/utils/sql"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
 
-const route = useRoute()
 const store = useDataStore()
+const { filePath, escapedPath } = useFileRoute()
 
-// Resolving filePath from name parameter (supports nested layout routing)
-const filePath = computed(() => {
-  const parts = route.params.name
-  let list = Array.isArray(parts) ? [...parts] : [parts as string]
-  const last = list[list.length - 1]
-  if (["git", "imports", "java"].includes(last)) {
-    list.pop()
-  }
-  return list.join('/')
+type FileRow = Record<string, any>
+
+const { data: file, loading, error } = useAsyncQuery<FileRow | null>(
+  async () => {
+    if (!filePath.value) return null
+    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`)
+    return rows[0] ?? null
+  },
+  [escapedPath],
+  { initial: null },
+)
+
+// Missing values read as a dash, never as zero.
+function num(key: string): number | null {
+  const v = file.value?.[key]
+  if (v === null || v === undefined || v === "") return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+const strip = computed<{ label: string; value: string; level?: HealthLevel }[]>(() => {
+  const health = num("codesmells__code_health")
+  const hotspot = num("codesmells__hotspot_score")
+  const age = num("git__age_in_days")
+  return [
+    { label: "Lines", value: formatNumber(num("complexity__lines")) },
+    { label: "Code health", value: formatHealth(health), level: healthLevel(health) },
+    { label: "Hotspot", value: formatHotspot(hotspot), level: hotspotLevel(hotspot) },
+    { label: "Commits", value: formatNumber(num("git__commits__total")) },
+    { label: "Authors", value: formatNumber(num("git__authors__total")) },
+    { label: "Age", value: age === null ? "—" : `${formatNumber(age)} d` },
+  ]
 })
 
-const escapedPath = computed(() => filePath.value.replace(/'/g, "''"))
+// Every numeric column of the row, grouped by the metric family prefix.
+const HIDDEN_COLUMNS = new Set(["report_id", "timestamp", "name", "directory", "component", "git__repository", "java_class", "java_full_class"])
+const FAMILIES: { id: string; label: string }[] = [
+  { id: "complexity", label: "Complexity" },
+  { id: "codesmells", label: "Code smells" },
+  { id: "modularity", label: "Modularity" },
+  { id: "git", label: "Git" },
+  { id: "java", label: "Java" },
+  { id: "other", label: "Other" },
+]
 
-// ── File Data ──────────────────────────────────────────────────
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const fileData = ref<Record<string, any> | null>(null)
-watch([() => store.hasData, escapedPath], async ([hasData]) => {
-  if (!hasData) {
-    fileData.value = null
-    return
+function isNumericValue(v: unknown): boolean {
+  if (v === null || v === undefined || v === "") return true
+  if (typeof v === "number") return true
+  return typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))
+}
+
+const metricGroups = computed(() => {
+  const row = file.value
+  if (!row) return []
+  const byFamily = new Map<string, { key: string; label: string; value: string }[]>()
+  for (const [key, raw] of Object.entries(row)) {
+    if (HIDDEN_COLUMNS.has(key) || !isNumericValue(raw)) continue
+    const prefix = key.split("__")[0]
+    const family = FAMILIES.some(f => f.id === prefix) ? prefix : "other"
+    const list = byFamily.get(family) ?? []
+    list.push({ key, label: store.statNiceName(key) || key, value: formatNumber(raw as any) })
+    byFamily.set(family, list)
   }
-  const results = await store.query<Record<string, any>>(
-    `SELECT * FROM files WHERE name = '${escapedPath.value}' LIMIT 1`
-  )
-  fileData.value = results.length > 0 ? results[0] : null
-}, { immediate: true })
-
-const getFileMetric = (key: string): number => {
-  if (!fileData.value) return 0
-  const val = fileData.value[key] ?? fileData.value[key.toLowerCase()]
-  return Number(val) || 0
-}
-
-// ── Formatting Helpers ─────────────────────────────────────────
-const formatNum = (val: number): string => {
-  if (val === undefined || isNaN(val)) return '—'
-  return val.toLocaleString()
-}
-
-const formatVal = (val: number, precision: number = 0): string => {
-  if (val === undefined || isNaN(val)) return '—'
-  return val.toLocaleString(undefined, {
-    minimumFractionDigits: precision,
-    maximumFractionDigits: precision,
-  })
-}
-
-// ── Badge Classes ──────────────────────────────────────────────
-const healthBadgeClass = (val: number): string => {
-  if (val >= 8) return 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100'
-  if (val >= 5) return 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100'
-  return 'text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100'
-}
-
-const hotspotBadgeClass = (val: number): string => {
-  if (val >= 0.7) return 'text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100'
-  if (val >= 0.3) return 'text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100'
-  return 'text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100'
-}
-
-// ── Grouped Metrics ────────────────────────────────────────────
-const SKIP_KEYS = new Set(['name', 'component', 'directory', 'report_id', 'report_timestamp', 'timestamp'])
-
-const groupedMetrics = computed(() => {
-  if (!fileData.value) return {}
-  const groups: Record<string, { key: string; label: string; displayValue: string }[]> = {}
-
-  Object.entries(fileData.value).forEach(([key, val]) => {
-    if (SKIP_KEYS.has(key)) return
-    if (val === null || val === undefined) return
-
-    const parts = key.split('__')
-    const group = parts[0] || 'Other'
-    const label = parts.slice(1).join(' › ') || key
-
-    if (!groups[group]) groups[group] = []
-    const numVal = Number(val)
-    const displayValue = isNaN(numVal) ? String(val) : numVal.toLocaleString(undefined, {
-      maximumFractionDigits: 4,
-    })
-    groups[group].push({ key, label, displayValue })
-  })
-
-  // Sort groups alphabetically
-  const sorted: Record<string, typeof groups[string]> = {}
-  Object.keys(groups).sort().forEach(k => {
-    sorted[k] = groups[k].sort((a, b) => a.label.localeCompare(b.label))
-  })
-  return sorted
+  return FAMILIES
+    .filter(f => byFamily.has(f.id))
+    .map(f => ({ ...f, metrics: byFamily.get(f.id)!.sort((a, b) => a.label.localeCompare(b.label)) }))
 })
 
-// ── Sibling Files ──────────────────────────────────────────────
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const siblingFiles = ref<Record<string, any>[]>([])
-watch([() => store.hasData, fileData], async ([hasData]) => {
-  if (!hasData || !fileData.value?.component) {
-    siblingFiles.value = []
-    return
-  }
-  const comp = String(fileData.value.component).replace(/'/g, "''")
-  siblingFiles.value = await store.query<Record<string, any>>(
-    `SELECT name, complexity__lines, codesmells__code_health FROM files WHERE component = '${comp}' AND name != '${escapedPath.value}' ORDER BY name LIMIT 20`
-  )
-}, { immediate: true })
+// Siblings: the same component, largest first.
+const component = computed(() => (file.value?.component ? String(file.value.component) : ""))
+const { data: siblings, loading: siblingsLoading, error: siblingsError } = useAsyncQuery<FileRow[]>(
+  async () => {
+    if (!component.value) return []
+    return store.query<FileRow>(`SELECT * FROM files WHERE component = ${sqlLiteral(component.value)} ORDER BY complexity__lines DESC`)
+  },
+  [component],
+  { initial: [] },
+)
+
+function basename(path: string): string {
+  const parts = String(path).split("/")
+  return parts[parts.length - 1] || path
+}
 </script>
-
-<style scoped>
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-</style>

@@ -1,206 +1,176 @@
 <template>
-  <div class="w-full flex flex-col gap-6">
-    <section class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs flex flex-col gap-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-2">
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 tracking-tight">Files Touched</h3>
-          <p class="text-xs text-slate-400">All files this author has committed changes to</p>
-        </div>
-        <span class="text-xs font-semibold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl">
-          {{ fileRows.length }} files · Page {{ currentPage }} of {{ totalPages }}
-        </span>
+  <div class="flex min-h-0 grow flex-col">
+    <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
+      <div class="relative flex items-center">
+        <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
+        <input v-model="search" type="search" placeholder="Search files" class="ui-input ui-input-sm w-64 pl-7" aria-label="Search files">
       </div>
-
-      <div v-if="fileRows.length === 0" class="text-slate-400 italic text-sm py-12 text-center">
-        No file data recorded for this author.
-      </div>
-
-      <div v-else class="w-full overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="border-b border-slate-100">
-              <th
-                v-for="col in columns"
-                :key="col.key"
-                class="text-[10px] font-black text-slate-400 uppercase tracking-widest py-2.5 cursor-pointer hover:text-slate-600 transition-colors select-none"
-                :class="col.align === 'right' ? 'text-right pl-4' : 'pr-4'"
-                @click="toggleSort(col.key)"
-              >
-                <span class="inline-flex items-center gap-1">
-                  {{ col.label }}
-                  <svg v-if="sortKey === col.key" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-2.5 h-2.5 transition-transform" :class="sortDir === 'desc' ? '' : 'rotate-180'">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in paginatedRows"
-              :key="row.file"
-              class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer group"
-              @click="navigateTo(`/views/files/${encodeURIComponent(row.file)}`)"
-            >
-              <td class="text-xs font-bold text-slate-700 py-3 pr-4 group-hover:text-slate-900 transition-colors max-w-[280px]">
-                <span class="truncate block" :title="row.file">{{ getBasename(row.file) }}</span>
-              </td>
-              <td class="text-xs text-slate-500 py-3 pr-4">
-                <router-link
-                  v-if="row.component"
-                  :to="`/views/components/${row.component}`"
-                  class="hover:text-slate-800 transition-colors font-semibold"
-                  @click.stop
-                >
-                  {{ store.getComponentName(row.component) }}
-                </router-link>
-                <span v-else class="italic text-slate-300">—</span>
-              </td>
-              <td class="text-xs font-black font-mono text-slate-800 py-3 pl-4 text-right">{{ Number(row.commits).toLocaleString() }}</td>
-              <td class="text-xs font-black font-mono text-emerald-600 py-3 pl-4 text-right">+{{ Number(row.additions).toLocaleString() }}</td>
-              <td class="text-xs font-black font-mono text-rose-600 py-3 pl-4 text-right">-{{ Number(row.deletions).toLocaleString() }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex items-center justify-center gap-1.5 pt-2">
-        <button
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all"
-          :class="currentPage === 1
-            ? 'border-slate-100 text-slate-300 cursor-not-allowed'
-            : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'"
-          :disabled="currentPage === 1"
-          @click="currentPage = Math.max(1, currentPage - 1)"
-        >
-          ← Prev
+      <span class="ui-toolbar-meta ml-auto">
+        <template v-if="search.trim()">{{ formatNumber(filtered.length) }} of {{ formatNumber(rows.length) }}</template>
+        <template v-else>{{ formatNumber(rows.length) }} files</template>
+      </span>
+      <div v-if="totalPages > 1" class="flex items-center gap-2 text-sm text-neutral-500">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" aria-label="Previous page" @click="goToPage(page - 1)">
+          <Icon :size="14" icon="chevron-left"/>
         </button>
-        <button
-          v-for="page in visiblePages"
-          :key="page"
-          class="text-[10px] font-bold w-7 h-7 rounded-lg border transition-all"
-          :class="page === currentPage
-            ? 'bg-slate-800 text-white border-slate-800 shadow-xs'
-            : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800'"
-          @click="currentPage = page"
-        >
-          {{ page }}
-        </button>
-        <button
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all"
-          :class="currentPage === totalPages
-            ? 'border-slate-100 text-slate-300 cursor-not-allowed'
-            : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'"
-          :disabled="currentPage === totalPages"
-          @click="currentPage = Math.min(totalPages, currentPage + 1)"
-        >
-          Next →
+        <span class="font-mono tabular-nums">{{ page }} / {{ totalPages }}</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page >= totalPages" aria-label="Next page" @click="goToPage(page + 1)">
+          <Icon :size="14" icon="chevron-right"/>
         </button>
       </div>
-    </section>
+    </div>
+
+    <LoadingState v-if="loading" text="Reading files…"/>
+    <EmptyState v-else-if="error" title="Could not read files" :text="error" icon="alert"/>
+    <EmptyState v-else-if="rows.length === 0" title="No files recorded" :text="`${name} has no file changes in this snapshot.`" icon="file-code"/>
+    <EmptyState v-else-if="filtered.length === 0" title="No files match" :text="`0 of ${rows.length} match “${search.trim()}”.`" icon="search">
+      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">Clear search</button>
+    </EmptyState>
+    <div v-else class="min-h-0 grow overflow-y-auto">
+      <table class="ui-table">
+        <thead>
+          <tr>
+            <th v-for="col in columns" :key="col.key" class="cursor-pointer select-none hover:text-neutral-900" :class="[col.align === 'right' ? 'text-right' : '', col.width]" @click="toggleSort(col.key)">
+              <span class="inline-flex items-center gap-1">{{ col.label }}<Icon v-if="sortKey === col.key" :icon="sortAsc ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in pageRows" :key="row.file">
+            <td class="max-w-0">
+              <router-link :to="`/views/files/${row.file}`" class="block truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="row.file">{{ row.file }}</router-link>
+            </td>
+            <td class="max-w-0">
+              <router-link v-if="row.component" :to="`/views/components/${row.component}`" class="block truncate font-mono text-sm text-neutral-700 hover:text-neutral-900 hover:underline" :title="row.component">{{ row.component }}</router-link>
+              <span v-else class="text-neutral-400">—</span>
+            </td>
+            <td class="is-num text-right">{{ formatNumber(row.commits) }}</td>
+            <td class="is-num text-right">
+              <span class="text-green-700">{{ formatSigned(row.additions) }}</span>
+              <span class="ml-1.5 text-red-700">{{ formatSigned(-row.deletions) }}</span>
+            </td>
+            <td class="is-num text-right">{{ formatDate(row.last_commit) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
-import { useRoute, useRouter } from "vue-router"
+import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { sqlLiteral } from "~/utils/sql"
+import { formatNumber, formatSigned } from "~/utils/format"
+import { formatDate } from "~/utils/time"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
+import Icon from "~/components/ui/common/Icon.vue"
 
 const route = useRoute()
-const router = useRouter()
-const navigateTo = (path: string) => router.push(path)
 const store = useDataStore()
 
-const authorName = computed(() => route.params.name as string)
-const escapedName = computed(() => authorName.value.replace(/'/g, "''"))
+const name = computed(() => String(route.params.name ?? ""))
+const search = ref("")
 
-interface FileRow {
+interface Row {
   file: string
   component: string
   commits: number
   additions: number
   deletions: number
+  last_commit: string
 }
 
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const fileRows = ref<FileRow[]>([])
-watch([() => store.hasData, escapedName], async ([hasData]) => {
-  if (!hasData) {
-    fileRows.value = []
-    return
-  }
-  fileRows.value = await store.query<FileRow>(
-    `SELECT file,
-            component,
-            count(DISTINCT commit_hash) as commits,
-            sum(file_additions) as additions,
-            sum(file_deletions) as deletions
-     FROM git_commits
-     WHERE author_name = '${escapedName.value}'
-     GROUP BY file
-     ORDER BY commits DESC`
-  )
-}, { immediate: true })
+const { data: rows, loading, error } = useAsyncQuery<Row[]>(
+  async () => {
+    const [changes, files] = await Promise.all([
+      store.query<Omit<Row, "component">>(`
+        SELECT file,
+               count(DISTINCT commit_hash) AS commits,
+               sum(file_additions) AS additions,
+               sum(file_deletions) AS deletions,
+               max(commit_time) AS last_commit
+        FROM git_commits
+        WHERE author_name = ${sqlLiteral(name.value)}
+        GROUP BY file
+        ORDER BY commits DESC`),
+      store.query<{ name: string; component: string }>("SELECT name, component FROM files"),
+    ])
+    const componentOf = new Map(files.map(f => [f.name, f.component || ""]))
+    return changes.map(r => ({
+      file: r.file || "",
+      component: componentOf.get(r.file) ?? "",
+      commits: Number(r.commits) || 0,
+      additions: Number(r.additions) || 0,
+      deletions: Number(r.deletions) || 0,
+      last_commit: r.last_commit,
+    }))
+  },
+  [name],
+  { initial: [] },
+)
 
-const columns = [
-  { key: "file", label: "File", align: "left" },
-  { key: "component", label: "Component", align: "left" },
-  { key: "commits", label: "Commits", align: "right" },
-  { key: "additions", label: "Additions", align: "right" },
-  { key: "deletions", label: "Deletions", align: "right" }
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return rows.value
+  return rows.value.filter(r => r.file.toLowerCase().includes(q) || r.component.toLowerCase().includes(q))
+})
+
+type SortKey = "file" | "component" | "commits" | "lines" | "last_commit"
+const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
+  { key: "file", label: "File" },
+  { key: "component", label: "Component", width: "w-[260px]" },
+  { key: "commits", label: "Commits", align: "right", width: "w-[90px]" },
+  { key: "lines", label: "Lines", align: "right", width: "w-[150px]" },
+  { key: "last_commit", label: "Last", align: "right", width: "w-[110px]" },
 ]
 
-const sortKey = ref("commits")
-const sortDir = ref<"asc" | "desc">("desc")
+const sortKey = ref<SortKey>("commits")
+const sortAsc = ref(false)
 
-function toggleSort(key: string) {
+function toggleSort(key: SortKey) {
   if (sortKey.value === key) {
-    sortDir.value = sortDir.value === "asc" ? "desc" : "asc"
+    sortAsc.value = !sortAsc.value
   } else {
     sortKey.value = key
-    sortDir.value = "desc"
+    sortAsc.value = key === "file" || key === "component"
   }
-  currentPage.value = 1
+  page.value = 1
 }
 
-const sortedRows = computed(() => {
-  const rows = [...fileRows.value]
-  const key = sortKey.value as keyof FileRow
-  const dir = sortDir.value === "asc" ? 1 : -1
-  return rows.sort((a, b) => {
-    const aVal = a[key]
-    const bVal = b[key]
-    if (typeof aVal === "string" && typeof bVal === "string") {
-      return aVal.localeCompare(bVal) * dir
-    }
-    return (Number(aVal) - Number(bVal)) * dir
+function sortValue(r: Row, key: SortKey): number | string {
+  switch (key) {
+    case "lines": return r.additions + r.deletions
+    case "last_commit": return new Date(r.last_commit).getTime() || 0
+    default: return r[key]
+  }
+}
+
+const sorted = computed(() => {
+  const dir = sortAsc.value ? 1 : -1
+  const key = sortKey.value
+  return [...filtered.value].sort((a, b) => {
+    const av = sortValue(a, key)
+    const bv = sortValue(b, key)
+    if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * dir
+    return (Number(av) - Number(bv)) * dir
   })
 })
 
-// Pagination
-const PAGE_SIZE = 25
-const currentPage = ref(1)
+// Pagination: 50 rows a page, the same prev/next control ElementTable uses.
+const PAGE_SIZE = 50
+const page = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / PAGE_SIZE)))
+const pageRows = computed(() => sorted.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
 
-const totalPages = computed(() => Math.max(1, Math.ceil(sortedRows.value.length / PAGE_SIZE)))
-
-const paginatedRows = computed(() => {
-  const start = (currentPage.value - 1) * PAGE_SIZE
-  return sortedRows.value.slice(start, start + PAGE_SIZE)
-})
-
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const start = Math.max(1, currentPage.value - 2)
-  const end = Math.min(totalPages.value, currentPage.value + 2)
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
-  }
-  return pages
-})
-
-function getBasename(filepath: string): string {
-  const parts = filepath.split('/')
-  return parts[parts.length - 1] || filepath
+function goToPage(p: number) {
+  page.value = Math.max(1, Math.min(p, totalPages.value))
 }
+
+watch(name, () => { search.value = ""; page.value = 1 })
+watch(search, () => { page.value = 1 })
+watch(totalPages, () => goToPage(page.value))
 </script>

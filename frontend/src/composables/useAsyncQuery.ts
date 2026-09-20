@@ -1,37 +1,47 @@
-import { ref, watch, type Ref, type WatchSource } from 'vue'
-import { useDataStore } from '~/stores/data'
+import { ref, watch, type Ref, type WatchSource } from "vue";
+import { useDataStore } from "~/stores/data";
 
-/**
- * Runs an async query when dependencies change, storing the result in a ref.
- * Uses `watch` with explicit dependencies instead of `watchEffect` to avoid
- * Vue's recursive update detection issues with async effects.
- *
- * @param queryFn - Async function that returns the query result
- * @param deps - Optional additional reactive dependencies to watch (beyond store.hasData)
- * @param defaultValue - Default value for the ref
- */
+// Async data for a view with explicit loading, empty and error states. Runs
+// `load` whenever the snapshot or any dependency changes, drops stale results
+// from earlier runs, and never leaves the view showing yesterday's rows while
+// today's query is still running.
 export function useAsyncQuery<T>(
-    queryFn: () => Promise<T>,
-    deps?: WatchSource[],
-    defaultValue?: T
-): Ref<T> {
-    const store = useDataStore()
-    const result = ref(defaultValue !== undefined ? defaultValue : (Array.isArray(defaultValue) ? [] : null)) as Ref<T>
+    load: () => Promise<T>,
+    deps: WatchSource[] = [],
+    options: { initial: T; immediate?: boolean } ,
+): { data: Ref<T>; loading: Ref<boolean>; error: Ref<string | null>; reload: () => Promise<void> } {
+    const store = useDataStore();
+    const data = ref(options.initial) as Ref<T>;
+    const loading = ref(false);
+    const error = ref<string | null>(null);
+    let token = 0;
 
-    const sources: WatchSource[] = [() => store.hasData, ...(deps || [])]
+    async function reload() {
+        const mine = ++token;
+        if (!store.hasData) {
+            data.value = options.initial;
+            loading.value = false;
+            error.value = null;
+            return;
+        }
+        loading.value = true;
+        error.value = null;
+        try {
+            const result = await load();
+            if (mine !== token) return;
+            data.value = result;
+        } catch (e: any) {
+            if (mine !== token) return;
+            data.value = options.initial;
+            error.value = e?.message ? String(e.message) : String(e);
+        } finally {
+            if (mine === token) loading.value = false;
+        }
+    }
 
-    watch(
-        sources,
-        async () => {
-            if (!store.hasData) return
-            try {
-                result.value = await queryFn()
-            } catch (e) {
-                console.error('[useAsyncQuery] Error:', e)
-            }
-        },
-        { immediate: true }
-    )
+    // Both signals: a snapshot can be swapped for another without hasData
+    // ever reading false in between.
+    watch([() => store.hasData, () => store.datasetKey, ...deps], () => { void reload(); }, { immediate: options.immediate ?? true });
 
-    return result
+    return { data, loading, error, reload };
 }

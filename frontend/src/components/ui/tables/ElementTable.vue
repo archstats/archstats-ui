@@ -1,65 +1,52 @@
-<template>
-  <div class="flex flex-col justify-between">
 
-    <div class="w-full overflow-x-scroll text-archstats-900">
-      <table class="mb-4">
+<template>
+  <div class="flex flex-col">
+    <div class="w-full overflow-x-auto">
+      <table class="ui-table">
         <thead>
         <tr>
-          <th class="px-2 py-1  h-full justify-center" v-if="selectableElements">
-            <div class="flex gap-2 align-middle justify-center">
-              <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
-                        @update:model-value="toggleSelectAll"/>
-            </div>
+          <th class="w-8" v-if="selectableElements">
+            <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
+                      @update:model-value="toggleSelectAll" aria-label="Select all"/>
           </th>
-          <th class="py-1 px-2 text-left cursor-pointer hover:text-secondary-200 whitespace-nowrap"
-              @click="toggleSort('name')">{{ nameColumn }} <span
-              v-if="sortSettings.column === 'name'"
-              v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span>
+          <th class="cursor-pointer select-none hover:text-neutral-900" @click="toggleSort('name')">
+            <span class="inline-flex items-center gap-1">{{ nameColumn }}<Icon v-if="sortSettings.column === 'name'" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
           </th>
-          <th class="py-1 px-2 text-left whitespace-nowrap" v-if="showGroups">Groups</th>
-          <th class="py-1 px-2 cursor-pointer hover:text-secondary-500 text-left whitespace-nowrap"
-              v-for="column in columns"
-              @click="toggleSort(column.name)"><span>{{
-              column.name
-            }}</span><span v-if="sortSettings.column === column.name"
-                           v-html="sortSettings.ascending ? '&#8593':'&#8595'"></span></th>
+          <th v-if="showGroups">Groups</th>
+          <th class="cursor-pointer select-none text-right hover:text-neutral-900" v-for="column in columns" :key="column.name" @click="toggleSort(column.name)">
+            <span class="inline-flex items-center gap-1" :title="column.name">{{ niceName(column.name) }}<Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+          </th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="element in pageOfElements" class="hover:bg-secondary-50"
-            :class="{'cursor-pointer': clickableElements}"
-            @click="clickableElements? emit('clicked-element', element) : checkboxToggle(element.name)">
-          <td v-if="selectableElements" class="px-2" @click.stop="checkboxToggle(element.name)">
-            <Checkbox type="checkbox"
-                      :model-value="selectedElements.indexOf(element.name) !== -1"
-            />
+        <tr v-for="element in pageOfElements" :key="element.name"
+            :class="{ 'is-clickable': clickableElements, 'is-selected': selectedElements.indexOf(element.name) !== -1 }"
+            @click="clickableElements ? emit('clicked-element', element) : checkboxToggle(element.name)">
+          <td v-if="selectableElements" @click.stop="checkboxToggle(element.name)">
+            <Checkbox :model-value="selectedElements.indexOf(element.name) !== -1"/>
           </td>
-          <td class="py-1 px-2 font-semibold py-1 px-2">{{ element.name || "unknown" }}</td>
-          <td class="py-1 px-2 whitespace-nowrap" v-if="showGroups">
+          <td class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name || "unknown" }}</td>
+          <td v-if="showGroups">
             <div class="flex flex-wrap gap-1">
-              <span v-for="g in getElementGroups(element.name)" :key="g.id"
-                    :style="{ backgroundColor: g.color }"
-                    class="text-[9px] text-white px-1.5 py-0.5 rounded font-semibold">
-                {{ g.name }}
-              </span>
+              <span v-for="g in getElementGroups(element.name)" :key="g.id" class="ui-tag text-white" :style="{ backgroundColor: g.color }">{{ g.name }}</span>
             </div>
           </td>
-
-          <td v-for="column in columns" class="py-1 px-2 " nowrap>{{ round(element[column.name], 5) }}</td>
-
+          <td v-for="column in columns" :key="column.name" class="is-num text-right">{{ round(element[column.name], 5) }}</td>
+        </tr>
+        <tr v-if="pageOfElements.length === 0">
+          <td :colspan="columns.length + 1 + (selectableElements ? 1 : 0) + (showGroups ? 1 : 0)" class="h-20 text-center text-neutral-500">{{ emptyText }}</td>
         </tr>
         </tbody>
       </table>
     </div>
-    <div class="mt-8 flex justify-center items-center">
-      <button class="mr-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage - 1)">
-        <Icon :size="20" icon="chevron-left"/>
+    <div v-if="totalPages > 1" class="mt-3 flex items-center justify-end gap-2 text-sm text-neutral-500">
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage <= 1" aria-label="Previous page" @click="goToPage(currentPage - 1)">
+        <Icon :size="14" icon="chevron-left"/>
       </button>
-      <div class=""><span>{{ currentPage }}</span> of <span>{{ totalPages }}</span></div>
-      <button class="ml-2 font-bold hover:text-archstats-500 text-archstats-900" @click="goToPage(currentPage + 1)">
-        <Icon :size="20" icon="chevron-right"/>
+      <span class="font-mono tabular-nums">{{ currentPage }} / {{ totalPages }}</span>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage >= totalPages" aria-label="Next page" @click="goToPage(currentPage + 1)">
+        <Icon :size="14" icon="chevron-right"/>
       </button>
-
     </div>
   </div>
 </template>
@@ -69,6 +56,12 @@ import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vu
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import {useGroupsStore} from "~/stores/groups";
+import {useDataStore} from "~/stores/data";
+
+const dataStore = useDataStore()
+function niceName(column: string): string {
+  return dataStore.statNiceName(column) || column
+}
 
 type Key = string | number;
 
@@ -113,6 +106,10 @@ const props = defineProps({
   showGroups: {
     type: Boolean,
     default: false,
+  },
+  emptyText: {
+    type: String,
+    default: "Nothing matches.",
   }
 })
 
@@ -145,7 +142,7 @@ const allElements: ComputedRef<Element[]> = computed(() => {
 })
 
 const sortedElements = computed(() => {
-  return allElements.value.sort((a, b) => {
+  return [...allElements.value].sort((a, b) => {
     const aValue = a[sortSettings.value.column]
     const bValue = b[sortSettings.value.column]
     const multiplier = sortSettings.value.ascending ? 1 : -1

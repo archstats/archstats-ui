@@ -1,294 +1,301 @@
 <template>
-    <!-- Group Action Bar -->
-    <Teleport to="body">
-      <Transition name="slide-up">
-        <div
-          v-if="selectedItems.length > 0"
-          class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-slate-700/60 rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-md flex items-center gap-4 text-white z-50 select-none animate-slide-up"
-        >
-          <!-- Count Indicator -->
-          <div class="flex flex-col pr-4 border-r border-slate-700/60 leading-tight">
-            <span class="text-[9px] font-bold text-sky-400 uppercase tracking-wider">Selection</span>
-            <span class="text-xs font-extrabold whitespace-nowrap">
-              {{ selectedItems.length }} {{ type }}{{ selectedItems.length !== 1 ? 's' : '' }}
-            </span>
-          </div>
-
-          <!-- Add to Group Custom Popover -->
-          <div class="relative">
-            <button
-              @click.stop="togglePopover"
-              class="bg-slate-800 hover:bg-slate-700 active:bg-slate-750 border border-slate-700/60 rounded-xl px-3 py-2 text-[10px] font-bold transition-all cursor-pointer focus:outline-none flex items-center gap-2 text-slate-100 min-w-[130px] justify-between"
-            >
-              <span>Add to group...</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-slate-400 transition-transform" :class="showPopover ? 'rotate-180' : ''">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-
-            <!-- Custom Popover Menu -->
-            <Transition name="popover-fade">
-              <div
-                v-if="showPopover"
-                ref="popoverEl"
-                class="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-56 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl z-55 overflow-hidden flex flex-col py-1.5 backdrop-blur-md"
-              >
-                <!-- Group List -->
-                <div class="max-h-48 overflow-y-auto">
-                  <div
-                    v-for="g in availableGroups"
-                    :key="g.id"
-                    @click="addToGroup(g.id)"
-                    class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-slate-200 hover:bg-slate-850 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <div class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: g.color }"></div>
-                    <span class="truncate flex-grow text-left">{{ g.name }}</span>
-                    <span class="text-slate-500 font-mono text-[9px] shrink-0">({{ g.members.length }})</span>
-                  </div>
-                </div>
-
-                <!-- Empty state -->
-                <div v-if="availableGroups.length === 0" class="px-3 py-2 text-[10px] text-slate-400 italic">
-                  No groups created yet.
-                </div>
-
-                <div class="h-px bg-slate-750/60 my-1"></div>
-
-                <!-- Create option -->
-                <div
-                  @click="openCreateModal"
-                  class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-sky-400 hover:bg-slate-850 hover:text-sky-300 transition-colors cursor-pointer"
-                >
-                  <span class="text-xs">+</span>
-                  <span>Create new group...</span>
-                </div>
-              </div>
-            </Transition>
-          </div>
-
-          <!-- Remove from Groups Action -->
-          <button
-            @click="removeFromAllGroups"
-            class="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
-            title="Remove selected items from all groups"
-          >
-            <span>🗑</span>
-            <span>Remove from groups</span>
-          </button>
-
-          <!-- Divider -->
-          <div class="h-5 w-px bg-slate-700/60 my-0.5"></div>
-
-          <!-- Clear Selection -->
-          <button
-            @click="emit('clear')"
-            class="px-2.5 py-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
-          >
-            ✕ Clear
-          </button>
+  <Teleport to="body">
+    <!-- No transform on the tray: the menu's click-away backdrop must span the viewport. -->
+    <Transition name="tray">
+      <div
+        v-if="selectedItems.length > 0"
+        ref="trayEl"
+        class="tray-host pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center"
+      >
+      <div
+        class="ui-popover pointer-events-auto flex max-w-[calc(100vw-2rem)] select-none items-center gap-2 py-1.5 pl-3 pr-2 text-neutral-900"
+        role="toolbar"
+        aria-label="Selection"
+      >
+        <div class="flex items-center gap-2 pr-3 hairline-r">
+          <span class="ui-tag">{{ selectedItems.length }}</span>
+          <span class="whitespace-nowrap text-base font-medium">{{ noun }} selected</span>
         </div>
-      </Transition>
-    </Teleport>
 
-    <!-- Create Group Centered Mini Modal -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div
-          v-if="showModal"
-          class="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm select-none"
-          @click.self="closeCreateModal"
+        <!-- Create is the primary act: one click, a prefilled name, Enter. -->
+        <template v-if="!naming">
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" title="Create a group from the selection (⌘G)" @click="startCreate()">
+            <Icon icon="users" :size="13"/>
+            <span>Create group</span>
+          </button>
+        </template>
+        <form v-else class="flex items-center gap-1.5" @submit.prevent="create">
+          <input
+            ref="nameEl"
+            v-model="name"
+            type="text"
+            class="ui-input ui-input-sm w-44"
+            aria-label="Group name"
+            placeholder="Group name"
+            @keydown.esc.stop.prevent="cancel"
+          />
+          <span class="text-xs text-neutral-400">in</span>
+          <select v-if="!newDimension" class="ui-input ui-input-sm w-32" aria-label="Lens" :value="dimension" @change="onDimensionPick(($event.target as HTMLSelectElement).value)">
+            <option v-for="d in dimensions" :key="d" :value="d">{{ d }}</option>
+            <option value="__new__">New lens…</option>
+          </select>
+          <input
+            v-else
+            ref="dimensionEl"
+            v-model="dimension"
+            type="text"
+            class="ui-input ui-input-sm w-32"
+            aria-label="New lens"
+            placeholder="Domain, Layer…"
+            @keydown.esc.stop.prevent="newDimension = false; dimension = startDimension()"
+          />
+          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!name.trim()">Create</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="cancel">Cancel</button>
+        </form>
+
+        <!-- What the selection would be if it were said rather than listed.
+             Offered, never assumed: picking twelve of fourteen things by hand
+             is not the same as meaning "everything under booking", and only
+             the person pointing knows which they meant. Alt+Enter takes it. -->
+        <button
+          v-if="naming && pattern"
+          type="button"
+          class="ui-chip min-w-0 max-w-[26rem] gap-1.5"
+          :class="{ 'is-active': usePattern }"
+          :aria-pressed="usePattern"
+          :title="pattern.title"
+          @click="usePattern = !usePattern"
         >
-          <div class="bg-slate-900 border border-slate-700/60 rounded-2xl p-6 shadow-2xl w-80 text-white transform transition-all animate-modal-in">
-            <!-- Modal Header -->
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-widest mb-4">Create New Group</h3>
+          <Icon :icon="usePattern ? 'check' : 'braces'" :size="12" :class="usePattern ? '' : 'text-neutral-400'"/>
+          <span class="min-w-0 truncate font-mono text-sm">{{ pattern.lead }}</span>
+          <span v-if="pattern.extra" class="shrink-0 text-xs text-neutral-400">+{{ pattern.extra }}</span>
+        </button>
 
-            <!-- Modal Content -->
-            <div class="space-y-4">
-              <input
-                ref="nameInput"
-                v-model="newGroupName"
-                type="text"
-                placeholder="Group name..."
-                class="w-full bg-slate-800 border border-slate-700/60 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-semibold"
-                @keyup.enter="createNewGroup"
-                @keyup.esc="closeCreateModal"
-              />
-
-              <div class="flex justify-end gap-2 text-[10px] font-extrabold uppercase">
-                <button
-                  @click="closeCreateModal"
-                  class="px-3 py-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  Cancel
+        <div v-if="!naming" class="relative">
+          <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="addOpen" :disabled="groups.length === 0" :title="groups.length ? 'Add the selection to an existing group' : 'No groups yet'" @click.stop="addOpen = !addOpen">
+            <span>Add to</span>
+            <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
+          </button>
+          <div v-if="addOpen" class="fixed inset-0 z-40" @click="addOpen = false"></div>
+          <div v-if="addOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 flex w-60 -translate-x-1/2 flex-col animate-in" role="menu">
+            <div class="max-h-64 overflow-y-auto">
+              <template v-for="bucket in groupsStore.groupsByDimension" :key="bucket.dimension">
+                <div v-if="groupsStore.groupsByDimension.length > 1" class="ui-menu-title">{{ bucket.dimension }}</div>
+                <button v-for="g in bucket.groups" :key="g.id" type="button" class="ui-menu-item" role="menuitem" @click="addTo(g.id)">
+                  <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
+                  <span class="min-w-0 flex-1 truncate">{{ g.name }}</span>
+                  <span class="font-mono text-xs text-neutral-400">{{ g.members.length }}</span>
                 </button>
-                <button
-                  @click="createNewGroup"
-                  class="px-4 py-2 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white rounded-xl transition-colors cursor-pointer"
-                >
-                  Create
-                </button>
-              </div>
+              </template>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
-  </template>
+
+        <button v-if="!naming && inAnyGroup" type="button" class="ui-btn ui-btn-sm ui-btn-quiet whitespace-nowrap" title="Remove the selection from every group" @click="removeFromAll">
+          Remove from groups
+        </button>
+
+        <span class="ui-toolbar-sep"></span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear selection" title="Clear selection (Esc)" @click="emit('clear')">
+          <Icon icon="x" :size="13"/>
+        </button>
+      </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
-import { useGroupsStore } from '~/stores/groups'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import Icon from "~/components/ui/common/Icon.vue";
+import { usePatternOffer } from "~/composables/usePatternOffer";
+import { DEFAULT_DIMENSION, units, useGroupsStore, type SavedGroup, type UnitKind } from "~/stores/groups";
+import { useLensStore } from "~/stores/lens";
 
-const props = defineProps({
-  selectedItems: {
-    type: Array as () => string[],
-    required: true,
-  },
-  type: {
-    type: String as () => 'component' | 'file',
-    default: 'component',
-  },
-})
+// Module-level so every tray on every view shares the last used dimension;
+// the lens wins while it exists, so a quick group lands where you are looking.
+let lastDimension: string | null = null;
 
-const emit = defineEmits(['clear'])
+// The one selection tray for every view. A selection of components, files
+// or classes becomes a group in two keystrokes: ⌘G (or the Create button),
+// Enter. The group appears in the sidebar and the selected items recolour
+// where they are, so the result is seen where it was made.
 
-const groupsStore = useGroupsStore()
-const showPopover = ref(false)
-const showModal = ref(false)
-const newGroupName = ref('')
-const nameInput = ref<HTMLInputElement | null>(null)
-const popoverEl = ref<HTMLElement | null>(null)
+const props = withDefaults(defineProps<{
+  selectedItems: string[]
+  /** What the selected names are. Classes are their files. */
+  kind: UnitKind
+  /** The word for one selected item; defaults to the kind. */
+  noun?: string
+}>(), { noun: undefined });
 
-const availableGroups = computed(() => {
-  return props.type === 'component' ? groupsStore.allComponentGroups : groupsStore.allFileGroups
-})
+const emit = defineEmits<{
+  (e: "clear"): void
+  (e: "created", group: SavedGroup): void
+}>();
 
-function togglePopover() {
-  showPopover.value = !showPopover.value
-  if (showPopover.value) {
-    // Add window level listener to close popover when clicking outside
-    nextTick(() => {
-      window.addEventListener('click', handleWindowClick)
-      window.addEventListener('keydown', handleKeyDown)
-    })
+const groupsStore = useGroupsStore();
+const lens = useLensStore();
+const trayEl = ref<HTMLElement | null>(null);
+const startDimension = () => lens.active ?? lastDimension ?? DEFAULT_DIMENSION;
+const nameEl = ref<HTMLInputElement | null>(null);
+const naming = ref(false);
+const name = ref("");
+const addOpen = ref(false);
+
+const noun = computed(() => `${props.noun ?? props.kind}${props.selectedItems.length === 1 ? "" : "s"}`);
+
+// Dimension: which axis the new group cuts along. Remembered across
+// creations so "Domain, Domain, Domain" is three Enters, not three picks.
+const dimensionEl = ref<HTMLInputElement | null>(null);
+const dimension = ref(startDimension());
+const newDimension = ref(false);
+const dimensions = computed(() => {
+  const list = [...groupsStore.dimensions];
+  if (list.length === 0) list.push(DEFAULT_DIMENSION);
+  if (!list.includes(dimension.value) && dimension.value) list.push(dimension.value);
+  return list;
+});
+async function onDimensionPick(value: string) {
+  if (value === "__new__") {
+    newDimension.value = true;
+    dimension.value = "";
+    await nextTick();
+    dimensionEl.value?.focus();
   } else {
-    cleanupListeners()
+    dimension.value = value;
+  }
+}
+const groups = computed<SavedGroup[]>(() => groupsStore.groups);
+const selectedUnits = computed(() => units(props.kind, props.selectedItems));
+const inAnyGroup = computed(() => props.selectedItems.some(id => groupsStore.directGroupsOf(props.kind, id).length > 0));
+
+// ── Saying the selection instead of listing it ─────────────────────────
+//
+// A group written as a list of ids is a snapshot of a decision; written as a
+// pattern it is the decision, and it survives the rename that would have
+// emptied the list in silence. Measured across both benchmark snapshots, a
+// proposed group says itself exactly every time, and on a codebase whose
+// packages match its domains it usually takes one line.
+
+const usePattern = ref(false);
+
+const pattern = computed(() => {
+  if (!naming.value || props.selectedItems.length < 2) return null;
+  const universe = props.kind === "file"
+    ? Array.from(dataStore.fileComponentIndex.keys())
+    : Array.from(dataStore.componentFilesIndex.keys());
+  if (universe.length === 0) return null;
+  const sep = props.kind === "file" ? "/" : detectSeparator(universe);
+  const g = generalise(props.selectedItems, universe, sep);
+  const lines = g.terms.length + g.literals.length + g.exclusions.length;
+  // Only worth offering when it actually says something shorter. A "pattern"
+  // that is the same twelve ids with extra punctuation is a worse list.
+  if (g.terms.length === 0 || lines >= props.selectedItems.length) return null;
+  return { ...g, lines };
+});
+
+const patternGain = computed(() => {
+  if (!pattern.value) return "";
+  const extra = pattern.value.lines - 1;
+  return extra > 0 ? `+${extra} more ${extra === 1 ? "line" : "lines"}` : "1 line";
+});
+
+const patternTitle = computed(() =>
+  pattern.value
+    ? `Save as a query instead of ${props.selectedItems.length} names:\n\n${pattern.value.text}\n\nIt keeps matching as the code moves, and says so when it stops.`
+    : "");
+
+function nextName(): string {
+  const taken = new Set(groups.value.map(g => g.name));
+  let n = groups.value.length + 1;
+  while (taken.has(`Group ${n}`)) n++;
+  return `Group ${n}`;
+}
+
+async function startCreate(suggested?: string) {
+  if (!props.selectedItems.length) return;
+  addOpen.value = false;
+  name.value = (typeof suggested === "string" && suggested.trim()) || nextName();
+  usePattern.value = false;
+  dimension.value = startDimension();
+  newDimension.value = false;
+  naming.value = true;
+  await nextTick();
+  nameEl.value?.focus();
+  nameEl.value?.select();
+}
+
+function cancel() {
+  naming.value = false;
+}
+
+let creating = false;
+function create() {
+  const label = name.value.trim();
+  if (!label || creating) return;
+  creating = true;
+  try {
+    const dim = dimension.value.trim() || DEFAULT_DIMENSION;
+    const group = groupsStore.createGroup(label, selectedUnits.value, dim);
+    // The members stay as written so nothing reading them sees an empty
+    // group; once there is a query, resolution comes from the snapshot.
+    if (usePattern.value && pattern.value) groupsStore.setQuery(group.id, pattern.value.text, "live");
+    lastDimension = dim;
+    newDimension.value = false;
+    emit("created", group);
+  } catch (err) {
+    console.error("Could not create group", err);
+  } finally {
+    // Whatever happened in the store, the tray leaves naming mode and hands
+    // the selection back, so it can never be left half-way.
+    naming.value = false;
+    creating = false;
+    emit("clear");
   }
 }
 
-function handleWindowClick(event: MouseEvent) {
-  if (popoverEl.value && !popoverEl.value.contains(event.target as Node)) {
-    showPopover.value = false
-    cleanupListeners()
+function addTo(groupId: string) {
+  groupsStore.addMembersToGroup(groupId, selectedUnits.value);
+  addOpen.value = false;
+  emit("clear");
+}
+
+function removeFromAll() {
+  for (const g of groups.value) groupsStore.removeMembersFromGroup(g.id, selectedUnits.value);
+  emit("clear");
+}
+
+// ⌘G / Ctrl+G creates from the current selection wherever the tray is shown.
+function onKey(event: KeyboardEvent) {
+  if (!props.selectedItems.length) return;
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+    event.preventDefault();
+    if (!naming.value) startCreate();
+    return;
+  }
+  if (event.altKey && event.key === "Enter" && naming.value && pattern.value) {
+    event.preventDefault();
+    usePattern.value = true;
+    create();
   }
 }
+onMounted(() => window.addEventListener("keydown", onKey));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
+watch(() => props.selectedItems.length, (n) => { if (n === 0) { naming.value = false; addOpen.value = false; usePattern.value = false; } });
 
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    showPopover.value = false
-    closeCreateModal()
-    cleanupListeners()
-  }
-}
-
-function cleanupListeners() {
-  window.removeEventListener('click', handleWindowClick)
-  window.removeEventListener('keydown', handleKeyDown)
-}
-
-onBeforeUnmount(() => {
-  cleanupListeners()
-})
-
-function addToGroup(groupId: string) {
-  groupsStore.addMembersToGroup(groupId, props.selectedItems)
-  showPopover.value = false
-  cleanupListeners()
-  emit('clear')
-}
-
-function openCreateModal() {
-  showPopover.value = false
-  cleanupListeners()
-  showModal.value = true
-  newGroupName.value = ''
-  nextTick(() => {
-    nameInput.value?.focus()
-  })
-}
-
-function closeCreateModal() {
-  showModal.value = false
-}
-
-function createNewGroup() {
-  const name = newGroupName.value.trim()
-  if (!name) return
-  groupsStore.createGroup(props.type, name, props.selectedItems)
-  showModal.value = false
-  newGroupName.value = ''
-  emit('clear')
-}
-
-function removeFromAllGroups() {
-  const groups = props.type === 'component' ? groupsStore.allComponentGroups : groupsStore.allFileGroups
-  for (const group of groups) {
-    const hasOverlap = props.selectedItems.some(item => group.members.includes(item))
-    if (hasOverlap) {
-      groupsStore.removeMembersFromGroup(group.id, props.selectedItems)
-    }
-  }
-  emit('clear')
-}
+defineExpose({ startCreate });
 </script>
 
 <style scoped>
-.animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.tray-enter-active {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease-out;
 }
-
-@keyframes slideUp {
-  from {
-    transform: translate(-50%, 2rem);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, 0);
-    opacity: 1;
-  }
+.tray-leave-active {
+  transition: transform 140ms ease-in, opacity 120ms ease-in;
 }
-
-/* Popover Fade Transition */
-.popover-fade-enter-active,
-.popover-fade-leave-active {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
-}
-.popover-fade-enter-from,
-.popover-fade-leave-to {
-  transform: translate(-50%, 0.5rem) scale(0.96);
+.tray-enter-from, .tray-leave-to {
+  transform: translateY(12px);
   opacity: 0;
-}
-
-/* Modal Fade Transition */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-/* Modal Scale Animation */
-.animate-modal-in {
-  animation: modalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes modalScale {
-  from {
-    transform: scale(0.94);
-  }
-  to {
-    transform: scale(1);
-  }
 }
 </style>

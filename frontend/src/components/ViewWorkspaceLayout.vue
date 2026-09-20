@@ -1,177 +1,181 @@
 <template>
-  <div class="flex flex-col gap-4 w-full h-full min-h-0">
-    
-    <!-- 🎛️ UNIFIED HEADER TOOLBAR -->
-    <header class="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-3xs flex flex-wrap items-center justify-between gap-4 select-none shrink-0">
-      
-      <!-- Title & KPI Stats -->
-      <div class="flex flex-col gap-1">
-        <div class="flex items-center gap-2">
-          <h2 class="text-sm font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            <slot name="title">{{ title }}</slot>
-            <span 
-              v-if="badgeText" 
-              class="px-1.5 py-0.5 rounded-xs text-[8px] font-extrabold tracking-wider uppercase border"
-              :class="badgeColorClass || 'bg-slate-100 text-slate-700 border-slate-200'"
-            >
-              {{ badgeText }}
-            </span>
-          </h2>
-        </div>
-        <div class="text-[9px] font-bold text-slate-400 flex items-center flex-wrap gap-1.5">
-          <span v-if="nodesCount !== undefined">
-            {{ statsLabels.nodes || 'Nodes' }}: 
-            <strong class="text-slate-600 font-bold">{{ nodesCount }}</strong>
-          </span>
-          <span v-if="nodesCount !== undefined && connectionsCount !== undefined" class="text-slate-300">•</span>
-          <span v-if="connectionsCount !== undefined">
-            {{ statsLabels.connections || 'Connections' }}: 
-            <strong class="text-slate-600 font-bold">{{ connectionsCount }}</strong>
-          </span>
+  <div class="flex h-full min-h-0 w-full flex-col bg-surface">
+    <!-- Tool-window toolbar, one fixed order for every view:
+         title and counts · scope chip | switches … search · actions · Configure · inspector toggle.
+         The row is a window drag region; its controls opt out. -->
+    <header ref="headerEl" class="ui-toolbar drag-region gap-3">
+      <div ref="leftEl" class="flex shrink-0 items-center gap-3">
+        <h2 class="ui-toolbar-title flex shrink-0 items-center gap-2">
+          <slot name="title">{{ title }}</slot>
+        </h2>
+        <span v-if="badgeText" class="ui-tag shrink-0">{{ badgeText }}</span>
+        <span v-show="level < 2" ref="metaEl" class="ui-toolbar-meta flex shrink-0 items-center gap-1.5">
+          <span v-if="nodesCount !== undefined">{{ statsLabels.nodes || 'Nodes' }} <span class="text-neutral-800">{{ nodesCount }}</span></span>
+          <span v-if="nodesCount !== undefined && connectionsCount !== undefined" class="text-neutral-300">·</span>
+          <span v-if="connectionsCount !== undefined">{{ statsLabels.connections || 'Connections' }} <span class="text-neutral-800">{{ connectionsCount }}</span></span>
           <slot name="stats"></slot>
-        </div>
+        </span>
+        <!-- The query is scope, not a view setting, so it lives beside the
+             scope chips rather than among the switches — which fold into
+             Configure on a narrow window, and folded away the one control
+             the architect had just started using. -->
+        <QueryBar v-if="queryable" :keep-into="keepInto" class="shrink-0"/>
+        <ScopeBar/>
       </div>
 
-      <!-- Toolbar Actions -->
-      <div class="flex items-center gap-3">
-        <!-- Search filter -->
-        <div v-if="searchQuery !== undefined" class="relative flex items-center">
-          <input 
-            :value="searchQuery" 
-            @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
-            type="text" 
-            placeholder="Search components..." 
-            class="bg-white border border-slate-200 focus:border-slate-350 text-[10px] font-semibold pl-7 pr-3 py-1.5 rounded-xl outline-hidden text-slate-700 placeholder-slate-400 transition-all shadow-3xs w-44 md:w-56"
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 absolute left-2.5 text-slate-400">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
-          </svg>
-          <button 
-            v-if="searchQuery"
-            @click="$emit('update:searchQuery', '')"
-            class="absolute right-2.5 text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer px-1"
-          >
-            ×
-          </button>
+      <template v-if="hasSwitches && !narrow">
+        <span class="ui-toolbar-sep shrink-0" aria-hidden="true"></span>
+        <div ref="switchesEl" class="flex min-w-0 items-center gap-2 overflow-hidden">
+          <slot name="switches"></slot>
         </div>
+      </template>
 
-        <!-- Extra Action Controls Slot -->
+      <div ref="rightEl" class="ml-auto flex shrink-0 items-center gap-2">
+        <label v-if="searchQuery !== undefined" ref="searchEl" class="relative flex items-center">
+          <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
+          <input
+            :value="searchQuery"
+            @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
+            type="search"
+            :placeholder="level >= 1 ? '' : searchPlaceholder"
+            :aria-label="searchPlaceholder"
+            :title="searchPlaceholder"
+            class="ui-input ui-input-sm pl-7 pr-6 transition-[width] duration-150"
+            :class="level >= 1 && !searchQuery ? 'w-8 focus:w-44' : hasSwitches ? 'w-48' : 'w-56'"
+          />
+          <button v-if="searchQuery" type="button" class="absolute right-1.5 text-neutral-400 hover:text-neutral-700" aria-label="Clear search" @click="$emit('update:searchQuery', '')">
+            <Icon icon="x" :size="12"/>
+          </button>
+        </label>
+
         <slot name="actions"></slot>
 
-        <!-- Configure popover trigger -->
-        <div v-if="showConfig" class="relative">
-          <button 
-            @click="showConfigPopover = !showConfigPopover"
-            class="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-3xs active:scale-95 z-50 relative"
-          >
-            <span>⚙</span>
+        <div v-if="showConfig || (hasSwitches && narrow)" class="relative">
+          <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="showConfigPopover" @click="showConfigPopover = !showConfigPopover">
+            <Icon icon="settings" :size="13" class="text-neutral-500"/>
             <span>Configure</span>
-            <span class="text-[7px] text-slate-400">{{ showConfigPopover ? '▲' : '▼' }}</span>
           </button>
-          
-          <!-- Transparent backdrop overlay to capture outside clicks -->
           <div v-if="showConfigPopover" class="fixed inset-0 z-40 cursor-default" @click="showConfigPopover = false"></div>
-
-          <!-- POPOVER DROPDOWN MENU -->
-          <div 
-            v-if="showConfigPopover" 
-            class="absolute right-0 mt-2 w-64 md:w-80 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xl z-50 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-150"
-          >
-            <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
-              <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Configuration Settings</span>
-              <button @click="showConfigPopover = false" class="text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer">✕</button>
+          <div v-if="showConfigPopover" class="ui-popover absolute right-0 z-50 mt-1 flex w-72 flex-col gap-3 p-3 animate-in md:w-80">
+            <div class="flex items-center justify-between pb-2 hairline-b">
+              <span class="text-base font-semibold text-neutral-900">Configuration</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="showConfigPopover = false"><Icon icon="x" :size="13"/></button>
             </div>
-            
+            <!-- Narrow windows fold the toolbar switches in here so the row never wraps. -->
+            <div v-if="hasSwitches && narrow" class="flex flex-wrap items-center gap-2" :class="{ 'pb-3 hairline-b': showConfig }">
+              <slot name="switches"></slot>
+            </div>
             <slot name="config-popover" :close="() => showConfigPopover = false"></slot>
           </div>
         </div>
 
-        <!-- Toggle Sidebar button -->
-        <button 
+        <button
           v-if="tabs && tabs.length > 0"
+          type="button"
+          class="ui-btn ui-btn-sm ui-btn-icon"
+          :class="{ 'bg-neutral-100': isSidebarOpen }"
+          :aria-pressed="isSidebarOpen"
+          :title="isSidebarOpen ? 'Hide panel' : 'Show panel'"
           @click="$emit('update:isSidebarOpen', !isSidebarOpen)"
-          class="flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 transition-all cursor-pointer shadow-3xs active:scale-95"
-          :class="{ 'bg-slate-50 border-slate-350 text-slate-800': isSidebarOpen }"
-          :title="isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25V18M9 8.25V18m0-9.75h9.75A2.25 2.25 0 0 1 21 10.5v7.5A2.25 2.25 0 0 1 18.75 20.25H9" />
-          </svg>
+          <Icon :icon="isSidebarOpen ? 'panel-right-close' : 'panel-right'" :size="14" class="text-neutral-600"/>
         </button>
       </div>
     </header>
 
-    <!-- 🌐 MAIN APPLICATION WORKSPACE -->
-    <div class="flex grow relative overflow-hidden bg-slate-50 border border-slate-200/60 rounded-3xl shadow-3xs">
-      
-      <!-- LEFT WORKSPACE: Main Visualizer -->
-      <div class="grow h-full flex flex-col justify-center items-center relative transition-all duration-300 ease-in-out p-4 min-w-0">
+    <!-- Workspace: visualizer left, inspector right. -->
+    <div class="relative flex min-h-0 grow overflow-hidden">
+      <div class="relative flex min-w-0 grow flex-col overflow-hidden">
         <slot name="visualizer"></slot>
-        
-        <!-- Overlays (e.g. Floating zoom, context actions bar, help panels) -->
         <slot name="visualizer-overlays"></slot>
       </div>
 
-      <!-- RIGHT DRAWER: Dynamic Collapsible Tabbed Sidebar -->
-      <aside 
+      <aside
         v-if="tabs && tabs.length > 0"
-        class="h-full border-l border-slate-200 bg-white transition-all duration-300 ease-in-out flex flex-col overflow-hidden z-20 shrink-0"
-        :style="{ width: isSidebarOpen ? sidebarWidth : '0px', opacity: isSidebarOpen ? 1 : 0, minWidth: isSidebarOpen ? sidebarWidth : '0px' }"
+        class="relative flex h-full shrink-0 flex-col overflow-hidden bg-ground hairline-l"
+        :class="dragging ? '' : 'transition-[width]'"
+        :style="{ width: isSidebarOpen ? inspectorWidth + 'px' : '0px', minWidth: isSidebarOpen ? inspectorWidth + 'px' : '0px' }"
       >
-        <!-- Tab Selectors -->
-        <div v-if="tabs.length > 1" class="flex border-b border-slate-100 bg-slate-50/50 p-2 shrink-0 gap-1 select-none">
-          <button 
+        <PaneHandle
+          v-if="isSidebarOpen"
+          side="left"
+          label="Resize inspector"
+          :model-value="inspectorWidth"
+          :min="INSPECTOR.min"
+          :max="INSPECTOR.max"
+          @update:model-value="panes.setInspector"
+          @reset="panes.setInspector(null)"
+          @drag-start="dragging = true"
+          @drag-end="dragging = false"
+        />
+        <div v-if="tabs.length > 1" class="flex h-9 shrink-0 items-stretch gap-3 px-3 hairline-b" role="tablist">
+          <button
             v-for="tab in tabs"
             :key="tab.id"
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === tab.id"
+            class="-mb-px border-b-2 px-0.5 text-sm font-medium transition-colors"
+            :class="activeTab === tab.id ? 'border-accent-500 text-neutral-900' : 'border-transparent text-neutral-500 hover:text-neutral-800'"
             @click="$emit('update:activeTab', tab.id)"
-            class="flex-1 text-[10px] font-extrabold py-2 px-3 rounded-lg capitalize tracking-wider transition-all cursor-pointer text-center"
-            :class="activeTab === tab.id 
-              ? 'bg-white text-slate-800 shadow-3xs border border-slate-200/20' 
-              : 'text-slate-500 hover:text-slate-700'"
           >
-            {{ tab.label }}
+            {{ cleanLabel(tab.label) }}
           </button>
         </div>
 
-        <!-- Sidebar Body Scroll area -->
-        <div class="grow overflow-y-auto p-5 flex flex-col gap-5 scroll-container">
-          <div v-for="tab in tabs" :key="'body-' + tab.id" v-show="activeTab === tab.id">
+        <div class="flex grow flex-col gap-4 overflow-y-auto p-4">
+          <div v-for="tab in tabs" :key="'body-' + tab.id" v-show="activeTab === tab.id" class="flex flex-col gap-4">
             <slot :name="`tab-${tab.id}`"></slot>
           </div>
         </div>
       </aside>
-
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
+import Icon from "~/components/ui/common/Icon.vue";
+import QueryBar from "~/components/groups/QueryBar.vue";
+import ScopeBar from "~/components/shell/ScopeBar.vue";
+import PaneHandle from "~/components/shell/PaneHandle.vue";
+import { INSPECTOR, usePanesStore } from "~/stores/panes";
 
 const props = withDefaults(defineProps<{
+  /**
+   * Whether this view answers a query. On by default: the query narrows the
+   * scope, and every view that filters by scope already answers one. A view
+   * that shows a single component or a chart of the whole repo turns it off.
+   */
+  queryable?: boolean
+  /** Where a kept finding goes: a lens the architect is asked to pick, or the
+   *  draft this view is already building. */
+  keepInto?: "lens" | "draft"
   title?: string
   badgeText?: string
-  badgeColorClass?: string
   nodesCount?: number
   connectionsCount?: number
   statsLabels?: { nodes?: string; connections?: string }
   searchQuery?: string
+  searchPlaceholder?: string
   isSidebarOpen?: boolean
   activeTab?: string
   tabs?: Array<{ id: string; label: string }>
   showConfig?: boolean
+  /** The view's suggested inspector width; the user's dragged width wins once set. */
   sidebarWidth?: string
-}>(), {
+}>(), { queryable: true,
+  keepInto: 'lens',
   title: '',
   badgeText: '',
-  badgeColorClass: '',
   statsLabels: () => ({ nodes: 'Nodes', connections: 'Connections' }),
   searchQuery: undefined,
+  searchPlaceholder: 'Search components',
   isSidebarOpen: true,
   activeTab: '',
   tabs: () => [],
   showConfig: false,
-  sidebarWidth: '360px'
+  sidebarWidth: `${INSPECTOR.default}px`
 })
 
 defineEmits<{
@@ -180,23 +184,59 @@ defineEmits<{
   (e: 'update:activeTab', val: string): void
 }>()
 
+const slots = useSlots()
+const hasSwitches = computed(() => !!slots.switches)
 const showConfigPopover = ref(false)
-</script>
 
-<style scoped>
-/* Sleek custom scrollbar style inside drawer */
-.scroll-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+const panes = usePanesStore()
+const dragging = ref(false)
+const inspectorWidth = computed(() => {
+  const suggested = parseInt(props.sidebarWidth, 10) || INSPECTOR.default
+  return panes.inspectorWidth ?? Math.min(INSPECTOR.max, Math.max(INSPECTOR.min, suggested))
+})
+
+// The row never wraps. When it cannot hold everything it gives ground in
+// order: the search shrinks to an icon, then the counts hide, then the
+// switches fold into Configure. Natural widths are remembered from the last
+// time each part was shown so the row can grow back.
+const level = ref(0)
+const narrow = computed(() => level.value >= 3)
+const headerEl = ref<HTMLElement | null>(null)
+const leftEl = ref<HTMLElement | null>(null)
+const metaEl = ref<HTMLElement | null>(null)
+const rightEl = ref<HTMLElement | null>(null)
+const switchesEl = ref<HTMLElement | null>(null)
+const searchEl = ref<HTMLElement | null>(null)
+const natural = { switches: 0, meta: 0, search: 0 }
+let observer: ResizeObserver | null = null
+
+function measure() {
+  if (!headerEl.value || !leftEl.value || !rightEl.value) return
+  if (switchesEl.value && level.value < 3) natural.switches = Math.max(natural.switches, switchesEl.value.scrollWidth + 28)
+  if (metaEl.value && level.value < 2) natural.meta = Math.max(natural.meta, metaEl.value.offsetWidth + 12)
+  if (searchEl.value && level.value < 1) natural.search = Math.max(natural.search, searchEl.value.offsetWidth)
+  const leftFixed = leftEl.value.offsetWidth - (level.value < 2 ? natural.meta - 12 : 0)
+  const rightFixed = rightEl.value.offsetWidth - (searchEl.value ? searchEl.value.offsetWidth : 0) - (level.value >= 3 && !props.showConfig ? 104 : 0)
+  const room = headerEl.value.clientWidth - 36 - leftFixed - rightFixed
+  const need = (lvl: number) =>
+    (lvl >= 1 ? (searchEl.value ? 36 : 0) : natural.search) +
+    (lvl >= 2 ? 0 : natural.meta) +
+    (hasSwitches.value ? (lvl >= 3 ? (props.showConfig ? 0 : 104) : natural.switches) : 0)
+  let next = 0
+  while (next < 3 && need(next) > room) next++
+  if (next !== level.value) level.value = next
 }
-.scroll-container::-webkit-scrollbar-track {
-  background: transparent;
+onMounted(() => {
+  panes.load()
+  observer = new ResizeObserver(() => measure())
+  if (headerEl.value) observer.observe(headerEl.value)
+  nextTick(measure)
+})
+watch([hasSwitches, () => props.nodesCount, () => props.connectionsCount, () => props.searchQuery], () => nextTick(measure))
+onBeforeUnmount(() => observer?.disconnect())
+
+// Tab labels arrive with decorative glyphs from older views; the frame shows words only.
+function cleanLabel(label: string): string {
+  return label.replace(/[\p{Extended_Pictographic}️]/gu, '').trim()
 }
-.scroll-container::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-.scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-</style>
+</script>

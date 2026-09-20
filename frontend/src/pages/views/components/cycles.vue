@@ -1,549 +1,359 @@
 <template>
   <ViewWorkspaceLayout
-    title="Dependency Cycles Explorer"
-    :badge-text="`${filteredCycles.length} Cycles`"
-    :kpi-stats="kpiStats"
+    title="Cycles"
     v-model:search-query="searchQuery"
-    :show-search="true"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
     :tabs="tabs"
-    sidebar-width="380px"
+    sidebar-width="360px"
   >
-    <!-- Header Toolbar Sort Actions -->
-    <template #actions>
-      <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50 select-none">
-        <button 
-          @click="sortBy = 'severity'"
-          class="px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all duration-150 cursor-pointer"
-          :class="sortBy === 'severity' ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-800'"
-        >
-          Sort: Severity
-        </button>
-        <button 
-          @click="sortBy = 'size'"
-          class="px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all duration-150 cursor-pointer"
-          :class="sortBy === 'size' ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-800'"
-        >
-          Sort: Size
-        </button>
-        <button 
-          @click="sortBy = 'sharedCommits'"
-          class="px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all duration-150 cursor-pointer"
-          :class="sortBy === 'sharedCommits' ? 'bg-white text-slate-900 shadow-3xs' : 'text-slate-500 hover:text-slate-800'"
-        >
-          Sort: Co-changes
-        </button>
-      </div>
+    <template #stats>
+      <span>{{ countText }}</span>
     </template>
 
-    <!-- Visualizer Canvas Slot (Left Column) -->
+    <template #switches>
+      <div class="ui-segmented" role="group" aria-label="Sort cycles">
+        <button type="button" :aria-pressed="sortBy === 'severity'" @click="sortBy = 'severity'">Severity</button>
+        <button type="button" :aria-pressed="sortBy === 'size'" @click="sortBy = 'size'">Size</button>
+        <button type="button" :aria-pressed="sortBy === 'sharedCommits'" @click="sortBy = 'sharedCommits'">Co-changes</button>
+      </div>
+      <SingleSelect v-if="groupOptions.length > 1" v-model="groupFilter" :options="groupOptions" placeholder="All groups"/>
+    </template>
+
+    <!-- Canvas: the selected cycle's loop and its connections. -->
     <template #visualizer>
-      <div v-if="selectedCycle" class="w-full h-full flex flex-col gap-6 p-6 overflow-y-auto scroll-container">
-        <!-- Loop Visualizer Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 select-none">
-          <div>
-            <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Cycle Loop Visualizer</h3>
-            <p class="text-[9px] text-slate-450 font-semibold font-mono">Cycle #{{ selectedCycle.id }} · {{ selectedCycle.size }} nodes · severity score: {{ selectedCycle.severity }}</p>
-          </div>
-          <button 
-            @click="saveCycleAsGroup"
-            class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-bold shadow-3xs cursor-pointer flex items-center gap-1.5 transition-all"
-          >
-            <span>💼</span>
-            <span>Save Cycle as Group</span>
+      <template v-if="selectedCycle">
+        <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
+          <span class="font-mono text-sm font-medium text-neutral-900">Cycle #{{ selectedCycle.id }}</span>
+          <span class="ui-toolbar-meta flex items-center gap-1.5">
+            <span>{{ selectedCycle.size }} nodes</span>
+            <span class="text-neutral-300">·</span>
+            <span>severity {{ selectedCycle.severity }}</span>
+            <span class="text-neutral-300">·</span>
+            <span>{{ selectedCycle.sharedCommits }} co-changes</span>
+          </span>
+          <button type="button" class="ui-btn ui-btn-sm ml-auto" @click="saveCycleAsGroup">
+            <Icon icon="bookmark" :size="13" class="text-neutral-500"/>
+            <span>Save cycle as group</span>
           </button>
         </div>
 
-        <!-- Circular/D3 Graph -->
-        <div class="h-[430px] flex flex-col shrink-0">
-          <CycleLoopChart 
-            :cycle-text="selectedCycle.cycleText"
+        <div class="relative min-h-0 grow">
+          <CycleLoopChart
             :nodes="selectedCycle.nodes"
-            :edges="selectedCycleEdges"
+            :edges="edges"
             :selected-edge="selectedEdge"
             @select-edge="onSelectEdge"
-            class="flex-1"
           />
         </div>
 
-        <!-- Diagnostics Grid Section -->
-        <div v-if="breakingPoint" class="grid grid-cols-1 lg:grid-cols-2 gap-6 shrink-0">
-          
-          <!-- LEFT COLUMN: Loop Connections List -->
-          <div class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs flex flex-col gap-4 text-slate-800 select-none">
-            <div class="flex flex-col gap-1.5">
-              <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest font-extrabold">Loop Connections</h4>
-              
-              <!-- Diagnostics summary alert -->
-              <div class="bg-indigo-50/40 border border-indigo-100/60 rounded-2xl p-3 text-[9.5px] text-indigo-950 font-semibold select-none flex items-start gap-2 mb-1.5 mt-1">
-                <span class="text-xs shrink-0">⛓</span>
-                <div class="flex flex-col gap-0.5">
-                  <span class="font-extrabold text-indigo-900">Cycle Group Span</span>
-                  <span>{{ selectedCycleGroupSpanSummary }}</span>
-                </div>
-              </div>
-
-              <p class="text-[10px] text-slate-400 leading-relaxed font-semibold">
-                Select a connection below or click a path on the graph to inspect import locations.
-              </p>
-              
-              <!-- Subtle Weakest Link Callout (one-line info note) -->
-              <div class="text-[9.5px] text-slate-550 font-semibold border-t border-slate-100 pt-2.5 mt-1.5">
-                💡 <span class="font-extrabold text-slate-655">Weakest Link Analysis:</span> 
-                The path from <span class="font-bold font-mono text-slate-700">{{ getAbbreviatedName(breakingPoint.from) }}</span> to <span class="font-bold font-mono text-slate-700">{{ getAbbreviatedName(breakingPoint.to) }}</span> has the fewest references ({{ breakingPoint.referenceCount }} imports). 
-                <button 
-                  @click="selectedEdge = { from: breakingPoint.from, to: breakingPoint.to }"
-                  class="text-indigo-600 font-extrabold hover:underline ml-1 cursor-pointer"
+        <!-- Loop connections: one row per edge, weakest first. -->
+        <div class="flex max-h-[38%] shrink-0 flex-col hairline-t">
+          <div class="flex h-9 shrink-0 items-center gap-2 px-4">
+            <span class="ui-section-title">Loop connections</span>
+            <span class="ui-toolbar-meta">{{ edgesLoading ? 'Reading imports and shared commits…' : 'Click a row or an edge to inspect it' }}</span>
+          </div>
+          <div class="min-h-0 overflow-y-auto">
+            <table class="ui-table">
+              <thead>
+                <tr>
+                  <th>From</th>
+                  <th></th>
+                  <th>To</th>
+                  <th class="text-right">Imports</th>
+                  <th class="text-right">Co-changes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="edge in sortedEdges"
+                  :key="edgeKey(edge)"
+                  class="is-clickable"
+                  :class="{ 'is-selected': isSelectedEdge(edge) }"
+                  @click="selectedEdge = { from: edge.from, to: edge.to }"
                 >
-                  Inspect
-                </button>
-              </div>
-            </div>
-
-            <!-- Compact Connections List (no borders, divider line) -->
-            <div class="flex flex-col gap-1 max-h-96 overflow-y-auto scroll-container pr-1 border-t border-slate-100 pt-2">
-              <button 
-                v-for="edge in sortedEdges" 
-                :key="`${edge.from}-${edge.to}`"
-                @click="selectedEdge = { from: edge.from, to: edge.to }"
-                class="w-full text-left rounded-xl px-3 py-2.5 flex items-center justify-between transition-all duration-150 cursor-pointer"
-                :class="selectedEdge && selectedEdge.from === edge.from && selectedEdge.to === edge.to 
-                  ? 'bg-indigo-50/70 border-l-4 border-indigo-500 text-indigo-900 shadow-3xs' 
-                  : 'hover:bg-slate-50/50 text-slate-700 border-l-4 border-transparent'"
-              >
-                <div class="flex items-center gap-1.5 min-w-0 text-[10px] font-extrabold">
-                  <span v-if="getGroupDotStyle(edge.from)" class="w-1.5 h-1.5 rounded-full shrink-0" :style="getGroupDotStyle(edge.from)"></span>
-                  <span class="truncate" :title="edge.from">{{ getAbbreviatedName(edge.from) }}</span>
-                  <span class="text-slate-400 font-normal">➜</span>
-                  <span v-if="getGroupDotStyle(edge.to)" class="w-1.5 h-1.5 rounded-full shrink-0" :style="getGroupDotStyle(edge.to)"></span>
-                  <span class="truncate" :title="edge.to">{{ getAbbreviatedName(edge.to) }}</span>
-                </div>
-                
-                <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-[9px] font-mono text-slate-500 font-medium">
-                    {{ edge.referenceCount }} imports • {{ edge.sharedCommits }} co-changes
-                  </span>
-                  <span 
-                    v-if="breakingPoint && breakingPoint.from === edge.from && breakingPoint.to === edge.to"
-                    class="text-[7.5px] font-black px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 uppercase tracking-wider scale-90"
-                  >
-                    Weakest
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <!-- RIGHT COLUMN: Connection Inspector -->
-          <div class="bg-white border border-slate-200/60 rounded-3xl p-6 shadow-3xs flex flex-col gap-4 text-slate-800 select-none">
-            <div v-if="activeInspectorEdge" class="flex flex-col gap-4">
-              <!-- Header info of selected connection -->
-              <div class="flex flex-col gap-1">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest font-extrabold">Connection Inspector</h4>
-                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-900 font-mono mt-1">
-                  <span class="truncate max-w-[42%]" :title="activeInspectorEdge.from">{{ getAbbreviatedName(activeInspectorEdge.from) }}</span>
-                  <span class="text-indigo-500 font-extrabold shrink-0">➜</span>
-                  <span class="truncate max-w-[42%]" :title="activeInspectorEdge.to">{{ getAbbreviatedName(activeInspectorEdge.to) }}</span>
-                </div>
-              </div>
-
-              <!-- Stats Row -->
-              <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 flex flex-col gap-0.5">
-                  <span class="text-[8px] text-slate-450 font-black uppercase tracking-wider">Total References</span>
-                  <span class="text-base font-black text-slate-950 font-mono">
-                    {{ activeInspectorEdge.referenceCount }} 
-                    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">imports</span>
-                  </span>
-                </div>
-                <div class="bg-slate-50/50 border border-slate-100 rounded-2xl p-3.5 flex flex-col gap-0.5">
-                  <span class="text-[8px] text-slate-450 font-black uppercase tracking-wider">Logical Co-changes</span>
-                  <span class="text-base font-black text-slate-950 font-mono">
-                    {{ activeInspectorEdge.sharedCommits }} 
-                    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">commits</span>
-                  </span>
-                </div>
-              </div>
-
-              <!-- Collapsible Tie Alert -->
-              <div v-if="hasTies" class="bg-amber-50/40 border border-amber-200/50 rounded-2xl p-3 text-slate-800 flex flex-col gap-1.5">
-                <div class="flex items-center justify-between cursor-pointer select-none" @click="isTiesExpanded = !isTiesExpanded">
-                  <div class="flex items-center gap-2 text-[9px] font-extrabold text-amber-800">
-                    <span>⚠️ {{ tiedEdges.length }} connections are tied ({{ breakingPoint.referenceCount }} imports)</span>
-                  </div>
-                  <span class="text-[8px] text-amber-700 underline font-black hover:text-amber-955 uppercase tracking-wider">
-                    {{ isTiesExpanded ? 'Collapse' : 'Expand Ties' }}
-                  </span>
-                </div>
-                <div v-if="isTiesExpanded" class="flex flex-wrap gap-1.5 mt-1 animate-in fade-in duration-200">
-                  <button 
-                    v-for="edge in tiedEdges.filter(e => e.from !== activeInspectorEdge.from || e.to !== activeInspectorEdge.to)" 
-                    :key="`${edge.from}-${edge.to}`"
-                    @click="selectedEdge = { from: edge.from, to: edge.to }"
-                    class="bg-white border border-amber-200 hover:border-indigo-500 hover:bg-indigo-50/5 rounded-lg px-2.5 py-1 text-[8.5px] font-mono font-bold text-amber-800 transition-all duration-150 cursor-pointer"
-                  >
-                    {{ getAbbreviatedName(edge.from) }} ➜ {{ getAbbreviatedName(edge.to) }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Action Button to open Modal Dialog -->
-              <button 
-                @click="openFilesDialog" 
-                class="w-full mt-2 bg-slate-900 hover:bg-indigo-600 text-white font-extrabold text-xs py-3 rounded-2xl flex items-center justify-center gap-2 shadow-xs transition-all duration-150 cursor-pointer"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </svg>
-                <span>Inspect Import Locations ({{ activeInspectorEdge.files.length }} {{ activeInspectorEdge.files.length === 1 ? 'file' : 'files' }})</span>
-              </button>
-            </div>
-            
-            <div v-else class="h-full flex items-center justify-center text-slate-400 text-xs italic py-12">
-              Select a connection to view details.
-            </div>
-           </div>
-      </div>
-    </div>
-      
-      <!-- Empty State / No Selected Cycle -->
-      <div v-else class="w-full h-full flex items-center justify-center p-6">
-        <div class="text-center p-8 bg-white border border-slate-200/60 rounded-3xl shadow-xs max-w-sm flex flex-col items-center gap-3 select-none">
-          <span class="p-3 bg-indigo-50 text-indigo-500 rounded-2xl">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-          </span>
-          <h3 class="text-xs font-bold text-slate-800">Visual Cycle Loop Inspector</h3>
-          <p class="text-[10px] text-slate-400 leading-relaxed">Select one of the architectural cycles in the sidebar to visualize connection paths, trace co-change flows, and inspect the weakest link analysis details.</p>
-        </div>
-      </div>
-
-      <!-- File Locations Modal Dialog -->
-      <div 
-        v-if="isFilesDialogOpen"
-        class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
-        @click.self="closeFilesDialog"
-      >
-        <div class="bg-white rounded-3xl p-6 shadow-2xl w-[520px] max-w-[95vw] border border-slate-200/50 flex flex-col gap-4 text-slate-800 animate-scale-up">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3 select-none">
-            <div>
-              <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Import Locations</h3>
-              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-900 font-mono mt-1">
-                <span>{{ getAbbreviatedName(activeInspectorEdge?.from || '') }}</span>
-                <span class="text-indigo-500 font-extrabold">➜</span>
-                <span>{{ getAbbreviatedName(activeInspectorEdge?.to || '') }}</span>
-              </div>
-            </div>
-            <button @click="closeFilesDialog" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- File list -->
-          <div class="flex flex-col gap-2 max-h-[380px] overflow-y-auto scroll-container pr-1 font-mono">
-            <div 
-              v-for="f in activeInspectorEdge?.files" 
-              :key="f.file"
-              class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col gap-1.5 text-[10px]"
-            >
-              <div class="flex items-center justify-between w-full">
-                <span class="truncate pr-4 text-slate-800 font-bold" :title="f.file">{{ getFilename(f.file) }}</span>
-                <span class="font-extrabold shrink-0 px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[9px]">{{ f.count }} imports</span>
-              </div>
-              <div class="text-[9px] text-slate-455 truncate select-all" :title="f.file">
-                Path: <span class="text-slate-655 font-semibold">{{ f.file }}</span>
-              </div>
-              <div v-if="f.lines" class="text-[9px] text-slate-450 border-t border-slate-200/40 pt-1.5 mt-0.5 select-none">
-                Lines: 
-                <SnippetPopover :file="f.file" :lines="f.lines">
-                  <span class="text-slate-750 font-bold underline decoration-dotted hover:text-indigo-650 transition-colors">{{ f.lines }}</span>
-                </SnippetPopover>
-              </div>
-            </div>
+                  <td class="max-w-[280px] truncate">
+                    <span v-if="groupDot(edge.from)" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="groupDot(edge.from)!"></span>
+                    <router-link :to="componentPath(edge.from)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.from" @click.stop>{{ shortName(edge.from) }}</router-link>
+                  </td>
+                  <td class="w-6 px-0 text-center"><Icon icon="chevron-right" :size="12" class="inline text-neutral-400"/></td>
+                  <td class="max-w-[280px] truncate">
+                    <span v-if="groupDot(edge.to)" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="groupDot(edge.to)!"></span>
+                    <router-link :to="componentPath(edge.to)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.to" @click.stop>{{ shortName(edge.to) }}</router-link>
+                  </td>
+                  <td class="is-num text-right">{{ formatNumber(edge.referenceCount) }}</td>
+                  <td class="is-num text-right">{{ formatNumber(edge.sharedCommits) }}</td>
+                  <td class="w-24 text-right"><span v-if="isBreakingPoint(edge)" class="ui-tag">weakest</span></td>
+                </tr>
+                <tr v-if="!edgesLoading && sortedEdges.length === 0">
+                  <td colspan="6" class="text-neutral-500">No direct connections recorded for this cycle.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      </template>
+
+      <EmptyState
+        v-else-if="!store.hasData"
+        icon="recycle"
+        title="No snapshot open"
+        text="Open a scan to look for dependency cycles."
+      />
+      <EmptyState
+        v-else-if="store.allCyclesExpanded.length === 0"
+        icon="recycle"
+        title="No dependency cycles"
+        text="Every import path is acyclic."
+      />
+      <EmptyState
+        v-else
+        icon="recycle"
+        title="No cycle selected"
+        text="Pick a cycle in the panel to see its loop, its co-change flows and the weakest link."
+      />
     </template>
 
-    <!-- Sidebar Drawer: Tab 1 (Ranked Cycles List) -->
+    <!-- Panel: the ranked list of cycles. -->
     <template #tab-list>
-      <div class="flex flex-col gap-2.5">
-        <!-- Group filter dropdown -->
-        <div v-if="groupsStore.componentGroups.length > 0" class="px-1 py-1 flex flex-col gap-1 shrink-0 border-b border-slate-100 pb-3 mb-1">
-          <span class="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest">Filter by Group</span>
-          <select
-            v-model="selectedFilterGroupId"
-            class="w-full text-[10px] font-bold text-slate-750 px-2.5 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none cursor-pointer appearance-none shadow-3xs"
-          >
-            <option :value="null">All Groups (No Filter)</option>
-            <option v-for="g in groupsStore.componentGroups" :key="g.id" :value="g.id">
-              {{ g.name }} ({{ g.members.length }} nodes)
-            </option>
-          </select>
-        </div>
+      <EmptyState
+        v-if="!store.hasData"
+        title="No snapshot open"
+        text="Open a scan to look for dependency cycles."
+      />
+      <EmptyState
+        v-else-if="store.allCyclesExpanded.length === 0"
+        title="No dependency cycles"
+        text="Every import path is acyclic."
+      />
+      <EmptyState
+        v-else-if="scopedCycles.length === 0"
+        title="No cycles in scope"
+        :text="`No cycle touches a component of ${scope.group?.name ?? 'the active scope'}.`"
+      >
+        <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
+      </EmptyState>
+      <EmptyState
+        v-else-if="filteredCycles.length === 0"
+        title="No cycles match"
+        :text="searchQuery.trim() ? `No cycle contains “${searchQuery.trim()}”.` : 'No cycle touches a component of the chosen group.'"
+      >
+        <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
+        <button v-if="selectedFilterGroupId" type="button" class="ui-btn ui-btn-sm" @click="selectedFilterGroupId = null">All groups</button>
+      </EmptyState>
 
-        <div v-if="paginatedCycles.length === 0" class="text-center py-12 text-slate-400 text-xs italic">
-          No cycles match your search filters.
-        </div>
-        
-        <button
+      <div v-else class="flex flex-col gap-1">
+        <div
           v-for="cycle in paginatedCycles"
           :key="cycle.id"
+          role="button"
+          tabindex="0"
+          class="flex cursor-pointer flex-col gap-1.5 rounded px-2.5 py-2 text-left transition-colors"
+          :class="selectedCycleId === cycle.id ? 'bg-accent-50 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]' : 'hover:bg-neutral-100'"
           @click="selectCycle(cycle)"
-          class="w-full text-left p-4 rounded-2xl border transition-all duration-150 flex flex-col gap-2 group cursor-pointer"
-          :class="selectedCycleId === cycle.id 
-            ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
-            : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 text-slate-700'"
+          @keydown.enter.prevent="selectCycle(cycle)"
+          @keydown.space.prevent="selectCycle(cycle)"
         >
-          <!-- Header -->
           <div class="flex items-center justify-between">
-            <span class="text-[9px] font-mono font-bold" :class="selectedCycleId === cycle.id ? 'text-slate-400' : 'text-slate-400'">
-              Cycle #{{ cycle.id }}
-            </span>
-            <span class="flex h-1.5 w-1.5 relative">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="getSeverityDotColor(cycle.severity)"></span>
-              <span class="relative inline-flex rounded-full h-1.5 w-1.5" :class="getSeverityDotColor(cycle.severity)"></span>
-            </span>
+            <span class="font-mono text-sm text-neutral-500">Cycle #{{ cycle.id }}</span>
+            <span class="font-mono text-sm tabular-nums text-neutral-500">severity {{ cycle.severity }}</span>
           </div>
 
-          <!-- Loop summary (small monospace breadcrumbs) -->
-          <div class="text-[10.5px] font-mono leading-relaxed" :class="selectedCycleId === cycle.id ? 'text-white' : 'text-slate-600'">
-            {{ getCycleSummaryText(cycle.nodes) }}
+          <!-- The loop, as links: a → b → c → a -->
+          <div class="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+            <template v-for="(node, i) in cycle.nodes" :key="node">
+              <Icon v-if="i > 0" icon="chevron-right" :size="11" class="shrink-0 text-neutral-400"/>
+              <router-link :to="componentPath(node)" class="font-mono text-sm text-neutral-900 hover:underline" :title="node" @click.stop>{{ shortName(node) }}</router-link>
+            </template>
+            <Icon icon="chevron-right" :size="11" class="shrink-0 text-neutral-400"/>
+            <span class="font-mono text-sm text-neutral-500" :title="cycle.nodes[0]">{{ shortName(cycle.nodes[0]) }}</span>
           </div>
 
-          <!-- Pill badges footer -->
-          <div class="flex items-center gap-1.5 border-t pt-2 mt-1" :class="selectedCycleId === cycle.id ? 'border-white/10' : 'border-slate-100'">
-            <span class="text-[8px] px-1.5 py-0.5 rounded-md font-bold" :class="selectedCycleId === cycle.id ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'">
-              {{ cycle.size }} nodes
-            </span>
-            <span class="text-[8px] px-1.5 py-0.5 rounded-md font-bold" :class="selectedCycleId === cycle.id ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'">
-              {{ cycle.sharedCommits }} co-changes
-            </span>
-            <span class="ml-auto text-[9px] font-extrabold" :class="selectedCycleId === cycle.id ? 'text-slate-300' : 'text-slate-500'">
-              Score: {{ cycle.severity }}
-            </span>
+          <div class="flex items-center gap-1.5">
+            <span class="ui-tag">{{ cycle.size }} nodes</span>
+            <span class="ui-tag">{{ cycle.sharedCommits }} co-changes</span>
           </div>
-        </button>
+        </div>
 
-        <!-- Pagination -->
-        <div v-if="totalPages > 1" class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 select-none">
-          <button 
-            @click="page = Math.max(1, page - 1)" 
-            :disabled="page === 1"
-            class="px-2.5 py-1.5 text-[9px] font-bold border border-slate-200 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            Prev
+        <div v-if="totalPages > 1" class="mt-2 flex items-center justify-between pt-3 hairline-t">
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Previous page" :disabled="page === 1" @click="page = Math.max(1, page - 1)">
+            <Icon icon="chevron-left" :size="14"/>
           </button>
-          <span class="text-[9.5px] text-slate-400 font-bold">
-            Page {{ page }} of {{ totalPages }}
-          </span>
-          <button 
-            @click="page = Math.min(totalPages, page + 1)" 
-            :disabled="page === totalPages"
-            class="px-2.5 py-1.5 text-[9px] font-bold border border-slate-200 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            Next
+          <span class="font-mono text-sm tabular-nums text-neutral-500">{{ page }} / {{ totalPages }}</span>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Next page" :disabled="page === totalPages" @click="page = Math.min(totalPages, page + 1)">
+            <Icon icon="chevron-right" :size="14"/>
           </button>
         </div>
       </div>
     </template>
 
-    <!-- Sidebar Drawer: Tab 2 (Loop Diagnostics - detailed table and files) -->
+    <!-- Panel: the weakest link and the selected edge's import locations. -->
     <template #tab-diagnostics>
-      <div v-if="selectedCycle" class="flex flex-col gap-5 text-slate-800 select-none">
-        
-        <!-- Files list -->
-        <div v-if="breakingPoint" class="flex flex-col gap-2.5">
-          <h4 class="font-extrabold text-[9.5px] text-slate-400 uppercase tracking-widest">Files causing Weakest Link</h4>
-          <ul class="flex flex-col gap-1.5">
-            <li 
-              v-for="f in breakingPoint.files" 
-              :key="f.file"
-              class="bg-slate-50 border border-slate-200/50 rounded-xl p-2.5 flex items-center justify-between text-[10px] font-mono shadow-4xs"
-            >
-              <span class="truncate pr-2 text-slate-800" :title="f.file">{{ getFilename(f.file) }}</span>
-              <span class="font-extrabold shrink-0 px-2 py-0.5 bg-slate-200/60 rounded-md text-slate-700">{{ f.count }} imports</span>
-            </li>
-          </ul>
-        </div>
+      <template v-if="selectedCycle">
+        <LoadingState v-if="edgesLoading" text="Reading import locations and shared commits…"/>
 
-        <!-- Connection table details -->
-        <div class="flex flex-col gap-2.5">
-          <h4 class="font-extrabold text-[9.5px] text-slate-400 uppercase tracking-widest">Loop Connections Breakdown</h4>
-          <div class="flex flex-col gap-2">
-            <div 
-              v-for="edge in sortedEdges" 
-              :key="`${edge.from}-${edge.to}`"
-              class="border rounded-2xl p-3 flex flex-col gap-2 bg-slate-50/50"
-              :class="breakingPoint && breakingPoint.from === edge.from && breakingPoint.to === edge.to 
-                ? 'border-rose-200/80 bg-rose-50/20' 
-                : 'border-slate-100'"
-            >
-              <!-- Edge path header -->
-              <div class="flex items-center justify-between gap-1.5">
-                <div class="flex items-center gap-1.5 min-w-0 text-[10px] font-bold text-slate-800">
-                  <span v-if="getGroupDotStyle(edge.from)" class="w-1.5 h-1.5 rounded-full shrink-0" :style="getGroupDotStyle(edge.from)"></span>
-                  <span class="truncate" :title="edge.from">{{ getAbbreviatedName(edge.from) }}</span>
-                  <span class="text-slate-400">➜</span>
-                  <span v-if="getGroupDotStyle(edge.to)" class="w-1.5 h-1.5 rounded-full shrink-0" :style="getGroupDotStyle(edge.to)"></span>
-                  <span class="truncate" :title="edge.to">{{ getAbbreviatedName(edge.to) }}</span>
-                </div>
-                <!-- Status tag -->
-                <span 
-                  class="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded-md border"
-                  :class="breakingPoint && breakingPoint.from === edge.from && breakingPoint.to === edge.to 
-                    ? 'bg-rose-50 border-rose-200 text-rose-700' 
-                    : 'bg-slate-100 border-slate-200 text-slate-600'"
-                >
-                  {{ breakingPoint && breakingPoint.from === edge.from && breakingPoint.to === edge.to ? 'Target Link' : 'Acyclic' }}
-                </span>
-              </div>
-              
-              <!-- Edge counts -->
-              <div class="flex items-center justify-between text-[9px] font-mono text-slate-500 border-t border-slate-200/30 pt-1.5 mt-0.5">
-                <div>Imports: <span class="font-extrabold text-slate-700">{{ edge.referenceCount }}</span></div>
-                <div>Co-changes: <span class="font-extrabold text-slate-700">{{ edge.sharedCommits }}</span></div>
-              </div>
+        <template v-else-if="activeInspectorEdge">
+          <section class="flex flex-col gap-3">
+            <span class="ui-section-title">{{ isBreakingPoint(activeInspectorEdge) ? 'Weakest link' : 'Selected edge' }}</span>
+            <div class="flex flex-wrap items-center gap-1 text-base text-neutral-900">
+              <span>Cut</span>
+              <router-link :to="componentPath(activeInspectorEdge.from)" class="font-mono text-sm hover:underline" :title="activeInspectorEdge.from">{{ shortName(activeInspectorEdge.from) }}</router-link>
+              <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
+              <router-link :to="componentPath(activeInspectorEdge.to)" class="font-mono text-sm hover:underline" :title="activeInspectorEdge.to">{{ shortName(activeInspectorEdge.to) }}</router-link>
             </div>
-          </div>
-        </div>
-      </div>
+            <p v-if="isBreakingPoint(activeInspectorEdge)" class="text-sm leading-4 text-neutral-500">
+              The edge with the fewest imports in this loop. Removing it breaks the cycle at the lowest cost.
+            </p>
+            <p v-else-if="breakingPoint" class="flex flex-wrap items-center gap-1 text-sm leading-4 text-neutral-500">
+              <span>Weakest link is</span>
+              <span class="font-mono text-neutral-800" :title="breakingPoint.from">{{ shortName(breakingPoint.from) }}</span>
+              <Icon icon="chevron-right" :size="11" class="text-neutral-400"/>
+              <span class="font-mono text-neutral-800" :title="breakingPoint.to">{{ shortName(breakingPoint.to) }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selectedEdge = { from: breakingPoint.from, to: breakingPoint.to }">Inspect</button>
+            </p>
+            <dl class="ui-kv">
+              <dt>References</dt>
+              <dd>{{ formatNumber(activeInspectorEdge.referenceCount) }} imports</dd>
+              <dt>Shared commits</dt>
+              <dd>{{ formatNumber(activeInspectorEdge.sharedCommits) }}</dd>
+              <dt>Importing files</dt>
+              <dd>{{ formatNumber(activeInspectorEdge.files.length) }}</dd>
+            </dl>
+          </section>
+
+          <section v-if="hasTies" class="flex flex-col gap-2 pt-4 hairline-t">
+            <span class="ui-section-title">Tied edges</span>
+            <p class="text-sm leading-4 text-neutral-500">{{ tiedEdges.length }} edges share the minimum of {{ breakingPoint?.referenceCount }} imports; any of them is a candidate cut.</p>
+            <div class="-mx-4 overflow-x-auto">
+              <table class="ui-table">
+                <thead>
+                  <tr>
+                    <th>From</th>
+                    <th>To</th>
+                    <th class="text-right">Co-changes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="edge in tiedEdges"
+                    :key="edgeKey(edge)"
+                    class="is-clickable"
+                    :class="{ 'is-selected': isSelectedEdge(edge) }"
+                    @click="selectedEdge = { from: edge.from, to: edge.to }"
+                  >
+                    <td class="max-w-[140px] truncate"><router-link :to="componentPath(edge.from)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.from" @click.stop>{{ shortName(edge.from) }}</router-link></td>
+                    <td class="max-w-[140px] truncate"><router-link :to="componentPath(edge.to)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.to" @click.stop>{{ shortName(edge.to) }}</router-link></td>
+                    <td class="is-num text-right">{{ formatNumber(edge.sharedCommits) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-2 pt-4 hairline-t">
+            <span class="ui-section-title">Import locations</span>
+            <EmptyState
+              v-if="activeInspectorEdge.files.length === 0"
+              title="No import locations"
+              text="The snapshot records no file importing this component along this edge."
+            />
+            <ul v-else class="flex flex-col">
+              <li v-for="f in activeInspectorEdge.files" :key="f.file" class="flex flex-col py-1.5 hairline-b last:border-b-0">
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0"
+                    :aria-expanded="expandedFiles.has(f.file)"
+                    :aria-label="expandedFiles.has(f.file) ? 'Hide source' : 'Show source'"
+                    @click="toggleFile(f.file)"
+                  >
+                    <Icon :icon="expandedFiles.has(f.file) ? 'chevron-down' : 'chevron-right'" :size="13" class="text-neutral-500"/>
+                  </button>
+                  <router-link :to="fileSourcePath(f.file, f.firstLine)" class="min-w-0 truncate font-mono text-sm text-neutral-900 hover:underline" :title="f.file">{{ f.file }}</router-link>
+                  <span class="ui-tag ml-auto shrink-0">{{ f.count }} {{ f.count === 1 ? 'import' : 'imports' }}</span>
+                </div>
+                <div v-if="f.ranges.length" class="flex flex-wrap items-center gap-1 pl-7 font-mono text-sm text-neutral-500">
+                  <span>Lines</span>
+                  <SnippetPopover v-for="range in f.ranges" :key="range" :file="f.file" :lines="range">
+                    <router-link :to="fileSourcePath(f.file, rangeStart(range))" class="text-neutral-800 underline decoration-dotted hover:text-neutral-900">{{ range }}</router-link>
+                  </SnippetPopover>
+                </div>
+                <div v-if="expandedFiles.has(f.file)" class="mt-1.5 flex flex-col gap-1.5 pl-7">
+                  <template v-if="f.ranges.length > 0 && f.ranges.length <= inlineSnippetLimit">
+                    <SnippetPopover v-for="range in f.ranges" :key="'inline-' + range" :file="f.file" :lines="range" inline/>
+                  </template>
+                  <p v-else-if="f.ranges.length > inlineSnippetLimit" class="text-sm leading-4 text-neutral-500">
+                    {{ f.ranges.length }} import sites; hover a line range above to preview it, or open the file.
+                  </p>
+                  <p v-else class="text-sm leading-4 text-neutral-500">No line numbers recorded for this import.</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section v-if="groupSpanParts.length" class="flex flex-col gap-1 pt-4 hairline-t">
+            <span class="ui-section-title">Groups crossed</span>
+            <dl class="ui-kv">
+              <template v-for="part in groupSpanParts" :key="part.name">
+                <dt>{{ part.name }}</dt>
+                <dd>{{ part.count }} {{ part.count === 1 ? 'node' : 'nodes' }}</dd>
+              </template>
+            </dl>
+          </section>
+        </template>
+
+        <EmptyState
+          v-else
+          title="No connection data"
+          text="The snapshot has no direct connections along this cycle's edges."
+        />
+      </template>
+      <EmptyState v-else title="No cycle selected" text="Pick a cycle to see its weakest link."/>
     </template>
   </ViewWorkspaceLayout>
 
-  <CreateGroupModal
-    v-model:open="isCreateGroupModalOpen"
-    :default-name="createGroupDefaultName"
-    :members="createGroupMembers"
-    type="component"
-  />
+  <GroupActionBar ref="trayRef" :selected-items="traySelection" kind="component" @clear="traySelection = []"/>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
+import { computed, nextTick, ref, watch } from "vue"
+import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import { useGroupsStore } from "~/stores/groups"
+import { useLensStore } from "~/stores/lens"
+import { useScopeStore } from "~/stores/scope"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { sqlIn, sqlLiteral } from "~/utils/sql"
+import { formatNumber } from "~/utils/format"
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
+import SingleSelect from "~/components/ui/common/SingleSelect.vue"
+import Icon from "~/components/ui/common/Icon.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
+import SnippetPopover from "~/components/SnippetPopover.vue"
+import GroupActionBar from "~/components/groups/GroupActionBar.vue"
 import CycleLoopChart from "~/components/components/cycles/CycleLoopChart.vue"
 
+const route = useRoute()
 const store = useDataStore()
 const groupsStore = useGroupsStore()
+const scope = useScopeStore()
 
-
-const isCreateGroupModalOpen = ref(false)
-const createGroupDefaultName = ref("")
-const createGroupMembers = ref<string[]>([])
-
-const searchQuery = ref("")
-const sortBy = ref<"severity" | "size" | "sharedCommits">("severity")
-const page = ref(1)
-const itemsPerPage = 12
-
-const selectedCycleId = ref<number | null>(null)
-const selectedFilterGroupId = ref<string | null>(null)
-const activeTab = ref("list")
-const isSidebarOpen = ref(true)
-
-// Reset pagination page on search query change or filter change
-watch([searchQuery, selectedFilterGroupId], () => {
-  page.value = 1
-})
-
-// Dynamic tab list for sidebar navigation
-const tabs = computed(() => {
-  const list = [{ id: "list", label: "Cycles List" }]
-  if (selectedCycle.value) {
-    list.push({ id: "diagnostics", label: "🔍 Diagnostics" })
-  }
-  return list
-})
-
-watch(selectedCycleId, (newId) => {
-  if (newId !== null) {
-    activeTab.value = "diagnostics"
-  } else {
-    activeTab.value = "list"
-  }
-})
-
-const kpiStats = computed(() => {
-  const total = store.allCyclesExpanded.length
-  const maxSeverity = total > 0 ? Math.max(...store.allCyclesExpanded.map((c: any) => c.severity)) : 0
-  return [
-    { label: "Total Cycles", value: total.toString() },
-    { label: "Max Severity", value: maxSeverity.toFixed(0) }
-  ]
-})
-
-const filteredCycles = computed(() => {
-  if (!store.hasData) return []
-  let list = [...store.allCyclesExpanded]
-  
-  if (selectedFilterGroupId.value) {
-    const group = groupsStore.getGroupById(selectedFilterGroupId.value)
-    if (group) {
-      const groupMembers = new Set(group.members)
-      list = list.filter((c: any) => c.nodes.some((n: string) => groupMembers.has(n)))
-    }
-  }
-
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase().trim()
-    list = list.filter((c: any) => c.nodes.some((n: string) => n.toLowerCase().includes(q)))
-  }
-
-  list.sort((a: any, b: any) => {
-    if (sortBy.value === "severity") {
-      return b.severity - a.severity
-    } else if (sortBy.value === "size") {
-      return b.size - a.size || b.severity - a.severity
-    } else {
-      return b.sharedCommits - a.sharedCommits || b.severity - a.severity
-    }
-  })
-
-  return list
-})
-
-const totalPages = computed(() => Math.ceil(filteredCycles.value.length / itemsPerPage))
-const paginatedCycles = computed(() => {
-  const start = (page.value - 1) * itemsPerPage
-  return filteredCycles.value.slice(start, start + itemsPerPage)
-})
-
-const selectedCycle = computed(() => {
-  if (selectedCycleId.value === null) return null
-  return store.allCyclesExpanded.find((c: any) => c.id === selectedCycleId.value) || null
-})
-
-function selectCycle(cycle: any) {
-  selectedCycleId.value = cycle.id
+interface Cycle {
+  id: number
+  cycleText: string
+  nodes: string[]
+  size: number
+  sharedCommits: number
+  severity: number
 }
 
-function getSeverityDotColor(score: number): string {
-  if (score >= 150) return "bg-rose-500"
-  if (score >= 50) return "bg-amber-500"
-  return "bg-emerald-500"
-}
-
-function getCycleSummaryText(nodes: string[]): string {
-  const names = nodes.map(n => getAbbreviatedName(n))
-  return names.join(" ➜ ") + " ➜ " + names[0]
-}
-
-function getAbbreviatedName(name: string): string {
-  const parts = name.split(".")
-  if (parts.length <= 2) return name
-  return parts.slice(-2).join(".")
-}
-
-function getFilename(path: string): string {
-  return path.split("/").pop() || path
+interface EdgeFile {
+  file: string
+  count: number
+  ranges: string[]
+  firstLine: number | null
 }
 
 interface EdgeDetail {
@@ -551,224 +361,320 @@ interface EdgeDetail {
   to: string
   referenceCount: number
   sharedCommits: number
-  files: Array<{ file: string, count: number, lines: string }>
+  files: EdgeFile[]
 }
 
+// ── Toolbar state ────────────────────────────────────────────────
+const searchQuery = ref("")
+const sortBy = ref<"severity" | "size" | "sharedCommits">("severity")
+const selectedFilterGroupId = ref<string | null>(null)
+const isSidebarOpen = ref(true)
+const activeTab = ref("list")
+const page = ref(1)
+const itemsPerPage = 12
+
+// A component detail links here with ?component=<name>; seed the search with it.
+watch(() => route.query.component, (component) => {
+  const value = Array.isArray(component) ? component[0] : component
+  if (value) searchQuery.value = String(value)
+}, { immediate: true })
+
+watch([searchQuery, selectedFilterGroupId, () => scope.groupIds], () => { page.value = 1 })
+
+type GroupOption = { name: string; id: string | null }
+const allGroupsOption: GroupOption = { name: "All groups", id: null }
+const groupOptions = computed<GroupOption[]>(() => [
+  allGroupsOption,
+  ...groupsStore.groups.filter(g => !lens.active || g.dimension === lens.active).map(g => ({ name: g.name, id: g.id })),
+])
+const groupFilter = computed<GroupOption>({
+  get: () => groupOptions.value.find(o => o.id === selectedFilterGroupId.value) ?? allGroupsOption,
+  set: (option) => { selectedFilterGroupId.value = option?.id ?? null },
+})
+
+const tabs = computed(() => {
+  const list = [{ id: "list", label: "Cycles" }]
+  if (selectedCycle.value) list.push({ id: "diagnostics", label: "Diagnostics" })
+  return list
+})
+
+// ── Cycles: scope, group filter, search, sort ────────────────────
+const allCycles = computed<Cycle[]>(() => store.hasData ? (store.allCyclesExpanded as Cycle[]) : [])
+
+const scopedCycles = computed(() => {
+  if (!scope.isActive) return allCycles.value
+  return allCycles.value.filter(c => c.nodes.some(n => scope.componentInScope(n)))
+})
+
+const filteredCycles = computed(() => {
+  let list = scopedCycles.value
+  if (selectedFilterGroupId.value) {
+    const group = groupsStore.getGroupById(selectedFilterGroupId.value)
+    if (group) {
+      const members = new Set(groupsStore.componentsOf(group).keys())
+      list = list.filter(c => c.nodes.some(n => members.has(n)))
+    }
+  }
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) list = list.filter(c => c.nodes.some(n => n.toLowerCase().includes(q)))
+
+  return [...list].sort((a, b) => {
+    if (sortBy.value === "size") return b.size - a.size || b.severity - a.severity
+    if (sortBy.value === "sharedCommits") return b.sharedCommits - a.sharedCommits || b.severity - a.severity
+    return b.severity - a.severity
+  })
+})
+
+const countText = computed(() => {
+  const n = scopedCycles.value.length
+  const m = allCycles.value.length
+  return scope.isActive ? `${formatNumber(n)} of ${formatNumber(m)} cycles` : `${formatNumber(m)} ${m === 1 ? 'cycle' : 'cycles'}`
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredCycles.value.length / itemsPerPage)))
+const paginatedCycles = computed(() => {
+  const start = (page.value - 1) * itemsPerPage
+  return filteredCycles.value.slice(start, start + itemsPerPage)
+})
+
+// ── Selection ────────────────────────────────────────────────────
+const selectedCycleId = ref<number | null>(null)
+const selectedCycle = computed<Cycle | null>(() => {
+  if (selectedCycleId.value === null) return null
+  return allCycles.value.find(c => c.id === selectedCycleId.value) ?? null
+})
+
+function selectCycle(cycle: Cycle) {
+  selectedCycleId.value = cycle.id
+}
+
+// The view never opens empty: the top cycle of the current list is selected
+// on arrival and whenever the list no longer contains the selection. An
+// automatic selection keeps the list tab; a click moves to Diagnostics.
+let autoSelected = false
+watch(filteredCycles, (list) => {
+  if (list.length === 0) return
+  if (selectedCycleId.value === null || !list.some(c => c.id === selectedCycleId.value)) {
+    autoSelected = true
+    selectedCycleId.value = list[0].id
+  }
+}, { immediate: true })
+
+watch(selectedCycle, (cycle) => {
+  selectedEdge.value = null
+  expandedFiles.value = new Set()
+  activeTab.value = cycle && !autoSelected ? "diagnostics" : "list"
+  autoSelected = false
+})
+
+// ── Per-edge detail: two queries per selected cycle ──────────────
+// Imports and import sites come from the direct-connection rows already in
+// memory plus one `snippets` query for every file of the loop; shared commits
+// come from one `git_component_shared_commits` query for every pair.
 function toRanges(numbers: number[]): string[] {
   const ranges: string[] = []
   if (numbers.length === 0) return ranges
   let start = numbers[0]
   let end = numbers[0]
-  for (const number of numbers.slice(1)) {
-    if (number === end + 1) {
-      end = number
-    } else {
-      if (start === end) {
-        ranges.push(start.toString())
-      } else {
-        ranges.push(`${start}-${end}`)
-      }
-      start = number
-      end = number
-    }
+  const flush = () => ranges.push(start === end ? String(start) : `${start}-${end}`)
+  for (const n of numbers.slice(1)) {
+    if (n === end + 1) { end = n; continue }
+    flush()
+    start = n
+    end = n
   }
-  if (start === end) {
-    ranges.push(start.toString())
-  } else {
-    ranges.push(`${start}-${end}`)
-  }
+  flush()
   return ranges
 }
 
-const selectedCycleEdges = ref<EdgeDetail[]>([])
-watch(selectedCycle, async (cycle) => {
-  if (!cycle) { selectedCycleEdges.value = []; return }
-  const nodes = cycle.nodes
-  const N = nodes.length
+const pairKey = (a: string, b: string) => `${a}|${b}`
 
-  const edges: EdgeDetail[] = []
-  for (let i = 0; i < N; i++) {
-    const from = nodes[i]
-    const to = nodes[(i + 1) % N]
+const { data: loadedEdges, loading: edgesLoading } = useAsyncQuery<EdgeDetail[]>(
+  async () => {
+    const cycle = selectedCycle.value
+    if (!cycle) return []
+    const nodes = cycle.nodes
+    const connections = store.componentConnections as any[]
 
-    const matchingConns = store.componentConnections.filter((c: any) => c.from === from && c.to === to)
-    const refCount = matchingConns.reduce((sum: number, c: any) => sum + (Number(c.reference_count || c.count) || 0), 0)
-    
-    const files: Array<{ file: string, count: number, lines: string }> = []
-    for (const c of matchingConns) {
-      const filePath = c.file || "unknown"
-      const count = Number(c.reference_count || c.count) || 0
-      
-      const snippetRows = await store.query<{ begin_position: string }>(`
-        SELECT begin_position
+    // Base edges from the in-memory direct connections, in loop order.
+    const base = nodes.map((from, i) => {
+      const to = nodes[(i + 1) % nodes.length]
+      const files = new Map<string, number>()
+      let referenceCount = 0
+      for (const c of connections) {
+        if (c.from !== from || c.to !== to) continue
+        const count = Number(c.reference_count ?? c.count) || 0
+        referenceCount += count
+        if (count > 0) {
+          const file = String(c.file || "unknown")
+          files.set(file, (files.get(file) || 0) + count)
+        }
+      }
+      return { from, to, referenceCount, files }
+    })
+
+    // One snippets query for every importing file of the loop.
+    const filePaths = Array.from(new Set(base.flatMap(e => Array.from(e.files.keys())))).filter(f => f !== "unknown")
+    const linesByFileTarget = new Map<string, number[]>()
+    if (filePaths.length > 0 && store.hasView("snippets")) {
+      const rows = await store.query<{ file: string; content: string; begin_position: string }>(`
+        SELECT file, content, begin_position
         FROM snippets
-        WHERE file = '${filePath}'
-          AND snippet_type = '${store.statName('modularity__component__imports')}'
-          AND content = '${to}'
+        WHERE snippet_type = ${sqlLiteral(store.statName("modularity__component__imports"))}
+          AND file IN ${sqlIn(filePaths)}
+          AND content IN ${sqlIn(nodes)}
       `)
-      
-      const lineNumbers = snippetRows
-        .map(s => parseInt(s.begin_position.split(":")[0]))
-        .filter(n => !isNaN(n))
-        .sort((a, b) => a - b)
-        
-      const linesStr = lineNumbers.length > 0 ? toRanges(lineNumbers).join(", ") : ""
-      
-      if (count > 0) {
-        files.push({
-          file: filePath,
-          count,
-          lines: linesStr
-        })
+      for (const r of rows) {
+        const line = parseInt(String(r.begin_position).split(":")[0], 10)
+        if (Number.isNaN(line)) continue
+        const key = pairKey(r.file, r.content)
+        const list = linesByFileTarget.get(key) ?? []
+        list.push(line)
+        linesByFileTarget.set(key, list)
       }
     }
 
-    const pairQuery = await store.query<{ shared_commits: number }>(`
-      SELECT shared_commits 
-      FROM git_component_shared_commits 
-      WHERE (pair_1 = '${from}' AND pair_2 = '${to}') OR (pair_1 = '${to}' AND pair_2 = '${from}')
-    `)
-    const sharedCommits = pairQuery.length > 0 ? Number(pairQuery[0].shared_commits) : 0
+    // One shared-commits query for every pair of the loop, either direction.
+    const sharedByPair = new Map<string, number>()
+    if (store.hasView("git_component_shared_commits")) {
+      const predicate = base.map(e => {
+        const a = sqlLiteral(e.from)
+        const b = sqlLiteral(e.to)
+        return `(pair_1 = ${a} AND pair_2 = ${b}) OR (pair_1 = ${b} AND pair_2 = ${a})`
+      }).join(" OR ")
+      const rows = await store.query<{ pair_1: string; pair_2: string; shared_commits: number }>(`
+        SELECT pair_1, pair_2, shared_commits
+        FROM git_component_shared_commits
+        WHERE ${predicate}
+      `)
+      for (const r of rows) {
+        const n = Number(r.shared_commits) || 0
+        sharedByPair.set(pairKey(r.pair_1, r.pair_2), Math.max(n, sharedByPair.get(pairKey(r.pair_1, r.pair_2)) ?? 0))
+        sharedByPair.set(pairKey(r.pair_2, r.pair_1), Math.max(n, sharedByPair.get(pairKey(r.pair_2, r.pair_1)) ?? 0))
+      }
+    }
 
-    edges.push({
-      from,
-      to,
-      referenceCount: refCount,
-      sharedCommits,
-      files
-    })
-  }
-  selectedCycleEdges.value = edges
-}, { immediate: true })
+    return base.map(e => ({
+      from: e.from,
+      to: e.to,
+      referenceCount: e.referenceCount,
+      sharedCommits: sharedByPair.get(pairKey(e.from, e.to)) ?? 0,
+      files: Array.from(e.files.entries()).map(([file, count]) => {
+        const lines = (linesByFileTarget.get(pairKey(file, e.to)) ?? []).sort((a, b) => a - b)
+        return { file, count, ranges: toRanges(lines), firstLine: lines.length ? lines[0] : null }
+      }).sort((a, b) => b.count - a.count || a.file.localeCompare(b.file)),
+    }))
+  },
+  [selectedCycleId],
+  { initial: [] },
+)
 
-const sortedEdges = computed(() => {
-  return [...selectedCycleEdges.value].sort((a, b) => a.referenceCount - b.referenceCount)
-})
+// The previous cycle's edges never show under the new cycle's nodes.
+const edges = computed<EdgeDetail[]>(() => edgesLoading.value ? [] : loadedEdges.value)
 
-const breakingPoint = computed((): EdgeDetail | null => {
-  if (!selectedCycleEdges.value.length) return null
-  return sortedEdges.value[0]
-})
+const edgeKey = (e: { from: string; to: string }) => `${e.from}→${e.to}`
 
+const sortedEdges = computed(() => [...edges.value].sort((a, b) => a.referenceCount - b.referenceCount))
+const breakingPoint = computed<EdgeDetail | null>(() => sortedEdges.value[0] ?? null)
 const tiedEdges = computed(() => {
-  if (!selectedCycleEdges.value.length) return []
-  const minCount = sortedEdges.value[0].referenceCount
-  return sortedEdges.value.filter(e => e.referenceCount === minCount)
+  const bp = breakingPoint.value
+  if (!bp) return []
+  return sortedEdges.value.filter(e => e.referenceCount === bp.referenceCount)
 })
-
 const hasTies = computed(() => tiedEdges.value.length > 1)
 
 const selectedEdge = ref<{ from: string; to: string } | null>(null)
 
-watch(selectedCycleEdges, (newEdges) => {
-  if (newEdges && newEdges.length > 0) {
-    // Default to the weakest link (breakingPoint)
-    selectedEdge.value = {
-      from: breakingPoint.value?.from || newEdges[0].from,
-      to: breakingPoint.value?.to || newEdges[0].to
-    }
-  } else {
-    selectedEdge.value = null
-  }
-}, { immediate: true })
+// A freshly loaded cycle starts on its weakest link.
+watch(edges, (list) => {
+  const bp = breakingPoint.value
+  selectedEdge.value = bp ? { from: bp.from, to: bp.to } : (list[0] ? { from: list[0].from, to: list[0].to } : null)
+})
 
-const activeInspectorEdge = computed((): EdgeDetail | null => {
-  if (!selectedEdge.value) return null
-  return selectedCycleEdges.value.find(
-    e => e.from === selectedEdge.value!.from && e.to === selectedEdge.value!.to
-  ) || null
+const activeInspectorEdge = computed<EdgeDetail | null>(() => {
+  const sel = selectedEdge.value
+  if (!sel) return breakingPoint.value
+  return edges.value.find(e => e.from === sel.from && e.to === sel.to) ?? breakingPoint.value
 })
 
 function onSelectEdge(edge: { from: string; to: string }) {
   selectedEdge.value = edge
+  activeTab.value = "diagnostics"
+  isSidebarOpen.value = true
 }
 
-const isTiesExpanded = ref(false)
-
-watch(selectedEdge, () => {
-  isTiesExpanded.value = false
-})
-
-const isFilesDialogOpen = ref(false)
-
-function openFilesDialog() {
-  isFilesDialogOpen.value = true
+function isSelectedEdge(e: { from: string; to: string }): boolean {
+  return !!selectedEdge.value && selectedEdge.value.from === e.from && selectedEdge.value.to === e.to
 }
 
-function closeFilesDialog() {
-  isFilesDialogOpen.value = false
+function isBreakingPoint(e: { from: string; to: string }): boolean {
+  const bp = breakingPoint.value
+  return !!bp && bp.from === e.from && bp.to === e.to
 }
 
-function getGroupDotStyle(componentName: string) {
-  const groups = groupsStore.getGroupsForComponent(componentName)
-  if (groups.length === 0) return null
-  return {
-    backgroundColor: groups[0].color
-  }
+// ── Import locations ─────────────────────────────────────────────
+const inlineSnippetLimit = 3
+const expandedFiles = ref<Set<string>>(new Set())
+
+function toggleFile(file: string) {
+  const next = new Set(expandedFiles.value)
+  if (next.has(file)) next.delete(file); else next.add(file)
+  expandedFiles.value = next
 }
 
-const selectedCycleGroupSpanSummary = computed(() => {
-  if (!selectedCycle.value) return ""
-  
+watch(selectedEdge, () => { expandedFiles.value = new Set() })
+
+function rangeStart(range: string): number | null {
+  const n = parseInt(range.split("-")[0], 10)
+  return Number.isNaN(n) ? null : n
+}
+
+function fileSourcePath(file: string, line: number | null): string {
+  return `/views/files/${file}/source${line ? `#L${line}` : ""}`
+}
+
+// ── Names, groups ────────────────────────────────────────────────
+function shortName(name: string): string {
+  return store.getComponentName(name) || name
+}
+
+function componentPath(name: string): string {
+  return `/views/components/${name}`
+}
+
+const lens = useLensStore()
+const lensGroupsOf = (componentName: string) => groupsStore.getGroupsForComponent(componentName).filter(g => !lens.active || g.dimension === lens.active)
+function groupDot(componentName: string): { backgroundColor: string } | null {
+  const groups = lensGroupsOf(componentName)
+  return groups.length ? { backgroundColor: groups[0].color } : null
+}
+
+const groupSpanParts = computed(() => {
+  const cycle = selectedCycle.value
+  if (!cycle) return []
   const counts = new Map<string, number>()
   let unassigned = 0
-  
-  for (const node of selectedCycle.value.nodes) {
-    const groups = groupsStore.getGroupsForComponent(node)
-    if (groups.length > 0) {
-      for (const g of groups) {
-        counts.set(g.name, (counts.get(g.name) || 0) + 1)
-      }
-    } else {
-      unassigned++
-    }
+  for (const node of cycle.nodes) {
+    const groups = lensGroupsOf(node)
+    if (groups.length === 0) { unassigned++; continue }
+    for (const g of groups) counts.set(g.name, (counts.get(g.name) || 0) + 1)
   }
-  
-  const parts: string[] = []
-  for (const [name, count] of counts.entries()) {
-    parts.push(`${name} (${count} node${count !== 1 ? 's' : ''})`)
-  }
-  if (unassigned > 0) {
-    parts.push(`unassigned (${unassigned} node${unassigned !== 1 ? 's' : ''})`)
-  }
-  
-  return `This cycle crosses: ${parts.join(", ")}.`
+  if (counts.size === 0) return []
+  const parts = Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
+  if (unassigned > 0) parts.push({ name: "Unassigned", count: unassigned })
+  return parts
 })
 
-function saveCycleAsGroup() {
+// ── Save cycle as group ──────────────────────────────────────────
+// The cycle's nodes become the selection and the shared tray names the group,
+// so saving a cycle is the same gesture as creating a group anywhere else.
+const trayRef = ref<{ startCreate: (name?: string) => void } | null>(null)
+const traySelection = ref<string[]>([])
+
+async function saveCycleAsGroup() {
   if (!selectedCycle.value) return
-  createGroupDefaultName.value = `Cycle ${selectedCycle.value.id} Group`
-  createGroupMembers.value = selectedCycle.value.nodes
-  isCreateGroupModalOpen.value = true
+  traySelection.value = [...selectedCycle.value.nodes]
+  await nextTick()
+  trayRef.value?.startCreate(`Cycle ${selectedCycle.value.id}`)
 }
 </script>
-
-<style scoped>
-.animate-ping {
-  animation-duration: 2s;
-}
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-.animate-scale-up {
-  animation: scaleUp 0.2s ease-out forwards;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes scaleUp {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-</style>

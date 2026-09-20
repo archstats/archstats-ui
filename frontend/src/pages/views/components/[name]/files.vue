@@ -1,164 +1,124 @@
 <template>
-  <div class="w-full flex flex-col md:flex-row gap-6 h-[80vh] min-h-[500px]">
-    <!-- Left Panel: File Explorer -->
-    <div class="w-full md:w-80 shrink-0 flex flex-col bg-white border border-slate-100 rounded-3xl p-4 shadow-3xs overflow-hidden h-full">
-      <div class="mb-4">
-        <h3 class="text-xs font-bold text-slate-800 tracking-tight uppercase tracking-wider mb-2 text-left">File Explorer</h3>
-        <!-- Search Input -->
-        <div class="relative flex items-center">
-          <input
-            v-model="fileSearchQuery"
-            type="text"
-            placeholder="Filter files..."
-            class="w-full bg-slate-50 border border-slate-150 focus:border-slate-350 focus:outline-none focus:ring-1 focus:ring-slate-350 text-[11px] font-semibold pl-8 pr-7 py-2 rounded-xl text-slate-700 placeholder-slate-400 transition-all shadow-3xs"
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 absolute left-2.5 text-slate-400 pointer-events-none">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.602 10.602Z" />
-          </svg>
-          <button 
-            v-if="fileSearchQuery"
-            @click="fileSearchQuery = ''"
-            class="absolute right-2 text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer px-1"
-          >
-            ✕
-          </button>
-        </div>
+  <LoadingState v-if="loading" text="Reading files…"/>
+  <EmptyState v-else-if="error" title="Could not read files" :text="error" icon="alert"/>
+  <EmptyState v-else-if="files.length === 0" title="No files in this component" :text="`The snapshot records no files for ${name}.`" icon="file-text"/>
+  <div v-else class="flex min-h-0 grow overflow-hidden">
+    <!-- Left: file list. -->
+    <div class="flex w-[340px] shrink-0 flex-col bg-surface hairline-r">
+      <div class="flex h-10 shrink-0 items-center px-3 hairline-b">
+        <input v-model="search" type="search" class="ui-input ui-input-sm w-full" placeholder="Search files" aria-label="Search files"/>
       </div>
-
-      <!-- File List -->
-      <div class="flex-grow overflow-y-auto pr-1 flex flex-col gap-1">
+      <div class="min-h-0 grow overflow-y-auto">
+        <EmptyState v-if="filteredFiles.length === 0" title="No files match" :text="`0 of ${files.length} files match the search.`"/>
         <button
           v-for="file in filteredFiles"
+          v-else
           :key="file.name"
-          @click="selectFile(file)"
-          class="w-full text-left px-3 py-2 rounded-xl text-[11px] font-semibold transition-all border break-all flex flex-col gap-0.5"
-          :class="[
-            activeFile?.name === file.name
-              ? 'bg-slate-900 border-slate-900 text-white font-bold'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          ]"
+          type="button"
+          class="flex h-8 w-full items-center gap-2 px-3 text-left transition-colors hover:bg-neutral-50"
+          :class="{ 'bg-accent-50': file.name === selected }"
+          :title="file.name"
+          @click="selected = file.name"
         >
-          <span class="font-mono text-left">{{ getShortName(file.name) }}</span>
-          <span class="text-[9px] truncate text-left" :class="activeFile?.name === file.name ? 'text-slate-400' : 'text-slate-400'">{{ file.name }}</span>
+          <span class="min-w-0 grow truncate">
+            <span class="font-mono text-sm text-neutral-900">{{ basename(file.name) }}</span>
+            <span v-if="dirname(file.name)" class="ml-1.5 text-xs text-neutral-400">{{ dirname(file.name) }}</span>
+          </span>
+          <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatNumber(metric(file, 'complexity__lines')) }}</span>
         </button>
-
-        <div v-if="filteredFiles.length === 0" class="text-center py-8 text-xs text-slate-400 italic">
-          No files match filter
-        </div>
       </div>
     </div>
 
-    <!-- Right Panel: File Details and Code Viewer -->
-    <div class="flex-grow flex flex-col min-w-0 border border-slate-100 rounded-3xl p-6 bg-white shadow-3xs overflow-y-auto h-full">
-      <template v-if="activeFile">
-        <!-- File Header details -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4 select-none">
-          <div class="min-w-0 text-left">
-            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected File</h3>
-            <h2 class="text-sm font-bold text-slate-800 tracking-tight truncate font-mono">{{ getShortName(activeFile.name) }}</h2>
-          </div>
-          <!-- Link to full details -->
-          <router-link
-            :to="`/views/files/${activeFile.name}`"
-            class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-800 transition-colors bg-sky-50 border border-sky-100 rounded-xl px-3.5 py-2 whitespace-nowrap shadow-3xs self-start sm:self-center"
-          >
-            <span>Open Full Details</span>
-            <span>↗</span>
-          </router-link>
-        </div>
-
-        <!-- Metric Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-          <!-- Lines Card -->
-          <div class="bg-violet-50/60 border border-violet-100 rounded-2xl p-4 flex flex-col leading-tight text-left">
-            <span class="text-[9px] font-bold text-violet-500 uppercase tracking-wider mb-1">Lines of Code</span>
-            <span class="text-lg font-black text-violet-800">{{ activeFile.complexity__lines || activeFile.complexity__Lines || 'N/A' }}</span>
-          </div>
-
-          <!-- Commits Card -->
-          <div class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 flex flex-col leading-tight text-left">
-            <span class="text-[9px] font-bold text-indigo-500 uppercase tracking-wider mb-1">Total Commits</span>
-            <span class="text-lg font-black text-indigo-800">{{ activeFile.git__commits__total || activeFile.git__commits_total || 'N/A' }}</span>
-          </div>
-
-          <!-- Complexity Card (if available) -->
-          <div class="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 flex flex-col leading-tight text-left" v-if="activeFile.complexity__indentation__max">
-            <span class="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-1">Max Indentation</span>
-            <span class="text-lg font-black text-emerald-800">{{ activeFile.complexity__indentation__max || 'N/A' }}</span>
-          </div>
-
-          <!-- Authors Card -->
-          <div class="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 flex flex-col leading-tight text-left">
-            <span class="text-[9px] font-bold text-amber-500 uppercase tracking-wider mb-1">Authors</span>
-            <span class="text-lg font-black text-amber-800">{{ activeFile['git__authors:total'] || activeFile.git__authors__total || 'N/A' }}</span>
-          </div>
-        </div>
-
-        <!-- Code Viewer -->
-        <div class="flex-grow min-h-0">
-          <FilesFileCodeViewer :file-path="activeFile.name" />
-        </div>
-      </template>
-
-      <!-- Empty State -->
-      <template v-else>
-        <div class="flex-grow flex flex-col items-center justify-center py-20 text-center select-none">
-          <div class="text-3xl mb-4">📂</div>
-          <h3 class="text-sm font-bold text-slate-700 mb-1">Select a File</h3>
-          <p class="text-xs text-slate-400 max-w-xs leading-normal">Choose a source file from the explorer sidebar to view its code metrics and contents.</p>
-        </div>
-      </template>
+    <!-- Right: header row and the code viewer. -->
+    <div class="flex min-w-0 grow flex-col overflow-hidden">
+      <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
+        <span v-if="selectedFile" class="ui-toolbar-meta flex min-w-0 items-center gap-1.5">
+          <span>Lines <span class="font-mono text-neutral-800">{{ formatNumber(metric(selectedFile, 'complexity__lines')) }}</span></span>
+          <span class="text-neutral-300">·</span>
+          <span>Commits <span class="font-mono text-neutral-800">{{ formatNumber(metric(selectedFile, 'git__commits__total')) }}</span></span>
+          <span class="text-neutral-300">·</span>
+          <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(metric(selectedFile, 'git__authors__total')) }}</span></span>
+          <span class="text-neutral-300">·</span>
+          <span class="flex items-center gap-1.5">
+            Health
+            <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(health(selectedFile)))"></span>
+            <span class="font-mono" :class="levelTextClass(healthLevel(health(selectedFile)))">{{ formatHealth(health(selectedFile)) }}</span>
+          </span>
+        </span>
+        <router-link v-if="selected" :to="`/views/files/${selected}`" class="ui-btn ui-btn-sm ml-auto">
+          <Icon icon="file-code" :size="13" class="text-neutral-500"/><span>Open file</span>
+        </router-link>
+      </div>
+      <div class="min-h-0 grow overflow-hidden">
+        <FileCodeViewer v-if="selected" :key="selected" :file-path="selected"/>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, watchEffect } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { healthLevel, levelDotClass, levelTextClass, formatHealth } from "~/composables/useHealth"
+import { sqlLiteral } from "~/utils/sql"
+import { formatNumber } from "~/utils/format"
+import FileCodeViewer from "~/components/files/FileCodeViewer.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
+import Icon from "~/components/ui/common/Icon.vue"
+
+type FileRow = Record<string, any> & { name: string }
 
 const route = useRoute()
 const store = useDataStore()
 
-const nameInRoute = computed(() => route.params.name as string)
-const fileSearchQuery = ref('')
-const activeFile = ref<any | null>(null)
+const name = computed(() => String(route.params.name ?? ""))
 
-const files = ref<{
-  name: string,
-  [key: string]: any
-}[]>([])
-watch(nameInRoute, async (name) => {
-  if (!store.hasData || !name) { files.value = []; return }
-  files.value = await store.query<{
-    name: string,
-    [key: string]: any
-  }>(`
-    SELECT *
-    FROM files
-    WHERE component = '${name}'
-  `)
-}, { immediate: true })
+const { data: files, loading, error } = useAsyncQuery<FileRow[]>(
+  () => store.query<FileRow>(`SELECT * FROM files WHERE component = ${sqlLiteral(name.value)} ORDER BY name`),
+  [name],
+  { initial: [] },
+)
+
+const search = ref("")
+const selected = ref<string | null>(null)
 
 const filteredFiles = computed(() => {
-  if (!fileSearchQuery.value.trim()) return files.value
-  const q = fileSearchQuery.value.trim().toLowerCase()
+  const q = search.value.trim().toLowerCase()
+  if (!q) return files.value
   return files.value.filter(f => f.name.toLowerCase().includes(q))
 })
 
-// Auto-select the first file when files load
-watch(files, (newFiles) => {
-  if (newFiles.length > 0 && !activeFile.value) {
-    activeFile.value = newFiles[0]
-  }
-}, { immediate: true })
+const selectedFile = computed(() => files.value.find(f => f.name === selected.value) ?? null)
 
-function selectFile(file: any) {
-  activeFile.value = file
+// Selection follows the component: reset on change, then pick the first file.
+watch(name, () => {
+  selected.value = null
+  search.value = ""
+})
+watch(files, (rows) => {
+  if (!rows.some(f => f.name === selected.value)) selected.value = rows[0]?.name ?? null
+})
+
+function metric(file: FileRow, key: string): number {
+  const v = file[key] ?? file[store.statName(key)]
+  return Number(v) || 0
 }
 
-function getShortName(path: string) {
-  const parts = path.split('/')
-  return parts[parts.length - 1] || path
+function health(file: FileRow): number | null {
+  const v = file["codesmells__code_health"] ?? file[store.statName("codesmells__code_health")]
+  return v === null || v === undefined || v === "" ? null : Number(v)
+}
+
+function basename(path: string): string {
+  const i = path.lastIndexOf("/")
+  return i === -1 ? path : path.slice(i + 1)
+}
+
+function dirname(path: string): string {
+  const i = path.lastIndexOf("/")
+  return i === -1 ? "" : path.slice(0, i)
 }
 </script>

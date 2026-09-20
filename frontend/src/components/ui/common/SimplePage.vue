@@ -1,19 +1,8 @@
-
 <template>
-
-  <div class="container mx-auto mt-24" >
+  <div class="mx-auto w-full max-w-[1200px] px-8 py-8">
     <slot></slot>
   </div>
 </template>
 
 <script setup lang="ts">
-
-const props = defineProps<{
-  size?: "small" | "medium" | "large"
-}>()
-
-
 </script>
-<style scoped>
-
-</style>

@@ -1,192 +1,86 @@
 <template>
-  <div class="h-full flex flex-col p-6 overflow-hidden">
-    <ViewWorkspaceLayout
-      :title="component?.name || nameInRoute"
-      badge-text="Component Module"
-      badge-color-class="bg-blue-50 border-blue-100 text-blue-700"
-      :nodes-count="filesCount"
-      :connections-count="cyclesCount"
-      :stats-labels="{ nodes: 'Files', connections: 'Cycles' }"
-      :show-config="false"
-      :is-sidebar-open="false"
-    >
-      <!-- Action slot for Back to Hotspots -->
-      <template #actions>
-        <router-link 
-          to="/views/components/hotspots" 
-          class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mr-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-          Back to Hotspots
-        </router-link>
-      </template>
-
-      <!-- Visualizer slot for the main content grid and subpages -->
-      <template #visualizer>
-        <div class="w-full h-full flex flex-col md:flex-row gap-6 min-h-[480px] overflow-hidden">
-          
-          <!-- LEFT SIDEBAR: Grouped Navigation Menu (Desktop) -->
-          <div class="hidden md:flex flex-col gap-5 w-56 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 shadow-3xs overflow-y-auto">
-            <div v-for="group in categorizedTabs" :key="group.categoryName" class="flex flex-col gap-1.5">
-              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 select-none pb-1.5 border-b border-slate-50">
-                {{ group.categoryName }}
-              </span>
-              
-              <div class="flex flex-col gap-0.5">
-                <router-link 
-                  v-for="tab in group.tabs" 
-                  :key="tab.tabId"
-                  :to="getTabUrl(tab.tabId)"
-                  class="text-[11px] font-bold px-3 py-2 rounded-xl transition-all tracking-wide flex items-center gap-2.5"
-                  :class="isTabActive(tab.tabId)
-                    ? 'bg-slate-800 text-white shadow-xs font-black' 
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/70'"
-                >
-                  <span 
-                    class="w-1.5 h-1.5 rounded-full shrink-0" 
-                    :class="[
-                      isTabActive(tab.tabId) ? 'bg-white' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Overview' ? 'bg-blue-400/80' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Relationships' ? 'bg-indigo-400/80' : '',
-                      !isTabActive(tab.tabId) && group.categoryName === 'Graph & Cycles' ? 'bg-emerald-400/80' : '',
-                    ]"
-                  ></span>
-                  {{ tab.title }}
-                </router-link>
-              </div>
-            </div>
-          </div>
-
-          <!-- TOP BAR: Scrollable Tabs Menu (Mobile Viewports) -->
-          <div class="md:hidden w-full flex items-center gap-1.5 bg-white border border-slate-100 p-2.5 rounded-xl overflow-x-auto scrollbar-none shrink-0 shadow-3xs">
-            <router-link 
-              v-for="tab in flattenedMobileTabs" 
-              :key="tab.tabId"
-              :to="getTabUrl(tab.tabId)"
-              class="text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-all tracking-wide flex-shrink-0"
-              :class="isTabActive(tab.tabId)
-                ? 'bg-slate-800 text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'"
-            >
-              {{ tab.title }}
-            </router-link>
-          </div>
-
-          <!-- MAIN CANVAS AREA -->
-          <div class="flex-1 min-w-0 bg-white border border-slate-100 rounded-2xl p-6 shadow-3xs overflow-y-auto">
-            <NuxtPage />
-          </div>
-
-        </div>
-      </template>
-    </ViewWorkspaceLayout>
-  </div>
+  <DetailFrame
+    :title="nameInRoute"
+    mono
+    kind="Component"
+    :crumbs="[{ label: 'Components', to: '/views/metrics' }]"
+    :stats="stats"
+    :tabs="tabs"
+    fallback="/views/metrics"
+  >
+    <template #actions>
+      <router-link :to="`/views/components/hotspots?focus=${encodeURIComponent(nameInRoute)}`" class="ui-btn ui-btn-sm" title="Show this component in Hotspots">
+        <Icon icon="flame" :size="13" class="text-neutral-500"/><span>Hotspots</span>
+      </router-link>
+    </template>
+    <EmptyState v-if="store.hasData && !component" title="Component not in this snapshot" :text="`${nameInRoute} was not found in the open scan.`" icon="boxes">
+      <router-link to="/views/metrics" class="ui-btn ui-btn-sm">All components</router-link>
+    </EmptyState>
+    <NuxtPage v-else/>
+  </DetailFrame>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
+import { useJavaMetrics } from "~/composables/useJavaMetrics"
+import { formatNumber } from "~/utils/format"
+import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import Icon from "~/components/ui/common/Icon.vue"
 
 const route = useRoute()
 const store = useDataStore()
 
-const nameInRoute = computed(() => route.params.name as string)
-const component = computed(() => store.allComponents.find((c: any) => c.name === nameInRoute.value)!)
+const nameInRoute = computed(() => String(route.params.name ?? ""))
+const component = computed(() => store.allComponentsIndex.get(nameInRoute.value))
 
-const getMetric = (keyName: string): number => {
-  if (!component.value) return 0
-  const val = component.value[keyName] ?? 
-              component.value[keyName.toLowerCase()] ?? 
-              component.value[store.statName(keyName)] ?? 
-              component.value[store.statName(keyName.toLowerCase())]
-  return Number(val) || 0
+function metric(key: string): number {
+  const c: any = component.value
+  if (!c) return 0
+  const v = c[key] ?? c[store.statName(key)]
+  return Number(v) || 0
 }
 
-const filesCount = computed(() => {
-  return getMetric('Complexity__files') || undefined
+const stats = computed(() => {
+  if (!component.value) return []
+  const out = [
+    { label: "Files", value: formatNumber(metric("complexity__files")) },
+    { label: "Lines", value: formatNumber(metric("complexity__lines")) },
+  ]
+  if (store.getDistinctComponentColumns.includes("git__commits__total")) {
+    out.push({ label: "Commits", value: formatNumber(metric("git__commits__total")) })
+  }
+  return out
 })
 
-const cyclesCount = computed(() => {
-  return getMetric('Cycles__Short__count') || undefined
-})
-
+const cyclesCount = computed(() => store.allCyclesExpanded.filter(c => c.nodes.includes(nameInRoute.value)).length)
 
 const { isJavaProject, getJavaMetricsForComponent } = useJavaMetrics()
-
-const hasJavaMetrics = ref(false)
-
-watch(
-  () => nameInRoute.value,
-  async (name) => {
-    if (!name) {
-      hasJavaMetrics.value = false
-      return
-    }
-    const metrics = await getJavaMetricsForComponent(name)
-    hasJavaMetrics.value = metrics && (metrics.classes > 0 || metrics.springBeans > 0 || metrics.jpaEntities > 0)
-  },
-  { immediate: true }
-)
-
-const categorizedTabs = computed(() => {
-  const overviewTabs = [
-    { title: "Info", tabId: "info" },
-    { title: "Files", tabId: "files" }
-  ]
-  if (isJavaProject.value && hasJavaMetrics.value) {
-    overviewTabs.push({ title: "Java Insights", tabId: "java" })
-  }
-
-  const relationshipTabs = [
-    { title: "Component Matrix", tabId: "component-matrix" },
-    { title: "External File Matrix", tabId: "external-file-matrix" },
-    { title: "Internal File Matrix", tabId: "internal-file-matrix" },
-    { title: "Git Activity", tabId: "git" }
-  ]
-
-  const graphTabs = [
-    { title: "Cycles", tabId: "cycles" },
-    { title: "Static Coupling", tabId: "static-coupling" },
-    { title: "Circle of Influence", tabId: "circle-of-influence" }
-  ]
-
-  return [
-    { categoryName: "Overview", tabs: overviewTabs },
-    { categoryName: "Relationships", tabs: relationshipTabs },
-    { categoryName: "Graph & Cycles", tabs: graphTabs }
-  ]
+const hasJava = ref(false)
+watch(nameInRoute, async (name) => {
+  hasJava.value = false
+  if (!name || !isJavaProject.value) return
+  const m = await getJavaMetricsForComponent(name)
+  hasJava.value = !!m && (m.classes > 0 || m.springBeans > 0 || m.jpaEntities > 0)
+}, { immediate: true })
+watch(isJavaProject, async (java) => {
+  if (!java || !nameInRoute.value) return
+  const m = await getJavaMetricsForComponent(nameInRoute.value)
+  hasJava.value = !!m && (m.classes > 0 || m.springBeans > 0 || m.jpaEntities > 0)
 })
 
-const flattenedMobileTabs = computed(() => {
-  return categorizedTabs.value.flatMap(group => group.tabs)
-})
-
-const getTabUrl = (tabId: string) => {
+const tabs = computed<DetailTab[]>(() => {
   const base = `/views/components/${nameInRoute.value}`
-  if (tabId === "info") return base
-  return `${base}/${tabId}`
-}
-
-const isTabActive = (tabId: string) => {
-  const path = route.path.replace(/\/$/, "")
-  if (tabId === "info") {
-    return !["/files", "/cycles", "/static-coupling", "/git", "/java", "/component-matrix", "/external-file-matrix", "/internal-file-matrix", "/circle-of-influence"].some(suffix => path.endsWith(suffix))
-  }
-  return path.endsWith(`/${tabId}`)
-}
+  const list: DetailTab[] = [
+    { id: "overview", label: "Overview", to: base, exact: true },
+    { id: "dependencies", label: "Dependencies", to: `${base}/dependencies` },
+    { id: "files", label: "Files", to: `${base}/files`, count: metric("complexity__files") || undefined },
+    { id: "history", label: "History", to: `${base}/history` },
+    { id: "cycles", label: "Cycles", to: `${base}/cycles`, count: cyclesCount.value || undefined },
+  ]
+  if (hasJava.value) list.push({ id: "java", label: "Java", to: `${base}/java` })
+  return list
+})
 </script>
-
-<style scoped>
-/* Scrollbar styling */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

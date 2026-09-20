@@ -1,12 +1,12 @@
+
 <template>
-  <div class="slider-container relative cursor-pointer bg-red-500" @mousedown="startDrag">
-    <div class="slider-track w-full h-1 bg-gray-300 relative" ref="track">
-      <div class="slider-thumb w-4 h-4 bg-red-500 rounded-full absolute top-1/2 transform -translate-y-1/2"
+  <div class="slider-container relative cursor-pointer py-2" @mousedown="startDrag">
+    <div class="slider-track relative h-1 w-full rounded-full bg-neutral-200" ref="track">
+      <div class="slider-thumb absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-surface shadow-[0_0_0_1px_rgb(var(--c-neutral-400))]"
            :style="{ left: thumbPosition + 'px' }" ref="thumb"></div>
     </div>
   </div>
 </template>
-
 <script setup>
 import {ref, onMounted, onBeforeUnmount, defineProps, defineEmits} from "vue";
 

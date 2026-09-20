@@ -1,41 +1,24 @@
+
 <template>
-  <div class="w-fit border border-gray-400 relative rounded px-4 py-3 cursor-pointer" @blur='isDropdownOpen=false'
-       tabindex="0">
-    <div class="flex justify-between items-center w-full h-full gap-2" @click="toggleDropdown">
-      <div class="whitespace-nowrap">
-        {{ modelValue.length }} of {{ options.length }} selected
-      </div>
-      <Icon icon="chevron-down"></Icon>
-    </div>
+  <div class="relative inline-block" tabindex="-1" @focusout="onFocusOut">
+    <button type="button" class="ui-btn justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen" @click="toggleDropdown">
+      <span class="whitespace-nowrap">{{ modelValue.length }} of {{ options.length }} selected</span>
+      <Icon icon="chevron-down" :size="14" class="shrink-0 text-neutral-400"></Icon>
+    </button>
 
-    <div class="" v-if="isDropdownOpen">
-      <div
-          class="z-10 rounded border-2 border-gray-200 absolute top-full left-0  bg-white">
-        <div :class="['px-4 py-2 hover:bg-gray-200 flex gap-2', {
-              'bg-gray-100': isAllSelected
-            }]"
-             @click="toggleSelectAll"
-        >
-          <Checkbox :model-value="isAllSelected">All</Checkbox>
-        </div>
-        <hr>
-        <div class="max-h-[250px] overflow-y-auto">
-          <div v-for="(option, idx) in options" :key="getOptionName(option)" @click="handleSelect(option)">
-            <div :class="['px-4 py-2 hover:bg-gray-200 flex gap-2', {
-              'bg-gray-100': isSelected(option)
-            }]">
-              <Checkbox :model-value="isSelected(option)">{{ getOptionName(option) }}</Checkbox>
-
-            </div>
-          </div>
-        </div>
-
+    <div v-if="isDropdownOpen" class="ui-menu absolute left-0 top-full z-50 mt-1 min-w-[220px] animate-in">
+      <button type="button" class="ui-menu-item" @click="toggleSelectAll">
+        <Checkbox :model-value="isAllSelected" class="pointer-events-none">All</Checkbox>
+      </button>
+      <div class="my-1 h-px bg-neutral-200"></div>
+      <div class="max-h-[250px] overflow-y-auto">
+        <button type="button" v-for="(option, idx) in options" :key="getOptionName(option)" class="ui-menu-item" @click="handleSelect(option)">
+          <Checkbox :model-value="isSelected(option)" class="pointer-events-none">{{ getOptionName(option) }}</Checkbox>
+        </button>
       </div>
     </div>
-
   </div>
 </template>
-
 <script setup lang="ts">
 
 import Icon from "~/components/ui/common/Icon.vue";
@@ -95,6 +78,12 @@ function toggleSelectAll() {
   }
 }
 
+
+function onFocusOut(e: FocusEvent) {
+  const next = e.relatedTarget as Node | null
+  const root = e.currentTarget as HTMLElement
+  if (!next || !root.contains(next)) isDropdownOpen.value = false
+}
 
 function toggleDropdown() {
   isDropdownOpen.value = !isDropdownOpen.value

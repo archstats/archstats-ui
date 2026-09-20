@@ -7,7 +7,12 @@
     "generate": "cross-env NUXT_DIST_OUTPUT=1 nuxt generate --loglevel info",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tokens": "node scripts/gen-tokens.cjs",
+    "dev:reset": "rm -rf .output && touch nuxt.config.ts",
+    "check": "node scripts/dev-check.mjs",
+    "capture": "node scripts/capture.mjs",
+    "bench": "vitest run --config vitest.bench.config.ts"
   },
   "dependencies": {
     "@nuxt/image": "^1.0.0-rc.3",

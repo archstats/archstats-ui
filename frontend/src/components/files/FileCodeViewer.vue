@@ -1,68 +1,24 @@
 <template>
-  <div class="flex flex-col gap-4">
-    <!-- Code Editor Card -->
-    <div class="border border-slate-200/80 rounded-3xl overflow-hidden bg-[#282c34] shadow-md flex flex-col">
-      <!-- Editor Header -->
-      <div class="flex items-center justify-between px-5 py-3 bg-[#21252b] border-b border-[#181a1f] select-none">
-        <!-- File identity details -->
-        <div class="flex items-center gap-2 text-left">
-          <span class="font-mono text-xs text-[#abb2bf] font-bold select-all">{{ fileBasename }}</span>
-          <span 
-            v-if="detectedLanguageLabel" 
-            class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-[#282c34] text-slate-400 border border-slate-700/50 font-mono"
-          >
-            {{ detectedLanguageLabel }}
-          </span>
-          <!-- Line highlight indicator -->
-          <span 
-            v-if="highlightStart > 0"
-            class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
-          >
-            L{{ highlightStart === highlightEnd ? highlightStart : `${highlightStart}-${highlightEnd}` }}
-          </span>
-        </div>
+  <div class="flex min-h-0 flex-col overflow-hidden bg-surface" :class="fill ? 'h-full' : 'rounded-lg hairline'">
+    <!-- Header: identity left, copy right. -->
+    <div class="flex h-8 shrink-0 items-center gap-2 px-3 hairline-b">
+      <Icon icon="file-code" :size="14" class="text-neutral-400"/>
+      <span class="truncate font-mono text-sm text-neutral-900" :title="filePath">{{ fileBasename }}</span>
+      <span v-if="detectedLanguageLabel" class="ui-tag">{{ detectedLanguageLabel }}</span>
+      <span v-if="highlightStart > 0" class="ui-tag">L{{ highlightStart === highlightEnd ? highlightStart : `${highlightStart}–${highlightEnd}` }}</span>
+      <span class="ml-auto font-mono text-xs text-neutral-400">{{ codeLines.length }} lines</span>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!fileContents" @click="copyToClipboard">
+        <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/>
+        <span>{{ copied ? 'Copied' : 'Copy' }}</span>
+      </button>
+    </div>
 
-        <!-- Copy Action Button -->
-        <button 
-          @click="copyToClipboard"
-          class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-white transition-colors cursor-pointer bg-[#282c34] hover:bg-[#2c313c] border border-slate-700/50 px-2.5 py-1 rounded-lg"
-        >
-          <!-- Clipboard Icon -->
-          <svg v-if="!copied" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0A2.25 2.25 0 0 1 13.5 5.25h-3a2.25 2.25 0 0 1-2.166-1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.046.166.07.34.07.518v14.5a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25V5.25c0-.178.024-.352.07-.518M9 10.5h6m-6 3h6m-6 4h6" />
-          </svg>
-          <!-- Checked / Success Icon -->
-          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 text-emerald-400">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-          </svg>
-          <span>{{ copied ? 'Copied!' : 'Copy Code' }}</span>
-        </button>
+    <EmptyState v-if="!fileContents" title="No source stored" text="This snapshot does not include the file contents." icon="file-text" class="grow"/>
+    <div v-else ref="scrollContainerRef" class="code-scroll relative flex min-h-0 grow items-start overflow-auto" :class="fill ? '' : 'max-h-[600px]'">
+      <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 pl-3 pr-2 font-mono text-xs leading-5 text-neutral-400 hairline-r">
+        <span v-for="line in codeLines" :key="'num-' + line.number" :ref="line.isHighlighted ? 'highlightedLineRef' : undefined" class="block text-right" :class="line.isHighlighted ? 'text-neutral-900' : ''">{{ line.number }}</span>
       </div>
-
-      <!-- Editor Content -->
-      <div ref="scrollContainerRef" class="overflow-y-auto max-h-[600px] flex items-start relative bg-[#282c34] rounded-b-3xl scroll-container-y">
-        <!-- Gutter Line Numbers -->
-        <div class="sticky left-0 bg-[#21252b] select-none text-[#5c6370] pl-5 pr-4 py-4 border-r border-[#181a1f] font-mono text-[11px] leading-[1.6] min-w-[3.5rem] shrink-0 font-bold z-10 m-0 overflow-hidden flex flex-col">
-          <span 
-            v-for="line in codeLines" 
-            :key="'num-' + line.number"
-            :ref="line.isHighlighted ? 'highlightedLineRef' : undefined"
-            class="text-right block"
-            :class="line.isHighlighted ? 'text-amber-400' : ''"
-          >{{ line.number }}</span>
-        </div>
-
-        <!-- Highlighted Code Body -->
-        <div class="grow overflow-x-auto min-w-0">
-          <pre class="p-4 m-0 bg-[#282c34] font-mono text-[11px] leading-[1.6] scroll-container-x"><code class="hljs block whitespace-pre text-left"><div 
-  v-for="line in codeLines" 
-  :key="'code-' + line.number"
-  class="w-full"
-  :class="line.isHighlighted ? 'bg-amber-500/15 border-l-2 border-amber-500 pl-2 -ml-2 font-semibold' : ''"
-  v-html="line.html || ' '"
-></div></code></pre>
-        </div>
-      </div>
+      <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body block whitespace-pre text-left"><div v-for="line in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" v-html="line.html || ' '"></div></code></pre>
     </div>
   </div>
 </template>
@@ -71,13 +27,19 @@
 import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
+import Icon from "~/components/ui/common/Icon.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
 import hljs from "highlight.js"
-import "highlight.js/styles/atom-one-dark.css"
 
 const props = defineProps({
   filePath: {
     type: String,
     required: true,
+  },
+  // Fill the parent (detail tab) instead of capping at a fixed height.
+  fill: {
+    type: Boolean,
+    default: true,
   },
 })
 
@@ -279,42 +241,19 @@ function copyToClipboard() {
 </script>
 
 <style scoped>
-/* Code Container scrollbars */
-.scroll-container-y::-webkit-scrollbar,
-.scroll-container-x::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.scroll-container-y::-webkit-scrollbar-track,
-.scroll-container-x::-webkit-scrollbar-track {
-  background: #21252b;
-}
-.scroll-container-y::-webkit-scrollbar-thumb,
-.scroll-container-x::-webkit-scrollbar-thumb {
-  background: #3e4452;
-  border-radius: 4px;
-}
-.scroll-container-y::-webkit-scrollbar-thumb:hover,
-.scroll-container-x::-webkit-scrollbar-thumb:hover {
-  background: #4b5263;
-}
+.code-line { min-height: 1.25rem; margin: 0 -1.5rem 0 -1rem; padding: 0 1.5rem 0 1rem; }
+.code-line.is-highlighted { background: rgb(var(--c-accent-50)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500)); }
 
-:deep(code.hljs) {
-  padding: 0 !important;
-}
-
-:deep(.hljs-addition) {
-  background-color: rgba(34, 197, 94, 0.15) !important;
-  color: #a3e635 !important;
-  display: inline-block;
-  width: 100%;
-  padding-right: 4px;
-}
-:deep(.hljs-deletion) {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  color: #f87171 !important;
-  display: inline-block;
-  width: 100%;
-  padding-right: 4px;
-}
+/* Syntax colours from the data ramps; the accent stays out of the code. */
+.code-body :deep(.hljs-comment), .code-body :deep(.hljs-quote) { color: rgb(var(--c-neutral-500)); font-style: italic; }
+.code-body :deep(.hljs-keyword), .code-body :deep(.hljs-selector-tag), .code-body :deep(.hljs-literal), .code-body :deep(.hljs-doctag), .code-body :deep(.hljs-formula) { color: rgb(var(--c-violet-700)); }
+.code-body :deep(.hljs-string), .code-body :deep(.hljs-regexp), .code-body :deep(.hljs-addition), .code-body :deep(.hljs-meta .hljs-string) { color: rgb(var(--c-green-700)); }
+.code-body :deep(.hljs-number), .code-body :deep(.hljs-symbol), .code-body :deep(.hljs-bullet), .code-body :deep(.hljs-link), .code-body :deep(.hljs-selector-attr), .code-body :deep(.hljs-selector-pseudo) { color: rgb(var(--c-amber-700)); }
+.code-body :deep(.hljs-title), .code-body :deep(.hljs-title.function_), .code-body :deep(.hljs-section), .code-body :deep(.hljs-name) { color: rgb(var(--c-blue-700)); }
+.code-body :deep(.hljs-title.class_), .code-body :deep(.hljs-type), .code-body :deep(.hljs-built_in), .code-body :deep(.hljs-class .hljs-title) { color: rgb(var(--c-blue-800)); }
+.code-body :deep(.hljs-attr), .code-body :deep(.hljs-attribute), .code-body :deep(.hljs-variable), .code-body :deep(.hljs-template-variable), .code-body :deep(.hljs-params) { color: rgb(var(--c-neutral-800)); }
+.code-body :deep(.hljs-meta), .code-body :deep(.hljs-selector-id), .code-body :deep(.hljs-selector-class) { color: rgb(var(--c-amber-800)); }
+.code-body :deep(.hljs-deletion) { color: rgb(var(--c-red-700)); }
+.code-body :deep(.hljs-emphasis) { font-style: italic; }
+.code-body :deep(.hljs-strong) { font-weight: 600; }
 </style>

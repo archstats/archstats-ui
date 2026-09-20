@@ -1,461 +1,419 @@
 <template>
-  <div id="chart1" @mouseleave="hoveredComponent=null" @mousemove="mouseMove">
+  <div class="relative h-full w-full" @mouseleave="hovered = null" @mousemove="mouseMove">
     <div
-        v-if="dragSelectionAnchorPoint==null && hoveredComponent "
-        class="fixed p-4 bg-archstats-50 shadow-xl"
-        @mouseenter='isHoveringOverTooltip = true'
-        @mouseleave="isHoveringOverTooltip=false"
-        :style="{'top': `${hoveredComponent?.posY}px`, 'left': `${hoveredComponent?.posX}px`}"
+        v-if="dragAnchor == null && hovered"
+        class="ui-popover fixed z-50 w-64 p-3"
+        :style="{ top: `${hovered.posY}px`, left: `${hovered.posX}px` }"
+        @mouseenter="isHoveringOverTooltip = true"
+        @mouseleave="isHoveringOverTooltip = false"
     >
-      <h3 class="font-semibold font-mono text-sm mb-4">{{ componentsInScope[hoveredComponent.index].name }}</h3>
-      <InfoTable :component="componentsInScope[hoveredComponent?.index]"
-                 :only-show="[xAxisProperty, yAxisProperty, radiusProperty]"
-      />
-      <Expandable class="mt-4">
-        <span class="text-archstats-300 hover:text-archstats-500 cursor-pointer transition">Show all <span
-            class="text-archstats-800">{{ Object.keys(componentsInScope[hoveredComponent.index]).length }}</span> stats</span>
-
-        <template #expanded-content>
-          <div class="h-72 overflow-y-scroll p-2 bg-white border mt-2">
-            <InfoTable :component="componentsInScope[hoveredComponent?.index]"/>
-          </div>
-
+      <h3 class="mb-2 truncate font-mono text-sm font-semibold text-neutral-900" :title="String(hovered.row.name)">{{ hovered.row.name }}</h3>
+      <dl class="ui-kv">
+        <template v-for="key in tooltipKeys" :key="key">
+          <dt class="truncate" :title="key">{{ niceName(key) }}</dt>
+          <dd>{{ round(hovered.row[key], 3) }}</dd>
         </template>
-      </Expandable>
+      </dl>
     </div>
-    <svg ref="svg" @mousedown="beginDragSelecting" @mouseup="doneDragSelecting" @mousemove="updateMouseCoords"
-         :viewBox="`${-margin.left} ${-margin.top} ${width + (margin.left + margin.right)} ${height + (margin.top + margin.bottom)}`"
-         class="w-full h-full border border-archstats-100 rounded p-3">
-      <!-- Gradient definitions for multi-group nodes -->
-      <defs>
-        <linearGradient
-          v-for="grad in multiColorGradients"
-          :key="grad.id"
-          :id="grad.id"
-        >
-          <stop
-            v-for="(stop, idx) in grad.stops"
-            :key="idx"
-            :offset="stop.offset"
-            :stop-color="stop.color"
-          />
-        </linearGradient>
-      </defs>
-      <g v-for="(component, index) in componentsInScope" :key="component.name">
-        <circle @mouseenter="hoverOver(index, $event)"
-                @click.stop="componentClicked($event, component)"
-                :r="radiusScaledValues[index]"
-                :cx="xScaledValues[index]"
-                :cy="yScaledValues[index]"
-                :fill="getCircleFill(component.name, index)"
-                class="stroke-archstats-800 transition-all duration-150"
-                :class="{
-                  'stroke-2 stroke-slate-950': hoveredComponent?.index === index || selectingComponents.has(component.name) || selectedComponentsIndex.includes(component.name),
-                  'pointer-events-none': !isNodeSelectable(component.name)
-                }"
-                :opacity="getComponentOpacity(component.name)"
-                :ref="el => circles[index] = el"
-        />
-        <text v-if="shouldShowText(index)"
-              :x="xScaledValues[index] + radiusScaledValues[index] + 6"
-              :y="yScaledValues[index] + radiusScaledValues[index] / 2"
-              class="text-xs text-white transition-opacity duration-150"
-              :opacity="getComponentOpacity(component.name)"
-        > {{ component.name }}
-        </text>
 
-      </g>
+    <svg
+        ref="svg"
+        class="h-full w-full"
+        :viewBox="`${-margin.left} ${-margin.top} ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`"
+        @mousedown="beginDragSelecting"
+        @mousemove="updateMouseCoords"
+    >
+      <defs>
+        <linearGradient v-for="grad in multiColorGradients" :key="grad.id" :id="grad.id">
+          <stop v-for="(stop, idx) in grad.stops" :key="idx" :offset="stop.offset" :stop-color="stop.color"/>
+        </linearGradient>
+        <clipPath :id="clipId">
+          <rect :x="0" :y="0" :width="width" :height="height"/>
+        </clipPath>
+      </defs>
 
       <g ref="xAxisElement" class="select-none"></g>
-
       <g ref="yAxisElement" class="select-none"></g>
 
-      <text :y="height/2" :x="-60" :transform="`rotate(-90, -60, 250)`" text-anchor="middle" dominant-baseline="central"
-            class="font-bold select-none">
-        {{ yAxisProperty }}
+      <text :x="-52" :y="height / 2" :transform="`rotate(-90, -52, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
+            class="select-none" :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+        {{ niceName(yAxisProperty) }}
+      </text>
+      <text :x="width / 2" :y="height + 48" text-anchor="middle"
+            class="select-none" :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+        {{ niceName(xAxisProperty) }}
       </text>
 
-      <text :y="height + 50" :x="width/2" text-anchor="middle" class="font-bold select-none">
-        {{ xAxisProperty }}
-      </text>
+      <g :clip-path="`url(#${clipId})`">
+        <g v-if="isDistanceMainSequence">
+          <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.hairlineStrong" stroke-width="1" stroke-dasharray="4 3"/>
+          <text :transform="`rotate(45, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
+                font-size="10" class="select-none" :fill="theme.inkMuted" :font-family="theme.fontSans">
+            Main sequence
+          </text>
+        </g>
 
-      <g v-if="isDistanceMainSequence">
-        <line :x1="xScale(0)"
-              :y1="yScale(1)"
-              :x2="xScale(1)"
-              :y2="yScale(0)"
-              class="stroke-archstats-900"
-              stroke-width="1"
-        ></line>
-        <text :transform="`rotate(45, ${xScale(0.5)}, ${yScale(0.5)})`"
-              :x="xScale(0.5)"
-              :y="yScale(0.5)"
-              stroke-width="2"
-              text-anchor="middle"
-              dy="-6"
-              font-size="12"
-              class="select-none"
-        >
-          Main Sequence
-        </text>
-      </g>
+        <g v-for="mark in marks" :key="mark.row.name">
+          <circle
+              :cx="mark.x"
+              :cy="mark.y"
+              :r="mark.r"
+              :fill="fillFor(mark)"
+              :stroke="isHighlighted(mark) ? theme.ink : withAlpha(theme.ink, 0.35)"
+              :stroke-width="isHighlighted(mark) ? 1.5 : 0.75"
+              :opacity="opacityFor(mark.row.name)"
+              class="cursor-pointer"
+              :class="{ 'pointer-events-none': !isSelectable(mark.row.name) }"
+              @mouseenter="hoverOver(mark, $event)"
+              @click.stop="markClicked($event, mark.row)"
+          />
+          <text
+              v-if="showText"
+              :x="mark.x + mark.r + 4"
+              :y="mark.y"
+              dominant-baseline="central"
+              font-size="9"
+              :fill="theme.inkSecondary"
+              :font-family="theme.fontMono"
+              :opacity="opacityFor(mark.row.name)"
+              class="pointer-events-none select-none"
+          >{{ mark.row.name }}</text>
+        </g>
 
-      <g v-if="dragRectangle">
         <rect
-            :x="dragRectangle.x"
-            :y="dragRectangle.y"
-            :width="dragRectangle.width"
-            :height="dragRectangle.height"
-            class="fill-archstats-200 opacity-50"
-
-        ></rect>
+            v-if="dragRectangle"
+            :x="dragRectangle.x" :y="dragRectangle.y" :width="dragRectangle.width" :height="dragRectangle.height"
+            :fill="withAlpha(theme.blue, 0.12)" :stroke="theme.blue" stroke-width="0.75"
+        />
       </g>
-
     </svg>
   </div>
-
 </template>
+
 <script setup lang="ts">
-import {RawComponent} from "~/utils/components";
-import {PropType, ComputedRef} from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type PropType } from "vue";
 import * as d3 from "d3";
-import Expandable from "~/components/ui/common/Expandable.vue";
-import InfoTable from "~/components/ui/tables/InfoTable.vue";
-import {useDataStore} from "~/stores/data";
-import {useGroupsStore} from "~/stores/groups";
+import { chartTheme, useChartTheme, withAlpha } from "~/composables/useChartTheme";
+import { useDataStore } from "~/stores/data";
+import { useGroupsStore } from "~/stores/groups";
+import { round } from "~/utils/text";
 
+// Scatter plot over any rows that carry a `name` and numeric columns:
+// components or files. Axis domains come from `domainRows` so filtering the
+// visible rows never rescales the plot. Wheel zooms, alt-drag (or middle
+// button) pans, plain drag box-selects, shift-click toggles one mark.
 
-const props = defineProps(
-    {
-      componentsInScope: {
-        type: Array as PropType<RawComponent[]>,
-        required: true
-      },
-      allComponents: {
-        type: Array as PropType<RawComponent[]>,
-        required: true
-      },
-      selectedComponents: {
-        type: Array as PropType<RawComponent[]>,
-        default: () => []
-      },
-      showText: {
-        type: Boolean,
-        default: true
-      },
+type Row = { name: string; [key: string]: any };
+type Point = { x: number; y: number };
+type Mark = { row: Row; x: number; y: number; r: number };
 
-      xAxisProperty: {
-        type: String,
-        default: 'complexity__lines'
-      },
-      yAxisProperty: {
-        type: String,
-        default: 'complexity__lines'
-      },
-      radiusProperty: {
-        type: String,
-        required: false,
-      },
-      searchQuery: {
-        type: String,
-        default: ''
-      },
-      hiddenGroups: {
-        type: Object as PropType<Set<string>>,
-        default: () => new Set<string>()
-      },
-      activeFilters: {
-        type: Object as PropType<Set<string>>,
-        default: () => new Set<string>()
-      },
-      hoveredGroupId: {
-        type: String as PropType<string | null>,
-        default: null
-      },
-    }
-)
+const props = defineProps({
+  rows: { type: Array as PropType<Row[]>, required: true },
+  domainRows: { type: Array as PropType<Row[]>, required: true },
+  selected: { type: Array as PropType<string[]>, default: () => [] },
+  grain: { type: String as PropType<"component" | "file">, default: "component" },
+  showText: { type: Boolean, default: false },
+  xAxisProperty: { type: String, required: true },
+  yAxisProperty: { type: String, required: true },
+  radiusProperty: { type: String as PropType<string | null>, default: null },
+  searchQuery: { type: String, default: "" },
+  hiddenGroups: { type: Object as PropType<Set<string>>, default: () => new Set<string>() },
+  activeFilters: { type: Object as PropType<Set<string>>, default: () => new Set<string>() },
+  hoveredGroupId: { type: String as PropType<string | null>, default: null },
+});
 
-const emit = defineEmits(['components-selected', 'component-clicked'])
-const svg = ref<SVGSVGElement | null>(null)
-const svgPoint = computed(() => {
-  return svg.value?.createSVGPoint()
-})
-const width = 500
-const height = 500
-const margin = {top: 0, right: 0, bottom: 65, left: 70};
+const emit = defineEmits<{
+  (e: "update:selected", names: string[]): void;
+  (e: "clicked", row: Row): void;
+}>();
 
-const circles = ref<SVGCircleElement[]>([])
+const store = useDataStore();
+const groupsStore = useGroupsStore();
+const { theme, version: themeVersion } = useChartTheme();
 
-type HoveredComponent = { index: number, posX: number, posY: number };
-const hoveredComponent = ref<HoveredComponent | null>(null)
+const width = 500;
+const height = 500;
+const margin = { top: 12, right: 24, bottom: 64, left: 70 };
+const clipId = `plot-clip-${Math.random().toString(36).slice(2, 8)}`;
 
-const isHoveringOverTooltip = ref(false)
+const svg = ref<SVGSVGElement | null>(null);
+const xAxisElement = ref<SVGGElement | null>(null);
+const yAxisElement = ref<SVGGElement | null>(null);
+
+function niceName(column: string): string {
+  return store.statNiceName(column) || column;
+}
+
+// ─── Scales ───
+function domainOf(rows: Row[], key: string): [number, number] {
+  const values = rows.map((r) => Number(r[key])).filter((v) => Number.isFinite(v));
+  if (values.length === 0) return [0, 1];
+  const min = d3.min(values) as number;
+  let max = d3.max(values) as number;
+  if (max <= min) max = min + 1;
+  const pad = (max - min) * 0.08;
+  // Non-negative metrics start at zero so the origin means what it says.
+  return [min >= 0 ? 0 : min - pad, max + pad];
+}
+
+const xScale = computed(() => d3.scaleLinear().domain(domainOf(props.domainRows, props.xAxisProperty)).range([0, width]));
+const yScale = computed(() => d3.scaleLinear().domain(domainOf(props.domainRows, props.yAxisProperty)).range([height, 0]));
+const radiusScale = computed<(v: number) => number>(() => {
+  const key = props.radiusProperty;
+  if (!key) return () => 5;
+  const values = props.domainRows.map((r) => Number(r[key])).filter((v) => Number.isFinite(v));
+  if (values.length === 0) return () => 5;
+  const min = Math.max(0, d3.min(values) as number);
+  const max = Math.max(min + 1, d3.max(values) as number);
+  const scale = d3.scaleSqrt().domain([min, max]).range([4, 18]).clamp(true);
+  return (v: number) => (Number.isFinite(v) ? scale(v) : 4);
+});
+
+// Zoomed copies of the scales; the zoom transform lives in SVG user space.
+const transform = shallowRef<d3.ZoomTransform>(d3.zoomIdentity);
+const xz = computed(() => transform.value.rescaleX(xScale.value));
+const yz = computed(() => transform.value.rescaleY(yScale.value));
+
+const marks = computed<Mark[]>(() => {
+  const out: Mark[] = [];
+  const rScale = radiusScale.value;
+  for (const row of props.rows) {
+    const xv = Number(row[props.xAxisProperty]);
+    const yv = Number(row[props.yAxisProperty]);
+    if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+    const rv = props.radiusProperty ? Number(row[props.radiusProperty]) : NaN;
+    out.push({ row, x: xz.value(xv), y: yz.value(yv), r: rScale(rv) });
+  }
+  return out;
+});
+
+const isDistanceMainSequence = computed(() =>
+    props.xAxisProperty === store.statName("modularity__instability") && props.yAxisProperty === store.statName("modularity__abstractness"),
+);
+
+const tooltipKeys = computed(() => {
+  const keys = [props.xAxisProperty, props.yAxisProperty, props.radiusProperty].filter((k): k is string => !!k);
+  return Array.from(new Set(keys));
+});
+
+// ─── Axes ───
+function styleAxis(g: d3.Selection<SVGGElement, unknown, null, undefined>) {
+  const t = chartTheme();
+  g.selectAll("path.domain").attr("stroke", t.hairlineStrong);
+  g.selectAll("line").attr("stroke", t.hairline);
+  g.selectAll("text").attr("fill", t.inkSecondary).attr("font-size", 10).attr("font-family", t.fontMono);
+}
+
+function drawAxes() {
+  if (!xAxisElement.value || !yAxisElement.value) return;
+  const xAxis = d3.axisBottom(xz.value).ticks(8).tickSize(-height).tickPadding(8);
+  const yAxis = d3.axisLeft(yz.value).ticks(8).tickSize(-width).tickPadding(8);
+  styleAxis(d3.select(xAxisElement.value).attr("transform", `translate(0,${height})`).call(xAxis));
+  styleAxis(d3.select(yAxisElement.value).call(yAxis));
+}
+
+watch([xz, yz, themeVersion], () => {
+  drawAxes();
+  hovered.value = null;
+});
+
+// ─── Zoom ───
+let zoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
+
+function zoomIn() {
+  if (svg.value && zoom) d3.select(svg.value).transition().duration(180).call(zoom.scaleBy, 1.4);
+}
+function zoomOut() {
+  if (svg.value && zoom) d3.select(svg.value).transition().duration(180).call(zoom.scaleBy, 1 / 1.4);
+}
+function resetZoom() {
+  if (svg.value && zoom) d3.select(svg.value).transition().duration(180).call(zoom.transform, d3.zoomIdentity);
+}
+defineExpose({ zoomIn, zoomOut, resetZoom });
+
+onMounted(() => {
+  drawAxes();
+  if (!svg.value) return;
+  zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.5, 60])
+      // d3-zoom resolves its extent inside the transition's tween, and its
+      // default reads the svg's own width: on a CSS-sized element that throws
+      // mid-frame and the transition dies silently. State the box instead.
+      .extent([[0, 0], [width, height]])
+      .filter((event: any) => {
+        if (event.type === "wheel") return true;
+        // Plain drag is box-select; pan needs alt or the middle button.
+        if (event.type === "mousedown") return event.button === 1 || event.altKey;
+        return !event.button;
+      })
+      .on("zoom", (event) => { transform.value = event.transform; });
+  d3.select(svg.value).call(zoom).on("dblclick.zoom", null);
+  window.addEventListener("mouseup", doneDragSelecting);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("mouseup", doneDragSelecting);
+  if (svg.value) d3.select(svg.value).on(".zoom", null);
+});
+
+// ─── Hover ───
+type Hovered = { row: Row; posX: number; posY: number };
+const hovered = ref<Hovered | null>(null);
+const isHoveringOverTooltip = ref(false);
+
+function hoverOver(mark: Mark, event: MouseEvent) {
+  if (dragAnchor.value != null) return;
+  if (hovered.value?.row.name === mark.row.name) return;
+  const rect = (event.currentTarget as SVGCircleElement).getBoundingClientRect();
+  hovered.value = { row: mark.row, posX: 10 + rect.x + rect.width / 2, posY: 10 + rect.y + rect.height / 2 };
+}
 
 function mouseMove(event: MouseEvent) {
-  if (!hoveredComponent.value || isHoveringOverTooltip.value) return
-
-  // distance from mouse to hovered component
-  const distance = Math.sqrt(Math.pow(event.clientX - hoveredComponent.value.posX, 2) + Math.pow(event.clientY - hoveredComponent.value.posY, 2))
-
-  if (distance > 120) {
-    hoveredComponent.value = null
-  }
+  if (!hovered.value || isHoveringOverTooltip.value) return;
+  const dx = event.clientX - hovered.value.posX;
+  const dy = event.clientY - hovered.value.posY;
+  if (Math.sqrt(dx * dx + dy * dy) > 120) hovered.value = null;
 }
-const mouseCoords = ref({x: 0, y: 0})
+
+// ─── Box selection ───
+const mouseCoords = ref<Point>({ x: 0, y: 0 });
+const dragAnchor = ref<Point | null>(null);
+
+function userPoint(evt: MouseEvent): Point | null {
+  const el = svg.value;
+  if (!el) return null;
+  const ctm = el.getScreenCTM();
+  if (!ctm) return null;
+  const pt = el.createSVGPoint();
+  pt.x = evt.clientX;
+  pt.y = evt.clientY;
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
+}
 
 function updateMouseCoords(evt: MouseEvent) {
-  const point = scaledPoint({
-    x: evt.clientX,
-    y: evt.clientY
-  })
-  if (!point) return
-  mouseCoords.value = point
-}
-
-const dragSelectionAnchorPoint = ref<{ x: number, y: number } | null>(null)
-
-const dragRectangle = computed(() => {
-  if (dragSelectionAnchorPoint.value == null) return null
-  const end = mouseCoords.value
-  return calculateSVGRectangleFromTwoPoints(dragSelectionAnchorPoint.value, end)
-})
-const calculateSVGRectangleFromTwoPoints = (p1: { x: number, y: number }, p2: { x: number, y: number }) => {
-  const x = Math.min(p1.x, p2.x)
-  const y = Math.min(p1.y, p2.y)
-  const width = Math.abs(p1.x - p2.x)
-  const height = Math.abs(p1.y - p2.y)
-  return {x, y, width, height}
+  const p = userPoint(evt);
+  if (p) mouseCoords.value = p;
 }
 
 function beginDragSelecting(event: MouseEvent) {
-  dragSelectionAnchorPoint.value = scaledPoint({
-    x: event.clientX,
-    y: event.clientY
-  })
+  if (event.button !== 0 || event.altKey) return;
+  const p = userPoint(event);
+  if (!p) return;
+  dragAnchor.value = p;
+  mouseCoords.value = p;
+  hovered.value = null;
 }
+
+const dragRectangle = computed(() => {
+  const a = dragAnchor.value;
+  if (!a) return null;
+  const b = mouseCoords.value;
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+});
+
+const selecting = computed<Set<string>>(() => {
+  const rect = dragRectangle.value;
+  if (!rect) return new Set();
+  const out = new Set<string>();
+  for (const m of marks.value) {
+    if (m.x > rect.x && m.x < rect.x + rect.width && m.y > rect.y && m.y < rect.y + rect.height && isSelectable(m.row.name)) out.add(m.row.name);
+  }
+  return out;
+});
 
 function doneDragSelecting(event: MouseEvent) {
-  const componentNames = Array.from(selectingComponents.value)
-  const components = props.componentsInScope.filter(c => componentNames.includes(c.name) && isNodeSelectable(c.name))
-
-  emit('components-selected', components)
-
-  dragSelectionAnchorPoint.value = null
-}
-
-function scaledPoint(coord: { x: number, y: number }) {
-  const pt = svgPoint.value
-  if (!pt) return null
-  pt.x = coord.x;
-  pt.y = coord.y;
-  const svgP = pt.matrixTransform(svg.value?.getScreenCTM()?.inverse());
-  return svgP
-}
-
-
-const selectedComponentsIndex = computed(() => {
-  return props.selectedComponents.map(c => c.name)
-})
-
-const selectingComponents: ComputedRef<Set<string>> = computed(() => {
-
-  const components = componentWithCurrentCoords.value.filter((component, index) => {
-    const x = component.posX
-    const y = component.posY
-    const radius = component.radius
-    if (dragRectangle.value == null) return false
-    const rect = dragRectangle.value
-    return x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height
-  })
-  return new Set(components.map(c => c.name))
-})
-
-function hoverOver(index: number, event: MouseEvent) {
-  if (hoveredComponent.value?.index === index || dragSelectionAnchorPoint.value != null) {
-    return
+  if (dragAnchor.value == null) return;
+  const rect = dragRectangle.value;
+  const isClick = !rect || (rect.width < 3 && rect.height < 3);
+  const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+  dragAnchor.value = null;
+  if (isClick) {
+    // A click on empty canvas clears the selection unless a modifier says keep it.
+    if (!additive && props.selected.length > 0) emit("update:selected", []);
+    return;
   }
-  const svgCircle = circles.value[index]
-
-  let domRect = svgCircle.getBoundingClientRect();
-
-
-  hoveredComponent.value = {
-    index,
-    posX: 10+ domRect.x + domRect.width / 2,
-    posY: 10+domRect.y + domRect.height / 2
-  }
+  const picked = Array.from(selecting.value);
+  emit("update:selected", additive ? Array.from(new Set([...props.selected, ...picked])) : picked);
 }
 
-const store = useDataStore()
+// ─── Groups, colours, visibility ───
+const selectedSet = computed(() => new Set(props.selected));
 
-const isDistanceMainSequence = computed(() => {
-  return props.xAxisProperty === store.statName("modularity__instability")  && props.yAxisProperty === store.statName("modularity__abstractness")
-})
+const groupIndex = computed(() => (props.grain === "file" ? groupsStore.fileGroupIndex : groupsStore.componentGroupIndex));
 
-function shouldShowText(idx: number) {
-  return props.showText
+function visibleGroupsOf(name: string) {
+  const groups = groupIndex.value.get(name) || [];
+  return groups.filter((g) => !props.hiddenGroups.has(g.id));
 }
 
-// make a scale according to xAxisProperty based in components
-const xScale = computed(() => {
-  const min = d3.min(props.allComponents, c => c[props.xAxisProperty])
-  const max = d3.max(props.allComponents, c => c[props.xAxisProperty]) * 1.1
-  return d3.scaleLinear().domain([min, max]).range([0, width])
-})
-
-// make a scale according to yAxisProperty based in components
-const yScale = computed(() => {
-  const min = d3.min(props.allComponents, c => c[props.yAxisProperty])
-  const max = d3.max(props.allComponents, c => c[props.yAxisProperty]) * 1.1
-  return d3.scaleLinear().domain([min, max]).range([height, 0])
-})
-
-// make a scale according to radiusProperty based in components
-const radiusScale = computed(() => {
-  if (props.radiusProperty == null) return () => 5
-  const min = d3.min(props.allComponents, c => c[props.radiusProperty])
-  const max = d3.max(props.allComponents, c => c[props.radiusProperty])
-  return d3.scaleLinear().domain([min, max]).range([5, 20])
-})
-
-const xScaledValues = computed(() => {
-  return props.componentsInScope.map(component => xScale.value(component[props.xAxisProperty]))
-})
-
-const yScaledValues = computed(() => {
-  return props.componentsInScope.map(component => yScale.value(component[props.yAxisProperty]))
-})
-
-const radiusScaledValues = computed(() => {
-  return props.componentsInScope.map(component => radiusScale.value(component[props.radiusProperty]))
-})
-
-const componentWithCurrentCoords = computed(() => {
-  return props.componentsInScope.map((component, index) => {
-    return {
-      ...component,
-      posX: xScaledValues.value[index],
-      posY: yScaledValues.value[index],
-      radius: radiusScaledValues.value[index]
-    }
-  })
-})
-
-const yAxisElement = ref(null)
-const xAxisElement = ref(null)
-
-function drawYAxis() {
-  const yAxis = d3.axisLeft(yScale.value).ticks(10)
-  d3.select(yAxisElement.value).call(yAxis)
-}
-
-function drawXAxis() {
-  const xAxis = d3.axisBottom(xScale.value).ticks(10)
-  d3.select(xAxisElement.value).attr("transform", "translate(0," + height + ")").call(xAxis)
-}
-
-watch(() => [props.xAxisProperty, props.yAxisProperty, props.componentsInScope], () => {
-  drawXAxis()
-  drawYAxis()
-  hoveredComponent.value = null;
-}, {immediate: true})
-
-onMounted(() => {
-  drawXAxis()
-  drawYAxis()
-})
-
-const groupsStore = useGroupsStore()
-
-// ─── Multi-color gradients ───
 const multiColorGradients = computed(() => {
-  const seen = new Map<string, { id: string; stops: Array<{ offset: string; color: string }> }>()
-  for (const component of props.componentsInScope) {
-    const groups = groupsStore.componentGroupIndex.get(component.name) || []
-    const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
-    if (visGroups.length > 1) {
-      const colors = visGroups.map(g => g.color)
-      const key = colors.join('-')
-      if (!seen.has(key)) {
-        const stops: Array<{ offset: string; color: string }> = []
-        const n = colors.length
-        for (let i = 0; i < n; i++) {
-          stops.push({ offset: `${(i / n) * 100}%`, color: colors[i] })
-          stops.push({ offset: `${((i + 1) / n) * 100}%`, color: colors[i] })
-        }
-        seen.set(key, { id: `mg-plot-${key.replace(/[^a-zA-Z0-9]/g, '')}`, stops })
-      }
+  const seen = new Map<string, { id: string; stops: Array<{ offset: string; color: string }> }>();
+  for (const row of props.rows) {
+    const groups = visibleGroupsOf(row.name);
+    if (groups.length <= 1) continue;
+    const colors = groups.map((g) => g.color);
+    const key = colors.join("-");
+    if (seen.has(key)) continue;
+    const stops: Array<{ offset: string; color: string }> = [];
+    const n = colors.length;
+    for (let i = 0; i < n; i++) {
+      stops.push({ offset: `${(i / n) * 100}%`, color: colors[i] });
+      stops.push({ offset: `${((i + 1) / n) * 100}%`, color: colors[i] });
     }
+    seen.set(key, { id: `mg-plot-${key.replace(/[^a-zA-Z0-9]/g, "")}`, stops });
   }
-  return Array.from(seen.values())
-})
+  return Array.from(seen.values());
+});
 
-function isNodeSelectable(name: string): boolean {
-  if (props.searchQuery) {
-    const q = props.searchQuery.trim().toLowerCase()
-    if (!name.toLowerCase().includes(q)) return false
-  }
-
-  if (props.activeFilters.size > 0) {
-    const groups = groupsStore.componentGroupIndex.get(name) || []
-    const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
-    const hasActiveFilter = visGroups.some(g => props.activeFilters.has(g.id))
-    if (!hasActiveFilter) return false
-  }
-
-  return true
-}
-
-function getCircleFill(componentName: string, index: number): string {
-  if (selectingComponents.value.has(componentName) || selectedComponentsIndex.value.includes(componentName)) {
-    return '#38bdf8'
-  }
-  if (hoveredComponent.value?.index === index) {
-    return '#94a3b8'
-  }
-  const groups = groupsStore.componentGroupIndex.get(componentName) || []
-  const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
-  
-  if (visGroups.length === 0) return '#cbd5e1'
-  if (visGroups.length === 1) return visGroups[0].color
-  
-  const key = visGroups.map(g => g.color).join('-')
-  return `url(#mg-plot-${key.replace(/[^a-zA-Z0-9]/g, '')})`
-}
-
-function componentClicked(event: MouseEvent, c: RawComponent) {
-  if (!isNodeSelectable(c.name)) return
-  if (event.shiftKey || event.ctrlKey || event.metaKey) {
-    const idx = props.selectedComponents.findIndex(item => item.name === c.name);
-    const newSelection = [...props.selectedComponents];
-    if (idx >= 0) {
-      newSelection.splice(idx, 1);
-    } else {
-      newSelection.push(c);
-    }
-    emit('components-selected', newSelection);
-  } else {
-    emit('component-clicked', c);
-  }
-}
-
-const getComponentOpacity = (name: string) => {
+function isSelectable(name: string): boolean {
   if (props.searchQuery) {
     const q = props.searchQuery.trim().toLowerCase();
-    if (!name.toLowerCase().includes(q)) return 0.05;
+    if (q && !name.toLowerCase().includes(q)) return false;
   }
-
-  const groups = groupsStore.componentGroupIndex.get(name) || []
-  const visGroups = groups.filter(g => !props.hiddenGroups.has(g.id))
-
-  if (props.hoveredGroupId) {
-    return visGroups.some(g => g.id === props.hoveredGroupId) ? 1 : 0.05
-  }
-
   if (props.activeFilters.size > 0) {
-    return visGroups.some(g => props.activeFilters.has(g.id)) ? 1 : 0.05
+    if (!visibleGroupsOf(name).some((g) => props.activeFilters.has(g.id))) return false;
   }
+  return true;
+}
 
-  return 1;
-};
+function isHighlighted(mark: Mark): boolean {
+  const name = mark.row.name;
+  return hovered.value?.row.name === name || selecting.value.has(name) || selectedSet.value.has(name);
+}
+
+function fillFor(mark: Mark): string {
+  const name = mark.row.name;
+  const t = theme.value;
+  if (selecting.value.has(name) || selectedSet.value.has(name)) return t.blue;
+  if (hovered.value?.row.name === name) return t.inkMuted;
+  const groups = visibleGroupsOf(name);
+  if (groups.length === 0) return t.hairlineStrong;
+  if (groups.length === 1) return groups[0].color;
+  const key = groups.map((g) => g.color).join("-");
+  return `url(#mg-plot-${key.replace(/[^a-zA-Z0-9]/g, "")})`;
+}
+
+function opacityFor(name: string): number {
+  if (props.searchQuery) {
+    const q = props.searchQuery.trim().toLowerCase();
+    if (q && !name.toLowerCase().includes(q)) return 0.08;
+  }
+  const groups = visibleGroupsOf(name);
+  if (props.hoveredGroupId) return groups.some((g) => g.id === props.hoveredGroupId) ? 1 : 0.08;
+  if (props.activeFilters.size > 0) return groups.some((g) => props.activeFilters.has(g.id)) ? 1 : 0.08;
+  return 0.9;
+}
+
+function markClicked(event: MouseEvent, row: Row) {
+  if (!isSelectable(row.name)) return;
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    const next = new Set(props.selected);
+    if (next.has(row.name)) next.delete(row.name);
+    else next.add(row.name);
+    emit("update:selected", Array.from(next));
+  } else {
+    emit("clicked", row);
+  }
+}
 </script>

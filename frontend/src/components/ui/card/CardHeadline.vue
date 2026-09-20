@@ -1,16 +1,9 @@
 <template>
-  <h1 class="text-xl text-archstats-500 font-medium mb-8">
+  <h2 class="ui-panel-title mb-4">
     <slot></slot>
-  </h1>
-
+  </h2>
 </template>
 
 <script>
-export default {
-  name: "CardHeadline"
-}
+export default { name: "CardHeadline" }
 </script>
-
-<style scoped>
-
-</style>

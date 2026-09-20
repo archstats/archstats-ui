@@ -1,110 +1,72 @@
 <template>
-  <div class="h-full flex flex-col p-6 overflow-hidden">
-    <ViewWorkspaceLayout
-      :title="authorName"
-      badge-text="Git Author"
-      badge-color-class="bg-violet-50 border-violet-100 text-violet-700"
-      :nodes-count="totalCommits"
-      :stats-labels="{ nodes: 'Commits' }"
-      :show-config="false"
-      :is-sidebar-open="false"
-    >
-      <!-- Action slot for Back to Git -->
-      <template #actions>
-        <router-link 
-          to="/views/git/authors" 
-          class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mr-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-          Back to Git
-        </router-link>
-      </template>
-
-      <!-- Visualizer slot for the main tab navigation & NuxtPage -->
-      <template #visualizer>
-        <div class="w-full h-full flex flex-col bg-white rounded-2xl p-6 shadow-3xs overflow-y-auto min-h-[480px]">
-          <!-- Symmetrical subpage tab link bar -->
-          <div class="flex items-center gap-1.5 border-b border-slate-100 pb-3 mb-6 overflow-x-auto scrollbar-none shrink-0">
-            <router-link 
-              v-for="tab in tabConfig" 
-              :key="tab.tabId"
-              :to="getTabUrl(tab.tabId)"
-              class="text-xs font-bold px-4 py-2 rounded-xl transition-all tracking-wide flex-shrink-0"
-              :class="isTabActive(tab.tabId)
-                ? 'bg-slate-800 text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'"
-            >
-              {{ tab.title }}
-            </router-link>
-          </div>
-
-          <!-- Active child subpage canvas slot -->
-          <div class="w-full grow">
-            <NuxtPage />
-          </div>
-        </div>
-      </template>
-    </ViewWorkspaceLayout>
-  </div>
+  <DetailFrame
+    :title="name"
+    kind="Author"
+    :crumbs="[{ label: 'Authors', to: '/views/git/authors' }]"
+    :stats="stats"
+    :tabs="tabs"
+    fallback="/views/git/authors"
+  >
+    <template #actions>
+      <span v-if="author?.author_email" class="ui-toolbar-meta hidden max-w-[260px] truncate xl:inline" :title="author.author_email">{{ author.author_email }}</span>
+    </template>
+    <LoadingState v-if="loading" text="Reading author…"/>
+    <EmptyState v-else-if="error" title="Could not read author" :text="error" icon="alert"/>
+    <EmptyState v-else-if="store.hasData && !author" title="Author not in this snapshot" :text="`${name} has no commits in the open scan.`" icon="user">
+      <router-link to="/views/git/authors" class="ui-btn ui-btn-sm">All authors</router-link>
+    </EmptyState>
+    <NuxtPage v-else/>
+  </DetailFrame>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { sqlLiteral } from "~/utils/sql"
+import { formatNumber } from "~/utils/format"
+import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
+import EmptyState from "~/components/ui/common/EmptyState.vue"
+import LoadingState from "~/components/ui/common/LoadingState.vue"
 
 const route = useRoute()
 const store = useDataStore()
 
-const authorName = computed(() => route.params.name as string)
-const escapedName = computed(() => authorName.value.replace(/'/g, "''"))
+// Callers encode the name; vue-router hands it back decoded.
+const name = computed(() => String(route.params.name ?? ""))
 
-// store.query is async, so this cannot be a computed — populate a ref instead.
-const totalCommits = ref<number | undefined>(undefined)
-watch([() => store.hasData, escapedName], async ([hasData]) => {
-  if (!hasData) {
-    totalCommits.value = undefined
-    return
-  }
-  const rows = await store.query<{ git__commits__total: number }>(
-    `SELECT git__commits__total FROM git_authors WHERE author_name = '${escapedName.value}'`
-  )
-  totalCommits.value = rows.length > 0 ? Number(rows[0].git__commits__total) || undefined : undefined
-}, { immediate: true })
+const { data: author, loading, error } = useAsyncQuery<Record<string, any> | null>(
+  async () => {
+    const rows = await store.query<Record<string, any>>(
+      `SELECT * FROM git_authors WHERE author_name = ${sqlLiteral(name.value)} LIMIT 1`,
+    )
+    return rows[0] ?? null
+  },
+  [name],
+  { initial: null },
+)
 
-
-const tabConfig = [
-  { title: "Overview", tabId: "overview" },
-  { title: "Timeline", tabId: "timeline" },
-  { title: "Components", tabId: "components" },
-  { title: "Files", tabId: "files" }
-]
-
-const getTabUrl = (tabId: string) => {
-  const base = `/views/git/authors/${authorName.value}`
-  if (tabId === "overview") return base
-  return `${base}/${tabId}`
+function metric(key: string): number {
+  return Number(author.value?.[key]) || 0
 }
 
-const isTabActive = (tabId: string) => {
-  const path = route.path.replace(/\/$/, "")
-  if (tabId === "overview") {
-    return !["/timeline", "/components", "/files"].some(suffix => path.endsWith(suffix))
-  }
-  return path.endsWith(`/${tabId}`)
-}
+const stats = computed(() => {
+  if (!author.value) return []
+  return [
+    { label: "Commits", value: formatNumber(metric("git__commits__total")) },
+    { label: "Files", value: formatNumber(metric("git__unique_file_changes__total")) },
+    { label: "Components", value: formatNumber(metric("git__unique_component_changes__total")) },
+  ]
+})
+
+const tabs = computed<DetailTab[]>(() => {
+  const base = `/views/git/authors/${encodeURIComponent(name.value)}`
+  return [
+    { id: "overview", label: "Overview", to: base, exact: true },
+    { id: "components", label: "Components", to: `${base}/components`, count: metric("git__unique_component_changes__total") || undefined },
+    { id: "files", label: "Files", to: `${base}/files`, count: metric("git__unique_file_changes__total") || undefined },
+    { id: "history", label: "History", to: `${base}/history` },
+  ]
+})
 </script>
-
-<style scoped>
-/* Scrollbar styling */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

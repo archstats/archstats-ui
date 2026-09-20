@@ -1,103 +1,82 @@
 <template>
-  <div class="relative w-full h-[620px] flex justify-center items-center">
-    <!-- Custom Glassmorphic Tooltip (Light Theme) -->
-    <div 
+  <div ref="host" class="relative h-full min-h-0 w-full overflow-hidden">
+    <!-- Hover tooltip -->
+    <div
       v-if="hoveredNode"
       :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
-      class="absolute z-50 pointer-events-none bg-white/95 border border-slate-200 shadow-xl px-4 py-3 rounded-2xl text-xs max-w-sm transition-all duration-100 flex flex-col gap-1.5 text-slate-800"
+      class="ui-tooltip pointer-events-none absolute z-50 flex max-w-xs flex-col gap-1"
     >
-      <div class="font-bold text-slate-900 border-b border-slate-200 pb-1.5 break-all max-w-[280px]">
-        {{ hoveredNode.data.component ? hoveredNode.data.component.name : hoveredNode.data.name }}
-      </div>
-      <div class="flex items-center justify-between gap-6">
-        <span class="text-slate-500 font-medium">{{ store.statName(sizeMetric) }} (Size):</span>
-        <span class="font-mono text-emerald-600 font-semibold">{{ hoveredNode.value }}</span>
-      </div>
-      <div class="flex items-center justify-between gap-6">
-        <span class="text-slate-500 font-medium">{{ store.statName(colorMetric) }} (Heat):</span>
-        <span class="font-mono text-rose-600 font-semibold">{{ hoveredNode.data.colorValue }}</span>
-      </div>
-      <div class="text-[10px] text-slate-400 italic mt-1 border-t border-slate-200 pt-1.5">
-        Click to view detailed analysis
-      </div>
+      <span class="break-all font-mono text-xs">{{ hoveredNode.data.fullName }}</span>
+      <span class="flex items-center justify-between gap-4 text-xs">
+        <span class="opacity-70">{{ store.statNiceName(sizeMetric) }}</span>
+        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.value) }}</span>
+      </span>
+      <span class="flex items-center justify-between gap-4 text-xs">
+        <span class="opacity-70">{{ store.statNiceName(colorMetric) }}</span>
+        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.data.colorValue) }}</span>
+      </span>
     </div>
 
-    <!-- Circle Packing Canvas rendered natively without box-in-a-box padding -->
-    <div :id="chartId" ref="chart" class="w-full h-full flex justify-center items-center"></div>
+    <!-- Circle packing canvas -->
+    <div ref="chart" class="h-full w-full"></div>
 
-    <!-- Context Menu -->
+    <!-- Context menu -->
+    <div v-if="contextMenu.visible && contextMenu.node" class="fixed inset-0 z-40 cursor-default" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu"></div>
     <div
       v-if="contextMenu.visible && contextMenu.node"
-      class="absolute z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 min-w-[200px] text-[10px] text-slate-800 select-none"
+      class="ui-menu ui-popover absolute z-50 min-w-[200px] animate-in"
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
     >
-      <div class="px-3 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1">
-        {{ contextMenu.node.data.component ? 'Component Actions' : 'Namespace Actions' }}
-      </div>
+      <div class="ui-menu-title">{{ contextMenu.node.data.unit ? unitLabel : 'Namespace' }}</div>
 
-      <template v-if="!contextMenu.node.data.component">
-        <button
-          @click="promoteNamespaceToGroup"
-          class="w-full text-left flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-slate-700 font-semibold"
-        >
-          <span>✦</span>
-          <span>Promote to Group</span>
+      <template v-if="!contextMenu.node.data.unit">
+        <button type="button" class="ui-menu-item" @click="promoteNamespaceToGroup">
+          <Icon icon="folder" :size="13" class="text-neutral-500"/>
+          <span>Promote to group</span>
         </button>
       </template>
 
       <template v-else>
-        <!-- Add to Group Submenu -->
-        <div class="relative group/add">
-          <div class="flex items-center justify-between px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-slate-700 font-semibold">
-            <span>Add to Group</span>
-            <span class="text-[8px] text-slate-400">▸</span>
-          </div>
-          <div class="hidden group-hover/add:flex flex-col absolute left-full top-0 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 min-w-[160px] ml-1 max-h-[200px] overflow-y-auto">
-            <button
-              v-for="g in groupsStore.allComponentGroups"
-              :key="g.id"
-              @click="addLeafToGroup(g.id)"
-              class="w-full text-left px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-slate-700 font-semibold flex items-center gap-2"
-            >
-              <div class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: g.color }"></div>
-              <span>{{ g.name }}</span>
-            </button>
-            <div v-if="groupsStore.allComponentGroups.length === 0" class="px-3 py-1.5 text-slate-400 italic text-[9px]">
-              No groups defined
-            </div>
-          </div>
+        <div class="ui-menu-title">Add to group</div>
+        <div class="max-h-48 overflow-y-auto">
+          <button v-for="g in grainGroups" :key="g.id" type="button" class="ui-menu-item" @click="addLeafToGroup(g.id)">
+            <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
+            <span class="truncate">{{ g.name }}</span>
+          </button>
+          <div v-if="grainGroups.length === 0" class="px-2 py-1.5 text-sm text-neutral-400">No groups yet</div>
         </div>
-
-        <button
-          @click="removeLeafFromGroups"
-          class="w-full text-left flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-red-650 font-semibold"
-        >
-          <span>✕</span>
-          <span>Remove from Groups</span>
+        <div class="my-1 hairline-t"></div>
+        <button type="button" class="ui-menu-item text-red-700" @click="removeLeafFromGroups">
+          <Icon icon="minus" :size="13"/>
+          <span>Remove from groups</span>
         </button>
       </template>
-    </div>
-
-    <!-- Floating Zoom Controls -->
-    <div class="absolute bottom-4 right-4 flex flex-col gap-1.5 z-20">
-      <button @click="zoomIn" class="w-8 h-8 rounded-lg bg-white/90 border border-slate-200/60 text-slate-500 hover:text-slate-800 hover:bg-white shadow-3xs flex items-center justify-center text-xs font-bold cursor-pointer transition-all active:scale-95">+</button>
-      <button @click="zoomOut" class="w-8 h-8 rounded-lg bg-white/90 border border-slate-200/60 text-slate-500 hover:text-slate-800 hover:bg-white shadow-3xs flex items-center justify-center text-xs font-bold cursor-pointer transition-all active:scale-95">−</button>
-      <button @click="resetZoom" class="w-8 h-8 rounded-lg bg-white/90 border border-slate-200/60 text-slate-500 hover:text-slate-800 hover:bg-white shadow-3xs flex items-center justify-center text-[9px] font-bold cursor-pointer transition-all active:scale-95">⟲</button>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
+import Icon from "~/components/ui/common/Icon.vue"
+import { chartTheme, useChartTheme, withAlpha } from "~/composables/useChartTheme"
+import { levelColor } from "~/composables/useHealth"
+import { formatNumber } from "~/utils/format"
 import * as d3 from "d3"
-import {computed, defineProps, onMounted, ref, watch} from "vue"
-import {useDataStore} from "~/stores/data"
-import {Component} from "~/utils/components"
-import {useRouter} from "vue-router"
-import {useGroupsStore} from "~/stores/groups"
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { useDataStore } from "~/stores/data"
+import { hasMember, units, useGroupsStore, type SavedGroup } from "~/stores/groups"
+
+export type HotspotGrain = "components" | "directories" | "files"
+export type HotspotLayout = "packed" | "flat"
+
+// One row of the active grain: a component, a directory or a file. `name` is
+// the full identifier; every other key is a `family__metric` column.
+export type HotspotUnit = Record<string, any> & { name: string }
 
 const store = useDataStore()
-const router = useRouter()
-const chartId = "circlepack-" + Math.random().toString(36).replace(/[^a-z]+/g, '').substring(2, 12)
+const groupsStore = useGroupsStore()
+const { version: themeVersion } = useChartTheme()
+
+const host = ref<HTMLElement | null>(null)
 const chart = ref<HTMLElement | null>(null)
 
 let rootNode: any = null
@@ -105,29 +84,48 @@ let chartWidth = 900
 let chartHeight = 620
 
 const props = defineProps<{
-  components: Component[]
+  units: HotspotUnit[]
+  grain: HotspotGrain
+  layout: HotspotLayout
   sizeMetric: string
   colorMetric: string
-  highlightedComponent: string | null
+  /** Low heat values are the hot ones (code health). */
+  heatInverted?: boolean
+  highlightedUnit: string | null
   labelHigh: string
   labelLow: string
   searchQuery?: string
-  selectedComponents?: string[]
+  selectedUnits?: string[]
   hiddenGroups?: Set<string>
   activeFilters?: Set<string>
   hoveredGroupId?: string | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'toggle-selection', name: string): void
-  (e: 'replace-selection', names: string[]): void
+  (e: "select", name: string): void
+  (e: "open", name: string): void
+  (e: "toggle-selection", name: string): void
+  (e: "replace-selection", names: string[]): void
 }>()
 
-function getHslaColor(hslStr: string, opacity: number): string {
-  if (!hslStr) return 'rgba(148, 163, 184, 0.03)'
-  if (hslStr.startsWith('hsl(')) {
-    return hslStr.replace('hsl(', 'hsla(').replace(')', `, ${opacity})`)
-  }
+const unitLabel = computed(() => props.grain === "components" ? "Component" : props.grain === "files" ? "File" : "Directory")
+
+// Saved groups only exist for components and files; directories carry none.
+const grainGroups = computed<SavedGroup[]>(() => {
+  if (props.grain === "directories") return []
+  return groupsStore.groups
+})
+
+function groupsOf(name: string): SavedGroup[] {
+  if (props.grain === "components") return groupsStore.componentGroupIndex.get(name) || []
+  if (props.grain === "files") return groupsStore.fileGroupIndex.get(name) || []
+  return []
+}
+
+// Group colours are stored as `hsl(...)` strings; alpha them for fills.
+function groupFill(hslStr: string, opacity: number): string {
+  if (!hslStr) return withAlpha(chartTheme().inkMuted, 0.03)
+  if (hslStr.startsWith("hsl(")) return hslStr.replace("hsl(", "hsla(").replace(")", `, ${opacity})`)
   return hslStr
 }
 
@@ -135,61 +133,50 @@ const hoveredNode = ref<any | null>(null)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
 
-const groupsStore = useGroupsStore()
-
-const contextMenu = ref<{
-  visible: boolean
-  x: number
-  y: number
-  node: any
-}>({
-  visible: false,
-  x: 0,
-  y: 0,
-  node: null
-})
+const contextMenu = ref<{ visible: boolean; x: number; y: number; node: any }>({ visible: false, x: 0, y: 0, node: null })
 
 function closeContextMenu() {
   contextMenu.value.visible = false
 }
 
+function openContextMenu(event: MouseEvent, d: any) {
+  if (props.grain === "directories") return
+  event.preventDefault()
+  event.stopPropagation()
+  const bounds = host.value?.getBoundingClientRect()
+  if (!bounds) return
+  contextMenu.value = { visible: true, x: event.clientX - bounds.left, y: event.clientY - bounds.top, node: d }
+}
+
 function promoteNamespaceToGroup() {
   const node = contextMenu.value.node
   if (!node) return
-
-  const leaves: any[] = []
-  function collectLeaves(d: any) {
-    if (d.data.component) {
-      leaves.push(d.data.component.name)
-    } else if (d.children) {
-      d.children.forEach(collectLeaves)
-    }
+  const leaves: string[] = []
+  const collect = (d: any) => {
+    if (d.data.unit) leaves.push(d.data.unit.name)
+    else if (d.children) d.children.forEach(collect)
   }
-  collectLeaves(node)
-
+  collect(node)
   if (leaves.length > 0) {
     const nsName = node.data.fullName || node.data.name
-    groupsStore.createGroup('component', `Namespace ${nsName}`, leaves)
+    groupsStore.createGroup(`Namespace ${nsName}`, units(props.grain === "files" ? "file" : "component", leaves))
   }
   closeContextMenu()
 }
 
 function addLeafToGroup(groupId: string) {
   const node = contextMenu.value.node
-  if (node && node.data.component) {
-    groupsStore.addMembersToGroup(groupId, [node.data.component.name])
-  }
+  if (node?.data.unit) groupsStore.addMembersToGroup(groupId, units(props.grain === "files" ? "file" : "component", [node.data.unit.name]))
   closeContextMenu()
 }
 
 function removeLeafFromGroups() {
   const node = contextMenu.value.node
-  if (node && node.data.component) {
-    const name = node.data.component.name
-    for (const g of groupsStore.allComponentGroups) {
-      if (g.members.includes(name)) {
-        groupsStore.removeMembersFromGroup(g.id, [name])
-      }
+  if (node?.data.unit) {
+    const name = node.data.unit.name
+    const kind = props.grain === "files" ? "file" : "component"
+    for (const g of grainGroups.value) {
+      if (hasMember(g, kind, name)) groupsStore.removeMembersFromGroup(g.id, units(kind, [name]))
     }
   }
   closeContextMenu()
@@ -197,277 +184,241 @@ function removeLeafFromGroups() {
 
 const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
   .scaleExtent([0.3, 15])
-  .filter((event) => {
-    return !event.shiftKey && !event.button
+  // d3-zoom resolves its extent inside the transition's tween, and its default
+  // reads the svg's own width: on a CSS-sized element that throws mid-frame and
+  // the transition dies silently. State the box instead.
+  .extent(() => {
+    const rect = chart.value?.getBoundingClientRect()
+    return [[0, 0], [rect?.width || 900, rect?.height || 620]]
   })
+  .filter(event => !event.shiftKey && !event.button)
+
+function svgSel() {
+  if (!chart.value) return null
+  const svg = d3.select(chart.value).select<SVGSVGElement>("svg")
+  return svg.empty() ? null : svg
+}
 
 function zoomToNode(d: any) {
-  if (chart.value && d) {
-    const svg = d3.select(chart.value).select("svg")
-    if (!svg.empty()) {
-      const padding = 40
-      const targetDim = Math.min(chartWidth, chartHeight) - padding * 2
-      const scale = targetDim / (d.r * 2)
-      
-      const tx = chartWidth / 2 - scale * d.x
-      const ty = chartHeight / 2 - scale * d.y
-      
-      svg.transition().duration(750).call(
-        zoomBehavior.transform as any,
-        d3.zoomIdentity.translate(tx, ty).scale(scale)
-      )
-    }
-  }
+  const svg = svgSel()
+  if (!svg || !d) return
+  const padding = 40
+  const targetDim = Math.min(chartWidth, chartHeight) - padding * 2
+  const scale = targetDim / (d.r * 2)
+  const tx = chartWidth / 2 - scale * d.x
+  const ty = chartHeight / 2 - scale * d.y
+  svg.transition().duration(750).call(zoomBehavior.transform as any, d3.zoomIdentity.translate(tx, ty).scale(scale))
 }
 
 function zoomIn() {
-  if (chart.value) {
-    const svg = d3.select(chart.value).select("svg")
-    if (!svg.empty()) {
-      svg.transition().duration(250).call(zoomBehavior.scaleBy as any, 1.35)
-    }
-  }
+  svgSel()?.transition().duration(250).call(zoomBehavior.scaleBy as any, 1.35)
 }
 
 function zoomOut() {
-  if (chart.value) {
-    const svg = d3.select(chart.value).select("svg")
-    if (!svg.empty()) {
-      svg.transition().duration(250).call(zoomBehavior.scaleBy as any, 0.75)
-    }
-  }
+  svgSel()?.transition().duration(250).call(zoomBehavior.scaleBy as any, 0.75)
 }
 
 function resetZoom() {
-  if (rootNode) {
-    zoomToNode(rootNode)
-  } else if (chart.value) {
-    const svg = d3.select(chart.value).select("svg")
-    if (!svg.empty()) {
-      svg.transition().duration(250).call(zoomBehavior.transform as any, d3.zoomIdentity.translate(20, 20))
-    }
-  }
+  if (rootNode) zoomToNode(rootNode)
 }
 
+defineExpose({ zoomIn, zoomOut, resetZoom })
+
+// Layout and grain changes reset the zoom; everything else keeps it. Declared
+// before the redraw watcher so it runs first in the same flush.
+let keepTransform = true
+watch(() => [props.grain, props.layout], () => { keepTransform = false })
+
 watch(() => [
-  props.components,
+  props.units,
+  props.grain,
+  props.layout,
   props.sizeMetric,
   props.colorMetric,
-  props.highlightedComponent,
+  props.heatInverted,
+  props.highlightedUnit,
   props.labelHigh,
   props.labelLow,
   props.searchQuery,
-  props.selectedComponents,
+  props.selectedUnits,
   props.hiddenGroups,
   props.activeFilters,
   props.hoveredGroupId,
-  groupsStore.componentGroups
+  groupsStore.groups,
+  themeVersion.value,
 ], () => {
   drawCirclePack()
 }, { deep: true })
 
+let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
   drawCirclePack()
+  if (chart.value && typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => drawCirclePack())
+    resizeObserver.observe(chart.value)
+  }
+})
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
 })
 
 function drawCirclePack() {
-  const chartEl = d3.select(`#${chartId}`)
+  if (!chart.value) return
+  const chartEl = d3.select(chart.value)
 
   let currentTransform: d3.ZoomTransform | null = null
   const existingSvg = chartEl.select("svg")
-  if (!existingSvg.empty()) {
+  if (!existingSvg.empty() && keepTransform) {
     currentTransform = d3.zoomTransform(existingSvg.node() as any)
   }
+  keepTransform = true
 
   chartEl.selectAll("svg").remove()
+  hoveredNode.value = null
 
-  if (!props.components || props.components.length === 0) {
-    chartEl.append("div")
-      .attr("class", "text-slate-400 text-sm py-40")
-      .text("No data available to display Circle Packing.");
+  if (!props.units || props.units.length === 0) {
+    rootNode = null
     return
   }
 
-  // 1. Build hierarchy from component namespaces/packages
-  const hierarchyData = buildHierarchy(props.components, props.sizeMetric, props.colorMetric)
+  const t = chartTheme()
+
+  // 1. Hierarchy from namespaces (packed) or a single ring of leaves (flat).
+  const hierarchyData = props.layout === "flat"
+    ? buildFlat(props.units, props.sizeMetric, props.colorMetric)
+    : buildHierarchy(props.units, props.sizeMetric, props.colorMetric)
   const root = d3.hierarchy(hierarchyData)
     .sum(d => d.value || 0)
     .sort((a, b) => (b.value || 0) - (a.value || 0))
 
-  const width = chartEl.node()?.getBoundingClientRect().width || 900
-  const height = 620
+  const rect = chart.value.getBoundingClientRect()
+  const width = rect.width || 900
+  const height = rect.height || 620
 
   rootNode = root
   chartWidth = width
   chartHeight = height
 
-  // 2. Compute D3 Circle Packing
+  // 2. Pack
   d3.pack()
     .size([width - 40, height - 40])
-    .padding(6)(root)
+    .padding(props.layout === "flat" ? 3 : 6)(root)
 
-  // 3. Create SVG
+  // 3. SVG
   const svg = chartEl.append("svg")
     .attr("width", width)
     .attr("height", height)
-    .style("font-family", "Inter, sans-serif")
+    .style("font-family", t.fontSans)
     .style("overflow", "visible")
     .style("cursor", "grab")
     .style("touch-action", "none")
     .on("click", function (event) {
       if (event.defaultPrevented) return
-      if (event.target === this) {
-        zoomToNode(root)
-      }
+      if (event.target === this) zoomToNode(root)
     })
 
   const g = svg.append("g")
 
-  // Bind D3 zoom behavior
+  const query = props.searchQuery?.trim().toLowerCase()
+  const isMatch = (d: any) => {
+    if (!query) return true
+    const full = d.data.unit?.name || d.data.fullName || ""
+    const nodeName = d.data.name || ""
+    return full.toLowerCase().includes(query) || nodeName.toLowerCase().includes(query)
+  }
+
   zoomBehavior
-    .on("start", () => {
-      svg.style("cursor", "grabbing")
-    })
+    .on("start", () => { svg.style("cursor", "grabbing") })
     .on("zoom", (event) => {
       g.attr("transform", event.transform)
       const k = event.transform.k
-      
-      // 1. Leaf Labels: Keep visual font size constant (~9.5px) and toggle visibility
+
       g.selectAll(".leaf-label")
         .style("display", (d: any) => {
-          if (query) {
-            return isMatch(d) ? "block" : "none"
-          }
+          if (query) return isMatch(d) ? "block" : "none"
           return (d.r * k >= 15) ? "block" : "none"
         })
         .style("font-size", `${9.5 / k}px`)
-      
-      // 2. Namespace Labels: Keep visual font size constant and update y-offset to stay at top
+
       g.selectAll(".namespace-label")
-        .style("display", (d: any) => {
-          return (d.r * k >= 35) ? "block" : "none"
-        })
-        .style("font-size", (d: any) => {
-          const baseSize = d.depth === 1 ? 11 : 8.5
-          return `${baseSize / k}px`
-        })
-        .attr("y", (d: any) => {
-          const visualOffset = d.depth === 1 ? 14 : 10
-          return -d.r + visualOffset / k
-        })
-      
-      // 3. Callouts: Hide if zoomed in
+        .style("display", (d: any) => (d.r * k >= 35) ? "block" : "none")
+        .style("font-size", (d: any) => `${(d.depth === 1 ? 11 : 8.5) / k}px`)
+        .attr("y", (d: any) => -d.r + (d.depth === 1 ? 14 : 10) / k)
+
       g.selectAll(".callout-flag")
         .style("opacity", k > 1.4 ? 0 : 1)
         .style("display", k > 1.4 ? "none" : "block")
     })
-    .on("end", () => {
-      svg.style("cursor", "grab")
-    })
+    .on("end", () => { svg.style("cursor", "grab") })
 
-  svg.call(zoomBehavior)
-    .on("dblclick.zoom", null) // Disable double-click zoom for better custom click UX!
+  svg.call(zoomBehavior).on("dblclick.zoom", null)
 
-  // Drag selection state and mouse events inside drawCirclePack
+  // Shift-drag box selection.
   let dragSelectionBox: any = null
-  let dragStartG: { x: number, y: number } | null = null
+  let dragStartG: { x: number; y: number } | null = null
+
+  const pointInG = (event: MouseEvent) => {
+    const bounds = svg.node()?.getBoundingClientRect()
+    if (!bounds) return null
+    const transform = d3.zoomTransform(svg.node() as any)
+    return {
+      x: (event.clientX - bounds.left - transform.x) / transform.k,
+      y: (event.clientY - bounds.top - transform.y) / transform.k,
+    }
+  }
 
   svg.on("mousedown", function (event) {
     if (!event.shiftKey) return
-
     event.preventDefault()
     event.stopPropagation()
-
-    const bounds = svg.node()?.getBoundingClientRect()
-    if (!bounds) return
-
-    const transform = d3.zoomTransform(svg.node() as any)
-    const rx = event.clientX - bounds.left
-    const ry = event.clientY - bounds.top
-
-    dragStartG = {
-      x: (rx - transform.x) / transform.k,
-      y: (ry - transform.y) / transform.k
-    }
-
+    const p = pointInG(event)
+    if (!p) return
+    dragStartG = p
     dragSelectionBox = g.append("rect")
       .attr("class", "drag-select-box")
-      .attr("x", dragStartG.x)
-      .attr("y", dragStartG.y)
-      .attr("width", 0)
-      .attr("height", 0)
-      .attr("fill", "rgba(59, 130, 246, 0.08)")
-      .attr("stroke", "#3b82f6")
+      .attr("x", p.x).attr("y", p.y).attr("width", 0).attr("height", 0)
+      .attr("fill", withAlpha(t.blue, 0.08))
+      .attr("stroke", t.blue)
       .attr("stroke-width", 1.5)
       .attr("stroke-dasharray", "4 3")
   })
 
   svg.on("mousemove", function (event) {
     if (!dragStartG || !dragSelectionBox) return
-
-    const bounds = svg.node()?.getBoundingClientRect()
-    if (!bounds) return
-
-    const transform = d3.zoomTransform(svg.node() as any)
-    const rx = event.clientX - bounds.left
-    const ry = event.clientY - bounds.top
-
-    const gx = (rx - transform.x) / transform.k
-    const gy = (ry - transform.y) / transform.k
-
-    const x = Math.min(dragStartG.x, gx)
-    const y = Math.min(dragStartG.y, gy)
-    const width = Math.abs(dragStartG.x - gx)
-    const height = Math.abs(dragStartG.y - gy)
-
+    const p = pointInG(event)
+    if (!p) return
     dragSelectionBox
-      .attr("x", x)
-      .attr("y", y)
-      .attr("width", width)
-      .attr("height", height)
+      .attr("x", Math.min(dragStartG.x, p.x))
+      .attr("y", Math.min(dragStartG.y, p.y))
+      .attr("width", Math.abs(dragStartG.x - p.x))
+      .attr("height", Math.abs(dragStartG.y - p.y))
   })
 
   svg.on("mouseup", function (event) {
     if (!dragStartG || !dragSelectionBox) return
-
-    const bounds = svg.node()?.getBoundingClientRect()
-    if (!bounds) return
-
-    const transform = d3.zoomTransform(svg.node() as any)
-    const rx = event.clientX - bounds.left
-    const ry = event.clientY - bounds.top
-
-    const gx = (rx - transform.x) / transform.k
-    const gy = (ry - transform.y) / transform.k
-
-    const x = Math.min(dragStartG.x, gx)
-    const y = Math.min(dragStartG.y, gy)
-    const width = Math.abs(dragStartG.x - gx)
-    const height = Math.abs(dragStartG.y - gy)
+    const p = pointInG(event)
+    if (!p) return
+    const x = Math.min(dragStartG.x, p.x)
+    const y = Math.min(dragStartG.y, p.y)
+    const w = Math.abs(dragStartG.x - p.x)
+    const h = Math.abs(dragStartG.y - p.y)
 
     const selectedList: string[] = []
     root.leaves().forEach((d: any) => {
-      if (d.data.component) {
-        const cx = d.x
-        const cy = d.y
-        if (cx >= x && cx <= x + width && cy >= y && cy <= y + height) {
-          if (getNodeOpacity(d) >= 0.2) {
-            selectedList.push(d.data.component.name)
-          }
-        }
+      if (!d.data.unit) return
+      if (d.x >= x && d.x <= x + w && d.y >= y && d.y <= y + h && getNodeOpacity(d) >= 0.2) {
+        selectedList.push(d.data.unit.name)
       }
     })
-
-    if (width > 3 && height > 3 && selectedList.length > 0) {
-      emit('replace-selection', selectedList)
-    }
+    if (w > 3 && h > 3 && selectedList.length > 0) emit("replace-selection", selectedList)
 
     dragSelectionBox.remove()
     dragSelectionBox = null
     dragStartG = null
   })
-  
-  // Set initial or restored transform
+
+  // Initial or restored transform.
   if (currentTransform) {
     svg.call(zoomBehavior.transform, currentTransform)
   } else {
@@ -479,82 +430,52 @@ function drawCirclePack() {
     svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(scale))
   }
 
-  // Color Heat Scale matching Archstats indigo-amber-rose theme
+  // Heat ramp from the theme; inverted perspectives (code health) run it backwards.
   const colorValues = root.leaves().map(d => d.data.colorValue || 0)
   const minVal = d3.min(colorValues) || 0
   const maxVal = d3.max(colorValues) || 1
+  const domain: [number, number] = props.heatInverted ? [maxVal, minVal || 1] : [minVal || 1, maxVal]
+  const colorScale = d3.scaleSequential().domain(domain).interpolator(d3.interpolateRgbBasis(t.heat))
 
-  const colorScale = d3.scaleSequential()
-    .domain([minVal || 1, maxVal])
-    .interpolator(d3.interpolateRgbBasis([
-      "#92a0c8", // Archstats-200 (Mild warning cool-blue)
-      "#ffc670", // Secondary-200 (Warning amber)
-      "#FFAD33", // Secondary-400 (Vibrant warning orange)
-      "#ef4444", // Red-500 (High-risk hotspot red)
-      "#9f1239"  // Rose-800 (Extreme hotspot crimson)
-    ]))
-
-  // 4. Draw group nodes (nested folders/namespaces)
   const node = g.selectAll("g")
     .data(root.descendants())
     .join("g")
     .attr("transform", d => `translate(${d.x},${d.y})`)
 
-  const query = props.searchQuery?.trim().toLowerCase()
-  const isMatch = (d: any) => {
-    if (!query) return true
-    const compName = d.data.component?.name || ''
-    const nodeName = d.data.name || ''
-    return compName.toLowerCase().includes(query) || nodeName.toLowerCase().includes(query)
-  }
-
-  // Helper to compute node opacity based on search, active filters, and hover state
   const getNodeOpacity = (d: any) => {
-    if (!d.data.component) return 1
-
-    const name = d.data.component.name
-
-    if (hoveredNode.value?.data.component?.name === name) return 1
-
-    if (query) {
-      if (!isMatch(d)) {
-        return 0.05
-      }
-    }
-
+    if (!d.data.unit) return 1
+    const name = d.data.unit.name
+    if (hoveredNode.value?.data.unit?.name === name) return 1
+    if (query && !isMatch(d)) return 0.05
     if (props.hoveredGroupId) {
-      const groups = groupsStore.componentGroupIndex.get(name) || []
-      const hasHoveredGroup = groups.some(g => g.id === props.hoveredGroupId)
-      return hasHoveredGroup ? 1 : 0.05
+      return groupsOf(name).some(gr => gr.id === props.hoveredGroupId) ? 1 : 0.05
     }
-
     if (props.activeFilters && props.activeFilters.size > 0) {
-      const groups = groupsStore.componentGroupIndex.get(name) || []
-      const matchesFilter = groups.some(g => props.activeFilters.has(g.id))
-      return matchesFilter ? 1 : 0.05
+      return groupsOf(name).some(gr => props.activeFilters!.has(gr.id)) ? 1 : 0.05
     }
-
     return 1
   }
 
-  // Structural namespace boundary circles (interactive zoom targets!)
-  node.filter(d => !!d.children)
+  const isHighlighted = (d: any) => !!props.highlightedUnit && d.data.unit?.name === props.highlightedUnit
+
+  // Namespace circles (zoom targets).
+  node.filter(d => !!d.children && d.depth > 0)
     .append("circle")
     .attr("r", d => d.r)
-    .attr("fill", d => d.data.isGroup ? getHslaColor(d.data.groupColor, 0.04) : "rgba(148, 163, 184, 0.03)")
-    .attr("stroke", d => d.data.isGroup ? d.data.groupColor : "rgba(148, 163, 184, 0.14)")
+    .attr("fill", d => d.data.isGroup ? groupFill(d.data.groupColor, 0.04) : withAlpha(t.inkMuted, 0.03))
+    .attr("stroke", d => d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.14))
     .attr("stroke-width", d => d.data.isGroup ? 2.5 : Math.max(1, 3.5 - d.depth))
     .style("vector-effect", "non-scaling-stroke")
     .style("cursor", "pointer")
     .on("mouseover", function (event, d) {
       d3.select(this)
-        .attr("fill", d.data.isGroup ? getHslaColor(d.data.groupColor, 0.08) : "rgba(79, 70, 229, 0.04)")
-        .attr("stroke", d.data.isGroup ? d.data.groupColor : "rgba(79, 70, 229, 0.25)")
+        .attr("fill", d.data.isGroup ? groupFill(d.data.groupColor, 0.08) : withAlpha(t.blue, 0.04))
+        .attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.blue, 0.25))
     })
     .on("mouseout", function (event, d) {
       d3.select(this)
-        .attr("fill", d => d.data.isGroup ? getHslaColor(d.data.groupColor, 0.04) : "rgba(148, 163, 184, 0.03)")
-        .attr("stroke", d => d.data.isGroup ? d.data.groupColor : "rgba(148, 163, 184, 0.14)")
+        .attr("fill", d.data.isGroup ? groupFill(d.data.groupColor, 0.04) : withAlpha(t.inkMuted, 0.03))
+        .attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.14))
     })
     .on("click", function (event, d) {
       closeContextMenu()
@@ -562,158 +483,118 @@ function drawCirclePack() {
       event.stopPropagation()
       zoomToNode(d)
     })
-    .on("contextmenu", function (event, d) {
-      event.preventDefault()
-      event.stopPropagation()
-      const bounds = chartEl.node()?.getBoundingClientRect()
-      if (bounds) {
-        contextMenu.value = {
-          visible: true,
-          x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top,
-          node: d
-        }
-      }
-    })
+    .on("contextmenu", (event, d) => openContextMenu(event, d))
 
-  // Leaf component circles
+  // Leaves.
   const leaf = node.filter(d => !d.children)
 
-  // Selection rings
+  // Selection rings.
   leaf.append("circle")
     .attr("r", d => d.r + 3)
     .attr("fill", "none")
-    .attr("stroke", "#3b82f6")
+    .attr("stroke", t.blue)
     .attr("stroke-width", 2)
     .style("pointer-events", "none")
-    .style("display", d => (props.selectedComponents?.includes(d.data.component?.name) ? "block" : "none"))
+    .style("display", d => (props.selectedUnits?.includes(d.data.unit?.name) ? "block" : "none"))
 
-  const leafCircles = leaf.append("circle")
+  // Flat layout has no namespace circles, so group membership becomes a ring.
+  if (props.layout === "flat") {
+    leaf.filter(d => !!d.data.groupColor)
+      .append("circle")
+      .attr("r", d => d.r + 1.5)
+      .attr("fill", "none")
+      .attr("stroke", d => d.data.groupColor)
+      .attr("stroke-width", 2)
+      .attr("stroke-opacity", d => getNodeOpacity(d))
+      .style("vector-effect", "non-scaling-stroke")
+      .style("pointer-events", "none")
+  }
+
+  const baseStroke = (d: any) => {
+    if (isHighlighted(d)) return t.ink
+    if (query && isMatch(d)) return t.blue
+    return withAlpha(t.ink, 0.08)
+  }
+  const baseStrokeWidth = (d: any) => isHighlighted(d) ? 3 : (query && isMatch(d)) ? 2.5 : 1.2
+  const baseFilter = (d: any) => {
+    if (isHighlighted(d)) return `drop-shadow(0 0 10px ${withAlpha(t.ink, 0.25)})`
+    if (query && isMatch(d)) return `drop-shadow(0 0 6px ${withAlpha(t.blue, 0.35)})`
+    return null
+  }
+
+  leaf.append("circle")
     .attr("r", d => d.r)
     .attr("fill", d => {
       const val = d.data.colorValue || 0
-      // Cold files with 0 or null commits fade cleanly into a soft neutral slate background!
-      if (val === 0) {
-        return "rgba(226, 232, 240, 0.45)"
-      }
+      // No activity at all fades into the ground instead of reading as "cool".
+      if (val === 0) return withAlpha(t.hairline, 0.45)
       return colorScale(val)
     })
     .attr("fill-opacity", d => getNodeOpacity(d))
     .attr("stroke-opacity", d => getNodeOpacity(d) * 0.8)
-    .attr("stroke", d => {
-      if (props.highlightedComponent && d.data.component?.name === props.highlightedComponent) {
-        return "#27314e"
-      }
-      if (query && isMatch(d)) {
-        return "#4f46e5"
-      }
-      return "rgba(15, 23, 42, 0.08)"
-    })
-    .attr("stroke-width", d => {
-      if (props.highlightedComponent && d.data.component?.name === props.highlightedComponent) {
-        return 3
-      }
-      if (query && isMatch(d)) {
-        return 2.5
-      }
-      return 1.2
-    })
+    .attr("stroke", d => baseStroke(d))
+    .attr("stroke-width", d => baseStrokeWidth(d))
     .style("cursor", "pointer")
     .style("vector-effect", "non-scaling-stroke")
     .style("transition", "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)")
     .style("pointer-events", d => getNodeOpacity(d) < 0.2 ? "none" : "auto")
-    .style("filter", d => {
-      if (props.highlightedComponent && d.data.component?.name === props.highlightedComponent) {
-        return "drop-shadow(0 0 10px rgba(39, 49, 78, 0.25)) scale(1.08)"
-      }
-      if (query && isMatch(d)) {
-        return "drop-shadow(0 0 6px rgba(79, 70, 229, 0.35))"
-      }
-      return null
-    })
+    .style("filter", d => baseFilter(d))
     .on("mouseover", function (event, d) {
       if (getNodeOpacity(d) < 0.2) return
-      
       d3.select(this)
-        .attr("stroke", "#27314e")
+        .attr("stroke", t.ink)
         .attr("stroke-width", 2.2)
-        .style("filter", "drop-shadow(0 0 8px rgba(39, 49, 78, 0.18))")
-      
+        .style("filter", `drop-shadow(0 0 8px ${withAlpha(t.ink, 0.18)})`)
       hoveredNode.value = d
-      
-      const bounds = chartEl.node()?.getBoundingClientRect()
-      if (bounds) {
-        tooltipX.value = event.clientX - bounds.left + 16
-        tooltipY.value = event.clientY - bounds.top + 16
-      }
+      placeTooltip(event)
     })
-    .on("mousemove", function (event) {
-      const bounds = chartEl.node()?.getBoundingClientRect()
-      if (bounds) {
-        tooltipX.value = event.clientX - bounds.left + 16
-        tooltipY.value = event.clientY - bounds.top + 16
-      }
-    })
+    .on("mousemove", function (event) { placeTooltip(event) })
     .on("mouseout", function (event, d) {
-      const isHighlighted = props.highlightedComponent && d.data.component?.name === props.highlightedComponent
-      const isQueryMatch = query && isMatch(d)
-
       d3.select(this)
-        .attr("stroke", isHighlighted ? "#27314e" : (isQueryMatch ? "#4f46e5" : "rgba(15, 23, 42, 0.08)"))
-        .attr("stroke-width", isHighlighted ? 3 : (isQueryMatch ? 2.5 : 1.2))
-        .style("filter", isHighlighted 
-          ? "drop-shadow(0 0 10px rgba(39, 49, 78, 0.25))" 
-          : (isQueryMatch ? "drop-shadow(0 0 6px rgba(79, 70, 229, 0.35))" : null)
-        )
+        .attr("stroke", baseStroke(d))
+        .attr("stroke-width", baseStrokeWidth(d))
+        .style("filter", baseFilter(d))
       hoveredNode.value = null
     })
     .on("click", function (event, d) {
       closeContextMenu()
       if (event.defaultPrevented) return
       event.stopPropagation()
-      if (d.data.component) {
-        if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-          emit('toggle-selection', d.data.component.name)
-        } else {
-          router.push(`/views/components/${d.data.component.name}`)
-        }
+      if (!d.data.unit) return
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+        emit("toggle-selection", d.data.unit.name)
+      } else {
+        emit("select", d.data.unit.name)
       }
     })
-    .on("contextmenu", function (event, d) {
+    .on("dblclick", function (event, d) {
       event.preventDefault()
       event.stopPropagation()
-      const bounds = chartEl.node()?.getBoundingClientRect()
-      if (bounds) {
-        contextMenu.value = {
-          visible: true,
-          x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top,
-          node: d
-        }
-      }
+      if (d.data.unit) emit("open", d.data.unit.name)
     })
+    .on("contextmenu", (event, d) => openContextMenu(event, d))
 
-  // 5. Structural namespace header labels
+  // Namespace labels.
   node.filter(d => !!d.children && d.depth > 0 && d.depth < 3)
     .append("text")
     .attr("class", "namespace-label")
     .attr("text-anchor", "middle")
-    .attr("fill", "rgba(71, 85, 105, 0.65)")
-    .style("font-weight", "700")
+    .attr("fill", withAlpha(t.inkSecondary, 0.65))
+    .style("font-weight", "600")
     .style("letter-spacing", "0.05em")
-    .style("text-shadow", "0 1px 2px rgba(255,255,255,0.9)")
+    .style("text-shadow", `0 1px 2px ${withAlpha(t.surface, 0.9)}`)
     .style("pointer-events", "none")
     .text(d => d.data.name)
 
-  // 6. Component leaf labels
+  // Leaf labels.
   leaf.append("text")
     .attr("class", "leaf-label")
     .attr("text-anchor", "middle")
     .attr("dy", "0.3em")
-    .attr("fill", "#0f172a")
+    .attr("fill", t.ink)
     .style("font-weight", "600")
     .style("font-size", "8.5px")
-    .style("text-shadow", "0 1px 2px rgba(255,255,255,0.85)")
+    .style("text-shadow", `0 1px 2px ${withAlpha(t.surface, 0.85)}`)
     .style("pointer-events", "none")
     .attr("fill-opacity", d => getNodeOpacity(d))
     .text(d => {
@@ -722,43 +603,38 @@ function drawCirclePack() {
       if (maxChars < 1) return ""
       return name.length > maxChars ? name.substring(0, maxChars) + ".." : name
     })
-    .each(function (d) {
-      const queryActive = !!query
-      const match = isMatch(d)
-      if (queryActive) {
-        if (!match) {
-          d3.select(this).style("display", "none")
-        } else {
-          d3.select(this).style("display", "block")
-        }
-      } else {
-        if (d.r < 15) {
-          d3.select(this).style("display", "none")
-        } else {
-          d3.select(this).style("display", "block")
-        }
-      }
+    .style("display", d => {
+      if (query) return isMatch(d) ? "block" : "none"
+      return d.r < 15 ? "none" : "block"
     })
 
-  // 7. Dynamic Callout Flags
-  const leaves = root.leaves();
+  // Callout flags: the hottest and the coolest leaf.
+  const leaves = root.leaves()
   if (leaves.length > 0) {
-    const highestHotspot = [...leaves].sort((a, b) => (b.data.colorValue || 0) - (a.data.colorValue || 0))[0]
-    const cleanestCore = [...leaves].sort((a, b) => (a.data.colorValue || 0) - (b.data.colorValue || 0))[0]
+    const heat = (d: any) => (props.heatInverted ? -1 : 1) * (d.data.colorValue || 0)
+    const withHeat = leaves.filter(d => (d.data.colorValue || 0) !== 0)
+    const ranked = [...(withHeat.length ? withHeat : leaves)].sort((a, b) => heat(b) - heat(a))
+    const hottest = ranked[0]
+    const coolest = ranked[ranked.length - 1]
 
-    // Render Hotspot Callout Flag if value > 0 and (no query or target matches)
-    if (highestHotspot && highestHotspot.data.colorValue > 0 && (!query || isMatch(highestHotspot))) {
-      drawCallout(g, highestHotspot, props.labelHigh, "#ef4444", -120, -50)
+    if (hottest && (hottest.data.colorValue || 0) !== 0 && (!query || isMatch(hottest))) {
+      drawCallout(g, hottest, props.labelHigh, levelColor("bad"), -120, -50)
     }
-
-    // Render Cold / Stable Callout Flag for the cleanest core component and (no query or target matches)
-    if (cleanestCore && (!query || isMatch(cleanestCore))) {
-      drawCallout(g, cleanestCore, props.labelLow, "#10b981", 120, -50)
+    if (coolest && coolest !== hottest && (!query || isMatch(coolest))) {
+      drawCallout(g, coolest, props.labelLow, levelColor("good"), 120, -50)
     }
   }
 }
 
+function placeTooltip(event: MouseEvent) {
+  const bounds = host.value?.getBoundingClientRect()
+  if (!bounds) return
+  tooltipX.value = event.clientX - bounds.left + 16
+  tooltipY.value = event.clientY - bounds.top + 16
+}
+
 function drawCallout(parentGroup: any, targetNode: any, text: string, color: string, dx: number, dy: number) {
+  const t = chartTheme()
   const calloutG = parentGroup.append("g")
     .attr("class", "callout-flag")
     .style("pointer-events", "none")
@@ -782,89 +658,113 @@ function drawCallout(parentGroup: any, targetNode: any, text: string, color: str
     .attr("fill", "none")
     .attr("stroke", color)
     .attr("stroke-width", 1.2)
-    .style("filter", `drop-shadow(0 0 3px ${color})`)
 
   const rectWidth = 140
-  const rectHeight = 28
-  
+  const rectHeight = 26
+
   calloutG.append("rect")
     .attr("x", flagX - rectWidth / 2)
     .attr("y", flagY - rectHeight / 2)
     .attr("width", rectWidth)
     .attr("height", rectHeight)
-    .attr("rx", 14)
-    .attr("fill", "rgba(255, 255, 255, 0.95)")
+    .attr("rx", 4)
+    .attr("fill", withAlpha(t.surface, 0.95))
     .attr("stroke", color)
-    .attr("stroke-width", 1.5)
-    .style("backdrop-filter", "blur(4px)")
-    .style("filter", "drop-shadow(0 4px 10px rgba(148, 163, 184, 0.2))")
+    .attr("stroke-width", 1.2)
 
   calloutG.append("text")
     .attr("x", flagX)
-    .attr("y", flagY + 4)
+    .attr("y", flagY + 3.5)
     .attr("text-anchor", "middle")
-    .attr("fill", "#0f172a")
-    .style("font-weight", "700")
+    .attr("fill", t.ink)
+    .style("font-weight", "600")
     .style("font-size", "9px")
     .style("letter-spacing", "0.02em")
     .text(text)
 }
 
-function buildHierarchy(components: any[], sizeKey: string, colorKey: string) {
-  const groupsStore = useGroupsStore()
-  const root: any = { name: "Components", children: [] }
+function leafOf(unit: HotspotUnit, sizeKey: string, colorKey: string, shortName: string, groupColor?: string) {
+  return {
+    name: shortName,
+    fullName: unit.name,
+    unit,
+    value: Math.max(Number(unit[sizeKey]) || 0, 1),
+    colorValue: Number(unit[colorKey]) || 0,
+    groupColor,
+  }
+}
+
+function shortNameOf(name: string): string {
+  const lastDelim = Math.max(name.lastIndexOf("/"), name.lastIndexOf("."), name.lastIndexOf("\\"))
+  return lastDelim !== -1 ? name.substring(lastDelim + 1) : name
+}
+
+function visibleGroupOf(name: string): SavedGroup | undefined {
+  return groupsOf(name).find(g => !props.hiddenGroups?.has(g.id))
+}
+
+// Flat: every leaf directly under the root, one pack, no namespace circles.
+function buildFlat(units: HotspotUnit[], sizeKey: string, colorKey: string) {
+  return {
+    name: "root",
+    children: units.map(u => leafOf(u, sizeKey, colorKey, shortNameOf(u.name), visibleGroupOf(u.name)?.color)),
+  }
+}
+
+// Packed: saved groups first, then the `/`, `\` or `.` separated namespace tree.
+function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string) {
+  const root: any = { name: "root", children: [] }
   const groupNodes = new Map<string, any>()
   const unassignedNode: any = { name: "Unassigned", children: [] }
   root.children.push(unassignedNode)
 
-  components.forEach(comp => {
-    const name = comp.name
-    const groups = groupsStore.componentGroupIndex.get(name) || []
-    const visibleGroups = groups.filter(g => !props.hiddenGroups?.has(g.id))
+  units.forEach(unit => {
+    const name = unit.name
+    const group = visibleGroupOf(name)
 
-    if (visibleGroups.length > 0) {
-      const group = visibleGroups[0]
+    if (group) {
       let gNode = groupNodes.get(group.id)
       if (!gNode) {
-        gNode = { name: group.name, children: [], isGroup: true, groupColor: group.color }
+        gNode = { name: group.name, fullName: group.name, children: [], isGroup: true, groupColor: group.color }
         root.children.push(gNode)
         groupNodes.set(group.id, gNode)
       }
-      
-      const lastDelim = Math.max(name.lastIndexOf('/'), name.lastIndexOf('.'), name.lastIndexOf('\\'))
-      const shortName = lastDelim !== -1 ? name.substring(lastDelim + 1) : name
-      gNode.children.push({
-        name: shortName,
-        component: comp,
-        value: Math.max(Number(comp[sizeKey]) || 0, 1),
-        colorValue: Number(comp[colorKey]) || 0
-      })
-    } else {
-      let parts = [name]
-      if (name.includes("\\")) {
-        parts = name.split("\\")
-      } else if (name.includes("/")) {
-        parts = name.split("/").filter((x: string) => x)
-      } else if (name.includes(".")) {
-        parts = name.split(".")
+      gNode.children.push(leafOf(unit, sizeKey, colorKey, shortNameOf(name), group.color))
+      return
+    }
+
+    let parts = [name]
+    if (name.includes("\\")) parts = name.split("\\").filter(x => x)
+    else if (name.includes("/")) parts = name.split("/").filter(x => x)
+    else if (name.includes(".")) parts = name.split(".")
+    if (parts.length === 0) parts = [name]
+
+    let current = unassignedNode
+    let path = ""
+    for (let idx = 0; idx < parts.length; idx++) {
+      const part = parts[idx]
+      const isLeaf = idx === parts.length - 1
+      path = path ? `${path}/${part}` : part
+      let existing = current.children.find((c: any) => c.name === part)
+
+      if (isLeaf) {
+        if (!existing) current.children.push(leafOf(unit, sizeKey, colorKey, part))
+        // Directory grain: a row whose name is also a namespace of deeper rows
+        // keeps its own circle inside that namespace.
+        else if (existing.children) existing.children.push(leafOf(unit, sizeKey, colorKey, part))
+        break
       }
 
-      let current = unassignedNode
-      parts.forEach((part: string, idx: number) => {
-        const isLeaf = idx === parts.length - 1
-        let existing = current.children.find((c: any) => c.name === part)
-        
-        if (!existing) {
-          existing = { name: part, children: [] }
-          if (isLeaf) {
-            existing.component = comp
-            existing.value = Math.max(Number(comp[sizeKey]) || 0, 1)
-            existing.colorValue = Number(comp[colorKey]) || 0
-          }
-          current.children.push(existing)
-        }
-        current = existing
-      })
+      if (!existing) {
+        existing = { name: part, fullName: path, children: [] }
+        current.children.push(existing)
+      } else if (existing.unit && !existing.children) {
+        // The reverse order of the case above: the row arrived before its children.
+        const self = existing
+        existing = { name: part, fullName: path, children: [self] }
+        current.children[current.children.indexOf(self)] = existing
+      }
+      current = existing
     }
   })
 
@@ -876,13 +776,13 @@ function buildHierarchy(components: any[], sizeKey: string, colorKey: string) {
       delete node.children
     }
   }
-
   prune(root)
 
   root.children = root.children.filter((c: any) => c.children && c.children.length > 0)
+  // A single top-level namespace adds nothing but a ring; unwrap it.
+  while (root.children.length === 1 && root.children[0].children && !root.children[0].isGroup) {
+    root.children = root.children[0].children
+  }
   return root
 }
 </script>
-
-<style scoped>
-</style>

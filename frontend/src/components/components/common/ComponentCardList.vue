@@ -1,19 +1,19 @@
 <template>
 
   <div class="flex flex-col h-full">
-    <div class="flex-shrink-0 border-b-2 py-4">
+    <div class="flex-shrink-0 hairline-b pb-3">
       <slot name="header"></slot>
-      <div class="px-4 ">
-        <input class="w-full px-4 py-2 bg-archstats-50  box-border outline-archstats-500 outline-1 rounded border border-archstats-100"
+      <div class="px-4">
+        <input class="ui-input ui-input-sm"
                v-model="searchText" placeholder="Search...">
 
       </div>
     </div>
-    <div class="px-4 flex-grow overflow-y-scroll">
+    <div class="flex-grow overflow-y-auto px-4 py-3">
 
-      <Card class="h-96 mt-4" @click="select(component);" v-for="component in filteredComponents">
+      <Card class="mb-3 cursor-pointer p-4 transition-colors hover:bg-neutral-50" @click="select(component);" v-for="component in filteredComponents">
 
-        <h1 class="text-xs font-mono font-bold mb-4 text-archstats-900" :title="component.name">{{
+        <h1 class="mb-2 truncate font-mono text-sm font-medium text-neutral-900" :title="component.name">{{
             component.name
           }}</h1>
 

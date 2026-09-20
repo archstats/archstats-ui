@@ -1,149 +1,47 @@
 <template>
-  <div class="my-20 mx-12">
-    <SummarySection/>
+  <div class="mx-auto w-full max-w-[1200px] px-8 pb-16 pt-7">
+    <SummarySection>
+      <template #activity>
+        <template v-if="gitCommits.length">
+          <GitActivityChart :end-date="new Date()" :commits="gitCommits"/>
+          <MonthlyChangesChart :commits="gitCommits" :height="96" class="mt-3"/>
+        </template>
+        <p v-else class="py-6 text-sm text-neutral-500">No git history in this snapshot.</p>
+      </template>
+    </SummarySection>
 
-    <section>
-      <Headline>Git activity</Headline>
-      <div class="">
-
-        <GitActivityChart
-
-            :end-date="new Date()"
-            :commits="gitCommits"
-            class="p-8 pb-24"
-        ></GitActivityChart>
+    <section class="mt-8" aria-labelledby="views-title">
+      <h2 id="views-title" class="text-lg font-semibold text-neutral-900">Views</h2>
+      <div class="mt-3 grid gap-5 lg:grid-cols-2">
+        <div v-for="family in families" :key="family.title" class="ui-panel overflow-hidden">
+          <h3 class="ui-section-title px-3 pb-1.5 pt-2.5 hairline-b">{{ family.title }}</h3>
+          <div class="divide-y divide-neutral-100">
+            <ViewCard v-for="view in family.views" :key="view.path" v-bind="view"/>
+          </div>
+        </div>
       </div>
-
     </section>
-    <main>
-      <Headline>Views</Headline>
-      <div class="grid grid-cols-2 gap-16 my-12 ">
-        <ViewCard
-            name="Walker"
-            path="/views/components/walker"
-            image="/img/component-walker.png"
-            description="This view allows you to walk through your components one-by-one in a tree-like manner."
-        />
-        <ViewCard
-            name="Comparison"
-            image="/img/component-comparison.png"
-            path="/views/components/comparison"
-            description="This view allows components to be compared with each other."
-        />
-        <ViewCard
-            name="Matrix"
-            path="/views/components/matrix"
-            image="/img/matrix.png"
-            description="This view shows the connections between components in a matrix."
-        />
-        <ViewCard
-            name="Chord"
-            path="/views/components/chord"
-            image="/img/chord.png"
-            description="This view shows the connections between components in a chord diagram."
-        />
-        <ViewCard
-            name="Clustering"
-            path="/views/components/clustering"
-            image="/img/chord.png"
-            description="Discover natural component clusters via force-directed graph and Louvain community detection."
-        />
-        <ViewCard
-            name="Hotspots"
-            path="/views/components/hotspots"
-            image="/img/hotspots.png"
-            description="This view plots components as a hierarchical treemap to identify architectural hotspots."
-        />
-        <ViewCard
-            name="Cycles"
-            path="/views/components/cycles"
-            image="/img/hotspots.png"
-            description="Identify and break cyclic dependencies. Analyze loops ranked by severity, co-change coupling, and hotspot risk."
-        />
-        <ViewCard
-            name="Plotter"
-            path="/views/components/plotter"
-            image="/img/plotter.png"
-            description="This view plots components in a 4d space."
-        />
-      </div>
-    </main>
-
-    <main>
-      <Headline>Git Views</Headline>
-      <div class="grid grid-cols-2 gap-16 my-12 ">
-        <ViewCard
-            name="Coupling"
-            path="/views/git/coupling"
-            image="/img/chord.png"
-            description="Explore logical coupling between components via shared commits using an interactive chord diagram."
-        />
-        <ViewCard
-            name="Churn"
-            path="/views/git/churn"
-            image="/img/plotter.png"
-            description="Analyze component stability by plotting commit frequency (churn) against code health."
-        />
-        <ViewCard
-            name="Timeline"
-            path="/views/git/timeline"
-            image="/img/hotspots.png"
-            description="Track development momentum with a commit activity calendar and monthly additions/deletions chart."
-        />
-        <ViewCard
-            name="Authors"
-            path="/views/git/authors"
-            image="/img/component-walker.png"
-            description="Inspect contributor profiles, timelines, hotspots, and code contribution metrics."
-        />
-      </div>
-    </main>
-
-    <main>
-      <Headline>File Views</Headline>
-      <div class="grid grid-cols-2 gap-16 my-12 ">
-        <ViewCard
-            name="Table"
-            path="/views/files/table"
-            image="/img/matrix.png"
-            description="A sortable, paginated metrics grid for browsing file size, complexity, code health, and git activity."
-        />
-        <ViewCard
-            name="Dependencies"
-            path="/views/files/dependencies"
-            image="/img/chord.png"
-            description="Visualize file-to-file import relationships as a dynamic force-directed graph."
-        />
-        <ViewCard
-            name="Treemap"
-            path="/views/files/treemap"
-            image="/img/hotspots.png"
-            description="Explore directory structure hierarchy and files weighted by size and colored by code health."
-        />
-      </div>
-    </main>
-
   </div>
-
-
 </template>
+
 <script setup lang="ts">
-import Headline from "~/components/ui/common/Headline.vue";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
-import {useDataStore} from "~/stores/data";
-import type {GitCommit} from "~/utils/git";
+import { useDataStore } from "~/stores/data";
+import type { GitCommit } from "~/utils/git";
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
-import {ref, watch} from "vue";
+import MonthlyChangesChart from "~/components/git/MonthlyChangesChart.vue";
+import { computed, ref, watch } from "vue";
+import { useJavaMetrics } from "~/composables/useJavaMetrics";
 
 const store = useDataStore();
-const gitCommits = ref<GitCommit[]>([])
+const gitCommits = ref<GitCommit[]>([]);
 watch(
-  () => store.hasData,
-  async (hasData) => {
-    if (!hasData) {
-      gitCommits.value = []
-      return
+  () => [store.hasData, store.datasetKey] as const,
+  async ([hasData]) => {
+    if (!hasData || !store.hasView("git_commits")) {
+      gitCommits.value = [];
+      return;
     }
     gitCommits.value = await store.query<GitCommit>(
       `select commit_hash,
@@ -155,17 +53,35 @@ watch(
               sum(file_additions) as additions,
               sum(file_deletions) as deletions
        from git_commits
-       group by commit_hash
-      `
-    )
+       group by commit_hash`
+    );
   },
   { immediate: true }
 );
 
-
+const { isJavaProject } = useJavaMetrics();
+const families = computed(() => [
+  {
+    title: "Components",
+    views: [
+      { name: "Metrics", path: "/views/metrics", image: "/img/views/table.png", description: "Every metric for every component or file, as a table or a plot." },
+      { name: "Connections", path: "/views/connections", image: "/img/views/connections.png", description: "Component, file or group coupling as a matrix, a chord diagram or a force graph." },
+      { name: "Hotspots", path: "/views/components/hotspots", image: "/img/views/hotspots.png", description: "Units packed by size and heat, at component, directory or file grain." },
+      { name: "Cycles", path: "/views/components/cycles", image: "/img/views/cycles.png", description: "Cyclic dependencies ranked by severity and co-change." },
+    ],
+  },
+  {
+    title: "Git",
+    views: [
+      { name: "Activity", path: "/views/git/activity", image: "/img/views/git-timeline.png", description: "Every commit in the snapshot, by month and by author." },
+      { name: "Authors", path: "/views/git/authors", image: "/img/views/git-authors.png", description: "Contributors, their hotspots and timelines." },
+    ],
+  },
+  ...(isJavaProject.value ? [{
+    title: "Java",
+    views: [
+      { name: "Classes", path: "/views/java/classes", image: "/img/views/java-classes.png", description: "How classes wire to each other, with role lanes, seed-and-expand and a path tracer." },
+    ],
+  }] : []),
+]);
 </script>
-<style>
-body {
-  @apply bg-white
-}
-</style>

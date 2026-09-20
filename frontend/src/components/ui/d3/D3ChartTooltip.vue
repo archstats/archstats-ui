@@ -1,10 +1,9 @@
+
 <template>
-  <div class="tooltip absolute" :style="{top: tooltipLocation.y + 'px', left: tooltipLocation.x + 'px'}" >
+  <div class="ui-tooltip pointer-events-none absolute z-50" :style="{top: tooltipLocation.y + 'px', left: tooltipLocation.x + 'px'}">
     <slot></slot>
   </div>
-
 </template>
-
 <script setup lang="ts">
 import {getCurrentInstance, onMounted, ref} from "vue";
 import * as d3 from "d3";
