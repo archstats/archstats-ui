@@ -182,24 +182,26 @@ func extensionsFor(rootDir string) ([]core.Extension, []string, error) {
 	discoveryCtx := &config.DiscoveryContext{RootDir: rootDir, Files: paths}
 
 	configured := common.AlwaysEnabled()
+	// Only the auto-discovered extensions are reported back: the always-on
+	// set carries no information about this particular codebase.
+	discovered := []string{}
 	for _, opt := range common.Optional() {
 		if opt.DiscoveryTrigger != nil && opt.DiscoveryTrigger(discoveryCtx) {
 			configured = append(configured, opt)
+			discovered = append(discovered, opt.Name)
 		}
 	}
 
 	defaults := commandWithDefaults(configured)
 	extensions := make([]core.Extension, 0, len(configured))
-	names := make([]string, 0, len(configured))
 	for _, ce := range configured {
 		ext, err := ce.Initializer(defaults)
 		if err != nil {
 			return nil, nil, fmt.Errorf("initializing extension %s: %w", ce.Name, err)
 		}
 		extensions = append(extensions, ext)
-		names = append(names, ce.Name)
 	}
-	return extensions, names, nil
+	return extensions, discovered, nil
 }
 
 // commandWithDefaults builds a throwaway cobra command carrying every

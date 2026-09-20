@@ -16,9 +16,9 @@ func writeFixtureRepo(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
-		"web/src/util.ts":       "export function add(a: number, b: number): number {\n  return a + b;\n}\n",
-		"web/src/main.ts":       "import { add } from \"./util\";\nconsole.log(add(1, 2));\n",
-		"server/src/Main.java":  "package com.example;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println(Greeter.greet());\n    }\n}\n",
+		"web/src/util.ts":         "export function add(a: number, b: number): number {\n  return a + b;\n}\n",
+		"web/src/main.ts":         "import { add } from \"./util\";\nconsole.log(add(1, 2));\n",
+		"server/src/Main.java":    "package com.example;\n\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println(Greeter.greet());\n    }\n}\n",
 		"server/src/Greeter.java": "package com.example;\n\npublic class Greeter {\n    static String greet() {\n        return \"hi\";\n    }\n}\n",
 	}
 	for path, content := range files {
@@ -194,15 +194,25 @@ func TestScanFailureIsRecorded(t *testing.T) {
 
 func TestExtensionsForAutoDetection(t *testing.T) {
 	root := writeFixtureRepo(t)
-	_, names, err := extensionsFor(root)
+	extensions, names, err := extensionsFor(root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The reported names are the auto-discovered optional extensions only;
+	// the always-on set still loads but is not worth telling the user about.
 	joined := strings.Join(names, ",")
-	for _, want := range []string{"basic", "lines", "components", "java", "typescript"} {
+	for _, want := range []string{"java", "typescript"} {
 		if !strings.Contains(joined, want) {
-			t.Errorf("extension %q not enabled (have: %s)", want, joined)
+			t.Errorf("extension %q not detected (have: %s)", want, joined)
 		}
+	}
+	for _, internal := range []string{"basic", "components"} {
+		if strings.Contains(joined, internal) {
+			t.Errorf("always-on extension %q should not be reported (have: %s)", internal, joined)
+		}
+	}
+	if len(extensions) <= len(names) {
+		t.Errorf("expected always-on extensions to load alongside the %d detected (loaded %d)", len(names), len(extensions))
 	}
 	if strings.Contains(joined, ",git") || strings.HasPrefix(joined, "git,") {
 		t.Errorf("git should not be detected without .git dir (have: %s)", joined)

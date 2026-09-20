@@ -26,6 +26,43 @@ type Scan struct {
 	SnapshotPath string     `json:"snapshotPath"`
 }
 
+// ErrScanInterrupted is the recorded error for scans that were still running
+// when the app exited; no engine goroutine survives a restart.
+const ErrScanInterrupted = "Interrupted: the app closed before this scan finished."
+
+// MarkInterruptedScans fails every scan still recorded as running and removes
+// any partial snapshot it left behind. Call once at startup, before any scan
+// can start, so the history never shows a phantom running scan.
+func (s *Store) MarkInterruptedScans() (int, error) {
+	rows, err := s.db.Query(`SELECT id, workspace_id FROM scans WHERE status = ?`, ScanStatusRunning)
+	if err != nil {
+		return 0, err
+	}
+	type ref struct{ id, workspaceID string }
+	var stale []ref
+	for rows.Next() {
+		var r ref
+		if err := rows.Scan(&r.id, &r.workspaceID); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		stale = append(stale, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for _, r := range stale {
+		if err := s.FailScan(r.id, ErrScanInterrupted); err != nil {
+			return 0, err
+		}
+		if err := os.Remove(s.SnapshotPath(r.workspaceID, r.id)); err != nil && !os.IsNotExist(err) {
+			return 0, err
+		}
+	}
+	return len(stale), nil
+}
+
 // CreateScan records a new scan in status "running".
 func (s *Store) CreateScan(workspaceID string) (*Scan, error) {
 	if _, err := s.GetWorkspace(workspaceID); err != nil {

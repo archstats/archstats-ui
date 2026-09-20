@@ -3,6 +3,7 @@ package query
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -118,12 +119,27 @@ func (s *Service) Query(sqlStr string) ([]map[string]any, error) {
 	return out, rows.Err()
 }
 
+// jsonValue makes a scanned SQLite value safe for the Wails JSON bridge.
+// Non-finite floats (a ratio over zero produces +Inf; SQLite happily stores
+// and returns them) would make encoding/json fail, which Wails treats as
+// fatal for the whole app; they become null instead.
 func jsonValue(v any) any {
 	switch val := v.(type) {
 	case []byte:
 		return string(val)
 	case time.Time:
 		return val.Format(time.RFC3339)
+	case float64:
+		if math.IsInf(val, 0) || math.IsNaN(val) {
+			return nil
+		}
+		return val
+	case float32:
+		f := float64(val)
+		if math.IsInf(f, 0) || math.IsNaN(f) {
+			return nil
+		}
+		return f
 	default:
 		return v
 	}
