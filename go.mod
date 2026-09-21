@@ -3,7 +3,7 @@ module github.com/archstats/archstats-ui
 go 1.25.4
 
 require (
-	github.com/archstats/archstats v0.3.0
+	github.com/archstats/archstats v0.3.1
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/rs/zerolog v1.33.0
