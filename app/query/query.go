@@ -20,6 +20,13 @@ type Service struct {
 	mu     sync.Mutex
 	db     *sql.DB
 	scanID string
+
+	// A second handle, for reading a snapshot other than the open one — what
+	// comparing a component against an earlier scan needs. Only one is kept:
+	// a comparison reads one baseline at a time.
+	altMu     sync.Mutex
+	altDB     *sql.DB
+	altScanID string
 }
 
 func NewService(st *store.Store) *Service {
@@ -29,24 +36,9 @@ func NewService(st *store.Store) *Service {
 // Open selects a completed scan's snapshot as the active database, closing
 // any previously open snapshot.
 func (s *Service) Open(scanID string) error {
-	scan, err := s.store.GetScan(scanID)
+	db, err := s.openSnapshot(scanID)
 	if err != nil {
 		return err
-	}
-	if scan.Status != store.ScanStatusComplete {
-		return fmt.Errorf("scan %s is %s, not complete", scanID, scan.Status)
-	}
-
-	// Snapshots are immutable once complete, so read-only + immutable is safe
-	// and lets SQLite skip locking entirely.
-	dsn := fmt.Sprintf("file:%s?mode=ro&immutable=1", scan.SnapshotPath)
-	db, err := sql.Open("sqlite3", dsn)
-	if err != nil {
-		return err
-	}
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return fmt.Errorf("opening snapshot %s: %w", scan.SnapshotPath, err)
 	}
 
 	s.mu.Lock()
@@ -59,6 +51,30 @@ func (s *Service) Open(scanID string) error {
 	return nil
 }
 
+// openSnapshot opens a completed scan's snapshot read-only.
+func (s *Service) openSnapshot(scanID string) (*sql.DB, error) {
+	scan, err := s.store.GetScan(scanID)
+	if err != nil {
+		return nil, err
+	}
+	if scan.Status != store.ScanStatusComplete {
+		return nil, fmt.Errorf("scan %s is %s, not complete", scanID, scan.Status)
+	}
+
+	// Snapshots are immutable once complete, so read-only + immutable is safe
+	// and lets SQLite skip locking entirely.
+	dsn := fmt.Sprintf("file:%s?mode=ro&immutable=1", scan.SnapshotPath)
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("opening snapshot %s: %w", scan.SnapshotPath, err)
+	}
+	return db, nil
+}
+
 // CurrentScan returns the id of the open scan, or "" if none.
 func (s *Service) CurrentScan() string {
 	s.mu.Lock()
@@ -66,8 +82,10 @@ func (s *Service) CurrentScan() string {
 	return s.scanID
 }
 
-// Close releases the active snapshot, if any.
+// Close releases the active snapshot and any baseline, if open.
 func (s *Service) Close() error {
+	s.closeBaseline()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.db == nil {
@@ -89,6 +107,49 @@ func (s *Service) Query(sqlStr string) ([]map[string]any, error) {
 		return nil, fmt.Errorf("no scan open")
 	}
 
+	return runQuery(db, sqlStr)
+}
+
+// QueryIn runs raw SQL against a completed snapshot that is not the open one,
+// which is how a view compares the current scan against an earlier one. The
+// open snapshot is left untouched; asking for a different baseline closes the
+// previous one.
+func (s *Service) QueryIn(scanID string, sqlStr string) ([]map[string]any, error) {
+	s.mu.Lock()
+	current, db := s.scanID, s.db
+	s.mu.Unlock()
+	if scanID == "" {
+		return nil, fmt.Errorf("no scan given")
+	}
+	if scanID == current && db != nil {
+		return runQuery(db, sqlStr)
+	}
+
+	s.altMu.Lock()
+	defer s.altMu.Unlock()
+	if s.altDB == nil || s.altScanID != scanID {
+		opened, err := s.openSnapshot(scanID)
+		if err != nil {
+			return nil, err
+		}
+		if s.altDB != nil {
+			s.altDB.Close()
+		}
+		s.altDB, s.altScanID = opened, scanID
+	}
+	return runQuery(s.altDB, sqlStr)
+}
+
+func (s *Service) closeBaseline() {
+	s.altMu.Lock()
+	defer s.altMu.Unlock()
+	if s.altDB != nil {
+		s.altDB.Close()
+		s.altDB, s.altScanID = nil, ""
+	}
+}
+
+func runQuery(db *sql.DB, sqlStr string) ([]map[string]any, error) {
 	rows, err := db.Query(sqlStr)
 	if err != nil {
 		return nil, err

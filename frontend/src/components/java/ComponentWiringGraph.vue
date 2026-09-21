@@ -43,22 +43,36 @@ type SimEdge = d3.SimulationLinkDatum<SimNode> & { references: number; external:
 
 let simulation: d3.Simulation<SimNode, SimEdge> | null = null
 let zoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null
+// Above this many classes, labelling every node buries the shape it is meant
+// to reveal. The busiest few stay named, the selection names its own
+// neighbourhood, and every node keeps its tooltip.
+const LABEL_ALL_UNDER = 24
+const TOP_LABELS = 8
+let labelled = new Set<string>()
+
 let nodeSel: d3.Selection<SVGCircleElement, SimNode, SVGGElement, unknown> | null = null
 let labelSel: d3.Selection<SVGTextElement, SimNode, SVGGElement, unknown> | null = null
 let linkSel: d3.Selection<SVGLineElement, SimEdge, SVGGElement, unknown> | null = null
 let resizeObserver: ResizeObserver | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 
-function columnX(role: JavaRole | null, width: number): number {
-  switch (role) {
-    case "Controller": return width * 0.15
-    case "Configuration": return width * 0.3
-    case "Service": return width * 0.45
-    case "Repository": return width * 0.7
-    case "Entity": return width * 0.88
-    default: return width * 0.45
-  }
+const LAYER_ORDER: Array<JavaRole | "Other"> = ["Controller", "Configuration", "Service", "Repository", "Entity"]
+
+/**
+ * Columns for the roles this component actually has, spread across the width.
+ * A fixed column per role wastes the canvas when every class is an Entity:
+ * twenty-one nodes stack in the rightmost eighth and the rest sits empty.
+ */
+function columnPositions(nodes: WiringNode[]): Map<string, number> {
+  const present: string[] = LAYER_ORDER.filter(role => nodes.some(n => n.role === role))
+  if (nodes.some(n => !n.role || !LAYER_ORDER.includes(n.role))) present.push("Other")
+  const map = new Map<string, number>()
+  present.forEach((role, i) => {
+    map.set(role, present.length === 1 ? 0.5 : 0.12 + (i / (present.length - 1)) * 0.76)
+  })
+  return map
 }
+
 
 function endId(v: string | SimNode): string {
   return typeof v === "string" ? v : v.id
@@ -78,7 +92,12 @@ function render() {
   nodeSel = labelSel = linkSel = null
   if (props.nodes.length === 0) return
 
-  const nodes: SimNode[] = props.nodes.map(n => ({ ...n, x: columnX(n.role, width), y: height / 2 + (Math.random() - 0.5) * height * 0.6 }))
+  const columns = columnPositions(props.nodes)
+  const columnFor = (role: JavaRole | null) => width * (columns.get(role ?? "Other") ?? 0.5)
+  // One column means the roles carry no layout information; let the charge
+  // spread the classes into a cloud instead of a stripe.
+  const columnStrength = columns.size > 1 ? 1 : 0.04
+  const nodes: SimNode[] = props.nodes.map(n => ({ ...n, x: columnFor(n.role), y: height / 2 + (Math.random() - 0.5) * height * 0.6 }))
   const ids = new Set(nodes.map(n => n.id))
   const edges: SimEdge[] = props.edges
     .filter(e => ids.has(e.source) && ids.has(e.target))
@@ -131,6 +150,19 @@ function render() {
     return d.external ? `${d.label}\n${role} in ${d.component}\n${d.file}` : `${d.label}\n${role}\n${d.file}`
   })
 
+  const degree = new Map<string, number>()
+  for (const e of edges) {
+    const a = endId(e.source as string | SimNode), b = endId(e.target as string | SimNode)
+    degree.set(a, (degree.get(a) ?? 0) + 1)
+    degree.set(b, (degree.get(b) ?? 0) + 1)
+  }
+  labelled = nodes.length <= LABEL_ALL_UNDER
+    ? new Set(nodes.map(n => n.id))
+    : new Set([...nodes]
+        .sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))
+        .slice(0, TOP_LABELS)
+        .map(n => n.id))
+
   labelSel = g.append("g").selectAll<SVGTextElement, SimNode>("text")
     .data(nodes, d => d.id)
     .join("text")
@@ -159,8 +191,8 @@ function render() {
   simulation = d3.forceSimulation<SimNode>(nodes)
     .force("link", d3.forceLink<SimNode, SimEdge>(edges).id(d => d.id).distance(80))
     .force("charge", d3.forceManyBody().strength(-180))
-    .force("x", d3.forceX<SimNode>(d => columnX(d.role, width)).strength(1))
-    .force("y", d3.forceY(height / 2).strength(0.3))
+    .force("x", d3.forceX<SimNode>(d => columnFor(d.role)).strength(columnStrength))
+    .force("y", d3.forceY(height / 2).strength(columns.size > 1 ? 0.3 : 0.06))
     .force("collide", d3.forceCollide(22))
     .on("tick", () => {
       linkSel!
@@ -181,8 +213,8 @@ function applySelection() {
   const t = chartTheme()
   const selected = props.selected
   if (!selected) {
-    nodeSel.attr("opacity", 1).attr("stroke", d => d.external ? roleColor(d.role) : t.surface).attr("stroke-width", 1.5)
-    labelSel.attr("opacity", 1)
+    nodeSel.attr("r", 7).attr("opacity", 1).attr("stroke", d => d.external ? roleColor(d.role) : t.surface).attr("stroke-width", 1.5)
+    labelSel.attr("opacity", d => labelled.has(d.id) ? 1 : 0)
     linkSel.attr("stroke", withAlpha(t.inkMuted, 0.45)).attr("opacity", 1)
     return
   }
@@ -192,11 +224,14 @@ function applySelection() {
     if (s === selected) near.add(tt)
     if (tt === selected) near.add(s)
   })
+  // In a crowd of two hundred, the selection has to win outright: everything
+  // it does not touch recedes to a texture.
   nodeSel
-    .attr("opacity", d => near.has(d.id) ? 1 : 0.2)
+    .attr("r", d => d.id === selected ? 10 : near.has(d.id) ? 8 : 7)
+    .attr("opacity", d => d.id === selected ? 1 : near.has(d.id) ? 0.95 : 0.12)
     .attr("stroke", d => d.id === selected ? t.ink : d.external ? roleColor(d.role) : t.surface)
-    .attr("stroke-width", d => d.id === selected ? 2.5 : 1.5)
-  labelSel.attr("opacity", d => near.has(d.id) ? 1 : 0.2)
+    .attr("stroke-width", d => d.id === selected ? 3 : 1.5)
+  labelSel.attr("opacity", d => near.has(d.id) ? 1 : labelled.has(d.id) ? 0.3 : 0)
   linkSel
     .attr("opacity", d => {
       const s = endId(d.source as string | SimNode), tt = endId(d.target as string | SimNode)

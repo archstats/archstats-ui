@@ -6,7 +6,7 @@
         <div
           ref="sheet"
           tabindex="-1"
-          class="ui-popover animate-modal-in relative flex max-h-[min(640px,84vh)] w-full max-w-[720px] flex-col overflow-hidden outline-none"
+          class="ui-popover animate-modal-in relative flex max-h-[min(760px,88vh)] w-full max-w-[720px] flex-col overflow-hidden outline-none"
           role="dialog"
           aria-modal="true"
           aria-label="Propose a lens cut"
@@ -14,59 +14,63 @@
           <header class="flex shrink-0 items-baseline gap-3 px-5 py-3 hairline-b">
             <h2 class="text-base font-semibold text-neutral-900">Propose a lens cut</h2>
             <p class="min-w-0 text-sm text-neutral-500">
-              The same codebase cuts more than one way. Each is measured here before you take it.
+              Pick what to read this codebase by. Each is measured before you take it.
             </p>
             <!-- Said where the decision is made, not after it: nothing here
                  touches a saved lens, and a proposal is an opening position. -->
             <span class="ml-auto shrink-0 text-xs text-neutral-550">Fills a draft · nothing is saved yet</span>
           </header>
 
-          <div class="min-h-0 grow overflow-y-auto p-2">
-            <button
-              v-for="c in cuts"
-              :key="c.way.id"
-              type="button"
-              class="flex w-full flex-col gap-1.5 rounded-md px-3 py-2.5 text-left transition-colors"
-              :class="[
-                picked === c.way.id ? 'bg-accent-50' : 'hover:bg-neutral-50',
-                c.fitness.ok ? '' : 'opacity-60',
-              ]"
-              :disabled="!c.fitness.ok"
-              :aria-pressed="picked === c.way.id"
-              @click="picked = c.way.id"
-            >
-              <span class="flex items-baseline gap-2">
-                <Icon :icon="ICON[c.way.id]" :size="13" :class="picked === c.way.id ? 'text-accent-600' : 'text-neutral-400'"/>
-                <span class="text-sm font-medium text-neutral-900">{{ c.way.label }}</span>
-                <span class="min-w-0 truncate text-xs text-neutral-500">{{ c.way.hint }}</span>
-                <Icon v-if="picked === c.way.id" icon="check" :size="12" class="ml-auto shrink-0 text-accent-600"/>
-              </span>
+          <div class="min-h-0 grow overflow-y-auto px-2 py-1.5">
+            <template v-for="section in sections" :key="section.reads">
+              <!-- What the reading goes on, said before the readings. Nine
+                   options in one flat list is a menu; under these headings it
+                   is a question about what to trust about this codebase. -->
+              <p class="ui-label px-3 pb-1 pt-3 first:pt-1">{{ section.label }}</p>
 
-              <!-- What it would actually produce. A choice between five ways
-                   of cutting is a guess until each one says what it comes to,
-                   and the numbers are cheap: the engine has already run. -->
-              <span v-if="!c.fitness.ok" class="pl-[21px] text-xs leading-4 text-amber-700">{{ c.fitness.why }}</span>
-              <template v-else-if="c.preview">
-                <span class="flex flex-wrap items-baseline gap-x-3 pl-[21px] font-mono text-xs tabular-nums text-neutral-600">
-                  <span>{{ c.preview.groups }} groups</span>
-                  <span class="text-neutral-550">·</span>
-                  <span>{{ c.preview.placed }}/{{ total }} placed</span>
-                  <template v-if="c.way.cut !== 'horizontal'">
-                    <span class="text-neutral-550">·</span>
-                    <span :class="TONE[c.preview.tone]">{{ Math.round(c.preview.kept * 100) }}% kept inside</span>
-                  </template>
-                  <span class="text-neutral-550">·</span>
-                  <span :class="c.preview.biggest > 0.5 ? 'text-amber-700' : 'text-neutral-600'">biggest {{ Math.round(c.preview.biggest * 100) }}%</span>
-                  <span v-if="unnamed(c.preview)" class="text-neutral-550" :title="`The engine grouped these but could not find a word for them. A group nobody can name is usually a group nobody would recognise.`">
-                    · {{ unnamed(c.preview) }} unnamed
-                  </span>
+              <!-- One line each until you are considering it.
+                   Nine readings each carrying five numbers, a bar and six
+                   group names is fifty-four names and forty-five figures
+                   competing over a single decision, and four of the nine fall
+                   below the fold. What you need to CHOOSE is the name, what
+                   it goes on, and the shape it comes to; what you need to
+                   INSPECT belongs to the one you are looking at. -->
+              <button
+                v-for="c in section.cuts"
+                :key="c.way.id"
+                type="button"
+                class="flex w-full flex-col gap-1 rounded-md px-3 text-left transition-colors"
+                :class="[
+                  picked === c.way.id ? 'bg-accent-50 py-2.5' : 'py-1.5 hover:bg-neutral-50',
+                  c.fitness.ok ? '' : 'opacity-60',
+                ]"
+                :disabled="!c.fitness.ok"
+                :aria-pressed="picked === c.way.id"
+                @click="picked = c.way.id"
+              >
+                <span class="flex w-full items-baseline gap-2">
+                  <Icon :icon="ICON[c.way.id]" :size="13" class="shrink-0 translate-y-px" :class="picked === c.way.id ? 'text-accent-600' : 'text-neutral-400'"/>
+                  <span class="shrink-0 text-sm font-medium text-neutral-900">{{ c.way.label }}</span>
+                  <!-- Nine equal options and no default is an interrogation.
+                       Detection still knows which name reading this codebase
+                       suits; it says so here instead of only deciding. -->
+                  <span v-if="suggested === c.way.id" class="shrink-0 rounded-sm bg-neutral-100 px-1.5 text-xs font-medium leading-4 text-neutral-600">Suggested</span>
+                  <span class="min-w-0 truncate text-xs" :class="c.fitness.ok ? 'text-neutral-500' : 'text-amber-700'">{{ c.fitness.ok ? c.way.hint : c.fitness.why }}</span>
+                  <span v-if="c.fitness.ok && c.preview && picked !== c.way.id" class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-550">{{ c.preview.groups }} groups</span>
+                  <Icon v-if="picked === c.way.id" icon="check" :size="12" class="ml-auto shrink-0 translate-y-px text-accent-600"/>
                 </span>
 
-                <!-- The cut itself, drawn to scale: every group as a slice of
-                     the codebase, in the colour it would be given, with what
-                     it leaves behind at the end. This is the part a row of
-                     numbers cannot say. -->
-                <span class="flex h-2 gap-px overflow-hidden rounded-sm pl-[21px]" :title="shapeOf(c.preview)">
+                <!-- The cut drawn to scale: every group as a slice of the
+                     codebase, in the colour it would be given, with what it
+                     leaves behind at the end. A hairline of it is still the
+                     fastest read of a shape a group count cannot say, so it
+                     survives the collapse at a third of the height. -->
+                <span
+                  v-if="c.fitness.ok && c.preview"
+                  class="ml-[21px] flex gap-px overflow-hidden rounded-sm transition-[height]"
+                  :class="picked === c.way.id ? 'h-2' : 'h-[3px]'"
+                  :title="shapeOf(c.preview)"
+                >
                   <span
                     v-for="(g, i) in c.preview.sizes"
                     :key="g.name + i"
@@ -80,19 +84,63 @@
                     :title="`${total - c.preview.placed} left for you`"
                   ></span>
                 </span>
+                <span v-else-if="c.fitness.ok" class="ml-[21px] text-xs leading-4 text-neutral-400">measuring…</span>
 
-                <!-- Names with their sizes, because "Group A" and "Group A, 86
-                     components" are different amounts of information. The
-                     chosen row shows all of them. -->
-                <span class="pl-[21px] text-xs leading-5 text-neutral-500" :class="picked === c.way.id ? '' : 'truncate'">
-                  <template v-for="(g, i) in (picked === c.way.id ? c.preview.sizes : c.preview.sizes.slice(0, 6))" :key="g.name + i">
-                    <span v-if="i" class="text-neutral-550"> · </span><span :class="g.named ? 'text-neutral-600' : 'text-neutral-550 italic'">{{ g.name }}</span><span class="ml-1 font-mono text-neutral-550">{{ g.size }}</span>
-                  </template>
-                  <template v-if="picked !== c.way.id && c.preview.sizes.length > 6"><span class="text-neutral-550"> · … {{ c.preview.sizes.length - 6 }} more</span></template>
-                </span>
-              </template>
-              <span v-else class="pl-[21px] text-xs leading-4 text-neutral-400">measuring…</span>
-            </button>
+                <!-- Everything below belongs to the reading being considered. -->
+                <template v-if="picked === c.way.id && c.fitness.ok && c.preview">
+                  <span class="ml-[21px] flex flex-wrap items-baseline gap-x-3 font-mono text-xs tabular-nums text-neutral-600">
+                    <span>{{ c.preview.groups }} groups</span>
+                    <span>{{ c.preview.placed }} of {{ total }} placed</span>
+                    <template v-if="c.way.cut !== 'horizontal'">
+                      <span :class="TONE[c.preview.tone]">{{ Math.round(c.preview.kept * 100) }}% kept inside</span>
+                    </template>
+                    <span :class="c.preview.biggest > 0.5 ? 'text-amber-700' : 'text-neutral-600'">biggest group {{ Math.round(c.preview.biggest * 100) }}%</span>
+                    <span v-if="unnamed(c.preview)" class="text-neutral-550" title="The engine grouped these but could not find a word for them. A group nobody can name is usually a group nobody would recognise.">{{ unnamed(c.preview) }} unnamed</span>
+                  </span>
+
+                  <span class="ml-[21px] text-xs leading-5 text-neutral-500">
+                    <template v-for="(g, i) in c.preview.sizes.slice(0, NAMES_SHOWN)" :key="g.name + i">
+                      <span v-if="i" class="text-neutral-550"> · </span><component
+                        :is="g.word ? 'button' : 'span'"
+                        :type="g.word ? 'button' : undefined"
+                        :class="[
+                          g.named ? 'text-neutral-600' : 'text-neutral-550 italic',
+                          g.word
+                            ? 'rounded px-0.5 underline decoration-dotted decoration-neutral-400 underline-offset-[3px] hover:bg-neutral-100 hover:text-neutral-900 hover:decoration-transparent hover:line-through'
+                            : '',
+                        ]"
+                        :title="g.word ? `Not a domain? Take ${g.name} out and measure the cut again` : undefined"
+                        @click.stop="g.word && emit('strike', g.word)"
+                      >{{ g.name }}</component><span class="ml-1 font-mono text-neutral-550">{{ g.size }}</span>
+                    </template>
+                    <template v-if="c.preview.sizes.length > NAMES_SHOWN"><span class="text-neutral-550"> · … {{ c.preview.sizes.length - NAMES_SHOWN }} more</span></template>
+                  </span>
+
+                  <!-- Said once, at rest: an affordance that only appears
+                       under the pointer is one you have to already know
+                       about. No rule separates a subject from a role in every
+                       codebase -- where a project repeats its layers inside
+                       every plugin, "controllers" moves through the names
+                       exactly as freely as "catalog" does -- so one look at
+                       the list settles what no statistic could. -->
+                  <span v-if="c.preview.sizes.some(g => g.word)" class="ml-[21px] flex flex-wrap items-baseline gap-x-2 text-xs leading-4 text-neutral-550">
+                    <span>A word it got wrong? Click it to take it out and measure again.</span>
+                    <template v-if="struck.length">
+                      <span class="text-neutral-400">·</span>
+                      <span>Taken out:</span>
+                      <button
+                        v-for="w in struck"
+                        :key="w"
+                        type="button"
+                        class="rounded px-1 text-neutral-500 line-through hover:bg-neutral-100 hover:text-neutral-900 hover:no-underline"
+                        :title="`Put ${w} back`"
+                        @click.stop="emit('restore', w)"
+                      >{{ w }}</button>
+                    </template>
+                  </span>
+                </template>
+              </button>
+            </template>
           </div>
 
           <!-- The second half of the same decision, and downstream of it:
@@ -132,7 +180,7 @@
               class="ui-btn ui-btn-sm ui-btn-primary"
               :disabled="!chosen || !chosen.fitness.ok || busy"
               @click="apply"
-            >{{ busy ? "Proposing…" : chosen ? `Propose ${chosen.way.label}` : "Propose" }}</button>
+            >{{ busy ? "Proposing…" : "Propose this cut" }}</button>
           </footer>
         </div>
       </div>
@@ -144,7 +192,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import { GROUP_COLOR_PALETTE as PALETTE } from "~/stores/groups";
-import { GRAIN, WAYS, type Fitness, type Grain, type Way, type WayId } from "~/utils/studio";
+import { GRAIN, READS, WAYS, type Fitness, type Grain, type Reads, type Way, type WayId } from "~/utils/studio";
 
 // Choosing how to cut, with each answer measured first.
 //
@@ -153,8 +201,13 @@ import { GRAIN, WAYS, type Fitness, type Grain, type Way, type WayId } from "~/u
 // said what the decision would produce. The way is part of the proposal, so
 // it is chosen here, against evidence, and applied in one action.
 
+// One icon per reading, all of them real. `folder-tree` is not in the set,
+// so Package tree drew nothing at all; `layers` and `network` each stood for
+// two different readings.
 const ICON: Record<WayId, string> = {
-  domain: "boxes", layer: "layers", owner: "users", change: "git-commit", free: "network",
+  tree: "list-tree", subject: "boxes", role: "layers",
+  references: "network", depth: "route", commits: "git-commit",
+  authors: "users", lanes: "component", blend: "waypoints",
 };
 
 const TONE: Record<"good" | "fair" | "poor", string> = {
@@ -169,7 +222,7 @@ export interface CutPreview {
   /** Every group it would make, largest first. The shape of a cut is not in
    *  its group count: nine even groups and one giant plus eight scraps read
    *  identically as "9 groups", and are not the same cut at all. */
-  sizes: Array<{ name: string; size: number; named: boolean }>
+  sizes: Array<{ name: string; size: number; named: boolean; word?: string }>
   /** The largest group's share of what it placed. */
   biggest: number
   tone: "good" | "fair" | "poor"
@@ -184,15 +237,30 @@ const props = defineProps<{
   fitnessOf: (way: Way) => Fitness
   /** Measured per way, filled in as each finishes. */
   previews: Map<WayId, CutPreview>
+  /** Words taken out of the domain vocabulary by hand. */
+  struck: string[]
+  /** The reading this codebase suits, for the one marked default. */
+  suggested?: WayId
   busy?: boolean
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void
   (e: "propose", id: WayId, grain: Grain): void
+  (e: "strike", word: string): void
+  (e: "restore", word: string): void
 }>();
 
 const GRAINS: Grain[] = ["component", "file"];
+
+/**
+ * How many group names the chosen reading spells out. Enough to judge the
+ * shape and to catch a word the reading got wrong -- a role word spans a lot
+ * of the codebase, so it sorts near the top -- and a count for the tail. A
+ * cut with fifty-seven groups printed forty-five of them and rebuilt the wall
+ * this collapse exists to remove.
+ */
+const NAMES_SHOWN = 12;
 
 const sheet = ref<HTMLElement | null>(null);
 const picked = ref<WayId>(props.current);
@@ -203,6 +271,19 @@ const cuts = computed(() => WAYS.map(way => ({
   fitness: props.fitnessOf(way),
   preview: props.previews.get(way.id) ?? null,
 })));
+
+/**
+ * Grouped by the evidence each reading goes on, because that is the question
+ * being asked. Nine readings in one flat list is a menu; the same nine under
+ * "From the names", "From what references what", "From the commit history"
+ * is a choice about what to trust about this codebase.
+ */
+const sections = computed(() => {
+  const order = Object.keys(READS) as Reads[];
+  return order
+    .map(reads => ({ reads, label: READS[reads], cuts: cuts.value.filter(c => c.way.reads === reads) }))
+    .filter(section => section.cuts.length > 0);
+});
 
 const chosen = computed(() => cuts.value.find(c => c.way.id === picked.value) ?? null);
 

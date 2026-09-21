@@ -41,6 +41,12 @@ func (q *QueryService) Query(sql string) ([]map[string]any, error) {
 	return q.svc.Query(sql)
 }
 
+// QueryIn reads a completed snapshot other than the open one, which is how a
+// view compares the current scan against an earlier one.
+func (q *QueryService) QueryIn(scanID string, sql string) ([]map[string]any, error) {
+	return q.svc.QueryIn(scanID, sql)
+}
+
 func (q *QueryService) CurrentScan() string {
 	return q.svc.CurrentScan()
 }

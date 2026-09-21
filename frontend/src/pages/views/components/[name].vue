@@ -21,10 +21,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
+// Five tabs, each named for the question it answers: what this is and where
+// it sits (Reading), what it touches (Connections), what it is tangled in
+// (Cycles), what it is made of (Inside), and how it got here (History).
+import { computed } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
-import { useJavaMetrics } from "~/composables/useJavaMetrics"
 import { formatNumber } from "~/utils/format"
 import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
@@ -55,32 +57,17 @@ const stats = computed(() => {
   return out
 })
 
-const cyclesCount = computed(() => store.allCyclesExpanded.filter(c => c.nodes.includes(nameInRoute.value)).length)
-
-const { isJavaProject, getJavaMetricsForComponent } = useJavaMetrics()
-const hasJava = ref(false)
-watch(nameInRoute, async (name) => {
-  hasJava.value = false
-  if (!name || !isJavaProject.value) return
-  const m = await getJavaMetricsForComponent(name)
-  hasJava.value = !!m && (m.classes > 0 || m.springBeans > 0 || m.jpaEntities > 0)
-}, { immediate: true })
-watch(isJavaProject, async (java) => {
-  if (!java || !nameInRoute.value) return
-  const m = await getJavaMetricsForComponent(nameInRoute.value)
-  hasJava.value = !!m && (m.classes > 0 || m.springBeans > 0 || m.jpaEntities > 0)
-})
+const cycleCount = computed(() =>
+  (store.allCyclesExpanded as Array<{ nodes: string[] }>).filter(c => c.nodes.includes(nameInRoute.value)).length)
 
 const tabs = computed<DetailTab[]>(() => {
   const base = `/views/components/${nameInRoute.value}`
-  const list: DetailTab[] = [
-    { id: "overview", label: "Overview", to: base, exact: true },
-    { id: "dependencies", label: "Dependencies", to: `${base}/dependencies` },
-    { id: "files", label: "Files", to: `${base}/files`, count: metric("complexity__files") || undefined },
+  return [
+    { id: "reading", label: "Reading", to: base, exact: true },
+    { id: "connections", label: "Connections", to: `${base}/connections` },
+    { id: "cycles", label: "Cycles", to: `${base}/cycles`, count: cycleCount.value || undefined },
+    { id: "inside", label: "Inside", to: `${base}/inside`, count: metric("complexity__files") || undefined },
     { id: "history", label: "History", to: `${base}/history` },
-    { id: "cycles", label: "Cycles", to: `${base}/cycles`, count: cyclesCount.value || undefined },
   ]
-  if (hasJava.value) list.push({ id: "java", label: "Java", to: `${base}/java` })
-  return list
 })
 </script>

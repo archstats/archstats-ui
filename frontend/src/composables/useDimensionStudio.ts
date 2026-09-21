@@ -4,7 +4,7 @@ import { useDraftStore } from "~/stores/draft";
 import { GROUP_COLOR_PALETTE } from "~/stores/groups";
 import { useSuggestModel } from "~/composables/useSuggestModel";
 import { buildSuggestInput, type SuggestInput } from "~/utils/suggest";
-import { affinityTo, affinityIndex, bundleFor, fitnessOf, type Way, packageTree, pathStyle, rankCandidates, rankGroups, splitBundle, underPath, wayById, type AffinityIndex, type Bundle, type GroupRef, type WayId } from "~/utils/studio";
+import { affinityTo, affinityIndex, bundleFor, domainBasisOf, fitnessOf, type Way, packageTree, pathStyle, rankCandidates, rankGroups, splitBundle, underPath, wayById, type AffinityIndex, type Bundle, type GroupRef, type WayId } from "~/utils/studio";
 import { directedReferenceEdges, normalizeEdges, type CEdge, type CNode } from "~/utils/connections";
 import { bandBonds, bondBreakdown, bondsTo, buildCouplings, cohesionOf, elsewhere } from "~/utils/bond";
 import { measureCut, readModularity } from "~/utils/cutQuality";
@@ -53,7 +53,10 @@ export function useDimensionStudio() {
   // ── The way this dimension is being cut ────────────────────────────────
   // It decides what a question is, what "close" means, and what a first pass
   // would run. Everything downstream reads it rather than assuming a domain.
-  const wayId = ref<WayId>("domain");
+  // It opens on the subject reading and the page moves it to whichever name
+  // reading this codebase suits; "domain" stood here until the readings were
+  // named for their evidence, and named an id that no longer exists.
+  const wayId = ref<WayId>("subject");
   const way = computed(() => wayById(wayId.value));
   function setWay(id: WayId) { wayId.value = id; finer.value = new Set(); }
 
@@ -70,7 +73,24 @@ export function useDimensionStudio() {
   const style = computed(() => pathStyle(allComponents.value));
 
   /** Everything the bundlers read, in one place. */
-  const bundleCtx = computed(() => ({ units: unitsById.value, laneLabels: input.value?.laneLabels ?? {}, index: index.value, linesOf, style: style.value }));
+  /**
+   * References and co-change kept apart from the blend, because the domain
+   * cut confirms a subject against those two alone and the blended index has
+   * already mixed in names and paths — the very things it is checking.
+   */
+  const refs = computed(() => (input.value ? affinityIndex(input.value, { references: 1 }) : new Map()));
+  const moves = computed(() => (input.value ? affinityIndex(input.value, { cochange: 1 }) : new Map()));
+
+  /**
+   * Which name reading this codebase suits, for the default the picker opens
+   * on. Detection did not go away when the architect got the choice -- it
+   * stopped being the answer and became the opening offer.
+   */
+  const suggestedNameReading = computed<WayId>(() =>
+    allComponents.value.length ? domainBasisOf(allComponents.value, bundleCtx.value).basis === "tree" ? "tree" : "subject" : "subject",
+  );
+
+  const bundleCtx = computed(() => ({ units: unitsById.value, laneLabels: input.value?.laneLabels ?? {}, index: index.value, linesOf, style: style.value, refs: refs.value, moves: moves.value }));
 
   /** Every file of a component, so a split can be reasoned about. */
   const filesOf = (id: string) => store.componentFilesIndex.get(id) ?? [];
@@ -379,7 +399,7 @@ export function useDimensionStudio() {
 
   return {
     loading, load, input, index, linesOf, style,
-    way, wayId, setWay, fitness, fitnessFor,
+    way, wayId, setWay, fitness, fitnessFor, suggestedNameReading,
     allComponents, unplaced, bundles, filesOf, shares, splitOf, question, upNext, closest, guessesFor, groupRefs, colorOf,
     splitHere, canSplit, reshuffled, near, noteTouched, tearsFor, tornCount,
     candidatesFor, bandsFor, leaningFor, couplings, tree, take, search, searchTree, coverage, grabPool, withPlaced,

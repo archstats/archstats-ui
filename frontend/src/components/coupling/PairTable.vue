@@ -20,12 +20,26 @@
             <tr
               v-for="row in pageRows"
               :key="row.name"
+              class="group"
               :class="{ 'is-clickable': !!row.to, 'is-selected': selected?.has(row.name) }"
               @click="onRowClick($event, row)"
             >
               <td class="min-w-[160px] max-w-0">
-                <router-link v-if="row.to" :to="row.to" class="block truncate font-mono text-sm text-neutral-900 hover:underline" :title="row.name" @click.stop>{{ row.label ?? row.name }}</router-link>
-                <span v-else class="block truncate font-mono text-sm text-neutral-900" :title="row.name">{{ row.label ?? row.name }}</span>
+                <span class="flex min-w-0 items-center gap-2">
+                  <router-link v-if="row.to" :to="row.to" class="min-w-0 truncate font-mono text-sm text-neutral-900 hover:underline" :title="row.name" @click.stop>{{ row.label ?? row.name }}</router-link>
+                  <span v-else class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="row.name">{{ row.label ?? row.name }}</span>
+                  <button
+                    v-if="inspectable"
+                    type="button"
+                    class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet -my-1 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    :class="{ 'opacity-100': inspecting === row.name }"
+                    :title="`Why are these two connected?`"
+                    :aria-label="`Evidence for ${row.name}`"
+                    @click.stop="emit('inspect', row.name)"
+                  >
+                    <Icon icon="focus" :size="13"/>
+                  </button>
+                </span>
               </td>
               <td v-if="hasGroup" class="whitespace-nowrap">
                 <router-link v-if="row.groupTo" :to="row.groupTo" class="text-neutral-600 hover:text-neutral-900 hover:underline" @click.stop>{{ row.group }}</router-link>
@@ -85,7 +99,13 @@ const props = withDefaults(defineProps<{
   defaultSort?: string
   /** Rows in a selection the owner may turn into a group; shift or cmd-click toggles. */
   selected?: Set<string>
+  /** Adds a per-row action that reports the row rather than opening it. */
+  inspectable?: boolean
+  /** The row whose evidence is on screen, kept visible while it is. */
+  inspecting?: string | null
 }>(), {
+  inspectable: false,
+  inspecting: null,
   loading: false,
   loadingText: "Reading pairs…",
   nameLabel: "Name",
@@ -98,7 +118,7 @@ const props = withDefaults(defineProps<{
 
 import { useRouter } from "vue-router"
 const router = useRouter()
-const emit = defineEmits<{ (e: "toggle", name: string): void }>()
+const emit = defineEmits<{ (e: "toggle", name: string): void; (e: "inspect", name: string): void }>()
 
 function onRowClick(event: MouseEvent, row: PairRow) {
   if (event.shiftKey || event.metaKey || event.ctrlKey) { emit("toggle", row.name); return }
@@ -114,7 +134,13 @@ const columns = [
   { key: "pathDistance", label: "Path", title: "Directory distance between the two", format: (v: any) => (v === null || v === undefined || Number(v) < 0) ? "—" : formatNumber(v, 0) },
 ]
 
-const activeColumns = computed(() => columns.filter(col => props.rows.some(r => r[col.key] !== undefined && r[col.key] !== null)))
+// A column earns its width only when some row has something to say in it: a
+// project where every pair scores 0.00 similarity should not spend a column
+// saying so 1,017 times.
+const activeColumns = computed(() => columns.filter(col => props.rows.some(r => {
+  const v = r[col.key]
+  return v !== undefined && v !== null && Number(v) !== 0
+})))
 const hasGroup = computed(() => props.rows.some(r => r.group))
 
 const sort = ref({ column: props.defaultSort || (activeColumns.value[0]?.key ?? "name"), ascending: false })
