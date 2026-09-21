@@ -78,9 +78,9 @@ const families = computed(() => [
     ],
   },
   ...(isJavaProject.value ? [{
-    title: "Java",
+    title: "Code",
     views: [
-      { name: "Classes", path: "/views/java/classes", image: "/img/views/java-classes.png", description: "How classes wire to each other, with role lanes, seed-and-expand and a path tracer." },
+      { name: "Units", path: "/views/units", image: "/img/views/java-classes.png", description: "Every named thing in the codebase — types, functions, modules — with role lanes, seed-and-expand and a path tracer." },
     ],
   }] : []),
 ]);

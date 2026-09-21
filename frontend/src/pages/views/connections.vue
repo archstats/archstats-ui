@@ -170,7 +170,7 @@
         <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="openBuilder">
           <Icon icon="plus" :size="13"/><span>Build a lens</span>
         </button>
-        <router-link v-if="isJavaProject" to="/views/java/classes" class="ui-btn ui-btn-sm">
+        <router-link v-if="isJavaProject" to="/views/units" class="ui-btn ui-btn-sm">
           <Icon icon="braces" :size="13" class="text-neutral-500"/><span>Lanes → lens in Classes</span>
         </router-link>
       </EmptyState>

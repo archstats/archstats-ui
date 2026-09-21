@@ -173,8 +173,10 @@ const gitViews = [
   { label: "Authors", to: "/views/git/authors", icon: Users },
   { label: "Activity", to: "/views/git/activity", icon: Activity },
 ];
-const javaViews = [
-  { label: "Classes", to: "/views/java/classes", icon: Braces },
+// Units, not classes: gin is 1,327 functions to 204 types and LibreChat
+// 3,241 to 294, so a section called Classes shows a fraction of either.
+const codeViews = [
+  { label: "Units", to: "/views/units", icon: Braces },
 ];
 const architectureViews = [
   { label: "Rules", to: "/views/rules", icon: Scale },
@@ -182,6 +184,9 @@ const architectureViews = [
 // Rules arrived after most snapshots were taken, so the section hides itself
 // rather than showing an empty screen — the same way the Java section does.
 const hasRules = computed(() => dataStore.hasView("rules"));
+// Every language declares units now. The Java-only check stays as the
+// fallback for snapshots taken before they existed.
+const hasUnits = computed(() => dataStore.hasView("units") || isJavaProject.value);
 
 const groupsStore = useGroupsStore();
 const health = computed(() => {
@@ -243,8 +248,8 @@ const groups = computed(() => {
     { title: "Components", items: componentViews },
     { title: "Git", items: gitViews },
   ];
+  if (hasUnits.value) list.push({ title: "Code", items: codeViews });
   if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
-  if (isJavaProject.value) list.push({ title: "Java", items: javaViews });
   return list;
 });
 </script>

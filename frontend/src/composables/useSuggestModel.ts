@@ -2,7 +2,8 @@ import { computed, ref } from "vue";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { queryFileImportEdges } from "~/utils/fileImports";
-import { frameworkStorageKey, loadRawClasses, rememberedFramework } from "~/utils/javaFacts";
+import { frameworkStorageKey, rememberedFramework } from "~/utils/javaFacts";
+import { loadUnits } from "~/utils/units";
 import { classify, detectFramework, profileById } from "~/utils/javaFrameworks";
 import { EMPTY_SOURCES, buildSuggestInput, placeRest, suggest, type Constraints, type Grain, type Placement, type SignalSources, type SuggestInput, type SuggestSettings, type Suggestion , type GraphMetrics } from "~/utils/suggest";
 
@@ -55,6 +56,9 @@ export async function loadSignalSources(
 ): Promise<SignalSources> {
   const q = query;
   const hasGit = hasView("git_component_shared_commits");
+  // Units come from every language; the class graph is still Java-only, so
+  // the two are asked separately.
+  const hasUnits = hasView("units") || hasView("java_class_connections_direct");
   const hasJava = hasView("java_class_connections_direct");
   const [components, files, componentRefs, componentCochange, fileRefs, fileCochange, authorRows, classes, classEdges, graphRows] = await Promise.all([
     q(`select name from components`) as Promise<Array<{ name: string }>>,
@@ -64,7 +68,7 @@ export async function loadSignalSources(
     hasView("snippets") ? queryFileImportEdges(q) : Promise.resolve([]),
     hasGit && hasView("file_matrix") ? q(`select "from", "to", git_co_changes as count from file_matrix where git_co_changes > 0`) : Promise.resolve([]),
     hasView("git_commits") ? q(`select distinct author_name as author, file from git_commits`) as Promise<Array<{ author: string; file: string }>> : Promise.resolve([]),
-    hasJava ? loadRawClasses(q, hasView) : Promise.resolve(new Map()),
+    hasUnits ? loadUnits(q, hasView) : Promise.resolve(new Map()),
     hasJava ? q("SELECT `from`, `to` FROM java_class_connections_direct") as Promise<Array<{ from: string; to: string }>> : Promise.resolve([]),
     // The engine already scores the graph; there is no sense in guessing
     // at what it has measured.
