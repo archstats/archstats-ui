@@ -137,7 +137,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network,
-  Activity, Users, Braces, LayoutDashboard,
+  Activity, Users, Braces, LayoutDashboard, Scale,
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
 import GroupsManager from "~/components/groups/GroupsManager.vue";
@@ -176,6 +176,12 @@ const gitViews = [
 const javaViews = [
   { label: "Classes", to: "/views/java/classes", icon: Braces },
 ];
+const architectureViews = [
+  { label: "Rules", to: "/views/rules", icon: Scale },
+];
+// Rules arrived after most snapshots were taken, so the section hides itself
+// rather than showing an empty screen — the same way the Java section does.
+const hasRules = computed(() => dataStore.hasView("rules"));
 
 const groupsStore = useGroupsStore();
 const health = computed(() => {
@@ -237,6 +243,7 @@ const groups = computed(() => {
     { title: "Components", items: componentViews },
     { title: "Git", items: gitViews },
   ];
+  if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
   if (isJavaProject.value) list.push({ title: "Java", items: javaViews });
   return list;
 });
