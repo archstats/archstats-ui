@@ -197,6 +197,10 @@
     :existing="draft.groups.length"
     :current="studio.way.value.id"
     :fitness-of="studio.fitnessFor"
+    :struck="struck"
+    :suggested="studio.suggestedNameReading.value"
+    @strike="strikeSubject"
+    @restore="restoreSubject"
     :previews="previews"
     :busy="busy"
     @close="proposing = false"
@@ -232,7 +236,7 @@ import { useWorkspacesStore } from "~/stores/workspaces";
 import { presetById, type SuggestSettings } from "~/utils/suggest";
 import { measureCut, measureMembers, readModularity } from "~/utils/cutQuality";
 import { parseQuery, runQuery } from "~/utils/query";
-import { commonName, nameForQuery, OUT_PILE, reasonFor, WAYS, type Bundle, type Grain, type WayId } from "~/utils/studio";
+import { commonName, nameForQuery, OUT_PILE, reasonFor, subjectOf, WAYS, type Bundle, type Grain, type WayId } from "~/utils/studio";
 import { bondBreakdown, channelWords, type Channel } from "~/utils/bond";
 
 /** A word, not a sentence, for the row that does not match its band. */
@@ -303,7 +307,12 @@ function rememberedWay(): WayId {
     const saved = localStorage.getItem(wayKey());
     if (saved && WAYS.some(w => w.id === saved)) return saved as WayId;
   } catch {}
-  return draft.cut === "horizontal" ? "layer" : draft.cut === "vertical" ? "domain" : "free";
+  // A cut across the codebase is a job-shaped question and a cut down it is
+  // a subject-shaped one; which of the two name readings suits this codebase
+  // is a fact about it, so the detector still offers the opening position.
+  if (draft.cut === "horizontal") return "role";
+  if (draft.cut === "vertical") return studio.suggestedNameReading.value;
+  return "blend";
 }
 watch(() => store.datasetKey, () => studio.load());
 
@@ -683,30 +692,65 @@ function passSettings(): SuggestSettings {
 const proposing = ref(false);
 const previews = ref(new Map<WayId, CutPreview>());
 
+/** The readings that go on a vocabulary, and so can have words taken out. */
+const READS_NAMES = new Set<WayId>(["subject", "role"]);
+
+/** Words taken out of that vocabulary by hand, newest last. */
+const struck = ref<string[]>([]);
+
+function settingsFor(way: (typeof WAYS)[number]): SuggestSettings {
+  return {
+    ...presetById(way.preset).settings,
+    dimension: draft.dimension || way.dimension,
+    // Both name-readings offer a vocabulary, so both can have a word taken
+    // out of it; nothing else reads names at all.
+    ...(READS_NAMES.has(way.id) ? { struckSubjects: struck.value } : {}),
+  };
+}
+
+async function measureWay(way: (typeof WAYS)[number]) {
+  const taken = new Set(groupsStore.groups.filter(g => g.dimension !== draft.dimension).map(g => g.name));
+  const out = await suggest.run(settingsFor(way), () => true, taken, "");
+  const groups = out.map(x => ({ key: x.key, name: x.name, members: x.components }));
+  const measured = measureCut(groups, studio.qualityEdges.value, studio.coverage.value.total);
+  const reading = readModularity(measured.modularity, groups.length);
+  previews.value = new Map(previews.value).set(way.id, {
+    groups: groups.length,
+    placed: measured.placed,
+    kept: measured.kept,
+    modularity: measured.modularity,
+    biggest: measured.biggest,
+    // Largest first, so the bar reads as a shape rather than as noise.
+    sizes: groups
+      .map(g => ({ name: g.name, size: g.members.length, named: !isPlaceholderName(g.name), word: subjectOf(g.key) ?? undefined }))
+      .sort((a, b) => b.size - a.size),
+    tone: reading.tone,
+  });
+}
+
 async function openPropose() {
   proposing.value = true;
   if (previews.value.size) return;
-  const taken = new Set(groupsStore.groups.filter(g => g.dimension !== draft.dimension).map(g => g.name));
   for (const way of WAYS) {
     if (!studio.fitnessFor(way).ok) continue;
-    const settings = { ...presetById(way.preset).settings, dimension: draft.dimension || way.dimension };
-    const out = await suggest.run(settings, () => true, taken, "");
-    const groups = out.map(x => ({ key: x.key, name: x.name, members: x.components }));
-    const measured = measureCut(groups, studio.qualityEdges.value, studio.coverage.value.total);
-    const reading = readModularity(measured.modularity, groups.length);
-    previews.value = new Map(previews.value).set(way.id, {
-      groups: groups.length,
-      placed: measured.placed,
-      kept: measured.kept,
-      modularity: measured.modularity,
-      biggest: measured.biggest,
-      // Largest first, so the bar reads as a shape rather than as noise.
-      sizes: groups
-        .map(g => ({ name: g.name, size: g.members.length, named: !isPlaceholderName(g.name) }))
-        .sort((a, b) => b.size - a.size),
-      tone: reading.tone,
-    });
+    await measureWay(way);
   }
+}
+
+/** Taking a word out re-measures the domain cut, and only that one. */
+async function remeasureNameReadings() {
+  for (const way of WAYS.filter(w => READS_NAMES.has(w.id))) {
+    if (studio.fitnessFor(way).ok) await measureWay(way);
+  }
+}
+async function strikeSubject(word: string) {
+  if (struck.value.includes(word)) return;
+  struck.value = [...struck.value, word];
+  await remeasureNameReadings();
+}
+async function restoreSubject(word: string) {
+  struck.value = struck.value.filter(w => w !== word);
+  await remeasureNameReadings();
 }
 
 /** Take one: it sets the way, the cut and the grain, then fills the draft. */
@@ -716,7 +760,7 @@ async function propose(id: WayId, grain: Grain) {
     pickWay(id);
     pickGrain(grain);
     await nextTick();
-    const settings = passSettings();
+    const settings = { ...passSettings(), ...(READS_NAMES.has(id) ? { struckSubjects: struck.value } : {}) };
     const taken = new Set(groupsStore.groups.filter(g => g.dimension !== draft.dimension).map(g => g.name));
     const out = await suggest.run(settings, () => true, taken, "");
     draft.fromSuggestions(draft.dimension || settings.dimension, out, settings.cut);

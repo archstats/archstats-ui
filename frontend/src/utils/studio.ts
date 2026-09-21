@@ -4,6 +4,9 @@
 // each answer is worth, and which components a group should pull in next.
 
 import { SIGNALS, type Cut, type SignalId, type SuggestInput, type Unit } from "~/utils/suggest"
+import { detectSeparator, domainBasisOf, domainKeys, roleKeys, rolesIn, subjectOf, subjectReason, subjectsIn, type DomainBasis } from "~/utils/subject"
+
+export { detectSeparator, domainBasisOf, domainKeys, roleKeys, rolesIn, subjectsIn, subjectOf, subjectReason, treeKeys, wordsOf, type DomainBasis, type Role, type Subject } from "~/utils/subject"
 
 /** How much each signal counts when the studio measures one thing against another. */
 export const STUDIO_WEIGHTS: Partial<Record<SignalId, number>> = {
@@ -96,28 +99,6 @@ export interface PathStyle {
   join(segments: string[]): string
   /** Is `id` at or under `path`? Compared level by level, never by text. */
   under(path: string, id: string): boolean
-}
-
-const SEPARATORS = ["::", "\\", "/", "."]
-
-/** The delimiter that appears most across a set of names; a dot when none do. */
-export function detectSeparator(ids: Iterable<string>): string {
-  const seen = new Map<string, number>(SEPARATORS.map(s => [s, 0]))
-  for (const id of ids) {
-    for (const sep of SEPARATORS) {
-      const n = id.split(sep).length - 1
-      // A "::" also reads as two colons to nothing else, so only "." and "/"
-      // ever compete on the same character, and they never co-occur.
-      if (n) seen.set(sep, seen.get(sep)! + n)
-    }
-  }
-  let best = "."
-  let top = 0
-  for (const sep of SEPARATORS) {
-    const n = seen.get(sep)!
-    if (n > top) { top = n; best = sep }
-  }
-  return best
 }
 
 export function pathStyle(ids: Iterable<string> = [], sep: string = detectSeparator(ids)): PathStyle {
@@ -407,13 +388,48 @@ export function underPath(path: string, pool: Iterable<string>, style: PathStyle
   return Array.from(pool).filter(id => id === path || style.under(path, id)).sort()
 }
 
+
 // ── Ways of cutting ──────────────────────────────────────────────────────
 // A dimension is not always a domain. The same codebase cuts by what a thing
 // does, who looks after it, or what moves with it, and each of those asks a
 // different question, means a different thing by "close", and bundles the
 // pool a different way. The way is chosen once and the three modes follow it.
 
-export type WayId = "domain" | "layer" | "owner" | "change" | "free"
+/**
+ * How to read the codebase, named for the evidence it reads.
+ *
+ * These were "Domain", "Layer", "Ownership", "Change" and "Free" -- named for
+ * the result hoped for rather than the method used, which hid the finding
+ * that broke the old design: a domain is found two opposite ways in two
+ * codebases. Where the package tree already holds the domains, reading the
+ * names for a subject finds the layers instead, and where it holds the
+ * layers, only reading the names finds the domains. One label called both of
+ * those "Domain" and picked between them in silence.
+ *
+ * So the architect picks the reading, each is measured before it is taken,
+ * and the label says what it will go on.
+ */
+export type WayId =
+  | "tree"
+  | "subject"
+  | "role"
+  | "references"
+  | "depth"
+  | "commits"
+  | "authors"
+  | "lanes"
+  | "blend"
+
+/** What a reading goes on, for grouping the choice. */
+export type Reads = "names" | "graph" | "history" | "framework" | "everything"
+
+export const READS: Record<Reads, string> = {
+  names: "From the names",
+  graph: "From the references",
+  history: "From the commit history",
+  framework: "From the framework",
+  everything: "From everything",
+}
 
 /**
  * What a dimension is made of. Most dimensions are made of whole components:
@@ -454,6 +470,8 @@ export interface Way {
   grain: Grain
   /** The name to offer the dimension when this way is picked. */
   dimension: string
+  /** What evidence it goes on, for grouping the choice. */
+  reads: Reads
 }
 
 /**
@@ -479,39 +497,67 @@ export const GRAIN: Record<Grain, { label: string; hint: string; consequence: st
 
 export const WAYS: Way[] = [
   {
-    id: "domain", label: "Domain", question: "What part of the business is this?",
-    hint: "Orders with orders, catalog with catalog. Cuts down through the layers.",
-    weights: { references: 1, cochange: 1, entities: 1, path: 1, names: 0.6, cycles: 0.5, authors: 0.5 },
-    structure: 0,
-    preset: "domains", cut: "vertical", grain: "component", dimension: "Domain",
+    id: "tree", label: "Package tree", question: "Where does this sit?",
+    hint: "Where each thing already sits.",
+    weights: { path: 2, references: 1 },
+    structure: 0, reads: "names",
+    preset: "tree", cut: "vertical", grain: "component", dimension: "Domain",
   },
   {
-    id: "layer", label: "Layer", question: "What job does this do?",
-    hint: "Controllers with controllers, repositories with repositories. Cuts across the domains.",
-    weights: { lanes: 2, depth: 1.5, names: 1.2, entities: 0.3, path: 0.2, references: -0.5 },
-    structure: 2,
-    preset: "layers", cut: "horizontal", grain: "file", dimension: "Layer",
+    id: "subject", label: "Subject in the name", question: "What is this about?",
+    hint: "The word that moves — Catalog, in every layer.",
+    weights: { references: 1, cochange: 1, entities: 1, names: 0.6, path: 1, cycles: 0.5 },
+    structure: 0, reads: "names",
+    preset: "subject", cut: "vertical", grain: "component", dimension: "Domain",
   },
   {
-    id: "owner", label: "Ownership", question: "Whose is this?",
-    hint: "The same hands, in the commit history. Shows who carries what.",
-    weights: { authors: 2, cochange: 1.2, path: 0.4, references: 0.2 },
-    structure: 0,
-    preset: "ownership", cut: "vertical", grain: "component", dimension: "Team",
+    id: "role", label: "Role in the name", question: "What job does this do?",
+    hint: "The word that stays put — Controllers, in every package.",
+    weights: { names: 2, lanes: 1, references: -0.5 },
+    structure: 2, reads: "names",
+    preset: "role", cut: "horizontal", grain: "file", dimension: "Layer",
   },
   {
-    id: "change", label: "Change", question: "What moves with this?",
-    hint: "Things edited in the same commits, whatever they are called or where they live.",
+    id: "references", label: "Reference clusters", question: "What leans on what?",
+    hint: "What leans on what. No names read at all.",
+    weights: { references: 2, path: 2, cycles: 2, cochange: 1, names: 1 },
+    structure: 0.5, reads: "graph",
+    preset: "references", cut: "free", grain: "component", dimension: "Module",
+  },
+  {
+    id: "depth", label: "Distance from entry points", question: "How far in is this?",
+    hint: "How many hops from something that calls in.",
+    weights: { depth: 2, path: 1, references: -0.5 },
+    structure: 2, reads: "graph",
+    preset: "depth", cut: "horizontal", grain: "file", dimension: "Layer",
+  },
+  {
+    id: "commits", label: "What changes together", question: "What moves with this?",
+    hint: "What gets edited in the same commits.",
     weights: { cochange: 2, cycles: 1, references: 0.8, path: 0.3 },
-    structure: 0,
-    preset: "modules", cut: "free", grain: "component", dimension: "Change",
+    structure: 0, reads: "history",
+    preset: "commits", cut: "free", grain: "component", dimension: "Change",
   },
   {
-    id: "free", label: "Free", question: "Where does this belong?",
-    hint: "Every signal counts a little. Use it when the cut is your own idea.",
+    id: "authors", label: "Who works on it", question: "Whose is this?",
+    hint: "The same hands, across the history.",
+    weights: { authors: 2, cochange: 1.2, path: 0.4, references: 0.2 },
+    structure: 0, reads: "history",
+    preset: "authors", cut: "vertical", grain: "component", dimension: "Team",
+  },
+  {
+    id: "lanes", label: "Framework role", question: "What does the framework call this?",
+    hint: "Controller, repository, entity.",
+    weights: { lanes: 2, depth: 1, path: 1, references: -0.5 },
+    structure: 2, reads: "framework",
+    preset: "lanes", cut: "horizontal", grain: "file", dimension: "Layer",
+  },
+  {
+    id: "blend", label: "Every signal at once", question: "Where does this belong?",
+    hint: "All of them counted together, none leading.",
     weights: STUDIO_WEIGHTS,
-    structure: 0.5,
-    preset: "custom", cut: "free", grain: "component", dimension: "Dimension",
+    structure: 0.5, reads: "everything",
+    preset: "blend", cut: "free", grain: "component", dimension: "Dimension",
   },
 ]
 
@@ -522,6 +568,16 @@ export function wayById(id: string): Way {
 /** What a way will actually have to go on, in this snapshot. */
 export interface Fitness { ok: boolean; basis: string; why: string }
 
+/**
+ * How the domain cut is about to read this codebase, in the same words for
+ * the picker and the proposal. Which one applies is a fact about the layout:
+ * see `domainBasisOf`.
+ */
+export const DOMAIN_WHY: Record<DomainBasis, string> = {
+  tree: "by the package tree, which already holds the domains here",
+  subject: "by the subject each one is named for, wherever that word sits in the name",
+}
+
 export const LAYER_WHY: Record<string, string> = {
   lanes: "by the framework role each one plays",
   names: "by the word they share in their names",
@@ -530,27 +586,47 @@ export const LAYER_WHY: Record<string, string> = {
 
 export function fitnessOf(way: Way, units: Map<string, Unit>, hasCochange: boolean, ctx?: BundleContext): Fitness {
   const any = (f: (u: Unit) => unknown) => { for (const u of units.values()) if (f(u)) return true; return false }
+  const ids = () => Array.from(units.keys())
   switch (way.id) {
-    case "layer": {
-      const keying = ctx ? bestLayerKeying(Array.from(units.keys()), ctx) : null
-      if (keying) return { ok: true, basis: keying.basis, why: LAYER_WHY[keying.basis] }
-      if (!ctx && (any(u => u.lane) || any(u => u.tokens.length) || any(u => u.depth !== null))) {
-        return { ok: true, basis: "unknown", why: "by what each one is for" }
-      }
-      return { ok: false, basis: "none", why: "Nothing here divides these by the job they do." }
+    case "tree":
+      return { ok: true, basis: "tree", why: DOMAIN_WHY.tree }
+    case "subject": {
+      // Said plainly where it will not work: in a tree that already holds its
+      // domains, no word moves through the names and this has nothing to add.
+      if (!ctx) return { ok: true, basis: "subject", why: DOMAIN_WHY.subject }
+      return subjectsIn(ids(), ctx).length
+        ? { ok: true, basis: "subject", why: DOMAIN_WHY.subject }
+        : { ok: false, basis: "none", why: "No word here moves through the names; every one sits at the same depth." }
     }
-    case "free":
-      return { ok: true, basis: "blend", why: "by every signal at once, with none of them leading" }
-    case "owner":
+    case "role": {
+      const why = "by the word that fills the same slot in every name"
+      if (!ctx) return { ok: true, basis: "role", why }
+      return rolesIn(ids(), ctx).length
+        ? { ok: true, basis: "role", why }
+        : { ok: false, basis: "none", why: "No word here is shared across enough of the tree to name a job." }
+    }
+    case "lanes":
+      if (ctx ? layerKeyings(ids(), ctx).some(k => k.basis === "lanes") : any(u => u.lane)) {
+        return { ok: true, basis: "lanes", why: LAYER_WHY.lanes }
+      }
+      return { ok: false, basis: "none", why: "This snapshot recognises no framework roles." }
+    case "depth":
+      if (ctx ? layerKeyings(ids(), ctx).some(k => k.basis === "depth") : any(u => u.depth !== null)) {
+        return { ok: true, basis: "depth", why: LAYER_WHY.depth }
+      }
+      return { ok: false, basis: "none", why: "Nothing here calls in, so there is nothing to be far from." }
+    case "authors":
       return any(u => u.authors.length)
         ? { ok: true, basis: "authors", why: "by the hands in the commit history" }
         : { ok: false, basis: "none", why: "This snapshot carries no git history." }
-    case "change":
+    case "commits":
       return hasCochange
         ? { ok: true, basis: "cochange", why: "by what is edited in the same commits" }
         : { ok: false, basis: "none", why: "This snapshot carries no commit history." }
+    case "blend":
+      return { ok: true, basis: "blend", why: "by every signal at once, with none of them leading" }
     default:
-      return { ok: true, basis: "path", why: "by the package tree and what references what" }
+      return { ok: true, basis: "references", why: "by what references what, with no name read at all" }
   }
 }
 
@@ -560,37 +636,79 @@ export interface BundleContext {
   index: AffinityIndex
   linesOf: (id: string) => number
   style: PathStyle
+  /**
+   * References and co-change on their own, which the blended index cannot
+   * give back: a domain is confirmed by those two and by nothing else, and
+   * under the Layer weights `references` is negative.
+   */
+  refs?: AffinityIndex
+  moves?: AffinityIndex
 }
 
-/** The pool cut into questions the way this dimension is being cut. */
+/** The pool cut into questions the way this reading cuts. */
 export function bundleFor(way: Way, pool: Iterable<string>, ctx: BundleContext): Bundle[] {
   const ids = Array.from(pool)
   if (ids.length === 0) return []
-  switch (way.id) {
-    case "layer": {
-      const keying = bestLayerKeying(ids, ctx)
-      return keying ? keyed(ids, keying.keys, keying.describe, ctx) : bundleUnplaced(ids, ctx.linesOf, 10, ctx.style)
-    }
-    case "owner":
-      return keyed(ids, id => hands(ctx.units.get(id)), (k, m) => ({ name: k, reason: m.length === 1 ? `touched by ${k}` : `all touched by ${k}` }), ctx)
-    case "change":
-      return keyed(ids, tieClusters(ids, ctx.index), (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "moves on its own" : "they move in the same commits" }), ctx)
-    default: {
-      // A bundle that survives the path cut is one the path could not divide:
-      // a flat namespace of forty siblings. Neither forty questions of one nor
-      // one question of forty is answerable, so let the ties divide it.
-      return bundleUnplaced(ids, ctx.linesOf, 10, ctx.style).flatMap(b => {
-        if (b.members.length <= 12) return [b]
-        const clusters = keyed(
-          b.members,
-          tieClusters(b.members, ctx.index),
-          (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "nothing else leans its way" : "they lean on each other" }),
-          ctx,
-        )
-        return clusters.length > 1 ? clusters : [b]
-      })
-    }
+  const byLayer = (basis: LayerKeying["basis"]) => {
+    const keying = layerKeyings(ids, ctx).find(k => k.basis === basis)
+    return keying ? keyed(ids, keying.keys, keying.describe, ctx) : bundleUnplaced(ids, ctx.linesOf, 10, ctx.style)
   }
+  switch (way.id) {
+    case "lanes":
+      return byLayer("lanes")
+    case "depth":
+      return byLayer("depth")
+    case "authors":
+      return keyed(ids, id => hands(ctx.units.get(id)), (k, m) => ({ name: k, reason: m.length === 1 ? `touched by ${k}` : `all touched by ${k}` }), ctx)
+    case "commits":
+      return keyed(ids, tieClusters(ids, ctx.index), (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "moves on its own" : "they move in the same commits" }), ctx)
+    case "role": {
+      const { keys, roles } = roleKeys(ids, ctx)
+      const said = new Map(roles.map(r => [r.word, r]))
+      return keyed(ids, keys, (key, members) => {
+        const word = subjectOf(key)
+        const role = word ? said.get(word) : undefined
+        if (word && role) {
+          return { name: titleFromPrefix(word, ctx.style), reason: members.length === 1 ? `named for ${word}` : `all named ${word}, across ${role.reach} parts of the tree` }
+        }
+        return { name: titleFromPrefix(key || members[0], ctx.style), reason: members.length === 1 ? "on its own" : `all under ${key}` }
+      }, ctx)
+    }
+    case "tree":
+    case "subject": {
+      // Both read the names. Which one suits a codebase is a fact about it,
+      // and picking this reading is the architect saying which.
+      const { keys, subjects } = domainKeys(ids, ctx, new Set(), way.id === "tree" ? "tree" : "subject")
+      const said = new Map(subjects.map(s => [s.word, s]))
+      return keyed(ids, keys, (key, members) => {
+        const word = subjectOf(key)
+        const subject = word ? said.get(word) : undefined
+        if (word && subject) return { name: titleFromPrefix(word, ctx.style), reason: subjectReason(subject, members.length) }
+        return {
+          name: titleFromPrefix(key || members[0], ctx.style),
+          reason: members.length === 1 ? "on its own" : key ? `all under ${key}` : "no shared path",
+        }
+      }, ctx).flatMap(b => splitIfUnanswerable(b, ctx))
+    }
+    default:
+      return bundleUnplaced(ids, ctx.linesOf, 10, ctx.style).flatMap(b => splitIfUnanswerable(b, ctx))
+  }
+}
+
+/**
+ * A bundle nothing could divide is a flat namespace of siblings, and neither
+ * forty questions of one nor one question of forty is answerable. Let the
+ * ties divide it.
+ */
+function splitIfUnanswerable(b: Bundle, ctx: BundleContext): Bundle[] {
+  if (b.members.length <= 12) return [b]
+  const clusters = keyed(
+    b.members,
+    tieClusters(b.members, ctx.index),
+    (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "nothing else leans its way" : "they lean on each other" }),
+    ctx,
+  )
+  return clusters.length > 1 ? clusters : [b]
 }
 
 interface LayerKeying {

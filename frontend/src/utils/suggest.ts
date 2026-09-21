@@ -10,7 +10,9 @@ import { stronglyConnectedSets } from "~/utils/connections"
 
 export type SignalId = "references" | "cochange" | "entities" | "names" | "path" | "lanes" | "depth" | "cycles" | "authors"
 export type Weight = -2 | -1 | 0 | 1 | 2
-export type Engine = "cluster" | "band"
+import { domainKeys, roleKeys, segmenterFor, subjectOf, type DomainBasis, type Ties } from "~/utils/subject"
+
+export type Engine = "cluster" | "band" | "subject" | "role"
 export type BandBy = "lanes" | "depth"
 export type Cut = "vertical" | "horizontal" | "free"
 export type Grain = "component" | "file"
@@ -61,6 +63,14 @@ export interface SuggestSettings {
    * it is not asked there.
    */
   minKept?: number
+  /** Words the architect has taken out of the vocabulary by hand. */
+  struckSubjects?: string[]
+  /**
+   * Which reading of the names to take, rather than the one the codebase
+   * suggests. A tree already holding its domains and a tree holding layers
+   * want opposite readings, and the architect can see which this is.
+   */
+  basis?: DomainBasis
   keepSharedApart: boolean
   splitFiles: boolean
   /** Split giants, fold dwarfs, merge clusters that would carry the same name. */
@@ -75,30 +85,62 @@ export const weightsOf = (o: Partial<Record<SignalId, Weight>>): Record<SignalId
 })
 
 export const PRESETS: Preset[] = [
+  // Named for the evidence each one reads, because that is the choice being
+  // made. "Domain" and "Layer" named the hoped-for result instead, and hid
+  // the fact that a domain is found two opposite ways in two codebases.
   {
-    id: "domains", label: "Domains", cut: "vertical",
-    hint: "What changes together and shares data: a feature with all its layers.",
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 2, entities: 2, names: 1, path: 1, lanes: -1, cycles: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Domain" },
+    id: "tree", label: "Package tree", cut: "vertical",
+    hint: "Where each thing sits, cut at the depth that divides the tree best.",
+    settings: { engine: "subject", basis: "tree", bandBy: "lanes", weights: weightsOf({ path: 2, references: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: "Domain" },
   },
   {
-    id: "layers", label: "Layers", cut: "horizontal",
-    hint: "Same role and same depth: controllers with controllers, entities with entities.",
-    settings: { engine: "band", bandBy: "lanes", weights: weightsOf({ lanes: 2, depth: 2, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: "Layer" },
+    id: "subject", label: "Subject in the name", cut: "vertical",
+    hint: "The word that moves through the names: Catalog at any depth, in every layer.",
+    settings: { engine: "subject", basis: "subject", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 2, entities: 2, names: 1, path: 1, lanes: -1, cycles: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: "Domain" },
   },
   {
-    id: "modules", label: "Modules", cut: "free",
-    hint: "Structural: what references what, package neighbours, cycles kept together.",
+    id: "role", label: "Role in the name", cut: "horizontal",
+    hint: "The word that fills the same slot in every name: everything ending in Controllers.",
+    settings: { engine: "role", bandBy: "lanes", weights: weightsOf({ names: 2, lanes: 1, references: -1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: true, balance: false, dimension: "Layer" },
+  },
+  {
+    id: "references", label: "What references what", cut: "free",
+    hint: "Clusters in the reference graph. Reads no names at all, so a badly named codebase is no obstacle.",
     settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 2, path: 2, cycles: 2, cochange: 1, names: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Module" },
   },
   {
-    id: "ownership", label: "Ownership", cut: "vertical",
-    hint: "Who works on what: the same authors and the same commits.",
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ authors: 2, cochange: 2, path: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: false, splitFiles: false, balance: true, dimension: "Team" },
+    id: "depth", label: "Distance from the entry points", cut: "horizontal",
+    hint: "How many hops each thing sits from something that calls in.",
+    settings: { engine: "band", bandBy: "depth", weights: weightsOf({ depth: 2, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: "Layer" },
   },
   {
-    id: "custom", label: "Custom", cut: "free",
-    hint: "Your own weights, saved as a preset.",
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 1, entities: 1, names: 1, path: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Custom" },
+    id: "commits", label: "What changes together", cut: "free",
+    hint: "What gets edited in the same commits, whatever it is called or where it lives.",
+    // No minKept, and for the same reason the domain cut carries none:
+    // `minKept` asks what share of a group's *references* stay inside, and
+    // things edited in the same commit need not reference each other at all
+    // -- that is the whole point of reading the history instead of the code.
+    // Measured, the gate was throwing away most of the answer: Sakai placed
+    // 318 of 1,271 with it and 1,228 without.
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ cochange: 2, cycles: 1, references: 0.8, path: 0.3 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: "Change" },
+  },
+  {
+    id: "authors", label: "Who works on it", cut: "vertical",
+    hint: "The hands in the commit history: the same people, the same commits.",
+    // Same again: people who look after the same things do not have to make
+    // those things reference each other. With the gate off, every component
+    // gets an owner on all four codebases measured instead of four in five.
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ authors: 2, cochange: 2, path: 1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: "Team" },
+  },
+  {
+    id: "lanes", label: "What the framework makes it", cut: "horizontal",
+    hint: "Controller, repository, entity: the role the framework itself gives each file.",
+    settings: { engine: "band", bandBy: "lanes", weights: weightsOf({ lanes: 2, depth: 1, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: "Layer" },
+  },
+  {
+    id: "blend", label: "Every signal at once", cut: "free",
+    hint: "All of the above counted together, with none of them leading.",
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 1, entities: 1, names: 1, path: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Dimension" },
   },
 ]
 
@@ -461,12 +503,74 @@ function pairWeight(p: Pair, settings: SuggestSettings): number {
 }
 
 function bandKey(u: Unit, by: BandBy, maxDepth: number): { key: string; label: string } | null {
-  if (by === "lanes" && u.lane) return { key: "lane:" + u.lane, label: u.lane }
+  if (by === "lanes") {
+    // A file the framework says nothing about is left for the architect,
+    // not quietly answered with its depth. That substitution is why
+    // "framework role" and "distance from the entry points" returned
+    // identical cuts on every codebase measured, while claiming to be two
+    // different readings.
+    return u.lane ? { key: "lane:" + u.lane, label: u.lane } : null
+  }
   if (u.depth === null) return null
   const third = u.depth / Math.max(1, maxDepth)
   if (third <= 0.34) return { key: "depth:0", label: "Entry points" }
   if (third <= 0.67) return { key: "depth:1", label: "Middle" }
   return { key: "depth:2", label: "Foundations" }
+}
+
+
+/** One signal's pairs as a weighted adjacency, for the subject reading. */
+function tiesFrom(pairs: Pair[], signal: SignalId): Ties {
+  const out = new Map<string, Map<string, { weight: number }>>()
+  const link = (a: string, b: string, weight: number) => {
+    const row = out.get(a) ?? new Map<string, { weight: number }>()
+    row.set(b, { weight })
+    out.set(a, row)
+  }
+  for (const p of pairs) {
+    const weight = p.v[signal] ?? 0
+    if (weight <= 0) continue
+    link(p.a, p.b, weight)
+    link(p.b, p.a, weight)
+  }
+  return out
+}
+
+/**
+ * Names the groups a name-reading made. A group the reading could name keeps
+ * that word; one the package tree named keeps its last segment. Two branches
+ * can end in the same segment, though, and numbering the second "Web 2" tells
+ * the reader nothing that "Group B" did not, so where the last segment is
+ * shared they take as much of the path as it takes to tell them apart.
+ */
+function nameGroups(keys: Map<string, string>, labels: Map<string, string>, style: { split(id: string): string[] }) {
+  const byLabel = new Map<string, string[]>()
+  for (const key of new Set(keys.values())) {
+    const word = subjectOf(key)
+    const plain = word ?? style.split(key).pop() ?? key
+    byLabel.set(plain, [...(byLabel.get(plain) ?? []), key])
+  }
+  for (const [plain, sharing] of byLabel) {
+    if (sharing.length === 1) {
+      labels.set(sharing[0], titleCase(plain))
+      continue
+    }
+    for (const key of sharing) {
+      const segments = style.split(key)
+      let name = titleCase(plain)
+      for (let take = 2; take <= segments.length; take++) {
+        const candidate = segments.slice(-take).map(titleCase).join(" ")
+        name = candidate
+        if (sharing.every(other => other === key || !style.split(other).slice(-take).map(titleCase).join(" ").endsWith(candidate))) break
+      }
+      labels.set(key, name)
+    }
+  }
+}
+
+function titleCase(word: string): string {
+  const said = word.replace(/[_-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+  return said.charAt(0).toUpperCase() + said.slice(1)
 }
 
 export function suggest(input: SuggestInput, settings: SuggestSettings, taken: ReadonlySet<string> = new Set(), constraints?: Constraints): Suggestion[] {
@@ -487,6 +591,33 @@ export function suggest(input: SuggestInput, settings: SuggestSettings, taken: R
       clusterOf.set(u.id, b.key)
       labels.set(b.key, b.key.startsWith("lane:") ? (input.laneLabels[b.label] ?? b.label) : b.label)
     }
+  } else if (settings.engine === "subject") {
+    // The domain axis is read off the names and confirmed against the graph,
+    // rather than clustered out of it. Clustering finds whichever axis is
+    // strongest, and in a layered codebase that is the layer: measured across
+    // six platforms it scored the best modularity of anything tried and the
+    // worst domain recovery, and it names nothing, which is where "Group A"
+    // came from.
+    const ids = input.units.map(u => u.id)
+    const style = segmenterFor(ids)
+    const { keys, subjects } = domainKeys(
+      ids,
+      { style, refs: tiesFrom(input.pairs, "references"), moves: tiesFrom(input.pairs, "cochange") },
+      new Set(settings.struckSubjects ?? []),
+      settings.basis,
+    )
+    keys.forEach((key, id) => clusterOf.set(id, key))
+    nameGroups(keys, labels, style)
+    void subjects
+  } else if (settings.engine === "role") {
+    // The same measurement read from the other end. A subject floats through
+    // the names and a role sits still, so where `subject` finds Catalog in
+    // four layers this finds every Controllers in one band.
+    const ids = input.units.map(u => u.id)
+    const style = segmenterFor(ids)
+    const { keys } = roleKeys(ids, { style }, new Set(settings.struckSubjects ?? []))
+    keys.forEach((key, id) => clusterOf.set(id, key))
+    nameGroups(keys, labels, style)
   } else {
     const shared = settings.keepSharedApart ? input.hubs : new Set<string>()
     const ids = input.units.map(u => u.id).filter(id => !shared.has(id))
@@ -748,6 +879,15 @@ function describe(cluster: string, members: Unit[], contrib: Map<SignalId, numbe
     return lane && settings.bandBy === "lanes"
       ? [{ signal: "lanes", text: `same lane ${input.laneLabels[lane] ?? lane}`, share: 1 }]
       : [{ signal: "depth", text: "same depth from the entry points", share: 1 }]
+  }
+  if (settings.engine === "subject") {
+    // Said as it was arrived at: a word the names carry, or a branch of the
+    // tree. There are no cluster contributions to report here, and reporting
+    // none at all would leave the group with no answer to "why these".
+    const word = subjectOf(cluster)
+    return [word
+      ? { signal: "names", text: `all named ${word}`, share: 1 }
+      : { signal: "path", text: "same package tree", share: 1 }]
   }
   if (!contrib) return []
   const total = Array.from(contrib.values()).reduce((s, x) => s + x, 0) || 1

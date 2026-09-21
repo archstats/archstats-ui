@@ -13,3 +13,7 @@ export function Open(arg1) {
 export function Query(arg1) {
   return window['go']['app']['QueryService']['Query'](arg1);
 }
+
+export function QueryIn(arg1, arg2) {
+  return window['go']['app']['QueryService']['QueryIn'](arg1, arg2);
+}

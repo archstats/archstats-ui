@@ -1,4 +1,4 @@
-import { Open, Query } from "wailsjs/go/app/QueryService";
+import { Open, Query, QueryIn } from "wailsjs/go/app/QueryService";
 
 // WailsDb replaces the webapp's sql.js Web Worker (DbWorker). The interface
 // the data store consumes is unchanged — raw SQL in, {column: value} rows
@@ -12,6 +12,13 @@ export class WailsDb {
 
     async query<T = any>(sql: string): Promise<T[]> {
         const rows = await Query(sql);
+        return (rows ?? []) as T[];
+    }
+
+    // Reads a snapshot other than the open one, for comparing a scan against
+    // an earlier one. The open snapshot stays open either way.
+    async queryIn<T = any>(scanId: string, sql: string): Promise<T[]> {
+        const rows = await QueryIn(scanId, sql);
         return (rows ?? []) as T[];
     }
 

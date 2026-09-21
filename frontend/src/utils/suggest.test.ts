@@ -42,7 +42,7 @@ describe("suggest", () => {
 
   it("clusters two features at component grain and names them by their rare token", () => {
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
-    const out = suggest(input, settingsOf("modules"));
+    const out = suggest(input, settingsOf("references"));
     expect(out).toHaveLength(2);
     const names = out.map(s => s.name).sort();
     expect(names).toEqual(["Audit", "Ship"]);
@@ -68,7 +68,7 @@ describe("suggest", () => {
       { from: "ship/S1.java", to: "common/C3.java", references: 6 }, { from: "ship/S2.java", to: "common/C4.java", references: 6 }, { from: "common/C3.java", to: "common/C4.java", references: 4 },
     ];
     const input = buildSuggestInput(sources({ components: ["audit", "ship", "common"], files, fileRefs }), "file");
-    const out = suggest(input, settingsOf("modules", { splitFiles: true, keepSharedApart: false, weights: weightsOf({ references: 2 }) }));
+    const out = suggest(input, settingsOf("references", { splitFiles: true, keepSharedApart: false, weights: weightsOf({ references: 2 }) }));
     expect(out).toHaveLength(2);
     const audit = out.find(s => s.parts.some(p => p.component === "audit"))!;
     const commonPart = audit.parts.find(p => p.component === "common")!;
@@ -88,7 +88,7 @@ describe("suggest", () => {
     ];
     const fileRefs = [{ from: "a/A1.java", to: "a/A2.java", references: 3 }, { from: "b/B1.java", to: "b/B2.java", references: 3 }, { from: "a/A2.java", to: "b/B1.java", references: 3 }];
     const input = buildSuggestInput(sources({ components: ["a", "b"], files, fileRefs }), "file");
-    const out = suggest(input, settingsOf("modules", { splitFiles: false, granularity: 1 }));
+    const out = suggest(input, settingsOf("references", { splitFiles: false, granularity: 1 }));
     expect(out.every(s => s.parts.every(p => p.files === null))).toBe(true);
   });
 
@@ -103,14 +103,14 @@ describe("suggest", () => {
       ["a/ARepo.java", "repositories"], ["b/BRepo.java", "repositories"],
     ]);
     const input = buildSuggestInput(sources({ components: ["a", "b"], files, laneOfFile, laneLabels: { controllers: "Controllers", services: "Services & Other", repositories: "Repositories" } }), "file");
-    const out = suggest(input, settingsOf("layers"));
+    const out = suggest(input, settingsOf("lanes"));
     expect(out.map(s => s.name).sort()).toEqual(["Controllers", "Repositories", "Services & Other"]);
     const controllers = out.find(s => s.name === "Controllers")!;
     expect(controllers.parts.map(p => p.files)).toEqual([["a/AController.java"], ["b/BController.java"]]);
     expect(controllers.reasons[0].text).toBe("same lane Controllers");
   });
 
-  it("clusters by shared domain types and co-change when references are silent", () => {
+  it("groups by the subject even when references are silent", () => {
     const components = ["audit.web", "audit.jobs", "ship.web", "ship.jobs"];
     const files = components.map(c => ({ name: c + "/Main.java", component: c }));
     const entityImports = new Map<string, string[]>([
@@ -119,11 +119,17 @@ describe("suggest", () => {
     ]);
     const componentCochange = [{ from: "audit.web", to: "audit.jobs", count: 12 }, { from: "ship.web", to: "ship.jobs", count: 9 }];
     const input = buildSuggestInput(sources({ components, files, entityImports, componentCochange }), "component");
-    const out = suggest(input, settingsOf("domains", { splitFiles: false }));
+    const out = suggest(input, settingsOf("subject", { splitFiles: false }));
     expect(out).toHaveLength(2);
     const audit = out.find(s => s.components.includes("audit.web"))!;
     expect(audit.components.sort()).toEqual(["audit.jobs", "audit.web"]);
-    expect(audit.reasons.map(r => r.signal)).toEqual(expect.arrayContaining(["cochange", "entities"]));
+    // The domain cut reads names now rather than clustering the affinity
+    // graph, so it says what actually decided the grouping. Here `audit`
+    // sits at the front of both its names and never moves, so it is the tree
+    // that separates these two and the reason says so. Co-change and shared
+    // types still count -- they are what a floating word has to be confirmed
+    // by -- but they are no longer what does the grouping.
+    expect(audit.reasons.map(r => r.signal)).toEqual(["path"]);
   });
 
   it("keeps a hub apart as Shared and never reuses a taken name", () => {
@@ -132,7 +138,7 @@ describe("suggest", () => {
     refs.push({ from: "f0", to: "f1", references: 5 }, { from: "f1", to: "f2", references: 5 }, { from: "f3", to: "f4", references: 5 }, { from: "f4", to: "f5", references: 5 });
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
     expect(input.hubs.has("util")).toBe(true);
-    const out = suggest(input, settingsOf("modules"), new Set(["Group A"]));
+    const out = suggest(input, settingsOf("references"), new Set(["Group A"]));
     const shared = out.find(s => s.name === "Shared")!;
     expect(shared.components).toEqual(["util"]);
     expect(out.some(s => s.name === "Group A")).toBe(false);
@@ -155,7 +161,7 @@ describe("suggest", () => {
       { from: "pay.web", to: "pay.svc", references: 5 }, { from: "ship.web", to: "ship.svc", references: 5 },
     ];
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
-    const out = suggest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }), balance: false }));
+    const out = suggest(input, settingsOf("references", { weights: weightsOf({ references: 2 }), balance: false }));
     expect(out.map(s => s.name).sort()).toEqual(["Auth", "Pay", "Ship"]);
     expect(out.find(s => s.name === "Auth")!.components.sort()).toEqual(["auth.api", "auth.cli", "auth.jobs", "auth.web"]);
   });
@@ -172,8 +178,8 @@ describe("suggest", () => {
     components.push("x.one", "x.two");
     refs.push({ from: "x.one", to: "x.two", references: 4 }, { from: "x.one", to: "alpha.c1", references: 1 });
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
-    const balanced = suggest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }), balance: true, minSize: 1 }));
-    const loose = suggest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }), balance: false, minSize: 1 }));
+    const balanced = suggest(input, settingsOf("references", { weights: weightsOf({ references: 2 }), balance: true, minSize: 1 }));
+    const loose = suggest(input, settingsOf("references", { weights: weightsOf({ references: 2 }), balance: false, minSize: 1 }));
     expect(loose.some(s => s.components.includes("x.one") && s.components.length === 2)).toBe(true);
     const alpha = balanced.find(s => s.components.includes("alpha.c1"))!;
     expect(alpha.components).toContain("x.one");
@@ -191,7 +197,7 @@ describe("suggest", () => {
     ];
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
     const placed = new Map<string, string>([["auth.web", "g1"], ["auth.svc", "g1"], ["auth.repo", "g2"], ["pay.web", "g2"], ["pay.svc", "g2"], ["pay.repo", "g2"]]);
-    const out = suggest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }), balance: false }), new Set(), { placed, locked: new Set(["g2"]), names: new Map([["g1", "Authentication"], ["g2", "Payments"]]) });
+    const out = suggest(input, settingsOf("references", { weights: weightsOf({ references: 2 }), balance: false }), new Set(), { placed, locked: new Set(["g2"]), names: new Map([["g1", "Authentication"], ["g2", "Payments"]]) });
     const pay = out.find(s => s.key === "g2")!;
     expect(pay.name).toBe("Payments");
     expect(pay.components).toContain("auth.repo");
@@ -210,7 +216,7 @@ describe("suggest", () => {
     ];
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
     const placed = new Map<string, string>([["a1", "A"], ["a2", "A"], ["b1", "B"], ["b2", "B"]]);
-    const out = placeRest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }) }), placed);
+    const out = placeRest(input, settingsOf("references", { weights: weightsOf({ references: 2 }) }), placed);
     expect(out.get("x")?.key).toBe("A");
     expect(out.get("y")?.key).toBe("B");
     expect(out.has("a1")).toBe(false);
@@ -220,7 +226,7 @@ describe("suggest", () => {
     const components = ["elepy.auth.web", "elepy.auth.svc", "elepy.pay.web", "elepy.pay.svc"];
     const refs = [{ from: "elepy.auth.web", to: "elepy.auth.svc", references: 5 }, { from: "elepy.pay.web", to: "elepy.pay.svc", references: 5 }];
     const input = buildSuggestInput(sources({ components, componentRefs: refs }), "component");
-    const out = suggest(input, settingsOf("modules", { weights: weightsOf({ references: 2 }), balance: false }));
+    const out = suggest(input, settingsOf("references", { weights: weightsOf({ references: 2 }), balance: false }));
     expect(out.map(s => s.name).sort()).toEqual(["Auth", "Pay"]);
   });
 });
@@ -304,7 +310,7 @@ describe("what the engine is willing to stand behind", () => {
     }, "component");
   }
 
-  const policy = (over: Partial<SuggestSettings> = {}) => settingsOf("modules", { minSize: 4, minKept: 0.15, ...over });
+  const policy = (over: Partial<SuggestSettings> = {}) => settingsOf("references", { minSize: 4, minKept: 0.15, ...over });
 
   it("keeps a group that holds its own work and refuses one that does not", () => {
     const input = graph();
@@ -349,11 +355,94 @@ describe("what the engine is willing to stand behind", () => {
     expect(worthProposing([say("g", ["x1", "x2", "x3", "x4"])], input, policy())).toHaveLength(1);
   });
 
+  it("lets a word be struck out of the domain vocabulary", () => {
+    // Where a project repeats its layer structure inside every plugin,
+    // "controllers" moves through the names exactly as freely as a real
+    // subject does and no measurement separates them. The reading offers its
+    // best; the architect takes a word out and it re-measures.
+    const components = [
+      // "controllers" sits at depth 4 inside the plugins and depth 2 in the
+      // web tree, so it floats exactly as a subject would. This is
+      // nopCommerce's shape, and it is why no measurement settles it.
+      "app.plugin.feed.chat.controllers",
+      "app.plugin.misc.azure.controllers",
+      "app.web.controllers",
+      "app.core.domain.billing", "app.services.billing",
+      "app.core.domain.shipping", "app.services.shipping",
+    ];
+    const componentRefs = [
+      { from: "app.services.billing", to: "app.core.domain.billing", references: 9 },
+      { from: "app.services.shipping", to: "app.core.domain.shipping", references: 8 },
+      { from: "app.plugin.feed.chat.controllers", to: "app.web.controllers", references: 7 },
+      { from: "app.plugin.misc.azure.controllers", to: "app.web.controllers", references: 6 },
+    ];
+    const input = buildSuggestInput(sources({ components, componentRefs }), "component");
+    const base = settingsOf("subject");
+
+    const before = suggest(input, base).map(g => g.name);
+    const after = suggest(input, { ...base, struckSubjects: ["controllers"] }).map(g => g.name);
+
+    // Without this the test proves nothing: the word has to be there to go.
+    expect(before).toContain("Controllers");
+    expect(after).not.toContain("Controllers");
+    // Striking takes one word out of the vocabulary and leaves the rest of
+    // the reading alone: the real subjects are still there, holding exactly
+    // what they held. What the struck word was carrying falls to the package
+    // tree, and whatever the tree cannot make a group of is left unplaced
+    // for the architect rather than forced somewhere it does not belong.
+    const membersOf = (out: ReturnType<typeof suggest>, name: string) =>
+      out.find(g => g.name === name)?.components.slice().sort() ?? [];
+    const full = suggest(input, base);
+    const without = suggest(input, { ...base, struckSubjects: ["controllers"] });
+    for (const domain of ["Billing", "Shipping"]) {
+      expect(membersOf(without, domain)).toEqual(membersOf(full, domain));
+      expect(membersOf(without, domain).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not answer the framework question with depth", () => {
+    // "What the framework makes it" and "distance from the entry points" are
+    // two different readings, and they returned identical cuts on all six
+    // codebases measured because a file with no framework role was quietly
+    // given its depth band instead. A file the framework says nothing about
+    // is now left for the architect.
+    const ids = ["a.web", "a.svc", "b.web", "b.svc"];
+    const files = ids.map(c => ({ name: c + ".File", component: c }));
+    const componentRefs = [
+      { from: "a.web", to: "a.svc", references: 5 },
+      { from: "b.web", to: "b.svc", references: 5 },
+    ];
+    // Nothing carries a lane.
+    const blind = buildSuggestInput(sources({ components: ids, files, componentRefs }), "component");
+    expect(suggest(blind, settingsOf("lanes"))).toHaveLength(0);
+    // Depth still has plenty to say about the same codebase.
+    expect(suggest(blind, settingsOf("depth", { minSize: 1 })).length).toBeGreaterThan(0);
+
+    // With lanes, it answers its own question.
+    const laneOfFile = new Map(files.map(f => [f.name, f.component!.endsWith(".web") ? "controller" : "service"]));
+    const seeing = buildSuggestInput(sources({ components: ids, files, componentRefs, laneOfFile, laneLabels: { controller: "Controller", service: "Service" } }), "component");
+    expect(suggest(seeing, settingsOf("lanes", { minSize: 1 })).map(g => g.name).sort()).toEqual(["Controller", "Service"]);
+  });
+
   it("asks nothing of cohesion where cohesion is the wrong question", () => {
     // A layer's members do not reference each other — that is what makes it a
     // layer — so the horizontal preset carries no minKept at all.
-    expect(presetById("layers").settings.minKept).toBeUndefined();
-    for (const id of ["domains", "modules", "ownership", "custom"]) {
+    expect(presetById("lanes").settings.minKept).toBeUndefined();
+    // Nor does the domain cut, and for a reason worth stating: a core domain
+    // keeps very little of its traffic inside precisely because the rest of
+    // the codebase uses it. Measured across four commerce platforms, cohesion
+    // ranked `Caching` above `Catalog`, so gating domains on it throws away
+    // the real ones first.
+    expect(presetById("subject").settings.minKept).toBeUndefined();
+    // The rule, stated once: a reading is gated on how much of a group's
+    // references stay inside only when references are what it read. The
+    // history readings are not, and gating them threw away most of their
+    // answer -- Sakai placed 318 of 1,271 components by commit with the gate
+    // on and 1,228 with it off.
+    for (const id of ["commits", "authors"]) {
+      expect(presetById(id).settings.minKept).toBeUndefined();
+    }
+    for (const id of ["references", "blend"]) {
       expect(presetById(id).settings.minKept).toBeGreaterThan(0);
     }
   });

@@ -321,14 +321,14 @@ describe("the grain: what a dimension is made of", () => {
     const draft = useDraftStore();
     draft.load("g3");
     draft.startNew("Domain");
-    draft.followWay(wayById("layer"));
+    draft.followWay(wayById("lanes"));
     expect(draft.grain).toBe("file");
-    draft.followWay(wayById("domain"));
+    draft.followWay(wayById("subject"));
     expect(draft.grain).toBe("component");
 
     // Chosen by hand, the way stops deciding.
     draft.setGrain("file");
-    draft.followWay(wayById("domain"));
+    draft.followWay(wayById("subject"));
     expect(draft.grain).toBe("file");
 
     // And the override can be released: asking for what the way already wants
@@ -336,7 +336,7 @@ describe("the grain: what a dimension is made of", () => {
     // this the first hand-pick silences the way for the life of the draft.
     draft.setGrain("component", false);
     expect(draft.grainByHand).toBe(false);
-    draft.followWay(wayById("layer"));
+    draft.followWay(wayById("lanes"));
     expect(draft.grain).toBe("file");
   });
 
@@ -352,7 +352,7 @@ describe("the grain: what a dimension is made of", () => {
 
     // Switching to a way made of whole components would undo a real decision,
     // so the way defers and the toolbar keeps saying what is true.
-    draft.followWay(wayById("domain"));
+    draft.followWay(wayById("subject"));
     expect(draft.grain).toBe("file");
     expect(draft.splitCount).toBe(1);
   });

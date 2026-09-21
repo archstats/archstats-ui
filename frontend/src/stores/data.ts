@@ -165,6 +165,12 @@ export const useDataStore = defineStore('data', {
             return _db.query<T>(qryString);
         },
 
+        /** The same choke point, aimed at an earlier snapshot of the same workspace. */
+        async queryIn<T = any>(scanId: string, qryString: string): Promise<T[]> {
+            if (!scanId) return []
+            return _db.queryIn<T>(scanId, qryString);
+        },
+
         async getView<T = any>(viewName: string): Promise<T[]> {
             return this.query<T>(`SELECT * FROM ${viewName}`);
         },

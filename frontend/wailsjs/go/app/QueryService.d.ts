@@ -6,3 +6,5 @@ export function CurrentScan():Promise<string>;
 export function Open(arg1:string):Promise<void>;
 
 export function Query(arg1:string):Promise<Array<Record<string, any>>>;
+
+export function QueryIn(arg1:string,arg2:string):Promise<Array<Record<string, any>>>;

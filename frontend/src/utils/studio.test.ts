@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_SOURCES, buildSuggestInput, type SignalSources } from "./suggest";
-import { GRAIN, WAYS, affinityIndex, affinityTo, bestLayerKeying, bundleFor, bundleUnplaced, closestGroup, commonName, detectSeparator, nameForQuery, fitnessOf, wayById, packageTree, pathStyle, rankCandidates, rankGroups, splitBundle, titleFromPrefix, underPath } from "./studio";
+import { EMPTY_SOURCES, buildSuggestInput, presetById, type SignalSources } from "./suggest";
+import { GRAIN, READS, WAYS, affinityIndex, domainBasisOf, affinityTo, bestLayerKeying, bundleFor, bundleUnplaced, closestGroup, commonName, detectSeparator, nameForQuery, fitnessOf, wayById, packageTree, pathStyle, rankCandidates, rankGroups, splitBundle, titleFromPrefix, underPath } from "./studio";
 
 function sources(over: Partial<SignalSources>): SignalSources {
   return { ...EMPTY_SOURCES, ...over };
@@ -208,7 +208,7 @@ describe("the way a dimension is cut", () => {
     const files = ids.map(c => ({ name: c + ".File", component: c }));
     const laneOfFile = new Map(files.map(f => [f.name, f.component!.endsWith(".web") ? "controller" : "service"]));
     const ctx = ctxOf({ components: ids, files, laneOfFile, laneLabels: { controller: "Controller", service: "Service" } }, ids);
-    const bundles = bundleFor(wayById("layer"), ids, ctx);
+    const bundles = bundleFor(wayById("lanes"), ids, ctx);
     expect(bundles.map(b => b.name).sort()).toEqual(["Controller", "Service"]);
     expect(bundles[0].members.length).toBe(2);
     expect(bundles[0].reason).toContain("role");
@@ -217,7 +217,7 @@ describe("the way a dimension is cut", () => {
   it("falls back to the word that turns up in many packages, not the one that names a domain", () => {
     const ids = ["com.acme.order.controller", "com.acme.order.model", "com.acme.catalog.controller", "com.acme.catalog.model"];
     const ctx = ctxOf({ components: ids, files: ids.map(c => ({ name: c + ".File", component: c })) }, ids);
-    const bundles = bundleFor(wayById("layer"), ids, ctx);
+    const bundles = bundleFor(wayById("role"), ids, ctx);
     // "order" lives in one package; "controller" spans two, so it is the role.
     expect(bundles.map(b => b.name).sort()).toEqual(["Controller", "Model"]);
   });
@@ -227,7 +227,7 @@ describe("the way a dimension is cut", () => {
     const files = ids.map(c => ({ name: c + ".File", component: c }));
     const authorsOfFile = new Map([[files[0].name, ["Ada"]], [files[1].name, ["Ada"]]]);
     const ctx = ctxOf({ components: ids, files, authorsOfFile }, ids);
-    const bundles = bundleFor(wayById("owner"), ids, ctx);
+    const bundles = bundleFor(wayById("authors"), ids, ctx);
     expect(bundles[0].name).toBe("Ada");
     expect(bundles[0].members.length).toBe(2);
   });
@@ -240,7 +240,7 @@ describe("the way a dimension is cut", () => {
     const laneOfFile = new Map(files.map(f => [f.name, "other"]));
     const ctx = ctxOf({ components: ids, files, laneOfFile, laneLabels: { other: "Services & Other" } }, ids);
     expect(bestLayerKeying(ids, ctx)?.basis).toBe("names");
-    expect(bundleFor(wayById("layer"), ids, ctx).map(b => b.name).sort()).toEqual(["Controller", "Model"]);
+    expect(bundleFor(wayById("role"), ids, ctx).map(b => b.name).sort()).toEqual(["Controller", "Model"]);
   });
 
   it("prefers a basis whose groups have names over one that only has numbers", () => {
@@ -257,22 +257,22 @@ describe("the way a dimension is cut", () => {
     ]);
     const ctx = ctxOf({ components: ids, files: ids.map(c => ({ name: c + ".File", component: c })), componentRefs }, ids);
     expect(bestLayerKeying(ids, ctx)?.basis).toBe("names");
-    expect(bundleFor(wayById("layer"), ids, ctx).map(b => b.name).sort()).toEqual(["Controller", "Model", "Service"]);
+    expect(bundleFor(wayById("role"), ids, ctx).map(b => b.name).sort()).toEqual(["Controller", "Model", "Service"]);
   });
 
   it("says plainly when a snapshot cannot support a way", () => {
     const ids = ["com.acme.order.web"];
     const ctx = ctxOf({ components: ids, files: ids.map(c => ({ name: c + ".File", component: c })) }, ids);
-    const owner = fitnessOf(wayById("owner"), ctx.units, false);
+    const owner = fitnessOf(wayById("authors"), ctx.units, false);
     expect(owner.ok).toBe(false);
     expect(owner.why).toContain("git history");
-    expect(fitnessOf(wayById("domain"), ctx.units, false).ok).toBe(true);
+    expect(fitnessOf(wayById("subject"), ctx.units, false).ok).toBe(true);
   });
 
   it("means something different by close for each way", () => {
-    expect(wayById("layer").weights.references).toBeLessThan(0);
-    expect(wayById("layer").weights.lanes).toBeGreaterThan(0);
-    expect(wayById("owner").weights.authors).toBeGreaterThan(wayById("domain").weights.authors ?? 0);
+    expect(wayById("lanes").weights.references).toBeLessThan(0);
+    expect(wayById("lanes").weights.lanes).toBeGreaterThan(0);
+    expect(wayById("authors").weights.authors).toBeGreaterThan(wayById("subject").weights.authors ?? 0);
   });
 })
 
@@ -307,20 +307,25 @@ describe("what a group pulls in", () => {
     for (let i = 0; i < 20; i += 2) componentRefs.push({ from: ids[i], to: ids[i + 1], references: 9 });
     const built = buildSuggestInput(sources({ components: ids, files: ids.map(c => ({ name: c + ".File", component: c })), componentRefs }), "component");
     const ctx = { units: new Map(built.units.map(u => [u.id, u])), laneLabels: {}, index: affinityIndex(built), linesOf: () => 1, style: pathStyle(ids) };
-    const bundles = bundleFor(wayById("domain"), ids, ctx);
+    const bundles = bundleFor(wayById("subject"), ids, ctx);
     expect(bundles.length).toBeGreaterThan(1);
     expect(Math.max(...bundles.map(b => b.members.length))).toBeLessThanOrEqual(12);
   });
 })
 
 describe("what each way is made of", () => {
-  it("lets only a layer divide a package", () => {
+  it("lets only a horizontal reading divide a package", () => {
     // A package belongs to one domain, one team and one release train, so
-    // dividing it there would be a lie about the codebase. A layer is the one
-    // question a single package answers two ways at once: it routinely holds a
-    // controller and the repository that controller calls.
-    const divide = WAYS.filter(w => w.grain === "file").map(w => w.id);
-    expect(divide).toEqual(["layer"]);
+    // dividing it there would be a lie about the codebase. Cutting across is
+    // the one question a single package answers two ways at once: it
+    // routinely holds a controller and the repository that controller calls.
+    // Three readings ask that question -- the role in the name, the framework
+    // role, and distance from the entry points -- and no other may.
+    const divide = WAYS.filter(w => w.grain === "file").map(w => w.id).sort();
+    expect(divide).toEqual(["depth", "lanes", "role"]);
+    for (const w of WAYS) {
+      expect(w.grain === "file").toBe(w.cut === "horizontal");
+    }
   });
 
   it("says both grains in the architect's words, not the model's", () => {
@@ -355,5 +360,131 @@ describe("naming a group made from a query", () => {
     expect(nameForQuery("**.controller\n**.rest", IDS)).toBe("Broadleafcommerce");
     expect(nameForQuery("**.controller where lines > 100", IDS)).toBe("Broadleafcommerce");
     expect(nameForQuery("**", IDS)).toBe("Broadleafcommerce");
+  });
+});
+
+describe("the domain cut reads how the codebase is laid out", () => {
+  // Layer-first: every layer holds a slice of every domain, so no prefix
+  // means "catalog" and the only thing the domains share is a word that
+  // moves. This is nopCommerce's shape, and Sylius's, and django-oscar's.
+  const LAYERED = [
+    "Nop.Core.Domain.Catalog", "Nop.Services.Catalog", "Nop.Web.Areas.Admin.Models.Catalog",
+    "Nop.Core.Domain.Orders", "Nop.Services.Orders", "Nop.Web.Areas.Admin.Models.Orders",
+    "Nop.Core.Domain.Shipping", "Nop.Services.Shipping", "Nop.Web.Areas.Admin.Models.Shipping",
+  ];
+  const layeredRefs = [
+    { from: "Nop.Services.Catalog", to: "Nop.Core.Domain.Catalog", references: 30 },
+    { from: "Nop.Web.Areas.Admin.Models.Catalog", to: "Nop.Services.Catalog", references: 25 },
+    { from: "Nop.Services.Orders", to: "Nop.Core.Domain.Orders", references: 28 },
+    { from: "Nop.Web.Areas.Admin.Models.Orders", to: "Nop.Services.Orders", references: 22 },
+    { from: "Nop.Services.Shipping", to: "Nop.Core.Domain.Shipping", references: 20 },
+  ];
+  function ctxFor(components: string[], componentRefs: SignalSources["componentRefs"]) {
+    const built = buildSuggestInput(sources({ components, componentRefs }), "component");
+    const refs = affinityIndex(built, { references: 1 });
+    return { units: new Map(built.units.map(u => [u.id, u])), laneLabels: {}, index: refs, refs, linesOf: () => 1, style: pathStyle(components) };
+  }
+
+  it("groups a layer-first codebase by the subject, across the layers", () => {
+    const ctx = ctxFor(LAYERED, layeredRefs);
+    const bundles = bundleFor(wayById("subject"), LAYERED, ctx);
+    const names = bundles.map(b => b.name).sort();
+    expect(names).toEqual(["Catalog", "Orders", "Shipping"]);
+    // The point of the whole thing: one group holds all three layers.
+    const catalog = bundles.find(b => b.name === "Catalog")!;
+    expect(catalog.members).toEqual(["Nop.Core.Domain.Catalog", "Nop.Services.Catalog", "Nop.Web.Areas.Admin.Models.Catalog"]);
+  });
+
+  it("says it read the names, and where the word was found", () => {
+    const ctx = ctxFor(LAYERED, layeredRefs);
+    const catalog = bundleFor(wayById("subject"), LAYERED, ctx).find(b => b.name === "Catalog")!;
+    expect(catalog.reason).toContain("all named catalog");
+    expect(catalog.reason).toContain("different places in the tree");
+    expect(domainBasisOf(LAYERED, ctx).basis).toBe("subject");
+  });
+
+  // Domain-first: the tree already holds the domains and it is the roles
+  // that move instead, so reading the names for a floating word finds the
+  // layers. This is the FedEx microservice workspace's shape.
+  const DOMAIN_FIRST = [
+    "com.fedex.qp.booking.service", "com.fedex.qp.booking.dao", "com.fedex.qp.booking.dto",
+    "com.fedex.qp.rates.service", "com.fedex.qp.rates.dao", "com.fedex.qp.rates.dto",
+    "com.fedex.qp.audit.service", "com.fedex.qp.audit.dao", "com.fedex.qp.audit.dto",
+  ];
+  const domainFirstRefs = [
+    { from: "com.fedex.qp.booking.service", to: "com.fedex.qp.booking.dao", references: 40 },
+    { from: "com.fedex.qp.booking.dao", to: "com.fedex.qp.booking.dto", references: 38 },
+    { from: "com.fedex.qp.rates.service", to: "com.fedex.qp.rates.dao", references: 36 },
+    { from: "com.fedex.qp.rates.dao", to: "com.fedex.qp.rates.dto", references: 34 },
+    { from: "com.fedex.qp.audit.service", to: "com.fedex.qp.audit.dao", references: 32 },
+    { from: "com.fedex.qp.audit.dao", to: "com.fedex.qp.audit.dto", references: 30 },
+  ];
+
+  it("keeps the package tree when the tree already holds the domains", () => {
+    const ctx = ctxFor(DOMAIN_FIRST, domainFirstRefs);
+    // Detection is what offers a default now that the architect picks the
+    // reading, so it is asked directly.
+    expect(domainBasisOf(DOMAIN_FIRST, ctx).basis).toBe("tree");
+    const names = bundleFor(wayById("tree"), DOMAIN_FIRST, ctx).map(b => b.name).sort();
+    // Not Service, Dao and Dto, which is what reading the names would give.
+    expect(names).toEqual(["Audit", "Booking", "Rates"]);
+  });
+
+  it("reads one subject out of two spellings of it", () => {
+    // Sylius calls the same domain Order in one tree and OrderBundle in
+    // another. Split on the case change they are one subject; left whole
+    // they are two that never meet.
+    const ids = [
+      "Sylius.Component.Order.Model", "Sylius.Component.Order.Repository",
+      "Sylius.Bundle.OrderBundle.Form", "Sylius.Bundle.ApiBundle.Shop.Order",
+      "Sylius.Component.Payment.Model", "Sylius.Bundle.PaymentBundle.Form",
+      "Sylius.Bundle.ApiBundle.Shop.Payment",
+    ];
+    const refs = [
+      { from: "Sylius.Bundle.OrderBundle.Form", to: "Sylius.Component.Order.Model", references: 20 },
+      { from: "Sylius.Bundle.ApiBundle.Shop.Order", to: "Sylius.Component.Order.Repository", references: 18 },
+      { from: "Sylius.Bundle.PaymentBundle.Form", to: "Sylius.Component.Payment.Model", references: 15 },
+      { from: "Sylius.Bundle.ApiBundle.Shop.Payment", to: "Sylius.Component.Payment.Model", references: 12 },
+    ];
+    const ctx = ctxFor(ids, refs);
+    const order = bundleFor(wayById("subject"), ids, ctx).find(b => b.name === "Order")!;
+    expect(order.members).toContain("Sylius.Component.Order.Model");
+    expect(order.members).toContain("Sylius.Bundle.OrderBundle.Form");
+  });
+});
+
+describe("the readings on offer", () => {
+  it("names each one for the evidence it reads, not the result hoped for", () => {
+    // "Domain" and "Layer" named an outcome and hid the method, which is how
+    // one label came to cover two opposite readings and pick between them in
+    // silence. No reading may be named after what it is hoped to produce.
+    const outcomes = ["domain", "layer", "module", "team", "free"];
+    for (const way of WAYS) {
+      expect(outcomes).not.toContain(way.label.toLowerCase());
+      expect(way.hint.length).toBeGreaterThan(20);
+    }
+  });
+
+  it("gives every reading its own settings, so none is an alias of another", () => {
+    const presets = WAYS.map(w => w.preset);
+    expect(new Set(presets).size).toBe(WAYS.length);
+    for (const way of WAYS) expect(presetById(way.preset).id).toBe(way.preset);
+  });
+
+  it("groups them by what they go on", () => {
+    for (const way of WAYS) expect(READS[way.reads]).toBeTruthy();
+    // Every heading offered must have something under it.
+    const used = new Set(WAYS.map(w => w.reads));
+    for (const reads of Object.keys(READS)) expect(used.has(reads as keyof typeof READS)).toBe(true);
+  });
+
+  it("offers both name readings, because a codebase needs one or the other", () => {
+    // The tree holds the domains in one codebase and the layers in the next;
+    // reading the names finds the subject in the second and the layers in the
+    // first. Both have to be reachable by hand.
+    expect(WAYS.map(w => w.id)).toContain("tree");
+    expect(WAYS.map(w => w.id)).toContain("subject");
+    expect(wayById("tree").reads).toBe("names");
+    expect(wayById("subject").reads).toBe("names");
   });
 });
