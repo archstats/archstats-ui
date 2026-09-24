@@ -41,6 +41,7 @@
     <ImportSnapshotSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
       <OutdatedSnapshotBar v-if="hasData"/>
+      <SlotFillBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
         <WorkspaceEmptyState v-if="!hasData"/>
         <slot v-else/>
@@ -60,6 +61,7 @@ import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
 import ExportMenu from "~/components/ui/ExportMenu.vue";
 import GoToAnything from "~/components/shell/GoToAnything.vue";
 import AddToReportSheet from "~/components/report/AddToReportSheet.vue";
+import SlotFillBar from "~/components/report/SlotFillBar.vue";
 // Provides the code search that `contains` lines in live groups answer from.
 import "~/utils/codeSearch";
 import RescanCommitSheet from "~/components/shell/RescanCommitSheet.vue";

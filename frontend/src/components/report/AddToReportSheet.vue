@@ -67,13 +67,13 @@
                     :aria-pressed="place === o.value"
                     @click="place = o.value"
                   >
-                    <Icon v-if="o.icon" :icon="o.icon" :size="12" class="shrink-0 text-neutral-400"/>
-                    <span class="truncate" :class="o.heading ? 'text-[12.5px] font-medium' : 'text-[12px]'">{{ o.label }}</span>
+                    <Icon v-if="o.icon" :icon="o.icon" :size="12" class="shrink-0" :class="o.slot ? 'text-accent-600' : 'text-neutral-400'"/>
+                    <span class="truncate" :class="[o.heading ? 'text-[12.5px] font-medium' : 'text-[12px]', o.slot && place !== o.value ? 'text-accent-800' : '']">{{ o.label }}</span>
                   </button>
                   <!-- The landing spot sits after the row it follows. -->
                   <div v-if="place === o.value" class="relative my-1 ml-2 mr-2 h-[18px]" aria-hidden="true">
                     <span class="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-accent-500"></span>
-                    <span class="absolute left-2 top-0 bg-ground px-1 text-[10.5px] font-medium leading-[18px] text-accent-700">Lands here</span>
+                    <span class="absolute left-2 top-0 bg-ground px-1 text-[10.5px] font-medium leading-[18px] text-accent-700">{{ o.slot ? "Fills this slot" : "Lands here" }}</span>
                   </div>
                 </li>
               </ol>
@@ -91,6 +91,8 @@
               <div class="pointer-events-none select-none opacity-55" aria-hidden="true">
                 <template v-for="b in before" :key="b.id">
                   <NotebookText v-if="!isCell(b)" :block="b" :editing="false" :number="ctxNumbers.get(b.id)"/>
+                  <NotebookReading v-else-if="b.cell.spec.type === 'reading'" :cell="b.cell" :selected="false" :running="false" :stale="false" kernel-label="" :gutter="false"/>
+                  <NotebookSlot v-else-if="b.cell.spec.type === 'slot'" :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" compact/>
                   <NotebookCell v-else :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" :running="false" :stale="false" :kernel-label="''" :figure="figureOf(b)" :workspace="workspace" :label="label" :gutter="false"/>
                 </template>
               </div>
@@ -139,6 +141,8 @@
               <div class="pointer-events-none select-none opacity-55" aria-hidden="true">
                 <template v-for="b in after" :key="b.id">
                   <NotebookText v-if="!isCell(b)" :block="b" :editing="false" :number="ctxNumbers.get(b.id)"/>
+                  <NotebookReading v-else-if="b.cell.spec.type === 'reading'" :cell="b.cell" :selected="false" :running="false" :stale="false" kernel-label="" :gutter="false"/>
+                  <NotebookSlot v-else-if="b.cell.spec.type === 'slot'" :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" compact/>
                   <NotebookCell v-else :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" :running="false" :stale="false" :kernel-label="''" :figure="figureOf(b)" :workspace="workspace" :label="label" :gutter="false"/>
                 </template>
               </div>
@@ -205,8 +209,14 @@
           <p class="min-w-0 truncate text-[12.5px] text-neutral-600">{{ summary }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">Cancel</button>
-          <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(true)">Add and open</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(false)">{{ adding ? "Adding…" : "Add" }}</button>
+          <template v-if="fillMode">
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(false)">Fill</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? "Filling…" : "Fill and return" }}</button>
+          </template>
+          <template v-else>
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(true)">Add and open</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(false)">{{ adding ? "Adding…" : slotPlace ? "Fill" : "Add" }}</button>
+          </template>
         </footer>
       </div>
     </div>
@@ -218,6 +228,8 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { Figure } from "wailsjs/go/app/EvidenceService";
 import NotebookCell from "~/components/report/NotebookCell.vue";
+import NotebookReading from "~/components/report/NotebookReading.vue";
+import NotebookSlot from "~/components/report/NotebookSlot.vue";
 import NotebookText from "~/components/report/NotebookText.vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
@@ -244,7 +256,7 @@ const newTitleEl = ref<HTMLInputElement | null>(null);
 const place = ref<string | null>("end");
 function pickReport(id: string) {
   target.value = id;
-  place.value = "end";
+  place.value = defaultPlace();
   if (id === NEW) void nextTick(() => newTitleEl.value?.focus());
 }
 const targetRecord = computed(() => reports.list.find(r => r.id === target.value) ?? null);
@@ -255,13 +267,17 @@ const targetBlocks = computed<Block[]>(() => {
   return r.id === reports.currentId ? reports.doc.blocks : parseDoc(r.body).blocks;
 });
 
-interface Place { key: string; value: string | null; label: string; indent: number; heading?: boolean; icon?: string }
+interface Place { key: string; value: string | null; label: string; indent: number; heading?: boolean; icon?: string; slot?: boolean }
 const places = computed<Place[]>(() => {
   const out: Place[] = [{ key: "top", value: null, label: "At the top", indent: 0, icon: "arrow-up-right" }];
   const nums = cellNumbers(targetBlocks.value);
   let depth = 0;
   for (const b of targetBlocks.value) {
-    if (isCell(b)) {
+    if (isCell(b) && b.cell.spec.type === "slot") {
+      out.push({ key: b.id, value: `slot:${b.id}`, label: `Fill ${nums.get(b.id)} · ${b.cell.title || b.cell.spec.view}`, indent: depth, icon: b.cell.spec.kind === "figure" ? "image" : "table", slot: true });
+    } else if (isCell(b) && b.cell.spec.type === "reading") {
+      continue;
+    } else if (isCell(b)) {
       const t = b.cell.title || b.cell.output?.pin?.title || "";
       out.push({ key: b.id, value: b.id, label: `${nums.get(b.id)}${t ? ` · ${t}` : ""}`, indent: depth, icon: b.cell.spec.type === "capture" && b.cell.spec.kind === "figure" ? "image" : "table" });
     } else if (b.kind === "h1" || b.kind === "h2" || b.kind === "h3") {
@@ -274,10 +290,25 @@ const places = computed<Place[]>(() => {
   return out;
 });
 
+/** A slot the new blocks take the place of, when one is chosen. */
+const slotPlace = computed(() => (place.value?.startsWith("slot:") ? place.value.slice(5) : null));
+const slotBlock = computed(() => (slotPlace.value ? (targetBlocks.value.find(b => b.id === slotPlace.value) as CellBlock | undefined) ?? null : null));
+/** Arrived from a slot's Open button: filling it is the point, and returning to the report follows. */
+const fillMode = computed(() => !!reports.filling && reports.filling.reportId === target.value && slotPlace.value === reports.filling.cellId);
+/** Where a draft lands by default: the slot it was opened for, a slot for the same view, or the end. */
+function defaultPlace(): string | null {
+  const f = reports.filling;
+  if (f && f.reportId === target.value && targetBlocks.value.some(b => b.id === f.cellId)) return `slot:${f.cellId}`;
+  const s = src.value;
+  const match = s && targetBlocks.value.find(b => isCell(b) && b.cell.spec.type === "slot" && b.cell.spec.view === s.view && (s.kind === "document" || b.cell.spec.kind === s.kind));
+  return match ? `slot:${match.id}` : "end";
+}
+
 /** Where the new blocks go, as an index into the target's blocks. */
 const insertIndex = computed(() => {
   const blocks = targetBlocks.value;
   if (place.value === null) return 0;
+  if (slotPlace.value) { const i = blocks.findIndex(b => b.id === slotPlace.value); return i < 0 ? blocks.length : i; }
   if (place.value === "end") {
     let i = blocks.length;
     while (i > 0) { const b = blocks[i - 1]; if (!isCell(b) && b.kind === "p" && !b.text.trim()) i--; else break; }
@@ -289,7 +320,7 @@ const insertIndex = computed(() => {
 const meaningful = (b: Block) => isCell(b) || b.kind === "hr" || !!b.text.trim();
 const CONTEXT = 3;
 const beforeAll = computed(() => targetBlocks.value.slice(0, insertIndex.value).filter(meaningful));
-const afterAll = computed(() => targetBlocks.value.slice(insertIndex.value).filter(meaningful));
+const afterAll = computed(() => targetBlocks.value.slice(insertIndex.value + (slotBlock.value ? 1 : 0)).filter(meaningful));
 const before = computed(() => beforeAll.value.slice(-CONTEXT));
 const after = computed(() => afterAll.value.slice(0, 2));
 const beforeHidden = computed(() => Math.max(0, beforeAll.value.length - CONTEXT));
@@ -312,9 +343,10 @@ watch(draftSrc, (s) => {
   error.value = "";
   adding.value = false;
   editingId.value = null;
-  target.value = reports.currentId && reports.list.some(r => r.id === reports.currentId) ? reports.currentId : reports.list[0]?.id ?? NEW;
+  const f = reports.filling;
+  target.value = f && reports.list.some(r => r.id === f.reportId) ? f.reportId : reports.currentId && reports.list.some(r => r.id === reports.currentId) ? reports.currentId : reports.list[0]?.id ?? NEW;
   newTitle.value = s.title;
-  place.value = "end";
+  place.value = defaultPlace();
   light.value = true;
   figureB64.value = s.figure ?? "";
   if (s.table) {
@@ -344,6 +376,16 @@ function trimmed(s: ImportDraft) {
   const rowsKept = t.rows.slice(0, rows.value).map(r => Object.fromEntries(keep.map(c => [c.id, r[c.id]])));
   return { columns: keep, rows: rowsKept, total: t.total };
 }
+// Filling a slot takes the slot's title; leaving it gives the view's back, unless it was retitled.
+watch(slotBlock, (slot, was) => {
+  const s = src.value;
+  if (!s) return;
+  for (const b of draft.value) {
+    if (!isCell(b)) continue;
+    const from = was?.cell.title || s.title;
+    if (b.cell.title === from || !b.cell.title) b.cell = { ...b.cell, title: slot?.cell.title || s.title };
+  }
+});
 // Trimming rebuilds the table in place, keeping the words written around it.
 watch([rows, columns], () => {
   const s = src.value;
@@ -381,7 +423,7 @@ const figureOf = (b: CellBlock) => { const p = b.cell.output?.figure; return p ?
 
 // Numbered as they will be once added.
 const numbers = computed(() => {
-  const all = [...targetBlocks.value.slice(0, insertIndex.value), ...draft.value, ...targetBlocks.value.slice(insertIndex.value)];
+  const all = [...targetBlocks.value.slice(0, insertIndex.value), ...draft.value, ...targetBlocks.value.slice(insertIndex.value + (slotBlock.value ? 1 : 0))];
   return cellNumbers(target.value === NEW ? draft.value : all);
 });
 const olOf = (list: Block[]) => {
@@ -446,6 +488,7 @@ const error = ref("");
 const newNumber = computed(() => { const c = draft.value.find(isCell); return c ? numbers.value.get(c.id) : null; });
 const placeLabel = computed(() => {
   if (target.value === NEW) return "";
+  if (slotBlock.value) return "";
   if (place.value === null) return " at the top";
   if (place.value === "end") return " at the end";
   const p = places.value.find(o => o.value === place.value);
@@ -455,6 +498,7 @@ const summary = computed(() => {
   const what = newNumber.value ?? (src.value?.kind === "document" ? "The text" : "It");
   const where = target.value === NEW ? `a new report, “${newTitle.value || "Untitled report"}”` : `“${targetTitle.value}”`;
   const words = draft.value.filter(b => !isCell(b) && b.text.trim()).length;
+  if (slotBlock.value) return `Fills ${newNumber.value ?? "the slot"}${slotBlock.value.cell.title ? `, “${slotBlock.value.cell.title}”,` : ""} in ${where}${words && src.value?.kind !== "document" ? `, with ${words} ${words === 1 ? "paragraph" : "paragraphs"} of yours` : ""}.`;
   return `Adds ${what}${placeLabel.value} in ${where}${words && src.value?.kind !== "document" ? `, with ${words} ${words === 1 ? "paragraph" : "paragraphs"} of yours` : ""}.`;
 });
 const sourceLine = computed(() => (src.value ? [src.value.view, src.value.title !== src.value.view ? src.value.title : "", `snapshot ${src.value.ranOn.label}`, src.value.ranOn.commit ? src.value.ranOn.commit.slice(0, 7) : "", `analysis r${src.value.ranOn.revision}`].filter(Boolean).join(" · ") : ""));
@@ -472,7 +516,11 @@ async function add(open: boolean) {
       blocks.push({ id: newId(), kind: "cell", cell: { ...b.cell, output } });
     }
     if (!blocks.length) { error.value = "Nothing to add."; adding.value = false; return; }
-    await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || "Untitled report");
+    if (slotBlock.value && target.value !== NEW) {
+      await reports.fillSlot(target.value, slotBlock.value.id, blocks);
+    } else {
+      await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || "Untitled report");
+    }
     reports.importing = null;
     if (open) void router.push("/views/evidence");
   } catch (e) {

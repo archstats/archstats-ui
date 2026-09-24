@@ -19,7 +19,7 @@ import {
   ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search, SearchCode, Undo2, Redo2, FlaskConical, Heading, List, ListOrdered, TextQuote, Code, RefreshCw as RefreshCwIcon, Terminal as TerminalIcon, GripVertical, FileDown,
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
-  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal
+  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -142,6 +142,10 @@ const iconComponent = computed(() => {
       return HelpCircle
     case "alert":
       return AlertTriangle
+    case "layout-list":
+      return LayoutList;
+    case "scan-line":
+      return ScanLine;
     case "bookmark":
       return Bookmark
     case "copy":

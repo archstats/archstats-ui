@@ -6,8 +6,12 @@ import { useDataStore } from "~/stores/data"
 import { useEvidenceStore } from "~/stores/evidence"
 import { useWorkspacesStore } from "~/stores/workspaces"
 import { buildProvenance } from "~/utils/provenance"
+import { useAuthorsStore } from "~/stores/authors"
+import { useStateStore } from "~/stores/state"
+import type { ReadingContext } from "~/utils/readings"
 import { exportMarkdown, pdfBlocks, runCell, type KernelScan, type RunContext } from "~/utils/reportCells"
-import { emptyDoc, fromMarkdown, isCell, newId, parseDoc, toMarkdown, type Block, type Cell, type CellBlock, type ReportDoc, type TableSource } from "~/utils/reportDoc"
+import { emptyDoc, fromMarkdown, isCell, newId, parseDoc, runnable, toMarkdown, type Block, type Cell, type CellBlock, type ReportDoc, type TableSource } from "~/utils/reportDoc"
+import { SAVED_TEMPLATES_KEY, type SavedTemplate } from "~/utils/reportTemplates"
 import { newestFirst } from "~/utils/scanOrder"
 import { formatScanTime } from "~/utils/time"
 
@@ -27,6 +31,20 @@ export interface ImportDraft {
     renderFigure?: (light: boolean) => Promise<string>
     table?: import("~/utils/reportDoc").TableOutput
     markdown?: string
+}
+
+/** A template's slot being filled: the view it opened, waiting for Add to report. */
+export interface SlotFill {
+    reportId: string
+    cellId: string
+    kind: "figure" | "table"
+    view: string
+    route: string
+    hint: string
+    title: string
+    /** "Figure 2". */
+    number: string
+    reportTitle: string
 }
 
 export interface ReportRecord {
@@ -58,6 +76,9 @@ export const useReportsStore = defineStore("reports", {
         saving: false,
         loaded: false,
         importing: null as ImportDraft | null,
+        filling: null as SlotFill | null,
+        /** The template gallery is open. */
+        choosingTemplate: false,
     }),
     getters: {
         current(s): ReportRecord | null { return s.list.find(r => r.id === s.currentId) ?? null },
@@ -73,7 +94,7 @@ export const useReportsStore = defineStore("reports", {
         /** Cells that ran on another snapshot than the kernel, or never ran. */
         stale(): CellBlock[] {
             const k = this.kernel
-            return this.cells.filter(c => c.cell.spec.type !== "capture" && (!c.cell.ranOn || (k && c.cell.ranOn.scanId !== k.id)))
+            return this.cells.filter(c => runnable(c.cell.spec) && (!c.cell.ranOn || (k && c.cell.ranOn.scanId !== k.id)))
         },
         /** Where each pin is used: pin id → report titles. */
         pinUsage(s): Map<string, string[]> {
@@ -277,6 +298,18 @@ export const useReportsStore = defineStore("reports", {
         },
 
         // ── Running ─────────────────────────────────────────────────────────
+        /** What readings run with on the kernel; kept per snapshot so it is probed once. */
+        readingContext(): ReadingContext | null {
+            const k = this.kernel
+            if (!k) return null
+            const aliases = useAuthorsStore().aliases
+            const key = `${k.id}:${JSON.stringify(aliases)}`
+            if (readingCache?.key !== key) {
+                const data = useDataStore()
+                readingCache = { key, ctx: { query: sql => QueryIn(k.id, sql) as Promise<any[]>, revision: k.revision, label: id => data.statNiceName(id) || id, aliases } }
+            }
+            return readingCache.ctx
+        },
         runContext(): RunContext | null {
             const k = this.kernel
             if (!k) return null
@@ -303,6 +336,7 @@ export const useReportsStore = defineStore("reports", {
                     const p = buildProvenance()
                     return { lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined }
                 },
+                readings: this.readingContext()!,
             }
         },
         async run(id: string) {
@@ -388,6 +422,58 @@ export const useReportsStore = defineStore("reports", {
             void this.loadFigures()
         },
 
+        // ── Templates ───────────────────────────────────────────────────────
+        /** A report from a template: created, opened, and its cells run on the kernel. */
+        async createFrom(title: string, blocks: Block[]) {
+            await this.create(title, blocks)
+            await this.runAll()
+        },
+        /** A block a template left open, written as the writer's own: a computed paragraph becomes plain text. */
+        adoptReading(id: string) {
+            const b = this.doc.blocks.find(x => x.id === id)
+            if (!b || !isCell(b) || !b.cell.output?.reading) return
+            this.replaceBlock(id, { id, kind: "p", text: b.cell.output.reading.text })
+        },
+        savedTemplates(): SavedTemplate[] {
+            return useStateStore().setting<SavedTemplate[]>(SAVED_TEMPLATES_KEY, []) ?? []
+        },
+        async saveTemplate(t: SavedTemplate) {
+            const state = useStateStore()
+            await state.loadSettings()
+            const rest = this.savedTemplates().filter(x => x.id !== t.id)
+            await state.setSetting(SAVED_TEMPLATES_KEY, [...rest, t] as any)
+        },
+        async removeTemplate(id: string) {
+            const state = useStateStore()
+            const rest = this.savedTemplates().filter(x => x.id !== id)
+            await state.setSetting(SAVED_TEMPLATES_KEY, rest.length ? (rest as any) : null)
+        },
+
+        // ── Filling a slot ──────────────────────────────────────────────────
+        /** Starts filling a slot: remembered while the writer is in the view it names. */
+        beginFill(cellId: string, number: string) {
+            const b = this.doc.blocks.find(x => x.id === cellId)
+            if (!b || !isCell(b) || b.cell.spec.type !== "slot" || !this.currentId) return null
+            const s = b.cell.spec
+            this.flushSave()
+            this.filling = { reportId: this.currentId, cellId, kind: s.kind, view: s.view, route: s.route, hint: s.hint, title: b.cell.title, number, reportTitle: this.current?.title || "Untitled report" }
+            return s.route
+        },
+        /** Puts what was added where the slot was. */
+        async fillSlot(reportId: string, cellId: string, blocks: Block[]) {
+            if (reportId !== this.currentId) this.open(reportId)
+            const i = this.doc.blocks.findIndex(x => x.id === cellId)
+            if (i < 0) { this.insert(this.doc.blocks[this.doc.blocks.length - 1]?.id ?? null, blocks) }
+            else {
+                this.checkpoint()
+                this.doc.blocks.splice(i, 1, ...blocks)
+                this.changed()
+            }
+            this.filling = null
+            this.flushSave()
+            void this.loadFigures()
+        },
+
         // ── Export ──────────────────────────────────────────────────────────
         exportMeta(): string[] {
             const p = buildProvenance()
@@ -425,6 +511,7 @@ export const useReportsStore = defineStore("reports", {
 })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+let readingCache: { key: string; ctx: ReadingContext } | null = null
 
 /** The session's comparison output is not saved. */
 function stripSession(b: Block): Block {

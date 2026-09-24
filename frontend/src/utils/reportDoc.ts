@@ -7,7 +7,11 @@
 
 export type TextKind = "p" | "h1" | "h2" | "h3" | "ul" | "ol" | "quote" | "code" | "hr" | "table"
 
-export interface TextBlock { id: string; kind: TextKind; text: string; lang?: string }
+/**
+ * A prose block. A prompt is what a template asks the writer to say there:
+ * shown in place of the empty text, never printed.
+ */
+export interface TextBlock { id: string; kind: TextKind; text: string; lang?: string; prompt?: string }
 
 export type TableSource = "components" | "files"
 
@@ -17,6 +21,10 @@ export type CellSpec =
     | { type: "sql"; sql: string; limit: number }
     /** Captured from a view as it was on screen: kept, not re-run here. */
     | { type: "capture"; kind: "table" | "figure"; route: string; view: string }
+    /** Facts written out as a paragraph: computed on the snapshot, re-run like any cell. */
+    | { type: "reading"; reading: string; params?: Record<string, string> }
+    /** A figure or table a template asks for: which view, set how; filled by adding from that view. */
+    | { type: "slot"; kind: "table" | "figure"; route: string; view: string; hint: string }
 
 export interface TableOutput {
     columns: Array<{ id: string; label: string; numeric: boolean }>
@@ -40,7 +48,16 @@ export interface CellOutput {
     /** An evidence figure path (PNG), for captured figures. */
     figure?: string
     pin?: PinOutput
+    reading?: ReadingOutput
     error?: string
+}
+
+/** A computed paragraph: Markdown text, and the numbers in it, to say what moved. */
+export interface ReadingOutput {
+    text: string
+    values: Record<string, number>
+    /** The snapshot lacks what the reading counts; the text says what. */
+    absent?: boolean
 }
 
 /** What a cell ran on: the provenance a reader needs to trust it. */
@@ -79,6 +96,9 @@ export interface ReportDoc {
 
 export const isCell = (b: Block): b is CellBlock => b.kind === "cell"
 
+/** Whether a cell runs on the snapshot; a capture keeps what a view showed, a slot waits to be filled. */
+export const runnable = (spec: CellSpec) => spec.type !== "capture" && spec.type !== "slot"
+
 let counter = 0
 export function newId(): string {
     counter = (counter + 1) % 1e6
@@ -116,7 +136,7 @@ export function blockMarkdown(b: Block, n = 1): string {
         case "quote": return b.text.split("\n").map(l => `> ${l}`).join("\n")
         case "code": return "```" + (b.lang ?? "") + "\n" + b.text + "\n```"
         case "hr": return "---"
-        default: return b.text
+        default: return !b.text && b.prompt ? `<!-- prompt: ${b.prompt.replace(/--/g, "–").replace(/\n/g, " ")} -->` : b.text
     }
 }
 
@@ -169,6 +189,11 @@ export function fromMarkdown(md: string, cells: Map<string, Cell> = new Map()): 
         }
         if (!line.trim()) { flush(); continue }
         let m: RegExpExecArray | null
+        if ((m = /^<!--\s*prompt:\s*(.*?)\s*-->\s*$/.exec(line))) {
+            flush()
+            out.push({ id: newId(), kind: "p", text: "", prompt: m[1] })
+            continue
+        }
         if ((m = /^(#{1,6})\s+(.*)$/.exec(line))) {
             flush()
             const level = Math.min(3, m[1].length)
@@ -339,14 +364,17 @@ export function cellNumbers(blocks: Block[]): Map<string, string> {
     let fig = 0, tab = 0
     for (const b of blocks) {
         if (!isCell(b)) continue
-        if (cellKind(b.cell) === "figure") out.set(b.id, `Figure ${++fig}`)
+        const kind = cellKind(b.cell)
+        if (kind === "reading") continue
+        if (kind === "figure") out.set(b.id, `Figure ${++fig}`)
         else out.set(b.id, `Table ${++tab}`)
     }
     return out
 }
 
-export function cellKind(c: Cell): "figure" | "table" | "pin" {
-    if (c.spec.type === "capture" && c.spec.kind === "figure") return "figure"
+export function cellKind(c: Cell): "figure" | "table" | "pin" | "reading" {
+    if (c.spec.type === "reading") return "reading"
+    if ((c.spec.type === "capture" || c.spec.type === "slot") && c.spec.kind === "figure") return "figure"
     if (c.spec.type === "pin") return c.output?.pin && c.output.figure ? "figure" : "pin"
     return "table"
 }

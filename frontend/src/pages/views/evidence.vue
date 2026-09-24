@@ -54,6 +54,7 @@
           @create="createReport()"
           @rename="(id, t) => reports.rename(id, t)"
           @duplicate="reports.duplicate($event)"
+          @save-template="savingTemplate = reports.list.find(r => r.id === $event) ?? null"
           @remove="reports.remove($event)"
           @reorder="reports.reorder($event)"
           @jump="jump"
@@ -66,6 +67,7 @@
             <h2 class="mt-3 text-lg font-semibold text-neutral-900">Write the report as you go</h2>
             <p class="mt-2 text-sm leading-6 text-neutral-600">A report is prose and evidence together: pins from the pool, tables and queries run on a snapshot, each saying what it ran on and re-runnable when the code moves. Write several from the same pins.</p>
             <button type="button" class="ui-btn ui-btn-primary mt-5" @click="createReport()">Start a report</button>
+            <p class="mt-3 text-xs leading-5 text-neutral-500">From a blank page, or a template written for this codebase: facts counted from the snapshot, the tables to run, the figures to add, and prompts for what they mean.</p>
           </div>
 
           <article v-else class="mx-auto w-full max-w-[880px] pb-[40vh] pl-[118px] pr-12 pt-12">
@@ -128,6 +130,24 @@
                     @blur="onBlur(b.id)"
                     @paste="(bs, a, c) => pasteBlocks(b.id, bs, a, c)"
                   />
+                  <NotebookReading
+                    v-else-if="b.cell.spec.type === 'reading'"
+                    :cell="b.cell"
+                    :selected="selectedId === b.id"
+                    :running="reports.running.includes(b.id)"
+                    :stale="isStale(b)"
+                    :kernel-label="kernelShort"
+                    @select="selectCell(b.id)"
+                    @run="reports.run(b.id)"
+                  />
+                  <NotebookSlot
+                    v-else-if="b.cell.spec.type === 'slot'"
+                    :cell="b.cell"
+                    :number="numbers.get(b.id) ?? ''"
+                    :selected="selectedId === b.id"
+                    @select="selectCell(b.id)"
+                    @open="openSlot(b.id)"
+                  />
                   <NotebookCell
                     v-else
                     :cell="b.cell"
@@ -171,6 +191,8 @@
 
     <template #visualizer-overlays>
       <PdfPreviewSheet v-model="pdfOpen" :blocked="blockedReason"/>
+      <TemplateSheet @blank="createBlank" @created="afterTemplate"/>
+      <SaveTemplateSheet v-model="savingTemplate"/>
     </template>
 
     <template #tab-pool>
@@ -198,6 +220,8 @@
         @spec="s => selectedCell && setSpec(selectedCell.id, s)"
         @run="selectedCell && reports.run(selectedCell.id)"
         @remove="selectedCell && removeSelected()"
+        @adopt="adoptSelected"
+        @fill="selectedCell && openSlot(selectedCell.id)"
         @pin-note="setPinNote"
       />
     </template>
@@ -213,6 +237,10 @@ import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
 import CellPane from "~/components/report/CellPane.vue";
 import InsertMenu, { type InsertChoice } from "~/components/report/InsertMenu.vue";
 import NotebookCell from "~/components/report/NotebookCell.vue";
+import NotebookReading from "~/components/report/NotebookReading.vue";
+import NotebookSlot from "~/components/report/NotebookSlot.vue";
+import SaveTemplateSheet from "~/components/report/SaveTemplateSheet.vue";
+import TemplateSheet from "~/components/report/TemplateSheet.vue";
 import NotebookText from "~/components/report/NotebookText.vue";
 import PoolPane from "~/components/report/PoolPane.vue";
 import PdfPreviewSheet from "~/components/report/PdfPreviewSheet.vue";
@@ -221,13 +249,14 @@ import Icon from "~/components/ui/common/Icon.vue";
 import { useExportables } from "~/composables/useExportables";
 import { useDataStore } from "~/stores/data";
 import { useEvidenceStore } from "~/stores/evidence";
-import { useReportsStore } from "~/stores/reports";
+import { useReportsStore, type ReportRecord } from "~/stores/reports";
+import { useRouter } from "vue-router";
 import { useAuthorsStore } from "~/stores/authors";
 import { namesIn } from "~/utils/reportCells";
 import { useStateStore } from "~/stores/state";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { saveBundle } from "~/utils/files";
-import { cellNumbers, isCell, newId, plainText, type Block, type CellBlock, type CellSpec, type TextKind } from "~/utils/reportDoc";
+import { cellNumbers, isCell, newId, plainText, runnable, type Block, type CellBlock, type CellSpec, type TextKind } from "~/utils/reportDoc";
 import { newestFirst } from "~/utils/scanOrder";
 import { formatScanTime } from "~/utils/time";
 
@@ -281,7 +310,7 @@ const kernelLine = computed(() => {
   const cells = reports.cells.length;
   return `Runs on ${k.label}${k.headCommit ? ` · ${k.headCommit.slice(0, 7)}` : ""} · analysis r${k.revision} · ${cells} ${cells === 1 ? "cell" : "cells"}`;
 });
-const isStale = (b: CellBlock) => b.cell.spec.type !== "capture" && (!b.cell.ranOn || b.cell.ranOn.scanId !== reports.kernel?.id);
+const isStale = (b: CellBlock) => runnable(b.cell.spec) && (!b.cell.ranOn || b.cell.ranOn.scanId !== reports.kernel?.id);
 
 // Columns each table can show, read from the kernel snapshot.
 const columnLists = ref<Record<"components" | "files", string[]>>({ components: [], files: [] });
@@ -315,9 +344,11 @@ const outline = computed<OutlineItem[]>(() => {
   const out: OutlineItem[] = [];
   let depth = 0;
   for (const b of reports.doc.blocks) {
+    if (isCell(b) && b.cell.spec.type === "reading") continue;
     if (isCell(b)) {
+      const s = b.cell.spec;
       const t = b.cell.title || b.cell.output?.pin?.title || "";
-      out.push({ id: b.id, label: `${numbers.value.get(b.id)}${t ? ` · ${t}` : ""}`, indent: depth, heading: false, icon: b.cell.spec.type === "capture" && b.cell.spec.kind === "figure" ? "image" : b.cell.spec.type === "pin" ? "bookmark" : "table", stale: isStale(b) });
+      out.push({ id: b.id, label: `${numbers.value.get(b.id)}${t ? ` · ${t}` : ""}${s.type === "slot" ? " (to add)" : ""}`, indent: depth, heading: false, icon: (s.type === "capture" || s.type === "slot") && s.kind === "figure" ? "image" : s.type === "pin" ? "bookmark" : "table", stale: isStale(b) });
     } else if (b.kind === "h1" || b.kind === "h2" || b.kind === "h3") {
       const level = Number(b.kind[1]) - 1;
       depth = level + 1;
@@ -568,12 +599,39 @@ function openReport(id: string) {
   selectedId.value = null;
   reports.open(id);
 }
-async function createReport() {
+/** New report: the template gallery, a blank page among its choices. */
+function createReport() {
+  reports.choosingTemplate = true;
+}
+async function createBlank() {
   raw.value = false;
   selectedId.value = null;
   await reports.create();
   await nextTick();
   editFirst();
+}
+function afterTemplate() {
+  raw.value = false;
+  editingId.value = null;
+  selectedId.value = null;
+  scroller.value?.scrollTo({ top: 0 });
+}
+const savingTemplate = ref<ReportRecord | null>(null);
+
+// ── Slots and computed paragraphs ───────────────────────────────────────
+const router = useRouter();
+/** A slot's view, set the way the template asks; Add to report there fills it. */
+function openSlot(id: string) {
+  const route = reports.beginFill(id, numbers.value.get(id) ?? "");
+  if (route) void router.push(route);
+}
+/** A computed paragraph made the writer's own: plain text that no longer re-runs. */
+function adoptSelected() {
+  const id = selectedId.value;
+  if (!id) return;
+  reports.adoptReading(id);
+  selectedId.value = null;
+  edit(id, "end");
 }
 
 // ── Keyboard: command mode, as in a notebook ─────────────────────────────

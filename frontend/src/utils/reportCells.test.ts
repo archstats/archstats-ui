@@ -21,6 +21,7 @@ describe("report cells", () => {
             pin: () => null,
             label: id => id.split("__").pop()!,
             context: () => ({ lens: "Domain" }),
+            readings: { query: async () => [], revision: 3, label: id => id, aliases: {} },
         }
         const cell: Cell = { spec, title: "", caption: "", output: null, ranOn: null }
         const first = await runCell(cell, ctx)

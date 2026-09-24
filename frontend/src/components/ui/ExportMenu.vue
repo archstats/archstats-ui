@@ -271,8 +271,17 @@ async function revealLast() {
 }
 
 let off: (() => void) | null = null;
+let offAdd: (() => void) | null = null;
 onMounted(() => {
   off = registerCommand("export", () => { dark.value = isDarkAppearance(); if (items.value.length || props.headless) open.value = !open.value; });
+  // Filling a report's slot: what this view shows of the slot's kind, straight into Add to report.
+  if (props.headless) offAdd = registerCommand("add-to-report", async () => {
+    const kind = reportsStore.filling?.kind;
+    const ready = items.value.filter(i => i.kind !== "figure" || i.ready());
+    const item = ready.find(i => i.kind === kind) ?? ready.find(i => i.kind !== "document") ?? ready[0];
+    if (!item) { fail("Add to report", new Error("this view has nothing to add yet")); return; }
+    await addToReport(item);
+  });
 });
-onBeforeUnmount(() => { off?.(); if (statusTimer) clearTimeout(statusTimer); });
+onBeforeUnmount(() => { off?.(); offAdd?.(); if (statusTimer) clearTimeout(statusTimer); });
 </script>

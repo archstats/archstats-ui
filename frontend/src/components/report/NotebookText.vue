@@ -22,8 +22,8 @@
     <div
       v-else
       class="nb-rendered cursor-text"
-      :class="[kindClass, !block.text.trim() ? 'nb-empty' : '']"
-      :data-placeholder="isLast ? 'Write, or press / to add evidence' : ''"
+      :class="[kindClass, !block.text.trim() ? 'nb-empty' : '', !block.text.trim() && block.prompt ? 'nb-prompt' : '']"
+      :data-placeholder="block.prompt || (isLast ? 'Write, or press / to add evidence' : '')"
       @mousedown="onRenderedDown"
       @click="onRenderedClick"
       v-html="html"
@@ -63,7 +63,7 @@ const KIND_CLASS: Record<TextKind, string> = {
   p: "nb-p", h1: "nb-h1", h2: "nb-h2", h3: "nb-h3", ul: "nb-li nb-ul", ol: "nb-li nb-ol", quote: "nb-quote", code: "nb-code", hr: "", table: "nb-table",
 };
 const kindClass = computed(() => KIND_CLASS[props.block.kind]);
-const placeholder = computed(() => ({
+const placeholder = computed(() => props.block.prompt || ({
   p: "Write, or press / to add evidence", h1: "Heading", h2: "Heading", h3: "Heading", ul: "List item", ol: "List item",
   quote: "Quote", code: "Code", hr: "", table: "| a | b |",
 } as Record<TextKind, string>)[props.block.kind]);
@@ -282,6 +282,10 @@ textarea.nb-li { padding-left: 26px; }
 .nb-empty { min-height: calc(var(--nb-body) * var(--nb-lh) + 6px); }
 .nb-empty::before { content: attr(data-placeholder); color: rgb(var(--c-neutral-400)); pointer-events: none; }
 .nb-input::placeholder { color: rgb(var(--c-neutral-400)); }
+/* A template's prompt: where the writer's own words go. Never printed. */
+.nb-prompt { position: relative; }
+.nb-prompt::before { font-style: italic; color: rgb(var(--c-neutral-500)); }
+.nb-prompt::after { content: ""; position: absolute; left: -12px; top: 7px; bottom: 7px; border-left: 2px solid rgb(var(--c-neutral-200)); }
 .nb-input::selection, .nb-rendered ::selection { background: rgb(var(--c-accent-200) / 0.7); }
 .nb-input { caret-color: rgb(var(--c-accent-600)); }
 </style>

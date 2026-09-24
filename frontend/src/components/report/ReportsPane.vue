@@ -38,6 +38,7 @@
           <div class="ui-menu absolute right-0 top-8 z-50 w-44 animate-in" role="menu">
             <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; startRename(r)">Rename</button>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; $emit('duplicate', r.id)">Duplicate</button>
+            <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; $emit('saveTemplate', r.id)">Save as template…</button>
             <div class="my-1 hairline-t"></div>
             <button type="button" class="ui-menu-item text-red-700" role="menuitem" @click="menu = null; confirming = r.id">Delete…</button>
           </div>
@@ -50,7 +51,7 @@
           </div>
         </div>
       </li>
-      <li v-if="!reports.length" class="px-2 py-2 text-xs leading-5 text-neutral-500">No reports yet. Start one, then add pins from the pool.</li>
+      <li v-if="!reports.length" class="px-2 py-2 text-xs leading-5 text-neutral-500">No reports yet. Start one from a template or a blank page.</li>
     </ul>
 
     <div class="flex min-h-0 flex-1 flex-col hairline-t">
@@ -95,6 +96,7 @@ const emit = defineEmits<{
   (e: "create"): void
   (e: "rename", id: string, title: string): void
   (e: "duplicate", id: string): void
+  (e: "saveTemplate", id: string): void
   (e: "remove", id: string): void
   (e: "reorder", ids: string[]): void
   (e: "jump", id: string): void

@@ -2,7 +2,7 @@
   <!-- The selected cell: what it is made of, what it ran on, what moved. -->
   <div v-if="block" class="flex flex-col gap-4">
     <div>
-      <p class="text-[13px] font-semibold text-neutral-900">{{ number }}{{ title ? ` · ${title}` : "" }}</p>
+      <p class="text-[13px] font-semibold text-neutral-900">{{ spec.type === 'reading' ? reading?.label ?? "Computed paragraph" : `${number}${title ? ` · ${title}` : ""}` }}</p>
       <p class="mt-0.5 text-xs text-neutral-500">{{ what }}</p>
     </div>
 
@@ -56,6 +56,33 @@
       </label>
     </section>
 
+    <!-- A computed paragraph: what it counts, how it is set, and the way out. -->
+    <section v-else-if="spec.type === 'reading'" class="flex flex-col gap-2">
+      <h3 class="ui-label">Counted</h3>
+      <p class="text-xs leading-5 text-neutral-600">{{ reading?.describe }}</p>
+      <template v-for="p in reading?.params ?? []" :key="p.id">
+        <div v-if="p.choices" class="flex items-center justify-between gap-2 text-xs text-neutral-600">
+          {{ p.label }}
+          <div class="ui-segmented" role="group" :aria-label="p.label">
+            <button v-for="c in p.choices" :key="c.value" type="button" :aria-pressed="(spec.params?.[p.id] ?? p.choices[0].value) === c.value" @click="setParam(p.id, c.value)">{{ c.label }}</button>
+          </div>
+        </div>
+        <label v-else class="flex items-center justify-between gap-2 text-xs text-neutral-600">
+          {{ p.label }}
+          <input :value="spec.params?.[p.id] ?? ''" class="ui-input ui-input-sm w-44 font-mono" list="cellpane-components" placeholder="A component" @change="setParam(p.id, ($event.target as HTMLInputElement).value.trim())">
+          <datalist id="cellpane-components"><option v-for="c in componentNames" :key="c" :value="c"/></datalist>
+        </label>
+      </template>
+      <p class="text-[11px] leading-4 text-neutral-500">Facts only; it re-runs on a newer snapshot and says what moved. To change the words, make it yours: it becomes a paragraph you edit, and stops re-running.</p>
+      <button type="button" class="ui-btn ui-btn-sm self-start" :disabled="!cell.output?.reading" @click="$emit('adopt')">Write as my own</button>
+    </section>
+
+    <section v-else-if="spec.type === 'slot'" class="flex flex-col gap-2">
+      <h3 class="ui-label">To add</h3>
+      <p class="text-xs leading-5 text-neutral-600">From {{ spec.view }}: {{ spec.hint }}. Open it, then Export › Add to report; what you add takes this place and number.</p>
+      <button type="button" class="ui-btn ui-btn-sm self-start" @click="$emit('fill')">Open {{ spec.view }}</button>
+    </section>
+
     <section v-else-if="spec.type === 'capture'" class="flex flex-col gap-2">
       <h3 class="ui-label">Captured</h3>
       <p class="text-xs leading-5 text-neutral-600">Kept as {{ spec.view }} showed it. To bring it up to date, open the view and add it again.</p>
@@ -63,7 +90,7 @@
     </section>
 
     <section class="flex flex-col gap-2">
-      <h3 class="ui-label">Ran on</h3>
+      <h3 class="ui-label">{{ spec.type === 'slot' ? 'Runs on' : 'Ran on' }}</h3>
       <dl v-if="cell.ranOn" class="ui-kv">
         <dt>Snapshot</dt><dd>{{ cell.ranOn.label }}</dd>
         <template v-if="cell.ranOn.commit"><dt>Commit</dt><dd>{{ cell.ranOn.commit.slice(0, 12) }}</dd></template>
@@ -73,10 +100,10 @@
         <template v-if="cell.ranOn.role"><dt>Files</dt><dd>{{ cell.ranOn.role }}</dd></template>
         <dt>At</dt><dd>{{ new Date(cell.ranOn.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }}</dd>
       </dl>
-      <p v-else class="text-xs text-neutral-500">Not run yet.</p>
+      <p v-else class="text-xs text-neutral-500">{{ spec.type === 'slot' ? "What you add keeps the snapshot it came from." : "Not run yet." }}</p>
       <p v-if="change" class="text-xs leading-5 text-neutral-800">{{ change }}</p>
       <div class="flex gap-2">
-        <button v-if="spec.type !== 'capture'" type="button" class="ui-btn ui-btn-sm" :class="stale ? 'ui-btn-primary' : ''" :disabled="running" @click="$emit('run')">
+        <button v-if="spec.type !== 'capture' && spec.type !== 'slot'" type="button" class="ui-btn ui-btn-sm" :class="stale ? 'ui-btn-primary' : ''" :disabled="running" @click="$emit('run')">
           {{ running ? "Running…" : `Run on ${kernelLabel}` }}
         </button>
         <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto text-red-700" @click="$emit('remove')">Remove</button>
@@ -89,6 +116,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
+import { useDataStore } from "~/stores/data";
+import { readingDef } from "~/utils/readings";
 import { describeChange } from "~/utils/reportCells";
 import type { CellBlock, CellSpec } from "~/utils/reportDoc";
 
@@ -103,7 +132,13 @@ const props = defineProps<{
   columns: Record<"components" | "files", string[]>
   label: (id: string) => string
 }>();
-const emit = defineEmits<{ (e: "spec", spec: CellSpec): void; (e: "run"): void; (e: "remove"): void; (e: "pinNote", note: string): void }>();
+const emit = defineEmits<{ (e: "spec", spec: CellSpec): void; (e: "run"): void; (e: "remove"): void; (e: "pinNote", note: string): void; (e: "adopt"): void; (e: "fill"): void }>();
+const data = useDataStore();
+const reading = computed(() => (spec.value.type === "reading" ? readingDef(spec.value.reading) : undefined));
+const componentNames = computed(() => (reading.value?.params?.some(p => p.kind === "component") ? (data.allComponents ?? []).map((c: any) => String(c.name)).filter((n: string) => n !== ".").sort() : []));
+function setParam(id: string, value: string) {
+  emit("spec", { ...spec.value, params: { ...(spec.value.params ?? {}), [id]: value } });
+}
 
 const cell = computed(() => props.block!.cell);
 const spec = computed(() => cell.value.spec as any);
@@ -114,6 +149,8 @@ const what = computed(() => {
   if (s.type === "table") return `The ${s.limit} ${s.source} with the ${s.desc ? "highest" : "lowest"} ${props.label(s.sort).toLowerCase()}.`;
   if (s.type === "sql") return "A read-only query on the snapshot.";
   if (s.type === "pin") return "A pin from the pool: its values as pinned and now.";
+  if (s.type === "reading") return "A paragraph counted from the snapshot.";
+  if (s.type === "slot") return `A ${s.kind} the template asks for, not added yet.`;
   return `Captured from ${s.view}.`;
 });
 const change = computed(() => describeChange(cell.value.previous, cell.value.output, props.label));

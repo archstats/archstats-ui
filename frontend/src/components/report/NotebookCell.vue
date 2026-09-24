@@ -44,7 +44,7 @@
 
     <div class="px-4 pb-1 pt-2">
       <!-- SQL written in the cell, like a notebook's code cell. -->
-      <div v-if="cell.spec.type === 'sql'" class="mb-2">
+      <div v-if="cell.spec.type === 'sql' && (selected || !cell.spec.sql.trim() || !cell.output)" class="mb-2">
         <textarea
           :value="cell.spec.sql"
           rows="3"
@@ -103,7 +103,7 @@ import { Loader2, Play } from "lucide-vue-next";
 import { describeChange, displayTable, provenanceLine } from "~/utils/reportCells";
 import type { Cell, CellSpec } from "~/utils/reportDoc";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   cell: Cell
   number: string
   selected: boolean
@@ -117,7 +117,7 @@ const props = defineProps<{
   figureMissing?: boolean
   /** The run gutter; a preview outside the notebook goes without. */
   gutter?: boolean
-}>();
+}>(), { gutter: true, figureMissing: false });
 defineEmits<{
   (e: "select"): void
   (e: "run"): void
@@ -134,6 +134,8 @@ const kindLabel = computed(() => {
   if (s.type === "pin") return "pin";
   if (s.type === "sql") return "SQL";
   if (s.type === "table") return s.source === "files" ? "files" : "components";
+  if (s.type === "reading") return "computed";
+  if (s.type === "slot") return "to add";
   return s.kind === "figure" ? "figure" : "captured table";
 });
 const defaultTitle = computed(() => props.cell.output?.pin?.title ?? (props.cell.spec.type === "capture" ? props.cell.spec.view : ""));

@@ -4,6 +4,7 @@
 // what moved.
 
 import { measurePin, pinStatus, type PinValues } from "~/utils/evidence"
+import { runReading, type ReadingContext } from "~/utils/readings"
 import {
     blockMarkdown, cellNumbers, inlineRuns, isCell, tableCells,
     type Block, type Cell, type CellOutput, type CellSpec, type RanOn, type TableOutput, type TableSource,
@@ -69,6 +70,8 @@ export interface RunContext {
     label: (metric: string) => string
     /** Lens, scope and role facet at the time of the run. */
     context: () => { lens?: string; scope?: string; role?: string }
+    /** What readings run with; one per snapshot, so the snapshot is probed once. */
+    readings: ReadingContext
 }
 
 const isNumeric = (rows: Array<Record<string, unknown>>, id: string) => {
@@ -86,14 +89,16 @@ function tableOf(rows: Array<Record<string, unknown>>, ids: string[], label: (id
     return { columns: ids.map(id => ({ id, label: id === "name" ? "Name" : label(id), numeric: isNumeric(rows, id) })), rows, total }
 }
 
-/** Runs one cell on the kernel snapshot. A capture has nothing to run and comes back as it was. */
+/** Runs one cell on the kernel snapshot. A capture or a slot has nothing to run and comes back as it was. */
 export async function runCell(cell: Cell, ctx: RunContext): Promise<Cell> {
     const ranOn: RanOn = { scanId: ctx.scan.id, label: ctx.scan.label, commit: ctx.scan.headCommit, revision: ctx.scan.revision, at: new Date().toISOString(), ...ctx.context() }
     const spec = cell.spec
     let output: CellOutput
     try {
-        if (spec.type === "capture") return cell
-        if (spec.type === "table") {
+        if (spec.type === "capture" || spec.type === "slot") return cell
+        if (spec.type === "reading") {
+            output = { reading: await runReading(spec.reading, spec.params, ctx.readings) }
+        } else if (spec.type === "table") {
             const has = await ctx.columns(spec.source)
             const rows = await ctx.query(tableSql(spec, c => has.has(c), ctx.scan.revision))
             const [count] = await ctx.query(`SELECT count(*) AS n FROM ${spec.source}`)
@@ -139,6 +144,13 @@ export function describeChange(prev: CellOutput | null | undefined, next: CellOu
             changed ? `${changed} changed` : "", !entered && !left && !changed && moved ? `${moved} reordered` : "",
         ].filter(Boolean)
         return parts.length ? `Since the last run: ${parts.join(", ")}.` : "Unchanged since the last run."
+    }
+    if (prev.reading && next.reading) {
+        const a = prev.reading.values, b = next.reading.values
+        const moved = Object.keys(b).filter(k => a[k] !== undefined && Math.abs(a[k] - b[k]) > 1e-9)
+        const fresh = Object.keys(b).filter(k => a[k] === undefined).length + Object.keys(a).filter(k => b[k] === undefined).length
+        if (!moved.length && !fresh) return prev.reading.text === next.reading.text ? "Unchanged since the last run." : "Reworded since the last run; the numbers held."
+        return `Since the last run: ${[...moved.map(k => `${k} ${fmtValue(a[k])} → ${fmtValue(b[k])}`), fresh ? `${fresh} named ${fresh === 1 ? "item" : "items"} changed` : ""].filter(Boolean).join(", ")}.`
     }
     if (prev.pin && next.pin) {
         const a = prev.pin.now ?? prev.pin.values, b = next.pin.now
@@ -206,9 +218,12 @@ export function exportMarkdown(title: string, meta: string[], blocks: Block[], o
         const prev = blocks[i - 1]
         n = b.kind === "ol" ? (prev?.kind === "ol" ? n + 1 : 1) : 0
         const tight = prev && prev.kind === b.kind && (b.kind === "ul" || b.kind === "ol")
+        if (!isCell(b) && !b.text.trim() && b.kind !== "hr") return
+        if (isCell(b) && b.cell.spec.type === "slot") return
         if (i > 0 && !tight) out.push("")
         if (!isCell(b)) { out.push(blockMarkdown(b, n)); return }
         const c = b.cell
+        if (c.output?.reading) { out.push(c.output.reading.text); return }
         const head = [numbers.get(b.id), cellTitle(c)].filter(Boolean).join(". ")
         out.push(`**${head}**`, "")
         const fig = opts.figureFile(b.id)
@@ -251,6 +266,9 @@ export function pdfBlocks(blocks: Block[], opts: { workspace: string; label: (id
     for (const b of blocks) {
         if (isCell(b)) {
             const c = b.cell
+            // A computed paragraph prints as prose; an unfilled slot is left out.
+            if (c.spec.type === "slot") continue
+            if (c.spec.type === "reading") { if (c.output?.reading) out.push({ kind: "p", runs: pdfRuns(c.output.reading.text) }); continue }
             const title = [numbers.get(b.id), cellTitle(c)].filter(Boolean).join(". ")
             const caption = [c.output?.pin?.note, c.caption, c.output?.error].filter(Boolean).join(" ")
             const provenance = provenanceLine(c.ranOn, opts.workspace)

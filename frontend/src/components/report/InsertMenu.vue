@@ -97,6 +97,13 @@
                 </table>
               </template>
 
+              <!-- A computed paragraph, counted on the report's snapshot. -->
+              <template v-else-if="current.kind === 'reading'">
+                <p v-if="!readingPreview" class="mt-3 text-xs text-neutral-500">Counting on {{ kernelLabel }}…</p>
+                <p v-else class="ins-reading mt-3 rounded-md bg-surface px-3 py-2.5 text-[13px] leading-[1.6] hairline" :class="readingPreview.absent ? 'italic text-neutral-500' : 'text-neutral-800'" v-html="inlineHtml(readingPreview.text)"></p>
+                <p class="mt-2 text-[11px] leading-4 text-neutral-500">Facts only, counted as the views count them; what they mean stays yours to write.</p>
+              </template>
+
               <pre v-else-if="current.kind === 'sql' && current.sql" class="mt-3 whitespace-pre-wrap rounded-md bg-surface px-3 py-2 font-mono text-[11.5px] leading-5 text-neutral-700 hairline">{{ current.sql }}</pre>
             </div>
             <div class="flex items-center gap-3 px-4 py-2 text-[11px] text-neutral-500 hairline-t">
@@ -116,7 +123,8 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import { fuzzyScore } from "~/utils/fuzzy";
 import { displayTable, fmtValue, runCell, TABLE_PRESETS, type RunContext } from "~/utils/reportCells";
-import type { CellSpec, TableSource, TextKind } from "~/utils/reportDoc";
+import { inlineHtml, type CellSpec, type ReadingOutput, type TableSource, type TextKind } from "~/utils/reportDoc";
+import { READINGS, runReading } from "~/utils/readings";
 
 export type InsertChoice =
   | { type: "text"; kind: TextKind; lang?: string }
@@ -142,7 +150,7 @@ const emit = defineEmits<{ (e: "choose", c: InsertChoice): void; (e: "close"): v
 
 interface Row {
   key: string
-  kind: "text" | "pin" | "table" | "sql"
+  kind: "text" | "pin" | "table" | "sql" | "reading"
   label: string
   hint?: string
   detail?: string
@@ -156,6 +164,7 @@ interface Row {
   pin?: PinLike
   preset?: (typeof TABLE_PRESETS)[number]
   sql?: string
+  reading?: string
 }
 
 const TEXT: Array<Omit<Row, "group" | "kind" | "key">> = [
@@ -174,6 +183,9 @@ const all = computed<Row[]>(() => {
   const out: Row[] = [];
   for (const p of props.pins) {
     out.push({ key: `pin:${p.id}`, kind: "pin", group: "Pins", label: p.title || "Untitled pin", hint: `${p.kind}${props.usage.get(p.id)?.length ? ` · in ${props.usage.get(p.id)!.length} report${props.usage.get(p.id)!.length === 1 ? "" : "s"}` : ""}`, icon: p.kind === "view" ? "image" : p.kind === "cycle" ? "refresh-cw" : "bookmark", pin: p, detail: "Its values as pinned and as they are now, with the note." });
+  }
+  for (const r of READINGS) {
+    out.push({ key: `reading:${r.id}`, kind: "reading", group: "Facts, written out", label: r.label, hint: "A paragraph counted from the snapshot", icon: "file-text", reading: r.id, detail: r.describe });
   }
   for (const t of TABLE_PRESETS) {
     const has = props.columns[t.source];
@@ -218,6 +230,7 @@ function focusInput() { inputEl.value?.focus(); }
 function choose(r: Row | undefined) {
   if (!r) return;
   if (r.kind === "text") emit("choose", { type: "text", kind: r.textKind!, lang: r.lang });
+  else if (r.kind === "reading") emit("choose", { type: "cell", spec: { type: "reading", reading: r.reading! } });
   else if (r.kind === "pin") emit("choose", { type: "cell", spec: { type: "pin", pinId: r.pin!.id } });
   else if (r.kind === "table") emit("choose", { type: "cell", spec: { type: "table", source: r.preset!.source, columns: r.preset!.columns, sort: r.preset!.sort, desc: r.preset!.desc, limit: limit.value }, title: r.preset!.label });
   else emit("choose", { type: "cell", spec: { type: "sql", sql: r.sql ?? "SELECT name, complexity__lines\nFROM components\nORDER BY complexity__lines DESC", limit: 50 }, title: r.sql ? r.label : "" });
@@ -245,6 +258,17 @@ watch([current, limit], async () => {
   else preview.value = displayTable(cell, props.label);
 }, { immediate: true });
 
+const readingPreview = ref<ReadingOutput | null>(null);
+let askedReading = 0;
+watch(current, async (r) => {
+  readingPreview.value = null;
+  if (!r || r.kind !== "reading" || !props.run) return;
+  const mine = ++askedReading;
+  let out: ReadingOutput;
+  try { out = await runReading(r.reading!, undefined, props.run.readings); } catch (e) { out = { text: e instanceof Error ? e.message : String(e), values: {}, absent: true }; }
+  if (mine === askedReading) readingPreview.value = out;
+}, { immediate: true });
+
 // Placed under the caret's block, kept inside the window.
 const pos = computed(() => {
   const w = Math.min(640, window.innerWidth - 24);
@@ -256,3 +280,8 @@ const pos = computed(() => {
 
 onMounted(() => nextTick(focusInput));
 </script>
+
+<style scoped>
+.ins-reading :deep(strong) { font-weight: 600; color: rgb(var(--c-neutral-950)); }
+.ins-reading :deep(code) { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.86em; background: rgb(var(--c-neutral-100)); border-radius: 4px; padding: 1px 4px; }
+</style>
