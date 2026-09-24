@@ -88,6 +88,29 @@ export interface Dimension {
     hue: number
     description: string
     createdAt: number
+    /** The architecture agreed for this lens: which of its groups may depend on which. */
+    declared?: Declaration
+}
+
+/**
+ * A lens's declared dependencies. Layers (horizontal lenses) run top to
+ * bottom and a layer may use any layer below it (relaxed layering); pairs
+ * override the layers either way. What neither says is not judged, unless
+ * the declaration says to forbid it.
+ */
+export interface Declaration {
+    /** Group ids, top layer first. */
+    layers: string[]
+    pairs: Array<{ from: string; to: string; verdict: 'allowed' | 'forbidden' }>
+    unset: 'unjudged' | 'forbidden'
+}
+
+function normaliseDeclaration(raw: any): Declaration | undefined {
+    if (!raw || typeof raw !== 'object') return undefined
+    const layers = Array.isArray(raw.layers) ? raw.layers.filter((x: unknown): x is string => typeof x === 'string') : []
+    const pairs = Array.isArray(raw.pairs) ? raw.pairs.filter((p: any) => p && typeof p.from === 'string' && typeof p.to === 'string' && (p.verdict === 'allowed' || p.verdict === 'forbidden')).map((p: any) => ({ from: p.from, to: p.to, verdict: p.verdict })) : []
+    if (layers.length === 0 && pairs.length === 0) return undefined
+    return { layers, pairs, unset: raw.unset === 'forbidden' ? 'forbidden' : 'unjudged' }
 }
 
 export function units(kind: UnitKind, names: Iterable<string>): Member[] {
@@ -246,6 +269,7 @@ function normaliseDimension(raw: any, order: number): Dimension | null {
         hue: Number.isFinite(raw.hue) ? raw.hue : 0,
         description: typeof raw.description === 'string' ? raw.description : '',
         createdAt: Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now(),
+        ...(normaliseDeclaration(raw.declared) ? { declared: normaliseDeclaration(raw.declared) } : {}),
     }
 }
 
@@ -573,6 +597,15 @@ export const useGroupsStore = defineStore('groups', {
             this._persist()
         },
 
+        /** Records (or, with null, removes) a lens's declared dependencies. */
+        declare(name: string, declared: Declaration | null) {
+            const d = this.dimensionRecords.find(x => x.name === name)
+            if (!d) return
+            if (declared && (declared.layers.length || declared.pairs.length)) d.declared = { layers: [...declared.layers], pairs: declared.pairs.map(p => ({ ...p })), unset: declared.unset }
+            else delete d.declared
+            this._persist()
+        },
+
         /** Moves a dimension to a position in the order. */
         moveDimension(name: string, to: number) {
             const list = this.dimensionRecords.slice().sort((a, b) => a.order - b.order)
@@ -734,9 +767,20 @@ export const useGroupsStore = defineStore('groups', {
             this._persist()
         },
 
-        deleteGroup(id: string) {
+        /** Deletes a group; a declaration naming it forgets it (and says how much, for the caller to tell). */
+        deleteGroup(id: string): number {
             this.groups = this.groups.filter(g => g.id !== id)
+            let dropped = 0
+            for (const d of this.dimensionRecords) {
+                if (!d.declared) continue
+                const before = d.declared.layers.length + d.declared.pairs.length
+                d.declared.layers = d.declared.layers.filter(x => x !== id)
+                d.declared.pairs = d.declared.pairs.filter(p => p.from !== id && p.to !== id)
+                dropped += before - d.declared.layers.length - d.declared.pairs.length
+                if (!d.declared.layers.length && !d.declared.pairs.length) delete d.declared
+            }
             this._persist()
+            return dropped
         },
 
         /** Renames a dimension; renaming onto an existing one merges into it. */

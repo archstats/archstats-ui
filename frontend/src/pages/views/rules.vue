@@ -109,6 +109,45 @@
             </section>
           </template>
 
+          <!-- The lens's own rules: the architecture declared on it, checked
+               import by import. Independent of the project's module rules. -->
+          <section v-if="lensDeclared" id="lens" class="mt-10">
+            <div class="flex items-baseline gap-3">
+              <h2 class="ui-section-title">Lens rules: {{ lens.active }}</h2>
+              <span class="text-sm text-neutral-500">{{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} imports cross the declared order` : "Nothing crosses the declared order" }}</span>
+              <button type="button" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">Edit declaration…</button>
+            </div>
+            <p v-if="lensCheck.ambiguous || lensCheck.unplacedFrom" class="mt-1 text-sm text-neutral-500">
+              <template v-if="lensCheck.unplacedFrom">{{ lensCheck.unplacedFrom.toLocaleString("en-US") }} imports come from files in no group and are not judged. </template>
+              <template v-if="lensCheck.ambiguous">{{ lensCheck.ambiguous.toLocaleString("en-US") }} go to a component the groups split, where the target file is unknown: marked ambiguous.</template>
+            </p>
+            <LoadingState v-if="lensLoading" text="Checking the declaration…"/>
+            <div v-for="c in lensCheck.crossings" :key="c.from + '>' + c.to" class="ui-panel mt-4 overflow-hidden">
+              <div class="flex items-baseline gap-2 px-4 py-2.5 hairline-b">
+                <span class="text-base font-medium text-neutral-900">{{ groupName(c.from) }}</span>
+                <Icon icon="arrow-right" :size="12" class="text-neutral-400"/>
+                <span class="text-base font-medium text-neutral-900">{{ groupName(c.to) }}</span>
+                <span class="ml-auto font-mono text-xs text-neutral-500">{{ c.edges.length }} import{{ c.edges.length === 1 ? "" : "s" }} · {{ c.refs.toLocaleString("en-US") }} refs<template v-if="c.typeOnly"> · also {{ c.typeOnly }} type-only</template></span>
+              </div>
+              <table class="ui-table">
+                <thead><tr><th>From</th><th>To</th><th class="w-24">How</th><th>Where</th></tr></thead>
+                <tbody>
+                  <tr v-for="e in c.edges.slice(0, lensShown(c))" :key="e.file + e.toComponent" class="group">
+                    <td class="max-w-0 truncate font-mono text-sm" :title="e.fromComponent">{{ e.fromComponent }}</td>
+                    <td class="max-w-0 truncate font-mono text-sm" :title="e.toComponent">{{ e.toComponent }}<span v-if="e.ambiguous" class="ui-tag ml-2" title="The target component is split between groups">ambiguous</span></td>
+                    <td class="text-sm text-neutral-600">{{ e.kind === "dynamic" ? "runtime lookup" : "import" }}</td>
+                    <td class="relative max-w-0 pr-9">
+                      <OpenInEditor :file="e.file" :line="e.line ?? undefined" class="absolute right-1 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"/>
+                      <router-link :to="`${filePath(e.file, 'source')}${e.line ? `#L${e.line}` : ''}`" class="block truncate font-mono text-sm text-neutral-700 hover:underline" :title="e.file">{{ e.file.split("/").pop() }}{{ e.line ? `:${e.line}` : "" }}</router-link>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button v-if="c.edges.length > lensShown(c)" type="button" class="ui-btn ui-btn-sm ui-btn-quiet m-2" @click="lensExpanded = new Set([...lensExpanded, c.from + '>' + c.to])">Show all {{ c.edges.length }}</button>
+            </div>
+          </section>
+          <DeclareSheet v-model="declaring"/>
+
         </div>
       </div>
     </template>
@@ -118,6 +157,19 @@
 <script setup lang="ts">
 import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { filePath } from "~/utils/routes"
+import DeclareSheet from "~/components/groups/DeclareSheet.vue"
+import { useLensFindings } from "~/composables/useLensFindings"
+import { useLensStore } from "~/stores/lens"
+import { useGroupsStore } from "~/stores/groups"
+import { computed as vueComputed, ref as vueRef } from "vue"
+
+const lens = useLensStore()
+const lensGroupsStore = useGroupsStore()
+const declaring = vueRef<string | null>(null)
+const lensExpanded = vueRef(new Set<string>())
+const { check: lensCheck, declared: lensDeclared, loading: lensLoading } = useLensFindings(vueComputed(() => lens.active))
+const groupName = (id: string) => lensGroupsStore.getGroupById(id)?.name ?? id
+const lensShown = (c: { from: string; to: string }) => (lensExpanded.value.has(c.from + ">" + c.to) ? Infinity : 20)
 import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"

@@ -77,6 +77,9 @@
         <button type="button" :aria-pressed="rep === 'chord'" @click="setState({ rep: 'chord' })">Chord</button>
         <button type="button" :aria-pressed="rep === 'crosscut'" title="Two lenses at once: rows by one, columns by the other" @click="setState({ rep: 'crosscut' })">Cross-cut</button>
       </div>
+      <button v-if="rep === 'matrix' && crossingKeys.size" type="button" class="ui-btn ui-btn-sm" :aria-pressed="showCrossings" :class="{ 'bg-neutral-100': showCrossings }" :title="`Mark the ${crossingKeys.size} group pairs whose imports cross ${lens.active}'s declared order`" @click="showCrossings = !showCrossings">
+        <Icon icon="scale" :size="13" :class="showCrossings ? 'text-red-600' : 'text-neutral-500'"/><span>Crossings</span>
+      </button>
       <div v-if="rep === 'matrix'" class="ui-segmented" role="group" aria-label="Matrix order" :title="model.directed.value ? '' : 'Co-change has no direction, so it has no levels'">
         <button type="button" :aria-pressed="!orderByLevels" @click="setState({ order: 'name' })">Name</button>
         <button type="button" :aria-pressed="orderByLevels" :disabled="!model.directed.value" :title="`Callers on top, dependencies below; ${levels.depth} levels, tangles boxed`" @click="setState({ order: 'levels' })">Levels</button>
@@ -213,6 +216,7 @@
         :badges="model.badges.value"
         :highlight="suggestHighlight"
         :levels="rep === 'matrix' && orderByLevels ? levels : null"
+        :marked-keys="rep === 'matrix' && showCrossings ? crossingKeys : undefined"
         @select="onSelect"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
@@ -347,7 +351,8 @@ import Icon from "~/components/ui/common/Icon.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
 import ConnectionsGraph from "~/components/connections/ConnectionsGraph.vue";
 import ConnectionsMatrix from "~/components/connections/ConnectionsMatrix.vue";
-import { levelize } from "~/utils/connections";
+import { edgeKey as crossingEdgeKey, levelize } from "~/utils/connections";
+import { useLensFindings } from "~/composables/useLensFindings";
 import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";
 import ConnectionsInspector from "~/components/connections/ConnectionsInspector.vue";
 import ConnectionsCrosscut from "~/components/connections/ConnectionsCrosscut.vue";
@@ -419,6 +424,10 @@ const draft = useDraftStore();
 const workspaceKey = computed(() => workspaces.active?.id ?? store.datasetKey ?? "default");
 watch(workspaceKey, (k) => draft.load(k), { immediate: true });
 const lens = useLensStore();
+// The active lens's declared order, crossed: marked on the group matrix.
+const { check: lensCheck } = useLensFindings(computed(() => lens.active));
+const showCrossings = ref(true);
+const crossingKeys = computed(() => new Set(lensCheck.value.crossings.map(c => crossingEdgeKey(c.from, c.to))));
 const { isJavaProject } = useJavaMetrics();
 const activeTab = ref("inspector");
 const tabs = computed(() => [{ id: "inspector", label: "Inspector" }]);

@@ -33,9 +33,14 @@ export function readDurable(workspace: string, key: string, legacyKey: string): 
     const v = state.get<unknown>(key, undefined)
     if (v !== undefined && v !== null) return typeof v === "string" ? v : JSON.stringify(v)
     if (state.get<boolean>(migratedKey(key), false)) return null
+    // Only a copy that was found is carried up and flagged: a browser with
+    // nothing stored (another webview, a test harness) must not mark the
+    // key migrated before the one holding the real copy gets to it.
     const legacy = readLegacy(legacyKey)
-    if (legacy !== null) state.set(key, legacy)
-    state.set(migratedKey(key), true)
+    if (legacy !== null) {
+        state.set(key, legacy)
+        state.set(migratedKey(key), true)
+    }
     return legacy
 }
 

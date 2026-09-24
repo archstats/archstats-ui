@@ -28,6 +28,15 @@ describe("durable workspace state", () => {
         expect(mem.legacy).toBe("old")
     })
 
+    it("does not mark a key migrated when there was nothing to carry", async () => {
+        delete mem.legacy
+        await useStateStore().hydrate("w")
+        expect(readDurable("w", "groups", "legacy")).toBeNull()
+        expect(useStateStore().get("migrated:groups", false)).toBe(false)
+        mem.legacy = "found later"
+        expect(readDurable("w", "groups", "legacy")).toBe("found later")
+    })
+
     it("prefers app.db over a stale browser copy", async () => {
         await useStateStore().hydrate("w")
         writeDurable("w", "groups", "legacy", "newer")

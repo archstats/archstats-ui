@@ -119,11 +119,15 @@
               <div v-if="dimMenu === bucket.dimension" class="fixed inset-0 z-40" @click="dimMenu = null"></div>
               <div v-if="dimMenu === bucket.dimension" class="ui-menu absolute left-0 z-50 mt-1 flex w-48 flex-col animate-in" role="menu">
                 <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; buildDimension(bucket.dimension)"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Edit in builder</span></button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; declaring = bucket.dimension"><Icon icon="scale" :size="12" class="text-neutral-500"/><span>Declare dependencies…</span></button>
                 <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; startRename(bucket.dimension)"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Rename</span></button>
                 <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; confirming = bucket.dimension"><Icon icon="trash" :size="12" class="text-neutral-500"/><span>Delete lens</span></button>
               </div>
             </div>
           </div>
+          <router-link v-if="lens.active === bucket.dimension && activeDeclared" to="/views/rules#lens" class="ml-7 block truncate font-mono text-[11px] leading-5 text-neutral-500 hover:text-neutral-900" :title="lensCheck.count ? 'Every import that crosses the declared order, with file and line' : 'Nothing crosses the declared order'">
+            {{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} import${lensCheck.count === 1 ? "" : "s"} cross the declared order` : "Nothing crosses the declared order" }}
+          </router-link>
           <ul class="ml-3 flex flex-col">
             <li v-for="g in bucket.groups" :key="g.id">
               <button
@@ -150,6 +154,7 @@
       </div>
       <div class="mt-1">
         <GroupsManager />
+        <DeclareSheet v-model="declaring"/>
       </div>
     </section>
   </nav>
@@ -164,6 +169,8 @@ import {
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
 import GroupsManager from "~/components/groups/GroupsManager.vue";
+import DeclareSheet from "~/components/groups/DeclareSheet.vue";
+import { useLensFindings } from "~/composables/useLensFindings";
 import Icon from "~/components/ui/common/Icon.vue";
 import { DEFAULT_DIMENSION, useGroupsStore } from "~/stores/groups";
 import { useScopeStore } from "~/stores/scope";
@@ -231,6 +238,11 @@ function reviewNote(dimension: string): string {
 const scope = useScopeStore();
 const buckets = computed(() => groupsStore.groupsByDimension);
 const lens = useLensStore();
+// The declared architecture of the lens every view looks through, checked
+// against the open snapshot: one neutral line, no colour.
+const declaring = ref<string | null>(null);
+const activeLens = computed(() => lens.active);
+const { check: lensCheck, declared: activeDeclared } = useLensFindings(activeLens);
 const router = useRouter();
 const currentRoute = useRoute();
 const isChangesRoute = computed(() => currentRoute.path.startsWith("/views/changes") || currentRoute.path.startsWith("/views/trends"));
