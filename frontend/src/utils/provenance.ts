@@ -25,6 +25,8 @@ export interface Provenance {
     scope: string | null
     role: string | null
     pseudonymised: boolean
+    /** A custom history range, when one is set. */
+    historyRange: string | null
     view: string
     appVersion: string
 }
@@ -58,6 +60,7 @@ export function buildProvenance(view = typeof location !== "undefined" ? locatio
         scope: scopeText || null,
         role: role && role !== "all" ? role : null,
         pseudonymised: !!state.get("authors.pseudonymise", false),
+        historyRange: (() => { const r = state.get<{ since: string; until: string } | null>("history.range", null); return r ? `${r.since} to ${r.until}` : null })(),
         view,
         appVersion: version,
     }
@@ -89,6 +92,7 @@ export function provenanceLines(p: Provenance): Array<[string, string]> {
     if (p.scope) out.push(["scope", p.scope])
     if (p.role) out.push(["files", p.role])
     if (p.pseudonymised) out.push(["authors", "pseudonymised"])
+    if (p.historyRange) out.push(["history", p.historyRange])
     if (p.view) out.push(["view", p.view])
     out.push(["archstats desktop", p.appVersion])
     return out

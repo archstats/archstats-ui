@@ -5,7 +5,7 @@ const base: Provenance = {
     workspace: "Sylius", snapshot: "before the split", scannedAt: "2026-09-22T09:49:23.000Z",
     branch: "main", commit: "3f2a91c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6", uncommitted: 2,
     revision: 2, revisionOutdated: false, lens: "Domains", scope: null, role: null,
-    pseudonymised: false, view: "/views/connections", appVersion: "v0.2.0",
+    pseudonymised: false, historyRange: null, view: "/views/connections", appVersion: "v0.2.0",
 }
 
 describe("provenance", () => {

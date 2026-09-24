@@ -2,8 +2,27 @@
   <div class="flex h-full min-h-0 flex-col">
     <!-- Controls row: period on the left, counts on the right. -->
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-      <div class="ui-segmented" role="group" aria-label="Period">
-        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days, anchor)" @click="period = p.id">{{ p.label }}</button>
+      <div class="relative flex items-center gap-2">
+        <div class="ui-segmented" role="group" aria-label="Period">
+          <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days, anchor)" @click="pickPeriod(p.id)">{{ p.label }}</button>
+          <button type="button" :aria-pressed="period === 'custom'" :title="range ? rangeLabel : 'Choose the dates'" @click="rangeOpen = !rangeOpen">{{ period === "custom" && range ? rangeShort : "Custom…" }}</button>
+        </div>
+        <template v-if="rangeOpen">
+          <div class="fixed inset-0 z-40" @click="rangeOpen = false"></div>
+          <form class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-72 flex-col gap-3 p-3 animate-in" @submit.prevent="applyRange">
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Since <input v-model="draftSince" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Until <input v-model="draftUntil" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
+            <p v-if="rangeError" class="text-sm text-red-700">{{ rangeError }}</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button v-if="baselineDay" type="button" class="ui-chip" @click="draftSince = baselineDay; draftUntil = anchorDay">Since the baseline commit</button>
+              <button v-if="range" type="button" class="ui-chip" @click="draftSince = range.since; draftUntil = range.until">Since {{ range.since }}</button>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="rangeOpen = false">Cancel</button>
+              <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary">Apply</button>
+            </div>
+          </form>
+        </template>
       </div>
       <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
               :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
@@ -39,7 +58,7 @@
           <h3 class="ui-section-title mb-2">Lines added and removed by month</h3>
           <MonthlyChangesChart :commits="commits" :height="140"/>
         </div>
-        <EmptyState v-if="commits.length === 0" title="No commits in this period" text="Widen the period to see earlier activity."/>
+        <EmptyState v-if="commits.length === 0" :title="period === 'custom' ? 'No commits between these dates' : 'No commits in this period'" text="Widen the period to see earlier activity."/>
         <table v-else class="ui-table">
           <thead>
             <tr>
@@ -93,6 +112,7 @@
 </template>
 
 <script setup lang="ts">
+import { useStateStore } from "~/stores/state"
 import { computed, ref, watch } from "vue";
 import { useDataStore } from "~/stores/data";
 import type { GitCommit } from "~/utils/git";
@@ -127,7 +147,28 @@ const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 
 const periods = HISTORY_PERIODS
-const period = ref<HistoryPeriodId>("all")
+const stateStore = useStateStore()
+// A custom range is kept per workspace: "since the engagement started" is
+// the question for weeks, not one visit.
+const range = computed(() => stateStore.get<{ since: string; until: string } | null>("history.range", null))
+const period = ref<HistoryPeriodId | "custom">(range.value ? "custom" : "all")
+const rangeOpen = ref(false)
+const draftSince = ref(range.value?.since ?? "")
+const draftUntil = ref(range.value?.until ?? "")
+const rangeError = ref("")
+function pickPeriod(id: HistoryPeriodId) {
+  period.value = id
+  stateStore.set("history.range", null)
+}
+function applyRange() {
+  rangeError.value = ""
+  if (!draftSince.value || !draftUntil.value) { rangeError.value = "Both dates are needed."; return }
+  if (draftUntil.value < draftSince.value) { rangeError.value = "Until is before Since."; return }
+  const until = draftUntil.value > anchorDay.value ? anchorDay.value : draftUntil.value
+  stateStore.set("history.range", { since: draftSince.value, until })
+  period.value = "custom"
+  rangeOpen.value = false
+}
 const limit = ref(100)
 const showAllAuthors = ref(false)
 
@@ -152,13 +193,28 @@ const anchor = computed(() => { void store.datasetKey; return historyAnchor() })
 watch([() => props.where, period], () => { limit.value = 100; showAllAuthors.value = false })
 
 const now = computed(() => anchor.value.date)
-const periodDays = computed(() => periods.find(p => p.id === period.value)?.days ?? 0)
+const periodDays = computed(() => period.value === "custom" ? 0 : periods.find(p => p.id === period.value)?.days ?? 0)
+const anchorDay = computed(() => anchor.value.date.toISOString().slice(0, 10))
+const baselineDay = computed(() => {
+  const id = (workspaces.active as any)?.baselineScanId
+  const s: any = id ? workspaces.scans.find((x: any) => x.id === id) : null
+  const t = s?.headTime ?? s?.startedAt
+  return t ? new Date(t).toISOString().slice(0, 10) : ""
+})
+const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+const rangeShort = computed(() => (range.value ? `${fmtDay(range.value.since)} – ${fmtDay(range.value.until)}` : ""))
+const rangeLabel = computed(() => (range.value ? `${rangeShort.value}${anchor.value.commit ? ` (${anchor.value.commit.slice(0, 7)})` : ""}` : ""))
 
 const isBot = (c: GitCommit) => Number((c as any).is_bot) === 1
 const botCommits = computed(() => allCommits.value.filter(isBot).length)
 const counted = computed(() => (props.includeBots || authorsStore.showBots ? allCommits.value : allCommits.value.filter(c => !isBot(c))))
 
 const commits = computed(() => {
+  if (period.value === "custom" && range.value) {
+    const from = new Date(`${range.value.since}T00:00:00Z`).getTime()
+    const to = new Date(`${range.value.until}T23:59:59Z`).getTime()
+    return counted.value.filter(c => { const t = new Date(c.commit_time).getTime(); return t >= from && t <= to })
+  }
   if (!periodDays.value) return counted.value
   const cutoff = now.value.getTime() - periodDays.value * 86400000
   return counted.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
