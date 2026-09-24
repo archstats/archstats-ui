@@ -4,6 +4,8 @@ import {query} from '../models';
 
 export function AnalysisRevision():Promise<number>;
 
+export function Console(arg1:string,arg2:string):Promise<query.Limited>;
+
 export function CurrentScan():Promise<string>;
 
 export function Open(arg1:string):Promise<void>;

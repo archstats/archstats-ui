@@ -6,6 +6,10 @@ export function AnalysisRevision() {
   return window['go']['app']['QueryService']['AnalysisRevision']();
 }
 
+export function Console(arg1, arg2) {
+  return window['go']['app']['QueryService']['Console'](arg1, arg2);
+}
+
 export function CurrentScan() {
   return window['go']['app']['QueryService']['CurrentScan']();
 }

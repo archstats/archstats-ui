@@ -166,7 +166,7 @@
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
-  PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark,
+  PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
   Activity, Users, Braces, LayoutDashboard, Scale,
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
@@ -220,6 +220,7 @@ const evidenceStore = useEvidenceStore();
 watch(() => workspaces.active?.id, (id) => { if (id) void evidenceStore.load(id); }, { immediate: true });
 const toolViews = computed(() => [
   { label: "Evidence", to: "/views/evidence", icon: Bookmark, count: evidenceStore.count || undefined },
+  { label: "SQL console", to: "/views/query", icon: Terminal },
 ]);
 // Rules arrived after most snapshots were taken, so the section hides itself
 // rather than showing an empty screen — the same way the Java section does.

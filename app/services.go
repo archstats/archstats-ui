@@ -60,6 +60,12 @@ func (q *QueryService) Query(sql string) ([]map[string]any, error) {
 	return q.svc.Query(sql)
 }
 
+// Console runs one read-only statement a person typed against a scan's
+// snapshot: 5,000 rows, 10 seconds, writes and ATTACH refused.
+func (q *QueryService) Console(scanID, sql string) (*query.Limited, error) {
+	return q.svc.Console(scanID, sql)
+}
+
 // QueryIn reads a completed snapshot other than the open one, which is how a
 // view compares the current scan against an earlier one.
 func (q *QueryService) QueryIn(scanID string, sql string) ([]map[string]any, error) {
