@@ -1,3 +1,4 @@
+import { useRoute } from "vue-router"
 import { computed, ref, watch, type Ref } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useWorkspacesStore } from "~/stores/workspaces"
@@ -25,7 +26,10 @@ export function useComponentDelta(name: Ref<string>) {
         return open ? olderThan(workspaces.scans as any[], open as any) as typeof workspaces.scans : []
     })
 
-    const chosenId = ref<string | null>(null)
+    // A link that names its baseline (Changes opens components with
+    // ?baseline=) wins over the pinned one; picking one here wins over both.
+    const route = useRoute()
+    const chosenId = ref<string | null>(typeof route?.query.baseline === "string" && route.query.baseline ? route.query.baseline : null)
     // The pinned baseline first (it may be newer than the open scan: reading
     // an old scan against "now"), then a scan picked here, then the scan of
     // the code just before this one.

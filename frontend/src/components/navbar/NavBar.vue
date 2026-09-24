@@ -41,6 +41,17 @@
           <LayoutDashboard :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
           <span class="truncate">Overview</span>
         </router-link>
+        <router-link
+            to="/views/changes"
+            :tabindex="hasData ? undefined : -1"
+            class="-mt-3 flex h-[26px] items-center gap-2 rounded px-2 text-base text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+            :class="{ 'is-active bg-accent-50 font-medium text-neutral-900 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]': isChangesRoute }"
+            active-class=""
+        >
+          <GitCompare :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
+          <span class="truncate">Changes</span>
+          <span v-if="scanCount > 1" class="ml-auto font-mono text-xs text-neutral-400" :title="`${scanCount} snapshots to compare`">{{ scanCount }}</span>
+        </router-link>
         <section v-for="group in groups" :key="group.title">
           <h3 class="ui-section-title mb-1 px-2">{{ group.title }}</h3>
           <ul class="flex flex-col">
@@ -148,7 +159,7 @@
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
-  PanelLeftClose, Flame, Table2, RefreshCw, Network,
+  PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare,
   Activity, Users, Braces, LayoutDashboard, Scale,
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
@@ -221,6 +232,9 @@ const scope = useScopeStore();
 const buckets = computed(() => groupsStore.groupsByDimension);
 const lens = useLensStore();
 const router = useRouter();
+const currentRoute = useRoute();
+const isChangesRoute = computed(() => currentRoute.path.startsWith("/views/changes") || currentRoute.path.startsWith("/views/trends"));
+const scanCount = computed(() => workspaces.scans.filter((s: any) => s.status === "complete").length);
 const dimMenu = ref<string | null>(null);
 const componentTotal = computed(() => dataStore.componentFilesIndex.size);
 const coverage = (d: string) => groupsStore.dimensionCoverage(d);
