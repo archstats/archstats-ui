@@ -12,7 +12,8 @@
     "dev:reset": "rm -rf .output && touch nuxt.config.ts",
     "check": "node scripts/dev-check.mjs",
     "capture": "node scripts/capture.mjs",
-    "bench": "vitest run --config vitest.bench.config.ts"
+    "bench": "vitest run --config vitest.bench.config.ts",
+    "check:figures": "node scripts/figure-check.mjs"
   },
   "dependencies": {
     "@nuxt/image": "^1.0.0-rc.3",

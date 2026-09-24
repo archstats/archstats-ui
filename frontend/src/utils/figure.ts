@@ -65,17 +65,43 @@ const rgbOf = (spaced: string) => spaced.split(/\s+/).join(", ")
  */
 export function remapToLight(svgText: string): string {
     const { light, dark } = readTokenSets()
-    const pairs: Array<[string, string]> = []
-    for (const [name, d] of Object.entries(dark)) {
-        const l = light[name]
-        if (l && l !== d && /^\d+\s+\d+\s+\d+$/.test(d)) pairs.push([rgbOf(d), rgbOf(l)])
-    }
-    if (pairs.length === 0) return svgText
-    const map = new Map(pairs)
+    const map = lightPairs(light, dark)
+    if (map.size === 0) return svgText
     return svgText.replace(/(rgba?\()(\d+),\s*(\d+),\s*(\d+)/g, (m, pre, r, g, b) => {
         const hit = map.get(`${r}, ${g}, ${b}`)
         return hit ? pre + hit : m
     })
+}
+
+/**
+ * Tokens that win when two dark tokens share one colour and the light theme
+ * gives them different ones. A chart paints its ground in the surface far
+ * more often than it sets text on the accent, and a wrong guess turns a light
+ * figure's background to ink (the tangle drawing did, 2026-09-24).
+ */
+export const REMAP_PREFERRED = ["--c-surface"]
+
+/**
+ * Dark colour → light colour, as "r, g, b" strings. The swap works on values,
+ * so a dark value used by several tokens needs one answer: the preferred
+ * token's, else the first declared. `ambiguous` collects the rest, for the
+ * test that keeps the palette honest.
+ */
+export function lightPairs(light: Record<string, string>, dark: Record<string, string>, ambiguous?: string[]): Map<string, string> {
+    const map = new Map<string, string>()
+    const owner = new Map<string, string>()
+    for (const [name, d] of Object.entries(dark)) {
+        const l = light[name]
+        if (!l || l === d || !/^\d+\s+\d+\s+\d+$/.test(d)) continue
+        const key = rgbOf(d), val = rgbOf(l)
+        const had = map.get(key)
+        if (had === undefined) { map.set(key, val); owner.set(key, name); continue }
+        if (had === val) continue
+        const prev = owner.get(key)!
+        if (REMAP_PREFERRED.includes(name) && !REMAP_PREFERRED.includes(prev)) { map.set(key, val); owner.set(key, name) }
+        else if (!REMAP_PREFERRED.includes(prev)) ambiguous?.push(`${prev} / ${name}`)
+    }
+    return map
 }
 
 /**
@@ -171,6 +197,7 @@ function fitCaption(caption: string, width: number): string {
 
 /** The figure as SVG text: background, the chart, and the footer band. */
 export function svgDocument(out: Extract<FigureOutput, { kind: "svg" }>, caption: string, opts: FigureOptions): string {
+    checkFigure(out)
     const chart = inlineStyles(out.svg)
     chart.setAttribute("x", "0")
     chart.setAttribute("y", "0")
@@ -179,6 +206,7 @@ export function svgDocument(out: Extract<FigureOutput, { kind: "svg" }>, caption
     if (!chart.getAttribute("viewBox")) chart.setAttribute("viewBox", `0 0 ${out.width} ${out.height}`)
     const f = layoutFooter(out.width, out.legend)
     const colors = footerColors(opts.light)
+    const light = opts.light && isDarkAppearance()
     const total = out.height + f.height
     const legend = f.legend.map(({ item, x, y }) => {
         const mark = item.line || item.dashed
@@ -188,13 +216,16 @@ export function svgDocument(out: Extract<FigureOutput, { kind: "svg" }>, caption
     }).join("")
     const doc = `<svg xmlns="http://www.w3.org/2000/svg" width="${out.width}" height="${total}" viewBox="0 0 ${out.width} ${total}">`
         + `<rect width="100%" height="100%" fill="${colors.surface}"/>`
-        + new XMLSerializer().serializeToString(chart)
+        // Only the chart is drawn in the window's colours; the ground and the footer below are
+        // written in the light ones already, and the two palettes share values (the light
+        // surface is a dark-theme ink), so remapping them too turned a white ground to ink.
+        + (light ? remapToLight(new XMLSerializer().serializeToString(chart)) : new XMLSerializer().serializeToString(chart))
         + `<g transform="translate(0 ${out.height})">`
         + `<line x1="0" y1="0.5" x2="${out.width}" y2="0.5" stroke="${colors.hairline}"/>`
         + legend
         + `<text x="${FOOTER_PAD}" y="${f.captionY}" font-family="JetBrains Mono, ui-monospace, monospace" font-size="${FOOTER_FONT}" fill="${colors.muted}">${esc(fitCaption(caption, out.width))}</text>`
         + `</g></svg>`
-    return opts.light && isDarkAppearance() ? remapToLight(doc) : doc
+    return doc
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -206,8 +237,56 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     })
 }
 
+// ── The contract every figure keeps ────────────────────────────────────
+// A report, a pin or a saved PNG must never hold a blank: a figure that
+// cannot be captured says so, in words, where the capture was asked for.
+
+/** Why a figure cannot be handed over. Its message is shown as it is. */
+export class FigureError extends Error {}
+
+// For scripts/figure-check.mjs, in development only: the pipeline the app itself uses.
+if (import.meta.env?.DEV && typeof window !== "undefined") queueMicrotask(() => { (window as any).__archstatsFigure = { pngBase64, svgDocument } })
+
+const DRAWN = "path, rect, circle, ellipse, line, polyline, polygon, text, image, use"
+
+/** Before drawing: the chart has a size and something in it. */
+export function checkFigure(out: FigureOutput): void {
+    if (!(out.width >= 16 && out.height >= 16)) {
+        throw new FigureError(`The chart has no size to capture (${Math.round(out.width) || 0} by ${Math.round(out.height) || 0}); it is not on screen, or not drawn yet.`)
+    }
+    if (out.kind === "svg" && !out.svg.querySelector(DRAWN)) throw new FigureError("The chart has nothing drawn in it yet.")
+}
+
+/**
+ * After drawing: the chart's part of the image is not one flat colour, and a
+ * light rendering has a light ground. Samples a grid of about 4,000 points.
+ */
+export function checkDrawn(g: CanvasRenderingContext2D, width: number, chartHeight: number, light: boolean): void {
+    const w = Math.max(1, Math.floor(width)), h = Math.max(1, Math.floor(chartHeight))
+    const data = g.getImageData(0, 0, w, h).data
+    const step = Math.max(1, Math.floor(Math.sqrt((w * h) / 4096)))
+    const counts = new Map<number, number>()
+    let total = 0
+    for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) {
+        const i = (y * w + x) * 4
+        // Quantised, so anti-aliasing noise does not count as drawing.
+        const q = ((data[i] >> 4) << 12) | ((data[i + 1] >> 4) << 8) | ((data[i + 2] >> 4) << 4) | (data[i + 3] >> 4)
+        counts.set(q, (counts.get(q) ?? 0) + 1)
+        total++
+    }
+    let ground = 0, most = -1
+    for (const [q, c] of counts) if (c > most) { most = c; ground = q }
+    if (total - most < Math.max(3, total * 0.002)) throw new FigureError("The figure came out blank: nothing but its background was drawn.")
+    if (light) {
+        const r = (ground >> 12) & 15, gr = (ground >> 8) & 15, b = (ground >> 4) & 15, a = ground & 15
+        const luminance = (0.2126 * r + 0.7152 * gr + 0.0722 * b) / 15
+        if (a >= 8 && luminance < 0.6) throw new FigureError("The light rendering came out dark: a colour in the chart did not map to its light value.")
+    }
+}
+
 /** The figure as a PNG at `scale` (2 by default), base64 without the data: prefix. */
 export async function pngBase64(out: FigureOutput, caption: string, opts: FigureOptions, scale = 2): Promise<string> {
+    checkFigure(out)
     if (out.kind === "svg") {
         const text = svgDocument(out, caption, opts)
         const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`)
@@ -217,6 +296,7 @@ export async function pngBase64(out: FigureOutput, caption: string, opts: Figure
         const g = canvas.getContext("2d")!
         g.scale(scale, scale)
         g.drawImage(img, 0, 0)
+        checkDrawn(g, canvas.width, Math.round(out.height * scale), opts.light)
         return canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "")
     }
     const f = layoutFooter(out.width, out.legend)
@@ -228,6 +308,7 @@ export async function pngBase64(out: FigureOutput, caption: string, opts: Figure
     g.fillStyle = colors.surface
     g.fillRect(0, 0, canvas.width, canvas.height)
     g.drawImage(out.canvas, 0, 0)
+    checkDrawn(g, canvas.width, Math.round(out.height * out.scale), opts.light)
     g.scale(out.scale, out.scale)
     g.translate(0, out.height)
     g.strokeStyle = colors.hairline

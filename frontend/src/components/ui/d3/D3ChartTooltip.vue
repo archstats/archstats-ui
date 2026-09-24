@@ -1,4 +1,5 @@
 
+<!-- figure: none: a tooltip that follows the pointer over other charts. -->
 <template>
   <div class="ui-tooltip pointer-events-none absolute z-50" :style="{top: tooltipLocation.y + 'px', left: tooltipLocation.x + 'px'}">
     <slot></slot>

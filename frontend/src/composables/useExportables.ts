@@ -74,6 +74,10 @@ export function pickFor(kind: Exportable["kind"] | undefined): Exportable | null
     return [...ok].reverse().find(i => i.kind === kind) ?? ok.find(i => i.kind !== "document") ?? ok[0] ?? null;
 }
 
+// For scripts/figure-check.mjs: the live registry, in development only. Importing the module
+// from outside can load a second copy (after a reload) with a registry of its own.
+if (import.meta.env?.DEV && typeof window !== "undefined") (window as any).__archstatsExportables = () => exportables.value;
+
 /**
  * Registers exportables for as long as the calling component is mounted.
  * Returns an unregister for items that come and go with state.
@@ -99,7 +103,14 @@ export function useSvgFigure(title: string | (() => string), svg: () => SVGSVGEl
     register({
         kind: "figure",
         get title() { return typeof title === "function" ? title() : title; },
-        ready: () => !!svg()?.firstChild,
+        // Drawn, on screen, and the element this component shows now: a stale reference
+        // (an svg swapped out by v-if or a reload) measures nothing and is not ready.
+        ready: () => {
+            const el = svg();
+            if (!el || !el.isConnected || !el.querySelector("path, rect, circle, line, text, polygon, polyline, ellipse")) return false;
+            const box = el.getBoundingClientRect();
+            return box.width > 1 && box.height > 1;
+        },
         svg: true,
         render: () => {
             const el = svg();
