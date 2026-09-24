@@ -80,6 +80,12 @@ func SweepBackfill(st *store.Store) {
 
 // StartScanAt scans the workspace as it was at one commit.
 func (s *Service) StartScanAt(workspaceID, rev string) (*store.Scan, error) {
+	return s.startAt(workspaceID, rev, "", nil)
+}
+
+// startAt is StartScanAt with a label for the row (a tag, or the sha when
+// empty) and a callback once the scan has finished either way.
+func (s *Service) startAt(workspaceID, rev, label string, finished func(ok bool)) (*store.Scan, error) {
 	info, err := s.ResolveCommit(workspaceID, rev)
 	if err != nil {
 		return nil, err
@@ -120,12 +126,19 @@ func (s *Service) StartScanAt(workspaceID, rev string) (*store.Scan, error) {
 		release()
 		return nil, err
 	}
-	_ = s.store.SetScanOrigin(scan.ID, "backfill", info.Sha)
-	go s.run(ws, scan, dir, func(bool) {
+	ref := label
+	if ref == "" {
+		ref = info.Sha
+	}
+	_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
+	go s.run(ws, scan, dir, func(ok bool) {
 		// The identity read after saving overwrote the ref; the commit is what this scan is.
-		_ = s.store.SetScanOrigin(scan.ID, "backfill", info.Sha)
+		_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
 		if err := os.RemoveAll(dir); err != nil {
 			log.Warn().Err(err).Str("dir", dir).Msg("removing the rescan clone")
+		}
+		if finished != nil {
+			finished(ok)
 		}
 	})
 	return scan, nil

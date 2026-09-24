@@ -39,6 +39,29 @@ func (s *ScanService) ResolveCommitAt(workspaceID string, at time.Time) (*scan.C
 	return s.svc.ResolveCommitAt(workspaceID, at)
 }
 
+// Tags lists the repository's tags, newest first, for backfilling.
+func (s *ScanService) Tags(workspaceID string) ([]scan.Revision, error) {
+	return s.svc.Tags(workspaceID)
+}
+
+// Enqueue scans each revision in turn, in its own clean clone.
+func (s *ScanService) Enqueue(workspaceID string, revs []scan.Revision) (*scan.QueueState, error) {
+	return s.svc.Enqueue(workspaceID, revs)
+}
+
+func (s *ScanService) Queue(workspaceID string) *scan.QueueState {
+	return s.svc.Queue(workspaceID)
+}
+
+// StopAfterCurrent lets the running scan finish and drops the rest of the queue.
+func (s *ScanService) StopAfterCurrent(workspaceID string) *scan.QueueState {
+	return s.svc.StopAfterCurrent(workspaceID)
+}
+
+func (s *ScanService) ClearFinished(workspaceID string) *scan.QueueState {
+	return s.svc.ClearFinished(workspaceID)
+}
+
 func (s *ScanService) IsRunning(workspaceID string) bool {
 	return s.svc.IsRunning(workspaceID)
 }

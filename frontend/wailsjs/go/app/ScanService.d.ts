@@ -4,7 +4,13 @@ import {scan} from '../models';
 import {time} from '../models';
 import {store} from '../models';
 
+export function ClearFinished(arg1:string):Promise<scan.QueueState>;
+
+export function Enqueue(arg1:string,arg2:Array<scan.Revision>):Promise<scan.QueueState>;
+
 export function IsRunning(arg1:string):Promise<boolean>;
+
+export function Queue(arg1:string):Promise<scan.QueueState>;
 
 export function ResolveCommit(arg1:string,arg2:string):Promise<scan.CommitInfo>;
 
@@ -13,3 +19,7 @@ export function ResolveCommitAt(arg1:string,arg2:time.Time):Promise<scan.CommitI
 export function Start(arg1:string):Promise<store.Scan>;
 
 export function StartAt(arg1:string,arg2:string):Promise<store.Scan>;
+
+export function StopAfterCurrent(arg1:string):Promise<scan.QueueState>;
+
+export function Tags(arg1:string):Promise<Array<scan.Revision>>;

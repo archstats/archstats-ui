@@ -635,6 +635,94 @@ export namespace scan {
 		    return a;
 		}
 	}
+	export class QueueItem {
+	    ref: string;
+	    sha: string;
+	    state: string;
+	    scanId: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueueItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ref = source["ref"];
+	        this.sha = source["sha"];
+	        this.state = source["state"];
+	        this.scanId = source["scanId"];
+	        this.error = source["error"];
+	    }
+	}
+	export class QueueState {
+	    items: QueueItem[];
+	    stopping: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueueState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], QueueItem);
+	        this.stopping = source["stopping"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Revision {
+	    ref: string;
+	    sha: string;
+	    time: time.Time;
+	    unavailable: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Revision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ref = source["ref"];
+	        this.sha = source["sha"];
+	        this.time = this.convertValues(source["time"], time.Time);
+	        this.unavailable = source["unavailable"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 

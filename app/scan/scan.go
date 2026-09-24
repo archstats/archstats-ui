@@ -36,6 +36,7 @@ type Service struct {
 	mu      sync.Mutex
 	running map[string]bool // workspaceID → scan in flight
 	onDone  func(scanID string)
+	queue   *backfillQueue
 }
 
 // SetOnDone runs after each scan is saved (in production: its readings are computed).
@@ -46,6 +47,7 @@ func NewService(st *store.Store) *Service {
 		store:   st,
 		emit:    func(string, ...any) {},
 		running: map[string]bool{},
+		queue:   newBackfillQueue(),
 	}
 }
 

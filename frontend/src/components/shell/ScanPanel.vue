@@ -33,6 +33,8 @@
       </button>
     </p>
 
+    <BackfillQueue/>
+
     <!-- History, newest first. -->
     <ol v-if="scans.length" class="mt-1.5" aria-label="Snapshot history">
       <li v-for="scan in visibleScans" :key="scan.id" class="group/scan">
@@ -73,12 +75,12 @@
             </span>
             <span class="flex min-w-0 flex-1 flex-col">
               <span class="flex min-w-0 items-center gap-1.5">
-                <span class="truncate text-sm leading-4" :class="rowTextClass(scan)" :title="scan.label ? formatScanTime(scan.startedAt, now) : undefined">
-                  {{ scan.label || formatScanTime(scan.startedAt, now) }}
+                <span class="truncate text-sm leading-4" :class="rowTextClass(scan)" :title="scan.label || tagOf(scan) ? formatScanTime(scan.startedAt, now) : undefined">
+                  {{ scan.label || tagOf(scan) || formatScanTime(scan.startedAt, now) }}
                 </span>
                 <Flag v-if="scan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" aria-label="Baseline"/>
                 <span v-if="scan.origin === 'import'" class="ui-tag shrink-0 !text-[10px]">imported</span>
-                <span v-if="scan.origin === 'backfill'" class="ui-tag shrink-0 !text-[10px]" :title="`Rebuilt from commit ${scan.revisionRef} in a clean clone`">rescan</span>
+                <span v-if="scan.origin === 'backfill'" class="ui-tag shrink-0 !text-[10px]" :title="`Rebuilt from ${tagOf(scan) ? `tag ${scan.revisionRef}` : `commit ${scan.revisionRef}`} in a clean clone`">rescan</span>
               </span>
               <span v-if="identityOf(scan)" class="truncate font-mono text-[11px] leading-4 text-neutral-500" :title="scan.headCommit">{{ identityOf(scan) }}</span>
             </span>
@@ -138,9 +140,11 @@
     </button>
     <div v-if="completeCount" class="mt-1 flex items-center gap-2 px-2 text-xs text-neutral-500">
       <span class="font-mono tabular-nums">{{ completeCount }} snapshot{{ completeCount === 1 ? "" : "s" }} · {{ formatBytes(totalBytes) }}</span>
-      <button type="button" class="ml-auto font-medium transition-colors hover:text-neutral-900" @click="storageOpen = true">Manage…</button>
+      <button type="button" class="ml-auto font-medium transition-colors hover:text-neutral-900" title="Scan the repository's tags, each in a clean clone, to fill in history" @click="tagsOpen = true">Tags…</button>
+      <button type="button" class="font-medium transition-colors hover:text-neutral-900" @click="storageOpen = true">Manage…</button>
     </div>
     <StorageSheet v-model="storageOpen"/>
+    <ScanTagsSheet v-model="tagsOpen"/>
   </section>
 </template>
 
@@ -151,6 +155,8 @@ import { RevealSnapshot, SaveSnapshotCopy, SnapshotPath } from "wailsjs/go/app/W
 import { copyText } from "~/utils/files";
 import { formatBytes } from "~/utils/format";
 import StorageSheet from "~/components/shell/StorageSheet.vue";
+import ScanTagsSheet from "~/components/shell/ScanTagsSheet.vue";
+import BackfillQueue from "~/components/shell/BackfillQueue.vue";
 import { usePlatform } from "~/composables/usePlatform";
 import type { store as models } from "wailsjs/go/models";
 import { useWorkspacesStore, type ScanPhase } from "~/stores/workspaces";
@@ -166,6 +172,7 @@ const openId = computed(() => store.openScanId);
 
 const showAll = ref(false);
 const storageOpen = ref(false);
+const tagsOpen = ref(false);
 const completeCount = computed(() => scans.value.filter(s => s.status === "complete").length);
 const totalBytes = computed(() => scans.value.reduce((sum, s: any) => sum + (Number(s.sizeBytes) || 0), 0));
 const visibleScans = computed(() => (showAll.value ? scans.value : scans.value.slice(0, COLLAPSED)));
@@ -181,6 +188,14 @@ const baselineId = computed(() => (store.active as any)?.baselineScanId ?? null)
 const { isMac, isWindows } = usePlatform();
 const fileManager = computed(() => (isMac.value ? "Finder" : isWindows.value ? "Explorer" : "file manager"));
 const sourceNote = "The copy holds the stored text of every file, import lines, commit subjects and author emails.";
+
+/** A backfilled tag's row reads as the tag and its commit date: "v1.9.0 · 12 Feb 2023". */
+function tagOf(scan: models.Scan): string {
+  const s: any = scan;
+  if (s.origin !== "backfill" || !s.revisionRef || /^[0-9a-f]{40}$/.test(s.revisionRef)) return "";
+  const t = s.headTime ? new Date(s.headTime).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+  return t ? `${s.revisionRef} · ${t}` : s.revisionRef;
+}
 
 /** "main @ 3f2a91c · +4": the commit a scan read, when the snapshot recorded it. */
 function identityOf(scan: models.Scan): string {
