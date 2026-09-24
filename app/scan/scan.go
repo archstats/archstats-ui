@@ -5,6 +5,8 @@ import (
 	snapshotinfo "github.com/archstats/archstats-ui/app/snapshot"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/archstats/archstats-ui/app/store"
@@ -115,6 +117,11 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("analyzing %s: %v", ws.FolderPath, err))
 		return
 	}
+	// Which language packs read this code; two scans read by different
+	// packs are compared with a warning.
+	sortedNames := append([]string(nil), names...)
+	sort.Strings(sortedNames)
+	results.SetSnapshotInfo("extensions", strings.Join(sortedNames, ","))
 
 	s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{"phase": "rendering"}))
 	var views []*core.View

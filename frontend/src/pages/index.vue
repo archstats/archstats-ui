@@ -3,7 +3,7 @@
     <SummarySection>
       <template #activity>
         <template v-if="gitCommits.length">
-          <GitActivityChart :end-date="new Date()" :commits="gitCommits"/>
+          <GitActivityChart :end-date="calendarEnd" :start-date="calendarStart" :commits="gitCommits"/>
           <MonthlyChangesChart :commits="gitCommits" :height="96" class="mt-3"/>
         </template>
         <p v-else class="py-6 text-sm text-neutral-500">No git history in this snapshot.</p>
@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { historyAnchor } from "~/utils/history";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";
 import { useDataStore } from "~/stores/data";
@@ -36,6 +37,14 @@ import { useJavaMetrics } from "~/composables/useJavaMetrics";
 
 const store = useDataStore();
 const gitCommits = ref<GitCommit[]>([]);
+// The calendar shows the year of work before the last commit. Ending it
+// today left a repository that went quiet in 2023 an empty grid.
+const calendarEnd = computed(() => {
+  let last = 0;
+  for (const c of gitCommits.value) { const t = new Date(c.commit_time).getTime(); if (t > last) last = t; }
+  return last ? new Date(last) : historyAnchor().date;
+});
+const calendarStart = computed(() => new Date(calendarEnd.value.getTime() - 365 * 86400000));
 watch(
   () => [store.hasData, store.datasetKey] as const,
   async ([hasData]) => {

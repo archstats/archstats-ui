@@ -26,7 +26,7 @@ export const IN_SNAPSHOT = "file IN (SELECT name FROM files)"
  * commit. Periods count back from the scan, not from today: a snapshot keeps
  * saying what it said when it was taken.
  */
-export function authorStatsSql(where = "1", opts: { aliases?: AliasMap; includeBots?: boolean } = {}): string {
+export function authorStatsSql(where = "1", opts: { aliases?: AliasMap; includeBots?: boolean; anchor?: string } = {}): string {
     const periods = AUTHOR_PERIODS.map(p => {
         const inPeriod = p.days === null ? "1" : `t >= now - ${p.days}`
         return [
@@ -38,7 +38,7 @@ export function authorStatsSql(where = "1", opts: { aliases?: AliasMap; includeB
         ].join(", ")
     }).join(",\n    ")
     return `
-  WITH now AS (SELECT julianday(max(timestamp)) AS now FROM git_commits),
+  WITH now AS (SELECT ${opts.anchor ?? "julianday(max(timestamp))"} AS now FROM git_commits),
   c AS (
     SELECT ${canonicalAuthorSql(opts.aliases ?? {})} AS author_name, author_email, commit_hash, file, component, commit_time,
            coalesce(file_additions, 0) AS a, coalesce(file_deletions, 0) AS d, julianday(commit_time) AS t

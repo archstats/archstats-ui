@@ -93,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { anchorSql } from "~/utils/history"
 import StatStrip from "~/components/detail/StatStrip.vue"
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -122,7 +123,7 @@ interface Profile { row: Record<string, any> | null }
 
 const { data: profile, loading, error } = useAsyncQuery<Profile>(
   async () => {
-    const rows = await store.query<Record<string, any>>(authorStatsSql(me.value, { aliases: authorsStore.aliases, includeBots: true }))
+    const rows = await store.query<Record<string, any>>(authorStatsSql(me.value, { aliases: authorsStore.aliases, includeBots: true, anchor: anchorSql() }))
     return { row: rows[0] ?? null }
   },
   [name, () => authorsStore.aliases],

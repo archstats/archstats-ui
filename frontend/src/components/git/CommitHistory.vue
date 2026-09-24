@@ -3,7 +3,7 @@
     <!-- Controls row: period on the left, counts on the right. -->
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
       <div class="ui-segmented" role="group" aria-label="Period">
-        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
+        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days, anchor)" @click="period = p.id">{{ p.label }}</button>
       </div>
       <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
               :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
@@ -100,6 +100,7 @@ import { formatDate } from "~/utils/time";
 import { formatNumber, formatSigned, shortHash } from "~/utils/format";
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { NOT_BOT_SQL, canonicalAuthorSql } from "~/utils/authors";
+import { HISTORY_PERIODS, anchorLabel, historyAnchor, type HistoryPeriodId } from "~/utils/history";
 import { useAuthorsStore } from "~/stores/authors";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import Icon from "~/components/ui/common/Icon.vue";
@@ -125,14 +126,8 @@ const authorsStore = useAuthorsStore()
 const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 
-const periods = [
-  { id: "all", label: "All", days: 0 },
-  { id: "1y", label: "1 y", days: 365 },
-  { id: "180d", label: "180 d", days: 180 },
-  { id: "90d", label: "90 d", days: 90 },
-  { id: "30d", label: "30 d", days: 30 },
-] as const
-const period = ref<(typeof periods)[number]["id"]>("all")
+const periods = HISTORY_PERIODS
+const period = ref<HistoryPeriodId>("all")
 const limit = ref(100)
 const showAllAuthors = ref(false)
 
@@ -149,22 +144,14 @@ const { data: allCommits, loading, error } = useAsyncQuery<GitCommit[]>(
   { initial: [] },
 )
 
-// Periods count back from the scan, not from today: a snapshot keeps saying
-// what it said when it was taken, and "last 30 days" of a scan from March
-// should not be empty in September.
-const { data: scanTime } = useAsyncQuery<Date>(
-  async () => {
-    const rows = await store.query<{ t: string | null }>("select max(timestamp) as t from git_commits")
-    const d = rows[0]?.t ? new Date(rows[0].t) : new Date()
-    return Number.isNaN(d.getTime()) ? new Date() : d
-  },
-  [() => store.datasetKey],
-  { initial: new Date() },
-)
+// Periods count back from the snapshot's anchor: the scanned commit from
+// analysis revision 2, the scan before it. Never from today: a snapshot keeps
+// saying what it said when it was taken.
+const anchor = computed(() => { void store.datasetKey; return historyAnchor() })
 
 watch([() => props.where, period], () => { limit.value = 100; showAllAuthors.value = false })
 
-const now = computed(() => scanTime.value)
+const now = computed(() => anchor.value.date)
 const periodDays = computed(() => periods.find(p => p.id === period.value)?.days ?? 0)
 
 const isBot = (c: GitCommit) => Number((c as any).is_bot) === 1

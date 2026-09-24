@@ -17,6 +17,7 @@ export const REVISION_REASONS: Record<number, string[]> = {
         "Each snapshot records the commit, branch and uncommitted files it read.",
         "Co-change no longer counts a component without commits as sharing all of its partner's.",
         "Files carry a role (production, test, generated, third-party, non-code) and health scores keep their deductions.",
+        "Snapshots say what the walker left out, and how long each file has sat untouched.",
     ],
 }
 

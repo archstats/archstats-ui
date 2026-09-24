@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { anchorSql } from "~/utils/history"
 import { authorNamesSql, authorStatsSql, periodStats } from "~/utils/authors"
 import { useAuthorsStore } from "~/stores/authors"
 import { useWorkspacesStore } from "~/stores/workspaces"
@@ -44,7 +45,7 @@ watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { 
 
 const { data: author, loading, error } = useAsyncQuery<Record<string, any> | null>(
   async () => {
-    const rows = await store.query<Record<string, any>>(authorStatsSql(authorNamesSql(authorsStore.aliases, name.value), { aliases: authorsStore.aliases, includeBots: true }))
+    const rows = await store.query<Record<string, any>>(authorStatsSql(authorNamesSql(authorsStore.aliases, name.value), { aliases: authorsStore.aliases, includeBots: true, anchor: anchorSql() }))
     return rows[0] ?? null
   },
   [name, () => authorsStore.aliases],

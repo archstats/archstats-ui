@@ -20,7 +20,7 @@
 
     <template #switches>
       <div class="ui-segmented" role="group" aria-label="Period">
-        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
+        <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days)" @click="period = p.id">{{ p.label }}</button>
       </div>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.showBots" :class="{ 'bg-neutral-100': authorsStore.showBots }"
               title="Dependency bumpers, CI accounts and release-plugin commits are hidden unless shown here"
@@ -145,6 +145,7 @@
 </template>
 
 <script setup lang="ts">
+import { anchorLabel, anchorSql } from "~/utils/history"
 import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/utils/authors"
 import { useAuthorsStore } from "~/stores/authors"
 import { useWorkspacesStore } from "~/stores/workspaces"
@@ -192,7 +193,7 @@ interface AuthorRow extends PeriodStats {
 // One query for the whole view; period and search work on the loaded rows.
 const { data: raw, loading, error } = useAsyncQuery<Record<string, any>[]>(
   () => store.hasView("git_commits")
-    ? store.query<Record<string, any>>(authorStatsSql("1", { aliases: authorsStore.aliases, includeBots: authorsStore.showBots }))
+    ? store.query<Record<string, any>>(authorStatsSql("1", { aliases: authorsStore.aliases, includeBots: authorsStore.showBots, anchor: anchorSql() }))
     : Promise.resolve([]),
   [() => authorsStore.aliases, () => authorsStore.showBots],
   { initial: [] },
