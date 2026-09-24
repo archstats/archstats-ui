@@ -56,7 +56,8 @@ func (w *WorkspaceService) DeleteScans(ids []string) error {
 }
 
 // removeWorkspaceLeftovers deletes what a workspace kept outside app.db
-// besides its snapshots: rescan clones.
+// besides its snapshots: rescan clones and evidence figures.
 func removeWorkspaceLeftovers(root, workspaceID string) {
 	_ = os.RemoveAll(filepath.Join(root, "backfill", workspaceID))
+	_ = os.RemoveAll(filepath.Join(root, "evidence", workspaceID))
 }

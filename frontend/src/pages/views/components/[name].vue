@@ -9,6 +9,7 @@
     fallback="/views/metrics"
   >
     <template #actions>
+      <PinButton v-if="component" kind="component" :entity-key="nameInRoute" :title="nameInRoute" :values="() => pickValues(component as any, PIN_METRICS.component)"/>
       <router-link :to="`/views/components/hotspots?focus=${encodeURIComponent(nameInRoute)}`" class="ui-btn ui-btn-sm" title="Show this component in Hotspots">
         <Icon icon="flame" :size="13" class="text-neutral-500"/><span>Hotspots</span>
       </router-link>
@@ -21,6 +22,8 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue"
+import { PIN_METRICS, pickValues } from "~/utils/evidence"
 import { componentLabel, componentPath } from "~/utils/routes"
 import { useWorkspacesStore } from "~/stores/workspaces"
 // Five tabs, each named for the question it answers: what this is and where

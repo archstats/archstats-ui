@@ -9,6 +9,7 @@
     fallback="/views/metrics?grain=files"
   >
     <template #actions>
+      <PinButton v-if="file" kind="file" :entity-key="filePath" :title="fileBasename" :values="() => pickValues(file as any, PIN_METRICS.file)"/>
       <OpenInEditor v-if="file" :file="filePath" button-class="!h-7 !w-7"/>
       <router-link v-if="file?.component" :to="componentPath(file.component)" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
         <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>Component</span>
@@ -22,6 +23,8 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue"
+import { PIN_METRICS, pickValues } from "~/utils/evidence"
 import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { componentPath } from "~/utils/routes"
 import { computed } from "vue"

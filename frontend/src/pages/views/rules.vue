@@ -59,8 +59,11 @@
                       <td>
                         <span class="ui-tag" :title="kindHint(v.kind)">{{ kindLabel(v.kind) }}</span>
                       </td>
-                      <td class="relative max-w-0 pr-9">
-                        <OpenInEditor :file="v.file" :line="v.line" class="absolute right-1 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"/>
+                      <td class="relative max-w-0 pr-16">
+                        <span class="absolute right-1 top-1 flex items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                          <PinButton icon kind="rule" :entity-key="`${v.rule ?? group.id}|${v.from}|${v.to}|${v.file}`" :title="`${group.name}: ${v.from} → ${v.to}`" :values="{ findings: 1 }"/>
+                          <OpenInEditor :file="v.file" :line="v.line"/>
+                        </span>
                         <router-link
                           :to="`${filePath(v.file, 'source')}${v.line ? `#L${v.line}` : ''}`"
                           class="block truncate font-mono text-sm text-neutral-600 hover:text-neutral-900 hover:underline"
@@ -155,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue"
 import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { filePath } from "~/utils/routes"
 import DeclareSheet from "~/components/groups/DeclareSheet.vue"

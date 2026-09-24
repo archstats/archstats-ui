@@ -142,6 +142,7 @@ func main() {
 			appSvc,
 			app.NewFilesService(func() context.Context { return appCtx }),
 			changesSvc,
+			app.NewEvidenceService(st),
 		},
 	})
 	if err != nil {

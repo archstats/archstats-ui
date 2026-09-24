@@ -157,7 +157,10 @@
         >
           <div class="flex items-center justify-between">
             <span class="font-mono text-sm text-neutral-500">#{{ positionOf(cycle) }}</span>
-            <span class="font-mono text-sm tabular-nums text-neutral-500">severity {{ cycle.severity }}</span>
+            <span class="flex items-center gap-1">
+              <span class="font-mono text-sm tabular-nums text-neutral-500">severity {{ cycle.severity }}</span>
+              <PinButton icon kind="cycle" :entity-key="[...cycle.nodes].sort().join('\n')" :title="`Cycle ${cycle.nodes.map(shortName).join(' → ')}`" :values="{ size: cycle.nodes.length }"/>
+            </span>
           </div>
 
           <!-- The loop, as links: a → b → c → a -->
@@ -317,6 +320,7 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue"
 import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"

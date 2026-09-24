@@ -57,6 +57,7 @@ var migrations = []func(tx *sql.Tx) error{
 	migrate0,
 	migrate1,
 	migrate2,
+	migrate3,
 }
 
 func (s *Store) migrate() error {
@@ -188,5 +189,33 @@ CREATE TABLE scan_readings (
 	value   REAL,
 	PRIMARY KEY (scan_id, reading)
 );`)
+	return err
+}
+
+// migrate3 keeps the evidence board: findings pinned with where they came
+// from. A pin outlives its snapshot (the scan reference goes null and the
+// values stay as pinned).
+func migrate3(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+CREATE TABLE evidence_pins (
+	id           TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+	position     INTEGER NOT NULL,
+	kind         TEXT NOT NULL,
+	entity_key   TEXT NOT NULL DEFAULT '',
+	title        TEXT NOT NULL DEFAULT '',
+	route        TEXT NOT NULL DEFAULT '',
+	scan_id      TEXT REFERENCES scans(id) ON DELETE SET NULL,
+	head_commit  TEXT NOT NULL DEFAULT '',
+	revision     INTEGER NOT NULL DEFAULT 0,
+	lens         TEXT NOT NULL DEFAULT '',
+	scope        TEXT NOT NULL DEFAULT '',
+	role         TEXT NOT NULL DEFAULT '',
+	pinned_values TEXT NOT NULL DEFAULT '{}',
+	note         TEXT NOT NULL DEFAULT '',
+	figure_path  TEXT NOT NULL DEFAULT '',
+	created_at   DATETIME NOT NULL
+);
+CREATE INDEX idx_evidence_workspace ON evidence_pins(workspace_id, position);`)
 	return err
 }

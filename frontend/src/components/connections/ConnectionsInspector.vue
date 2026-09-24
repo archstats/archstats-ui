@@ -84,6 +84,9 @@
       <Icon icon="refresh" :size="13"/>
       <span>This edge is part of a cycle.</span>
     </p>
+    <div v-if="selection.type === 'pair' && pairEnds.every(e => e.kind === 'component')" class="flex">
+      <PinButton kind="pair" :entity-key="`${selection.from}>${selection.to}`" :title="`${pairEnds[0]?.label} → ${pairEnds[1]?.label}`" :values="{ references: pairForward }"/>
+    </div>
     <SharedCommitList v-if="source !== 'static' && pairFileSql" :a-files="pairFileSql[0]" :b-files="pairFileSql[1]"/>
   </div>
 
@@ -188,6 +191,7 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue";
 import SharedCommitList from "~/components/git/SharedCommitList.vue";
 import { groupPath } from "~/utils/routes";
 import { computed, ref, watch } from "vue";

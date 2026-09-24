@@ -62,7 +62,7 @@
                 <Icon icon="file-text" :size="12" class="text-neutral-500"/><span>{{ item.label }}</span>
               </button>
               <button v-if="item.savable" type="button" class="ui-menu-item" role="menuitem" @click="saveDocument(item)">
-                <Icon icon="download" :size="12" class="text-neutral-500"/><span>Save Markdown…</span>
+                <Icon icon="download" :size="12" class="text-neutral-500"/><span>{{ item.saveLabel ?? "Save Markdown…" }}</span>
               </button>
             </template>
           </template>
@@ -75,6 +75,10 @@
             <span>Figures as shown (dark)</span>
           </button>
         </template>
+        <div class="my-1 h-px bg-neutral-100" role="separator"></div>
+        <button type="button" class="ui-menu-item" role="menuitem" title="Keep this view, with a figure of it, on the evidence board" @click="pinView">
+          <Icon icon="bookmark" :size="12" class="text-neutral-500"/><span>Pin this view</span>
+        </button>
         <template v-if="lastExport">
           <div class="my-1 h-px bg-neutral-100" role="separator"></div>
           <button type="button" class="ui-menu-item" role="menuitem" @click="revealLast">
@@ -101,6 +105,7 @@ import { copyTableCsv, copyTableMarkdown, saveTableCsv } from "~/utils/exportAct
 import { FILTERS, copyText, lastExport, reveal, saveBase64, saveText } from "~/utils/files";
 import { isDarkAppearance, pngBase64, svgDocument } from "~/utils/figure";
 import { buildProvenance, provenanceShort } from "~/utils/provenance";
+import { useEvidenceStore } from "~/stores/evidence";
 
 // The one Export menu. In a view's toolbar it is a button; the shell mounts a
 // headless one so ⌘E works on views without a toolbar. Every action ends the
@@ -188,9 +193,23 @@ async function copyDocument(d: DocumentExportable) {
 async function saveDocument(d: DocumentExportable) {
   close();
   try {
-    const path = await saveText(exportFileName(d.title, "md"), await d.markdown(), [FILTERS.md], "Save Markdown");
+    const path = d.save ? await d.save() : await saveText(exportFileName(d.title, "md"), await d.markdown(), [FILTERS.md], "Save Markdown");
     if (path) done("Saved");
   } catch (e) { fail("Save", e); }
+}
+
+// A view pin keeps the route and a figure of the view's first chart.
+async function pinView() {
+  close();
+  try {
+    const evidence = useEvidenceStore();
+    const f = items.value.find(i => i.kind === "figure" && i.ready());
+    let figure: string | null = null;
+    if (f && f.kind === "figure") { const out = await f.render({ light: true }); if (out) figure = await pngBase64(out, caption(), { light: true }); }
+    const title = (typeof document !== "undefined" ? document.querySelector(".ui-toolbar-title")?.textContent?.trim() : "") || "View";
+    await evidence.pin({ kind: "view", entityKey: location.hash.replace(/^#/, ""), title, figure });
+    done("Pinned");
+  } catch (e) { fail("Pin", e); }
 }
 
 async function revealLast() {

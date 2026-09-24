@@ -66,6 +66,7 @@
               >
                 <component :is="item.icon" :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
                 <span class="truncate">{{ item.label }}</span>
+                <span v-if="item.count" class="ml-auto font-mono text-xs text-neutral-400">{{ item.count }}</span>
               </router-link>
             </li>
           </ul>
@@ -165,7 +166,7 @@
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
-  PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare,
+  PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark,
   Activity, Users, Braces, LayoutDashboard, Scale,
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
@@ -173,6 +174,7 @@ import GroupsManager from "~/components/groups/GroupsManager.vue";
 import DeclareSheet from "~/components/groups/DeclareSheet.vue";
 import { groupPath } from "~/utils/routes";
 import { useLensFindings } from "~/composables/useLensFindings";
+import { useEvidenceStore } from "~/stores/evidence";
 import Icon from "~/components/ui/common/Icon.vue";
 import { DEFAULT_DIMENSION, useGroupsStore } from "~/stores/groups";
 import { useScopeStore } from "~/stores/scope";
@@ -213,6 +215,12 @@ const codeViews = [
 const architectureViews = [
   { label: "Rules", to: "/views/rules", icon: Scale },
 ];
+// The engagement's own working files: what was pinned, and the tools to look further.
+const evidenceStore = useEvidenceStore();
+watch(() => workspaces.active?.id, (id) => { if (id) void evidenceStore.load(id); }, { immediate: true });
+const toolViews = computed(() => [
+  { label: "Evidence", to: "/views/evidence", icon: Bookmark, count: evidenceStore.count || undefined },
+]);
 // Rules arrived after most snapshots were taken, so the section hides itself
 // rather than showing an empty screen — the same way the Java section does.
 const hasRules = computed(() => dataStore.hasView("rules"));
@@ -304,6 +312,7 @@ const groups = computed(() => {
   ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
   if (hasUnits.value) list.push({ title: "Code", items: codeViews });
   if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
+  list.push({ title: "Tools", items: toolViews.value as any });
   return list;
 });
 </script>

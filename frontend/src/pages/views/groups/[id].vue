@@ -8,6 +8,7 @@
     fallback="/views/connections"
   >
     <template #actions>
+      <PinButton v-if="group" kind="view" :entity-key="route.fullPath" :title="`Group ${group.name}`"/>
       <button v-if="group" type="button" class="ui-btn ui-btn-sm" :aria-pressed="scope.groupIds.includes(group.id)" :title="`Scope every view to ${group.name}`" @click="scope.toggleGroup(group.id)">
         <Icon icon="focus" :size="13" class="text-neutral-500"/><span>{{ scope.groupIds.includes(group.id) ? "In scope" : "Scope to it" }}</span>
       </button>
@@ -21,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import PinButton from "~/components/evidence/PinButton.vue"
 import { computed } from "vue"
 import { useRoute } from "vue-router"
 import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"

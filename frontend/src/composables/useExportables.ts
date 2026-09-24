@@ -35,6 +35,10 @@ export interface DocumentExportable {
     markdown: () => string | Promise<string>;
     /** Also offer "Save Markdown…". */
     savable?: boolean;
+    /** A save of its own (a report with its figures); resolves to the path, or null when cancelled. */
+    save?: () => Promise<string | null>;
+    /** The label of that save, e.g. "Report as Markdown…". */
+    saveLabel?: string;
     disabledReason?: () => string | null;
 }
 
