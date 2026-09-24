@@ -170,8 +170,8 @@ export const useDataStore = defineStore('data', {
          * coupling metrics are defined on. A type-only import (erased by the
          * compiler) made pages count a "top dependent" the dependents number
          * beside it did not, and let a cut plan chase a loop that does not
-         * exist at runtime. Connections reads its own query and shows type-only
-         * edges on purpose.
+         * exist at runtime. Connections draws the same runtime edges, and marks
+         * the ones made only by a runtime lookup (kind 'dynamic') as such.
          */
         componentConnections(state: any): RawComponentConnection[] {
             return (state._componentConnections as any[]).filter((c) => c.kind !== "type_only");

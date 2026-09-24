@@ -34,6 +34,8 @@ export interface CEdge {
   from: string
   to: string
   references: number
+  /** Of `references`, those made only by a runtime lookup (a string naming a module). */
+  dynamicRefs?: number
   sharedCommits: number
   /** 0–1, meaning depends on `source`: refs share, shared-commits share, or the 50/50 blend. */
   weight: number
@@ -213,7 +215,13 @@ export interface RawEdge {
   from: string
   to: string
   references: number
+  dynamicRefs?: number
   sharedCommits: number
+}
+
+/** A pair joined only by runtime lookups: no import names the other, so a rename breaks it silently. */
+export function isDynamicOnly(e: { references: number; dynamicRefs?: number }): boolean {
+  return (e.dynamicRefs ?? 0) > 0 && (e.dynamicRefs ?? 0) >= e.references
 }
 
 function share(value: number, max: number): number {
@@ -238,6 +246,7 @@ export function normalizeEdges(source: Source, edges: RawEdge[]): CEdge[] {
     from: e.from,
     to: e.to,
     references: e.references,
+    ...(e.dynamicRefs ? { dynamicRefs: e.dynamicRefs } : {}),
     sharedCommits: e.sharedCommits,
     weight: edgeWeight(source, e.references, e.sharedCommits, maxRefs, maxShared),
   }))
@@ -252,8 +261,8 @@ function canonicalPair(a: string, b: string): [string, string] {
 }
 
 /** Directed static edges, unchanged (used only when source === "static" and nothing is being rolled up). */
-export function directedReferenceEdges(rows: Array<{ from: string; to: string; references: number }>): RawEdge[] {
-  return rows.filter(r => r.from !== r.to).map(r => ({ from: r.from, to: r.to, references: r.references, sharedCommits: 0 }))
+export function directedReferenceEdges(rows: Array<{ from: string; to: string; references: number; dynamicRefs?: number | null }>): RawEdge[] {
+  return rows.filter(r => r.from !== r.to).map(r => ({ from: r.from, to: r.to, references: r.references, ...(r.dynamicRefs ? { dynamicRefs: Number(r.dynamicRefs) } : {}), sharedCommits: 0 }))
 }
 
 /** Undirected git edges, canonicalized (used only when source === "git" and nothing is being rolled up). */
@@ -310,6 +319,7 @@ export function reindexEdges(edges: RawEdge[], resolve: IdResolver, directed = f
     const key = `${a}${KEY_SEP}${b}`
     const entry = map.get(key) ?? { from: a, to: b, references: 0, sharedCommits: 0 }
     entry.references += e.references
+    if (e.dynamicRefs) entry.dynamicRefs = (entry.dynamicRefs ?? 0) + e.dynamicRefs
     entry.sharedCommits += e.sharedCommits
     map.set(key, entry)
   }

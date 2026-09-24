@@ -24,12 +24,16 @@
       <div v-if="tip.sub" class="text-neutral-500">{{ tip.sub }}</div>
     </div>
     <!-- What the three marks mean, showing only the kinds actually on screen. -->
-    <div v-if="kindsPresent.length > 1" class="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded bg-surface/80 px-2 py-1 backdrop-blur-sm">
+    <div v-if="kindsPresent.length > 1 || dynamicPairs" class="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded bg-surface/80 px-2 py-1 backdrop-blur-sm">
       <span v-for="k in kindsPresent" :key="k" class="flex items-center gap-1.5">
         <svg width="13" height="13" viewBox="-7 -7 14 14" aria-hidden="true">
           <path :d="nodePath(k, k === 'group' ? 6 : k === 'component' ? 5 : 4)" :fill="k === 'file' ? 'rgb(var(--c-surface))' : 'rgb(var(--c-neutral-500))'" :fill-opacity="k === 'group' ? 0.25 : 1" :stroke="k === 'component' ? 'rgb(var(--c-surface))' : 'rgb(var(--c-neutral-500))'" :stroke-width="k === 'group' ? 2 : k === 'file' ? 1.6 : 1.2"/>
         </svg>
         <span class="text-xs text-neutral-500">{{ KIND_WORD[k] }}</span>
+      </span>
+      <span v-if="dynamicPairs" class="flex items-center gap-1.5" :title="`${dynamicPairs} pair${dynamicPairs === 1 ? '' : 's'} joined only by a string naming a module at runtime; no import names them, so a rename breaks them silently`">
+        <svg width="16" height="6" aria-hidden="true"><line x1="0" y1="3" x2="16" y2="3" stroke="rgb(var(--c-neutral-500))" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
+        <span class="text-xs text-neutral-500">Only by runtime lookup</span>
       </span>
     </div>
 
@@ -59,7 +63,7 @@ import { chartTheme, readChartTheme, refreshChartTheme, type ChartTheme } from "
 import { useExportables } from "~/composables/useExportables";
 import { withLightTokens, type FigureOptions, type FigureOutput, type LegendItem } from "~/utils/figure";
 import Icon from "~/components/ui/common/Icon.vue";
-import { type CEdge, type CNode, type GroupSuggestion, edgeKey, idsInRect, topDegreeIds } from "~/utils/connections";
+import { type CEdge, type CNode, type GroupSuggestion, edgeKey, idsInRect, isDynamicOnly, topDegreeIds } from "~/utils/connections";
 import type { Hull as ModelHull } from "~/composables/useConnectionsModel";
 import { begin, count } from "~/utils/perf";
 
@@ -594,10 +598,14 @@ function strokeLink(g: CanvasRenderingContext2D, l: SimLink, stroke: string, alp
   g.globalAlpha = alpha;
   g.strokeStyle = stroke;
   g.lineWidth = width;
+  // A pair only a runtime lookup joins is dashed: no import will name it.
+  const dynamic = isDynamicOnly(l.edge);
+  if (dynamic) g.setLineDash([4, 3]);
   g.beginPath();
   g.moveTo(s.x!, s.y!);
   g.lineTo(l.tx!, l.ty!);
   g.stroke();
+  if (dynamic) g.setLineDash([]);
   if (!props.directed) return;
   // The arrow head grows with the line, as an SVG marker in stroke units did.
   const dx = l.tx! - s.x!, dy = l.ty! - s.y!;
@@ -817,7 +825,7 @@ function onPointerMove(event: PointerEvent) {
     const l = m || h ? null : linkAt(x, y);
     if (m) { key = "m:" + m.edge.from + "|" + m.edge.to; title = "Part of a cycle"; sub = "Click to inspect it."; }
     else if (h) { key = "h:" + h.key; title = `Close ${h.name}`; }
-    else if (l) { key = "l:" + l.edge.from + "|" + l.edge.to; title = `${nodeById.value.get(l.edge.from)?.label ?? l.edge.from} ${props.directed ? "→" : "↔"} ${nodeById.value.get(l.edge.to)?.label ?? l.edge.to}`; sub = "Click to inspect this edge."; }
+    else if (l) { key = "l:" + l.edge.from + "|" + l.edge.to; title = `${nodeById.value.get(l.edge.from)?.label ?? l.edge.from} ${props.directed ? "→" : "↔"} ${nodeById.value.get(l.edge.to)?.label ?? l.edge.to}`; sub = `${l.edge.references ? `${l.edge.references} ref${l.edge.references === 1 ? "" : "s"}${l.edge.dynamicRefs ? ` (${l.edge.dynamicRefs} dynamic)` : ""}. ` : ""}Click to inspect this edge.`; }
   }
   canvas.style.cursor = key ? "pointer" : "grab";
   if (key !== tipKey) { tipKey = key; tip.value = key ? { x: px, y: py, title, sub } : null; }
@@ -950,9 +958,12 @@ function exportFigure(opts: FigureOptions): FigureOutput | null {
   return { kind: "canvas", canvas: off, width, height, scale, legend: figureLegend(opts) };
 }
 
+const dynamicPairs = computed(() => props.edges.filter(isDynamicOnly).length);
+
 function figureLegend(opts: FigureOptions): LegendItem[] {
   const t = opts.light ? withLightTokens(() => readChartTheme()) : chartTheme();
   const out: LegendItem[] = [{ label: props.directed ? "Depends on (arrow points at the dependency)" : "Changed together", color: t.inkMuted, line: true }];
+  if (props.edges.some(isDynamicOnly)) out.push({ label: "Only by runtime lookup", color: t.inkMuted, dashed: true });
   if (props.cycleKeys.size) out.push({ label: "In a cycle", color: t.red, line: true });
   for (const h of props.hulls) if (h.color) out.push({ label: h.name, color: h.color });
   if (props.suggestions.length) out.push({ label: "Suggested group", color: t.inkMuted, dashed: true });

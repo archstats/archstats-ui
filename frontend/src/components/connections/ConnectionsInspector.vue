@@ -452,9 +452,10 @@ const pairCells = computed(() => {
   const { from, to } = props.selection;
   const hits = props.edges.filter(e => (e.from === from && e.to === to) || (e.from === to && e.to === from));
   const refs = hits.reduce((s, e) => s + e.references, 0);
+  const dynamic = hits.reduce((s, e) => s + (e.dynamicRefs ?? 0), 0);
   const shared = hits.reduce((s, e) => s + e.sharedCommits, 0);
   const cells: any[] = [];
-  if (props.source !== "git") cells.push({ label: "References", value: formatNumber(refs, 0) });
+  if (props.source !== "git") cells.push({ label: "References", value: dynamic ? `${formatNumber(refs, 0)} (${formatNumber(dynamic, 0)} dynamic)` : formatNumber(refs, 0) });
   if (props.source !== "static") cells.push({ label: "Shared commits", value: formatNumber(shared, 0) });
   cells.push({ label: "Weight", value: formatNumber(Math.max(0, ...hits.map(e => e.weight)) * 100, 0) + "%" });
   return cells;

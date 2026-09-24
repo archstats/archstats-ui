@@ -153,7 +153,7 @@ function cellTitle(row: string, col: string): string | undefined {
   const e = edgeAt(row, col);
   if (!e) return undefined;
   const parts = [];
-  if (e.references) parts.push(`${e.references} reference${e.references === 1 ? "" : "s"}`);
+  if (e.references) parts.push(`${e.references} reference${e.references === 1 ? "" : "s"}${e.dynamicRefs ? ` (${e.dynamicRefs} dynamic)` : ""}`);
   if (e.sharedCommits) parts.push(`${e.sharedCommits} shared commit${e.sharedCommits === 1 ? "" : "s"}`);
   const from = labelOf.value.get(row) ?? row;
   const to = labelOf.value.get(col) ?? col;

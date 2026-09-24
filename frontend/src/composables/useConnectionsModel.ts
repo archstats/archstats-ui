@@ -73,7 +73,7 @@ export function useConnectionsModel(opts: {
       store.query<ComponentRow>(`select name, complexity__lines as lines, codesmells__code_health as health, codesmells__hotspot_score as hotspot from components`),
       store.query<{ component: string; n: number }>(`select component, count(*) as n from files group by component`),
       store.query<{ name: string; lines: number | null }>(`select name, complexity__lines as lines from files`),
-      store.query<{ from: string; to: string; references: number }>(`select "from", "to", sum(reference_count) as "references" from ${store.runtimeComponentEdges} group by "from", "to"`),
+      store.query<{ from: string; to: string; references: number; dynamicRefs: number | null }>(`select "from", "to", sum(reference_count) as "references"${store.hasColumn("component_connections_direct", "kind") ? `, sum(case when kind = 'dynamic' then reference_count else 0 end) as dynamicRefs` : ""} from ${store.runtimeComponentEdges} group by "from", "to"`),
       hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number }>(`select pair_1 as "from", pair_2 as "to", shared_commits as sharedCommits from git_component_shared_commits where shared_commits > 0 and ${TRUSTED_PAIR_SQL}`) : Promise.resolve([]),
     ]);
     return { components, filesPerComponent: new Map(fileCounts.map(r => [r.component, r.n])), fileLines: new Map(fileLineRows.map(r => [r.name, Number(r.lines) || 0])), staticEdges: directedReferenceEdges(staticRows), gitEdges: undirectedSharedCommitEdges(gitRows) };

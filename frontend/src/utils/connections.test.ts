@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  feedbackEdges, idsInRect, neighboursOf,
+  feedbackEdges, idsInRect, isDynamicOnly, neighboursOf,
   buildTreeNodes, treeResolver, presetOpenIds, levelOf, stronglyConnectedSets, cycleEdgeKeys, edgeKey, type ConnectionsQueryState,
   DEFAULT_CONNECTIONS_STATE,
   buildMixedGrainNodes,
@@ -343,4 +343,18 @@ describe("feedbackEdges", () => {
   it("has nothing to cut when the members do not touch", () => {
     expect(feedbackEdges(["a", "b"], [edge("a", "c", 3)])).toEqual([])
   })
+})
+
+describe("dynamic references", () => {
+    it("marks a pair dynamic-only when every reference is a runtime lookup, and keeps the count through a rollup", () => {
+        const raw = directedReferenceEdges([
+            { from: "a", to: "b", references: 3, dynamicRefs: 3 },
+            { from: "a", to: "c", references: 5, dynamicRefs: 2 },
+            { from: "c", to: "b", references: 1, dynamicRefs: 0 },
+        ])
+        expect(raw.filter(isDynamicOnly).map(e => e.to)).toEqual(["b"])
+        const rolled = reindexEdges(raw, id => (id === "a" ? "G" : "H"), true)
+        expect(rolled).toEqual([{ from: "G", to: "H", references: 8, dynamicRefs: 5, sharedCommits: 0 }])
+        expect(isDynamicOnly(rolled[0])).toBe(false)
+    })
 })

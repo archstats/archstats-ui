@@ -129,6 +129,25 @@
           </ul>
         </section>
 
+        <!-- Lookups the analysis saw but could not tie to a component: a string
+             naming a module that is not in the scan. Each is a dependency the
+             numbers above leave out. -->
+        <section v-if="unplaced.length" class="px-4 pb-6 pt-5">
+          <h3 class="ui-section-title">Dependencies it can't place</h3>
+          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">Names used at runtime that match no module in this scan, so they count in no coupling number here.</p>
+          <div class="mt-2 overflow-hidden rounded-lg hairline">
+            <table class="ui-table">
+              <thead><tr><th>Where</th><th>Name used</th><th>Why it is unplaced</th></tr></thead>
+              <tbody>
+                <tr v-for="u in unplaced" :key="`${u.file}:${u.line}:${u.names}`">
+                  <td class="max-w-0"><router-link :to="`${filePath(u.file, 'source')}#L${u.line}`" class="block truncate font-mono text-sm text-neutral-900 hover:underline" :title="`${u.file}:${u.line}`">{{ u.file.split("/").pop() }}:{{ u.line }}</router-link></td>
+                  <td class="font-mono text-sm text-neutral-800">{{ u.names }}</td>
+                  <td class="text-sm text-neutral-600">{{ u.reason }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
 
       <!-- Inspector: the one place a selection explains itself, and the only
@@ -245,7 +264,7 @@
 
 <script setup lang="ts">
 import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
-import { componentPath } from "~/utils/routes"
+import { componentPath, filePath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -315,6 +334,14 @@ interface MatrixRow { from: string; to: string; git_co_changes: number | null }
 interface SharedRow { pair_1: string; pair_2: string; shared_commits: number; percentage_of_all_commits_pair_1: number | null; percentage_of_all_commits_pair_2: number | null }
 
 const hasIndirect = computed(() => store.hasView("component_connections_indirect"))
+
+const { data: unplaced } = useAsyncQuery<Array<{ file: string; line: number; names: string; reason: string }>>(
+  () => store.hasView("unresolved_edges")
+    ? store.query(`SELECT file, line, names, reason FROM unresolved_edges WHERE "from" = ${sqlLiteral(current.value)} ORDER BY file, line`)
+    : Promise.resolve([]),
+  [current],
+  { initial: [] },
+)
 
 const { data, loading } = useAsyncQuery(
   async () => {

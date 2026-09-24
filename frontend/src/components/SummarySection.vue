@@ -13,7 +13,7 @@
     <div v-if="identity || shallowClone" class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-neutral-500">
       <span v-if="identity" class="font-mono" :title="store.snapshotInfo?.git_head_commit">{{ identity }}</span>
       <span v-if="shallowClone" class="ui-tag" title="The repository was cloned with --depth, so its history stops where the clone did: commit counts, contributors and ages cover only that">shallow clone</span>
-      <router-link to="/views/about" class="text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline">About this snapshot</router-link>
+      <router-link to="/views/snapshot" class="text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline">About this snapshot</router-link>
     </div>
 
     <!-- Stats strip: one hairline frame, six readings. -->
@@ -52,6 +52,10 @@
             </template>
             <template v-if="componentDependencies !== null">
               <dt><MetricHint id="app__cross_component_edges">Component dependencies</MetricHint></dt><dd>{{ formatVal(componentDependencies) }}</dd>
+            </template>
+            <template v-if="evidenceText">
+              <dt title="How the dependencies were found: an import names its target; a runtime lookup names it in a string; a type-only import is erased by the compiler and left out of coupling">Dependency evidence</dt>
+              <dd class="!whitespace-normal"><router-link to="/views/snapshot#dependencies" class="underline-offset-2 hover:underline">{{ evidenceText }}</router-link></dd>
             </template>
             <template v-if="getVal('connection_count') !== null">
               <dt title="individual imports that cross from one component into another">Cross-component imports</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
@@ -184,6 +188,18 @@ watch(
 // every individual import crossing a component boundary -- 10,370 for
 // Broadleaf, whose components have 2,603 dependencies.
 const componentDependencies = ref<number | null>(null)
+// How far to trust the coupling numbers: said only when something other than
+// plain imports is in play (Java, C#, PHP and Go are all imports).
+const evidence = ref<{ total: number; dynamicOnly: number; typeOnly: number; unresolved: number } | null>(null)
+const evidenceText = computed(() => {
+  const e = evidence.value
+  if (!e) return ""
+  const parts: string[] = []
+  if (e.dynamicOnly) parts.push(`${formatVal(e.dynamicOnly)} of ${formatVal(e.total)} only by runtime lookup`)
+  if (e.unresolved) parts.push(`${formatVal(e.unresolved)} lookup${e.unresolved === 1 ? "" : "s"} unresolved`)
+  if (e.typeOnly) parts.push(`${formatVal(e.typeOnly)} types only, left out of coupling`)
+  return parts.join(" · ")
+})
 watch(
   () => [store.hasData, store.datasetKey] as const,
   async ([hasData]) => {
@@ -196,6 +212,16 @@ watch(
         `SELECT count(*) AS n FROM (SELECT DISTINCT "from", "to" FROM component_connections_direct WHERE "from" != "to" ${runtimeOnly})`,
       )
       componentDependencies.value = Number(rows[0]?.n ?? 0)
+      evidence.value = null
+      if (runtimeOnly) {
+        const [pairs] = await store.query<{ total: number; dynamic_only: number; type_only: number }>(`
+          WITH p AS (
+            SELECT "from", "to", max(kind = 'import') AS s, max(kind = 'dynamic') AS d, max(kind = 'type_only') AS t
+            FROM component_connections_direct WHERE "from" != "to" GROUP BY 1, 2)
+          SELECT sum(s = 1 OR d = 1) AS total, sum(d = 1 AND s = 0) AS dynamic_only, sum(t = 1 AND s = 0 AND d = 0) AS type_only FROM p`)
+        const unresolved = store.hasView("unresolved_edges") ? Number((await store.query<{ n: number }>("SELECT count(*) AS n FROM unresolved_edges"))[0]?.n ?? 0) : 0
+        evidence.value = { total: Number(pairs?.total ?? 0), dynamicOnly: Number(pairs?.dynamic_only ?? 0), typeOnly: Number(pairs?.type_only ?? 0), unresolved }
+      }
     } catch {
       componentDependencies.value = null
     }
