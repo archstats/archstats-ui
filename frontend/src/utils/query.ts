@@ -7,7 +7,7 @@
 // so, which is the whole reason this exists.
 //
 //   line   := ["!"] source ["where" cond {"and" cond}]
-//   source := <glob> | "components" | "files"
+//   source := <glob> | "components" | "files" | "contains" <text>
 //   cond   := <metric> [op number]        // bare metric means "> 0"
 //   op     := >  >=  <  <=  =  !=
 //
@@ -37,6 +37,8 @@ export type Source =
   | { kind: "glob"; pattern: string }
   /** The bare keywords, for a line that asks only a question about metrics. */
   | { kind: "all"; unit: UnitKind }
+  /** Files whose source holds the text (any case), and the components they sit in. */
+  | { kind: "contains"; needle: string }
 
 export interface Line {
   /** Line numbers are 1-based and count blank and comment lines, so that an
@@ -137,6 +139,8 @@ function splitKeyword(text: string, word: string): string[] {
 
 function parseSource(text: string): Source | null {
   if (!text) return null
+  const contains = /^contains\s+(?:"([^"]+)"|(\S+))$/i.exec(text)
+  if (contains) return { kind: "contains", needle: contains[1] ?? contains[2] }
   const word = text.toLowerCase()
   if (word === "components" || word === "component") return { kind: "all", unit: "component" }
   if (word === "files" || word === "file") return { kind: "all", unit: "file" }
@@ -248,6 +252,20 @@ export interface QueryWorld {
    * satisfy `< 10`.
    */
   metric?: (kind: UnitKind, id: string, metric: string) => number | undefined
+  /**
+   * What holds a text, or undefined while the code is still being searched.
+   * Defaults to the lookup the app provides (see provideContains).
+   */
+  contains?: ContainsLookup
+}
+
+export type ContainsLookup = (needle: string) => { components: Set<string>; files: Set<string> } | undefined
+
+let providedContains: ContainsLookup | null = null
+
+/** The app's code search, for `contains` lines; kept out of this module so it stays pure. */
+export function provideContains(lookup: ContainsLookup | null) {
+  providedContains = lookup
 }
 
 export interface QueryResult {
@@ -262,6 +280,8 @@ export interface QueryResult {
    * list of ids would have dropped its members in silence.
    */
   empty: number[]
+  /** `contains` lines still waiting on the code search: neither empty nor answered. */
+  pending?: number[]
 }
 
 const EMPTY_RESULT: QueryResult = { components: [], files: [], matchedBy: new Map(), excludedBy: new Map(), empty: [] }
@@ -280,8 +300,19 @@ export function runQuery(query: Query, world: QueryWorld | null | undefined): Qu
     return r
   }
 
-  /** Which units one line finds, before anything else is taken away. */
-  const hits = (line: Line): { components: string[]; files: string[] } => {
+  const contains = world.contains ?? providedContains
+  const pending: number[] = []
+
+  /** Which units one line finds, before anything else is taken away; null while a search runs. */
+  const hits = (line: Line): { components: string[]; files: string[] } | null => {
+    if (line.source.kind === "contains") {
+      const found = contains?.(line.source.needle)
+      if (!found) return null
+      return {
+        components: world.components.filter(id => found.components.has(id) && passes(line.conds, "component", id, world)),
+        files: world.files.filter(id => found.files.has(id) && passes(line.conds, "file", id, world)),
+      }
+    }
     const wants = (kind: UnitKind) =>
       line.source.kind === "all" ? line.source.unit === kind : true
     const pattern = line.source.kind === "glob" ? line.source.pattern : null
@@ -315,6 +346,7 @@ export function runQuery(query: Query, world: QueryWorld | null | undefined): Qu
 
   for (const line of includes) {
     const found = hits(line)
+    if (!found) { pending.push(line.no); continue }
     if (found.components.length === 0 && found.files.length === 0) empty.push(line.no)
     for (const id of found.components) { if (!components.has(id)) matchedBy.set(id, line.no); components.add(id) }
     for (const id of found.files) { if (!files.has(id)) matchedBy.set(id, line.no); files.add(id) }
@@ -325,6 +357,7 @@ export function runQuery(query: Query, world: QueryWorld | null | undefined): Qu
   // can read a query and know what it does.
   for (const line of excludes) {
     const found = hits(line)
+    if (!found) { pending.push(line.no); continue }
     let removed = 0
     for (const id of found.components) if (components.delete(id)) { excludedBy.set(id, line.no); matchedBy.delete(id); removed++ }
     for (const id of found.files) if (files.delete(id)) { excludedBy.set(id, line.no); matchedBy.delete(id); removed++ }
@@ -337,6 +370,7 @@ export function runQuery(query: Query, world: QueryWorld | null | undefined): Qu
     matchedBy,
     excludedBy,
     empty: empty.sort((a, b) => a - b),
+    pending,
   }
 }
 
@@ -397,7 +431,7 @@ export function isBlankQuery(text: string): boolean {
 }
 
 export function isLive(query: Query): boolean {
-  return query.lines.some(l => l.conds.length > 0)
+  return query.lines.some(l => l.conds.length > 0 || l.source.kind === "contains")
 }
 
 /** Whether this text is only literal ids: what a hand-picked selection looks like. */

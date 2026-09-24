@@ -54,7 +54,8 @@ function buckets(): MonthBucket[] {
   return out
 }
 
-const tickLabel = d3.timeFormat("%b %y")
+// "Dec 08" read as the eighth of December; the apostrophe makes it a year.
+const tickLabel = d3.timeFormat("%b ’%y")
 const titleLabel = d3.timeFormat("%B %Y")
 
 function draw() {

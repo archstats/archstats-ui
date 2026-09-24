@@ -234,3 +234,32 @@ describe("a search that asks nothing", () => {
     expect(runQuery(parseQuery(typed), world).components).toEqual(["org.acme.catalog.core", "catalogue.tools"])
   })
 })
+
+describe("contains", () => {
+  const world = {
+    components: ["pay", "order", "cart"],
+    files: ["pay/Gateway.java", "pay/Refund.java", "order/Order.java"],
+    componentSep: ".",
+  }
+  const found = { components: new Set(["pay"]), files: new Set(["pay/Gateway.java"]) }
+
+  it("reads a quoted text or a single word", () => {
+    expect(parseQuery('contains "raw sql"').lines[0].source).toEqual({ kind: "contains", needle: "raw sql" })
+    expect(parseQuery("contains gateway").lines[0].source).toEqual({ kind: "contains", needle: "gateway" })
+    expect(parseQuery("contains raw sql").errors).toHaveLength(1)
+  })
+
+  it("answers from the code search and subtracts like any line", () => {
+    const r = runQuery(parseQuery('contains "gateway"\n!pay/Gateway.java'), { ...world, contains: () => found })
+    expect(r.components).toEqual(["pay"])
+    expect(r.files).toEqual([])
+    expect(r.empty).toEqual([])
+  })
+
+  it("is pending, not empty, while the search runs", () => {
+    const r = runQuery(parseQuery('contains "gateway"'), { ...world, contains: () => undefined })
+    expect(r.components).toEqual([])
+    expect(r.empty).toEqual([])
+    expect(r.pending).toEqual([1])
+  })
+})

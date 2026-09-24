@@ -66,6 +66,16 @@ func (q *QueryService) Console(scanID, sql string) (*query.Limited, error) {
 	return q.svc.Console(scanID, sql)
 }
 
+// FindInCode counts a needle in every file whose source the scan kept.
+func (q *QueryService) FindInCode(scanID, needle string, opt query.FindOptions) (*query.FindResult, error) {
+	return q.svc.FindInCode(scanID, needle, opt)
+}
+
+// FindLines is one file's matching lines, with a line of context each side.
+func (q *QueryService) FindLines(scanID, file, needle string, opt query.FindOptions) ([]query.HitLine, error) {
+	return q.svc.FindLines(scanID, file, needle, opt)
+}
+
 // QueryIn reads a completed snapshot other than the open one, which is how a
 // view compares the current scan against an earlier one.
 func (q *QueryService) QueryIn(scanID string, sql string) ([]map[string]any, error) {

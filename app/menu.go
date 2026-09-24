@@ -51,6 +51,8 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	root.Append(menu.EditMenu())
 
 	view := root.AddSubmenu("View")
+	m.add(view, "goto", "Go to Anything…", keys.CmdOrCtrl("p"))
+	view.AddSeparator()
 	m.add(view, "nav:back", "Back", keys.CmdOrCtrl("["))
 	m.add(view, "nav:forward", "Forward", keys.CmdOrCtrl("]"))
 
@@ -94,6 +96,7 @@ func (m *MenuService) SetState(state MenuState) {
 		"snapshot:reveal": state.HasSnapshot,
 		"snapshot:save":   state.HasSnapshot,
 		"export":          state.CanExport,
+		"goto":            state.HasSnapshot,
 	}
 	changed := false
 	for id, on := range want {

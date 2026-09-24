@@ -12,6 +12,7 @@ export interface Shortcut {
 
 export const SHORTCUTS: Shortcut[] = [
     { area: "App", keys: ["Mod", "R"], label: "Scan again", command: "scan:again" },
+    { area: "App", keys: ["Mod", "P"], label: "Go to anything", command: "goto" },
     { area: "App", keys: ["Mod", "E"], label: "Export the current view", command: "export" },
     { area: "App", keys: ["Mod", "O"], label: "Import a snapshot file", command: "snapshot:import" },
     { area: "App", keys: ["Mod", "N"], label: "New workspace", command: "workspace:new" },

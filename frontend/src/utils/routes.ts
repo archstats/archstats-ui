@@ -34,3 +34,44 @@ export function groupPath(id: string, tab?: string): string {
   const base = `/views/groups/${encodeURIComponent(id)}`
   return tab ? `${base}/${tab}` : base
 }
+
+/** Find in code, for a needle. */
+export function searchPath(needle: string): string {
+  return `/views/search?q=${encodeURIComponent(needle)}`
+}
+
+export interface ViewEntry { label: string; to: string; also?: string }
+
+/**
+ * Every view by the name a person would type, for Go to anything. The rail
+ * lists the main ones; the rest are reached from inside them, and here.
+ */
+export const VIEWS: ViewEntry[] = [
+  { label: "Overview", to: "/" },
+  { label: "Metrics", to: "/views/metrics", also: "table components" },
+  { label: "Hotspots", to: "/views/components/hotspots", also: "treemap churn" },
+  { label: "Connections", to: "/views/connections", also: "graph dependencies" },
+  { label: "Dependency matrix", to: "/views/components/matrix", also: "dsm levels" },
+  { label: "Chord", to: "/views/components/chord" },
+  { label: "Cycles", to: "/views/components/cycles", also: "tangles" },
+  { label: "Plotter", to: "/views/components/plotter", also: "scatter" },
+  { label: "Main sequence", to: "/views/components/plotter", also: "abstractness instability distance" },
+  { label: "Component comparison", to: "/views/components/comparison" },
+  { label: "Files table", to: "/views/files/table" },
+  { label: "File treemap", to: "/views/files/treemap" },
+  { label: "File dependencies", to: "/views/files/dependencies" },
+  { label: "Authors", to: "/views/git/authors", also: "people" },
+  { label: "Activity", to: "/views/git/activity", also: "commits" },
+  { label: "Churn", to: "/views/git/churn" },
+  { label: "Timeline", to: "/views/git/timeline" },
+  { label: "Hidden coupling", to: "/views/git/coupling", also: "co-change changes together" },
+  { label: "Units", to: "/views/units", also: "classes functions modules" },
+  { label: "Rules", to: "/views/rules", also: "violations lens rules" },
+  { label: "Changes", to: "/views/changes", also: "compare diff" },
+  { label: "Over time", to: "/views/trends", also: "trends history" },
+  { label: "Lenses", to: "/views/dimensions", also: "dimensions builder" },
+  { label: "Evidence", to: "/views/evidence", also: "pins report" },
+  { label: "SQL console", to: "/views/query", also: "query" },
+  { label: "About this snapshot", to: "/views/snapshot", also: "languages scan" },
+  { label: "Metric reference", to: "/views/reference", also: "glossary definitions" },
+]

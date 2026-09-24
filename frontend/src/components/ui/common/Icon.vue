@@ -16,7 +16,7 @@ import {
   RotateCcw,
   Footprints,
   Pencil,
-  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search,
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search, SearchCode,
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal
@@ -68,6 +68,8 @@ const iconComponent = computed(() => {
       return ArrowLeft
     case "x":
       return X
+    case "search-code":
+      return SearchCode;
     case "search":
       return Search
     case "settings":

@@ -492,6 +492,92 @@ export namespace changes {
 
 export namespace query {
 	
+	export class FileHits {
+	    file: string;
+	    hits: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileHits(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file = source["file"];
+	        this.hits = source["hits"];
+	    }
+	}
+	export class FindOptions {
+	    regex: boolean;
+	    caseSensitive: boolean;
+	    word: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FindOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.regex = source["regex"];
+	        this.caseSensitive = source["caseSensitive"];
+	        this.word = source["word"];
+	    }
+	}
+	export class FindResult {
+	    files: FileHits[];
+	    totalHits: number;
+	    searched: number;
+	    truncated: boolean;
+	    elapsedMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FindResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.files = this.convertValues(source["files"], FileHits);
+	        this.totalHits = source["totalHits"];
+	        this.searched = source["searched"];
+	        this.truncated = source["truncated"];
+	        this.elapsedMs = source["elapsedMs"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HitLine {
+	    line: number;
+	    text: string;
+	    context: boolean;
+	    ranges: number[][];
+	
+	    static createFrom(source: any = {}) {
+	        return new HitLine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.line = source["line"];
+	        this.text = source["text"];
+	        this.context = source["context"];
+	        this.ranges = source["ranges"];
+	    }
+	}
 	export class Limited {
 	    columns: string[];
 	    rows: any[][];

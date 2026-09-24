@@ -8,6 +8,10 @@ export function Console(arg1:string,arg2:string):Promise<query.Limited>;
 
 export function CurrentScan():Promise<string>;
 
+export function FindInCode(arg1:string,arg2:string,arg3:query.FindOptions):Promise<query.FindResult>;
+
+export function FindLines(arg1:string,arg2:string,arg3:string,arg4:query.FindOptions):Promise<Array<query.HitLine>>;
+
 export function Open(arg1:string):Promise<void>;
 
 export function Query(arg1:string):Promise<Array<Record<string, any>>>;
