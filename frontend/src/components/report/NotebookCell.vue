@@ -45,16 +45,18 @@
     <div class="px-4 pb-1 pt-2">
       <!-- SQL written in the cell, like a notebook's code cell. -->
       <div v-if="cell.spec.type === 'sql' && (selected || !cell.spec.sql.trim() || !cell.output)" class="mb-2">
-        <textarea
-          :value="cell.spec.sql"
-          rows="3"
-          spellcheck="false"
-          class="block w-full resize-y rounded-md bg-neutral-50 px-3 py-2 font-mono text-[12px] leading-5 text-neutral-800 outline-none focus:shadow-[0_0_0_1px_rgb(var(--c-accent-400))]"
+        <SqlEditor
+          v-model="sqlDraft"
+          :scan-id="scanId"
+          :error="cell.output?.error ?? null"
+          compact
+          :min-rows="3"
+          :max-rows="16"
           aria-label="SQL"
           @mousedown.stop="$emit('select')"
-          @change="$emit('spec', { ...cell.spec, sql: ($event.target as HTMLTextAreaElement).value })"
-          @keydown.shift.enter.prevent="$emit('spec', { ...cell.spec, sql: ($event.target as HTMLTextAreaElement).value }); $emit('run')"
-        ></textarea>
+          @blur="commitSql"
+          @run="commitSql(); $emit('run')"
+        />
       </div>
 
       <p v-if="!cell.output" class="py-6 text-center text-sm text-neutral-500">
@@ -98,7 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import SqlEditor from "~/components/sql/SqlEditor.vue";
 import { Loader2, Play } from "lucide-vue-next";
 import { describeChange, displayTable, provenanceLine } from "~/utils/reportCells";
 import type { Cell, CellSpec } from "~/utils/reportDoc";
@@ -117,8 +120,10 @@ const props = withDefaults(defineProps<{
   figureMissing?: boolean
   /** The run gutter; a preview outside the notebook goes without. */
   gutter?: boolean
-}>(), { gutter: true, figureMissing: false });
-defineEmits<{
+  /** The snapshot a SQL cell's schema and values come from. */
+  scanId?: string | null
+}>(), { gutter: true, figureMissing: false, scanId: null });
+const emit = defineEmits<{
   (e: "select"): void
   (e: "run"): void
   (e: "patch", patch: Partial<Cell>): void
@@ -126,6 +131,13 @@ defineEmits<{
 }>();
 
 const ROWS = 12;
+// The SQL being written; it becomes the cell's when the editor is left or run.
+const sqlDraft = ref(props.cell.spec.type === "sql" ? props.cell.spec.sql : "");
+watch(() => (props.cell.spec.type === "sql" ? props.cell.spec.sql : ""), v => { sqlDraft.value = v; });
+function commitSql() {
+  const s = props.cell.spec;
+  if (s.type === "sql" && sqlDraft.value !== s.sql) emit("spec", { ...s, sql: sqlDraft.value });
+}
 const gutter = computed(() => props.gutter !== false);
 const allRows = ref(false);
 const runnable = computed(() => props.cell.spec.type !== "capture");

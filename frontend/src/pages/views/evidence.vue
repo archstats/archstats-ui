@@ -171,6 +171,7 @@
                     :figure-missing="!!b.cell.output?.figure && reports.missingFigures.includes(b.cell.output.figure)"
                     :workspace="workspaceName"
                     :label="label"
+                    :scan-id="reports.kernel?.id ?? null"
                     @select="selectCell(b.id)"
                     @run="reports.run(b.id)"
                     @patch="p => reports.setCell(b.id, p)"
