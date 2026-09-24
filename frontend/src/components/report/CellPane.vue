@@ -79,8 +79,14 @@
 
     <section v-else-if="spec.type === 'slot'" class="flex flex-col gap-2">
       <h3 class="ui-label">To add</h3>
-      <p class="text-xs leading-5 text-neutral-600">From {{ spec.view }}: {{ spec.hint }}. Open it, then Export › Add to report; what you add takes this place and number.</p>
-      <button type="button" class="ui-btn ui-btn-sm self-start" @click="$emit('fill')">Open {{ spec.view }}</button>
+      <dl class="ui-kv">
+        <template v-for="r in asked" :key="r.label"><dt>{{ r.label }}</dt><dd>{{ r.asked }}</dd></template>
+      </dl>
+      <p class="text-[11px] leading-4 text-neutral-500">Take it: the view opens set as asked, and what it shows comes back to you to check before it takes this place and number.</p>
+      <div class="flex items-center gap-2">
+        <button type="button" class="ui-btn ui-btn-sm" @click="$emit('take')">Take it from {{ spec.view }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="$emit('fill')">Set it yourself</button>
+      </div>
     </section>
 
     <section v-else-if="spec.type === 'capture'" class="flex flex-col gap-2">
@@ -118,6 +124,7 @@ import { computed } from "vue";
 import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
 import { useDataStore } from "~/stores/data";
 import { readingDef } from "~/utils/readings";
+import { askedSettings } from "~/utils/slotSettings";
 import { describeChange } from "~/utils/reportCells";
 import type { CellBlock, CellSpec } from "~/utils/reportDoc";
 
@@ -132,7 +139,8 @@ const props = defineProps<{
   columns: Record<"components" | "files", string[]>
   label: (id: string) => string
 }>();
-const emit = defineEmits<{ (e: "spec", spec: CellSpec): void; (e: "run"): void; (e: "remove"): void; (e: "pinNote", note: string): void; (e: "adopt"): void; (e: "fill"): void }>();
+const emit = defineEmits<{ (e: "spec", spec: CellSpec): void; (e: "run"): void; (e: "remove"): void; (e: "pinNote", note: string): void; (e: "adopt"): void; (e: "fill"): void; (e: "take"): void }>();
+const asked = computed(() => (spec.value.type === "slot" ? askedSettings(spec.value.route) : []));
 const data = useDataStore();
 const reading = computed(() => (spec.value.type === "reading" ? readingDef(spec.value.reading) : undefined));
 const componentNames = computed(() => (reading.value?.params?.some(p => p.kind === "component") ? (data.allComponents ?? []).map((c: any) => String(c.name)).filter((n: string) => n !== ".").sort() : []));

@@ -33,6 +33,15 @@
           <Play :size="11" :stroke-width="2.4" fill="currentColor"/>
           <span>{{ reports.running.length ? "Running…" : `Run ${reports.stale.length} stale` }}</span>
         </button>
+        <button
+          v-if="reports.slots.length"
+          type="button"
+          class="ui-btn ui-btn-sm"
+          :title="takeTitle"
+          @click="takeAll"
+        >
+          <Icon icon="image" :size="13" class="text-neutral-500"/><span>{{ takeLabel }}</span>
+        </button>
         <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="raw" :class="{ 'bg-neutral-100': raw }" title="The whole report as Markdown (⌘/)" @click="toggleRaw">
           <Icon icon="code" :size="13" class="text-neutral-500"/><span class="hidden min-[1400px]:inline">Markdown</span>
         </button>
@@ -145,8 +154,10 @@
                     :cell="b.cell"
                     :number="numbers.get(b.id) ?? ''"
                     :selected="selectedId === b.id"
+                    :taking="reports.takeQueue?.ids[reports.takeQueue.at] === b.id"
                     @select="selectCell(b.id)"
                     @open="openSlot(b.id)"
+                    @take="taking.start([b.id])"
                   />
                   <NotebookCell
                     v-else
@@ -222,6 +233,7 @@
         @remove="selectedCell && removeSelected()"
         @adopt="adoptSelected"
         @fill="selectedCell && openSlot(selectedCell.id)"
+        @take="selectedCell && taking.start([selectedCell.id])"
         @pin-note="setPinNote"
       />
     </template>
@@ -250,6 +262,7 @@ import { useExportables } from "~/composables/useExportables";
 import { useDataStore } from "~/stores/data";
 import { useEvidenceStore } from "~/stores/evidence";
 import { useReportsStore, type ReportRecord } from "~/stores/reports";
+import { useSlotTaking } from "~/composables/useSlotTaking";
 import { useRouter } from "vue-router";
 import { useAuthorsStore } from "~/stores/authors";
 import { namesIn } from "~/utils/reportCells";
@@ -620,6 +633,21 @@ const savingTemplate = ref<ReportRecord | null>(null);
 
 // ── Slots and computed paragraphs ───────────────────────────────────────
 const router = useRouter();
+const taking = useSlotTaking();
+/** A run paused on this report picks up where it stopped; otherwise every slot, in reading order. */
+const pausedHere = computed(() => !!reports.takeQueue && reports.takeQueue.reportId === reports.currentId);
+const takeLabel = computed(() => {
+  const n = reports.slots.length;
+  if (pausedHere.value) return `Resume taking · ${n} left`;
+  const tables = reports.slots.filter(s => s.cell.spec.type === "slot" && s.cell.spec.kind === "table").length;
+  return `Take ${n} ${tables === 0 ? (n === 1 ? "figure" : "figures") : tables === n ? (n === 1 ? "table" : "tables") : "figures and tables"}`;
+});
+const takeTitle = computed(() => "Opens each view the template names, set as it asks, and shows what it took before it goes in");
+function takeAll() {
+  const ids = reports.slots.map(s => s.id);
+  if (pausedHere.value) { reports.takeQueue = { ...reports.takeQueue!, ids, at: 0 }; void taking.retake(); return; }
+  void taking.start(ids);
+}
 /** A slot's view, set the way the template asks; Add to report there fills it. */
 function openSlot(id: string) {
   const route = reports.beginFill(id, numbers.value.get(id) ?? "");

@@ -28,11 +28,20 @@
         </template>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[13px] leading-5 text-neutral-700">Add it from <span class="font-medium text-neutral-900">{{ spec.view }}</span>: {{ spec.hint }}.</p>
-        <p class="mt-0.5 text-[12px] leading-5 text-neutral-500">Open the view, then Export › Add to report; it lands here.</p>
-        <button v-if="!compact" type="button" class="ui-btn ui-btn-sm mt-2.5" @mousedown.stop @click.stop="$emit('open')">
-          <Icon :icon="spec.kind === 'figure' ? 'image' : 'table'" :size="13" class="text-neutral-500"/><span>Open {{ spec.view }}</span>
-        </button>
+        <p class="text-[13px] leading-5 text-neutral-700">From <span class="font-medium text-neutral-900">{{ view }}</span>, set as</p>
+        <!-- The ask in the view's own settings, so it reads at a glance. -->
+        <dl class="mt-1 flex flex-wrap gap-1.5" aria-label="Asked for">
+          <div v-for="r in asked" :key="r.label" class="flex items-baseline gap-1 rounded bg-surface px-1.5 py-[1px] text-[11.5px] leading-[18px] hairline">
+            <dt class="text-neutral-500">{{ r.label }}</dt><dd class="text-neutral-900">{{ r.asked }}</dd>
+          </div>
+          <p v-if="!asked.length" class="text-[12px] text-neutral-600">{{ spec.hint }}</p>
+        </dl>
+        <div v-if="!compact" class="mt-3 flex items-center gap-3">
+          <button type="button" class="ui-btn ui-btn-sm" :disabled="taking" :title="`Opens ${view} set as asked, takes the ${spec.kind}, and shows it here before it goes in`" @mousedown.stop @click.stop="$emit('take')">
+            <Icon :icon="spec.kind === 'figure' ? 'image' : 'table'" :size="13" class="text-neutral-500"/><span>{{ taking ? "Taking…" : `Take it from ${view}` }}</span>
+          </button>
+          <button type="button" class="text-[12px] text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @mousedown.stop @click.stop="$emit('open')">Set it yourself</button>
+        </div>
       </div>
     </div>
   </figure>
@@ -42,10 +51,13 @@
 import { computed } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import type { Cell, CellSpec } from "~/utils/reportDoc";
+import { askedSettings, viewName } from "~/utils/slotSettings";
 
-const props = withDefaults(defineProps<{ cell: Cell; number: string; selected: boolean; compact?: boolean }>(), { compact: false });
-defineEmits<{ (e: "select"): void; (e: "open"): void }>();
+const props = withDefaults(defineProps<{ cell: Cell; number: string; selected: boolean; compact?: boolean; taking?: boolean }>(), { compact: false, taking: false });
+defineEmits<{ (e: "select"): void; (e: "open"): void; (e: "take"): void }>();
 const spec = computed(() => props.cell.spec as Extract<CellSpec, { type: "slot" }>);
+const view = computed(() => viewName(spec.value.route) || spec.value.view);
+const asked = computed(() => askedSettings(spec.value.route).filter(r => r.label !== "View"));
 </script>
 
 <style scoped>

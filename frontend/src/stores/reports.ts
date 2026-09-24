@@ -77,12 +77,18 @@ export const useReportsStore = defineStore("reports", {
         loaded: false,
         importing: null as ImportDraft | null,
         filling: null as SlotFill | null,
+        /** Slots being taken from their views one after another; `at` is the one in hand. */
+        takeQueue: null as { reportId: string; ids: string[]; at: number } | null,
+        /** Where the take in hand is: waiting for its view to draw, or stopped short. */
+        taking: "idle" as "idle" | "waiting" | "failed" | "paused",
         /** The template gallery is open. */
         choosingTemplate: false,
     }),
     getters: {
         current(s): ReportRecord | null { return s.list.find(r => r.id === s.currentId) ?? null },
         cells(s): CellBlock[] { return s.doc.blocks.filter(isCell) },
+        /** Slots of the open report still to add, in reading order. */
+        slots(s): CellBlock[] { return s.doc.blocks.filter((b): b is CellBlock => isCell(b) && b.cell.spec.type === "slot") },
         /** The snapshot cells run on. */
         kernel(s): KernelScan | null {
             const ws = useWorkspacesStore()

@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
-import { exportables, type DocumentExportable, type Exportable, type FigureExportable, type TableExportable } from "~/composables/useExportables";
+import { exportables, pickFor, type DocumentExportable, type Exportable, type FigureExportable, type TableExportable } from "~/composables/useExportables";
 import { registerCommand } from "~/utils/commands";
 import { MARKDOWN_ROW_WARNING, exportFileName } from "~/utils/export";
 import { copyTableCsv, copyTableMarkdown, saveTableCsv } from "~/utils/exportActions";
@@ -276,9 +276,7 @@ onMounted(() => {
   off = registerCommand("export", () => { dark.value = isDarkAppearance(); if (items.value.length || props.headless) open.value = !open.value; });
   // Filling a report's slot: what this view shows of the slot's kind, straight into Add to report.
   if (props.headless) offAdd = registerCommand("add-to-report", async () => {
-    const kind = reportsStore.filling?.kind;
-    const ready = items.value.filter(i => i.kind !== "figure" || i.ready());
-    const item = ready.find(i => i.kind === kind) ?? ready.find(i => i.kind !== "document") ?? ready[0];
+    const item = pickFor(reportsStore.filling?.kind);
     if (!item) { fail("Add to report", new Error("this view has nothing to add yet")); return; }
     await addToReport(item);
   });

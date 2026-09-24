@@ -116,6 +116,9 @@
             <span class="shrink-0 text-[12.5px] text-neutral-600">Name</span>
             <input ref="nameEl" v-model="name" class="ui-input ui-input-sm w-full max-w-[380px]" aria-label="Report name" @input="nameTouched = true" @keydown.enter.prevent="create">
           </label>
+          <label v-if="slotCount" class="flex shrink-0 cursor-default items-center gap-2 text-[12.5px] text-neutral-700" :title="`Opens each view the template names, set as it asks, and shows what it took before it goes in`">
+            <Checkbox v-model="takeAfter" :aria-label="takeText"/>{{ takeText }}
+          </label>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="creating || (selected !== 'blank' && !kernel)" title="⌘↵" @click="create">{{ creating ? "Writing…" : "Create report" }}</button>
@@ -130,7 +133,9 @@ import { computed, nextTick, ref, watch } from "vue";
 import NotebookReading from "~/components/report/NotebookReading.vue";
 import NotebookSlot from "~/components/report/NotebookSlot.vue";
 import NotebookText from "~/components/report/NotebookText.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
+import { useSlotTaking } from "~/composables/useSlotTaking";
 import { useDataStore } from "~/stores/data";
 import { useReportsStore } from "~/stores/reports";
 import { useStateStore } from "~/stores/state";
@@ -303,8 +308,10 @@ async function create() {
       return out ? { ...b, cell: { ...b.cell, output: { reading: out }, ranOn } } : b;
     });
     reports.choosingTemplate = false;
+    const take = takeAfter.value && slotCount.value > 0;
     await reports.createFrom(name.value.trim() || defaultName() || "Untitled report", blocks);
     emit("created");
+    if (take) void taking.start(reports.slots.map(s => s.id));
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     reports.choosingTemplate = true;
@@ -312,6 +319,12 @@ async function create() {
     creating.value = false;
   }
 }
+
+// Figures the template asks for can be taken from their views as soon as the report exists.
+const taking = useSlotTaking();
+const takeAfter = ref(true);
+const slotCount = computed(() => tally(built.value.blocks).figures);
+const takeText = computed(() => `Then take the ${slotCount.value === 1 ? "figure" : `${slotCount.value} figures`} from ${slotCount.value === 1 ? "its view" : "their views"}`);
 
 const confirmRemove = ref<string | null>(null);
 async function removeSaved(key: string) {

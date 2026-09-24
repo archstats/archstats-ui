@@ -11,7 +11,10 @@
         @keydown="onKey"
       >
         <header class="flex shrink-0 items-baseline gap-3 px-5 pb-3 pt-4 hairline-b">
-          <h2 id="atr-title" class="text-[15px] font-semibold text-neutral-900">Add to report</h2>
+          <h2 id="atr-title" class="text-[15px] font-semibold text-neutral-900">{{ inQueue ? `Taking ${queue!.at + 1} of ${queue!.ids.length}` : "Add to report" }}</h2>
+          <ol v-if="inQueue && queue!.ids.length > 1" class="flex shrink-0 items-center gap-1 self-center" aria-hidden="true">
+            <li v-for="(_, i) in queue!.ids" :key="i" class="h-[3px] w-4 rounded-full" :class="i < queue!.at ? 'bg-accent-500' : i === queue!.at ? 'bg-accent-300' : 'bg-neutral-200'"></li>
+          </ol>
           <p class="min-w-0 truncate font-mono text-[11.5px] text-neutral-500" :title="sourceLine">{{ sourceLine }}</p>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Close" @click="close"><Icon icon="x" :size="13"/></button>
         </header>
@@ -152,6 +155,31 @@
 
           <!-- What to keep of it. -->
           <aside class="flex w-[248px] shrink-0 flex-col gap-5 overflow-y-auto bg-ground px-4 py-3.5 hairline-l" aria-label="Trim">
+            <!-- What the template asks of this slot, checked against what was taken. -->
+            <section v-if="slotBlock" aria-label="What the template asks for">
+              <div class="mb-1 flex items-baseline gap-2">
+                <h3 class="ui-label flex-1">Asked for</h3>
+                <span class="font-mono text-[11px] text-neutral-500">{{ numbers.get(draft.find(isCell)?.id ?? "") ?? "" }}</span>
+              </div>
+              <p class="text-[12.5px] font-medium leading-5 text-neutral-900">{{ slotBlock.cell.title || slotView }}</p>
+              <dl class="mt-2 flex flex-col gap-1">
+                <div v-for="r in askRows" :key="r.label" class="flex items-start gap-2 text-[12px] leading-5">
+                  <Icon :icon="r.ok ? 'check' : 'alert'" :size="12" class="mt-[4px] shrink-0" :class="r.ok ? 'text-neutral-400' : 'text-accent-700'"/>
+                  <dt class="w-[74px] shrink-0 text-neutral-500">{{ r.label }}</dt>
+                  <dd class="min-w-0 flex-1 text-neutral-900">
+                    {{ r.asked }}
+                    <span v-if="!r.ok" class="block text-[11.5px] text-accent-800">taken as {{ r.got }}</span>
+                  </dd>
+                </div>
+              </dl>
+              <template v-if="mismatch">
+                <p class="mt-2 text-[11px] leading-4 text-neutral-600">Taken with other settings than the template asks; the words around it may not fit what it shows.</p>
+                <button type="button" class="ui-btn ui-btn-sm mt-2" :disabled="adding" @click="taking.retake(slotBlock.id)">
+                  <Icon icon="refresh" :size="12" class="text-neutral-500"/><span>Take it as asked</span>
+                </button>
+              </template>
+              <p v-else class="mt-2 text-[11px] leading-4 text-neutral-500">Taken as the template asks.</p>
+            </section>
             <template v-if="src.kind === 'table' && src.table">
               <section>
                 <h3 class="ui-label mb-1.5">Rows</h3>
@@ -208,8 +236,12 @@
         <footer class="flex shrink-0 items-center gap-3 px-5 py-3 hairline-t">
           <p class="min-w-0 truncate text-[12.5px] text-neutral-600">{{ summary }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">Cancel</button>
-          <template v-if="fillMode">
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :title="inQueue ? 'Stop taking; the slots left stay in the report' : ''" @click="inQueue ? stopTaking() : close()">{{ inQueue ? "Stop" : "Cancel" }}</button>
+          <template v-if="inQueue">
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" title="Leave this slot for later" @click="taking.skip()">Skip</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? "Filling…" : queue!.at + 1 < queue!.ids.length ? "Fill and next" : "Fill and finish" }}</button>
+          </template>
+          <template v-else-if="fillMode">
             <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(false)">Fill</button>
             <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? "Filling…" : "Fill and return" }}</button>
           </template>
@@ -234,7 +266,9 @@ import NotebookText from "~/components/report/NotebookText.vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import { useDataStore } from "~/stores/data";
+import { useSlotTaking } from "~/composables/useSlotTaking";
 import { useReportsStore, type ImportDraft } from "~/stores/reports";
+import { compareSettings, viewName } from "~/utils/slotSettings";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { cellNumbers, fromMarkdown, isCell, newId, parseDoc, plainText, type Block, type Cell, type CellBlock, type TextKind } from "~/utils/reportDoc";
 
@@ -293,6 +327,16 @@ const places = computed<Place[]>(() => {
 /** A slot the new blocks take the place of, when one is chosen. */
 const slotPlace = computed(() => (place.value?.startsWith("slot:") ? place.value.slice(5) : null));
 const slotBlock = computed(() => (slotPlace.value ? (targetBlocks.value.find(b => b.id === slotPlace.value) as CellBlock | undefined) ?? null : null));
+/** What the slot asks of its view, beside the settings the draft was taken with. */
+const slotSpec = computed(() => (slotBlock.value?.cell.spec.type === "slot" ? slotBlock.value.cell.spec : null));
+const slotView = computed(() => (slotSpec.value ? viewName(slotSpec.value.route) : ""));
+const askRows = computed(() => (slotSpec.value && src.value ? compareSettings(slotSpec.value.route, src.value.route) : []));
+const mismatch = computed(() => askRows.value.some(r => !r.ok));
+/** Slots being taken one after another, when this one is the one in hand. */
+const taking = useSlotTaking();
+const queue = computed(() => reports.takeQueue);
+const inQueue = computed(() => !!queue.value && !!slotBlock.value && queue.value.ids[queue.value.at] === slotBlock.value.id);
+function stopTaking() { taking.stop(); }
 /** Arrived from a slot's Open button: filling it is the point, and returning to the report follows. */
 const fillMode = computed(() => !!reports.filling && reports.filling.reportId === target.value && slotPlace.value === reports.filling.cellId);
 /** Where a draft lands by default: the slot it was opened for, a slot for the same view, or the end. */
@@ -358,6 +402,9 @@ watch(draftSrc, (s) => {
   draft.value = s.kind === "document"
     ? fromMarkdown(s.markdown ?? "")
     : [{ id: newId(), kind: "cell", cell: buildCell(s) }];
+  // Landing in a slot, it takes the slot's title, whether or not the slot was already the spot.
+  const slotTitle = slotBlock.value?.cell.title;
+  if (slotTitle) for (const b of draft.value) if (isCell(b)) b.cell = { ...b.cell, title: slotTitle };
   void loadContextFigures();
 }, { immediate: true });
 
@@ -516,8 +563,10 @@ async function add(open: boolean) {
       blocks.push({ id: newId(), kind: "cell", cell: { ...b.cell, output } });
     }
     if (!blocks.length) { error.value = "Nothing to add."; adding.value = false; return; }
+    const queued = inQueue.value;
     if (slotBlock.value && target.value !== NEW) {
       await reports.fillSlot(target.value, slotBlock.value.id, blocks);
+      if (queued) { reports.importing = null; adding.value = false; await taking.advance(); return; }
     } else {
       await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || "Untitled report");
     }
@@ -529,9 +578,9 @@ async function add(open: boolean) {
     adding.value = false;
   }
 }
-function close() { reports.importing = null; }
+function close() { if (inQueue.value) taking.pause(); else reports.importing = null; }
 function onKey(e: KeyboardEvent) {
-  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void add(e.shiftKey); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void add(fillMode.value || inQueue.value ? true : e.shiftKey); return; }
   if (e.key === "Escape" && !editingId.value) { e.preventDefault(); close(); }
 }
 </script>

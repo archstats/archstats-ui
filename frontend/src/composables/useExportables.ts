@@ -57,6 +57,23 @@ export const exportables = computed(() => {
     return [...registry.values()].sort((a, b) => rank[a.item.kind] - rank[b.item.kind] || a.order - b.order).map(e => e.item);
 });
 
+/** Whether an item has something to hand over now: a drawn figure, a table with rows. */
+export function usable(i: Exportable): boolean {
+    if (i.kind === "figure") return i.ready();
+    if (i.disabledReason?.()) return false;
+    return i.kind !== "table" || i.rows().length > 0;
+}
+
+/**
+ * What the view hands a report's slot of this kind: the usable item of that
+ * kind registered last, which is the most specific (a grain's own table
+ * mounts after the page's), else any usable item.
+ */
+export function pickFor(kind: Exportable["kind"] | undefined): Exportable | null {
+    const ok = [...registry.values()].sort((a, b) => a.order - b.order).map(e => e.item).filter(usable);
+    return [...ok].reverse().find(i => i.kind === kind) ?? ok.find(i => i.kind !== "document") ?? ok[0] ?? null;
+}
+
 /**
  * Registers exportables for as long as the calling component is mounted.
  * Returns an unregister for items that come and go with state.
