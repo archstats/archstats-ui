@@ -13,7 +13,7 @@ import {
     LabelScan,
     SetBaseline,
 } from "wailsjs/go/app/WorkspaceService";
-import { Start } from "wailsjs/go/app/ScanService";
+import { Start, StartAt } from "wailsjs/go/app/ScanService";
 import type { store } from "wailsjs/go/models";
 import { useDataStore } from "~/stores/data";
 import { useGroupsStore } from "~/stores/groups";
@@ -75,6 +75,8 @@ export const useWorkspacesStore = defineStore("workspaces", {
     state: () => ({
         workspaces: [] as store.Workspace[],
         activeWorkspaceId: null as string | null,
+        /** The scan whose commit the rescan sheet is offering to rebuild. */
+        rescanFor: null as string | null,
         // Scans of the active workspace, newest first.
         scans: [] as store.Scan[],
         // Snapshot counts per workspace, for the switcher's meta line.
@@ -351,6 +353,31 @@ export const useWorkspacesStore = defineStore("workspaces", {
                 delete this.progress[ws.id];
                 this.error = errorText(e);
             }
+        },
+
+        /**
+         * Scans the workspace as it was at one commit, in a clone; the
+         * checkout is untouched. Tracked like any scan.
+         */
+        async startScanAt(rev: string) {
+            const ws = this.active;
+            if (!ws || this.progress[ws.id]) return;
+            this.error = null;
+            this.progress[ws.id] = { scanId: "", phase: "starting", extensions: [], startedAt: Date.now() };
+            try {
+                const scan = await StartAt(ws.id, rev);
+                const p = this.progress[ws.id];
+                if (p && !p.scanId) p.scanId = scan.id;
+                await this.refreshScans();
+            } catch (e) {
+                delete this.progress[ws.id];
+                this.error = errorText(e);
+                throw e;
+            }
+        },
+        /** Opens the rescan sheet for a scan's commit (or the commit at its scan time). */
+        requestRescan(scanId: string) {
+            this.rescanFor = scanId;
         },
 
         /** Names a scan ("before the split"); an empty label clears it. */

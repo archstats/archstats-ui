@@ -78,6 +78,7 @@ func main() {
 		}
 	}()
 
+	scan.SweepBackfill(st)
 	scanSvc := scan.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()

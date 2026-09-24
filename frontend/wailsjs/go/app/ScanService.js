@@ -6,6 +6,18 @@ export function IsRunning(arg1) {
   return window['go']['app']['ScanService']['IsRunning'](arg1);
 }
 
+export function ResolveCommit(arg1, arg2) {
+  return window['go']['app']['ScanService']['ResolveCommit'](arg1, arg2);
+}
+
+export function ResolveCommitAt(arg1, arg2) {
+  return window['go']['app']['ScanService']['ResolveCommitAt'](arg1, arg2);
+}
+
 export function Start(arg1) {
   return window['go']['app']['ScanService']['Start'](arg1);
+}
+
+export function StartAt(arg1, arg2) {
+  return window['go']['app']['ScanService']['StartAt'](arg1, arg2);
 }

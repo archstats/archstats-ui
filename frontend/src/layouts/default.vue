@@ -35,6 +35,7 @@
 
     <ShortcutSheet v-model="shortcutsOpen"/>
     <ExportMenu headless/>
+    <RescanCommitSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
       <OutdatedSnapshotBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
@@ -54,6 +55,7 @@ import WorkspaceEmptyState from "~/components/shell/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
 import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
 import ExportMenu from "~/components/ui/ExportMenu.vue";
+import RescanCommitSheet from "~/components/shell/RescanCommitSheet.vue";
 import { useMenuCommands } from "~/composables/useMenuCommands";
 import { useAuthorsStore } from "~/stores/authors";
 import { useDataStore } from "~/stores/data";

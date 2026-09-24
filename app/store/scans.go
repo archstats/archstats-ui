@@ -224,6 +224,16 @@ func (s *Store) SetScanIdentity(id string, ident ScanIdentity) error {
 	return err
 }
 
+// SetScanOrigin records where a scan came from: "backfill" with the commit
+// it was rebuilt at, or "import".
+func (s *Store) SetScanOrigin(id, origin, ref string) error {
+	_, err := s.db.Exec(`UPDATE scans SET origin = ?, revision_ref = ? WHERE id = ?`, origin, ref, id)
+	return err
+}
+
+// Root is the directory app.db and the snapshots live in.
+func (s *Store) Root() string { return s.root }
+
 // ScansWithoutIdentity lists complete scans whose identity was never read:
 // every scan taken before the registry recorded identities.
 func (s *Store) ScansWithoutIdentity() ([]*Scan, error) {

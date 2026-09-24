@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/store"
@@ -19,6 +21,22 @@ func NewScanService(svc *scan.Service) *ScanService {
 
 func (s *ScanService) Start(workspaceID string) (*store.Scan, error) {
 	return s.svc.StartScan(workspaceID)
+}
+
+// StartAt rescans the workspace as it was at one commit, in a throwaway
+// clone; the checkout itself is not touched.
+func (s *ScanService) StartAt(workspaceID, rev string) (*store.Scan, error) {
+	return s.svc.StartScanAt(workspaceID, rev)
+}
+
+// ResolveCommit names a commit (sha, date, subject) before it is rescanned.
+func (s *ScanService) ResolveCommit(workspaceID, rev string) (*scan.CommitInfo, error) {
+	return s.svc.ResolveCommit(workspaceID, rev)
+}
+
+// ResolveCommitAt names the commit HEAD was most probably at a moment.
+func (s *ScanService) ResolveCommitAt(workspaceID string, at time.Time) (*scan.CommitInfo, error) {
+	return s.svc.ResolveCommitAt(workspaceID, at)
 }
 
 func (s *ScanService) IsRunning(workspaceID string) bool {

@@ -78,7 +78,7 @@ func (s *Service) StartScan(workspaceID string) (*store.Scan, error) {
 		return nil, err
 	}
 
-	go s.run(ws, scan)
+	go s.run(ws, scan, ws.FolderPath, nil)
 	return scan, nil
 }
 
@@ -89,7 +89,16 @@ func (s *Service) IsRunning(workspaceID string) bool {
 	return s.running[workspaceID]
 }
 
-func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
+// run analyses root (the workspace folder, or a clone of it at one commit)
+// and saves the snapshot; done, when set, runs once the scan has finished
+// either way.
+func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done func(ok bool)) {
+	ok := false
+	defer func() {
+		if done != nil {
+			done(ok)
+		}
+	}()
 	defer func() {
 		s.mu.Lock()
 		delete(s.running, ws.ID)
@@ -103,7 +112,7 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 
 	s.emit(EventScanStarted, payload(ws.ID, scan.ID, nil))
 
-	extensions, names, err := extensionsFor(ws.FolderPath)
+	extensions, names, err := extensionsFor(root)
 	if err != nil {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("detecting extensions: %v", err))
 		return
@@ -114,11 +123,11 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 	}))
 
 	results, err := core.New(&core.Config{
-		RootPath:   ws.FolderPath,
+		RootPath:   root,
 		Extensions: extensions,
 	}).Analyze()
 	if err != nil {
-		s.fail(ws.ID, scan.ID, fmt.Sprintf("analyzing %s: %v", ws.FolderPath, err))
+		s.fail(ws.ID, scan.ID, fmt.Sprintf("analyzing %s: %v", ws.Name, err))
 		return
 	}
 	// Which language packs read this code; two scans read by different
@@ -165,6 +174,7 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 	if ident, err := snapshotinfo.ReadIdentity(snapshot, scan.StartedAt); err == nil {
 		_ = s.store.SetScanIdentity(scan.ID, ident)
 	}
+	ok = true
 	if s.onDone != nil {
 		s.onDone(scan.ID)
 	}

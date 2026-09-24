@@ -169,10 +169,8 @@ export namespace app {
 	export class TrendPoint {
 	    scanId: string;
 	    label: string;
-	    // Go type: time
-	    startedAt: any;
-	    // Go type: time
-	    headTime?: any;
+	    startedAt: time.Time;
+	    headTime?: time.Time;
 	    headCommit: string;
 	    analysisRevision: number;
 	    ignoreGlobs: string;
@@ -188,8 +186,8 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.scanId = source["scanId"];
 	        this.label = source["label"];
-	        this.startedAt = this.convertValues(source["startedAt"], null);
-	        this.headTime = this.convertValues(source["headTime"], null);
+	        this.startedAt = this.convertValues(source["startedAt"], time.Time);
+	        this.headTime = this.convertValues(source["headTime"], time.Time);
 	        this.headCommit = source["headCommit"];
 	        this.analysisRevision = source["analysisRevision"];
 	        this.ignoreGlobs = source["ignoreGlobs"];
@@ -401,24 +399,60 @@ export namespace query {
 
 }
 
+export namespace scan {
+	
+	export class CommitInfo {
+	    sha: string;
+	    time: time.Time;
+	    subject: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CommitInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sha = source["sha"];
+	        this.time = this.convertValues(source["time"], time.Time);
+	        this.subject = source["subject"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace store {
 	
 	export class Scan {
 	    id: string;
 	    workspaceId: string;
 	    status: string;
-	    // Go type: time
-	    startedAt: any;
-	    // Go type: time
-	    finishedAt?: any;
+	    startedAt: time.Time;
+	    finishedAt?: time.Time;
 	    error: string;
 	    snapshotPath: string;
 	    label: string;
 	    origin: string;
 	    headCommit: string;
 	    branch: string;
-	    // Go type: time
-	    headTime?: any;
+	    headTime?: time.Time;
 	    headTimeSource: string;
 	    dirtyFiles?: number;
 	    analysisRevision: number;
@@ -436,15 +470,15 @@ export namespace store {
 	        this.id = source["id"];
 	        this.workspaceId = source["workspaceId"];
 	        this.status = source["status"];
-	        this.startedAt = this.convertValues(source["startedAt"], null);
-	        this.finishedAt = this.convertValues(source["finishedAt"], null);
+	        this.startedAt = this.convertValues(source["startedAt"], time.Time);
+	        this.finishedAt = this.convertValues(source["finishedAt"], time.Time);
 	        this.error = source["error"];
 	        this.snapshotPath = source["snapshotPath"];
 	        this.label = source["label"];
 	        this.origin = source["origin"];
 	        this.headCommit = source["headCommit"];
 	        this.branch = source["branch"];
-	        this.headTime = this.convertValues(source["headTime"], null);
+	        this.headTime = this.convertValues(source["headTime"], time.Time);
 	        this.headTimeSource = source["headTimeSource"];
 	        this.dirtyFiles = source["dirtyFiles"];
 	        this.analysisRevision = source["analysisRevision"];
@@ -476,8 +510,7 @@ export namespace store {
 	    id: string;
 	    name: string;
 	    folderPath: string;
-	    // Go type: time
-	    createdAt: any;
+	    createdAt: time.Time;
 	    baselineScanId?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -489,7 +522,7 @@ export namespace store {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.folderPath = source["folderPath"];
-	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.createdAt = this.convertValues(source["createdAt"], time.Time);
 	        this.baselineScanId = source["baselineScanId"];
 	    }
 	
@@ -510,6 +543,23 @@ export namespace store {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace time {
+	
+	export class Time {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Time(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
 	}
 
 }

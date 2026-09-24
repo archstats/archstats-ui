@@ -77,6 +77,7 @@
                 </span>
                 <Flag v-if="scan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" aria-label="Baseline"/>
                 <span v-if="scan.origin === 'import'" class="ui-tag shrink-0 !text-[10px]">imported</span>
+                <span v-if="scan.origin === 'backfill'" class="ui-tag shrink-0 !text-[10px]" :title="`Rebuilt from commit ${scan.revisionRef} in a clean clone`">rescan</span>
               </span>
               <span v-if="identityOf(scan)" class="truncate font-mono text-[11px] leading-4 text-neutral-500" :title="scan.headCommit">{{ identityOf(scan) }}</span>
             </span>
@@ -102,6 +103,8 @@
               <button v-if="scan.status === 'complete' && scan.id !== baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(scan.id))">Set as baseline</button>
               <button v-if="scan.id === baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(null))">Clear baseline</button>
               <template v-if="scan.status === 'complete'">
+                <div class="my-1 hairline-b"></div>
+                <button type="button" class="ui-menu-item" role="menuitem" :title="scan.headCommit ? `Scan commit ${scan.headCommit.slice(0, 7)} again with this build's analysis` : 'Scan the commit HEAD was at when this scan ran'" @click="menuId = null; store.requestRescan(scan.id)">Rescan this commit…</button>
                 <div class="my-1 hairline-b"></div>
                 <button type="button" class="ui-menu-item" role="menuitem" @click="act(() => RevealSnapshot(scan.id))">Reveal in {{ fileManager }}</button>
                 <button type="button" class="ui-menu-item" role="menuitem" @click="act(copyPath(scan.id))">Copy path</button>
