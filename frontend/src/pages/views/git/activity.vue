@@ -27,17 +27,18 @@
 </template>
 
 <script setup lang="ts">
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import { computed } from "vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { ageShares, useCodeAge } from "~/composables/useCodeAge"
-import { anchorLabel } from "~/utils/history"
-import { scopeWhere } from "~/utils/scopeSql"
-import CommitHistory from "~/components/git/CommitHistory.vue"
-import EffortShare from "~/components/git/EffortShare.vue"
-import { useEffort } from "~/composables/useEffort"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { ageShares, useCodeAge } from "~/features/git/useCodeAge"
+import { anchorLabel } from "~/features/git/history"
+import { scopeWhere } from "~/features/groups/scopeSql"
+import CommitHistory from "~/features/git/components/CommitHistory.vue"
+import EffortShare from "~/features/git/components/EffortShare.vue"
+import { useEffort } from "~/features/git/useEffort"
 import { useRoute, useRouter } from "vue-router"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
 
 const store = useDataStore()
 const route = useRoute()

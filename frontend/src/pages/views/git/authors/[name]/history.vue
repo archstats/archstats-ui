@@ -5,9 +5,9 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import { authorNamesSql } from "~/utils/authors"
-import { useAuthorsStore } from "~/stores/authors"
-import CommitHistory from "~/components/git/CommitHistory.vue"
+import { authorNamesSql } from "~/features/git/authors"
+import { useAuthorsStore } from "~/features/git/authors.store"
+import CommitHistory from "~/features/git/components/CommitHistory.vue"
 
 const route = useRoute()
 const name = computed(() => useAuthorsStore().resolve(String(route.params.name ?? "")))

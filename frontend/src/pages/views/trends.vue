@@ -65,14 +65,14 @@
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { Readings } from "wailsjs/go/app/ChangesService";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import TrendRows from "~/components/trends/TrendRows.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import { useExportables } from "~/composables/useExportables";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { formatScanTime } from "~/utils/time";
-import { TREND_SERIES, breaksOf, dedupePoints, xBasis, type TrendPoint } from "~/utils/trends";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import TrendRows from "~/features/trends/components/TrendRows.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import { useExportables } from "~/features/export/useExportables";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { formatScanTime } from "~/shared/time";
+import { TREND_SERIES, breaksOf, dedupePoints, xBasis, type TrendPoint } from "~/features/trends/trends";
 
 // Is the architecture getting better or worse: the app's readings of every
 // snapshot, one strip each, on the time axis of the code they read.

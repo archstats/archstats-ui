@@ -136,20 +136,20 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { DEFAULT_DIMENSION, useGroupsStore } from "~/stores/groups";
-import { useLensStore } from "~/stores/lens";
-import { useScopeStore } from "~/stores/scope";
-import { findInCode, findLines, type FindOptions, type FindResult, type HitLine } from "~/utils/codeSearch";
-import { componentLabel, componentPath, filePath, groupPath } from "~/utils/routes";
-import { useWorkspacesStore } from "~/stores/workspaces";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { DEFAULT_DIMENSION, useGroupsStore } from "~/features/groups/groups.store";
+import { useLensStore } from "~/features/groups/lens.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { findInCode, findLines, type FindOptions, type FindResult, type HitLine } from "~/features/files/codeSearch";
+import { componentLabel, componentPath, filePath, groupPath } from "~/features/navigation/routes";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 
 // Where a text lives in the code, rolled up the way the architect slices it:
 // by component, by the groups of the lens, or file by file. Reached from ⌘P's

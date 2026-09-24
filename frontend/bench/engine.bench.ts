@@ -12,9 +12,9 @@
 // finish, and the gate must actually gate.
 
 import { describe, expect, it } from "vitest"
-import { loadSignalSources } from "~/composables/useSuggestModel"
-import { measureCut, type QualityEdge } from "~/utils/cutQuality"
-import { PRESETS, buildSuggestInput, suggest, type SignalSources, type SuggestSettings, type Suggestion } from "~/utils/suggest"
+import { loadSignalSources } from "~/features/lens-builder/useSuggestModel"
+import { measureCut, type QualityEdge } from "~/features/lens-builder/cutQuality"
+import { PRESETS, buildSuggestInput, suggest, type SignalSources, type SuggestSettings, type Suggestion } from "~/features/lens-builder/suggest"
 import { findSnapshot, median, ms, openSnapshot, pct, timed } from "./snapshot"
 
 const DB = findSnapshot()

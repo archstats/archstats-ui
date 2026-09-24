@@ -22,15 +22,15 @@
 </template>
 
 <script setup lang="ts">
-import PinButton from "~/components/evidence/PinButton.vue"
+import PinButton from "~/features/reports/components/PinButton.vue"
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
-import { useGroupDetail } from "~/composables/useGroupDetail"
-import { useScopeStore } from "~/stores/scope"
-import { groupPath } from "~/utils/routes"
+import DetailFrame, { type DetailTab } from "~/features/shell/components/DetailFrame.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import Icon from "~/shared/ui/Icon.vue"
+import { useGroupDetail } from "~/features/groups/useGroupDetail"
+import { useScopeStore } from "~/features/groups/scope.store"
+import { groupPath } from "~/features/navigation/routes"
 
 const route = useRoute()
 const scope = useScopeStore()

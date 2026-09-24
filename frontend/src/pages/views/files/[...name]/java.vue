@@ -149,22 +149,22 @@
 </template>
 
 <script setup lang="ts">
-import { componentPath } from "~/utils/routes"
+import { componentPath } from "~/features/navigation/routes"
 import { computed } from "vue"
 import { useRouter } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useFileRoute } from "~/composables/useFileRoute"
-import { sqlIn, sqlLiteral } from "~/utils/sql"
-import { formatNumber } from "~/utils/format"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useFileRoute } from "~/features/files/useFileRoute"
+import { sqlIn, sqlLiteral } from "~/shared/sql"
+import { formatNumber } from "~/shared/format"
 import {
   IMPORT_SNIPPET_TYPE, ROLE_SNIPPET_TYPES, ROLE_SNIPPET_TYPE_LIST,
   addRoleFromSnippet, classLabel, isBean, primaryRole, roleDotClass, simpleClassName, sortedRoles, structuralFlags,
   type FlagEdge, type JavaRole,
-} from "~/utils/java"
-import ClassNeighbourhoodGraph, { type NeighbourNode } from "~/components/java/ClassNeighbourhoodGraph.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+} from "~/features/java/java"
+import ClassNeighbourhoodGraph, { type NeighbourNode } from "~/features/java/components/ClassNeighbourhoodGraph.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const router = useRouter()
 const store = useDataStore()

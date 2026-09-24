@@ -70,13 +70,13 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { definitionMarkdown, glossaryMarkdown, referenceEntries, type ReferenceEntry } from "~/utils/definition";
-import { copyText } from "~/utils/files";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { definitionMarkdown, glossaryMarkdown, referenceEntries, type ReferenceEntry } from "~/features/snapshot/definition";
+import { copyText } from "~/platform/files";
 
 // Every metric the open snapshot defines, plus the ones the app computes,
 // grouped by family. Definitions come from the snapshot so they match its

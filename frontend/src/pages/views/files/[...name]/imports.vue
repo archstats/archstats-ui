@@ -68,14 +68,14 @@
 </template>
 
 <script setup lang="ts">
-import { useWorkspacesStore } from "~/stores/workspaces"
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { computed } from "vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useFileRoute } from "~/composables/useFileRoute"
-import { formatNumber } from "~/utils/format"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useFileRoute } from "~/features/files/useFileRoute"
+import { formatNumber } from "~/shared/format"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const store = useDataStore()
 const workspaces = useWorkspacesStore()

@@ -20,19 +20,19 @@
 </template>
 
 <script setup lang="ts">
-import { anchorSql } from "~/utils/history"
-import { authorNamesSql, authorStatsSql, periodStats } from "~/utils/authors"
-import { useAuthorsStore } from "~/stores/authors"
-import { useWorkspacesStore } from "~/stores/workspaces"
+import { anchorSql } from "~/features/git/history"
+import { authorNamesSql, authorStatsSql, periodStats } from "~/features/git/authors"
+import { useAuthorsStore } from "~/features/git/authors.store"
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { sqlLiteral } from "~/utils/sql"
-import { formatNumber } from "~/utils/format"
-import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { sqlLiteral } from "~/shared/sql"
+import { formatNumber } from "~/shared/format"
+import DetailFrame, { type DetailTab } from "~/features/shell/components/DetailFrame.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const route = useRoute()
 const store = useDataStore()

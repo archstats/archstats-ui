@@ -82,20 +82,20 @@
 </template>
 
 <script setup lang="ts">
-import { useCodeAge } from "~/composables/useCodeAge"
-import StatStrip from "~/components/detail/StatStrip.vue"
-import MetricHint from "~/components/ui/common/MetricHint.vue"
-import HealthBreakdown from "~/components/files/HealthBreakdown.vue"
+import { useCodeAge } from "~/features/git/useCodeAge"
+import StatStrip from "~/features/metrics/components/StatStrip.vue"
+import MetricHint from "~/features/snapshot/components/MetricHint.vue"
+import HealthBreakdown from "~/features/metrics/components/HealthBreakdown.vue"
 import { computed, ref } from "vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useFileRoute } from "~/composables/useFileRoute"
-import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot, type HealthLevel } from "~/composables/useHealth"
-import { formatDays, formatNumber } from "~/utils/format"
-import Icon from "~/components/ui/common/Icon.vue"
-import { sqlLiteral } from "~/utils/sql"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useFileRoute } from "~/features/files/useFileRoute"
+import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot, type HealthLevel } from "~/features/metrics/useHealth"
+import { formatDays, formatNumber } from "~/shared/format"
+import Icon from "~/shared/ui/Icon.vue"
+import { sqlLiteral } from "~/shared/sql"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const store = useDataStore()
 const { filePath, escapedPath } = useFileRoute()

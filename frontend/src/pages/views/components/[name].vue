@@ -22,20 +22,20 @@
 </template>
 
 <script setup lang="ts">
-import PinButton from "~/components/evidence/PinButton.vue"
-import { PIN_METRICS, pickValues } from "~/utils/evidence"
-import { componentLabel, componentPath } from "~/utils/routes"
-import { useWorkspacesStore } from "~/stores/workspaces"
+import PinButton from "~/features/reports/components/PinButton.vue"
+import { PIN_METRICS, pickValues } from "~/features/reports/evidence"
+import { componentLabel, componentPath } from "~/features/navigation/routes"
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 // Five tabs, each named for the question it answers: what this is and where
 // it sits (Reading), what it touches (Connections), what it is tangled in
 // (Cycles), what it is made of (Inside), and how it got here (History).
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { formatNumber } from "~/utils/format"
-import DetailFrame, { type DetailTab } from "~/components/detail/DetailFrame.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { formatNumber } from "~/shared/format"
+import DetailFrame, { type DetailTab } from "~/features/shell/components/DetailFrame.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import Icon from "~/shared/ui/Icon.vue"
 
 const route = useRoute()
 const store = useDataStore()

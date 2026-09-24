@@ -1,0 +1,288 @@
+# old (relative to src/)  ->  new (relative to src/)
+# A line ending in "/" maps every file in that directory (non-recursive).
+# "DEAD" deletes the file (and its test).
+# Tests (x.test.ts) follow their source automatically.
+
+## platform: the runtime seam (Wails bindings, OS, persistence). No domain knowledge.
+utils/db.ts -> platform/db.ts
+utils/files.ts -> platform/files.ts
+utils/durable.ts -> platform/durable.ts
+utils/perf.ts -> platform/perf.ts
+utils/commands.ts -> platform/commands.ts
+stores/state.ts -> platform/state.store.ts
+composables/usePlatform.ts -> platform/usePlatform.ts
+
+## shared: domain-free helpers and the UI kit
+utils/format.ts -> shared/format.ts
+utils/time.ts -> shared/time.ts
+utils/text.ts -> shared/text.ts
+utils/fuzzy.ts -> shared/fuzzy.ts
+utils/sql.ts -> shared/sql.ts
+utils/modal.ts -> shared/ui/modal.ts
+composables/useChartTheme.ts -> shared/ui/useChartTheme.ts
+composables/useAnchoredPanel.ts -> shared/ui/useAnchoredPanel.ts
+components/ui/common/Checkbox.vue -> shared/ui/Checkbox.vue
+components/ui/common/EmptyState.vue -> shared/ui/EmptyState.vue
+components/ui/common/Icon.vue -> shared/ui/Icon.vue
+components/ui/common/LoadingState.vue -> shared/ui/LoadingState.vue
+components/ui/common/MetricHint.vue -> shared/ui/MetricHint.vue
+components/ui/common/SingleSelect.vue -> shared/ui/SingleSelect.vue
+components/ui/common/ZoomControls.vue -> shared/ui/ZoomControls.vue
+components/ui/tables/ElementTable.vue -> shared/ui/ElementTable.vue
+components/ui/modals/ModalTrigger.vue -> shared/ui/ModalTrigger.vue
+
+## navigation: where things live in the app (routes, view registry)
+utils/routes.ts -> features/navigation/routes.ts
+composables/useBack.ts -> features/navigation/useBack.ts
+
+## shell: app chrome (nav bar, panes, go-to, shortcuts, native menu)
+utils/shortcuts.ts -> features/shell/shortcuts.ts
+stores/panes.ts -> features/shell/panes.store.ts
+composables/useMenuCommands.ts -> features/shell/useMenuCommands.ts
+composables/useGoToIndex.ts -> features/shell/useGoToIndex.ts
+components/navbar/NavBar.vue -> features/shell/components/NavBar.vue
+components/ViewWorkspaceLayout.vue -> features/shell/components/ViewWorkspaceLayout.vue
+components/detail/DetailFrame.vue -> features/shell/components/DetailFrame.vue
+components/shell/GoToAnything.vue -> features/shell/components/GoToAnything.vue
+components/shell/PaneHandle.vue -> features/shell/components/PaneHandle.vue
+components/shell/ShortcutSheet.vue -> features/shell/components/ShortcutSheet.vue
+
+## workspace: workspaces, scans and their lifecycle
+stores/workspaces.ts -> features/workspace/workspaces.store.ts
+utils/scanOrder.ts -> features/workspace/scanOrder.ts
+utils/shell.ts -> features/workspace/scanFlow.ts
+utils/workspaceConfig.ts -> features/workspace/workspaceConfig.ts
+components/shell/BackfillQueue.vue -> features/workspace/components/BackfillQueue.vue
+components/shell/ImportSnapshotSheet.vue -> features/workspace/components/ImportSnapshotSheet.vue
+components/shell/OutdatedSnapshotBar.vue -> features/workspace/components/OutdatedSnapshotBar.vue
+components/shell/RescanCommitSheet.vue -> features/workspace/components/RescanCommitSheet.vue
+components/shell/ScanPanel.vue -> features/workspace/components/ScanPanel.vue
+components/shell/ScanTagsSheet.vue -> features/workspace/components/ScanTagsSheet.vue
+components/shell/StorageSheet.vue -> features/workspace/components/StorageSheet.vue
+components/shell/WorkspaceEmptyState.vue -> features/workspace/components/WorkspaceEmptyState.vue
+components/shell/WorkspaceSettingsSheet.vue -> features/workspace/components/WorkspaceSettingsSheet.vue
+components/shell/WorkspaceSwitcher.vue -> features/workspace/components/WorkspaceSwitcher.vue
+
+## snapshot: the open snapshot and the engine's vocabulary
+stores/data.ts -> features/snapshot/data.store.ts
+composables/useAsyncQuery.ts -> features/snapshot/useAsyncQuery.ts
+utils/definition.ts -> features/snapshot/definition.ts
+utils/derivedMetrics.ts -> features/snapshot/derivedMetrics.ts
+utils/stat_resolver.ts -> features/snapshot/statNames.ts
+utils/stat-tree.ts -> features/snapshot/statTree.ts
+utils/components.ts -> features/snapshot/components.ts
+utils/component.test.ts -> features/snapshot/components.test.ts
+utils/languages.ts -> features/snapshot/languages.ts
+utils/fileRole.ts -> features/snapshot/fileRole.ts
+utils/hops.ts -> features/snapshot/hops.ts
+utils/revisions.ts -> features/snapshot/revisions.ts
+
+## metrics: readings of components and files (Metrics, Hotspots, Plotter, Reading tab)
+utils/abstraction.ts -> features/metrics/abstraction.ts
+utils/componentRole.ts -> features/metrics/componentRole.ts
+utils/sdp.ts -> features/metrics/sdp.ts
+utils/dirTree.ts -> features/metrics/dirTree.ts
+composables/useHealth.ts -> features/metrics/useHealth.ts
+composables/useComponentPosition.ts -> features/metrics/useComponentPosition.ts
+components/component/MainSequencePlot.vue -> features/metrics/components/MainSequencePlot.vue
+components/component/PercentileStrip.vue -> features/metrics/components/PercentileStrip.vue
+components/component/ReadingBand.vue -> features/metrics/components/ReadingBand.vue
+components/component/UsedSurface.vue -> features/metrics/components/UsedSurface.vue
+components/detail/StatStrip.vue -> features/metrics/components/StatStrip.vue
+components/metrics/DirectoryTree.vue -> features/metrics/components/DirectoryTree.vue
+components/components/hotspots/HotspotsTreemap.vue -> features/metrics/components/HotspotsTreemap.vue
+components/components/plotter/ComponentPlotterDiagram.vue -> features/metrics/components/ComponentPlotterDiagram.vue
+components/ui/stat-select/ -> features/metrics/components/
+components/files/HealthBreakdown.vue -> features/metrics/components/HealthBreakdown.vue
+
+## trends: one snapshot against another (Over time, Changes, deltas)
+utils/trends.ts -> features/trends/trends.ts
+utils/changes.ts -> features/trends/changes.ts
+utils/delta.ts -> features/trends/delta.ts
+utils/comparability.ts -> features/trends/comparability.ts
+composables/useComponentDelta.ts -> features/trends/useComponentDelta.ts
+components/trends/TrendRows.vue -> features/trends/components/TrendRows.vue
+components/changes/ComparabilityGate.vue -> features/trends/components/ComparabilityGate.vue
+components/component/DeltaChip.vue -> features/trends/components/DeltaChip.vue
+
+## connections: coupling between components, files and groups
+utils/connections.ts -> features/connections/connections.ts
+utils/crosscut.ts -> features/connections/crosscut.ts
+utils/neighbours.ts -> features/connections/neighbours.ts
+utils/fileImports.ts -> features/connections/fileImports.ts
+composables/useConnectionsModel.ts -> features/connections/useConnectionsModel.ts
+components/connections/ -> features/connections/components/
+components/coupling/PairTable.vue -> features/connections/components/PairTable.vue
+components/component/CouplingFlow.vue -> features/connections/components/CouplingFlow.vue
+components/components/modals/SelectComponentModal.vue -> features/connections/components/SelectComponentModal.vue
+
+## sandbox: what-if edits projected onto a snapshot
+utils/sandbox.ts -> features/sandbox/sandbox.ts
+utils/sandbox.parity.test.ts -> features/sandbox/sandbox.parity.test.ts
+stores/sandbox.ts -> features/sandbox/sandbox.store.ts
+components/connections/SandboxPlan.vue -> features/sandbox/components/SandboxPlan.vue
+
+## cycles: tangles and how to undo them
+utils/cycles.ts -> features/cycles/cycles.ts
+utils/untangle.ts -> features/cycles/untangle.ts
+components/cycles/ -> features/cycles/components/
+components/component/CycleMap.vue -> features/cycles/components/CycleMap.vue
+components/SnippetPopover.vue -> features/cycles/components/SnippetPopover.vue
+
+## groups: groups, lenses and scope (the first-class slicing concept)
+stores/groups.ts -> features/groups/groups.store.ts
+stores/lens.ts -> features/groups/lens.store.ts
+stores/scope.ts -> features/groups/scope.store.ts
+utils/query.ts -> features/groups/query.ts
+utils/queryAssist.ts -> features/groups/queryAssist.ts
+utils/scopeSql.ts -> features/groups/scopeSql.ts
+utils/groupEdges.ts -> features/groups/groupEdges.ts
+composables/useGroupDetail.ts -> features/groups/useGroupDetail.ts
+composables/usePatternOffer.ts -> features/groups/usePatternOffer.ts
+composables/useQueryWorld.ts -> features/groups/useQueryWorld.ts
+components/groups/ -> features/groups/components/
+components/shell/ScopeBar.vue -> features/groups/components/ScopeBar.vue
+
+## rules: architecture rules and lens declarations
+utils/rules.ts -> features/rules/rules.ts
+utils/lensRules.ts -> features/rules/lensRules.ts
+composables/useLensFindings.ts -> features/rules/useLensFindings.ts
+components/groups/DeclareSheet.vue -> features/rules/components/DeclareSheet.vue
+
+## lens-builder: proposing and building a lens (the Lenses view)
+utils/studio.ts -> features/lens-builder/studio.ts
+utils/suggest.ts -> features/lens-builder/suggest.ts
+utils/subject.ts -> features/lens-builder/subject.ts
+utils/bond.ts -> features/lens-builder/bond.ts
+utils/louvain.ts -> features/lens-builder/louvain.ts
+utils/cutQuality.ts -> features/lens-builder/cutQuality.ts
+utils/tear.ts -> features/lens-builder/tear.ts
+utils/modules.ts -> features/lens-builder/buildModules.ts
+utils/relevance.bench.test.ts -> features/lens-builder/relevance.bench.test.ts
+composables/useDimensionStudio.ts -> features/lens-builder/useDimensionStudio.ts
+composables/useSuggestModel.ts -> features/lens-builder/useSuggestModel.ts
+composables/useBuildModules.ts -> features/lens-builder/useBuildModules.ts
+stores/draft.ts -> features/lens-builder/draft.store.ts
+components/dimensions/ -> features/lens-builder/components/
+
+## units: declared units, the module graph and its boundaries (the Units view)
+utils/units.ts -> features/units/units.ts
+utils/moduleGraph.ts -> features/units/moduleGraph.ts
+utils/findings.ts -> features/units/findings.ts
+utils/boundaryFlow.ts -> features/units/boundaryFlow.ts
+utils/boundaryTween.ts -> features/units/boundaryTween.ts
+utils/relationship.ts -> features/units/relationship.ts
+utils/graph.ts -> features/units/graph.ts
+composables/useUnitsModel.ts -> features/units/useUnitsModel.ts
+components/units/ -> features/units/components/
+
+## frameworks: framework profiles for every language, and the class facts they read
+utils/javaFrameworks.ts -> features/frameworks/frameworkProfiles.ts
+utils/javaFacts.ts -> features/frameworks/classFacts.ts
+
+## java: the Java detail tabs
+utils/java.ts -> features/java/java.ts
+composables/useJavaMetrics.ts -> features/java/useJavaMetrics.ts
+composables/useComponentJava.ts -> features/java/useComponentJava.ts
+components/java/ -> features/java/components/
+components/component/ComponentWiring.vue -> features/java/components/ComponentWiring.vue
+
+## git: history and people
+utils/authors.ts -> features/git/authors.ts
+utils/knowledge.test.ts -> features/git/knowledge.test.ts
+utils/effort.ts -> features/git/effort.ts
+utils/commitPattern.ts -> features/git/commitPattern.ts
+utils/codeowners.ts -> features/git/codeowners.ts
+utils/git.ts -> features/git/git.ts
+utils/cochange.ts -> features/git/cochange.ts
+utils/history.ts -> features/git/history.ts
+composables/useCodeAge.ts -> features/git/useCodeAge.ts
+composables/useEffort.ts -> features/git/useEffort.ts
+composables/useCodeowners.ts -> features/git/useCodeowners.ts
+stores/authors.ts -> features/git/authors.store.ts
+components/git/ -> features/git/components/
+components/components/git/git-activity/GitActivityChart.vue -> features/git/components/GitActivityChart.vue
+
+## files: one file at a time (source, search, open in editor)
+utils/codeSearch.ts -> features/files/codeSearch.ts
+composables/useFileRoute.ts -> features/files/useFileRoute.ts
+components/files/FileCodeViewer.vue -> features/files/components/FileCodeViewer.vue
+components/ui/OpenInEditor.vue -> features/files/components/OpenInEditor.vue
+
+## libraries: what the code imports from outside itself
+utils/libraries.ts -> features/libraries/libraries.ts
+
+## export: tables and figures leaving the app, with provenance
+utils/export.ts -> features/export/export.ts
+utils/exportActions.ts -> features/export/exportActions.ts
+utils/figure.ts -> features/export/figure.ts
+utils/provenance.ts -> features/export/provenance.ts
+composables/useExportables.ts -> features/export/useExportables.ts
+components/ui/TableExportMenu.vue -> features/export/components/TableExportMenu.vue
+
+## reports: evidence pins, readings, report notebooks and templates
+utils/evidence.ts -> features/reports/evidence.ts
+utils/readings.ts -> features/reports/readings.ts
+utils/reportCells.ts -> features/reports/reportCells.ts
+utils/reportDoc.ts -> features/reports/reportDoc.ts
+utils/reportTemplates.ts -> features/reports/reportTemplates.ts
+utils/slotSettings.ts -> features/reports/slotSettings.ts
+stores/reports.ts -> features/reports/reports.store.ts
+stores/evidence.ts -> features/reports/evidence.store.ts
+composables/useSlotTaking.ts -> features/reports/useSlotTaking.ts
+components/report/ -> features/reports/components/
+components/evidence/PinButton.vue -> features/reports/components/PinButton.vue
+components/ui/ExportMenu.vue -> features/reports/components/ExportMenu.vue
+
+## sql: the SQL console
+utils/sqlLang.ts -> features/sql/sqlLang.ts
+composables/useSqlSchema.ts -> features/sql/useSqlSchema.ts
+components/sql/SqlEditor.vue -> features/sql/components/SqlEditor.vue
+
+## overview: the home view
+components/SummarySection.vue -> features/overview/components/SummarySection.vue
+components/ViewCard.vue -> features/overview/components/ViewCard.vue
+components/overview/Extremes.vue -> features/overview/components/Extremes.vue
+
+## unreachable from any page, layout or plugin
+components/components/common/ComponentCard.vue DEAD
+components/components/common/ComponentCardList.vue DEAD
+components/components/modals/SelectPathModal.vue DEAD
+components/components/modals/SelectShortestCycleModal.vue DEAD
+components/components/single-component/ComponentSinglePageInfo.vue DEAD
+components/coupling/NeighbourList.vue DEAD
+components/java/ClassGraph.vue DEAD
+components/java/SeedPicker.vue DEAD
+components/shell/LensSwitch.vue DEAD
+components/ui/ProvenanceLine.vue DEAD
+components/ui/buttons/ActionsButton.vue DEAD
+components/ui/buttons/ArchstatsButton.vue DEAD
+components/ui/buttons/Button.vue DEAD
+components/ui/buttons/PrimaryButton.vue DEAD
+components/ui/buttons/SecondaryButton.vue DEAD
+components/ui/card/Card.vue DEAD
+components/ui/card/CardHeadline.vue DEAD
+components/ui/common/Anchor.vue DEAD
+components/ui/common/Definition.vue DEAD
+components/ui/common/Expandable.vue DEAD
+components/ui/common/Headline.vue DEAD
+components/ui/common/LongHover.vue DEAD
+components/ui/common/MultiSelect.vue DEAD
+components/ui/common/SimplePage.vue DEAD
+components/ui/common/Slider.vue DEAD
+components/ui/d3/D3Chart.vue DEAD
+components/ui/d3/D3ChartTooltip.vue DEAD
+components/ui/tab-panel/tab-panel.vue DEAD
+components/ui/tables/InfoTable.vue DEAD
+components/units/FindingEvidence.vue DEAD
+components/units/FindingRail.vue DEAD
+components/units/RegionReading.vue DEAD
+composables/useMetrics.ts DEAD
+utils/date.ts DEAD
+utils/findingGraph.ts DEAD
+utils/javaRelevance.ts DEAD
+utils/path.ts DEAD
+utils/regionMatrix.ts DEAD
+utils/regionReading.ts DEAD
+utils/unitFindings.ts DEAD
+utils/useEmitter.ts DEAD

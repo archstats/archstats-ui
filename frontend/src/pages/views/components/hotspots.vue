@@ -260,7 +260,7 @@
       </template>
     </ViewWorkspaceLayout>
 
-    <GroupsGroupActionBar
+    <GroupActionBar
       v-if="grain !== 'directories'"
       :selected-items="multiSelection"
       :kind="grain === 'files' ? 'file' : 'component'"
@@ -270,25 +270,25 @@
 </template>
 
 <script setup lang="ts">
-import { LAST_CHANGED, useCodeAge } from "~/composables/useCodeAge"
-import { componentPath } from "~/utils/routes"
+import { LAST_CHANGED, useCodeAge } from "~/features/git/useCodeAge"
+import { componentPath } from "~/features/navigation/routes"
 import { computed, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useLensStore } from "~/stores/lens"
-import { useGroupsStore } from "~/stores/groups"
-import { useScopeStore } from "~/stores/scope"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, levelTextClass, type HealthLevel } from "~/composables/useHealth"
-import { formatNumber } from "~/utils/format"
-import Icon from "~/components/ui/common/Icon.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
-import ZoomControls from "~/components/ui/common/ZoomControls.vue"
-import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue"
-import HotspotsTreemap, { type HotspotGrain, type HotspotLayout, type HotspotUnit } from "~/components/components/hotspots/HotspotsTreemap.vue"
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
-import GroupActionBar from "~/components/groups/GroupActionBar.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useLensStore } from "~/features/groups/lens.store"
+import { useGroupsStore } from "~/features/groups/groups.store"
+import { useScopeStore } from "~/features/groups/scope.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, levelTextClass, type HealthLevel } from "~/features/metrics/useHealth"
+import { formatNumber } from "~/shared/format"
+import Icon from "~/shared/ui/Icon.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
+import ZoomControls from "~/shared/ui/ZoomControls.vue"
+import StatSelectSingle from "~/features/metrics/components/StatSelectSingle.vue"
+import HotspotsTreemap, { type HotspotGrain, type HotspotLayout, type HotspotUnit } from "~/features/metrics/components/HotspotsTreemap.vue"
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 
 const store = useDataStore()
 const router = useRouter()

@@ -93,21 +93,21 @@
 </template>
 
 <script setup lang="ts">
-import { anchorSql } from "~/utils/history"
-import StatStrip from "~/components/detail/StatStrip.vue"
+import { anchorSql } from "~/features/git/history"
+import StatStrip from "~/features/metrics/components/StatStrip.vue"
 import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { sqlLiteral } from "~/utils/sql"
-import { formatNumber, formatSigned } from "~/utils/format"
-import { formatDate } from "~/utils/time"
-import { AUTHOR_PERIODS, IN_SNAPSHOT, NOT_BOT_SQL, authorNamesSql, authorStatsSql, canonicalAuthorSql, periodStats, type AuthorPeriodStats } from "~/utils/authors"
-import { useAuthorsStore } from "~/stores/authors"
-import { useWorkspacesStore } from "~/stores/workspaces"
-import { componentPath } from "~/utils/routes"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { sqlLiteral } from "~/shared/sql"
+import { formatNumber, formatSigned } from "~/shared/format"
+import { formatDate } from "~/shared/time"
+import { AUTHOR_PERIODS, IN_SNAPSHOT, NOT_BOT_SQL, authorNamesSql, authorStatsSql, canonicalAuthorSql, periodStats, type AuthorPeriodStats } from "~/features/git/authors"
+import { useAuthorsStore } from "~/features/git/authors.store"
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
+import { componentPath } from "~/features/navigation/routes"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const route = useRoute()
 const store = useDataStore()

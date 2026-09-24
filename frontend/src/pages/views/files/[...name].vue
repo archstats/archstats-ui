@@ -23,19 +23,19 @@
 </template>
 
 <script setup lang="ts">
-import PinButton from "~/components/evidence/PinButton.vue"
-import { PIN_METRICS, pickValues } from "~/utils/evidence"
-import OpenInEditor from "~/components/ui/OpenInEditor.vue"
-import { componentPath } from "~/utils/routes"
+import PinButton from "~/features/reports/components/PinButton.vue"
+import { PIN_METRICS, pickValues } from "~/features/reports/evidence"
+import OpenInEditor from "~/features/files/components/OpenInEditor.vue"
+import { componentPath } from "~/features/navigation/routes"
 import { computed } from "vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useFileRoute } from "~/composables/useFileRoute"
-import { useJavaMetrics } from "~/composables/useJavaMetrics"
-import { formatNumber } from "~/utils/format"
-import DetailFrame, { type DetailCrumb, type DetailStat, type DetailTab } from "~/components/detail/DetailFrame.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useFileRoute } from "~/features/files/useFileRoute"
+import { useJavaMetrics } from "~/features/java/useJavaMetrics"
+import { formatNumber } from "~/shared/format"
+import DetailFrame, { type DetailCrumb, type DetailStat, type DetailTab } from "~/features/shell/components/DetailFrame.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import Icon from "~/shared/ui/Icon.vue"
 
 const store = useDataStore()
 const { filePath, escapedPath, fileBasename } = useFileRoute()

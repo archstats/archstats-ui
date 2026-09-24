@@ -214,37 +214,37 @@
 </template>
 
 <script setup lang="ts">
-import { readDurable, writeDurable } from "~/utils/durable";
+import { readDurable, writeDurable } from "~/platform/durable";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import ConnectionsGraph from "~/components/connections/ConnectionsGraph.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import GroupsRail from "~/components/dimensions/GroupsRail.vue";
-import QuestionCard, { type Guess } from "~/components/dimensions/QuestionCard.vue";
-import GroupInside from "~/components/dimensions/GroupInside.vue";
-import PilePanel from "~/components/dimensions/PilePanel.vue";
-import NearbyPanel, { type CandidateBand } from "~/components/dimensions/NearbyPanel.vue";
-import ProposeSheet, { type CutPreview, type RepoReading } from "~/components/dimensions/ProposeSheet.vue";
-import { useCodeowners } from "~/composables/useCodeowners";
-import { useBuildModules } from "~/composables/useBuildModules";
-import SelectionBar from "~/components/dimensions/SelectionBar.vue";
-import { useDimensionStudio } from "~/composables/useDimensionStudio";
-import { useQueryWorld } from "~/composables/useQueryWorld";
-import { useSuggestModel } from "~/composables/useSuggestModel";
-import { isPlaceholderName, useDraftStore } from "~/stores/draft";
-import { useDataStore } from "~/stores/data";
-import { useGroupsStore, type GroupMode } from "~/stores/groups";
-import { useLensStore } from "~/stores/lens";
-import { useScopeStore } from "~/stores/scope";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { presetById, type SuggestSettings } from "~/utils/suggest";
-import { measureCut, measureMembers, readModularity } from "~/utils/cutQuality";
-import { parseQuery, runQuery } from "~/utils/query";
-import { commonName, nameForQuery, OUT_PILE, reasonFor, subjectOf, WAYS, type Bundle, type Grain, type WayId } from "~/utils/studio";
-import { bondBreakdown, channelWords, type Channel } from "~/utils/bond";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import ConnectionsGraph from "~/features/connections/components/ConnectionsGraph.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import GroupsRail from "~/features/lens-builder/components/GroupsRail.vue";
+import QuestionCard, { type Guess } from "~/features/lens-builder/components/QuestionCard.vue";
+import GroupInside from "~/features/lens-builder/components/GroupInside.vue";
+import PilePanel from "~/features/lens-builder/components/PilePanel.vue";
+import NearbyPanel, { type CandidateBand } from "~/features/lens-builder/components/NearbyPanel.vue";
+import ProposeSheet, { type CutPreview, type RepoReading } from "~/features/lens-builder/components/ProposeSheet.vue";
+import { useCodeowners } from "~/features/git/useCodeowners";
+import { useBuildModules } from "~/features/lens-builder/useBuildModules";
+import SelectionBar from "~/features/lens-builder/components/SelectionBar.vue";
+import { useDimensionStudio } from "~/features/lens-builder/useDimensionStudio";
+import { useQueryWorld } from "~/features/groups/useQueryWorld";
+import { useSuggestModel } from "~/features/lens-builder/useSuggestModel";
+import { isPlaceholderName, useDraftStore } from "~/features/lens-builder/draft.store";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useGroupsStore, type GroupMode } from "~/features/groups/groups.store";
+import { useLensStore } from "~/features/groups/lens.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { presetById, type SuggestSettings } from "~/features/lens-builder/suggest";
+import { measureCut, measureMembers, readModularity } from "~/features/lens-builder/cutQuality";
+import { parseQuery, runQuery } from "~/features/groups/query";
+import { commonName, nameForQuery, OUT_PILE, reasonFor, subjectOf, WAYS, type Bundle, type Grain, type WayId } from "~/features/lens-builder/studio";
+import { bondBreakdown, channelWords, type Channel } from "~/features/lens-builder/bond";
 
 /** A word, not a sentence, for the row that does not match its band. */
 const CHANNEL_TAG: Record<Channel, string> = { static: "references", cochange: "co-change", kinship: "names" };
