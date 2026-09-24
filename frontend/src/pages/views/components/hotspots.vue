@@ -535,6 +535,17 @@ watch(columns, cols => {
   colorMetric.value = cols.includes("git__commits__total") ? "git__commits__total" : (cols[1] || cols[0])
 }, { immediate: true })
 
+// A link can open a perspective by id (?preset=churn), once the presets exist.
+watch(presets, list => {
+  const want = typeof route.query.preset === "string" ? route.query.preset : null
+  const p = want ? list.find(x => x.id === want) : null
+  if (!p) return
+  selectPreset(p)
+  const query: Record<string, any> = { ...route.query }
+  delete query.preset
+  void router.replace({ query })
+}, { immediate: true })
+
 // ---------------------------------------------------------------------------
 // Groups legend: component groups at component grain, file groups at file grain.
 
