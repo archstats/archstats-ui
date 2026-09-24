@@ -161,28 +161,28 @@
 </template>
 
 <script setup lang="ts">
-import { LAST_CHANGED, useCodeAge } from "~/composables/useCodeAge";
-import { componentPath } from "~/utils/routes";
+import { LAST_CHANGED, useCodeAge } from "~/features/git/useCodeAge";
+import { componentPath } from "~/features/navigation/routes";
 import { computed, reactive, ref, watch } from "vue";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import ElementTable from "~/components/ui/tables/ElementTable.vue";
-import StatSelectMulti from "~/components/ui/stat-select/StatSelectMulti.vue";
-import StatSelectSingle from "~/components/ui/stat-select/StatSelectSingle.vue";
-import SingleSelect from "~/components/ui/common/SingleSelect.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import ZoomControls from "~/components/ui/common/ZoomControls.vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import DirectoryTree from "~/components/metrics/DirectoryTree.vue";
-import ComponentPlotterDiagram from "~/components/components/plotter/ComponentPlotterDiagram.vue";
-import { implicitAbstractionLanguage } from "~/utils/abstraction";
-import { useDataStore } from "~/stores/data";
-import { useLensStore } from "~/stores/lens";
-import { useGroupsStore } from "~/stores/groups";
-import { useScopeStore } from "~/stores/scope";
-import { useAsyncQuery } from "~/composables/useAsyncQuery";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import ElementTable from "~/features/metrics/components/ElementTable.vue";
+import StatSelectMulti from "~/features/metrics/components/StatSelectMulti.vue";
+import StatSelectSingle from "~/features/metrics/components/StatSelectSingle.vue";
+import SingleSelect from "~/shared/ui/SingleSelect.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import ZoomControls from "~/shared/ui/ZoomControls.vue";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import DirectoryTree from "~/features/metrics/components/DirectoryTree.vue";
+import ComponentPlotterDiagram from "~/features/metrics/components/ComponentPlotterDiagram.vue";
+import { implicitAbstractionLanguage } from "~/features/metrics/abstraction";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useLensStore } from "~/features/groups/lens.store";
+import { useGroupsStore } from "~/features/groups/groups.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 
 // Metrics: every number for every component or file, as a table or a plot.
 // One grain switch, one filter (scope + search), one column picker, one

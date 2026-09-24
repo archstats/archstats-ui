@@ -57,19 +57,19 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthorsStore } from "~/stores/authors"
-import { componentPath } from "~/utils/routes"
+import { useAuthorsStore } from "~/features/git/authors.store"
+import { componentPath } from "~/features/navigation/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { sqlLiteral } from "~/utils/sql"
-import { formatNumber, formatSigned } from "~/utils/format"
-import { formatDate } from "~/utils/time"
-import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot } from "~/composables/useHealth"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { sqlLiteral } from "~/shared/sql"
+import { formatNumber, formatSigned } from "~/shared/format"
+import { formatDate } from "~/shared/time"
+import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot } from "~/features/metrics/useHealth"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
+import Icon from "~/shared/ui/Icon.vue"
 
 const route = useRoute()
 const store = useDataStore()

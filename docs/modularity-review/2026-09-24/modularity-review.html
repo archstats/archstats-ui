@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modularity Review</title>
+<style>
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+    --max-width: 820px;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eef1f5;
+    --text: #1a1a1a;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
+    --border: #e2e8f0;
+    --accent: #2b6cb0;
+    --accent-light: #ebf4ff;
+    --severity-critical: #c53030;
+    --severity-critical-bg: #fff5f5;
+    --severity-significant: #c05621;
+    --severity-significant-bg: #fffaf0;
+    --severity-minor: #2b6cb0;
+    --severity-minor-bg: #ebf8ff;
+    --table-stripe: #f7fafc;
+    --link: #2b6cb0;
+    --link-hover: #1a4971;
+    --shadow: rgba(0, 0, 0, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1a1a1a;
+    --bg-secondary: #242424;
+    --bg-tertiary: #2e2e2e;
+    --text: #e2e2e2;
+    --text-secondary: #a0a0a0;
+    --text-muted: #717171;
+    --border: #333333;
+    --accent: #b0b0b0;
+    --accent-light: #2a2a2a;
+    --severity-critical: #fc8181;
+    --severity-critical-bg: #2d1b1b;
+    --severity-significant: #f6ad55;
+    --severity-significant-bg: #2d2415;
+    --severity-minor: #a0a0a0;
+    --severity-minor-bg: #282828;
+    --table-stripe: #222222;
+    --link: #e0c97f;
+    --link-hover: #f0dca0;
+    --shadow: rgba(0, 0, 0, 0.2);
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    margin: 0;
+    padding: 2rem 1.5rem;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  .container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    z-index: 100;
+  }
+
+  .theme-toggle:hover {
+    background: var(--bg-tertiary);
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem 0;
+    color: var(--text);
+  }
+
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 2.5rem 0 1rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.8rem 0 0.6rem 0;
+    color: var(--text);
+  }
+
+  p {
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+
+  a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+  }
+
+  /* Metadata */
+  .meta {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .meta strong {
+    color: var(--text-secondary);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.9rem;
+  }
+
+  th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  td {
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  tr:nth-child(even) td {
+    background: var(--table-stripe);
+  }
+
+  /* Severity badges */
+  .severity {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .severity-critical {
+    color: var(--severity-critical);
+    background: var(--severity-critical-bg);
+  }
+
+  .severity-significant {
+    color: var(--severity-significant);
+    background: var(--severity-significant-bg);
+  }
+
+  .severity-minor {
+    color: var(--severity-minor);
+    background: var(--severity-minor-bg);
+  }
+
+  /* Issue cards */
+  .issue {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 1px 3px var(--shadow);
+  }
+
+  .issue h2 {
+    margin-top: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .issue h3 {
+    font-size: 1rem;
+  }
+
+  .issue-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  /* Lists */
+  ul, ol {
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+  }
+
+  li {
+    margin-bottom: 0.35rem;
+  }
+
+  /* Code */
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  /* Horizontal rule */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3rem 0 1.5rem 0;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .footer a {
+    color: var(--text-muted);
+    border-bottom-color: var(--border);
+  }
+
+  .footer a:hover {
+    color: var(--link);
+  }
+
+  /* Print */
+  @media print {
+    .theme-toggle { display: none; }
+    body { padding: 0; }
+    .issue { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+  <span id="theme-icon"></span>
+</button>
+
+<div class="container">
+  <h1>Modularity Review</h1>
+<div class="meta"><p><strong>Scope</strong>: archstats-ui frontend (<code>frontend/src</code>, Nuxt 3 SPA inside the Wails desktop shell) at commit <code>cffe84f</code>: 431 <code>.ts</code>/<code>.vue</code> files, about 64k lines. The Go side (<code>app/</code>) only as the frontend&#39;s backend seam.
+<strong>Date</strong>: 2026-09-24</p></div>
+<h2>Executive Summary</h2>
+<p>Archstats Desktop reads a scanned codebase&#39;s snapshot (a SQLite file) and lets an architect explore its structure and history: metrics, connections, cycles, units, git history, groups and lenses, and reports that carry their evidence. The frontend&#39;s <a href="https://coupling.dev/posts/core-concepts/modularity/">modularity</a> <strong>needs attention</strong>. Its folders sort code by kind of file (<code>utils/</code>, <code>composables/</code>, <code>stores/</code>, <code>components/</code>), not by what it is about, so every feature is spread across three to eight folders while each folder holds unrelated features side by side. That is <a href="https://coupling.dev/posts/core-concepts/balance/">low cohesion</a> in the most <a href="https://coupling.dev/posts/dimensions-of-coupling/volatility/">volatile</a> part of the product. The most important finding is that the structure also <em>hides</em> coupling: Nuxt auto-imports let files use code they never import, several business rules exist twice with different logic, and &quot;utilities&quot; reach up into global application state. A reader cannot trust search or an import graph to show what depends on what.</p>
+<h2>Coupling Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Integration</th>
+<th><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Strength</a></th>
+<th><a href="https://coupling.dev/posts/dimensions-of-coupling/distance/">Distance</a></th>
+<th><a href="https://coupling.dev/posts/dimensions-of-coupling/volatility/">Volatility</a></th>
+<th><a href="https://coupling.dev/posts/core-concepts/balance/">Balanced?</a></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Feature code within one feature (e.g. cycles: page, <code>CycleMap.vue</code>, <code>utils/cycles.ts</code>, <code>utils/untangle.ts</code>)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Model</a> / <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Functional</a></td>
+<td>High (logical): 3–8 folders per feature</td>
+<td>High (core)</td>
+<td>No: strongly coupled code kept far apart</td>
+</tr>
+<tr>
+<td>Unrelated features inside <code>utils/</code> (90 modules), <code>composables/</code> (31), <code>components/components/</code></td>
+<td>None</td>
+<td>Low: same folder</td>
+<td>High</td>
+<td>No: low cohesion</td>
+</tr>
+<tr>
+<td><code>GroupActionBar.vue</code>, 3 pages → <code>utils/subject</code>, <code>utils/query</code>, <code>ViewWorkspaceLayout.vue</code> (via Nuxt auto-import)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Functional</a>, implicit</td>
+<td>Low</td>
+<td>High (groups)</td>
+<td>No: implicit</td>
+</tr>
+<tr>
+<td><code>fileRole.isTestPath</code> ↔ <code>findings.isTestPath</code>; <code>languages</code> ↔ <code>libraries</code> ↔ <code>javaFrameworks</code> (language by extension)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Functional</a> (duplicated rule)</td>
+<td>Medium: different features</td>
+<td>Medium</td>
+<td>No: implicit</td>
+</tr>
+<tr>
+<td><code>utils/provenance</code>, <code>history</code>, <code>codeSearch</code>, <code>durable</code>, <code>commitPattern</code>, <code>scopeSql</code> → Pinia stores; <code>utils/java</code> → <code>useChartTheme</code>; <code>useComponentJava</code> → a <code>.vue</code> file&#39;s types</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Intrusive</a> (global state)</td>
+<td>Low</td>
+<td>High</td>
+<td>No: layering inverted, forms the <code>utils → stores → composables</code> tangle</td>
+</tr>
+<tr>
+<td><code>stores/workspaces.select</code> → groups, lens, scope, draft, authors, state stores (and back)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Model</a></td>
+<td>Low</td>
+<td>Medium</td>
+<td>Tolerable, but two-way</td>
+</tr>
+<tr>
+<td>groups (store, query language, scope) → lens studio (<code>detectSeparator</code>)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Model</a></td>
+<td>Medium</td>
+<td>High</td>
+<td>No: knowledge owned by the wrong module, creates a cycle</td>
+</tr>
+<tr>
+<td>Units components → <code>utils/javaFrameworks</code> (11 importers)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Model</a></td>
+<td>Low</td>
+<td>Medium</td>
+<td>Yes, but the name misstates the contract</td>
+</tr>
+<tr>
+<td>Views → <code>utils/sql</code> (<code>sqlLiteral</code>, <code>sqlIn</code>)</td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Contract</a></td>
+<td>Low</td>
+<td>Low</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Views → <code>stores/data.query()</code> → Wails <code>QueryService</code></td>
+<td><a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">Contract</a></td>
+<td>High (process boundary)</td>
+<td>Low</td>
+<td>Yes</td>
+</tr>
+</tbody></table>
+<div class="issue"><h2>Issue: Features are scattered across technical-layer folders</h2>
+<p class="issue-meta"><strong>Integration</strong>: every feature → <code>utils/</code>, <code>composables/</code>, <code>stores/</code>, <code>components/*</code>
+<strong>Severity</strong>: <span class="severity severity-critical">Critical</span></p>
+<h3>Knowledge Leakage</h3>
+<p>A feature&#39;s knowledge (for cycles: what a tangle is, how a cut plan is chosen, how the map draws it) is shared by <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">model coupling</a> between its page, its components, its composable and its logic. The folder structure puts those pieces as far apart as the codebase allows. Measured on this commit: metrics code sits in 8 folders, shell code in 8, connections and reports in 6 each, git, groups and trends in 5. Meanwhile <code>utils/</code> holds 90 modules about 17 unrelated subjects, from Louvain clustering to keyboard shortcuts to PDF report cells. <code>components/components/</code> and <code>components/component/</code> add a second grab-bag with near-identical names.</p>
+<h3>Complexity Impact</h3>
+<p>A change to one feature starts with a search across four trees, and nothing in a file&#39;s location says which feature it serves. Opening <code>utils/</code> shows 157 files (with tests). A developer has to hold the feature&#39;s map in their head, which is well past the 4±1 units of working memory. That is where <a href="https://coupling.dev/posts/core-concepts/complexity/">complexity</a> comes from: nobody can predict what a change touches without reading everything.</p>
+<h3>Cascading Changes</h3>
+<p><code>git log</code> confirms it: of the 67 commits that touched <code>frontend/src</code>, 46 touched at least three of <code>utils/</code>, <code>stores/</code>, <code>composables/</code>, <code>components/</code> and <code>pages/</code>, and 10 touched all five. Of the 51 commits that touched <code>utils/</code>, 50 also touched another of those folders. A feature change is a change in several places. The <a href="https://coupling.dev/posts/dimensions-of-coupling/distance/">distance</a> is only logical (one repository, one author), so each change is cheap to make but expensive to find and review.</p>
+<h3>Recommended Improvement</h3>
+<p>Reduce distance for what is strongly coupled: move each feature&#39;s logic, composables, stores and components into <code>src/features/&lt;feature&gt;/</code>. Keep product-agnostic helpers and the UI kit in <code>src/shared/</code>, and put the runtime seam in <code>src/platform/</code>. Pages stay in <code>pages/</code> because Nuxt routes by folder. The trade-off is a large one-time diff (every import path changes) and a convention to hold. Both are cheap next to the navigation cost, and a test can hold the convention (see below).</p>
+</div><div class="issue"><h2>Issue: Coupling that no search can find</h2>
+<p class="issue-meta"><strong>Integration</strong>: <code>GroupActionBar.vue</code> → <code>utils/subject.detectSeparator</code>, <code>utils/query.generalise</code>; <code>pages/views/rules.vue</code>, <code>git/activity.vue</code>, <code>git/authors/index.vue</code> → <code>ViewWorkspaceLayout.vue</code>; <code>hotspots.vue</code> → <code>GroupsGroupActionBar</code>
+<strong>Severity</strong>: <span class="severity severity-significant">Significant</span></p>
+<h3>Knowledge Leakage</h3>
+<p>Nuxt auto-imports every export of <code>utils/</code> and <code>composables/</code> and registers every component under <code>components/</code>. Five files use code they never import. The dependency exists, but it is <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">implicit</a>. The same mechanism resolves name collisions silently: <code>Edge</code>, <code>Finding</code>, <code>Query</code>, <code>isTestPath</code>, <code>languageOf</code> and <code>edgeKey</code> are each exported by two or three modules, and the build warns that one of each &quot;has been ignored&quot;.</p>
+<h3>Complexity Impact</h3>
+<p>Search, &quot;find usages&quot;, dead-code checks and any import graph (including Archstats&#39; own) under-report these files&#39; dependents. Moving or renaming a module can break a view at runtime with no build error.</p>
+<h3>Cascading Changes</h3>
+<p>Rename <code>generalise</code> or move <code>utils/query.ts</code>, and the group action bar fails only when a user opens it.</p>
+<h3>Recommended Improvement</h3>
+<p>Make every dependency explicit: add the five missing imports and turn off scanning of project folders (<code>imports: { scan: false }</code>, <code>components: { dirs: [] }</code>). Vue, Nuxt and Pinia auto-imports stay on. The only cost is writing import lines, and 99% of files already do.</p>
+</div><div class="issue"><h2>Issue: The same business rule, written twice</h2>
+<p class="issue-meta"><strong>Integration</strong>: <code>utils/fileRole.isTestPath</code> ↔ <code>utils/findings.isTestPath</code>; <code>utils/languages.languageOfPath</code> ↔ <code>utils/libraries.languageOf</code> ↔ <code>utils/javaFrameworks.languageOfFile</code>
+<strong>Severity</strong>: <span class="severity severity-significant">Significant</span></p>
+<h3>Knowledge Leakage</h3>
+<p>&quot;Is this a test file&quot; and &quot;what language is this file&quot; are rules of the product&#39;s vocabulary. Each is implemented more than once with different logic. <code>fileRole</code> mirrors the engine&#39;s test-path rules; <code>findings</code> has its own (it also treats <code>spec</code>, <code>e2e</code> and capitalised <code>FooTest</code> names). That is <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">functional coupling</a> with no link between the copies.</p>
+<h3>Complexity Impact</h3>
+<p>The Production/Tests switch and the Units findings can disagree about the same file, and a reader has no way to know which rule a number used.</p>
+<h3>Cascading Changes</h3>
+<p>When the engine changes what counts as a test (it did at analysis revision 2), one copy follows and the others silently drift.</p>
+<h3>Recommended Improvement</h3>
+<p>Own each rule once, in the snapshot vocabulary (<code>features/snapshot/fileRole.ts</code>, <code>languages.ts</code>), and have the other features call it. Merging changes behaviour (the rules differ today), so it needs a decision on which rule is right. A behaviour-preserving restructure should document the copies rather than merge them silently.</p>
+</div><div class="issue"><h2>Issue: &quot;Utilities&quot; that depend on application state</h2>
+<p class="issue-meta"><strong>Integration</strong>: <code>utils/provenance</code> → data, workspaces, lens, scope and state stores; <code>utils/history</code> → data and workspaces stores; <code>utils/java</code> → <code>composables/useChartTheme</code>; <code>utils/moduleGraph</code>, <code>unitFindings</code> → <code>composables/useUnitsModel</code>; <code>composables/useComponentJava</code> → <code>components/java/ComponentWiringGraph.vue</code>
+<strong>Severity</strong>: <span class="severity severity-significant">Significant</span></p>
+<h3>Knowledge Leakage</h3>
+<p>A module in <code>utils/</code> promises to be a leaf. These ones read global Pinia state, which is <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">intrusive coupling</a> to other modules&#39; internals, and they turn the <code>utils → stores → composables → utils</code> folders into one strongly connected tangle.</p>
+<h3>Complexity Impact</h3>
+<p>No layer can be understood or tested without the others. A pure-looking helper needs an active Pinia and an open snapshot.</p>
+<h3>Cascading Changes</h3>
+<p>Changing a store&#39;s shape (e.g. how the scope is held) reaches into &quot;utilities&quot; nobody would think to check.</p>
+<h3>Recommended Improvement</h3>
+<p>Once code is grouped by feature, these stop being &quot;utilities&quot; and become feature code that may use its feature&#39;s stores. The layering that matters becomes enforceable: <code>shared/</code> and <code>platform/</code> import nothing from features. Types a composable needs from a component (<code>WiringNode</code>, <code>WiringEdge</code>) move into the feature&#39;s logic module.</p>
+</div><div class="issue"><h2>Issue: Workspace selection orchestrates every feature, and every feature reads it back</h2>
+<p class="issue-meta"><strong>Integration</strong>: <code>stores/workspaces</code> ↔ <code>stores/groups</code>, <code>lens</code>, <code>scope</code>, <code>draft</code>, <code>authors</code>
+<strong>Severity</strong>: <span class="severity severity-minor">Minor</span></p>
+<h3>Knowledge Leakage</h3>
+<p><code>workspaces.select()</code> knows each feature&#39;s loading protocol (<code>initForProject</code>, <code>load</code>, <code>hydrate</code>, <code>clear</code>), and those features import the workspaces store to learn the active workspace. That is two-way <a href="https://coupling.dev/posts/dimensions-of-coupling/integration-strength/">model coupling</a>.</p>
+<h3>Complexity Impact</h3>
+<p>Adding a feature with per-workspace state means editing the workspace store. Load order is implicit in the order of lines in <code>select()</code>.</p>
+<h3>Cascading Changes</h3>
+<p>A new per-workspace feature, or a change to one feature&#39;s load API, changes the workspace store.</p>
+<h3>Recommended Improvement</h3>
+<p>A workspace-selected hook that features register with would invert the dependency. It changes store initialisation order, so it is a behaviour change to make on its own and test. Until then, <a href="https://coupling.dev/posts/dimensions-of-coupling/volatility/">volatility</a> is moderate and the distance is low, so the imbalance is tolerable. Record it as known debt.</p>
+</div><div class="issue"><h2>Issue: Naming knowledge owned by the lens studio</h2>
+<p class="issue-meta"><strong>Integration</strong>: groups store, group query language, scope store, go-to index → <code>utils/studio.detectSeparator</code>
+<strong>Severity</strong>: <span class="severity severity-minor">Minor</span></p>
+<h3>Knowledge Leakage</h3>
+<p>How a codebase joins name segments (<code>.</code>, <code>/</code>, <code>\</code>, <code>::</code>) is snapshot vocabulary. It lives in the lens studio&#39;s <code>subject.ts</code>, so the groups feature depends on the lens builder, while the lens builder depends on groups.</p>
+<h3>Complexity Impact</h3>
+<p>This is the only reason the groups↔lens-builder cycle exists.</p>
+<h3>Cascading Changes</h3>
+<p>A refactor of the studio can break group queries.</p>
+<h3>Recommended Improvement</h3>
+<p>Move <code>detectSeparator</code> to <code>features/snapshot/names.ts</code>. Move the lens-edge readers (<code>resolveLensEdges</code>, <code>lensGroups</code>) from rules into groups. Move the scope query bar, which composes groups with the lens draft, into the shell.</p>
+</div><div class="issue"><h2>Issue: Dead and misnamed modules</h2>
+<p class="issue-meta"><strong>Integration</strong>: 41 unreachable files; <code>utils/javaFrameworks</code> (framework profiles for Java, TypeScript, Python, C#, PHP and more)
+<strong>Severity</strong>: <span class="severity severity-minor">Minor</span></p>
+<h3>Knowledge Leakage</h3>
+<p>About 3,000 lines are unreachable from any page, layout or plugin: <code>unitFindings</code>, <code>regionMatrix</code>, <code>regionReading</code>, <code>findingGraph</code>, <code>javaRelevance</code> and <code>path</code> are tested but used by nothing live, plus 32 components (old buttons, cards, d3 wrappers, class graph, seed picker). <code>javaFrameworks</code> is the framework catalogue for every language, yet its name tells the Units feature (its main user) that it is Java-only.</p>
+<h3>Complexity Impact</h3>
+<p>Dead code costs reading time and test time, and it misleads anyone looking for the implementation of a feature.</p>
+<h3>Cascading Changes</h3>
+<p>None at runtime, which is why it accumulates.</p>
+<h3>Recommended Improvement</h3>
+<p>Delete what is unreachable, with its tests. Rename <code>javaFrameworks</code> → <code>features/frameworks/frameworkProfiles.ts</code> and <code>javaFacts</code> → <code>classFacts.ts</code>.</p>
+</div><hr><p class="footer"><em>This analysis was performed using the <a href="https://coupling.dev">Balanced Coupling</a> model by <a href="https://vladikk.com">Vlad Khononov</a>.</em></p>
+
+</div>
+
+<script>
+  function getDefaultTheme() {
+    const hour = new Date().getHours();
+    return (hour >= 7 && hour < 19) ? 'light' : 'dark';
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('modularity-review-theme', theme);
+    document.getElementById('theme-icon').textContent = theme === 'light' ? '☾' : '☀';
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current === 'light' ? 'dark' : 'light');
+  }
+
+  const saved = localStorage.getItem('modularity-review-theme');
+  setTheme(saved || getDefaultTheme());
+</script>
+</body>
+</html>

@@ -31,12 +31,12 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRoute } from "vue-router"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useGroupDetail } from "~/composables/useGroupDetail"
-import { useLensFindings } from "~/composables/useLensFindings"
-import { useDataStore } from "~/stores/data"
-import { useGroupsStore } from "~/stores/groups"
-import { filePath } from "~/utils/routes"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useGroupDetail } from "~/features/groups/useGroupDetail"
+import { useLensFindings } from "~/features/rules/useLensFindings"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useGroupsStore } from "~/features/groups/groups.store"
+import { filePath } from "~/features/navigation/routes"
 
 const route = useRoute()
 const data = useDataStore()

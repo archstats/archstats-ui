@@ -10,10 +10,10 @@
 // preset proposes on a real snapshot and generalising it back.
 
 import { describe, expect, it } from "vitest"
-import { loadSignalSources } from "~/composables/useSuggestModel"
-import { generalise, globToRegExp, parseQuery, runQuery } from "~/utils/query"
-import { detectSeparator } from "~/utils/studio"
-import { PRESETS, buildSuggestInput, suggest } from "~/utils/suggest"
+import { loadSignalSources } from "~/features/lens-builder/useSuggestModel"
+import { generalise, globToRegExp, parseQuery, runQuery } from "~/features/groups/query"
+import { detectSeparator } from "~/features/lens-builder/studio"
+import { PRESETS, buildSuggestInput, suggest } from "~/features/lens-builder/suggest"
 import { findSnapshot, median, openSnapshot, pct } from "./snapshot"
 
 const DB = findSnapshot()

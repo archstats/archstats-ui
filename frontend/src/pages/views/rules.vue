@@ -160,16 +160,17 @@
 </template>
 
 <script setup lang="ts">
-import { useBuildModules } from "~/composables/useBuildModules"
-import { declaredVia } from "~/utils/modules"
-import PinButton from "~/components/evidence/PinButton.vue"
-import OpenInEditor from "~/components/ui/OpenInEditor.vue"
-import { filePath } from "~/utils/routes"
-import DeclareSheet from "~/components/groups/DeclareSheet.vue"
-import { useLensFindings } from "~/composables/useLensFindings"
-import { useLensStore } from "~/stores/lens"
-import { useScopeStore } from "~/stores/scope"
-import { useGroupsStore } from "~/stores/groups"
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
+import { useBuildModules } from "~/features/lens-builder/useBuildModules"
+import { declaredVia } from "~/features/lens-builder/buildModules"
+import PinButton from "~/features/reports/components/PinButton.vue"
+import OpenInEditor from "~/features/files/components/OpenInEditor.vue"
+import { filePath } from "~/features/navigation/routes"
+import DeclareSheet from "~/features/rules/components/DeclareSheet.vue"
+import { useLensFindings } from "~/features/rules/useLensFindings"
+import { useLensStore } from "~/features/groups/lens.store"
+import { useScopeStore } from "~/features/groups/scope.store"
+import { useGroupsStore } from "~/features/groups/groups.store"
 import { computed as vueComputed, ref as vueRef } from "vue"
 
 const lens = useLensStore()
@@ -190,15 +191,15 @@ function viaOf(c: { from: string; to: string }): string {
 const groupName = (id: string) => lensGroupsStore.getGroupById(id)?.name ?? id
 const lensShown = (c: { from: string; to: string }) => (lensExpanded.value.has(c.from + ">" + c.to) ? Infinity : 20)
 import { computed } from "vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
+import Icon from "~/shared/ui/Icon.vue"
 import {
   atLine, groupByRule, held, kindHint, kindLabel, notApplicable, scopeToEcosystems, shortLocation, summarise, verdictOf,
   type RuleFinding,
-} from "~/utils/rules"
+} from "~/features/rules/rules"
 
 // Every rule's verdict on this codebase.
 //

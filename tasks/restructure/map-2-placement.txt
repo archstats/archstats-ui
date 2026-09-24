@@ -1,0 +1,4 @@
+shared/ui/MetricHint.vue -> features/snapshot/components/MetricHint.vue
+shared/ui/ElementTable.vue -> features/metrics/components/ElementTable.vue
+features/groups/components/QueryBar.vue -> features/shell/components/QueryBar.vue
+features/groups/components/SaveToLens.vue -> features/shell/components/SaveToLens.vue

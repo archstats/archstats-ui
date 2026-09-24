@@ -53,25 +53,25 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { PanelLeftOpen } from "lucide-vue-next";
-import NavBar from "~/components/navbar/NavBar.vue";
-import PaneHandle from "~/components/shell/PaneHandle.vue";
-import WorkspaceEmptyState from "~/components/shell/WorkspaceEmptyState.vue";
-import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
-import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
-import ExportMenu from "~/components/ui/ExportMenu.vue";
-import GoToAnything from "~/components/shell/GoToAnything.vue";
-import AddToReportSheet from "~/components/report/AddToReportSheet.vue";
-import SlotFillBar from "~/components/report/SlotFillBar.vue";
+import NavBar from "~/features/shell/components/NavBar.vue";
+import PaneHandle from "~/features/shell/components/PaneHandle.vue";
+import WorkspaceEmptyState from "~/features/workspace/components/WorkspaceEmptyState.vue";
+import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapshotBar.vue";
+import ShortcutSheet from "~/features/shell/components/ShortcutSheet.vue";
+import ExportMenu from "~/features/reports/components/ExportMenu.vue";
+import GoToAnything from "~/features/shell/components/GoToAnything.vue";
+import AddToReportSheet from "~/features/reports/components/AddToReportSheet.vue";
+import SlotFillBar from "~/features/reports/components/SlotFillBar.vue";
 // Provides the code search that `contains` lines in live groups answer from.
-import "~/utils/codeSearch";
-import RescanCommitSheet from "~/components/shell/RescanCommitSheet.vue";
-import ImportSnapshotSheet from "~/components/shell/ImportSnapshotSheet.vue";
-import { useMenuCommands } from "~/composables/useMenuCommands";
-import { useAuthorsStore } from "~/stores/authors";
-import { useDataStore } from "~/stores/data";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { SIDEBAR, usePanesStore } from "~/stores/panes";
-import { usePlatform } from "~/composables/usePlatform";
+import "~/features/files/codeSearch";
+import RescanCommitSheet from "~/features/workspace/components/RescanCommitSheet.vue";
+import ImportSnapshotSheet from "~/features/workspace/components/ImportSnapshotSheet.vue";
+import { useMenuCommands } from "~/features/shell/useMenuCommands";
+import { useAuthorsStore } from "~/features/git/authors.store";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { SIDEBAR, usePanesStore } from "~/features/shell/panes.store";
+import { usePlatform } from "~/platform/usePlatform";
 
 const navExpanded = ref(true);
 const { shortcutsOpen } = useMenuCommands();

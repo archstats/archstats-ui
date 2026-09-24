@@ -169,22 +169,22 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import { useCodeowners } from "~/composables/useCodeowners";
-import { filePath } from "~/utils/routes";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import ReadingBand from "~/components/component/ReadingBand.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import { useAsyncQuery } from "~/composables/useAsyncQuery";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { detectFramework, languageOfFile } from "~/utils/javaFrameworks";
-import { composition, ROLE_LABELS, type CompositionRow, type FileRole } from "~/utils/languages";
-import { buildProvenance, provenanceMarkdown } from "~/utils/provenance";
-import { loadUnits } from "~/utils/units";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import { useCodeowners } from "~/features/git/useCodeowners";
+import { filePath } from "~/features/navigation/routes";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import ReadingBand from "~/shared/ui/ReadingBand.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { detectFramework, languageOfFile } from "~/features/frameworks/frameworkProfiles";
+import { composition, ROLE_LABELS, type CompositionRow, type FileRole } from "~/features/snapshot/languages";
+import { buildProvenance, provenanceMarkdown } from "~/features/export/provenance";
+import { loadUnits } from "~/features/units/units";
 
 // Everything a report says before its first finding: what the code is made
 // of, which commit it was, what the scan left out and how dependencies were

@@ -404,38 +404,38 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import ZoomControls from "~/components/ui/common/ZoomControls.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import ConnectionsGraph from "~/components/connections/ConnectionsGraph.vue";
-import ConnectionsMatrix from "~/components/connections/ConnectionsMatrix.vue";
-import ConnectionsList from "~/components/connections/ConnectionsList.vue";
-import { edgeKey as crossingEdgeKey, levelize } from "~/utils/connections";
-import { useLensFindings } from "~/composables/useLensFindings";
-import { useStateStore } from "~/stores/state";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import ZoomControls from "~/shared/ui/ZoomControls.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import ConnectionsGraph from "~/features/connections/components/ConnectionsGraph.vue";
+import ConnectionsMatrix from "~/features/connections/components/ConnectionsMatrix.vue";
+import ConnectionsList from "~/features/connections/components/ConnectionsList.vue";
+import { edgeKey as crossingEdgeKey, levelize } from "~/features/connections/connections";
+import { useLensFindings } from "~/features/rules/useLensFindings";
+import { useStateStore } from "~/platform/state.store";
 const stateStoreForLayout = useStateStore();
-import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";
-import ConnectionsInspector from "~/components/connections/ConnectionsInspector.vue";
-import SandboxPlan from "~/components/connections/SandboxPlan.vue";
-import ConnectionsCrosscut from "~/components/connections/ConnectionsCrosscut.vue";
-import CrosscutInspector from "~/components/connections/CrosscutInspector.vue";
-import { useLensStore } from "~/stores/lens";
-import { useJavaMetrics } from "~/composables/useJavaMetrics";
-import { buildCrosscut, type CrossGroup } from "~/utils/crosscut";
-import { useDraftStore } from "~/stores/draft";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { units, useGroupsStore, type UnitKind } from "~/stores/groups";
-import { useDataStore } from "~/stores/data";
-import { useScopeStore } from "~/stores/scope";
-import { useConnectionsModel } from "~/composables/useConnectionsModel";
+import ConnectionsChord from "~/features/connections/components/ConnectionsChord.vue";
+import ConnectionsInspector from "~/features/connections/components/ConnectionsInspector.vue";
+import SandboxPlan from "~/features/sandbox/components/SandboxPlan.vue";
+import ConnectionsCrosscut from "~/features/connections/components/ConnectionsCrosscut.vue";
+import CrosscutInspector from "~/features/connections/components/CrosscutInspector.vue";
+import { useLensStore } from "~/features/groups/lens.store";
+import { useJavaMetrics } from "~/features/java/useJavaMetrics";
+import { buildCrosscut, type CrossGroup } from "~/features/connections/crosscut";
+import { useDraftStore } from "~/features/lens-builder/draft.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { units, useGroupsStore, type UnitKind } from "~/features/groups/groups.store";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { useConnectionsModel } from "~/features/connections/useConnectionsModel";
 import {
   type ConnectionsQueryState, type CycleMode, type GroupSuggestion, type Level, type Selection,
   capFor, decodeSelection, detailRoute, encodeSelection, isOverCap, parseConnectionsQuery,
   toConnectionsQuery, toggleSelection,
-} from "~/utils/connections";
+} from "~/features/connections/connections";
 
 // One view for every "what is coupled to what" question. The picture is a
 // tree (groups ⊃ components ⊃ files) opened per node; source, roll-up

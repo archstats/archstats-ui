@@ -3,8 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import CommitHistory from "~/components/git/CommitHistory.vue"
-import { useFileRoute } from "~/composables/useFileRoute"
+import CommitHistory from "~/features/git/components/CommitHistory.vue"
+import { useFileRoute } from "~/features/files/useFileRoute"
 
 const { escapedPath } = useFileRoute()
 </script>

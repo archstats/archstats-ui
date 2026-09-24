@@ -27,16 +27,16 @@
 </template>
 
 <script setup lang="ts">
-import Extremes from "~/components/overview/Extremes.vue";
-import { historyAnchor } from "~/utils/history";
-import ViewCard from "~/components/ViewCard.vue";
-import SummarySection from "~/components/SummarySection.vue";
-import { useDataStore } from "~/stores/data";
-import type { GitCommit } from "~/utils/git";
-import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
-import MonthlyChangesChart from "~/components/git/MonthlyChangesChart.vue";
+import Extremes from "~/features/overview/components/Extremes.vue";
+import { historyAnchor } from "~/features/git/history";
+import ViewCard from "~/features/overview/components/ViewCard.vue";
+import SummarySection from "~/features/overview/components/SummarySection.vue";
+import { useDataStore } from "~/features/snapshot/data.store";
+import type { GitCommit } from "~/features/git/git";
+import GitActivityChart from "~/features/git/components/GitActivityChart.vue";
+import MonthlyChangesChart from "~/features/git/components/MonthlyChangesChart.vue";
 import { computed, ref, watch } from "vue";
-import { useJavaMetrics } from "~/composables/useJavaMetrics";
+import { useJavaMetrics } from "~/features/java/useJavaMetrics";
 
 const store = useDataStore();
 const gitCommits = ref<GitCommit[]>([]);

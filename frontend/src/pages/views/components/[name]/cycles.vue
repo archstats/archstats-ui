@@ -217,10 +217,10 @@
 </template>
 
 <script setup lang="ts">
-import { useSandboxStore } from "~/stores/sandbox"
-import OpenInEditor from "~/components/ui/OpenInEditor.vue"
-import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
-import { componentPath } from "~/utils/routes"
+import { useSandboxStore } from "~/features/sandbox/sandbox.store"
+import OpenInEditor from "~/features/files/components/OpenInEditor.vue"
+import { TRUSTED_PAIR_SQL } from "~/features/git/cochange"
+import { componentPath } from "~/features/navigation/routes"
 // A component's cycles, drawn rather than listed.
 //
 // Every cycle leaves this component and returns to it, so the map puts it in
@@ -229,17 +229,17 @@ import { componentPath } from "~/utils/routes"
 // away until someone wants it.
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { formatNumber } from "~/utils/format"
-import { sqlIn, sqlLiteral } from "~/utils/sql"
-import { detectSeparator } from "~/utils/subject"
-import { segmentPrefix } from "~/utils/neighbours"
-import { cutPlan, cycleCountsByComponent, edgeKey, edgesOf, extendCutPlan, lineOf, participantsOf, pathWithout, symbolOwner, type CutStep, type CyclePath, type Digraph } from "~/utils/cycles"
-import CycleMap, { type MapEdge, type MapNode } from "~/components/component/CycleMap.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
-import Icon from "~/components/ui/common/Icon.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { formatNumber } from "~/shared/format"
+import { sqlIn, sqlLiteral } from "~/shared/sql"
+import { detectSeparator } from "~/features/snapshot/names"
+import { segmentPrefix } from "~/features/connections/neighbours"
+import { cutPlan, cycleCountsByComponent, edgeKey, edgesOf, extendCutPlan, lineOf, participantsOf, pathWithout, symbolOwner, type CutStep, type CyclePath, type Digraph } from "~/features/cycles/cycles"
+import CycleMap, { type MapEdge, type MapNode } from "~/features/cycles/components/CycleMap.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
+import Icon from "~/shared/ui/Icon.vue"
 
 type SortKey = "severity" | "size" | "sharedCommits"
 

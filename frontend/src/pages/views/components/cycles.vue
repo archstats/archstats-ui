@@ -287,27 +287,27 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import TangleGraph from "~/components/cycles/TangleGraph.vue";
-import TangleMatrix from "~/components/cycles/TangleMatrix.vue";
-import PinButton from "~/components/evidence/PinButton.vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import SnippetPopover from "~/components/SnippetPopover.vue";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { useGroupsStore } from "~/stores/groups";
-import { useLensStore } from "~/stores/lens";
-import { useSandboxStore } from "~/stores/sandbox";
-import { useScopeStore } from "~/stores/scope";
-import { TRUSTED_PAIR_SQL } from "~/utils/cochange";
-import { formatNumber } from "~/utils/format";
-import { componentPath } from "~/utils/routes";
-import { sqlIn, sqlLiteral } from "~/utils/sql";
-import { afterCuts, edgeId, foldEdges, layoutTangle, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/utils/untangle";
+import TangleGraph from "~/features/cycles/components/TangleGraph.vue";
+import TangleMatrix from "~/features/cycles/components/TangleMatrix.vue";
+import PinButton from "~/features/reports/components/PinButton.vue";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import SnippetPopover from "~/features/cycles/components/SnippetPopover.vue";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useGroupsStore } from "~/features/groups/groups.store";
+import { useLensStore } from "~/features/groups/lens.store";
+import { useSandboxStore } from "~/features/sandbox/sandbox.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
+import { formatNumber } from "~/shared/format";
+import { componentPath } from "~/features/navigation/routes";
+import { sqlIn, sqlLiteral } from "~/shared/sql";
+import { afterCuts, edgeId, foldEdges, layoutTangle, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/features/cycles/untangle";
 
 // Cycles, read as tangles: sets of components that all reach each other.
 // Hundreds of listed cycles overlap on a few imports; laid out in levels,

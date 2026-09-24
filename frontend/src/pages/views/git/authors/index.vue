@@ -160,22 +160,23 @@
 </template>
 
 <script setup lang="ts">
-import { anchorLabel, anchorSql } from "~/utils/history"
-import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/utils/authors"
-import { useAuthorsStore } from "~/stores/authors"
-import { scopeWhere } from "~/utils/scopeSql"
-import { useWorkspacesStore } from "~/stores/workspaces"
-import SingleSelect from "~/components/ui/common/SingleSelect.vue"
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
+import { anchorLabel, anchorSql } from "~/features/git/history"
+import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/features/git/authors"
+import { useAuthorsStore } from "~/features/git/authors.store"
+import { scopeWhere } from "~/features/groups/scopeSql"
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
+import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import KnowledgeTable from "~/components/git/KnowledgeTable.vue"
-import { useDataStore } from "~/stores/data"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { useExportables } from "~/composables/useExportables"
-import { formatNumber, formatSigned } from "~/utils/format"
-import Icon from "~/components/ui/common/Icon.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
+import KnowledgeTable from "~/features/git/components/KnowledgeTable.vue"
+import { useDataStore } from "~/features/snapshot/data.store"
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { useExportables } from "~/features/export/useExportables"
+import { formatNumber, formatSigned } from "~/shared/format"
+import Icon from "~/shared/ui/Icon.vue"
+import EmptyState from "~/shared/ui/EmptyState.vue"
+import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const store = useDataStore()
 const router = useRouter()

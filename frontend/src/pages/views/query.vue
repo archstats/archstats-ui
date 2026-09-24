@@ -105,19 +105,19 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { Console } from "wailsjs/go/app/QueryService";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import SqlEditor from "~/components/sql/SqlEditor.vue";
-import { useSqlSchema } from "~/composables/useSqlSchema";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import Icon from "~/components/ui/common/Icon.vue";
-import SingleSelect from "~/components/ui/common/SingleSelect.vue";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { useStateStore } from "~/stores/state";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { newestFirst } from "~/utils/scanOrder";
-import { formatScanTime } from "~/utils/time";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import SqlEditor from "~/features/sql/components/SqlEditor.vue";
+import { useSqlSchema } from "~/features/sql/useSqlSchema";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import Icon from "~/shared/ui/Icon.vue";
+import SingleSelect from "~/shared/ui/SingleSelect.vue";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useStateStore } from "~/platform/state.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { newestFirst } from "~/features/workspace/scanOrder";
+import { formatScanTime } from "~/shared/time";
 
 // For the question no view asks: read-only SQL against any snapshot of the
 // workspace, with the schema at hand. Results export like any table; a

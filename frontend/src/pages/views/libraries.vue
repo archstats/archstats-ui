@@ -75,19 +75,19 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
-import GroupActionBar from "~/components/groups/GroupActionBar.vue";
-import Checkbox from "~/components/ui/common/Checkbox.vue";
-import EmptyState from "~/components/ui/common/EmptyState.vue";
-import LoadingState from "~/components/ui/common/LoadingState.vue";
-import { useAsyncQuery } from "~/composables/useAsyncQuery";
-import { useExportables } from "~/composables/useExportables";
-import { useDataStore } from "~/stores/data";
-import { useScopeStore } from "~/stores/scope";
-import { useStateStore } from "~/stores/state";
-import { useWorkspacesStore } from "~/stores/workspaces";
-import { libraries, ownPrefixes, type ImportRow, type Library } from "~/utils/libraries";
-import { componentLabel, componentPath } from "~/utils/routes";
+import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
+import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import Checkbox from "~/shared/ui/Checkbox.vue";
+import EmptyState from "~/shared/ui/EmptyState.vue";
+import LoadingState from "~/shared/ui/LoadingState.vue";
+import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
+import { useExportables } from "~/features/export/useExportables";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import { useStateStore } from "~/platform/state.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { libraries, ownPrefixes, type ImportRow, type Library } from "~/features/libraries/libraries";
+import { componentLabel, componentPath } from "~/features/navigation/routes";
 
 // Which components are welded to which framework: every import that is not
 // one of the project's own components, as written, rolled up to a depth.

@@ -29,6 +29,14 @@ export default defineNuxtConfig({
     enabled: false,
   },
 
+  // Every dependency is an explicit import. Nuxt's scanning of our own
+  // folders (auto-imported functions, auto-registered components) is off:
+  // it made uses of a module invisible to search and to any import graph,
+  // and let two modules export the same name with one silently winning.
+  // Vue, Nuxt and Pinia's own auto-imports are unaffected.
+  imports: { scan: false },
+  components: { dirs: [] },
+
   modules: ["@pinia/nuxt", "@nuxtjs/tailwindcss"],
 
   // Our own entry so the shell's base-layer rules (selection, scrollbars,
