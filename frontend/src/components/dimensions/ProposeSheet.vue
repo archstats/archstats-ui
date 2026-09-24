@@ -141,13 +141,53 @@
                 </template>
               </button>
             </template>
+
+            <!-- What the repository itself declares: no measuring of the
+                 code, just its own files read back as groups. -->
+            <template v-if="repoReadings?.length">
+              <p class="ui-label px-3 pb-1 pt-3">From the repository</p>
+              <button
+                v-for="r in repoReadings"
+                :key="r.id"
+                type="button"
+                class="flex w-full flex-col gap-1 rounded-md px-3 text-left transition-colors"
+                :class="[picked === r.id ? 'bg-accent-50 py-2.5' : 'py-1.5 hover:bg-neutral-50', r.ok ? '' : 'opacity-60']"
+                :disabled="!r.ok"
+                :aria-pressed="picked === r.id"
+                @click="picked = r.id"
+              >
+                <span class="flex w-full items-baseline gap-2">
+                  <Icon :icon="r.icon" :size="13" class="shrink-0 translate-y-px" :class="picked === r.id ? 'text-accent-600' : 'text-neutral-400'"/>
+                  <span class="shrink-0 text-sm font-medium text-neutral-900">{{ r.label }}</span>
+                  <span class="min-w-0 truncate text-xs" :class="r.ok ? 'text-neutral-500' : 'text-amber-700'">{{ r.ok ? r.hint : r.why }}</span>
+                  <span v-if="r.ok && r.preview && picked !== r.id" class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-550">{{ r.preview.groups }} groups</span>
+                  <Icon v-if="picked === r.id" icon="check" :size="12" class="ml-auto shrink-0 translate-y-px text-accent-600"/>
+                </span>
+                <span v-if="r.ok && r.preview" class="ml-[21px] flex gap-px overflow-hidden rounded-sm" :class="picked === r.id ? 'h-2' : 'h-[3px]'" :title="shapeOf(r.preview)">
+                  <span v-for="(g, i) in r.preview.sizes" :key="g.name + i" class="h-full first:rounded-l-sm" :style="{ width: (g.size / Math.max(total, r.preview.placed, 1)) * 100 + '%', backgroundColor: PALETTE[i % PALETTE.length] }"></span>
+                  <span v-if="total > r.preview.placed" class="h-full rounded-r-sm bg-neutral-200" :style="{ width: ((total - r.preview.placed) / total) * 100 + '%' }"></span>
+                </span>
+                <template v-if="picked === r.id && r.ok && r.preview">
+                  <span class="ml-[21px] flex flex-wrap items-baseline gap-x-3 font-mono text-xs tabular-nums text-neutral-600">
+                    <span>{{ r.preview.groups }} groups</span>
+                    <span v-if="total">{{ r.preview.placed }} of {{ total }} components mostly placed</span>
+                    <span :class="r.preview.biggest > 0.5 ? 'text-amber-700' : 'text-neutral-600'">biggest group {{ Math.round(r.preview.biggest * 100) }}%</span>
+                  </span>
+                  <span class="ml-[21px] text-xs leading-5 text-neutral-500">
+                    <template v-for="(g, i) in r.preview.sizes.slice(0, NAMES_SHOWN)" :key="g.name + i"><span v-if="i" class="text-neutral-550"> · </span><span class="text-neutral-600">{{ g.name }}</span><span class="ml-1 font-mono text-neutral-550">{{ g.size }}</span></template>
+                    <template v-if="r.preview.sizes.length > NAMES_SHOWN"><span class="text-neutral-550"> · … {{ r.preview.sizes.length - NAMES_SHOWN }} more</span></template>
+                  </span>
+                  <span v-if="r.note" class="ml-[21px] text-xs leading-4 text-amber-700">{{ r.note }}</span>
+                </template>
+              </button>
+            </template>
           </div>
 
           <!-- The second half of the same decision, and downstream of it:
                a layer is the one question a package answers two ways at once,
                so only there does dividing a component pay. Measured: every
                other way scored worse split than whole. -->
-          <div v-if="chosen?.fitness.ok" class="flex shrink-0 items-center gap-2 px-5 py-2.5 hairline-t">
+          <div v-if="chosen?.fitness.ok && !chosenRepo" class="flex shrink-0 items-center gap-2 px-5 py-2.5 hairline-t">
             <span class="ui-label shrink-0">Made of</span>
             <div class="ui-segmented" role="group" aria-label="What this lens is made of">
               <button
@@ -178,7 +218,7 @@
             <button
               type="button"
               class="ui-btn ui-btn-sm ui-btn-primary"
-              :disabled="!chosen || !chosen.fitness.ok || busy"
+              :disabled="chosenRepo ? !chosenRepo.ok || busy : !chosen || !chosen.fitness.ok || busy"
               @click="apply"
             >{{ busy ? "Proposing…" : "Propose this cut" }}</button>
           </footer>
@@ -214,6 +254,19 @@ const TONE: Record<"good" | "fair" | "poor", string> = {
   good: "text-green-700", fair: "text-amber-700", poor: "text-red-700",
 };
 
+/** A reading of what the repository declares (its CODEOWNERS), proposed as it stands. */
+export interface RepoReading {
+  id: string
+  label: string
+  hint: string
+  icon: string
+  ok: boolean
+  why?: string
+  preview: CutPreview | null
+  /** Said under the reading when it is picked: a caveat about what it will make. */
+  note?: string
+}
+
 export interface CutPreview {
   groups: number
   placed: number
@@ -242,11 +295,13 @@ const props = defineProps<{
   /** The reading this codebase suits, for the one marked default. */
   suggested?: WayId
   busy?: boolean
+  repoReadings?: RepoReading[]
 }>();
 
 const emit = defineEmits<{
   (e: "close"): void
   (e: "propose", id: WayId, grain: Grain): void
+  (e: "proposeRepo", id: string): void
   (e: "strike", word: string): void
   (e: "restore", word: string): void
 }>();
@@ -263,7 +318,7 @@ const GRAINS: Grain[] = ["component", "file"];
 const NAMES_SHOWN = 12;
 
 const sheet = ref<HTMLElement | null>(null);
-const picked = ref<WayId>(props.current);
+const picked = ref<string>(props.current);
 const grain = ref<Grain>("component");
 
 const cuts = computed(() => WAYS.map(way => ({
@@ -286,6 +341,7 @@ const sections = computed(() => {
 });
 
 const chosen = computed(() => cuts.value.find(c => c.way.id === picked.value) ?? null);
+const chosenRepo = computed(() => props.repoReadings?.find(r => r.id === picked.value) ?? null);
 
 watch(() => props.open, isOpen => {
   if (!isOpen) return;
@@ -309,7 +365,8 @@ function shapeOf(p: CutPreview): string {
 }
 
 function apply() {
+  if (chosenRepo.value) { if (chosenRepo.value.ok) emit("proposeRepo", chosenRepo.value.id); return; }
   if (!chosen.value?.fitness.ok) return;
-  emit("propose", picked.value, grain.value);
+  emit("propose", picked.value as WayId, grain.value);
 }
 </script>

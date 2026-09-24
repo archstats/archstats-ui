@@ -204,8 +204,10 @@
     @restore="restoreSubject"
     :previews="previews"
     :busy="busy"
+    :repo-readings="repoReadings"
     @close="proposing = false"
     @propose="propose"
+    @propose-repo="proposeRepo"
   />
 
 </template>
@@ -224,7 +226,8 @@ import QuestionCard, { type Guess } from "~/components/dimensions/QuestionCard.v
 import GroupInside from "~/components/dimensions/GroupInside.vue";
 import PilePanel from "~/components/dimensions/PilePanel.vue";
 import NearbyPanel, { type CandidateBand } from "~/components/dimensions/NearbyPanel.vue";
-import ProposeSheet, { type CutPreview } from "~/components/dimensions/ProposeSheet.vue";
+import ProposeSheet, { type CutPreview, type RepoReading } from "~/components/dimensions/ProposeSheet.vue";
+import { useCodeowners } from "~/composables/useCodeowners";
 import SelectionBar from "~/components/dimensions/SelectionBar.vue";
 import { useDimensionStudio } from "~/composables/useDimensionStudio";
 import { useQueryWorld } from "~/composables/useQueryWorld";
@@ -733,14 +736,24 @@ async function measureWay(way: (typeof WAYS)[number]) {
   });
 }
 
-async function openPropose() {
-  proposing.value = true;
-  if (previews.value.size) return;
+/** The component count the previews were measured on; a different one measures again. */
+let measuredOn = -1;
+async function measureAll() {
+  measuredOn = studio.coverage.value.total;
+  previews.value = new Map();
   for (const way of WAYS) {
     if (!studio.fitnessFor(way).ok) continue;
     await measureWay(way);
   }
 }
+async function openPropose() {
+  proposing.value = true;
+  if (previews.value.size && measuredOn === studio.coverage.value.total) return;
+  await measureAll();
+}
+// Opened from a link on a cold start, the sheet can be up before the snapshot
+// is: measured on nothing, every reading said "0 groups" and kept saying it.
+watch(() => studio.coverage.value.total, total => { if (proposing.value && total !== measuredOn) void measureAll(); });
 
 /** Taking a word out re-measures the domain cut, and only that one. */
 async function remeasureNameReadings() {
@@ -769,6 +782,54 @@ async function propose(id: WayId, grain: Grain) {
     const taken = new Set(groupsStore.groups.filter(g => g.dimension !== draft.dimension).map(g => g.name));
     const out = await suggest.run(settings, () => true, taken, "");
     draft.fromSuggestions(draft.dimension || settings.dimension, out, settings.cut);
+    activeKey.value = null;
+    proposing.value = false;
+  } finally {
+    busy.value = false;
+  }
+}
+
+// ── From the repository ────────────────────────────────────────────────
+// What the repository declares about itself, read as it stands: no measuring
+// of the code decides these groups, so they arrive proposed, never decided.
+const codeowners = useCodeowners();
+function previewOf(suggestions: Array<{ key: string; name: string; components: string[] }>): CutPreview {
+  const groups = suggestions.map(x => ({ key: x.key, name: x.name, members: x.components }));
+  const measured = measureCut(groups, studio.qualityEdges.value, studio.coverage.value.total);
+  return {
+    groups: groups.length, placed: measured.placed, kept: measured.kept, modularity: measured.modularity, biggest: measured.biggest,
+    sizes: groups.map(g => ({ name: g.name, size: g.members.length, named: true })).sort((a, b) => b.size - a.size),
+    tone: readModularity(measured.modularity, groups.length).tone,
+  };
+}
+const repoReadings = computed<RepoReading[]>(() => {
+  const why = codeowners.reason.value;
+  const sug = codeowners.suggestions.value;
+  const unowned = codeowners.owned.value?.unowned.length ?? 0;
+  const path = codeowners.found.value?.path ?? "CODEOWNERS";
+  const notes = [
+    codeowners.singleRule.value ? `One rule (${codeowners.parsed.value?.rules[0].pattern}) owns every file: one group at 100%, which says who reviews, not how the code divides.` : "",
+    unowned ? `${unowned.toLocaleString("en-US")} files match no rule and stay unplaced; About this snapshot lists them.` : "",
+  ].filter(Boolean).join(" ");
+  return [{
+    id: "codeowners",
+    label: "Declared owners",
+    hint: `${path}: one group per owner set, divided by files where owners share a component`,
+    icon: "users",
+    ok: !why && sug.length > 0,
+    why: why ?? (sug.length ? undefined : `${path} owns no file in this snapshot.`),
+    preview: !why && sug.length ? previewOf(sug) : null,
+    note: notes || undefined,
+  }];
+});
+async function proposeRepo(id: string) {
+  if (id !== "codeowners") return;
+  busy.value = true;
+  try {
+    // Owners divide components by file, so the lens is made of files.
+    draft.setGrain("file", true);
+    if (!draft.dimension || draft.dimension === studio.way.value.dimension) draft.setDimension("Owners");
+    draft.fromSuggestions(draft.dimension || "Owners", codeowners.suggestions.value, "free");
     activeKey.value = null;
     proposing.value = false;
   } finally {

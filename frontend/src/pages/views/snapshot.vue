@@ -76,6 +76,33 @@
             </details>
           </ReadingBand>
 
+          <!-- Declared owners: the file that was read, and what it leaves unowned. -->
+          <ReadingBand title="Declared owners" :lede="ownersLede" to="/views/dimensions?propose=1" link-label="Propose as a lens">
+            <template v-if="owners.owned.value">
+              <dl class="ui-kv max-w-[640px]">
+                <template v-for="o in owners.owned.value.sets.slice(0, 12)" :key="o.key">
+                  <dt class="!whitespace-normal">{{ owners.ownersLabel(o.owners) }}</dt>
+                  <dd>{{ fmt(o.files.length) }} files <span class="text-neutral-400">· line {{ o.lines.join(", ") }}</span></dd>
+                </template>
+              </dl>
+              <div v-if="owners.owned.value.unowned.length" class="mt-4">
+                <div class="flex items-baseline gap-3">
+                  <h4 class="ui-label">Unowned paths</h4>
+                  <span class="text-xs text-neutral-500">{{ fmt(owners.owned.value.unowned.length) }} files no rule matches</span>
+                  <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="unownedSel = allUnownedSelected ? new Set() : new Set(unownedShown)">{{ allUnownedSelected ? "Clear" : "Select all shown" }}</button>
+                </div>
+                <ul class="mt-1 flex max-h-[320px] flex-col overflow-y-auto">
+                  <li v-for="f in unownedShown" :key="f" class="flex h-7 items-center gap-2">
+                    <Checkbox :model-value="unownedSel.has(f)" :aria-label="`Select ${f}`" @update:model-value="toggleUnowned(f)"/>
+                    <router-link :to="filePath(f)" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="f">{{ f }}</router-link>
+                  </li>
+                </ul>
+                <p v-if="owners.owned.value.unowned.length > unownedShown.length" class="mt-1 text-xs text-neutral-500">First {{ fmt(unownedShown.length) }} shown.</p>
+              </div>
+            </template>
+          </ReadingBand>
+          <GroupActionBar v-if="unownedSel.size" :selected-items="[...unownedSel]" kind="file" @clear="unownedSel = new Set()" @created="unownedSel = new Set()"/>
+
           <!-- 4. Frameworks, one reading per language. -->
           <ReadingBand title="Frameworks" lede="What the code's types and imports point to, read per language. Units and Connections use this to name lanes.">
             <LoadingState v-if="frameworksLoading" text="Reading types…"/>
@@ -142,6 +169,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import GroupActionBar from "~/components/groups/GroupActionBar.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
+import { useCodeowners } from "~/composables/useCodeowners";
+import { filePath } from "~/utils/routes";
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
 import ReadingBand from "~/components/component/ReadingBand.vue";
 import EmptyState from "~/components/ui/common/EmptyState.vue";
@@ -268,6 +299,22 @@ const repoLede = computed(() => {
   const base = r.length === 1 ? "One git repository." : `${r.length} git repositories.`;
   return shallow ? `${base} Shallow: commit counts, contributors and ages cover only the fetched history.` : base;
 });
+
+// ── Declared owners ─────────────────────────────────────────────────────
+const owners = useCodeowners();
+const ownersLede = computed(() => {
+  const why = owners.reason.value;
+  if (why) return why;
+  const o = owners.owned.value!;
+  const total = o.sets.reduce((n, x) => n + x.files.length, 0) + o.unowned.length;
+  const rules = owners.parsed.value!.rules.length;
+  const single = owners.singleRule.value ? " One rule owns everything, so it names reviewers rather than dividing the code." : "";
+  return `Read from ${owners.found.value!.path}: ${fmt(rules)} ${rules === 1 ? "rule" : "rules"}, ${fmt(o.sets.length)} owner ${o.sets.length === 1 ? "set" : "sets"}, ${fmt(total - o.unowned.length)} of ${fmt(total)} files owned; the last matching line wins.${single}`;
+});
+const unownedShown = computed(() => owners.owned.value?.unowned.slice(0, 500) ?? []);
+const unownedSel = ref<Set<string>>(new Set());
+const allUnownedSelected = computed(() => unownedShown.value.length > 0 && unownedShown.value.every(f => unownedSel.value.has(f)));
+function toggleUnowned(f: string) { const s = new Set(unownedSel.value); s.has(f) ? s.delete(f) : s.add(f); unownedSel.value = s; }
 
 // ── Manifests ───────────────────────────────────────────────────────────
 const { data: manifests } = useAsyncQuery<Array<{ name: string; kind: string; manifest: string; files: number }>>(
