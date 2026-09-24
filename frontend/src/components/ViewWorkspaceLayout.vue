@@ -48,6 +48,7 @@
           </button>
         </label>
 
+        <ExportMenu/>
         <slot name="actions"></slot>
 
         <div v-if="showConfig || (hasSwitches && narrow)" class="relative">
@@ -139,6 +140,7 @@ import Icon from "~/components/ui/common/Icon.vue";
 import QueryBar from "~/components/groups/QueryBar.vue";
 import ScopeBar from "~/components/shell/ScopeBar.vue";
 import PaneHandle from "~/components/shell/PaneHandle.vue";
+import ExportMenu from "~/components/ui/ExportMenu.vue";
 import { INSPECTOR, usePanesStore } from "~/stores/panes";
 
 const props = withDefaults(defineProps<{

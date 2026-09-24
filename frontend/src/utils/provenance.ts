@@ -57,7 +57,7 @@ export function buildProvenance(view = typeof location !== "undefined" ? locatio
         lens: lens.active ?? null,
         scope: scopeText || null,
         role: role && role !== "all" ? role : null,
-        pseudonymised: !!state.setting("authors.pseudonymise", false),
+        pseudonymised: !!state.get("authors.pseudonymise", false),
         view,
         appVersion: version,
     }

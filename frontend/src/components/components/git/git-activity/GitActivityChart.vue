@@ -1,5 +1,5 @@
 <template>
-  <div class="inline-block">
+  <div ref="root" class="inline-block">
     <div class="chart-layout">
       <div class="year-labels">
         <div v-for="label in yearLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
@@ -40,7 +40,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useExportables } from "~/composables/useExportables";
+import { svgFromHtml } from "~/utils/figure";
+
+const root = ref<HTMLElement | null>(null);
+// Built from divs, so the figure is drawn from their laid-out boxes.
+useExportables().register({
+  kind: "figure",
+  title: "Commit calendar",
+  ready: () => !!root.value,
+  render: () => {
+    if (!root.value) return null;
+    const { svg, width, height } = svgFromHtml(root.value, ".day-cell", ".year-labels > div, .month-labels > div, .day-labels > span");
+    return { kind: "svg", svg, width, height };
+  },
+});
 
 // Define a type for GitCommit for clarity
 interface GitCommit {

@@ -123,3 +123,31 @@ export function authorNamesSql(aliases: AliasMap, canonical: string): string {
     const lit = (s: string) => `'${s.replace(/'/g, "''")}'`
     return `author_name IN (${namesOf(aliases, canonical).map(lit).join(", ")})`
 }
+
+// ── Pseudonyms ──────────────────────────────────────────────────────────
+// Works councils and privacy rules forbid naming people in evidence about
+// their work. With pseudonymisation on, every author reads "Author N", in
+// order of first commit so the numbering is the same on every screen and in
+// every export of the same snapshot; merged aliases share one label.
+
+/** Canonical author → "Author N", numbered by first commit (then name, for ties). */
+export function pseudonymLabels(rows: Array<{ name: string; first: string | null }>, aliases: AliasMap = {}): Record<string, string> {
+    const first = new Map<string, string>()
+    for (const r of rows) {
+        if (!r.name) continue
+        const c = canonicalAuthor(aliases, r.name)
+        const t = r.first ?? "9999"
+        const prev = first.get(c)
+        if (prev === undefined || t < prev) first.set(c, t)
+    }
+    const ordered = [...first.entries()].sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    return Object.fromEntries(ordered.map(([name], i) => [name, `Author ${i + 1}`]))
+}
+
+/** Hides what names a person inside free text: @handles, email addresses and trailer lines. */
+export function maskPeople(text: string): string {
+    return text
+        .replace(/^(co-authored-by|signed-off-by|reviewed-by|reported-by|acked-by):.*$/gim, "$1: …")
+        .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "…@…")
+        .replace(/(^|[^\w@])@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/g, "$1@…")
+}

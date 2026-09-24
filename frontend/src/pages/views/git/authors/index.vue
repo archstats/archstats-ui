@@ -22,6 +22,12 @@
       <div class="ui-segmented" role="group" aria-label="Period">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days)" @click="period = p.id">{{ p.label }}</button>
       </div>
+      <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.pseudonymise" :class="{ 'bg-neutral-100': authorsStore.pseudonymise }"
+              title="Show every author as Author 1…N, numbered by first commit, on every screen and in every export; emails and @handles are hidden"
+              @click="authorsStore.setPseudonymise(!authorsStore.pseudonymise)">
+        <Icon icon="user" :size="13" class="text-neutral-500"/>
+        <span>{{ authorsStore.pseudonymise ? "Pseudonymised" : "Show as Author 1…N" }}</span>
+      </button>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.showBots" :class="{ 'bg-neutral-100': authorsStore.showBots }"
               title="Dependency bumpers, CI accounts and release-plugin commits are hidden unless shown here"
               @click="authorsStore.showBots = !authorsStore.showBots">
@@ -80,9 +86,9 @@
                 <router-link
                   :to="detailRoute(a.name)"
                   class="block truncate text-neutral-900 hover:underline"
-                  :title="a.email ? `${a.name} · ${a.email}` : a.name"
+                  :title="a.email ? `${a.shown} · ${a.email}` : a.shown"
                   @click.stop
-                >{{ a.name }}</router-link>
+                >{{ a.shown }}</router-link>
               </td>
               <td class="is-num text-right">
                 <span class="inline-flex items-center justify-end gap-2">
@@ -107,11 +113,15 @@
     <template #tab-author>
       <template v-if="selected">
         <div class="flex flex-col gap-1">
-          <router-link :to="detailRoute(selected.name)" class="truncate text-base font-semibold text-neutral-900 hover:underline">{{ selected.name }}</router-link>
+          <router-link :to="detailRoute(selected.name)" class="truncate text-base font-semibold text-neutral-900 hover:underline">{{ selected.shown }}</router-link>
           <span v-if="selected.email" class="truncate font-mono text-sm text-neutral-500" :title="selected.email">{{ selected.email }}</span>
         </div>
         <!-- The same person under another name: merged by hand, per workspace. -->
-        <section class="flex flex-col gap-2">
+        <section v-if="authorsStore.pseudonymise" class="flex flex-col gap-2">
+          <h3 class="ui-section-title">Also committed as</h3>
+          <p class="text-sm leading-4 text-neutral-500">Names are hidden while authors are pseudonymised. Show names to merge one person's names.</p>
+        </section>
+        <section v-else class="flex flex-col gap-2">
           <h3 class="ui-section-title">Also committed as</h3>
           <ul v-if="mergedInto(selected.name).length" class="flex flex-col gap-1">
             <li v-for="alias in mergedInto(selected.name)" :key="alias" class="flex items-center gap-2">
@@ -154,6 +164,7 @@ import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { useExportables } from "~/composables/useExportables"
 import { formatNumber, formatSigned } from "~/utils/format"
 import Icon from "~/components/ui/common/Icon.vue"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
@@ -186,6 +197,8 @@ const period = ref<PeriodId>("total")
 interface PeriodStats { commits: number; additions: number; deletions: number; files: number; components: number }
 interface AuthorRow extends PeriodStats {
   name: string
+  /** The name on screen: the name, or its pseudonym. */
+  shown: string
   email: string
   byPeriod: Record<PeriodId, PeriodStats>
 }
@@ -204,7 +217,8 @@ const rows = computed<AuthorRow[]>(() => raw.value.map(r => {
   const byPeriod = Object.fromEntries(periods.map(p => [p.id, periodStats(r, p.id)])) as Record<PeriodId, PeriodStats>
   return {
     name: String(r.author_name ?? ""),
-    email: String(r.author_email ?? ""),
+    shown: authorsStore.display(String(r.author_name ?? "")),
+    email: authorsStore.displayEmail(String(r.author_email ?? "")),
     byPeriod,
     ...byPeriod[period.value],
   }
@@ -213,7 +227,7 @@ const rows = computed<AuthorRow[]>(() => raw.value.map(r => {
 const filtered = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return rows.value
-  return rows.value.filter(a => a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
+  return rows.value.filter(a => a.shown.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
 })
 
 type SortKey = "name" | "commits" | "lines" | "files" | "components"
@@ -237,7 +251,7 @@ function toggleSort(key: SortKey) {
 }
 
 function sortValue(a: AuthorRow, key: SortKey): number | string {
-  if (key === "name") return a.name.toLowerCase()
+  if (key === "name") return a.shown.toLowerCase()
   if (key === "lines") return a.additions + a.deletions
   return a[key]
 }
@@ -263,8 +277,24 @@ const selectedName = ref<string | null>(null)
 const selected = computed(() => rows.value.find(a => a.name === selectedName.value) ?? null)
 
 function detailRoute(name: string): string {
-  return `/views/git/authors/${encodeURIComponent(name)}`
+  return authorsStore.authorPath(name)
 }
+
+// Every author in the period, as sorted; names go out as they are shown.
+useExportables().register({
+  kind: "table",
+  get title() { return `Authors (${periods.find(p => p.id === period.value)?.title ?? ""})` },
+  rows: () => sorted.value.map(a => ({ author: a.shown, email: a.email, commits: a.commits, additions: a.additions, deletions: a.deletions, files: a.files, components: a.components })),
+  columns: () => [
+    { id: "author", label: "Author" },
+    ...(authorsStore.pseudonymise ? [] : [{ id: "email", label: "Email" }]),
+    { id: "commits", label: "Commits" },
+    { id: "additions", label: "Lines added" },
+    { id: "deletions", label: "Lines deleted" },
+    { id: "files", label: "Files" },
+    { id: "components", label: "Components" },
+  ],
+})
 function open(name: string) {
   router.push(detailRoute(name))
 }

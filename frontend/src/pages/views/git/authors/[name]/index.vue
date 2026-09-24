@@ -80,7 +80,7 @@
           <tbody>
             <tr v-for="p in partners" :key="p.author_name">
               <td class="max-w-0">
-                <router-link :to="`/views/git/authors/${encodeURIComponent(p.author_name)}`" class="block truncate text-neutral-800 hover:text-neutral-900 hover:underline">{{ p.author_name }}</router-link>
+                <router-link :to="authorsStore.authorPath(p.author_name)" class="block truncate text-neutral-800 hover:text-neutral-900 hover:underline">{{ authorsStore.display(p.author_name) }}</router-link>
               </td>
               <td class="is-num text-right">{{ formatNumber(p.shared_components) }}</td>
               <td class="is-num text-right">{{ formatNumber(p.commits) }}</td>
@@ -112,7 +112,7 @@ import LoadingState from "~/components/ui/common/LoadingState.vue"
 const route = useRoute()
 const store = useDataStore()
 
-const name = computed(() => String(route.params.name ?? ""))
+const name = computed(() => useAuthorsStore().resolve(String(route.params.name ?? "")))
 const authorsStore = useAuthorsStore()
 const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })

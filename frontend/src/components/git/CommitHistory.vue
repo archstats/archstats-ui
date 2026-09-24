@@ -54,9 +54,9 @@
           <tbody>
             <tr v-for="c in visibleCommits" :key="c.commit_hash">
               <td class="is-num"><span :title="c.commit_hash">{{ shortHash(c.commit_hash) }}</span></td>
-              <td class="max-w-0"><span class="block truncate" :title="c.commit_message">{{ firstLine(c.commit_message) }}</span></td>
+              <td class="max-w-0"><span class="block truncate" :title="authorsStore.displayText(c.commit_message)">{{ firstLine(authorsStore.displayText(c.commit_message)) }}</span></td>
               <td class="max-w-0">
-                <router-link :to="authorRoute(c.author_name)" class="block truncate text-neutral-800 hover:text-neutral-900 hover:underline" :title="c.author_email">{{ c.author_name || 'Unknown' }}</router-link>
+                <router-link :to="authorsStore.authorPath(c.author_name)" class="block truncate text-neutral-800 hover:text-neutral-900 hover:underline" :title="authorsStore.displayEmail(c.author_email)">{{ authorsStore.display(c.author_name) }}</router-link>
               </td>
               <td class="is-num text-right">{{ formatDate(c.commit_time) }}</td>
               <td class="is-num text-right">{{ formatNumber(c.files_changed) }}</td>
@@ -77,8 +77,8 @@
         <h3 class="ui-section-title px-4 pb-2 pt-4">Contributors</h3>
         <ul class="flex flex-col">
           <li v-for="a in visibleAuthors" :key="a.name">
-            <router-link :to="authorRoute(a.name)" class="flex h-8 items-center gap-3 px-4 transition-colors hover:bg-neutral-100">
-              <span class="min-w-0 flex-1 truncate text-base text-neutral-800" :title="a.email">{{ a.name }}</span>
+            <router-link :to="authorsStore.authorPath(a.name)" class="flex h-8 items-center gap-3 px-4 transition-colors hover:bg-neutral-100">
+              <span class="min-w-0 flex-1 truncate text-base text-neutral-800" :title="authorsStore.displayEmail(a.email)">{{ authorsStore.display(a.name) }}</span>
               <span class="font-mono text-sm tabular-nums text-neutral-600">{{ formatNumber(a.count) }}</span>
               <span class="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-200">
                 <span class="block h-full rounded-full bg-neutral-500" :style="{ width: `${Math.max(4, (a.count / maxAuthorCount) * 100)}%` }"></span>
@@ -217,9 +217,5 @@ const span = computed(() => {
 
 function firstLine(message: string | null | undefined): string {
   return (message || "").split("\n")[0]
-}
-
-function authorRoute(name: string | null | undefined): string {
-  return `/views/git/authors/${encodeURIComponent(name || "")}`
 }
 </script>

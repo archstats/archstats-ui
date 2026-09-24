@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthorsStore } from "~/stores/authors"
 import { componentPath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -73,7 +74,7 @@ import Icon from "~/components/ui/common/Icon.vue"
 const route = useRoute()
 const store = useDataStore()
 
-const name = computed(() => String(route.params.name ?? ""))
+const name = computed(() => useAuthorsStore().resolve(String(route.params.name ?? "")))
 const search = ref("")
 
 interface Row {

@@ -8,6 +8,8 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import * as d3 from "d3";
 import { chartTheme } from "~/composables/useChartTheme";
+import { useExportables } from "~/composables/useExportables";
+import type { LegendItem } from "~/utils/figure";
 import { type CEdge, type CNode, edgeKey, orderNodes, topDegreeIds } from "~/utils/connections";
 
 // A chord diagram for every source: arcs are nodes (coloured by group),
@@ -147,6 +149,19 @@ function scheduleRender() {
   if (resizeTimer) clearTimeout(resizeTimer);
   resizeTimer = setTimeout(render, 100);
 }
+
+useExportables().register({
+  kind: "figure",
+  title: "Connections chord",
+  ready: () => !!svgEl.value?.firstChild,
+  render: () => {
+    const svg = svgEl.value, el = host.value;
+    if (!svg || !el) return null;
+    const t = chartTheme();
+    const legend: LegendItem[] = props.cycleKeys.size ? [{ label: "In a cycle", color: t.red, line: true }] : [];
+    return { kind: "svg", svg, width: el.clientWidth, height: el.clientHeight, legend };
+  },
+});
 
 onMounted(() => {
   render();

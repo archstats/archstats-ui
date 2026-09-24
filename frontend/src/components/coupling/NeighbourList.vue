@@ -4,6 +4,7 @@
       <h3 class="ui-section-title">{{ title }}</h3>
       <span class="font-mono text-xs text-neutral-400">{{ rows.length }}</span>
       <span class="ml-auto truncate text-xs text-neutral-400" :title="hint">{{ hint }}</span>
+      <TableExportMenu :title="title" :columns="exportColumns" :rows="filtered"/>
     </div>
     <div class="shrink-0 px-3 py-2 hairline-b">
       <label class="relative flex items-center">
@@ -38,6 +39,7 @@ import { useDataStore } from "~/stores/data"
 import { formatNumber } from "~/utils/format"
 import Icon from "~/components/ui/common/Icon.vue"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
+import TableExportMenu from "~/components/ui/TableExportMenu.vue"
 
 export interface NeighbourRow { name: string; references: number; hops: number }
 
@@ -59,6 +61,7 @@ function shortName(name: string): string {
   return prefix.value && name.startsWith(prefix.value) ? name.substring(prefix.value.length) || name : name
 }
 
+const exportColumns = [{ id: "name", label: "Component" }, { id: "references", label: "References" }, { id: "hops", label: "Hops" }]
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return props.rows

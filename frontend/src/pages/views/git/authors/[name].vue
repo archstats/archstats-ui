@@ -1,6 +1,6 @@
 <template>
   <DetailFrame
-    :title="name"
+    :title="authorsStore.display(name)"
     kind="Author"
     :crumbs="[{ label: 'Authors', to: '/views/git/authors' }]"
     :stats="stats"
@@ -8,11 +8,11 @@
     fallback="/views/git/authors"
   >
     <template #actions>
-      <span v-if="author?.author_email" class="ui-toolbar-meta hidden max-w-[260px] truncate xl:inline" :title="author.author_email">{{ author.author_email }}</span>
+      <span v-if="authorsStore.displayEmail(author?.author_email)" class="ui-toolbar-meta hidden max-w-[260px] truncate xl:inline" :title="author?.author_email">{{ author?.author_email }}</span>
     </template>
     <LoadingState v-if="loading" text="Reading author…"/>
     <EmptyState v-else-if="error" title="Could not read author" :text="error" icon="alert"/>
-    <EmptyState v-else-if="store.hasData && !author" title="Author not in this snapshot" :text="`${name} has no commits in the open scan.`" icon="user">
+    <EmptyState v-else-if="store.hasData && !author" title="Author not in this snapshot" :text="`${authorsStore.display(name)} has no commits in the open scan.`" icon="user">
       <router-link to="/views/git/authors" class="ui-btn ui-btn-sm">All authors</router-link>
     </EmptyState>
     <NuxtPage v-else/>
@@ -37,9 +37,10 @@ import LoadingState from "~/components/ui/common/LoadingState.vue"
 const route = useRoute()
 const store = useDataStore()
 
-// Callers encode the name; vue-router hands it back decoded.
-const name = computed(() => String(route.params.name ?? ""))
+// Callers encode the name; vue-router hands it back decoded. Pseudonymised,
+// the route carries "Author N" and the store turns it back into the author.
 const authorsStore = useAuthorsStore()
+const name = computed(() => authorsStore.resolve(String(route.params.name ?? "")))
 const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 
@@ -64,7 +65,7 @@ const stats = computed(() => {
 })
 
 const tabs = computed<DetailTab[]>(() => {
-  const base = `/views/git/authors/${encodeURIComponent(name.value)}`
+  const base = authorsStore.authorPath(name.value)
   return [
     { id: "overview", label: "Overview", to: base, exact: true },
     { id: "components", label: "Components", to: `${base}/components`, count: total.value.components || undefined },

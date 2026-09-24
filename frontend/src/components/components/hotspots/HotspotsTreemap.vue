@@ -59,6 +59,8 @@
 import Icon from "~/components/ui/common/Icon.vue"
 import { chartTheme, useChartTheme, withAlpha } from "~/composables/useChartTheme"
 import { levelColor } from "~/composables/useHealth"
+import { useExportables } from "~/composables/useExportables"
+import type { LegendItem } from "~/utils/figure"
 import { formatNumber } from "~/utils/format"
 import * as d3 from "d3"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
@@ -221,6 +223,24 @@ function zoomOut() {
 function resetZoom() {
   if (rootNode) zoomToNode(rootNode)
 }
+
+useExportables().register({
+  kind: "figure",
+  get title() { return props.grain === "files" ? "Hotspots: files" : props.grain === "directories" ? "Hotspots: directories" : "Hotspots: components" },
+  ready: () => !!svgSel(),
+  render: () => {
+    const svg = svgSel()?.node()
+    if (!svg || !chart.value) return null
+    const t = chartTheme()
+    const [lo, hi] = props.heatInverted ? [t.heat[t.heat.length - 1], t.heat[0]] : [t.heat[0], t.heat[t.heat.length - 1]]
+    const legend: LegendItem[] = [
+      { label: `Area: ${store.statNiceName(props.sizeMetric) || props.sizeMetric}`, color: t.hairlineStrong },
+      { label: `${store.statNiceName(props.colorMetric) || props.colorMetric}: low`, color: lo },
+      { label: "high", color: hi },
+    ]
+    return { kind: "svg", svg, width: chart.value.clientWidth, height: chart.value.clientHeight, legend }
+  },
+})
 
 defineExpose({ zoomIn, zoomOut, resetZoom })
 

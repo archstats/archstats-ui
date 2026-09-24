@@ -5,6 +5,7 @@
       <span class="ui-label">{{ title }}</span>
       <span class="font-mono text-xs text-neutral-400">{{ rows.length }}</span>
       <span class="ml-auto font-mono text-xs text-neutral-400">{{ formatNumber(total, 0) }} {{ unit }}</span>
+      <TableExportMenu class="-my-1 self-center" :title="title" :columns="[{ id: 'id', label: 'Name' }, { id: 'kind', label: 'Kind' }, { id: 'value', label: unit }, { id: 'inCycle', label: 'In a cycle with it' }]" :rows="rows as any"/>
     </div>
     <ul class="flex flex-col">
       <li v-for="r in shown" :key="r.id" class="flex h-6 items-center gap-2">
@@ -32,6 +33,7 @@
 import { computed, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import KindMark from "~/components/connections/KindMark.vue";
+import TableExportMenu from "~/components/ui/TableExportMenu.vue";
 import { formatNumber } from "~/utils/format";
 
 // One direction of a node's dependencies, strongest first: who it is, how

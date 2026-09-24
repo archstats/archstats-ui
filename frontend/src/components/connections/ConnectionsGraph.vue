@@ -55,7 +55,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import * as d3 from "d3";
-import { chartTheme, refreshChartTheme, type ChartTheme } from "~/composables/useChartTheme";
+import { chartTheme, readChartTheme, refreshChartTheme, type ChartTheme } from "~/composables/useChartTheme";
+import { useExportables } from "~/composables/useExportables";
+import { withLightTokens, type FigureOptions, type FigureOutput, type LegendItem } from "~/utils/figure";
 import Icon from "~/components/ui/common/Icon.vue";
 import { type CEdge, type CNode, type GroupSuggestion, edgeKey, idsInRect, topDegreeIds } from "~/utils/connections";
 import type { Hull as ModelHull } from "~/composables/useConnectionsModel";
@@ -136,6 +138,8 @@ const tipStyle = computed(() => {
 
 let ctx: CanvasRenderingContext2D | null = null;
 let dpr = 1;
+/** Set while drawing an export offscreen; the draw targets it instead of the screen. */
+let exportCanvas: HTMLCanvasElement | null = null;
 let simulation: d3.Simulation<SimNode, SimLink> | null = null;
 let fittedEarly = false;
 let zoom: d3.ZoomBehavior<HTMLCanvasElement, unknown> | null = null;
@@ -440,7 +444,7 @@ function endpoints(l: SimLink): void {
 
 function draw() {
   drawFrame = 0;
-  const c = canvasEl.value;
+  const c = exportCanvas ?? canvasEl.value;
   if (!ctx || !c) return;
   const end = begin("graph.draw");
   const g = ctx;
@@ -921,7 +925,43 @@ function focusNode(id: string, tries = 0) {
   d3.select(canvasEl.value).transition().duration(420).ease(d3.easeCubicOut).call(zoom.transform, target);
 }
 
-defineExpose({ zoomIn: () => zoomBy(1.3), zoomOut: () => zoomBy(1 / 1.3), resetZoom: () => fit(), focusNode });
+// ── Export ──────────────────────────────────────────────────────────────
+
+/** The graph as it is framed now, redrawn offscreen at twice the density, without hover. */
+function exportFigure(opts: FigureOptions): FigureOutput | null {
+  if (!ctx || !canvasEl.value || simNodes.length === 0) return null;
+  const width = host.value?.clientWidth || 800;
+  const height = host.value?.clientHeight || 600;
+  const scale = 2;
+  const off = document.createElement("canvas");
+  off.width = Math.round(width * scale);
+  off.height = Math.round(height * scale);
+  const offCtx = off.getContext("2d");
+  if (!offCtx) return null;
+  const saved = { ctx, dpr, hoverId };
+  const run = () => {
+    refreshChartTheme();
+    ctx = offCtx; dpr = scale; exportCanvas = off; hoverId = null;
+    try { draw(); } finally { ctx = saved.ctx; dpr = saved.dpr; exportCanvas = null; hoverId = saved.hoverId; }
+  };
+  if (opts.light) withLightTokens(run); else run();
+  refreshChartTheme();
+  requestDraw();
+  return { kind: "canvas", canvas: off, width, height, scale, legend: figureLegend(opts) };
+}
+
+function figureLegend(opts: FigureOptions): LegendItem[] {
+  const t = opts.light ? withLightTokens(() => readChartTheme()) : chartTheme();
+  const out: LegendItem[] = [{ label: props.directed ? "Depends on (arrow points at the dependency)" : "Changed together", color: t.inkMuted, line: true }];
+  if (props.cycleKeys.size) out.push({ label: "In a cycle", color: t.red, line: true });
+  for (const h of props.hulls) if (h.color) out.push({ label: h.name, color: h.color });
+  if (props.suggestions.length) out.push({ label: "Suggested group", color: t.inkMuted, dashed: true });
+  return out;
+}
+
+useExportables().register({ kind: "figure", title: "Connections graph", ready: () => !!ctx && simNodes.length > 0, render: exportFigure, svg: false });
+
+defineExpose({ zoomIn: () => zoomBy(1.3), zoomOut: () => zoomBy(1 / 1.3), resetZoom: () => fit(), focusNode, exportFigure });
 
 function shorten(label: string, max: number): string {
   return label.length > max ? "…" + label.slice(-(max - 1)) : label;

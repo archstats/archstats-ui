@@ -10,6 +10,6 @@ import { useAuthorsStore } from "~/stores/authors"
 import CommitHistory from "~/components/git/CommitHistory.vue"
 
 const route = useRoute()
-const name = computed(() => String(route.params.name ?? ""))
+const name = computed(() => useAuthorsStore().resolve(String(route.params.name ?? "")))
 const authorsStore = useAuthorsStore()
 </script>

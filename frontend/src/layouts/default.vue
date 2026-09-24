@@ -34,6 +34,7 @@
     </div>
 
     <ShortcutSheet v-model="shortcutsOpen"/>
+    <ExportMenu headless/>
     <main class="flex min-w-0 flex-1 flex-col">
       <OutdatedSnapshotBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
@@ -45,14 +46,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { PanelLeftOpen } from "lucide-vue-next";
 import NavBar from "~/components/navbar/NavBar.vue";
 import PaneHandle from "~/components/shell/PaneHandle.vue";
 import WorkspaceEmptyState from "~/components/shell/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
 import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
+import ExportMenu from "~/components/ui/ExportMenu.vue";
 import { useMenuCommands } from "~/composables/useMenuCommands";
+import { useAuthorsStore } from "~/stores/authors";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { SIDEBAR, usePanesStore } from "~/stores/panes";
@@ -67,6 +70,11 @@ const panes = usePanesStore();
 const { isMac } = usePlatform();
 const hasData = computed(() => dataStore.hasData);
 const anyScanning = computed(() => workspaces.anyScanning);
+
+// Pseudonyms follow the open snapshot and the merges; numbered once per change.
+const authors = useAuthorsStore();
+watch(() => workspaces.active?.id, (id) => { if (id) authors.load(id); }, { immediate: true });
+watch(() => [authors.pseudonymise, dataStore._openScanId, dataStore.hasData, authors.aliases] as const, ([on]) => { if (on) void authors.loadLabels(); }, { immediate: true });
 
 onMounted(() => {
   panes.load();

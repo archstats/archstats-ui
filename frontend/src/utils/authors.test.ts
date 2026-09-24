@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { canonicalAuthorSql, isBotAuthor, isBotCommit, namesOf } from "./authors"
+import { canonicalAuthorSql, isBotAuthor, isBotCommit, maskPeople, namesOf, pseudonymLabels } from "./authors"
 
 describe("bots", () => {
     it("recognises the usual machine accounts", () => {
@@ -24,5 +24,23 @@ describe("aliases", () => {
     })
     it("lists every name a person committed under", () => {
         expect(namesOf(aliases, "Jeff Fischer")).toEqual(["Jeff Fischer", "jefffischer"])
+    })
+})
+
+describe("pseudonymLabels", () => {
+    it("numbers by first commit and folds aliases into one label", () => {
+        const labels = pseudonymLabels([
+            { name: "b", first: "2020-01-02" },
+            { name: "a", first: "2021-01-01" },
+            { name: "a-alias", first: "2019-06-01" },
+        ], { "a-alias": "a" })
+        expect(labels).toEqual({ a: "Author 1", b: "Author 2" })
+    })
+})
+
+describe("maskPeople", () => {
+    it("masks handles, emails and trailers", () => {
+        expect(maskPeople("Fix #12 (thanks @jdoe, mail x.y@corp.com)\n\nCo-authored-by: Jane <j@x.io>"))
+            .toBe("Fix #12 (thanks @…, mail …@…)\n\nCo-authored-by: …")
     })
 })

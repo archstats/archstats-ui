@@ -58,6 +58,7 @@ import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import {useGroupsStore} from "~/stores/groups";
 import {useDataStore} from "~/stores/data";
+import {useExportables} from "~/composables/useExportables";
 
 const dataStore = useDataStore()
 function niceName(column: string): string {
@@ -116,6 +117,11 @@ const props = defineProps({
   initialSort: {
     type: String,
     default: "name",
+  },
+  /** Registers the table with the Export menu under this title: every row, in the table's sort. */
+  exportTitle: {
+    type: String,
+    default: "",
   },
 })
 
@@ -258,6 +264,23 @@ function toggleSelectAll() {
   } else {
     setSelection(limitedElements.value.map(element => element.name))
   }
+}
+
+if (props.exportTitle) {
+  useExportables().register({
+    kind: "table",
+    get title() { return props.exportTitle },
+    rows: () => limitedElements.value.map(e => {
+      const row: Record<string, unknown> = { name: e.name, ...Object.fromEntries(columns.value.map(c => [c.name, e[c.name]])) }
+      if (props.showGroups) row.groups = getElementGroups(String(e.name)).map(g => g.name).join("; ")
+      return row
+    }),
+    columns: () => [
+      { id: "name", label: props.nameColumn },
+      ...(props.showGroups ? [{ id: "groups", label: "Groups" }] : []),
+      ...columns.value.map(c => ({ id: c.name, label: niceName(c.name) })),
+    ],
+  })
 }
 
 function goToPage(page: number) {

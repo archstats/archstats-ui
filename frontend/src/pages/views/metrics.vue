@@ -77,6 +77,7 @@
             :show-groups="true"
             :max-page-size="25"
             :name-column="grain === 'files' ? 'File' : 'Component'"
+            :export-title="grain === 'files' ? 'Metrics: files' : 'Metrics: components'"
             :initial-sort="visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name'"
             :key="grain"
             :selected-elements="selectedNames"

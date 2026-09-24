@@ -51,7 +51,8 @@
         </table>
       </div>
       <div class="flex h-9 shrink-0 items-center justify-between px-4 text-sm text-neutral-500 hairline-t">
-        <span><span class="font-mono text-neutral-700">{{ formatNumber(rows.length) }}</span> {{ rows.length === 1 ? 'pair' : 'pairs' }}</span>
+        <span class="flex items-center gap-1"><span><span class="font-mono text-neutral-700">{{ formatNumber(rows.length) }}</span> {{ rows.length === 1 ? 'pair' : 'pairs' }}</span>
+          <TableExportMenu :title="exportTitle || nameLabel + ' pairs'" :columns="exportColumns" :rows="exportRows"/></span>
         <div v-if="totalPages > 1" class="flex items-center gap-2">
           <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" aria-label="Previous page" @click="page--"><Icon icon="chevron-left" :size="14"/></button>
           <span class="font-mono tabular-nums">{{ page }} / {{ totalPages }}</span>
@@ -67,6 +68,7 @@ import { computed, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import EmptyState from "~/components/ui/common/EmptyState.vue";
 import LoadingState from "~/components/ui/common/LoadingState.vue";
+import TableExportMenu from "~/components/ui/TableExportMenu.vue";
 import { formatNumber } from "~/utils/format";
 
 // A ranked list of "this unit against that unit" with whichever weights the
@@ -92,6 +94,8 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   loadingText?: string
   nameLabel?: string
+  /** The title an exported copy carries. */
+  exportTitle?: string
   groupLabel?: string
   emptyTitle?: string
   emptyText?: string
@@ -174,5 +178,11 @@ const sortedRows = computed(() => {
 const page = ref(1)
 watch(() => props.rows, () => { page.value = 1 })
 const totalPages = computed(() => Math.max(1, Math.ceil(sortedRows.value.length / props.pageSize)))
+const exportColumns = computed(() => [
+  { id: "name", label: props.nameLabel },
+  ...(hasGroup.value ? [{ id: "group", label: props.groupLabel }] : []),
+  ...activeColumns.value.map(c => ({ id: c.key, label: c.label })),
+])
+const exportRows = computed(() => sortedRows.value.map(r => ({ ...r, name: r.name })))
 const pageRows = computed(() => sortedRows.value.slice((page.value - 1) * props.pageSize, page.value * props.pageSize))
 </script>
