@@ -10,7 +10,7 @@ import (
 
 // Version is stored with every scan's readings; bump it when a reading's
 // definition changes and every scan is read again on the next visit.
-const Version = 3
+const Version = 4
 
 // PropagationCostSQL is the reading's one definition; the Metric reference
 // shows the same text.
@@ -30,6 +30,9 @@ const (
 	MedianInstability  = "app__median_instability"
 	MedianDistance     = "app__median_distance"
 	RuleFindings       = "app__rule_findings"
+	// ReachablePairs is propagation cost's numerator before the diagonal,
+	// kept so the figure can show its inputs.
+	ReachablePairs = "app__reachable_pairs"
 )
 
 func hasTable(db *sql.DB, table string) bool {
@@ -87,6 +90,7 @@ func Compute(db *sql.DB) (map[string]*float64, error) {
 		// component reaches itself), over N². Pairs are counted distinct:
 		// the table repeats identical rows.
 		out[PropagationCost] = one(db, PropagationCostSQL)
+		out[ReachablePairs] = one(db, `SELECT count(*) FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')`)
 	}
 	if hasColumn(db, "components", "modularity__instability") {
 		out[MedianInstability] = median(db, "modularity__instability")

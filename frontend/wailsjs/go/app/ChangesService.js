@@ -17,3 +17,7 @@ export function ForgetScan(arg1) {
 export function Readings(arg1) {
   return window['go']['app']['ChangesService']['Readings'](arg1);
 }
+
+export function ReadingsOf(arg1) {
+  return window['go']['app']['ChangesService']['ReadingsOf'](arg1);
+}

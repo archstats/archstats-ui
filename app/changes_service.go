@@ -97,6 +97,11 @@ func (c *ChangesService) ensureReadings(scanID string) (map[string]*float64, err
 	return r, nil
 }
 
+// ReadingsOf returns one scan's readings (computed once, then cached).
+func (c *ChangesService) ReadingsOf(scanID string) (map[string]*float64, error) {
+	return c.ensureReadings(scanID)
+}
+
 // ComputeReadings is the post-scan hook: a new snapshot's readings are ready
 // before anyone opens Over time.
 func (c *ChangesService) ComputeReadings(scanID string) {

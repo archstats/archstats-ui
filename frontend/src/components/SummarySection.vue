@@ -30,6 +30,16 @@
       <div class="ui-panel p-4">
         <h2 class="ui-panel-title">Structure</h2>
         <dl class="mt-3 flex flex-col gap-3">
+          <!-- System shape: how entangled the code is, as numbers a report can defend. No grade. -->
+          <div v-if="shape.length" class="ui-kv pb-3 hairline-b">
+            <template v-for="row in shape" :key="row.id">
+              <dt><MetricHint :id="row.id">{{ row.label }}</MetricHint></dt>
+              <dd class="!whitespace-normal">
+                <router-link v-if="row.to" :to="row.to" class="underline-offset-2 hover:underline" :title="row.inputs">{{ row.value }}</router-link>
+                <span v-else :title="row.inputs">{{ row.value }}</span>
+              </dd>
+            </template>
+          </div>
           <div v-if="abstractionRatio !== null">
             <div class="flex items-baseline justify-between">
               <dt class="text-base text-neutral-600">Abstract types</dt>
@@ -115,6 +125,7 @@
 </template>
 <script setup lang="ts">
 import MetricHint from "~/components/ui/common/MetricHint.vue"
+import { ReadingsOf } from "wailsjs/go/app/ChangesService"
 import { computed, ref, watch } from "vue"
 import { useDataStore } from "~/stores/data"
 import Icon from "~/components/ui/common/Icon.vue"
@@ -187,6 +198,35 @@ watch(
 // the number people mean by "dependencies". The summary's connection_count is
 // every individual import crossing a component boundary -- 10,370 for
 // Broadleaf, whose components have 2,603 dependencies.
+// ── System shape ────────────────────────────────────────────────────
+// The app's readings of this snapshot, computed once per scan in Go (the
+// same numbers Over time draws).
+const { data: readings } = useAsyncQuery<Record<string, number | null>>(
+  async () => {
+    const id = workspaces.openScanId
+    if (!id) return {}
+    try { return ((await ReadingsOf(id)) ?? {}) as any } catch { return {} }
+  },
+  [() => workspaces.openScanId],
+  { initial: {} },
+)
+const shape = computed(() => {
+  const r = readings.value
+  const num = (k: string) => (r[k] === null || r[k] === undefined ? null : Number(r[k]))
+  const n = num("app__components"), pairs = num("app__reachable_pairs"), pc = num("app__propagation_cost")
+  const inTangles = num("app__components_in_tangles"), linesShare = num("app__lines_in_tangles_share")
+  const largest = num("app__largest_tangle"), levels = num("app__dependency_levels")
+  const pct = (v: number) => `${(v * 100).toLocaleString("en-US", { maximumFractionDigits: v < 0.1 ? 1 : 0 })}%`
+  const f = (v: number) => v.toLocaleString("en-US")
+  const rows: Array<{ id: string; label: string; value: string; inputs: string; to?: string }> = []
+  if (pc !== null) rows.push({ id: "app__propagation_cost", label: "Propagation cost", value: pct(pc), inputs: pairs !== null && n ? `(${f(pairs)} reachable pairs + ${f(n)}) / ${f(n)}²` : "", to: "/views/connections?rep=matrix&order=levels&level=components" })
+  if (inTangles !== null && n) rows.push({ id: "app__components_in_tangles", label: "Components in tangles", value: `${f(inTangles)} of ${f(n)} (${pct(inTangles / n)})`, inputs: "Components in a strongly connected group of two or more", to: "/views/components/cycles" })
+  if (linesShare !== null) rows.push({ id: "app__lines_in_tangles_share", label: "Lines in tangles", value: pct(linesShare), inputs: "Lines of tangled components over all lines", to: "/views/components/cycles" })
+  if (largest !== null) rows.push({ id: "app__largest_tangle", label: "Largest tangle", value: largest ? `${f(largest)} components` : "none", inputs: "", to: largest ? "/views/components/cycles" : undefined })
+  if (levels !== null) rows.push({ id: "app__dependency_levels", label: "Dependency levels", value: f(levels), inputs: "Longest import chain once tangles are collapsed", to: "/views/connections?rep=matrix&order=levels&level=components" })
+  return rows
+})
+
 const componentDependencies = ref<number | null>(null)
 // How far to trust the coupling numbers: said only when something other than
 // plain imports is in play (Java, C#, PHP and Go are all imports).

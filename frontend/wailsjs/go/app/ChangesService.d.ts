@@ -10,3 +10,5 @@ export function ComputeReadings(arg1:string):Promise<void>;
 export function ForgetScan(arg1:string):Promise<void>;
 
 export function Readings(arg1:string):Promise<Array<app.TrendPoint>>;
+
+export function ReadingsOf(arg1:string):Promise<Record<string, any>>;
