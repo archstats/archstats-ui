@@ -11,6 +11,8 @@ export function Figure(arg1:string):Promise<string>;
 
 export function List(arg1:string):Promise<Array<store.Pin>>;
 
+export function OpenPDF(arg1:string,arg2:string):Promise<void>;
+
 export function RenderPDF(arg1:report.Doc):Promise<string>;
 
 export function Reorder(arg1:string,arg2:Array<string>):Promise<void>;

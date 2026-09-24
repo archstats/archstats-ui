@@ -397,7 +397,7 @@ export const useReportsStore = defineStore("reports", {
                 `Written with Archstats Desktop ${p.appVersion}${p.pseudonymised ? " · authors pseudonymised" : ""} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
             ]
         },
-        async pdfBase64(): Promise<string> {
+        async pdfBase64(opts: { pageSize?: "A4" | "Letter" } = {}): Promise<string> {
             const data = useDataStore()
             const figs = new Map<string, string>()
             for (const c of this.cells) {
@@ -408,7 +408,7 @@ export const useReportsStore = defineStore("reports", {
             }
             const workspace = buildProvenance().workspace
             const title = this.current?.title || "Report"
-            return RenderPDF({ title, meta: this.exportMeta(), blocks: pdfBlocks(this.doc.blocks, { workspace, label: id => data.statNiceName(id) || id, figure: id => figs.get(id) ?? null }) } as any)
+            return RenderPDF({ title, pageSize: opts.pageSize ?? "A4", meta: this.exportMeta(), blocks: pdfBlocks(this.doc.blocks, { workspace, label: id => data.statNiceName(id) || id, figure: id => figs.get(id) ?? null }) } as any)
         },
         exportMarkdown(figureDir: string | null): string {
             const data = useDataStore()

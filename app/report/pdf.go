@@ -13,6 +13,7 @@ import (
 	"image"
 	_ "image/png"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/go-pdf/fpdf"
@@ -67,18 +68,25 @@ type Block struct {
 // Doc is the whole report.
 type Doc struct {
 	Title string `json:"title"`
+	// "Letter" for US Letter; anything else is A4.
+	PageSize string `json:"pageSize"`
 	// Lines under the title: workspace, snapshot, commit, date.
 	Meta   []string `json:"meta"`
 	Blocks []Block  `json:"blocks"`
 }
 
 const (
-	pageW, pageH       = 210.0, 297.0
 	marginX, marginTop = 22.0, 20.0
 	marginBottom       = 22.0
-	contentW           = pageW - 2*marginX
 	bodySize           = 10.0
 	bodyLine           = 5.2
+)
+
+// The page of the render in progress; renders take turns (renderMu).
+var (
+	pageW, pageH = 210.0, 297.0
+	contentW     = pageW - 2*marginX
+	renderMu     sync.Mutex
 )
 
 type rgb struct{ r, g, b int }
@@ -100,7 +108,16 @@ type renderer struct {
 
 // Render lays the document out and returns the PDF bytes.
 func Render(doc Doc) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	renderMu.Lock()
+	defer renderMu.Unlock()
+	size := "A4"
+	pageW, pageH = 210.0, 297.0
+	if strings.EqualFold(doc.PageSize, "Letter") {
+		size = "Letter"
+		pageW, pageH = 215.9, 279.4
+	}
+	contentW = pageW - 2*marginX
+	pdf := fpdf.New("P", "mm", size, "")
 	pdf.SetMargins(marginX, marginTop, marginX)
 	pdf.SetAutoPageBreak(true, marginBottom)
 	pdf.AddUTF8FontFromBytes("Inter", "", interRegular)

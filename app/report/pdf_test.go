@@ -57,3 +57,14 @@ func TestRenderLaysOutEveryBlockKind(t *testing.T) {
 		os.WriteFile(path, out, 0o644)
 	}
 }
+
+func TestLetterIsNarrowerAndShorter(t *testing.T) {
+	a4, err := Render(Doc{Title: "x", Blocks: []Block{{Kind: "p", Runs: []Run{{Text: "hello"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letter, _ := Render(Doc{Title: "x", PageSize: "Letter", Blocks: []Block{{Kind: "p", Runs: []Run{{Text: "hello"}}}}})
+	if !strings.Contains(string(a4), "/MediaBox [0 0 595.28 841.89]") || !strings.Contains(string(letter), "/MediaBox [0 0 612.00 792.00]") {
+		t.Fatal("page sizes are not A4 and Letter")
+	}
+}

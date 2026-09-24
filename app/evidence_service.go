@@ -119,3 +119,30 @@ func (e *EvidenceService) RenderPDF(doc report.Doc) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(out), nil
 }
+
+// OpenPDF writes a report's PDF to a temporary file and opens it in the
+// system's viewer, for reading it outside the app before saving.
+func (e *EvidenceService) OpenPDF(pdfBase64, name string) error {
+	data, err := base64.StdEncoding.DecodeString(pdfBase64)
+	if err != nil {
+		return fmt.Errorf("the PDF is not base64: %w", err)
+	}
+	safe := strings.Map(func(r rune) rune {
+		if strings.ContainsRune(`/\:*?"<>|`, r) {
+			return '-'
+		}
+		return r
+	}, strings.TrimSpace(name))
+	if safe == "" {
+		safe = "Report"
+	}
+	dir := filepath.Join(os.TempDir(), "archstats-reports")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, safe+".pdf")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return err
+	}
+	return openWithDefault(path)
+}

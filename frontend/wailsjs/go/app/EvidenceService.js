@@ -18,6 +18,10 @@ export function List(arg1) {
   return window['go']['app']['EvidenceService']['List'](arg1);
 }
 
+export function OpenPDF(arg1, arg2) {
+  return window['go']['app']['EvidenceService']['OpenPDF'](arg1, arg2);
+}
+
 export function RenderPDF(arg1) {
   return window['go']['app']['EvidenceService']['RenderPDF'](arg1);
 }

@@ -36,8 +36,8 @@
         <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="raw" :class="{ 'bg-neutral-100': raw }" title="The whole report as Markdown (⌘/)" @click="toggleRaw">
           <Icon icon="code" :size="13" class="text-neutral-500"/><span class="hidden min-[1400px]:inline">Markdown</span>
         </button>
-        <button type="button" class="ui-btn ui-btn-sm" :disabled="exporting" title="Lay the report out as a PDF" @click="exportPdf">
-          <Icon icon="file-down" :size="13" class="text-neutral-500"/><span>{{ exporting ? "Laying out…" : "PDF" }}</span>
+        <button type="button" class="ui-btn ui-btn-sm" title="Preview the report as a PDF, then save it (⌘⇧E)" @click="exportPdf">
+          <Icon icon="file-down" :size="13" class="text-neutral-500"/><span>PDF</span>
         </button>
       </template>
     </template>
@@ -169,6 +169,10 @@
       />
     </template>
 
+    <template #visualizer-overlays>
+      <PdfPreviewSheet v-model="pdfOpen" :blocked="blockedReason"/>
+    </template>
+
     <template #tab-pool>
       <PoolPane
         :pins="pool"
@@ -211,6 +215,7 @@ import InsertMenu, { type InsertChoice } from "~/components/report/InsertMenu.vu
 import NotebookCell from "~/components/report/NotebookCell.vue";
 import NotebookText from "~/components/report/NotebookText.vue";
 import PoolPane from "~/components/report/PoolPane.vue";
+import PdfPreviewSheet from "~/components/report/PdfPreviewSheet.vue";
 import ReportsPane, { type OutlineItem } from "~/components/report/ReportsPane.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import { useExportables } from "~/composables/useExportables";
@@ -221,7 +226,7 @@ import { useAuthorsStore } from "~/stores/authors";
 import { namesIn } from "~/utils/reportCells";
 import { useStateStore } from "~/stores/state";
 import { useWorkspacesStore } from "~/stores/workspaces";
-import { FILTERS, saveBase64, saveBundle } from "~/utils/files";
+import { saveBundle } from "~/utils/files";
 import { cellNumbers, isCell, newId, plainText, type Block, type CellBlock, type CellSpec, type TextKind } from "~/utils/reportDoc";
 import { newestFirst } from "~/utils/scanOrder";
 import { formatScanTime } from "~/utils/time";
@@ -581,6 +586,7 @@ function onKey(e: KeyboardEvent) {
   const inNotebook = !!t?.closest?.("[role=document]") || !typing;
   if (!reports.current) return;
   if (mod && e.key === "/") { e.preventDefault(); toggleRaw(); return; }
+  if (mod && e.shiftKey && e.key.toLowerCase() === "e") { e.preventDefault(); exportPdf(); return; }
   if (mod && e.key === "Enter" && e.shiftKey) { e.preventDefault(); void reports.runAll(); return; }
   if (mod && e.key.toLowerCase() === "z" && inNotebook && !raw.value) {
     e.preventDefault();
@@ -619,7 +625,6 @@ onMounted(() => window.addEventListener("keydown", onKey));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 // ── Export ──────────────────────────────────────────────────────────────
-const exporting = ref(false);
 const exportNote = ref("");
 // With authors pseudonymised, a report whose text names a real author stays in the app.
 const authors = useAuthorsStore();
@@ -629,19 +634,12 @@ const blockedBy = computed(() => {
   return namesIn(text, Object.keys(authors.labels));
 });
 const blockedReason = computed(() => (blockedBy.value.length ? `The report names ${blockedBy.value[0]}; authors are pseudonymised, so edit it first.` : null));
-async function exportPdf() {
+// The PDF opens in a preview first; it is saved from there as the bytes you saw.
+const pdfOpen = ref(false);
+function exportPdf() {
   if (!reports.current) return;
-  if (blockedReason.value) { exportNote.value = blockedReason.value; return; }
-  exporting.value = true;
-  try {
-    reports.flushSave();
-    const b64 = await reports.pdfBase64();
-    await saveBase64(`${reports.current.title || "Report"}.pdf`, b64, [FILTERS.pdf], "Save the report as PDF");
-  } catch (e) {
-    exportNote.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    exporting.value = false;
-  }
+  exportNote.value = "";
+  pdfOpen.value = true;
 }
 useExportables().register({
   kind: "document",

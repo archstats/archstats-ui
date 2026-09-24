@@ -687,6 +687,7 @@ export namespace report {
 	}
 	export class Doc {
 	    title: string;
+	    pageSize: string;
 	    meta: string[];
 	    blocks: Block[];
 	
@@ -697,6 +698,7 @@ export namespace report {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.pageSize = source["pageSize"];
 	        this.meta = source["meta"];
 	        this.blocks = this.convertValues(source["blocks"], Block);
 	    }
