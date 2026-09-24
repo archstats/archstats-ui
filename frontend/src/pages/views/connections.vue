@@ -454,6 +454,11 @@ const hairballDismissed = ref(false);
 
 // ── View state (not in the URL) ──────────────────────────────────────────
 const multi = ref(new Set<string>());
+// ?hl= seeds the selection: a commit's footprint shown here arrives selected.
+{
+  const hl = route.query.hl;
+  if (typeof hl === "string") { try { const ids = JSON.parse(hl); if (Array.isArray(ids)) multi.value = new Set(ids.filter((x: unknown): x is string => typeof x === "string")); } catch { /* ignored */ } }
+}
 const hidden = ref(new Set<string>());
 const openIds = ref(new Set<string>());
 // ── Draft: suggestions become a draft dimension the architect edits, then saves ──

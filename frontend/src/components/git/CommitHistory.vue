@@ -24,6 +24,13 @@
           </form>
         </template>
       </div>
+      <div class="ui-segmented" role="group" aria-label="Order">
+        <button type="button" :aria-pressed="order === 'date'" @click="order = 'date'">Date</button>
+        <button type="button" :aria-pressed="order === 'widest'" title="Commits that touched the most components first" @click="order = 'widest'">Widest</button>
+      </div>
+      <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Commits touching more than ${sweepLimit} files: renames, reformats, merges`" @click="showSweeping = !showSweeping">
+        {{ showSweeping ? "Sweeping commits shown" : `${formatNumber(sweeping)} sweeping commits hidden` }}
+      </button>
       <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
               :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
               @click="authorsStore.setShowBots(!authorsStore.showBots)">
@@ -67,11 +74,12 @@
               <th class="w-[160px]">Author</th>
               <th class="w-[110px] text-right">Date</th>
               <th class="w-[60px] text-right">Files</th>
+              <th class="w-[90px] text-right" title="Components the commit touched">Comps</th>
               <th class="w-[120px] text-right">Lines</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in visibleCommits" :key="c.commit_hash">
+            <tr v-for="c in visibleCommits" :key="c.commit_hash" class="is-clickable" :class="{ 'is-selected': selectedHash === c.commit_hash }" @click="select(selectedHash === c.commit_hash ? null : c.commit_hash)">
               <td class="is-num"><span :title="c.commit_hash">{{ shortHash(c.commit_hash) }}</span></td>
               <td class="max-w-0"><span class="block truncate" :title="authorsStore.displayText(c.commit_message)">{{ firstLine(authorsStore.displayText(c.commit_message)) }}</span></td>
               <td class="max-w-0">
@@ -79,6 +87,7 @@
               </td>
               <td class="is-num text-right">{{ formatDate(c.commit_time) }}</td>
               <td class="is-num text-right">{{ formatNumber(c.files_changed) }}</td>
+              <td class="is-num text-right">{{ formatNumber((c as any).components_changed) }}</td>
               <td class="is-num text-right">
                 <span class="text-green-700">{{ formatSigned(c.additions) }}</span>
                 <span class="ml-1.5 text-red-700">{{ formatSigned(-Number(c.deletions || 0)) }}</span>
@@ -93,6 +102,8 @@
 
       <!-- Right: contributors for the period. -->
       <aside class="flex w-[260px] shrink-0 flex-col overflow-y-auto bg-ground hairline-l">
+        <CommitFootprint v-if="selectedHash" :hash="selectedHash" @close="select(null)"/>
+        <template v-else>
         <h3 class="ui-section-title px-4 pb-2 pt-4">Contributors</h3>
         <ul class="flex flex-col">
           <li v-for="a in visibleAuthors" :key="a.name">
@@ -106,12 +117,15 @@
           </li>
         </ul>
         <button v-if="authors.length > visibleAuthors.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 mb-4 mt-2 self-start" @click="showAllAuthors = true">Show all {{ authors.length }}</button>
+        </template>
       </aside>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useRoute, useRouter } from "vue-router"
+import CommitFootprint from "~/components/git/CommitFootprint.vue"
 import { useStateStore } from "~/stores/state"
 import { computed, ref, watch } from "vue";
 import { useDataStore } from "~/stores/data";
@@ -175,7 +189,7 @@ const showAllAuthors = ref(false)
 const { data: allCommits, loading, error } = useAsyncQuery<GitCommit[]>(
   () => store.query<GitCommit>(`
     select commit_hash, commit_time, commit_message, ${canonicalAuthorSql(authorsStore.aliases)} as author_name, author_email,
-           count(file) as files_changed, sum(file_additions) as additions, sum(file_deletions) as deletions,
+           count(file) as files_changed, count(distinct component) as components_changed, sum(file_additions) as additions, sum(file_deletions) as deletions,
            max(case when ${NOT_BOT_SQL} then 0 else 1 end) as is_bot
     from git_commits
     where ${props.where}
@@ -220,7 +234,32 @@ const commits = computed(() => {
   return counted.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
 })
 
-const visibleCommits = computed(() => commits.value.slice(0, limit.value))
+// Date or Widest: the commits that touched the most components first. Widest
+// leaves sweeping commits (renames, reformats) out unless asked: they are
+// widest by construction and say nothing about the architecture.
+const order = ref<"date" | "widest">("date")
+const showSweeping = ref(false)
+const sweepLimit = ref(100)
+watch(() => store.datasetKey, async () => {
+  try { const [r] = await store.query<{ v: string | null }>(`SELECT (SELECT value FROM _snapshot WHERE key = 'git_max_changes_per_commit' LIMIT 1) AS v`); sweepLimit.value = Number(r?.v) || 100 } catch { sweepLimit.value = 100 }
+}, { immediate: true })
+const sweeping = computed(() => commits.value.filter(c => Number(c.files_changed) > sweepLimit.value).length)
+const ordered = computed(() => {
+  if (order.value === "date") return commits.value
+  const list = showSweeping.value ? commits.value : commits.value.filter(c => Number(c.files_changed) <= sweepLimit.value)
+  return [...list].sort((a: any, b: any) => (Number(b.components_changed) || 0) - (Number(a.components_changed) || 0) || (Number(b.files_changed) || 0) - (Number(a.files_changed) || 0))
+})
+const visibleCommits = computed(() => ordered.value.slice(0, limit.value))
+
+// The selected commit, kept in the URL (?commit=) so a footprint can be linked.
+const route = useRoute()
+const router = useRouter()
+const selectedHash = computed(() => (typeof route.query.commit === "string" ? route.query.commit : null))
+function select(hash: string | null) {
+  const query = { ...route.query }
+  if (hash) query.commit = hash; else delete query.commit
+  void router.replace({ query })
+}
 
 const totals = computed(() => commits.value.reduce((acc, c) => {
   acc.additions += Number(c.additions) || 0
