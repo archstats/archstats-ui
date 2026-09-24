@@ -1,3 +1,4 @@
+import { useDataStore } from "~/stores/data";
 import { chartTheme } from "~/composables/useChartTheme";
 
 // The one definition of "good, warning, bad" for the two engine scores that
@@ -78,4 +79,14 @@ export function formatHealth(score: number | null | undefined): string {
 export function formatHotspot(score: number | null | undefined): string {
     if (score === null || score === undefined || Number.isNaN(Number(score))) return "—";
     return String(Math.round(Number(score)));
+}
+
+/**
+ * The file health column as SQL. Snapshots before analysis revision 2 wrote
+ * 0 for files the engine does not rate (pom.xml, vendored scripts, licences),
+ * where later ones write NULL; read that way, a build file would count as the
+ * least healthy code there is. On those snapshots a 0 means no reading.
+ */
+export function fileHealthSql(column = "codesmells__code_health", revision = useDataStore()._snapshotRevision): string {
+    return revision !== null && revision >= 2 ? column : `NULLIF(${column}, 0)`
 }

@@ -33,9 +33,11 @@ export interface EffortShares {
 
 /**
  * One row per commit, lines split by where they went. `where` narrows the
- * files (the scope), written against c.file: scopeWhere("c.file").
+ * files (the scope), written against c.file: scopeWhere("c.file"). `health`
+ * is the file health expression (fileHealthSql), which reads 0 as no reading
+ * on older snapshots.
  */
-export function effortSql(threshold: number, where: string | null): string {
+export function effortSql(threshold: number, where: string | null, health = "f.codesmells__code_health"): string {
     const ln = "(coalesce(c.file_additions, 0) + coalesce(c.file_deletions, 0))"
     return `
     WITH tangle AS (
@@ -44,18 +46,18 @@ export function effortSql(threshold: number, where: string | null): string {
     )
     SELECT c.commit_hash AS hash, max(c.commit_time) AS t, max(c.commit_message) AS msg,
       sum(${ln}) AS lines,
-      sum(CASE WHEN f.codesmells__code_health < ${Number(threshold)} THEN ${ln} ELSE 0 END) AS low,
+      sum(CASE WHEN ${health} < ${Number(threshold)} THEN ${ln} ELSE 0 END) AS low,
       sum(CASE WHEN f.component IN (SELECT component FROM tangle) THEN ${ln} ELSE 0 END) AS tangle,
       sum(CASE WHEN f.name IS NULL THEN ${ln} ELSE 0 END) AS gone,
-      sum(CASE WHEN f.name IS NOT NULL AND f.codesmells__code_health IS NULL THEN ${ln} ELSE 0 END) AS noHealth
+      sum(CASE WHEN f.name IS NOT NULL AND ${health} IS NULL THEN ${ln} ELSE 0 END) AS noHealth
     FROM git_commits c LEFT JOIN files f ON f.name = c.file
     WHERE ${NOT_BOT_SQL}${where ? ` AND ${where}` : ""}
     GROUP BY c.commit_hash`
 }
 
 /** Files below the threshold among files with a health reading, for "(34% of files)"; `where` on name. */
-export function lowFileShareSql(threshold: number, where: string | null): string {
-    return `SELECT sum(CASE WHEN codesmells__code_health < ${Number(threshold)} THEN 1 ELSE 0 END) AS low, count(codesmells__code_health) AS rated
+export function lowFileShareSql(threshold: number, where: string | null, health = "codesmells__code_health"): string {
+    return `SELECT sum(CASE WHEN ${health} < ${Number(threshold)} THEN 1 ELSE 0 END) AS low, count(${health}) AS rated
     FROM files${where ? ` WHERE ${where}` : ""}`
 }
 

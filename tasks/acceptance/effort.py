@@ -6,6 +6,7 @@ Changed lines (additions + deletions) of human commits in the window before
 the snapshot's anchor (the scanned commit's time), split into files below the
 health threshold, tangle members, files not in the snapshot, files without a
 health reading, and commits whose subject matches the default fix pattern.
+On snapshots before analysis revision 2, a stored health of 0 is no reading.
 Activity's Effort tab should show the same percentages, unscoped.
 """
 import datetime, pathlib, re, sqlite3, sys
@@ -32,7 +33,12 @@ since = anchor - datetime.timedelta(days=days)
 
 tangle = {r[0] for r in db.execute("""SELECT component FROM component_strongly_connected_groups
     WHERE "group" IN (SELECT "group" FROM component_strongly_connected_groups GROUP BY 1 HAVING count(*) > 1)""")}
-files = {r[0]: (r[1], r[2]) for r in db.execute("SELECT name, component, codesmells__code_health FROM files")}
+# Before analysis revision 2 an unrated file (pom.xml) was written with health 0; that is no reading.
+try:
+    revision = int(db.execute("SELECT value FROM _snapshot WHERE key = 'analysis_revision'").fetchone()[0])
+except (sqlite3.OperationalError, TypeError):
+    revision = 0
+files = {r[0]: (r[1], None if (revision < 2 and r[2] == 0) else r[2]) for r in db.execute("SELECT name, component, codesmells__code_health FROM files")}
 tot = {"lines": 0, "low": 0, "tangle": 0, "gone": 0, "no_health": 0, "fix": 0}
 commits = set()
 for h, t, msg, f, add, dele in db.execute(f"""SELECT commit_hash, commit_time, commit_message, file, file_additions, file_deletions

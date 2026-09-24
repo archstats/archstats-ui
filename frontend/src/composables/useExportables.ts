@@ -14,6 +14,8 @@ export interface TableExportable {
     /** Every row in scope, after filter and sort: never the page on screen. */
     rows: () => ExportRow[];
     columns: () => ExportColumn[];
+    /** How the numbers were made, written into the CSV preamble. */
+    notes?: () => Array<[string, string]>;
     /** Why there is nothing to export, when there is not. */
     disabledReason?: () => string | null;
 }

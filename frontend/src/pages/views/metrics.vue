@@ -2,7 +2,7 @@
   <ViewWorkspaceLayout
       title="Metrics"
       v-model:search-query="searchQuery"
-    :search-placeholder="grain === 'files' ? 'Find a file' : 'Find a component'"
+    :search-placeholder="grain === 'files' ? 'Find a file' : grain === 'directories' ? 'Find a directory' : 'Find a component'"
       v-model:is-sidebar-open="isSidebarOpen"
       v-model:active-tab="activeTab"
       :tabs="inspectorTabs"
@@ -10,17 +10,18 @@
       sidebar-width="300px"
   >
     <template #stats>
-      <span>{{ grainLabel }} <span class="text-neutral-800">{{ countText }}</span></span>
+      <span v-if="grain !== 'directories'">{{ grainLabel }} <span class="text-neutral-800">{{ countText }}</span></span>
     </template>
 
     <template #switches>
       <div class="ui-segmented" role="group" aria-label="Grain">
         <button type="button" :aria-pressed="grain === 'components'" @click="grain = 'components'">Components</button>
         <button type="button" :aria-pressed="grain === 'files'" @click="grain = 'files'">Files</button>
+        <button type="button" :aria-pressed="grain === 'directories'" title="An outline by directory, every number rolled up" @click="grain = 'directories'">Directories</button>
       </div>
       <div class="ui-segmented" role="group" aria-label="View">
-        <button type="button" :aria-pressed="view === 'table'" @click="view = 'table'">Table</button>
-        <button type="button" :aria-pressed="view === 'plot'" @click="view = 'plot'">Plot</button>
+        <button type="button" :aria-pressed="view === 'table' || grain === 'directories'" @click="view = 'table'">Table</button>
+        <button type="button" :aria-pressed="view === 'plot' && grain !== 'directories'" :disabled="grain === 'directories'" :title="grain === 'directories' ? 'Directories have no plot: their numbers are rollups, not measurements' : undefined" @click="view = 'plot'">Plot</button>
       </div>
     </template>
 
@@ -34,7 +35,7 @@
 
     <template #visualizer>
       <!-- Plot controls: a second toolbar row under the frame. -->
-      <div v-if="view === 'plot'" class="flex h-10 shrink-0 items-center gap-2 overflow-x-auto px-3 hairline-b">
+      <div v-if="view === 'plot' && grain !== 'directories'" class="flex h-10 shrink-0 items-center gap-2 overflow-x-auto px-3 hairline-b">
         <span class="ui-label">X</span>
         <StatSelectSingle v-model="xAxis" :options="numericColumns"/>
         <span class="ui-label">Y</span>
@@ -52,7 +53,8 @@
         <span class="ml-auto hidden min-w-0 truncate text-sm text-neutral-500 2xl:inline" title="Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan">Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan</span>
       </div>
 
-      <LoadingState v-if="loading" :text="grain === 'files' ? 'Loading files…' : 'Loading components…'"/>
+      <DirectoryTree v-if="grain === 'directories'" :search="searchQuery"/>
+      <LoadingState v-else-if="loading" :text="grain === 'files' ? 'Loading files…' : 'Loading components…'"/>
       <EmptyState
           v-else-if="allRows.length === 0"
           :title="grain === 'files' ? 'No file metrics in this snapshot.' : 'No components in this snapshot.'"
@@ -107,7 +109,7 @@
       </div>
       <EmptyState v-else title="Pick two metrics to plot." text="Choose an X and a Y metric above, or a preset." icon="settings"/>
 
-      <GroupActionBar :selected-items="selectedNames" :kind="grain === 'files' ? 'file' : 'component'" @clear="selectedNames = []"/>
+      <GroupActionBar v-if="grain !== 'directories'" :selected-items="selectedNames" :kind="grain === 'files' ? 'file' : 'component'" @clear="selectedNames = []"/>
     </template>
 
     <template #visualizer-overlays>
@@ -173,6 +175,7 @@ import LoadingState from "~/components/ui/common/LoadingState.vue";
 import EmptyState from "~/components/ui/common/EmptyState.vue";
 import ZoomControls from "~/components/ui/common/ZoomControls.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
+import DirectoryTree from "~/components/metrics/DirectoryTree.vue";
 import ComponentPlotterDiagram from "~/components/components/plotter/ComponentPlotterDiagram.vue";
 import { implicitAbstractionLanguage } from "~/utils/abstraction";
 import { useDataStore } from "~/stores/data";
@@ -186,7 +189,7 @@ import { useAsyncQuery } from "~/composables/useAsyncQuery";
 // selection shared by both representations.
 
 type Row = { name: string; [key: string]: any };
-type Grain = "components" | "files";
+type Grain = "components" | "files" | "directories";
 type View = "table" | "plot";
 
 const store = useDataStore();
@@ -196,14 +199,14 @@ const route = useRoute();
 const router = useRouter();
 
 // ─── State from the URL ───
-const grain = ref<Grain>(route.query.grain === "files" ? "files" : "components");
+const grain = ref<Grain>(route.query.grain === "files" || route.query.grain === "directories" ? route.query.grain : "components");
 const view = ref<View>(route.query.view === "plot" ? "plot" : "table");
 let pendingPreset: string | null = typeof route.query.preset === "string" ? route.query.preset : null;
 
 const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
 const isSidebarOpen = ref(true);
 const activeTab = ref("selection");
-const inspectorTabs = computed(() => (view.value === "plot" ? [{ id: "selection", label: "Selection" }, { id: "legend", label: "Legend" }] : []));
+const inspectorTabs = computed(() => (view.value === "plot" && grain.value !== "directories" ? [{ id: "selection", label: "Selection" }, { id: "legend", label: "Legend" }] : []));
 
 // ─── Rows ───
 const HIDDEN_COLUMNS = new Set(["report_id", "report_timestamp", "timestamp", "name", "connections"]);
@@ -253,7 +256,7 @@ const filteredRows = computed<Row[]>(() => {
   return scopedRows.value.filter((r) => test(String(r.name ?? "")));
 });
 
-const grainLabel = computed(() => (grain.value === "files" ? "Files" : "Components"));
+const grainLabel = computed(() => (grain.value === "files" ? "Files" : grain.value === "directories" ? "Files" : "Components"));
 const countText = computed(() =>
     scope.isActive || searchQuery.value.trim() ? `${filteredRows.value.length} of ${allRows.value.length}` : `${allRows.value.length}`,
 );
@@ -273,6 +276,8 @@ const numericColumns = computed<string[]>(() => {
 });
 
 const DEFAULT_COLUMNS: Record<Grain, string[]> = {
+  // The directory tree has its own columns, each a stated rollup.
+  directories: [],
   components: [
     "complexity__files", "complexity__lines", "codesmells__code_health", "codesmells__hotspot_score",
     "modularity__coupling__afferent", "modularity__coupling__efferent", "modularity__instability", "git__commits__total",
@@ -297,6 +302,7 @@ function loadStoredColumns(g: Grain): string[] | null {
 const chosenColumns = reactive<Record<Grain, string[] | null>>({
   components: loadStoredColumns("components"),
   files: loadStoredColumns("files"),
+  directories: null,
 });
 
 const visibleColumns = computed<string[]>({
@@ -416,7 +422,7 @@ watch([grain, numericColumns], () => {
 // ─── URL sync ───
 watch([grain, view, activePreset], () => {
   const want = {
-    grain: grain.value === "files" ? "files" : undefined,
+    grain: grain.value === "components" ? undefined : grain.value,
     view: view.value === "plot" ? "plot" : undefined,
     preset: activePreset.value?.id,
   };
@@ -428,7 +434,7 @@ watch([grain, view, activePreset], () => {
 // Sidebar or history changes to the query re-enter the view without a remount.
 watch(() => route.query, (q) => {
   if (typeof q.q === "string" && q.q !== searchQuery.value) searchQuery.value = q.q;
-  const g: Grain = q.grain === "files" ? "files" : "components";
+  const g: Grain = q.grain === "files" || q.grain === "directories" ? q.grain : "components";
   const v: View = q.view === "plot" ? "plot" : "table";
   if (g !== grain.value) grain.value = g;
   if (v !== view.value) view.value = v;

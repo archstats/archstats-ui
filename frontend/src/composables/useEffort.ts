@@ -1,5 +1,6 @@
 import { computed } from "vue"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { fileHealthSql } from "~/composables/useHealth"
 import { useDataStore } from "~/stores/data"
 import { useStateStore } from "~/stores/state"
 import { fixPattern } from "~/utils/commitPattern"
@@ -27,12 +28,12 @@ export function useEffort() {
     const available = computed(() => data.hasView("git_commits") && data.hasView("component_strongly_connected_groups"))
 
     const { data: rows, loading, error } = useAsyncQuery<EffortCommit[]>(
-        () => (available.value ? data.query<EffortCommit>(effortSql(threshold.value, scopeWhere("c.file"))) : Promise.resolve([])),
+        () => (available.value ? data.query<EffortCommit>(effortSql(threshold.value, scopeWhere("c.file"), fileHealthSql("f.codesmells__code_health"))) : Promise.resolve([])),
         [() => data.datasetKey, () => threshold.value, () => scopeWhere("c.file"), () => available.value],
         { initial: [] },
     )
     const { data: fileShareRows } = useAsyncQuery<Array<{ low: number; rated: number }>>(
-        () => (available.value ? data.query(lowFileShareSql(threshold.value, scopeWhere("name"))) : Promise.resolve([])),
+        () => (available.value ? data.query(lowFileShareSql(threshold.value, scopeWhere("name"), fileHealthSql())) : Promise.resolve([])),
         [() => data.datasetKey, () => threshold.value, () => scopeWhere("name"), () => available.value],
         { initial: [] },
     )
