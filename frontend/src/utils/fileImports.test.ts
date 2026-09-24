@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { aggregateFileImportEdges, fileImportDegrees, queryFileImportEdges, FILE_IMPORT_QUERY } from "./fileImports"
+import { aggregateFileImportEdges, fileImportDegrees, queryFileImportEdges, FILE_DEPENDENCY_QUERY } from "./fileImports"
 
 describe("aggregateFileImportEdges", () => {
   it("counts repeated import statements between the same two files as one edge", () => {
@@ -33,18 +33,22 @@ describe("aggregateFileImportEdges", () => {
 })
 
 describe("queryFileImportEdges", () => {
-  it("runs the documented snippets query and aggregates the rows", async () => {
+  it("reads the engine's resolved file dependencies", async () => {
     let queried = ""
     const query = async (sql: string) => {
       queried = sql
-      return [
-        { file: "a", content: "b" },
-        { file: "a", content: "b" },
-      ]
+      return [{ from: "a.ts", to: "b.ts", references: 2 }, { from: "a.ts", to: "a.ts", references: 5 }]
     }
-    const edges = await queryFileImportEdges(query)
-    expect(queried).toBe(FILE_IMPORT_QUERY)
-    expect(edges).toEqual([{ from: "a", to: "b", references: 2 }])
+    const edges = await queryFileImportEdges(query, v => v === "unit_connections")
+    expect(queried).toBe(FILE_DEPENDENCY_QUERY)
+    expect(edges).toEqual([{ from: "a.ts", to: "b.ts", references: 2 }])
+  })
+
+  it("gives no file edges rather than guessing from import text", async () => {
+    // Import snippets name classes and packages, never files; built from
+    // them, every "file edge" pointed at a component name.
+    const edges = await queryFileImportEdges(async () => [{ file: "a", content: "b" }], () => false)
+    expect(edges).toEqual([])
   })
 })
 

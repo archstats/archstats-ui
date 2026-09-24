@@ -25,13 +25,13 @@
           <td v-if="selectableElements" @click.stop="checkboxToggle(element.name)">
             <Checkbox :model-value="selectedElements.indexOf(element.name) !== -1"/>
           </td>
-          <td class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name || "unknown" }}</td>
+          <td class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name === "." ? `${rootLabel} (root)` : element.name || "unknown" }}</td>
           <td v-if="showGroups">
             <div class="flex flex-wrap gap-1">
               <span v-for="g in getElementGroups(element.name)" :key="g.id" class="ui-tag text-white" :style="{ backgroundColor: g.color }">{{ g.name }}</span>
             </div>
           </td>
-          <td v-for="column in columns" :key="column.name" class="is-num text-right">{{ round(element[column.name], 5) }}</td>
+          <td v-for="column in columns" :key="column.name" class="is-num text-right" :title="String(element[column.name] ?? '')">{{ formatReading(element[column.name]) }}</td>
         </tr>
         <tr v-if="pageOfElements.length === 0">
           <td :colspan="columns.length + 1 + (selectableElements ? 1 : 0) + (showGroups ? 1 : 0)" class="h-20 text-center text-neutral-500">{{ emptyText }}</td>
@@ -51,7 +51,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import {round} from "~/utils/text";
+import {formatReading} from "~/utils/format";
+import {useWorkspacesStore} from "~/stores/workspaces";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
 import Icon from "~/components/ui/common/Icon.vue";
@@ -110,8 +111,15 @@ const props = defineProps({
   emptyText: {
     type: String,
     default: "Nothing matches.",
-  }
+  },
+  /** The column the table opens sorted by, largest first; the name column sorts A to Z. */
+  initialSort: {
+    type: String,
+    default: "name",
+  },
 })
+
+const rootLabel = computed(() => useWorkspacesStore().active?.name ?? "project")
 
 const groupsStore = useGroupsStore()
 
@@ -131,8 +139,8 @@ const correctedLimit = computed(() => {
 const emit = defineEmits(["update:selected-elements", "clicked-element"])
 
 const sortSettings = ref({
-  column: "name",
-  ascending: true
+  column: props.initialSort,
+  ascending: props.initialSort === "name",
 })
 
 const currentPage = ref(1)

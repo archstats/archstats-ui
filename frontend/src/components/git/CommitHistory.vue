@@ -5,6 +5,12 @@
       <div class="ui-segmented" role="group" aria-label="Period">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
       </div>
+      <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
+              :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
+              @click="authorsStore.showBots = !authorsStore.showBots">
+        <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
+        <span>{{ authorsStore.showBots ? "Bots shown" : `${formatNumber(botCommits)} bot commits hidden` }}</span>
+      </button>
       <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
         <span>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
         <span class="text-neutral-300">·</span>
@@ -25,10 +31,11 @@
     <div v-else class="flex min-h-0 grow overflow-hidden">
       <!-- Left: calendar and the commit list. -->
       <div class="flex min-w-0 grow flex-col overflow-y-auto">
-        <div class="shrink-0 overflow-x-auto px-4 pb-3 pt-4 hairline-b">
+        <!-- A day grid reads a year at most; a longer range reads as months. -->
+        <div v-if="!longRange" class="shrink-0 overflow-x-auto px-4 pb-3 pt-4 hairline-b">
           <GitActivityChart :start-date="chartStart" :end-date="chartEnd" :commits="commits"/>
         </div>
-        <div v-if="monthly && commits.length > 0" class="shrink-0 px-4 pb-3 pt-4 hairline-b">
+        <div v-if="(monthly || longRange) && commits.length > 0" class="shrink-0 px-4 pb-3 pt-4 hairline-b">
           <h3 class="ui-section-title mb-2">Lines added and removed by month</h3>
           <MonthlyChangesChart :commits="commits" :height="140"/>
         </div>
@@ -92,6 +99,10 @@ import type { GitCommit } from "~/utils/git";
 import { formatDate } from "~/utils/time";
 import { formatNumber, formatSigned, shortHash } from "~/utils/format";
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
+import { NOT_BOT_SQL, canonicalAuthorSql } from "~/utils/authors";
+import { useAuthorsStore } from "~/stores/authors";
+import { useWorkspacesStore } from "~/stores/workspaces";
+import Icon from "~/components/ui/common/Icon.vue";
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
 import MonthlyChangesChart from "~/components/git/MonthlyChangesChart.vue";
 import EmptyState from "~/components/ui/common/EmptyState.vue";
@@ -105,9 +116,14 @@ const props = defineProps<{
   where: string
   emptyText?: string
   monthly?: boolean
+  /** An author's own history keeps their release commits; everywhere else bots follow the toggle. */
+  includeBots?: boolean
 }>()
 
 const store = useDataStore()
+const authorsStore = useAuthorsStore()
+const workspaces = useWorkspacesStore()
+watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 
 const periods = [
   { id: "all", label: "All", days: 0 },
@@ -122,25 +138,43 @@ const showAllAuthors = ref(false)
 
 const { data: allCommits, loading, error } = useAsyncQuery<GitCommit[]>(
   () => store.query<GitCommit>(`
-    select commit_hash, commit_time, commit_message, author_name, author_email,
-           count(file) as files_changed, sum(file_additions) as additions, sum(file_deletions) as deletions
+    select commit_hash, commit_time, commit_message, ${canonicalAuthorSql(authorsStore.aliases)} as author_name, author_email,
+           count(file) as files_changed, sum(file_additions) as additions, sum(file_deletions) as deletions,
+           max(case when ${NOT_BOT_SQL} then 0 else 1 end) as is_bot
     from git_commits
     where ${props.where}
     group by commit_hash
     order by commit_time desc`),
-  [() => props.where],
+  [() => props.where, () => authorsStore.aliases],
   { initial: [] },
+)
+
+// Periods count back from the scan, not from today: a snapshot keeps saying
+// what it said when it was taken, and "last 30 days" of a scan from March
+// should not be empty in September.
+const { data: scanTime } = useAsyncQuery<Date>(
+  async () => {
+    const rows = await store.query<{ t: string | null }>("select max(timestamp) as t from git_commits")
+    const d = rows[0]?.t ? new Date(rows[0].t) : new Date()
+    return Number.isNaN(d.getTime()) ? new Date() : d
+  },
+  [() => store.datasetKey],
+  { initial: new Date() },
 )
 
 watch([() => props.where, period], () => { limit.value = 100; showAllAuthors.value = false })
 
-const now = new Date()
+const now = computed(() => scanTime.value)
 const periodDays = computed(() => periods.find(p => p.id === period.value)?.days ?? 0)
 
+const isBot = (c: GitCommit) => Number((c as any).is_bot) === 1
+const botCommits = computed(() => allCommits.value.filter(isBot).length)
+const counted = computed(() => (props.includeBots || authorsStore.showBots ? allCommits.value : allCommits.value.filter(c => !isBot(c))))
+
 const commits = computed(() => {
-  if (!periodDays.value) return allCommits.value
-  const cutoff = now.getTime() - periodDays.value * 86400000
-  return allCommits.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
+  if (!periodDays.value) return counted.value
+  const cutoff = now.value.getTime() - periodDays.value * 86400000
+  return counted.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
 })
 
 const visibleCommits = computed(() => commits.value.slice(0, limit.value))
@@ -169,9 +203,17 @@ const maxAuthorCount = computed(() => authors.value[0]?.count || 1)
 // empty grid.
 const lastCommit = computed(() => {
   const times = allCommits.value.map(c => new Date(c.commit_time).getTime()).filter(t => !Number.isNaN(t))
-  return times.length ? new Date(Math.max(...times)) : now
+  return times.length ? new Date(Math.max(...times)) : now.value
 })
-const chartEnd = computed(() => periodDays.value ? now : (lastCommit.value < now ? lastCommit.value : now))
+
+// More than a year of history on "All": the day grid would show only its
+// last year, mostly empty for a component that settled long ago.
+const longRange = computed(() => {
+  if (periodDays.value) return false
+  const times = commits.value.map(c => new Date(c.commit_time).getTime()).filter(t => !Number.isNaN(t))
+  return times.length > 0 && Math.max(...times) - Math.min(...times) > 400 * 86400000
+})
+const chartEnd = computed(() => periodDays.value ? now.value : (lastCommit.value < now.value ? lastCommit.value : now.value))
 const chartStart = computed(() => {
   const days = periodDays.value || 365
   return new Date(chartEnd.value.getTime() - days * 86400000)

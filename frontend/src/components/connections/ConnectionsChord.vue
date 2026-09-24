@@ -40,6 +40,16 @@ const svgEl = ref<SVGSVGElement | null>(null);
 let observer: ResizeObserver | null = null;
 let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 let media: MediaQueryList | null = null;
+// Hover stays inside the chord, redrawn at most once a frame; round-tripped
+// through the page it re-rendered the page as well on every ribbon crossed.
+let hoverId: string | null = null;
+let hoverFrame = 0;
+function setHover(id: string | null) {
+  if (id === hoverId) return;
+  hoverId = id;
+  emit("hover", id);
+  if (!hoverFrame) hoverFrame = requestAnimationFrame(() => { hoverFrame = 0; render(); });
+}
 
 function render() {
   const svg = svgEl.value;
@@ -76,7 +86,7 @@ function render() {
   const g = root.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
 
   const labelIds = n > 60 ? topDegreeIds(props.nodes, props.edges, 40) : new Set(nodes.map(x => x.id));
-  const focus = props.hovered ?? props.selectedId;
+  const focus = hoverId ?? props.hovered ?? props.selectedId;
   const focusIdx = focus ? index.get(focus) : undefined;
   const touches = (c: d3.Chord) => focusIdx === undefined || c.source.index === focusIdx || c.target.index === focusIdx;
   const isPair = (c: d3.Chord) => {
@@ -96,8 +106,8 @@ function render() {
     .attr("stroke-width", 0.5)
     .style("cursor", "pointer")
     .on("click", (event, c) => { event.stopPropagation(); emit("select-pair", nodes[c.source.index].id, nodes[c.target.index].id); })
-    .on("mouseenter", (_, c) => emit("hover", nodes[c.source.index].id))
-    .on("mouseleave", () => emit("hover", null));
+    .on("mouseenter", (_, c) => setHover(nodes[c.source.index].id))
+    .on("mouseleave", () => setHover(null));
   ribbons.append("title").text((c) => `${nodes[c.source.index].label} ${props.directed ? "uses" : "with"} ${nodes[c.target.index].label}`);
 
   const groups = g.append("g").selectAll("g").data(chords.groups).join("g");
@@ -111,8 +121,8 @@ function render() {
     .on("click", (event, d) => { event.stopPropagation(); emit("select", nodes[d.index].id, { shift: event.shiftKey, meta: event.metaKey || event.ctrlKey }); })
     .on("dblclick", (event, d) => { event.stopPropagation(); emit("activate", nodes[d.index].id); })
     .on("contextmenu", (event, d) => { event.preventDefault(); emit("context", { id: nodes[d.index].id, x: event.clientX, y: event.clientY }); })
-    .on("mouseenter", (_, d) => emit("hover", nodes[d.index].id))
-    .on("mouseleave", () => emit("hover", null))
+    .on("mouseenter", (_, d) => setHover(nodes[d.index].id))
+    .on("mouseleave", () => setHover(null))
     .append("title").text((d) => nodes[d.index].label);
 
   groups.filter((d) => labelIds.has(nodes[d.index].id) || nodes[d.index].id === focus || props.multi.has(nodes[d.index].id))
@@ -146,6 +156,7 @@ onMounted(() => {
   media.addEventListener("change", scheduleRender);
 });
 onBeforeUnmount(() => {
+  if (hoverFrame) cancelAnimationFrame(hoverFrame);
   observer?.disconnect();
   media?.removeEventListener("change", scheduleRender);
 });

@@ -266,8 +266,10 @@ export interface QueryResult {
 
 const EMPTY_RESULT: QueryResult = { components: [], files: [], matchedBy: new Map(), excludedBy: new Map(), empty: [] }
 
-export function runQuery(query: Query, world: QueryWorld): QueryResult {
-  if (query.lines.length === 0) return { ...EMPTY_RESULT, matchedBy: new Map(), excludedBy: new Map(), empty: [] }
+export function runQuery(query: Query, world: QueryWorld | null | undefined): QueryResult {
+  // A toolbar can render before the snapshot it queries has loaded; nothing
+  // to search yet is an empty result, not a crash on every route.
+  if (query.lines.length === 0 || !world) return { ...EMPTY_RESULT, matchedBy: new Map(), excludedBy: new Map(), empty: [] }
 
   const sep = world.componentSep || detectSeparator(world.components)
   const compiled = new Map<string, RegExp>()

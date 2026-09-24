@@ -4,6 +4,8 @@
 // the page itself import this for URL state, edge weighting, node caps and
 // the group expand/collapse and multi-selection logic.
 
+import { componentPath } from "./routes"
+
 export type Grain = "group" | "component" | "file"
 export type Source = "static" | "git" | "combined"
 export type Rep = "matrix" | "chord" | "graph" | "crosscut"
@@ -38,7 +40,9 @@ export interface CEdge {
 }
 
 // ── Caps ─────────────────────────────────────────────────────────────────
-export const CHORD_CAP = 120
+// A chord of 150 arcs still labels its busiest; the old 120 refused
+// django-oscar's 122 components by two.
+export const CHORD_CAP = 150
 export const MATRIX_CAP = 200
 
 export function isOverCap(rep: Rep, nodeCount: number): boolean {
@@ -360,7 +364,7 @@ export function topDegreeIds(nodes: CNode[], edges: CEdge[], n = 20): Set<string
 
 /** Where Enter/double-click on a node goes; groups have no detail page (caller sets scope and navigates to Metrics instead). */
 export function detailRoute(grain: Grain, id: string): string | null {
-  if (grain === "component") return `/views/components/${id}`
+  if (grain === "component") return componentPath(id)
   if (grain === "file") return `/views/files/${id}`
   return null
 }

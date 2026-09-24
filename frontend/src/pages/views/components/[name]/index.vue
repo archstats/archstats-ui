@@ -49,7 +49,7 @@
         <div v-if="position.tangle" class="mt-5">
           <h4 class="ui-label">Tangled with</h4>
           <div class="mt-2 flex flex-wrap gap-1.5">
-            <router-link v-for="member in visibleTangle" :key="member" :to="`/views/components/${member}`" class="ui-chip font-mono" :title="member">
+            <router-link v-for="member in visibleTangle" :key="member" :to="componentPath(member)" class="ui-chip font-mono" :title="member">
               {{ store.getComponentName(member) }}
             </router-link>
             <button v-if="!tangleExpanded && position.tangleMembers.length > TANGLE_PREVIEW" type="button" class="ui-chip" @click="tangleExpanded = true">
@@ -63,7 +63,7 @@
           <div class="mt-2 flex flex-wrap items-center gap-1">
             <template v-for="(step, i) in furthestPath" :key="`${step}-${i}`">
               <Icon v-if="i > 0" icon="chevron-right" :size="12" class="shrink-0 text-neutral-300"/>
-              <router-link :to="`/views/components/${step}`" class="ui-chip font-mono" :class="{ 'is-active': step === name }" :title="step">
+              <router-link :to="componentPath(step)" class="ui-chip font-mono" :class="{ 'is-active': step === name }" :title="step">
                 {{ store.getComponentName(step) }}
               </router-link>
             </template>
@@ -79,7 +79,7 @@
             <p v-if="topDependents.length === 0" class="mt-2 text-base text-neutral-500">Nothing imports this component.</p>
             <ul v-else class="mt-2 flex flex-col">
               <li v-for="d in topDependents" :key="d.name" class="flex h-7 items-center gap-3">
-                <router-link :to="`/views/components/${d.name}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="d.name">
+                <router-link :to="componentPath(d.name)" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="d.name">
                   {{ store.getComponentName(d.name) }}
                 </router-link>
                 <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatNumber(d.references) }} refs</span>
@@ -186,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -206,13 +207,15 @@ import PercentileStrip, { type StandingRow } from "~/components/component/Percen
 import LoadingState from "~/components/ui/common/LoadingState.vue"
 import SingleSelect from "~/components/ui/common/SingleSelect.vue"
 import Icon from "~/components/ui/common/Icon.vue"
+import { hopsOf } from "~/utils/hops"
+import { implicitAbstractionLanguage } from "~/utils/abstraction"
 
 const route = useRoute()
 const store = useDataStore()
 const groupsStore = useGroupsStore()
 
 const name = computed(() => String(route.params.name ?? ""))
-const base = computed(() => `/views/components/${name.value}`)
+const base = computed(() => componentPath(name.value))
 const component = computed<any>(() => store.allComponentsIndex.get(name.value))
 const total = computed(() => store.allComponents.length)
 
@@ -341,7 +344,21 @@ const role = computed(() => componentRole({
   efferentPercentile: percentileOf("modularity__coupling__dependencies"),
 }))
 
-const zone = computed(() => componentZone(raw("modularity__abstractness"), raw("modularity__instability")))
+// A language with nothing to declare abstract reads 0.00 abstractness on every
+// component, and each zone and distance built on it would be a claim about
+// the language rather than the design. Instability is untouched.
+const implicitLanguage = computed(() => implicitAbstractionLanguage(store.componentFilesIndex.get(name.value) ?? []))
+
+const zone = computed(() => {
+  const lang = implicitLanguage.value
+  if (lang) {
+    return {
+      id: "none", label: "",
+      evidence: `${lang} has no abstract types to count, so abstractness reads 0 whatever the design, and the zones and the distance from the main sequence say nothing here. Instability still holds.`,
+    }
+  }
+  return componentZone(raw("modularity__abstractness"), raw("modularity__instability"))
+})
 
 const plotPoints = computed(() => (store.allComponents as any[])
   .map(c => ({ name: c.name, abstractness: Number(c.modularity__abstractness), instability: Number(c.modularity__instability) }))
@@ -359,9 +376,10 @@ const martin = computed(() => {
   add("modularity__coupling__dependents", "Dependents", n => formatNumber(n), "components import it")
   add("modularity__coupling__dependencies", "Dependencies", n => formatNumber(n), "components it imports")
   add("modularity__coupling__afferent", "Importing files", n => formatNumber(n), "files elsewhere that import it")
-  add("modularity__abstractness", "Abstractness", n => n.toFixed(2), types ? `${formatNumber(abstract ?? 0)} of ${formatNumber(types)} types abstract` : "")
+  const lang = implicitLanguage.value
+  add("modularity__abstractness", "Abstractness", n => (lang ? "n/a" : n.toFixed(2)), lang ? `${lang} declares no abstract types` : types ? `${formatNumber(abstract ?? 0)} of ${formatNumber(types)} types abstract` : "")
   add("modularity__instability", "Instability", n => n.toFixed(2), "0 stable, 1 unstable")
-  add("modularity__distance_main_sequence", "Distance from main sequence", n => n.toFixed(2), "0 is on the line")
+  add("modularity__distance_main_sequence", "Distance from main sequence", n => (lang ? "n/a" : n.toFixed(2)), lang ? "needs abstractness" : "0 is on the line")
   return rows
 })
 
@@ -410,7 +428,7 @@ const positionCells = computed(() => {
   if (furthest) {
     cells.push({
       label: "Furthest reach",
-      value: `${formatNumber(Number(furthest.furthest_component_distance))} hops`,
+      value: `${formatNumber(hopsOf(furthest.furthest_component_shortest_path, furthest.furthest_component_distance))} hops`,
       title: `The component furthest away that it still reaches: ${furthest.furthest_component}`,
     })
   }
@@ -438,7 +456,7 @@ const { data: loaded } = useAsyncQuery<Loaded>(
     // has always aggregated away, and the one a reader has to open next.
     const incomingFiles = await store.query<IncomingFile>(`
       SELECT file, SUM(reference_count) AS "references"
-      FROM component_connections_direct
+      FROM ${store.runtimeComponentEdges}
       WHERE "to" = ${lit} AND "from" <> ${lit}
       GROUP BY file ORDER BY "references" DESC LIMIT 8`)
 
@@ -501,9 +519,10 @@ const blastLede = computed(() => {
 })
 
 // ── Band 4: Standing ───────────────────────────────────────────────
-// `cycles__short__count` counts positions in cycle paths, not cycles: the
-// stored path repeats its first component, so whoever starts a cycle is
-// counted twice (openadmin.dto reads 106 against 53). Rank the real thing.
+// Counted here from the cycle list rather than read from
+// `cycles__short__count`: engines before the fix counted positions in cycle
+// paths, so whoever started a cycle was counted twice (openadmin.dto read 106
+// against 53). Current engines agree with this count; older snapshots do not.
 const cycleCounts = computed(() => cycleCountsByComponent(store.allCyclesExpanded as CyclePath[]))
 const cycleStanding = computed<StandingRow | null>(() => {
   const counts = cycleCounts.value
@@ -526,6 +545,8 @@ const cycleStanding = computed<StandingRow | null>(() => {
 const standing = computed<StandingRow[]>(() => {
   if (!component.value) return []
   const rows = RANKED.flatMap(({ key, direction, decimals }) => {
+    // Ranked against a codebase where every value is 1 - instability, it is instability again, upside down.
+    if (key === "modularity__distance_main_sequence" && implicitLanguage.value) return []
     const mine = raw(key)
     if (mine === null) return []
     const sorted = sortedValues.value.get(key) ?? []
@@ -540,11 +561,28 @@ const standing = computed<StandingRow[]>(() => {
   return cycles ? [...rows.slice(0, 7), cycles, ...rows.slice(7)] : rows
 })
 
+// Where a health score stands, counting only components strictly better or
+// worse. Ties counted against it: gin's 10.0, the best score there, read
+// "below 62% of the 8 components".
+function healthStanding(health: number): string {
+  const all = sortedValues.value.get("codesmells__code_health") ?? []
+  const n = all.length
+  const better = all.filter(v => v > health).length
+  const worse = all.filter(v => v < health).length
+  const tied = n - better - worse - 1
+  const of = `of the ${formatNumber(total.value)} components in this snapshot`
+  if (n <= 1) return "the only component with a reading"
+  if (better === 0) return tied > 0 ? `the best in this snapshot, shared with ${formatNumber(tied)} other${tied === 1 ? "" : "s"}` : "the best in this snapshot"
+  if (worse === 0) return tied > 0 ? `the lowest in this snapshot, shared with ${formatNumber(tied)} other${tied === 1 ? "" : "s"}` : "the lowest in this snapshot"
+  return worse >= better
+    ? `better than ${Math.floor((worse / n) * 100)}% ${of}`
+    : `worse than ${Math.floor((better / n) * 100)}% ${of}`
+}
+
 const standingLede = computed(() => {
   const health = raw("codesmells__code_health")
   if (health !== null) {
-    const p = percentileOf("codesmells__code_health")
-    return `Code health ${formatHealth(health)}, ${p >= 50 ? `above ${p}%` : `below ${100 - p}%`} of the ${formatNumber(total.value)} components in this snapshot.`
+    return `Code health ${formatHealth(health)}, ${healthStanding(health)}.`
   }
   const hotspot = raw("codesmells__hotspot_score")
   if (hotspot !== null) {

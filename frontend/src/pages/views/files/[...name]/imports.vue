@@ -38,19 +38,25 @@
       </div>
       <LoadingState v-if="incomingLoading" text="Reading references…"/>
       <EmptyState v-else-if="incomingError" title="Could not read references" :text="incomingError" icon="alert"/>
-      <EmptyState v-else-if="incoming.length === 0" title="Not imported" :text="`No other file in the snapshot imports ${fileBasename}.`" icon="arrow-left"/>
+      <EmptyState v-else-if="!hasResolvedEdges" title="Not recorded" text="This snapshot predates the engine's resolved references, so which files use this one is not known. A new scan records them." icon="arrow-left">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="workspaces.isScanning" @click="workspaces.startScan()">{{ workspaces.isScanning ? "Scanning…" : "Scan again" }}</button>
+      </EmptyState>
+      <EmptyState v-else-if="incoming.length === 0" title="Not imported" :text="`No other file in the snapshot uses anything declared in ${fileBasename}.`" icon="arrow-left"/>
       <div v-else class="min-h-0 grow overflow-y-auto">
         <table class="ui-table">
           <thead>
             <tr>
               <th>File</th>
-              <th class="w-[70px] text-right">Count</th>
+              <th class="w-[90px] text-right" title="References from that file to what this one declares">References</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in incoming" :key="row.source">
               <td class="max-w-0">
-                <router-link :to="`/views/files/${row.source}`" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="row.source">{{ row.source }}</router-link>
+                <router-link :to="`/views/files/${row.source}`" class="flex min-w-0 items-baseline gap-2 font-mono text-sm hover:underline" :title="row.source">
+                  <span class="shrink-0 text-neutral-800">{{ splitPath(row.source).name }}</span>
+                  <span class="truncate text-neutral-500">{{ splitPath(row.source).dir }}</span>
+                </router-link>
               </td>
               <td class="is-num text-right">{{ formatNumber(row.count) }}</td>
             </tr>
@@ -62,16 +68,17 @@
 </template>
 
 <script setup lang="ts">
+import { useWorkspacesStore } from "~/stores/workspaces"
 import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
 import { useFileRoute } from "~/composables/useFileRoute"
 import { formatNumber } from "~/utils/format"
-import { sqlIn, sqlLikeLiteral } from "~/utils/sql"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
 import LoadingState from "~/components/ui/common/LoadingState.vue"
 
 const store = useDataStore()
+const workspaces = useWorkspacesStore()
 const { filePath, escapedPath, fileBasename } = useFileRoute()
 
 function stripExtension(name: string): string {
@@ -79,7 +86,6 @@ function stripExtension(name: string): string {
   return dot > 0 ? name.slice(0, dot) : name
 }
 
-const baseNoExt = computed(() => stripExtension(fileBasename.value))
 
 // One pass over the files table: every path, keyed by basename without
 // extension, plus the Java class names when the engine recorded them.
@@ -125,6 +131,16 @@ interface OutgoingRow { target: string; count: number }
 const { data: outgoingRaw, loading: outgoingLoading, error: outgoingError } = useAsyncQuery<OutgoingRow[]>(
   async () => {
     if (!filePath.value || !store.hasView("snippets")) return []
+    // One row per import statement. Every language records its imports as
+    // modularity__import__raw; the other import snippet types are the same
+    // statement again (the class, the package, the component it resolved
+    // to), so reading all of them listed Order.java's 19 imports as 35
+    // targets with counts summing to 61. The broad match is kept only for a
+    // file whose language never recorded the raw form.
+    const raw = await store.query<OutgoingRow>(
+      `SELECT content AS target, count(*) AS count FROM snippets WHERE file = ${escapedPath.value} AND snippet_type = 'modularity__import__raw' GROUP BY content ORDER BY count DESC, content ASC`,
+    )
+    if (raw.length > 0) return raw
     return store.query<OutgoingRow>(
       `SELECT content AS target, count(*) AS count FROM snippets WHERE file = ${escapedPath.value} AND snippet_type LIKE '%import%' GROUP BY content ORDER BY count DESC, content ASC`,
     )
@@ -138,26 +154,27 @@ const outgoing = computed(() => outgoingRaw.value.map(r => {
   return { ...r, to: resolved ? `/views/files/${resolved}` : null }
 }))
 
-// Incoming: match the ways this file can be named (its basename without
-// extension, its Java class) exactly or as a dotted/slashed suffix.
+// Incoming: the files whose declarations the engine resolved to something
+// declared here. Matching import text instead -- anything ending in ".Order"
+// or "/Order" -- counted 22 importers of a different Order class among
+// Order.java's 194, and missed every TypeScript import of a directory's
+// index. A snapshot without the unit graph gets no answer rather than a guess.
 interface IncomingRow { source: string; count: number }
+const hasResolvedEdges = computed(() => store.hasView("unit_connections"))
 const { data: incoming, loading: incomingLoading, error: incomingError } = useAsyncQuery<IncomingRow[]>(
   async () => {
-    if (!filePath.value || !store.hasView("snippets")) return []
-    const base = baseNoExt.value
-    if (!base) return []
-    const exact = [base, filePath.value]
-    if (index.value.ownClass) exact.push(index.value.ownClass)
-    const predicate = [
-      `content IN ${sqlIn(exact)}`,
-      `content LIKE ${sqlLikeLiteral(`.${base}`, "suffix")}`,
-      `content LIKE ${sqlLikeLiteral(`/${base}`, "suffix")}`,
-    ].join(" OR ")
+    if (!filePath.value || !hasResolvedEdges.value) return []
     return store.query<IncomingRow>(
-      `SELECT file AS source, count(*) AS count FROM snippets WHERE snippet_type LIKE '%import%' AND file != ${escapedPath.value} AND (${predicate}) GROUP BY file ORDER BY count DESC, file ASC`,
+      `SELECT from_file AS source, count(*) AS count FROM unit_connections WHERE to_file = ${escapedPath.value} AND from_file IS NOT NULL AND from_file != ${escapedPath.value} GROUP BY from_file ORDER BY count DESC, from_file ASC`,
     )
   },
-  [escapedPath, () => index.value.ownClass],
+  [escapedPath, hasResolvedEdges],
   { initial: [] },
 )
+
+/** The file's name first, then where it lives, so a truncated row still says which file it is. */
+function splitPath(path: string): { name: string; dir: string } {
+  const i = path.lastIndexOf("/")
+  return i < 0 ? { name: path, dir: "" } : { name: path.slice(i + 1), dir: path.slice(0, i) }
+}
 </script>

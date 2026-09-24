@@ -1,6 +1,6 @@
 <template>
   <DetailFrame
-    :title="nameInRoute"
+    :title="componentLabel(nameInRoute, workspaces.active?.name)"
     mono
     kind="Component"
     :crumbs="[{ label: 'Components', to: '/views/metrics' }]"
@@ -21,6 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import { componentLabel, componentPath } from "~/utils/routes"
+import { useWorkspacesStore } from "~/stores/workspaces"
 // Five tabs, each named for the question it answers: what this is and where
 // it sits (Reading), what it touches (Connections), what it is tangled in
 // (Cycles), what it is made of (Inside), and how it got here (History).
@@ -34,6 +36,7 @@ import Icon from "~/components/ui/common/Icon.vue"
 
 const route = useRoute()
 const store = useDataStore()
+const workspaces = useWorkspacesStore()
 
 const nameInRoute = computed(() => String(route.params.name ?? ""))
 const component = computed(() => store.allComponentsIndex.get(nameInRoute.value))
@@ -61,7 +64,7 @@ const cycleCount = computed(() =>
   (store.allCyclesExpanded as Array<{ nodes: string[] }>).filter(c => c.nodes.includes(nameInRoute.value)).length)
 
 const tabs = computed<DetailTab[]>(() => {
-  const base = `/views/components/${nameInRoute.value}`
+  const base = componentPath(nameInRoute.value)
   return [
     { id: "reading", label: "Reading", to: base, exact: true },
     { id: "connections", label: "Connections", to: `${base}/connections` },

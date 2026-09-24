@@ -101,8 +101,8 @@
           @click.stop="cyclesOpen = !cyclesOpen"
         >
           <Icon icon="refresh" :size="13" :class="cycles !== 'off' && model.cycleSets.value.length ? 'text-red-600' : 'text-neutral-500'"/>
-          <span class="hidden min-[1440px]:inline">Cycles</span>
-          <span v-if="model.directed.value && cycleNodeCount" class="font-mono text-xs" :class="cycles !== 'off' ? 'text-red-600' : 'text-neutral-500'" :title="`${cycleNodeCount} nodes sit in ${model.cycleSets.value.length} cycle set${model.cycleSets.value.length === 1 ? '' : 's'}`">{{ cycleNodeCount }}</span>
+          <span class="hidden min-[1440px]:inline">In cycles</span>
+          <span v-if="model.directed.value && cycleNodeCount" class="font-mono text-xs" :class="cycles !== 'off' ? 'text-red-600' : 'text-neutral-500'" :title="`${cycleNodeCount} nodes sit in ${model.cycleSets.value.length} tangle${model.cycleSets.value.length === 1 ? '' : 's'}: groups where each can reach every other. The Cycles view counts the loops through them.`">{{ cycleNodeCount }}</span>
         </button>
         <div v-if="cyclesOpen" class="fixed inset-0 z-40" @click="cyclesOpen = false"></div>
         <div v-if="cyclesOpen" class="ui-menu absolute right-0 z-50 mt-1 w-64 animate-in" role="menu">
@@ -140,12 +140,28 @@
       >
         <button type="button" class="ui-btn ui-btn-sm mt-3" @click="setState({ source: 'static' })">Show static coupling</button>
       </EmptyState>
+      <!-- Too big to draw. With no lens, "close some groups" pointed at
+           groups that do not exist; the way out is to make some. -->
+      <EmptyState
+        v-else-if="overCap && model.dimensions.value.length === 0"
+        :title="`${model.nodes.value.length} components are too many for a ${rep}`"
+        :text="`A ${rep} reads well up to ${cap} nodes. Group the components first: the lens builder proposes a cut from the names, the imports or the history, you correct it, and the ${rep} draws the groups.`"
+        icon="scale"
+      >
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
+          <Icon icon="waypoints" :size="13"/><span>Propose a lens</span>
+        </button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">Show the graph</button>
+      </EmptyState>
       <EmptyState
         v-else-if="overCap"
         :title="`Too many nodes to draw as a ${rep}`"
         :text="`This ${rep} reads well up to ${cap} nodes; there are ${model.nodes.value.length}. Close some groups, scope to a group or search to narrow it, or switch to the graph.`"
         icon="scale"
-      />
+      >
+        <button type="button" class="ui-btn ui-btn-sm" @click="applyLevel('groups')">Close every group</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">Show the graph</button>
+      </EmptyState>
       <EmptyState v-else-if="model.nodes.value.length === 0" title="Nothing to show" text="Clear the search or the scope to see everything again." icon="search"/>
       <ConnectionsCrosscut
         v-else-if="rep === 'crosscut' && crossRowDim && crossColDim"
@@ -184,7 +200,7 @@
         :selected-id="selectedId"
         :selected-pair="selectedPair"
         :multi="multi"
-        :hovered="hovered"
+        :hovered="null"
         :suggestions="EMPTY_SUGGESTIONS"
         :hulls="model.hulls.value"
         :cycle-keys="model.cycleKeys.value"
@@ -195,7 +211,6 @@
         @select="onSelect"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
-        @hover="hovered = $event"
         @activate="onActivate"
         @context="openContextMenu"
         @lasso="onLasso"
@@ -206,6 +221,15 @@
 
     <template #visualizer-overlays>
       <ZoomControls v-if="rep === 'graph' && !overCap && model.nodes.value.length" @zoom-in="rendererRef?.zoomIn?.()" @zoom-out="rendererRef?.zoomOut?.()" @reset="rendererRef?.resetZoom?.()"/>
+      <!-- Hundreds of ungrouped components draw as a cloud. Say what makes it readable, once, out of the way. -->
+      <div
+        v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && model.dimensions.value.length === 0 && !model.loading.value"
+        class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[640px] -translate-x-1/2 items-center gap-3 px-3 py-2"
+      >
+        <span class="text-sm text-neutral-700">{{ model.nodes.value.length.toLocaleString() }} components at once draw as a cloud. Grouping them shows the shape.</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">Propose a lens</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Dismiss" title="Dismiss" @click="hairballDismissed = true"><Icon icon="x" :size="13"/></button>
+      </div>
 
 
       <GroupActionBar ref="trayRef" :selected-items="multiList" :kind="multiType" @clear="multi = new Set()"/>
@@ -375,10 +399,10 @@ const rendererRef = ref<any>(null);
 const inspectorOpen = ref(true);
 const levelOpen = ref(false);
 const cyclesOpen = ref(false);
+const hairballDismissed = ref(false);
 
 // ── View state (not in the URL) ──────────────────────────────────────────
 const multi = ref(new Set<string>());
-const hovered = ref<string | null>(null);
 const hidden = ref(new Set<string>());
 const openIds = ref(new Set<string>());
 // ── Draft: suggestions become a draft dimension the architect edits, then saves ──

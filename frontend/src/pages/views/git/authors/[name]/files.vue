@@ -41,7 +41,7 @@
               <router-link :to="`/views/files/${row.file}`" class="block truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="row.file">{{ row.file }}</router-link>
             </td>
             <td class="max-w-0">
-              <router-link v-if="row.component" :to="`/views/components/${row.component}`" class="block truncate font-mono text-sm text-neutral-700 hover:text-neutral-900 hover:underline" :title="row.component">{{ row.component }}</router-link>
+              <router-link v-if="row.component" :to="componentPath(row.component)" class="block truncate font-mono text-sm text-neutral-700 hover:text-neutral-900 hover:underline" :title="row.component">{{ row.component }}</router-link>
               <span v-else class="text-neutral-400">—</span>
             </td>
             <td class="is-num text-right">{{ formatNumber(row.commits) }}</td>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"

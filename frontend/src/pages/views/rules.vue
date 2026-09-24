@@ -2,7 +2,7 @@
   <ViewWorkspaceLayout title="Rules" :queryable="false" :show-config="false">
     <template #stats>
       <span v-if="verdict === 'violations'" class="text-neutral-800">{{ summaryLine }}</span>
-      <span v-else-if="verdict === 'clean'">{{ heldRules.length }} kept</span>
+      <span v-else-if="verdict === 'clean'">{{ heldRules.length ? `${heldRules.length} kept` : "None applied" }}</span>
     </template>
 
     <template #visualizer>
@@ -89,6 +89,10 @@
               </ul>
             </section>
 
+            <p v-if="brokenRules.length === 0 && heldRules.length === 0" class="mb-6 max-w-[64ch] text-base text-neutral-600">
+              None of the built-in rules is about an ecosystem this codebase uses, so nothing was checked here. That is no verdict either way.
+            </p>
+
             <!-- Not the same as kept, and the difference is the point. -->
             <section v-if="silentRules.length > 0">
               <h3 class="ui-section-title">No opinion here</h3>
@@ -118,7 +122,7 @@ import EmptyState from "~/components/ui/common/EmptyState.vue"
 import LoadingState from "~/components/ui/common/LoadingState.vue"
 import Icon from "~/components/ui/common/Icon.vue"
 import {
-  atLine, groupByRule, held, kindHint, kindLabel, notApplicable, shortLocation, summarise, verdictOf,
+  atLine, groupByRule, held, kindHint, kindLabel, notApplicable, scopeToEcosystems, shortLocation, summarise, verdictOf,
   type RuleFinding,
 } from "~/utils/rules"
 
@@ -131,7 +135,7 @@ import {
 
 const store = useDataStore()
 
-const { data: findings, loading, error } = useAsyncQuery<RuleFinding[]>(
+const { data: rawFindings, loading, error } = useAsyncQuery<RuleFinding[]>(
   async () => {
     if (!store.hasView("rules")) return []
     const rows = await store.query<any>("SELECT rule, status, `from`, `to`, kind, file, line FROM rules")
@@ -156,6 +160,12 @@ const definitionFor = (id: string) => {
   return def ? { name: def.name, short: def.short } : undefined
 }
 
+// Older snapshots report ecosystem rules as kept wherever they found nothing.
+const findings = computed(() => {
+  const files: string[] = []
+  for (const list of (store.componentFilesIndex as Map<string, string[]>).values()) files.push(...list)
+  return scopeToEcosystems(rawFindings.value, files)
+})
 const verdict = computed(() => verdictOf(findings.value))
 const brokenRules = computed(() => groupByRule(findings.value, definitionFor))
 const heldRules = computed(() => held(findings.value, definitionFor))

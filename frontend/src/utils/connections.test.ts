@@ -210,8 +210,8 @@ describe("caps", () => {
   it("flags matrix and chord past their node caps, never graph", () => {
     expect(isOverCap("matrix", 200)).toBe(false)
     expect(isOverCap("matrix", 401)).toBe(true)
-    expect(isOverCap("chord", 120)).toBe(false)
-    expect(isOverCap("chord", 121)).toBe(true)
+    expect(isOverCap("chord", 150)).toBe(false)
+    expect(isOverCap("chord", 151)).toBe(true)
     expect(isOverCap("graph", 100000)).toBe(false)
   })
 })

@@ -4,7 +4,7 @@ import { useWorkspacesStore } from "~/stores/workspaces";
 import { queryFileImportEdges } from "~/utils/fileImports";
 import { frameworkStorageKey, rememberedFramework } from "~/utils/javaFacts";
 import { loadUnits } from "~/utils/units";
-import { classify, detectFramework, profileById } from "~/utils/javaFrameworks";
+import { classify, detectFramework, languageOf, profileById } from "~/utils/javaFrameworks";
 import { EMPTY_SOURCES, buildSuggestInput, placeRest, suggest, type Constraints, type Grain, type Placement, type SignalSources, type SuggestInput, type SuggestSettings, type Suggestion , type GraphMetrics } from "~/utils/suggest";
 
 // Loads, once per snapshot and only when asked, every table the group
@@ -53,6 +53,8 @@ export async function loadSignalSources(
   query: (sql: string) => Promise<any[]>,
   hasView: (view: string) => boolean,
   framework?: string | null,
+  /** Where component edges are read from; the store's runtime-only subquery in the app. */
+  componentEdges = "component_connections_direct",
 ): Promise<SignalSources> {
   const q = query;
   const hasGit = hasView("git_component_shared_commits");
@@ -63,9 +65,9 @@ export async function loadSignalSources(
   const [components, files, componentRefs, componentCochange, fileRefs, fileCochange, authorRows, classes, classEdges, graphRows] = await Promise.all([
     q(`select name from components`) as Promise<Array<{ name: string }>>,
     q(`select name, component from files`) as Promise<Array<{ name: string; component: string | null }>>,
-    q(`select "from", "to", sum(reference_count) as "references" from component_connections_direct group by "from", "to"`),
+    q(`select "from", "to", sum(reference_count) as "references" from ${componentEdges} group by "from", "to"`),
     hasGit && hasView("git_commits") ? q(COCHANGE_SQL) : Promise.resolve([]),
-    hasView("snippets") ? queryFileImportEdges(q) : Promise.resolve([]),
+    queryFileImportEdges(q, hasView),
     hasGit && hasView("file_matrix") ? q(`select "from", "to", git_co_changes as count from file_matrix where git_co_changes > 0`) : Promise.resolve([]),
     hasView("git_commits") ? q(`select distinct author_name as author, file from git_commits`) as Promise<Array<{ author: string; file: string }>> : Promise.resolve([]),
     hasUnits ? loadUnits(q, hasView) : Promise.resolve(new Map()),
@@ -81,7 +83,10 @@ export async function loadSignalSources(
   const laneLabels: Record<string, string> = {};
   const entityImports = new Map<string, string[]>();
   if (classes.size) {
-    const detected = detectFramework([...classes.values()].map(c => c.facts));
+    const detected = detectFramework(
+      [...classes.values()].map(c => c.facts),
+      languageOf([...classes.values()].map(c => c.file)),
+    );
     const profile = profileById(framework ?? detected.id);
     for (const l of profile.lanes) laneLabels[l.id] = l.label;
     const inD = new Map<string, number>(), outD = new Map<string, number>();
@@ -148,6 +153,7 @@ export function useSuggestModel() {
         (sql: string) => store.query<any>(sql),
         v => store.hasView(v),
         rememberedFramework(frameworkStorageKey(workspaces.active?.id, store.datasetKey)),
+        store.runtimeComponentEdges,
       );
       loadedFor = key;
       return sources.value;

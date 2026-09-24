@@ -172,6 +172,7 @@
       <QuestionCard
         v-else
         :hint="`Asking ${studio.way.value.question} of the biggest thing still unsorted, ${studio.fitness.value.why}.`"
+        :loading="studio.loading.value || studio.coverage.value.total === 0"
         :bundle="currentQuestion"
         :guesses="questionGuesses"
         :later-count="draft.later.length"
@@ -288,6 +289,9 @@ onMounted(async () => {
   // one takes it from the way it is being cut by.
   draft.followWay(studio.way.value);
   if (!activeKey.value && draft.groups.length) activeKey.value = draft.groups[0].key;
+  // Sent here by a view too big to draw ungrouped: open on the proposal, so
+  // the first cut is one choice away rather than a room to learn.
+  if (route.query.propose && draft.groups.length === 0) openPropose();
 });
 
 // A group kept from the query bar opens straight away: the bar lives in the

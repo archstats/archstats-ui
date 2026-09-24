@@ -23,7 +23,7 @@
         <button type="button" class="min-w-0 flex-1 truncate text-left font-mono text-sm text-neutral-800 group-hover:text-neutral-900" :title="`Walk to ${row.name} (shift-click to select)`" @click="onClick($event, row.name)">{{ shortName(row.name) }}</button>
         <span v-if="hops > 1" class="ui-tag" :title="`${row.hops} hop${row.hops === 1 ? '' : 's'} away`">{{ row.hops }}h</span>
         <span v-if="row.references" class="w-10 shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500" :title="`${row.references} references`">{{ formatNumber(row.references) }}</span>
-        <router-link :to="`/views/components/${row.name}`" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100" :title="`Open ${row.name}`" :aria-label="`Open ${row.name}`">
+        <router-link :to="componentPath(row.name)" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100" :title="`Open ${row.name}`" :aria-label="`Open ${row.name}`">
           <Icon icon="arrow-up-right" :size="13"/>
         </router-link>
       </li>
@@ -32,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, ref } from "vue"
 import { useDataStore } from "~/stores/data"
 import { formatNumber } from "~/utils/format"

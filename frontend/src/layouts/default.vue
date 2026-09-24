@@ -33,9 +33,12 @@
       <span v-if="anyScanning" class="shell-progress absolute inset-y-0 left-0 w-0.5" aria-hidden="true"><span/></span>
     </div>
 
-    <main class="min-w-0 flex-1 overflow-y-auto">
-      <WorkspaceEmptyState v-if="!hasData"/>
-      <slot v-else/>
+    <main class="flex min-w-0 flex-1 flex-col">
+      <OutdatedSnapshotBar v-if="hasData"/>
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <WorkspaceEmptyState v-if="!hasData"/>
+        <slot v-else/>
+      </div>
     </main>
   </div>
 </template>
@@ -46,6 +49,7 @@ import { PanelLeftOpen } from "lucide-vue-next";
 import NavBar from "~/components/navbar/NavBar.vue";
 import PaneHandle from "~/components/shell/PaneHandle.vue";
 import WorkspaceEmptyState from "~/components/shell/WorkspaceEmptyState.vue";
+import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { SIDEBAR, usePanesStore } from "~/stores/panes";

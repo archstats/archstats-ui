@@ -350,7 +350,7 @@ function drawCirclePack() {
         .style("opacity", k > 1.4 ? 0 : 1)
         .style("display", k > 1.4 ? "none" : "block")
     })
-    .on("end", () => { svg.style("cursor", "grab") })
+    .on("end", () => { svg.style("cursor", "grab"); declutter(g) })
 
   svg.call(zoomBehavior).on("dblclick.zoom", null)
 
@@ -617,12 +617,49 @@ function drawCirclePack() {
     const hottest = ranked[0]
     const coolest = ranked[ranked.length - 1]
 
-    if (hottest && (hottest.data.colorValue || 0) !== 0 && (!query || isMatch(hottest))) {
-      drawCallout(g, hottest, props.labelHigh, levelColor("bad"), -120, -50)
+    const showHot = hottest && (hottest.data.colorValue || 0) !== 0 && (!query || isMatch(hottest))
+    const showCool = coolest && coolest !== hottest && (!query || isMatch(coolest))
+    if (showHot) drawCallout(g, hottest, props.labelHigh, levelColor("bad"), -120, -50)
+    if (showCool) {
+      // Two neighbours both flagged above-left and above-right can still
+      // meet in the middle; the coolest drops below its circle when they would.
+      let dy = -50
+      if (showHot) {
+        const hx = hottest.x - 120, hy = hottest.y - 50
+        const cx = coolest.x + 120, cy = coolest.y - 50
+        if (Math.abs(hx - cx) < 150 && Math.abs(hy - cy) < 34) dy = coolest.r + 40
+      }
+      drawCallout(g, coolest, props.labelLow, levelColor("good"), 120, dy)
     }
-    if (coolest && coolest !== hottest && (!query || isMatch(coolest))) {
-      drawCallout(g, coolest, props.labelLow, levelColor("good"), 120, -50)
-    }
+  }
+}
+
+/**
+ * Hide labels that would print over one another. Namespaces outrank leaves,
+ * outer namespaces outrank inner ones, bigger circles outrank smaller: what
+ * stays is the most important label at every spot, never two run together
+ * ("Pre[i18n]nta").
+ */
+function declutter(g: any) {
+  const nodes = [...g.selectAll(".namespace-label, .leaf-label").nodes()] as SVGTextElement[]
+  const rank = (el: SVGTextElement) => {
+    const d: any = (el as any).__data__
+    const ns = el.classList.contains("namespace-label")
+    return (ns ? 0 : 10) + (ns ? d.depth : 0) - (d.r || 0) / 1e6
+  }
+  // The Hottest and Coolest flags are drawn over everything; a label under
+  // one reads as part of it, so their boxes count as taken first.
+  const kept: DOMRect[] = ([...g.selectAll(".callout-flag rect").nodes()] as SVGRectElement[])
+    .filter(el => (el.closest(".callout-flag") as SVGGElement | null)?.style.display !== "none")
+    .map(el => el.getBoundingClientRect())
+    .filter(b => b.width > 0)
+  for (const el of nodes.sort((a, b) => rank(a) - rank(b))) {
+    if (el.style.display === "none" || !el.textContent) continue
+    const b = el.getBoundingClientRect()
+    if (b.width === 0) continue
+    const hits = kept.some(k => b.left < k.right + 2 && b.right > k.left - 2 && b.top < k.bottom + 1 && b.bottom > k.top - 1)
+    if (hits) el.style.display = "none"
+    else kept.push(b)
   }
 }
 

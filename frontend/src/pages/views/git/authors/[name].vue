@@ -20,7 +20,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { authorNamesSql, authorStatsSql, periodStats } from "~/utils/authors"
+import { useAuthorsStore } from "~/stores/authors"
+import { useWorkspacesStore } from "~/stores/workspaces"
+import { computed, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
@@ -35,28 +38,27 @@ const store = useDataStore()
 
 // Callers encode the name; vue-router hands it back decoded.
 const name = computed(() => String(route.params.name ?? ""))
+const authorsStore = useAuthorsStore()
+const workspaces = useWorkspacesStore()
+watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 
 const { data: author, loading, error } = useAsyncQuery<Record<string, any> | null>(
   async () => {
-    const rows = await store.query<Record<string, any>>(
-      `SELECT * FROM git_authors WHERE author_name = ${sqlLiteral(name.value)} LIMIT 1`,
-    )
+    const rows = await store.query<Record<string, any>>(authorStatsSql(authorNamesSql(authorsStore.aliases, name.value), { aliases: authorsStore.aliases, includeBots: true }))
     return rows[0] ?? null
   },
-  [name],
+  [name, () => authorsStore.aliases],
   { initial: null },
 )
 
-function metric(key: string): number {
-  return Number(author.value?.[key]) || 0
-}
+const total = computed(() => periodStats(author.value, "total"))
 
 const stats = computed(() => {
   if (!author.value) return []
   return [
-    { label: "Commits", value: formatNumber(metric("git__commits__total")) },
-    { label: "Files", value: formatNumber(metric("git__unique_file_changes__total")) },
-    { label: "Components", value: formatNumber(metric("git__unique_component_changes__total")) },
+    { label: "Commits", value: formatNumber(total.value.commits) },
+    { label: "Files", value: formatNumber(total.value.files) },
+    { label: "Components", value: formatNumber(total.value.components) },
   ]
 })
 
@@ -64,8 +66,8 @@ const tabs = computed<DetailTab[]>(() => {
   const base = `/views/git/authors/${encodeURIComponent(name.value)}`
   return [
     { id: "overview", label: "Overview", to: base, exact: true },
-    { id: "components", label: "Components", to: `${base}/components`, count: metric("git__unique_component_changes__total") || undefined },
-    { id: "files", label: "Files", to: `${base}/files`, count: metric("git__unique_file_changes__total") || undefined },
+    { id: "components", label: "Components", to: `${base}/components`, count: total.value.components || undefined },
+    { id: "files", label: "Files", to: `${base}/files`, count: total.value.files || undefined },
     { id: "history", label: "History", to: `${base}/history` },
   ]
 })

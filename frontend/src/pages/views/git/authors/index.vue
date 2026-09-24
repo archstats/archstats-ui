@@ -10,8 +10,8 @@
     sidebar-width="300px"
   >
     <template #stats>
-      <span v-if="rows.length" title="Everyone in the git history, including authors of files that no longer exist">
-        In git history
+      <span v-if="rows.length" title="Everyone who committed to a file in this snapshot, the same count the Overview and Activity show">
+        Contributors
         <span class="text-neutral-800">
           <template v-if="filtered.length !== rows.length">{{ formatNumber(filtered.length) }} of </template>{{ formatNumber(rows.length) }}
         </span>
@@ -22,6 +22,12 @@
       <div class="ui-segmented" role="group" aria-label="Period">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" @click="period = p.id">{{ p.label }}</button>
       </div>
+      <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.showBots" :class="{ 'bg-neutral-100': authorsStore.showBots }"
+              title="Dependency bumpers, CI accounts and release-plugin commits are hidden unless shown here"
+              @click="authorsStore.showBots = !authorsStore.showBots">
+        <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
+        <span>{{ authorsStore.showBots ? "Bots shown" : "Bots hidden" }}</span>
+      </button>
     </template>
 
     <template #visualizer>
@@ -44,6 +50,7 @@
                 v-for="col in columns"
                 :key="col.key"
                 :class="[col.align === 'right' ? 'text-right' : '', col.width]"
+                :style="col.key === 'name' ? { minWidth: '11rem' } : undefined"
                 :aria-sort="sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
               >
                 <button
@@ -103,6 +110,18 @@
           <router-link :to="detailRoute(selected.name)" class="truncate text-base font-semibold text-neutral-900 hover:underline">{{ selected.name }}</router-link>
           <span v-if="selected.email" class="truncate font-mono text-sm text-neutral-500" :title="selected.email">{{ selected.email }}</span>
         </div>
+        <!-- The same person under another name: merged by hand, per workspace. -->
+        <section class="flex flex-col gap-2">
+          <h3 class="ui-section-title">Also committed as</h3>
+          <ul v-if="mergedInto(selected.name).length" class="flex flex-col gap-1">
+            <li v-for="alias in mergedInto(selected.name)" :key="alias" class="flex items-center gap-2">
+              <span class="min-w-0 flex-1 truncate text-sm text-neutral-700" :title="alias">{{ alias }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Count ${alias} separately again`" @click="authorsStore.unmerge(alias)">Separate</button>
+            </li>
+          </ul>
+          <SingleSelect :model-value="null" :options="mergeOptions" placeholder="Same person as…" @update:model-value="mergeSelected"/>
+          <p class="text-sm leading-4 text-neutral-500">Merging folds the other name's commits into this one on every screen of this workspace.</p>
+        </section>
         <section v-for="p in periods" :key="p.id" class="flex flex-col gap-2">
           <h3 class="ui-section-title" :class="{ 'text-neutral-900': p.id === period }">{{ p.title }}</h3>
           <dl class="ui-kv">
@@ -126,7 +145,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/utils/authors"
+import { useAuthorsStore } from "~/stores/authors"
+import { useWorkspacesStore } from "~/stores/workspaces"
+import SingleSelect from "~/components/ui/common/SingleSelect.vue"
+import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
@@ -137,19 +160,25 @@ import LoadingState from "~/components/ui/common/LoadingState.vue"
 
 const store = useDataStore()
 const router = useRouter()
+const workspaces = useWorkspacesStore()
+const authorsStore = useAuthorsStore()
+watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
+
+function mergedInto(name: string): string[] {
+  return namesOf(authorsStore.aliases, name).slice(1)
+}
+const mergeOptions = computed(() => rows.value.filter(a => a.name !== selectedName.value).map(a => a.name))
+function mergeSelected(other: string | null) {
+  if (!other || !selectedName.value) return
+  authorsStore.merge(other, selectedName.value)
+}
 
 const searchQuery = ref("")
 const isSidebarOpen = ref(true)
 const activeTab = ref("author")
 const tabs = [{ id: "author", label: "Author" }]
 
-// git_authors columns: git__<metric>__total and git__<metric>__last_<n>_days.
-const periods = [
-  { id: "total", label: "Total", title: "All time", suffix: "__total" },
-  { id: "180", label: "180 d", title: "Last 180 days", suffix: "__last_180_days" },
-  { id: "90", label: "90 d", title: "Last 90 days", suffix: "__last_90_days" },
-  { id: "30", label: "30 d", title: "Last 30 days", suffix: "__last_30_days" },
-] as const
+const periods = AUTHOR_PERIODS
 type PeriodId = (typeof periods)[number]["id"]
 const period = ref<PeriodId>("total")
 
@@ -162,26 +191,16 @@ interface AuthorRow extends PeriodStats {
 
 // One query for the whole view; period and search work on the loaded rows.
 const { data: raw, loading, error } = useAsyncQuery<Record<string, any>[]>(
-  () => store.hasView("git_authors")
-    ? store.query<Record<string, any>>("SELECT * FROM git_authors")
+  () => store.hasView("git_commits")
+    ? store.query<Record<string, any>>(authorStatsSql("1", { aliases: authorsStore.aliases, includeBots: authorsStore.showBots }))
     : Promise.resolve([]),
-  [],
+  [() => authorsStore.aliases, () => authorsStore.showBots],
   { initial: [] },
 )
 
-function statsFor(r: Record<string, any>, suffix: string): PeriodStats {
-  const n = (metric: string) => Number(r[`git__${metric}${suffix}`]) || 0
-  return {
-    commits: n("commits"),
-    additions: n("additions"),
-    deletions: n("deletions"),
-    files: n("unique_file_changes"),
-    components: n("unique_component_changes"),
-  }
-}
 
 const rows = computed<AuthorRow[]>(() => raw.value.map(r => {
-  const byPeriod = Object.fromEntries(periods.map(p => [p.id, statsFor(r, p.suffix)])) as Record<PeriodId, PeriodStats>
+  const byPeriod = Object.fromEntries(periods.map(p => [p.id, periodStats(r, p.id)])) as Record<PeriodId, PeriodStats>
   return {
     name: String(r.author_name ?? ""),
     email: String(r.author_email ?? ""),

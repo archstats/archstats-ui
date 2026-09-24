@@ -170,7 +170,8 @@ const props = withDefaults(defineProps<{
   badgeText: '',
   statsLabels: () => ({ nodes: 'Nodes', connections: 'Connections' }),
   searchQuery: undefined,
-  searchPlaceholder: 'Search components',
+  // Fits the field beside its icon at its narrowest; "Search components" read "Search componer".
+  searchPlaceholder: 'Find by name',
   isSidebarOpen: true,
   activeTab: '',
   tabs: () => [],

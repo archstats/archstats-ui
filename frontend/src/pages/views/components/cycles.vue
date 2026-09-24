@@ -24,7 +24,7 @@
     <template #visualizer>
       <template v-if="selectedCycle">
         <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-          <span class="font-mono text-sm font-medium text-neutral-900">Cycle #{{ selectedCycle.id }}</span>
+          <span class="font-mono text-sm font-medium text-neutral-900">Cycle #{{ positionOf(selectedCycle) }}</span>
           <span class="ui-toolbar-meta flex items-center gap-1.5">
             <span>{{ selectedCycle.size }} nodes</span>
             <span class="text-neutral-300">·</span>
@@ -156,7 +156,7 @@
           @keydown.space.prevent="selectCycle(cycle)"
         >
           <div class="flex items-center justify-between">
-            <span class="font-mono text-sm text-neutral-500">Cycle #{{ cycle.id }}</span>
+            <span class="font-mono text-sm text-neutral-500">#{{ positionOf(cycle) }}</span>
             <span class="font-mono text-sm tabular-nums text-neutral-500">severity {{ cycle.severity }}</span>
           </div>
 
@@ -317,6 +317,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -430,6 +431,13 @@ const countText = computed(() => {
   const m = allCycles.value.length
   return scope.isActive ? `${formatNumber(n)} of ${formatNumber(m)} cycles` : `${formatNumber(m)} ${m === 1 ? 'cycle' : 'cycles'}`
 })
+
+// A cycle is numbered by where it stands in the list as sorted now. Its
+// stored id read #2, #1, #4 down a list sorted by severity.
+const position = computed(() => new Map(filteredCycles.value.map((c, i) => [c.id, i + 1])))
+function positionOf(cycle: Cycle): number | string {
+  return position.value.get(cycle.id) ?? "–"
+}
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredCycles.value.length / itemsPerPage)))
 const paginatedCycles = computed(() => {
@@ -636,10 +644,6 @@ function fileSourcePath(file: string, line: number | null): string {
 // ── Names, groups ────────────────────────────────────────────────
 function shortName(name: string): string {
   return store.getComponentName(name) || name
-}
-
-function componentPath(name: string): string {
-  return `/views/components/${name}`
 }
 
 const lens = useLensStore()

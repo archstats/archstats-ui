@@ -221,7 +221,7 @@
             </template>
             <template v-if="grain === 'files' && selectedUnit.component">
               <dt>Component</dt>
-              <dd class="truncate"><router-link :to="`/views/components/${selectedUnit.component}`" class="text-neutral-800 hover:underline">{{ selectedUnit.component }}</router-link></dd>
+              <dd class="truncate"><router-link :to="componentPath(selectedUnit.component)" class="text-neutral-800 hover:underline">{{ selectedUnit.component }}</router-link></dd>
             </template>
           </dl>
           <div class="flex items-center gap-2">
@@ -270,6 +270,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -502,7 +503,11 @@ watch(columns, cols => {
   if (cols.length === 0) return
   const stillValid = cols.includes(sizeMetric.value) && cols.includes(colorMetric.value)
   if (stillValid) return
-  const first = presets.value[0]
+  // Without commit history every hotspot score is 0 and the chart opens grey;
+  // open on something the snapshot can colour instead.
+  const first = commitWindows.value.length === 0
+    ? presets.value.find(p => p.id === "nesting") ?? presets.value.find(p => p.id === "instability") ?? presets.value[0]
+    : presets.value[0]
   if (first) {
     selectPreset(first)
     return
@@ -574,7 +579,7 @@ function replaceSelection(names: string[]) {
 }
 
 function detailRoute(name: string): string {
-  if (grain.value === "components") return `/views/components/${name}`
+  if (grain.value === "components") return componentPath(name)
   if (grain.value === "files") return `/views/files/${name}`
   return `/views/metrics?grain=files&q=${encodeURIComponent(name)}`
 }

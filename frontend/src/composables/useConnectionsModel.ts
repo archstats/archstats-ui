@@ -15,6 +15,8 @@ export interface RollupGroup {
 }
 import { useScopeStore } from "~/stores/scope";
 import { useLensStore } from "~/stores/lens";
+import { useWorkspacesStore } from "~/stores/workspaces";
+import { componentLabel } from "~/utils/routes";
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { queryFileImportEdges } from "~/utils/fileImports";
 import {
@@ -34,12 +36,14 @@ interface FileRow { name: string; component: string | null; lines: number | null
 interface RawComponentData {
   components: ComponentRow[]
   filesPerComponent: Map<string, number>
+  /** Lines of every file, for sizing the part of a component a group holds. */
+  fileLines: Map<string, number>
   staticEdges: RawEdge[]
   gitEdges: RawEdge[]
 }
 interface RawFileData { files: FileRow[]; staticEdges: RawEdge[]; gitEdges: RawEdge[] }
 
-const EMPTY_COMPONENTS: RawComponentData = { components: [], filesPerComponent: new Map(), staticEdges: [], gitEdges: [] };
+const EMPTY_COMPONENTS: RawComponentData = { components: [], filesPerComponent: new Map(), fileLines: new Map(), staticEdges: [], gitEdges: [] };
 const EMPTY_FILES: RawFileData = { files: [], staticEdges: [], gitEdges: [] };
 
 export interface Hull { key: string; name: string; color: string; members: string[]; dashed?: boolean }
@@ -58,18 +62,20 @@ export function useConnectionsModel(opts: {
   const store = useDataStore();
   const groups = useGroupsStore();
   const scope = useScopeStore();
+  const workspaces = useWorkspacesStore();
 
   const hasGit = computed(() => store.hasData && store.hasView("git_component_shared_commits"));
 
   const componentData = useAsyncQuery<RawComponentData>(async () => {
     if (!store.hasData) return EMPTY_COMPONENTS;
-    const [components, fileCounts, staticRows, gitRows] = await Promise.all([
+    const [components, fileCounts, fileLineRows, staticRows, gitRows] = await Promise.all([
       store.query<ComponentRow>(`select name, complexity__lines as lines, codesmells__code_health as health, codesmells__hotspot_score as hotspot from components`),
       store.query<{ component: string; n: number }>(`select component, count(*) as n from files group by component`),
-      store.query<{ from: string; to: string; references: number }>(`select "from", "to", sum(reference_count) as "references" from component_connections_direct group by "from", "to"`),
+      store.query<{ name: string; lines: number | null }>(`select name, complexity__lines as lines from files`),
+      store.query<{ from: string; to: string; references: number }>(`select "from", "to", sum(reference_count) as "references" from ${store.runtimeComponentEdges} group by "from", "to"`),
       hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number }>(`select pair_1 as "from", pair_2 as "to", shared_commits as sharedCommits from git_component_shared_commits where shared_commits > 0`) : Promise.resolve([]),
     ]);
-    return { components, filesPerComponent: new Map(fileCounts.map(r => [r.component, r.n])), staticEdges: directedReferenceEdges(staticRows), gitEdges: undirectedSharedCommitEdges(gitRows) };
+    return { components, filesPerComponent: new Map(fileCounts.map(r => [r.component, r.n])), fileLines: new Map(fileLineRows.map(r => [r.name, Number(r.lines) || 0])), staticEdges: directedReferenceEdges(staticRows), gitEdges: undirectedSharedCommitEdges(gitRows) };
   }, [], { initial: EMPTY_COMPONENTS });
 
   const componentIds = computed(() => new Set(componentData.data.value.components.map(c => c.name)));
@@ -80,7 +86,7 @@ export function useConnectionsModel(opts: {
     if (!store.hasData || !needFiles.value) return EMPTY_FILES;
     const [files, importEdges, gitRows] = await Promise.all([
       store.query<FileRow>(`select name, component, complexity__lines as lines, codesmells__code_health as health, codesmells__hotspot_score as hotspot from files`),
-      store.hasView("snippets") ? queryFileImportEdges(sql => store.query(sql)) : Promise.resolve([]),
+      queryFileImportEdges(sql => store.query(sql), v => store.hasView(v)),
       store.hasView("file_matrix") ? store.query<{ from: string; to: string; sharedCommits: number }>(`select "from", "to", git_co_changes as sharedCommits from file_matrix where git_co_changes > 0`) : Promise.resolve([]),
     ]);
     return { files, staticEdges: directedReferenceEdges(importEdges), gitEdges: undirectedSharedCommitEdges(gitRows) };
@@ -115,6 +121,11 @@ export function useConnectionsModel(opts: {
     }
     return m;
   };
+  const componentOfFile = computed(() => {
+    const m = new Map<string, string>();
+    for (const [component, files] of store.componentFilesIndex as Map<string, string[]>) for (const f of files) m.set(f, component);
+    return m;
+  });
   const rollupOf = computed(() => bestGroupOf(rollupGroups.value));
   const colorOf = computed(() => bestGroupOf(colorGroups.value));
 
@@ -142,15 +153,23 @@ export function useConnectionsModel(opts: {
       openIds: opts.openIds.value,
       groupNode: g => ({
         id: g.id, label: g.name, kind: "group", color: g.color,
-        // Partial components count their files in the group; their lines are
-        // pro-rated by that share since lines are only known per component.
-        lines: g.members.reduce((s, m) => { const cov = g.coverage.get(m); const lines = componentRows.value.get(m)?.lines ?? 0; return s + (cov && !cov.full && cov.total ? Math.round(lines * cov.files / cov.total) : lines); }, 0),
+        // A partial component counts the lines of the files the group holds.
+        // It was pro-rated by file count ("lines are only known per
+        // component", which they are not): a median error of 16-21%, and
+        // double the size one time in ten.
+        lines: g.members.reduce((s, m) => {
+          const cov = g.coverage.get(m);
+          if (!cov || cov.full) return s + (componentRows.value.get(m)?.lines ?? 0);
+          let held = 0;
+          for (const f of g.files) if (componentOfFile.value.get(f) === m) held += data.fileLines.get(f) ?? 0;
+          return s + held;
+        }, 0),
         files: g.members.reduce((s, m) => { const cov = g.coverage.get(m); return s + (cov && !cov.full ? cov.files : (data.filesPerComponent.get(m) ?? 0)); }, 0),
       }),
       componentNode: (id, g) => {
         const c = componentRows.value.get(id);
         return {
-          id, label: id, kind: "component", group: g?.name ?? colorOf.value.get(id)?.name, color: colorOf.value.get(id)?.color,
+          id, label: componentLabel(id, workspaces.active?.name), kind: "component", group: g?.name ?? colorOf.value.get(id)?.name, color: colorOf.value.get(id)?.color,
           lines: c?.lines ?? undefined, files: data.filesPerComponent.get(id), health: c?.health ?? undefined, hotspot: c?.hotspot ?? undefined,
         };
       },
@@ -185,7 +204,17 @@ export function useConnectionsModel(opts: {
     // Once any component is open, file-level rows carry the whole picture so
     // an open component's files and its closed neighbours share one source.
     const useFiles = needFiles.value && fileData.data.value.files.length > 0;
-    const raw = useFiles ? rawFor(fileData.data.value) : rawFor(componentData.data.value);
+    // With a component open, file edges carry only the pairs that touch an
+    // open component; pairs of closed components keep the engine's component
+    // edges. Rebuilding every edge from file rows changed the weight of edges
+    // nobody had opened -- doubling every one of them in a C# codebase.
+    const isOpen = (component: string | null | undefined) => !!component && opts.openIds.value.has(component);
+    const raw = useFiles
+      ? [
+          ...rawFor(componentData.data.value).filter(e => !isOpen(e.from) && !isOpen(e.to)),
+          ...rawFor(fileData.data.value).filter(e => isOpen(fileRows.value.get(e.from)?.component) || isOpen(fileRows.value.get(e.to)?.component)),
+        ]
+      : rawFor(componentData.data.value);
     const resolve = treeResolver({
       groupOf: c => rollupOf.value.get(c)?.id ?? null,
       componentOf: f => fileRows.value.get(f)?.component ?? null,

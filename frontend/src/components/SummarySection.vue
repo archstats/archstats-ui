@@ -15,7 +15,7 @@
       <div v-for="(stat, i) in strip" :key="stat.label" class="flex flex-col gap-1 px-4 py-3" :class="{ 'hairline-l': i % 3 !== 0, 'lg:hairline-l': i !== 0, 'hairline-t lg:border-t-0': i >= 3 }">
         <dt class="ui-label">{{ stat.label }}</dt>
         <dd class="text-[22px] font-medium leading-7 tabular text-neutral-900">{{ stat.value }}</dd>
-        <dd v-if="stat.sub" class="text-sm leading-4 text-neutral-500">{{ stat.sub }}</dd>
+        <dd v-if="stat.sub" class="text-sm leading-4" :class="stat.warn ? 'text-amber-700' : 'text-neutral-500'">{{ stat.sub }}</dd>
       </div>
     </dl>
 
@@ -42,10 +42,13 @@
               <dt>Component imports</dt><dd>{{ formatVal(getVal('modularity__component__imports')) }}</dd>
             </template>
             <template v-if="getVal('modularity__component__declarations') !== null">
-              <dt>Component declarations</dt><dd>{{ formatVal(getVal('modularity__component__declarations')) }}</dd>
+              <dt title="package and namespace statements, one per file that has one">Package declarations</dt><dd>{{ formatVal(getVal('modularity__component__declarations')) }}</dd>
+            </template>
+            <template v-if="componentDependencies !== null">
+              <dt title="distinct pairs of components where one imports the other">Component dependencies</dt><dd>{{ formatVal(componentDependencies) }}</dd>
             </template>
             <template v-if="getVal('connection_count') !== null">
-              <dt>Direct dependencies</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
+              <dt title="individual imports that cross from one component into another">Cross-component imports</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
             </template>
             <template v-if="avgFilesPerComponent">
               <dt>Files per component</dt><dd>{{ avgFilesPerComponent.toFixed(1) }}</dd>
@@ -107,6 +110,9 @@ import Icon from "~/components/ui/common/Icon.vue"
 import { useJavaMetrics } from "~/composables/useJavaMetrics"
 import { useWorkspacesStore } from "~/stores/workspaces"
 import { formatScanTime } from "~/utils/time"
+import { useAsyncQuery } from "~/composables/useAsyncQuery"
+import { useAuthorsStore } from "~/stores/authors"
+import { IN_SNAPSHOT, NOT_BOT_SQL, canonicalAuthorSql } from "~/utils/authors"
 
 const store = useDataStore()
 const workspaces = useWorkspacesStore()
@@ -122,16 +128,60 @@ const snapshotLabel = computed(() => {
 const strip = computed(() => {
   const n = (key: string) => (getVal(key) === null ? "—" : formatVal(getVal(key)))
   return [
-    { label: "Components", value: n("component_count") },
-    { label: "Files", value: n("complexity__files") },
-    { label: "Lines", value: n("complexity__lines") },
-    { label: "Directories", value: n("directory_count") },
-    { label: "Commits", value: n("git__commits__total"), sub: "to files in the snapshot" },
-    { label: "Contributors", value: n("git__authors__total"), sub: commitsPerAuthor.value ? `${commitsPerAuthor.value.toFixed(0)} commits each` : "" },
+    { label: "Components", value: n("component_count"), sub: "", warn: false },
+    { label: "Files", value: n("complexity__files"), sub: "", warn: false },
+    { label: "Lines", value: n("complexity__lines"), sub: "", warn: false },
+    { label: "Directories", value: n("directory_count"), sub: "", warn: false },
+    // A shallow clone's history stops at the depth it was cloned with: gin
+    // read one commit by one contributor, with nothing to say so.
+    { label: "Commits", value: people.value ? formatVal(people.value.commits) : n("git__commits__total"), sub: shallowClone.value ? "shallow clone: history is cut short" : "to files in the snapshot", warn: shallowClone.value },
+    // A mean, said as one: "103 commits each" read as every contributor's number.
+    { label: "Contributors", value: people.value ? formatVal(people.value.authors) : n("git__authors__total"), sub: shallowClone.value ? "in the fetched history only" : commitsPerAuthor.value ? `to those files, ${commitsPerAuthor.value.toFixed(0)} commits on average` : "to files in the snapshot", warn: shallowClone.value },
   ]
 })
 
 const summary = ref<Record<string, any>>({})
+
+/** Whether any scanned repository is a shallow clone. */
+const shallowClone = ref(false)
+watch(
+  () => [store.hasData, store.datasetKey] as const,
+  async ([hasData]) => {
+    shallowClone.value = false
+    if (!hasData || !store.hasView("git_repos")) return
+    try {
+      const rows = await store.query<{ n: number }>("SELECT count(*) AS n FROM git_repos WHERE git__shallow_clone = 1")
+      shallowClone.value = Number(rows[0]?.n ?? 0) > 0
+    } catch {
+      // Snapshots taken before the column existed say nothing either way.
+    }
+  },
+  { immediate: true },
+)
+
+// Distinct component pairs where one imports the other, runtime imports only:
+// the number people mean by "dependencies". The summary's connection_count is
+// every individual import crossing a component boundary -- 10,370 for
+// Broadleaf, whose components have 2,603 dependencies.
+const componentDependencies = ref<number | null>(null)
+watch(
+  () => [store.hasData, store.datasetKey] as const,
+  async ([hasData]) => {
+    componentDependencies.value = null
+    if (!hasData || !store.hasView("component_connections_direct")) return
+    try {
+      const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('component_connections_direct')")
+      const runtimeOnly = cols.some(c => c.name === "kind") ? `AND kind != 'type_only'` : ""
+      const rows = await store.query<{ n: number }>(
+        `SELECT count(*) AS n FROM (SELECT DISTINCT "from", "to" FROM component_connections_direct WHERE "from" != "to" ${runtimeOnly})`,
+      )
+      componentDependencies.value = Number(rows[0]?.n ?? 0)
+    } catch {
+      componentDependencies.value = null
+    }
+  },
+  { immediate: true },
+)
 watch(
   () => [store.hasData, store.datasetKey] as const,
   async ([hasData]) => {
@@ -173,9 +223,27 @@ const avgLinesPerFile = computed(() => {
   return lines && files ? lines / files : null
 })
 
+// Commits and contributors counted the way Authors and Activity count them:
+// commits to files in the snapshot, merged names as one person, bots left out
+// unless shown. The engine's totals count bots and split names, so the strip
+// read one number here and another a click away.
+const authorsStore = useAuthorsStore()
+watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
+const { data: people } = useAsyncQuery<{ commits: number; authors: number } | null>(
+  async () => {
+    if (!store.hasView("git_commits")) return null
+    const rows = await store.query<{ commits: number; authors: number }>(
+      `SELECT count(DISTINCT commit_hash) AS commits, count(DISTINCT ${canonicalAuthorSql(authorsStore.aliases)}) AS authors
+       FROM git_commits WHERE ${IN_SNAPSHOT}${authorsStore.showBots ? "" : ` AND ${NOT_BOT_SQL}`}`)
+    return rows[0] ?? null
+  },
+  [() => store.datasetKey, () => authorsStore.aliases, () => authorsStore.showBots],
+  { initial: null },
+)
+
 const commitsPerAuthor = computed(() => {
-  const commits = getVal('git__commits__total')
-  const authors = getVal('git__authors__total')
+  const commits = people.value?.commits ?? getVal('git__commits__total')
+  const authors = people.value?.authors ?? getVal('git__authors__total')
   return commits && authors ? commits / authors : null
 })
 
@@ -242,7 +310,9 @@ const mainDashboardKeys = new Set([
 const extraStats = computed(() => {
   const extra = []
   for (const [key, val] of Object.entries(summary.value)) {
-    if (!mainDashboardKeys.has(key) && val !== null && val !== undefined && val !== '') {
+    // Numbers only: a single class name stamped on the whole codebase by an
+    // older engine read as a metric of it.
+    if (!mainDashboardKeys.has(key) && val !== null && val !== undefined && val !== '' && !Number.isNaN(Number(val))) {
       extra.push({
         key,
         label: store.statNiceName(key) || key,

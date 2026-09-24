@@ -4,6 +4,7 @@ import (
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/store"
+	"github.com/archstats/archstats/core"
 )
 
 // ScanService is the Wails-bound facade over scan.Service, exposing only
@@ -49,4 +50,11 @@ func (q *QueryService) QueryIn(scanID string, sql string) ([]map[string]any, err
 
 func (q *QueryService) CurrentScan() string {
 	return q.svc.CurrentScan()
+}
+
+// AnalysisRevision is the revision of the analysis this build scans with. A
+// snapshot records the revision it was written with; one below this was
+// scanned before fixes the engine now has, and the UI says so.
+func (q *QueryService) AnalysisRevision() int {
+	return core.AnalysisRevision
 }

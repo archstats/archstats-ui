@@ -2,7 +2,7 @@
   <ViewWorkspaceLayout
       title="Metrics"
       v-model:search-query="searchQuery"
-    :search-placeholder="grain === 'files' ? 'Search files' : 'Search components'"
+    :search-placeholder="grain === 'files' ? 'Find a file' : 'Find a component'"
       v-model:is-sidebar-open="isSidebarOpen"
       v-model:active-tab="activeTab"
       :tabs="inspectorTabs"
@@ -49,7 +49,7 @@
         <SingleSelect :model-value="activePreset?.name ?? null" :options="presetNames" placeholder="Choose" @update:model-value="selectPresetByName"/>
         <span class="ui-toolbar-sep"></span>
         <Checkbox v-model="showNames">Names</Checkbox>
-        <span class="ml-auto hidden whitespace-nowrap text-sm text-neutral-500 2xl:inline">Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan</span>
+        <span class="ml-auto hidden min-w-0 truncate text-sm text-neutral-500 2xl:inline" title="Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan">Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan</span>
       </div>
 
       <LoadingState v-if="loading" :text="grain === 'files' ? 'Loading files…' : 'Loading components…'"/>
@@ -77,12 +77,15 @@
             :show-groups="true"
             :max-page-size="25"
             :name-column="grain === 'files' ? 'File' : 'Component'"
+            :initial-sort="visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name'"
+            :key="grain"
             :selected-elements="selectedNames"
             @update:selected-elements="selectedNames = $event"
             @clicked-element="openRow"
         />
       </div>
       <div v-else-if="xAxis && yAxis" class="relative min-h-0 grow p-3">
+        <p v-if="abstractnessCaveat" class="pointer-events-none absolute left-1/2 top-4 z-10 max-w-[60ch] -translate-x-1/2 rounded bg-surface/90 px-2 py-1 text-center text-xs text-neutral-500 backdrop-blur-sm">{{ abstractnessCaveat }}</p>
         <ComponentPlotterDiagram
             ref="plot"
             class="h-full w-full"
@@ -155,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes";
 import { computed, reactive, ref, watch } from "vue";
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
 import ElementTable from "~/components/ui/tables/ElementTable.vue";
@@ -168,6 +172,7 @@ import EmptyState from "~/components/ui/common/EmptyState.vue";
 import ZoomControls from "~/components/ui/common/ZoomControls.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
 import ComponentPlotterDiagram from "~/components/components/plotter/ComponentPlotterDiagram.vue";
+import { implicitAbstractionLanguage } from "~/utils/abstraction";
 import { useDataStore } from "~/stores/data";
 import { useLensStore } from "~/stores/lens";
 import { useGroupsStore } from "~/stores/groups";
@@ -355,6 +360,25 @@ function selectPresetByName(name: string) {
   if (preset) selectPreset(preset);
 }
 
+// ─── Abstractness where the language declares none ───
+// Python, plain JavaScript and Ruby have no abstract types to count, so every
+// component reads abstractness 0 and distance 1 - instability. A main-sequence
+// chart of such a codebase is a row of dots on the floor; it opens on churn
+// against health instead, and says why if someone picks one anyway.
+const ABSTRACTNESS_KEYS = new Set(["modularity__abstractness", "modularity__distance_main_sequence"]);
+const implicitLanguage = computed(() => {
+  const files: string[] = [];
+  for (const list of (store.componentFilesIndex as Map<string, string[]>).values()) files.push(...list);
+  return implicitAbstractionLanguage(files);
+});
+const usesAbstractness = (p: { x: string | null; y: string | null; r?: string | null }) =>
+  [p.x, p.y, p.r].some((k) => !!k && ABSTRACTNESS_KEYS.has(k));
+const abstractnessCaveat = computed(() => {
+  const lang = implicitLanguage.value;
+  if (!lang || grain.value !== "components" || !usesAbstractness({ x: xAxis.value, y: yAxis.value, r: radius.value })) return "";
+  return `${lang} has no abstract types to count, so abstractness is 0 for every component here and distance from the main sequence is only instability turned around.`;
+});
+
 // Axes that no longer exist at this grain fall back to a preset or the first two metrics.
 watch([grain, numericColumns], () => {
   const have = new Set(numericColumns.value);
@@ -368,7 +392,8 @@ watch([grain, numericColumns], () => {
   const yOk = yAxis.value !== null && have.has(yAxis.value);
   if (radius.value !== null && !have.has(radius.value)) radius.value = null;
   if (xOk && yOk) return;
-  const fallback = presets.value.find((p) => p.id === (grain.value === "components" ? "dms" : "churn-health")) ?? presets.value[0];
+  const opening = grain.value === "components" && !implicitLanguage.value ? "dms" : "churn-health";
+  const fallback = presets.value.find((p) => p.id === opening) ?? presets.value.find((p) => !usesAbstractness(p)) ?? presets.value[0];
   if (fallback) { selectPreset(fallback); return; }
   const cols = numericColumns.value;
   xAxis.value = cols[0];
@@ -407,7 +432,7 @@ const selectedNames = ref<string[]>([]);
 watch(grain, () => { selectedNames.value = []; });
 
 function detailRoute(name: string): string {
-  return grain.value === "files" ? `/views/files/${name}` : `/views/components/${name}`;
+  return grain.value === "files" ? `/views/files/${name}` : componentPath(name);
 }
 
 function openRow(row: Row) {

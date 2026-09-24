@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-    atLine, fallbackName, groupByRule, held, kindLabel, notApplicable, shortLocation, summarise, verdictOf,
+    atLine, fallbackName, groupByRule, scopeToEcosystems, held, kindLabel, notApplicable, shortLocation, summarise, verdictOf,
     NOT_APPLICABLE, OK, VIOLATION, type RuleFinding,
 } from "./rules"
 
@@ -166,5 +166,21 @@ describe("shortLocation", () => {
 
     it("survives a path with no directories", () => {
         expect(shortLocation("go.mod", 3)).toBe("go.mod:3")
+    })
+})
+
+describe("scopeToEcosystems", () => {
+    const f = (rule: string, status: string) => ({ rule, status, from: "", to: "", kind: "", file: "", line: 0 })
+    it("moves an ecosystem rule that held in a codebase without that ecosystem to no opinion", () => {
+        const out = scopeToEcosystems([f("rules__go__internal_must_not_be_imported_from_outside", "ok")], ["src/Main.java", "pom.xml"])
+        expect(out[0].status).toBe("not_applicable")
+    })
+    it("keeps it where the ecosystem is present", () => {
+        const out = scopeToEcosystems([f("rules__go__internal_must_not_be_imported_from_outside", "ok")], ["gin.go", "go.mod"])
+        expect(out[0].status).toBe("ok")
+    })
+    it("never touches a violation or a rule with no ecosystem in its id", () => {
+        const out = scopeToEcosystems([f("rules__go__x", "violation"), f("rules__custom", "ok")], ["A.java"])
+        expect(out.map(x => x.status)).toEqual(["violation", "ok"])
     })
 })

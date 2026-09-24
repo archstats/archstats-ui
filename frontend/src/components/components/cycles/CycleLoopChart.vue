@@ -3,6 +3,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { useRouter } from "vue-router"
@@ -66,10 +67,6 @@ onBeforeUnmount(() => {
 })
 
 watch([() => props.nodes, () => props.edges, () => props.selectedEdge, version], () => renderChart())
-
-function componentPath(name: string): string {
-  return `/views/components/${name}`
-}
 
 function showTooltip(event: MouseEvent, html: string) {
   if (!tooltip) return

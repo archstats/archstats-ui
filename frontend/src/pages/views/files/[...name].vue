@@ -9,7 +9,7 @@
     fallback="/views/metrics?grain=files"
   >
     <template #actions>
-      <router-link v-if="file?.component" :to="`/views/components/${file.component}`" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
+      <router-link v-if="file?.component" :to="componentPath(file.component)" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
         <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>Component</span>
       </router-link>
     </template>
@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
@@ -49,7 +50,7 @@ const { data: file, loading } = useAsyncQuery<FileRow | null>(
 const crumbs = computed<DetailCrumb[]>(() => {
   const list: DetailCrumb[] = [{ label: "Files", to: "/views/metrics?grain=files" }]
   const component = file.value?.component
-  if (component) list.push({ label: String(component), to: `/views/components/${component}` })
+  if (component) list.push({ label: String(component), to: componentPath(component) })
   return list
 })
 
@@ -69,6 +70,9 @@ const { getJavaMetricsForFile } = useJavaMetrics()
 const { data: hasJava } = useAsyncQuery<boolean>(
   async () => {
     if (!filePath.value) return false
+    // A JavaScript file in a Java project got the tab, then said it held no
+    // Java classes. Only Java and Kotlin sources can.
+    if (!/\.(java|kt|kts)$/i.test(filePath.value)) return false
     const m = await getJavaMetricsForFile(filePath.value)
     return !!m && (m.classes > 0 || m.roles.length > 0 || m.rest.total > 0)
   },

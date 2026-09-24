@@ -3,12 +3,16 @@
        frame, label over a 22px tabular value, a level dot when the value is a
        health or hotspot score. Values stay neutral ink; only signed line
        counts may carry the green or red data ink. -->
-  <dl class="grid rounded-lg hairline" :style="{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }">
+  <!-- The value scales with the strip's own width. At 22px fixed, six tiles
+       in a narrow window cut "+492,520" to "+492,5…": a number that reads
+       as a different number. -->
+  <dl class="grid rounded-lg hairline" :style="{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))`, containerType: 'inline-size' }">
     <div v-for="(cell, i) in cells" :key="cell.label" class="flex min-w-0 flex-col gap-1 px-4 py-3" :class="{ 'hairline-l': i !== 0 }">
-      <dt class="truncate text-sm leading-4 text-neutral-500" :title="cell.title || cell.label">{{ cell.label }}</dt>
-      <dd class="flex items-baseline gap-2 truncate font-sans text-[22px] font-medium leading-7 tabular-nums" :class="cell.ink || 'text-neutral-900'">
+      <dt class="text-sm leading-4 text-neutral-500" style="overflow-wrap: anywhere" :title="cell.title || cell.label">{{ cell.label }}</dt>
+      <dd class="flex items-baseline gap-2 font-sans font-medium leading-7 tabular-nums" :class="cell.ink || 'text-neutral-900'"
+          :style="{ fontSize: `clamp(14px, ${(13 / cells.length).toFixed(2)}cqi, 22px)` }">
         <span v-if="cell.level" class="h-2 w-2 shrink-0 translate-y-[-3px] rounded-full" :class="levelDotClass(cell.level)"></span>
-        <span class="truncate">{{ cell.value }}</span>
+        <span class="whitespace-nowrap">{{ cell.value }}</span>
         <DeltaChip v-if="cell.delta" :delta="cell.delta" :direction="cell.direction ?? 'neutral'" :decimals="cell.decimals ?? 0"/>
       </dd>
     </div>

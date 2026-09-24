@@ -3,14 +3,18 @@
 // static source) and anything else that wants "who imports whom" can share
 // one query and one aggregation, tested without mounting a component.
 //
-// The engine records every import statement as a row in `snippets` whose
-// `snippet_type` ends in "import"; `file` is the importing file and `content`
-// is the name of the thing it imports (a file path, in this codebase's
-// convention). Several import statements between the same two files collapse
-// into one edge with a reference count.
-
+// The engine records every import statement as a row in `snippets`, but the
+// row's `content` is what the statement names -- a class, a package, a module
+// specifier -- and never a file path: 1 row in about 60,000 across four
+// snapshots. Built from those rows, "who imports whom" at file grain was a
+// file pointing at a component name, and the Files level of Connections drew
+// no dependencies at all. The engine resolves references to the file they
+// land in; that is what file grain reads now.
 export const FILE_IMPORT_QUERY = "SELECT file, content FROM snippets WHERE snippet_type LIKE '%import%'"
-
+export const FILE_DEPENDENCY_QUERY =
+  "SELECT from_file AS \"from\", to_file AS \"to\", count(*) AS \"references\" " +
+  "FROM unit_connections WHERE from_file IS NOT NULL AND to_file IS NOT NULL AND from_file != to_file " +
+  "GROUP BY from_file, to_file"
 export interface FileImportRow {
   file: string
   content: string
@@ -40,10 +44,19 @@ export function aggregateFileImportEdges(rows: FileImportRow[]): FileImportEdge[
   return Array.from(counts.values())
 }
 
-/** Runs the query through the caller's `query` function (normally `store.query`) and aggregates the result. */
-export async function queryFileImportEdges(query: (sql: string) => Promise<FileImportRow[]>): Promise<FileImportEdge[]> {
-  const rows = await query(FILE_IMPORT_QUERY)
-  return aggregateFileImportEdges(rows)
+/**
+ * File-to-file dependencies, resolved by the engine, with the number of
+ * unit references behind each. Empty for a snapshot older than the unit
+ * graph: there is no honest file-grain answer to give from raw import text.
+ */
+export async function queryFileImportEdges(
+  query: (sql: string) => Promise<any[]>,
+  hasView: (view: string) => boolean,
+): Promise<FileImportEdge[]> {
+  if (!hasView("unit_connections")) return []
+  const rows = await query(FILE_DEPENDENCY_QUERY) as Array<{ from: string; to: string; references: number }>
+  return rows.filter(r => r.from && r.to && r.from !== r.to)
+    .map(r => ({ from: r.from, to: r.to, references: Number(r.references) || 0 }))
 }
 
 /** Degree (in + out) of every file that appears in at least one edge; used for top-N filtering and hub labeling. */

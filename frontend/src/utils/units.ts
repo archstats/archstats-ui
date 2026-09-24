@@ -43,12 +43,15 @@ export const KIND_FUNCTION = "function"
 export async function loadUnits(query: Query, hasView: (view: string) => boolean): Promise<Map<string, RawClass>> {
     if (!hasView("units")) return loadRawClasses(query, hasView)
 
-    const [units, markers, javaImports] = await Promise.all([
+    const [units, markers, rawImports, uses] = await Promise.all([
         query("SELECT id, kind, name, component, owner, file FROM units") as Promise<UnitRow[]>,
         hasView("unit_markers")
             ? query("SELECT unit, source, key, value FROM unit_markers") as Promise<MarkerRow[]>
             : Promise.resolve([] as MarkerRow[]),
-        loadJavaImports(query, hasView),
+        loadRawImports(query, hasView),
+        hasView("unit_uses")
+            ? query("SELECT unit, module FROM unit_uses") as Promise<Array<{ unit: string; module: string }>>
+            : Promise.resolve(null),
     ])
     if (units.length === 0) return loadRawClasses(query, hasView)
 
@@ -74,6 +77,21 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
         memberCount.set(u.owner, (memberCount.get(u.owner) ?? 0) + 1)
     }
 
+    // The modules each top-level unit uses, its members' included: a Go
+    // store's methods are where it calls database/sql.
+    const usedModules = new Map<string, Set<string>>()
+    if (uses) {
+        const ownerOf = new Map(units.map((u) => [u.id, u.owner]))
+        for (const r of uses) {
+            if (!r.unit || !r.module) continue
+            let top = r.unit
+            for (let hops = 0; ownerOf.get(top) && hops < 8; hops++) top = ownerOf.get(top)!
+            let set = usedModules.get(top)
+            if (!set) { set = new Set(); usedModules.set(top, set) }
+            set.add(r.module)
+        }
+    }
+
     const out = new Map<string, RawClass>()
     for (const u of units) {
         // A method is reached through the type it belongs to; listing it
@@ -93,12 +111,14 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
                 name: u.name || shortId(u.id),
                 annotations: marks,
                 supertypes: supers,
-                // Raw import strings, which only Java keeps unresolved. Every
-                // other pack resolves an import to the component it names, so
-                // the framework profiles that detect by import prefix only
-                // fire on Java — everywhere else detection falls through to
-                // the structural profile, which reads what the code does.
-                imports: javaImports.get(file) ?? new Set<string>(),
+                // What the file actually asked for, before the component
+                // linker rewrote it. Every pack records these now, which is
+                // what lets the framework profiles detect by import prefix
+                // outside Java: `@nestjs/common`, `django`, `Illuminate\\`
+                // say what a codebase is built on far more reliably than any
+                // one decorator.
+                imports: rawImports.get(file) ?? new Set<string>(),
+                ...(uses ? { usedImports: importsUsed(rawImports.get(file), usedModules.get(u.id)) } : {}),
                 methods: new Set<string>(),
                 methodCount: memberCount.get(u.id) ?? 0,
                 fields: 0,
@@ -110,20 +130,51 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
     return out
 }
 
+/**
+ * The file's imports that name a module the unit uses. An import may be the
+ * module itself (`database/sql`, `@nestjs/common`) or a name inside it
+ * (`org.springframework.stereotype.Service` for the module
+ * `org.springframework.stereotype`), and a wildcard import names the module
+ * as its prefix.
+ */
+export function importsUsed(imports: ReadonlySet<string> | undefined, modules: ReadonlySet<string> | undefined): Set<string> {
+    const out = new Set<string>()
+    if (!imports || !modules || modules.size === 0) return out
+    for (const imp of imports) {
+        const bare = imp.replace(/\.\*$/, "")
+        for (const m of modules) {
+            // "." for Java and Kotlin, "/" for Go and TypeScript, "\\" for PHP.
+            if (bare === m || [".", "/", "\\"].some((sep) => bare.startsWith(m + sep) || m.startsWith(bare + sep))) {
+                out.add(imp)
+                break
+            }
+        }
+    }
+    return out
+}
+
 /** The last segment of an id, for a unit the engine gave no name. */
 function shortId(id: string): string {
     const afterHash = id.split("#").pop() ?? id
     return afterHash.split(".").pop() || afterHash
 }
 
-// Java keeps its imports as their own snippet type, unresolved, because the
-// framework profiles detect by package prefix: `org.springframework.web` says
-// what a codebase is built on far more reliably than any one annotation.
-async function loadJavaImports(query: Query, hasView: (view: string) => boolean): Promise<Map<string, Set<string>>> {
+// The import as the source wrote it.
+//
+// The component linker rewrites imports in place to the component they
+// resolve to, which is what makes a component graph and what destroys the
+// evidence of what a file actually asked for. Every pack now records the
+// original under its own name so it survives, which is what lets framework
+// detection work outside Java: `@nestjs/common`, `django` and `Illuminate\`
+// say what a codebase is built on far more reliably than any one decorator.
+//
+// Java's own snippet type is read as well, so a snapshot taken before the
+// neutral name existed still detects Spring.
+async function loadRawImports(query: Query, hasView: (view: string) => boolean): Promise<Map<string, Set<string>>> {
     const out = new Map<string, Set<string>>()
     if (!hasView("snippets")) return out
     const rows = await query(
-        "SELECT DISTINCT file, content FROM snippets WHERE snippet_type = 'java__import__declaration'",
+        "SELECT DISTINCT file, content FROM snippets WHERE snippet_type IN ('modularity__import__raw', 'java__import__declaration')",
     ) as Array<{ file: string; content: string | null }>
     for (const r of rows) {
         const content = r.content?.trim()

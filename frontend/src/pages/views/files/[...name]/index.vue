@@ -6,22 +6,36 @@
     <div v-else class="mx-auto w-full max-w-[1040px] px-6 pb-10 pt-5">
       <!-- Stat strip: one hairline frame, six readings. -->
       <StatStrip :cells="strip"/>
+      <p v-if="nature" class="mt-3 max-w-[70ch] text-base text-neutral-600">
+        <span class="font-medium text-neutral-900">{{ nature.title }}</span> {{ nature.text }}
+      </p>
 
-      <!-- Metrics: every numeric column, grouped by family. -->
+      <!-- Metrics: the named readings this file has, grouped by family. Zeros
+           and readings without a definition wait behind the disclosure. -->
       <section class="mt-5 pt-5 hairline-t">
         <h2 class="ui-section-title">Metrics</h2>
-        <EmptyState v-if="metricGroups.length === 0" title="No metrics recorded" text="The engine stored no numeric columns for this file."/>
-        <div v-else class="mt-3 grid gap-x-8 gap-y-5 md:grid-cols-2">
-          <div v-for="group in metricGroups" :key="group.id">
+        <EmptyState v-if="metricGroups.shown.length === 0 && metricGroups.rest.length === 0" title="No metrics recorded" text="The engine stored no numeric columns for this file."/>
+        <div v-else-if="metricGroups.shown.length" class="mt-3 grid gap-x-8 gap-y-5 md:grid-cols-2">
+          <div v-for="group in metricGroups.shown" :key="group.id">
             <h3 class="ui-label mb-2">{{ group.label }}</h3>
             <dl class="ui-kv">
               <template v-for="m in group.metrics" :key="m.key">
-                <dt :title="m.key">{{ m.label }}</dt>
+                <dt :title="m.definition || m.key">{{ m.label }}</dt>
                 <dd>{{ m.value }}</dd>
               </template>
             </dl>
           </div>
         </div>
+        <button v-if="metricGroups.rest.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mt-3" :aria-expanded="showRest" @click="showRest = !showRest">
+          <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform" :class="{ 'rotate-90': showRest }"/>
+          <span>{{ showRest ? "Hide" : "Show" }} {{ metricGroups.rest.length }} more: zero or undocumented</span>
+        </button>
+        <dl v-if="showRest" class="ui-kv mt-2 max-w-[520px]">
+          <template v-for="m in metricGroups.rest" :key="m.key">
+            <dt :title="m.definition || m.key" :class="{ 'font-mono text-sm': !m.definition }">{{ m.label }}</dt>
+            <dd>{{ m.value }}</dd>
+          </template>
+        </dl>
       </section>
 
       <!-- Siblings: the other files in the same component. -->
@@ -67,12 +81,13 @@
 
 <script setup lang="ts">
 import StatStrip from "~/components/detail/StatStrip.vue"
-import { computed } from "vue"
+import { computed, ref } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
 import { useFileRoute } from "~/composables/useFileRoute"
 import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth, formatHotspot, type HealthLevel } from "~/composables/useHealth"
-import { formatNumber } from "~/utils/format"
+import { formatDays, formatNumber } from "~/utils/format"
+import Icon from "~/components/ui/common/Icon.vue"
 import { sqlLiteral } from "~/utils/sql"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
 import LoadingState from "~/components/ui/common/LoadingState.vue"
@@ -110,7 +125,7 @@ const strip = computed<{ label: string; value: string; level?: HealthLevel }[]>(
     { label: "Hotspot", value: formatHotspot(hotspot), level: hotspotLevel(hotspot) },
     { label: "Commits", value: formatNumber(num("git__commits__total")) },
     { label: "Authors", value: formatNumber(num("git__authors__total")) },
-    { label: "Age", value: age === null ? "—" : `${formatNumber(age)} d` },
+    { label: "Age", value: formatDays(age) },
   ]
 })
 
@@ -131,21 +146,45 @@ function isNumericValue(v: unknown): boolean {
   return typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))
 }
 
+// A reading shows when it has a definition to name it and a value to say.
+// Every column used to show: seventeen Java and Spring zeros on a JavaScript
+// file, and ids with no definition spelled out as "Modularity → Import → Raw".
+const showRest = ref(false)
+interface Reading { key: string; label: string; value: string; definition: string }
 const metricGroups = computed(() => {
   const row = file.value
-  if (!row) return []
-  const byFamily = new Map<string, { key: string; label: string; value: string }[]>()
+  if (!row) return { shown: [] as Array<{ id: string; label: string; metrics: Reading[] }>, rest: [] as Reading[] }
+  const byFamily = new Map<string, Reading[]>()
+  const rest: Reading[] = []
   for (const [key, raw] of Object.entries(row)) {
     if (HIDDEN_COLUMNS.has(key) || !isNumericValue(raw)) continue
+    const def = store.definitions.get(key)
+    const reading = { key, label: def?.name || key, value: formatNumber(raw as any), definition: def?.short ?? "" }
+    const n = Number(raw)
+    if (!def?.name || raw === null || raw === "" || n === 0) { rest.push(reading); continue }
     const prefix = key.split("__")[0]
     const family = FAMILIES.some(f => f.id === prefix) ? prefix : "other"
     const list = byFamily.get(family) ?? []
-    list.push({ key, label: store.statNiceName(key) || key, value: formatNumber(raw as any) })
+    list.push(reading)
     byFamily.set(family, list)
   }
-  return FAMILIES
-    .filter(f => byFamily.has(f.id))
-    .map(f => ({ ...f, metrics: byFamily.get(f.id)!.sort((a, b) => a.label.localeCompare(b.label)) }))
+  return {
+    shown: FAMILIES.filter(f => byFamily.has(f.id)).map(f => ({ ...f, metrics: byFamily.get(f.id)!.sort((a, b) => a.label.localeCompare(b.label)) })),
+    rest: rest.sort((a, b) => a.label.localeCompare(b.label)),
+  }
+})
+
+// What kind of file this is, when that changes how to read it. The engine
+// marks third-party and generated files; text that is not code simply has no
+// health reading. Older snapshots mark nothing and say nothing here.
+const nature = computed(() => {
+  if (!file.value) return null
+  if (num("complexity__files__third_party") === 1) return { title: "Someone else's code.", text: "A vendored package, minified bundle or known library carried in the repository: counted in files and lines, never scored for health, and left out of hotspots." }
+  if (num("complexity__files__generated") === 1) return { title: "Written by a tool.", text: "Its header says it was generated, so it is counted but not scored: nobody here wrote it, and nobody should refactor it by hand." }
+  if (num("codesmells__code_health") === null && (num("complexity__lines") ?? 0) > 0 && store.snapshotOutdated === false) {
+    return { title: "Not code.", text: "Translations, stylesheets, data and documents get no health reading; one reads how code is shaped." }
+  }
+  return null
 })
 
 // Siblings: the same component, largest first.

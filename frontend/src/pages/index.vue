@@ -77,7 +77,8 @@ const families = computed(() => [
       { name: "Authors", path: "/views/git/authors", image: "/img/views/git-authors.png", description: "Contributors, their hotspots and timelines." },
     ],
   },
-  ...(isJavaProject.value ? [{
+  // Every language declares units now, not only Java.
+  ...(store.hasView("units") || isJavaProject.value ? [{
     title: "Code",
     views: [
       { name: "Units", path: "/views/units", image: "/img/views/java-classes.png", description: "Every named thing in the codebase — types, functions, modules — with role lanes, seed-and-expand and a path tracer." },

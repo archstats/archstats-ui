@@ -1,6 +1,13 @@
 <template>
   <div v-if="!bundle" class="flex flex-col gap-2">
-    <template v-if="laterCount">
+    <!-- Before the components load there is nothing to ask yet, which is not
+         the same as having sorted everything: Sylius said "Everything is
+         sorted" beside a coverage of 0/0 while it read 1,378 components. -->
+    <template v-if="loading">
+      <span class="text-base font-medium text-neutral-900">Reading the components…</span>
+      <p class="text-sm leading-4 text-neutral-500">The first question comes once every component is measured.</p>
+    </template>
+    <template v-else-if="laterCount">
       <span class="text-base font-medium text-neutral-900">Everything else is placed</span>
       <p class="text-sm leading-4 text-neutral-500">{{ laterCount }} {{ laterCount === 1 ? 'is' : 'are' }} still set aside. Nothing new has landed since, so they are waiting rather than coming round again.</p>
       <button type="button" class="ui-btn ui-btn-sm self-start" @click="emit('unpark-later')">
@@ -158,6 +165,8 @@ const props = defineProps<{
   others: Guess[]
   /** What this mode is for, said once, above the question it belongs to. */
   hint?: string
+  /** The components are still being read, so there is nothing to ask yet. */
+  loading?: boolean
 }>();
 
 /**

@@ -45,7 +45,7 @@
       <span class="ui-label">Components <span class="font-mono text-neutral-400">{{ cell.components.size }}</span></span>
       <ul class="flex max-h-56 flex-col overflow-y-auto">
         <li v-for="c in Array.from(cell.components).sort()" :key="c">
-          <router-link :to="`/views/components/${c}`" class="block truncate py-0.5 font-mono text-sm text-neutral-700 hover:text-accent-700" :title="c">{{ c }}</router-link>
+          <router-link :to="componentPath(c)" class="block truncate py-0.5 font-mono text-sm text-neutral-700 hover:text-accent-700" :title="c">{{ c }}</router-link>
         </li>
       </ul>
     </div>
@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes";
 import { computed } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import StatStrip from "~/components/detail/StatStrip.vue";

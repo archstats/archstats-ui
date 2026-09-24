@@ -9,7 +9,7 @@
       <template v-if="mode === 'path'">
         <span class="ui-label">Segments</span>
         <div class="ui-segmented" role="group" aria-label="Name segments to group by" :title="segmentsHint">
-          <button v-for="d in [1, 2, 3]" :key="d" type="button" :aria-pressed="depth === d" @click="depth = d">{{ d }}</button>
+          <button v-for="d in DEPTHS" :key="d" type="button" :aria-pressed="depth === d" @click="depth = d">{{ d }}</button>
         </div>
         <span v-if="segmentsExample" class="ui-toolbar-meta truncate">{{ segmentsExample }}</span>
       </template>
@@ -139,7 +139,7 @@
             <p class="ui-label">{{ selectedNeighbour?.direction === "out" ? "This depends on" : selectedNeighbour?.direction === "in" ? "Depends on this" : "Both ways" }}</p>
             <p class="mt-1 break-all font-mono text-sm font-medium text-neutral-900">{{ selectedName }}</p>
             <div class="mt-3 flex gap-2">
-              <router-link :to="`/views/components/${selectedName}`" class="ui-btn ui-btn-sm">
+              <router-link :to="componentPath(selectedName)" class="ui-btn ui-btn-sm">
                 <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>Open</span>
               </router-link>
               <button type="button" class="ui-btn ui-btn-sm" @click="walkTo(selectedName)">
@@ -147,7 +147,7 @@
               </button>
               <router-link
                 v-if="selectedNeighbour?.direction === 'both'"
-                :to="`/views/components/${pageName}/cycles?with=${encodeURIComponent(selectedName)}`"
+                :to="`${componentPath(pageName)}/cycles?with=${encodeURIComponent(selectedName)}`"
                 class="ui-btn ui-btn-sm"
                 title="These two import each other — show the cycles they share"
               >
@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -261,6 +262,7 @@ import ModalTrigger from "~/components/ui/modals/ModalTrigger.vue"
 import SelectComponentModal from "~/components/components/modals/SelectComponentModal.vue"
 import GroupActionBar from "~/components/groups/GroupActionBar.vue"
 import CouplingFlow from "~/components/component/CouplingFlow.vue"
+import { hopsOf } from "~/utils/hops"
 
 type Relationship = "depends on" | "is depended on by"
 
@@ -318,14 +320,18 @@ const { data, loading } = useAsyncQuery(
     const lit = sqlLiteral(current.value)
     const direct = await store.query<DirectRow>(`
       select "from", "to", sum(reference_count) as "references"
-      from component_connections_direct
+      from ${store.runtimeComponentEdges}
       where "from" = ${lit} or "to" = ${lit}
       group by 1, 2`)
-    const indirect = hasIndirect.value
-      ? await store.query<IndirectRow>(`
-          select "from", "to", shortest_path_length - 1 as hops
+    // Hops from the path itself: older engines stored the components on the
+    // path, current ones the steps, and subtracting one here was only right
+    // for the first.
+    const indirect: IndirectRow[] = hasIndirect.value
+      ? (await store.query<{ from: string; to: string; shortest_path: string | null; shortest_path_length: number }>(`
+          select "from", "to", shortest_path, shortest_path_length
           from component_connections_indirect
-          where "from" = ${lit} or "to" = ${lit}`)
+          where "from" = ${lit} or "to" = ${lit}`))
+          .map(r => ({ from: r.from, to: r.to, hops: hopsOf(r.shortest_path, r.shortest_path_length) }))
       : []
     const matrix = store.hasView("component_matrix")
       ? await store.query<MatrixRow>(`select "from", "to", git_co_changes from component_matrix where "from" = ${lit} or "to" = ${lit}`)
@@ -399,7 +405,27 @@ const modes = computed(() => [
   { value: "groups" as const, label: "Groups", available: hasUserGroups.value },
 ])
 const mode = ref<"path" | "groups">("path")
-const depth = ref(2)
+// The depth opens where this component's neighbours split into a readable
+// handful: not one band holding everything (Broadleaf's 121 dependents all
+// read "org.broadleafcommerce" at a fixed 2), not a list as long as the
+// neighbours themselves. A depth the architect picks stays picked.
+const DEPTHS = [1, 2, 3, 4]
+const pickedDepth = ref<number | null>(null)
+watch(pageName, () => { pickedDepth.value = null })
+const autoDepth = computed(() => {
+  const all = [...dependents.value, ...dependencies.value]
+  if (all.length < 6) return 2
+  let fallback = 2
+  for (const d of DEPTHS) {
+    const groups = groupByPath(all, separator.value, d, sharedPrefix.value)
+    const largest = Math.max(0, ...groups.map(g => g.members.length))
+    if (groups.length <= 15) fallback = d
+    if (groups.length >= 3 && groups.length <= 15 && largest <= all.length * 0.6) return d
+    if (groups.length > 15) break
+  }
+  return fallback
+})
+const depth = computed({ get: () => pickedDepth.value ?? autoDepth.value, set: (d: number) => { pickedDepth.value = d } })
 watch(hasUserGroups, has => { if (!has && mode.value === "groups") mode.value = "path" })
 
 function rollUp(list: Neighbour[]): NeighbourGroup[] {
@@ -562,7 +588,7 @@ const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>
 
     const files = await store.query<{ from: string; to: string; file: string; references: number }>(`
       SELECT "from", "to", file, SUM(reference_count) AS "references"
-      FROM component_connections_direct
+      FROM ${store.runtimeComponentEdges}
       WHERE ("from" = ${me} AND "to" = ${them}) OR ("from" = ${them} AND "to" = ${me})
       GROUP BY "from", "to", file
       ORDER BY "references" DESC LIMIT 40`)

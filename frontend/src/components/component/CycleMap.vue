@@ -225,22 +225,36 @@ const laidOut = computed<Drawn[]>(() => props.edges.flatMap(edge => {
   }]
 }))
 
-/** Where a cut's number sits: along its own line, clear of the centre. */
-const captioned = computed(() =>
-  laidOut.value
+/**
+ * Where a cut's number sits: along its own line, clear of the centre, and
+ * clear of every number placed before it. Two cuts leaving the centre side by
+ * side put their pills at the same point and read as one number ("15 31").
+ * Each slides along its own line to the first spot that is free; the biggest
+ * cuts are placed first and keep the natural spot.
+ */
+const PILL_H = 16
+const SPOTS = [0.62, 0.48, 0.76, 0.36, 0.86, 0.28]
+const captioned = computed(() => {
+  const placed: Array<{ x: number; y: number; w: number }> = []
+  const clashes = (x: number, y: number, w: number) =>
+    placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 2 && Math.abs(p.y - y) < PILL_H + 2)
+  return laidOut.value
     .filter(e => e.cut !== null && e.breaks !== null)
+    .sort((x, y) => (y.breaks ?? 0) - (x.breaks ?? 0))
     .map(e => {
       const a = positionOf.value.get(e.from)!
       const b = positionOf.value.get(e.to)!
-      const t = 0.62
-      const text = String(e.breaks)
-      return {
-        ...e,
-        lx: a.x + (b.x - a.x) * t,
-        ly: a.y + (b.y - a.y) * t,
-        w: Math.max(18, text.length * 7 + 10),
+      const w = Math.max(18, String(e.breaks).length * 7 + 10)
+      const at = (t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
+      let spot = at(SPOTS[0])
+      for (const t of SPOTS) {
+        const p = at(t)
+        if (!clashes(p.x, p.y, w)) { spot = p; break }
       }
-    }))
+      placed.push({ x: spot.x, y: spot.y, w })
+      return { ...e, lx: spot.x, ly: spot.y, w }
+    })
+})
 
 const caption = computed(() =>
   `${props.centreLabel} at the centre, ringed by the ${props.nodes.length} components its cycles run through.`)

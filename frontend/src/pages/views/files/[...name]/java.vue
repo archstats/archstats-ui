@@ -62,7 +62,7 @@
                 </td>
                 <td><span v-if="n.role" class="ui-tag">{{ n.role }}</span><span v-else class="text-neutral-400">—</span></td>
                 <td class="max-w-0">
-                  <router-link v-if="n.component" :to="`/views/components/${n.component}`" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</router-link>
+                  <router-link v-if="n.component" :to="componentPath(n.component)" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</router-link>
                   <span v-else class="text-neutral-400">—</span>
                 </td>
                 <td class="is-num text-right">{{ formatNumber(n.references) }}</td>
@@ -99,7 +99,7 @@
                 </td>
                 <td><span v-if="n.role" class="ui-tag">{{ n.role }}</span><span v-else class="text-neutral-400">—</span></td>
                 <td class="max-w-0">
-                  <router-link v-if="n.component" :to="`/views/components/${n.component}`" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</router-link>
+                  <router-link v-if="n.component" :to="componentPath(n.component)" class="block truncate font-mono text-sm text-neutral-800 hover:text-neutral-900 hover:underline" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</router-link>
                   <span v-else class="text-neutral-400">—</span>
                 </td>
                 <td class="is-num text-right">{{ formatNumber(n.references) }}</td>
@@ -149,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 import { computed } from "vue"
 import { useRouter } from "vue-router"
 import { useDataStore } from "~/stores/data"

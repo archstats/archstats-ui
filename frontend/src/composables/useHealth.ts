@@ -13,6 +13,10 @@ export const HOTSPOT_THRESHOLDS = { warn: 40, bad: 70 } as const; // < warn good
 export function healthLevel(score: number | null | undefined): HealthLevel {
     if (score === null || score === undefined || Number.isNaN(Number(score))) return "none";
     const s = Number(score);
+    // The scale's floor is 1. Snapshots taken before the engine stored an
+    // unscored file (XML, text, vendored code) as NULL stored it as 0, and
+    // it read as the unhealthiest file in the codebase.
+    if (s < 1) return "none";
     if (s >= HEALTH_THRESHOLDS.good) return "good";
     if (s >= HEALTH_THRESHOLDS.warn) return "warn";
     return "bad";
@@ -67,7 +71,7 @@ export function levelColor(level: HealthLevel): string {
 }
 
 export function formatHealth(score: number | null | undefined): string {
-    if (score === null || score === undefined || Number.isNaN(Number(score))) return "—";
+    if (score === null || score === undefined || Number.isNaN(Number(score)) || Number(score) < 1) return "—";
     return Number(score).toFixed(1);
 }
 

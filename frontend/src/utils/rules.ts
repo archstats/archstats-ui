@@ -190,3 +190,44 @@ export function summarise(groups: RuleGroup[]): string {
     const r = groups.length === 1 ? "1 rule" : `${groups.length} rules`
     return `${v} across ${r}`
 }
+
+/**
+ * The ecosystem a rule is written for, read from its id
+ * (`rules__<ecosystem>__...`), and the file extensions that show a codebase
+ * has any of it.
+ */
+const ECOSYSTEM_FILES: Record<string, string[]> = {
+    go: [".go"],
+    dotnet: [".cs", ".fs", ".vb"],
+    symfony: [".php"],
+    php: [".php"],
+    java: [".java", ".kt"],
+    python: [".py"],
+    node: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+}
+
+export function ecosystemOf(ruleId: string): string | null {
+    const m = /^rules__([a-z0-9]+)__/.exec(ruleId)
+    return m && ECOSYSTEM_FILES[m[1]] ? m[1] : null
+}
+
+/**
+ * Snapshots scanned before rules were scoped by ecosystem report every rule
+ * as kept wherever it found nothing -- the Go internal/ rule "held" on Java,
+ * C#, PHP, Python and TypeScript codebases. A rule for an ecosystem the
+ * codebase has no files of was never checked, so it moves to "no opinion".
+ * Violations are left alone: a rule that fired found something real.
+ */
+export function scopeToEcosystems(findings: RuleFinding[], filePaths: Iterable<string>): RuleFinding[] {
+    const exts = new Set<string>()
+    for (const p of filePaths) {
+        const dot = p.lastIndexOf(".")
+        if (dot > p.lastIndexOf("/")) exts.add(p.slice(dot).toLowerCase())
+    }
+    return findings.map(f => {
+        if (f.status !== OK) return f
+        const eco = ecosystemOf(f.rule)
+        if (!eco) return f
+        return ECOSYSTEM_FILES[eco].some(e => exts.has(e)) ? f : { ...f, status: NOT_APPLICABLE }
+    })
+}

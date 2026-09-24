@@ -48,7 +48,9 @@
               <router-link
                   :to="item.to"
                   :tabindex="hasData ? undefined : -1"
-                  class="flex h-[26px] items-center gap-2 rounded px-2 text-base text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                  class="flex h-[26px] items-center gap-2 rounded px-2 text-base transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                  :class="group.muted ? 'text-neutral-400' : 'text-neutral-800'"
+                  :title="group.muted ? group.mutedWhy : undefined"
                   active-class="is-active bg-accent-50 font-medium text-neutral-900 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]"
               >
                 <component :is="item.icon" :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
@@ -134,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network,
@@ -243,11 +246,23 @@ watch(() => groupsStore.lastSaved, (saved) => {
   savedTimer = setTimeout(() => { savedNote.value = null; }, 4000);
 });
 
+// A snapshot of a folder that is not a git checkout has no commits. The git
+// views say so when opened; the sidebar says so before anyone has to.
+const { data: hasGitHistory } = useAsyncQuery<boolean>(
+  async () => {
+    if (!dataStore.hasData || !dataStore.hasView("git_commits")) return false
+    const rows = await dataStore.query<{ one: number }>("select 1 as one from git_commits limit 1")
+    return rows.length > 0
+  },
+  [() => dataStore.datasetKey],
+  { initial: true },
+)
+
 const groups = computed(() => {
   const list = [
     { title: "Components", items: componentViews },
-    { title: "Git", items: gitViews },
-  ];
+    { title: "Git", items: gitViews, muted: !hasGitHistory.value, mutedWhy: "No git history in this snapshot: scan a git checkout to see authors and activity" },
+  ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
   if (hasUnits.value) list.push({ title: "Code", items: codeViews });
   if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
   return list;

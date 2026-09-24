@@ -33,6 +33,26 @@ export function useDimensionStudio() {
   const loading = ref(false);
   let loadedFor: string | null = null;
 
+  /**
+   * Lines of the project's own code per component. "The biggest thing still
+   * unsorted" was measured with vendored files in, so Broadleaf's first
+   * question was about a folder of admin-theme JavaScript. Snapshots that
+   * mark third-party and generated files let those drop out; older ones fall
+   * back to every line.
+   */
+  async function ownLines(): Promise<Map<string, number>> {
+    try {
+      const own = await store.query<{ name: string; lines: number | null }>(
+        "select component as name, sum(complexity__lines) as lines from files where component is not null and coalesce(complexity__files__third_party, 0) = 0 and coalesce(complexity__files__generated, 0) = 0 group by component");
+      const all = await store.query<{ name: string }>("select name from components");
+      const m = new Map(own.map(r => [r.name, r.lines ?? 0]));
+      return new Map(all.map(r => [r.name, m.get(r.name) ?? 0]));
+    } catch {
+      const rows = await store.query<{ name: string; lines: number | null }>("select name, complexity__lines as lines from components");
+      return new Map(rows.map(r => [r.name, r.lines ?? 0]));
+    }
+  }
+
   async function load() {
     const key = store.datasetKey ?? "";
     if (loadedFor === key && input.value) return;
@@ -40,9 +60,7 @@ export function useDimensionStudio() {
     try {
       const src = await suggest.load();
       input.value = buildSuggestInput(src, "component");
-      lines.value = new Map(
-        (await store.query<{ name: string; lines: number | null }>("select name, complexity__lines as lines from components")).map(r => [r.name, r.lines ?? 0]),
-      );
+      lines.value = await ownLines();
       rawEdges.value = normalizeEdges("static", directedReferenceEdges(src.componentRefs.map(e => ({ from: e.from, to: e.to, references: e.references }))));
       loadedFor = key;
     } finally {

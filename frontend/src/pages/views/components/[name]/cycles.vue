@@ -52,7 +52,7 @@
         <div v-if="withComponent" class="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 hairline">
           <span class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="withComponent">{{ short(withComponent) }}</span>
           <span class="shrink-0 text-sm text-neutral-500">shares {{ formatNumber(selected.length) }} of {{ formatNumber(mine.length) }} cycles</span>
-          <router-link :to="`/views/components/${withComponent}`" class="ui-btn ui-btn-sm ml-auto shrink-0">
+          <router-link :to="componentPath(withComponent)" class="ui-btn ui-btn-sm ml-auto shrink-0">
             <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>Open</span>
           </router-link>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="setWith(null)">
@@ -215,6 +215,7 @@
 </template>
 
 <script setup lang="ts">
+import { componentPath } from "~/utils/routes"
 // A component's cycles, drawn rather than listed.
 //
 // Every cycle leaves this component and returns to it, so the map puts it in
@@ -467,7 +468,7 @@ const { data: cutDetail, loading: cutFilesLoading } = useAsyncQuery<CutDetail>(
 
     const files = await store.query<{ file: string; references: number }>(`
       SELECT file, SUM(reference_count) AS "references"
-      FROM component_connections_direct
+      FROM ${store.runtimeComponentEdges}
       WHERE "from" = ${sqlLiteral(cut.from)} AND "to" = ${sqlLiteral(cut.to)}
       GROUP BY file ORDER BY "references" DESC LIMIT 40`)
     if (files.length === 0 || !store.hasView("snippets")) {
@@ -566,10 +567,12 @@ const calibration = computed(() => {
   if (total < 10) return ""
   const ours = counts.get(name.value) ?? 0
   if (ours <= 0) return ""
-  let above = 0
-  for (const n of counts.values()) if (n > ours) above++
-  if (above === 0) return " — the most tangled component in this snapshot"
-  const percentile = Math.round(((total - above) / total) * 100)
+  let above = 0, atLeast = 0
+  for (const n of counts.values()) { if (n > ours) above++; if (n >= ours) atLeast++ }
+  if (above === 0) return atLeast > 1 ? ` — tied for the most tangled component in this snapshot` : " — the most tangled component in this snapshot"
+  // Strictly less tangled, components in no cycle included; never "100%",
+  // which would count this component against itself.
+  const percentile = Math.min(99, Math.floor(((total - atLeast) / total) * 100))
   return percentile >= 50 ? ` — more tangled than ${percentile}% of this codebase` : ""
 })
 
@@ -593,7 +596,11 @@ const planLede = computed(() => {
     taken++
     if (covered >= total * 0.8) break
   }
-  return `removing ${formatNumber(taken)} ${taken === 1 ? "import" : "imports"} destroys ${formatNumber(covered)} of the ${formatNumber(total)}`
+  // The head of the plan, said as the head: "removing 3 imports destroys 53 of
+  // the 66" beside "those break every cycle listed" read as two answers.
+  const all = plan.value.length
+  if (taken >= all) return `${formatNumber(all)} ${all === 1 ? "import breaks" : "imports break"} all ${formatNumber(total)}`
+  return `the first ${formatNumber(taken)} break ${formatNumber(covered)} of the ${formatNumber(total)}; all ${formatNumber(all)} break every one`
 })
 
 function basename(path: string): string {

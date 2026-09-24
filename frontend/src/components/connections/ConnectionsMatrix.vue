@@ -1,39 +1,41 @@
 <template>
   <div ref="scroller" class="h-full w-full overflow-auto bg-surface" @mouseleave="hover(null, null)">
-    <table class="matrix border-separate border-spacing-0 font-mono text-xs" :style="{ '--cell': CELL + 'px', '--head': HEAD_H + 'px' }">
-      <thead>
+    <!-- Hover is one delegated listener that toggles classes on the row and
+         column it touches. Bound per cell and kept in reactive state, every
+         mouse-enter re-rendered the whole grid: 40,000 cells at the cap, and
+         the pointer crosses one per 22 pixels. -->
+    <table ref="table" class="matrix border-separate border-spacing-0 font-mono text-xs" :style="{ '--cell': CELL + 'px', '--head': HEAD_H + 'px' }">
+      <thead @mouseover="onOver">
         <tr>
           <th class="corner sticky left-0 top-0 z-30 bg-surface hairline-b hairline-r" :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: HEAD_H + 'px' }">
-            <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-400">{{ directed ? 'row uses column' : 'coupled pairs' }}</span>
+            <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">{{ directed ? 'row uses column' : 'coupled pairs' }}</span>
           </th>
           <th
-            v-for="col in ordered"
+            v-for="col in orderedCols"
             :key="col.id"
             class="col sticky top-0 z-20 cursor-pointer bg-surface hairline-b"
-            :class="headClass(col.id, hoverCol)"
+            :class="headClass(col.id)"
             :style="{ width: CELL + 'px', minWidth: CELL + 'px', height: HEAD_H + 'px' }"
             :title="col.label"
             @click="select(col.id, $event)"
             @dblclick="emit('activate', col.id)"
             @contextmenu.prevent="emit('context', { id: col.id, x: $event.clientX, y: $event.clientY })"
-            @mouseenter="hover(null, col.id)"
           >
             <span class="col-label">{{ short(col.label) }}</span>
             <span class="stripe" :style="{ backgroundColor: col.color ?? 'transparent' }"></span>
           </th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="row in ordered" :key="row.id" :data-row="row.id" :class="{ 'is-hover': hoverRow === row.id }">
+      <tbody @mouseover="onOver">
+        <tr v-for="row in orderedRows" :key="row.id" :data-row="row.id">
           <th
             class="row sticky left-0 z-10 cursor-pointer bg-surface hairline-r"
-            :class="headClass(row.id, hoverRow)"
+            :class="headClass(row.id)"
             :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: CELL + 'px' }"
             :title="row.label"
             @click="select(row.id, $event)"
             @dblclick="emit('activate', row.id)"
             @contextmenu.prevent="emit('context', { id: row.id, x: $event.clientX, y: $event.clientY })"
-            @mouseenter="hover(row.id, null)"
           >
             <span class="flex h-full items-center gap-1.5 px-2">
               <span
@@ -49,14 +51,13 @@
             </span>
           </th>
           <td
-            v-for="col in ordered"
+            v-for="col in orderedCols"
             :key="col.id"
             class="cell"
-            :class="{ 'is-self': row.id === col.id, 'is-hover': hoverCol === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)) }"
+            :class="{ 'is-self': row.id === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)) }"
             :style="cellStyle(row.id, col.id)"
             :title="cellTitle(row.id, col.id)"
             @click="clickCell(row.id, col.id)"
-            @mouseenter="hover(row.id, col.id)"
           ></td>
         </tr>
       </tbody>
@@ -65,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { type CEdge, type CNode, edgeKey, orderNodes } from "~/utils/connections";
 
 // A dependency structure matrix: rows use columns when the source is
@@ -74,6 +75,14 @@ import { type CEdge, type CNode, edgeKey, orderNodes } from "~/utils/connections
 
 const props = defineProps<{
   nodes: CNode[]
+  /**
+   * Separate axes, for a grid whose two sides are different sets of nodes.
+   * A lane-to-lane region is one: its rows import, its columns are imported,
+   * and drawn square every row on the imported side comes out empty.
+   * Omitted, the grid is symmetric as Connections uses it.
+   */
+  rowNodes?: CNode[]
+  colNodes?: CNode[]
   edges: CEdge[]
   directed: boolean
   selectedId: string | null
@@ -99,10 +108,16 @@ const LABEL_W = 224;
 const KEY = "::";
 
 const scroller = ref<HTMLElement | null>(null);
-const hoverRow = ref<string | null>(null);
-const hoverCol = ref<string | null>(null);
+const table = ref<HTMLTableElement | null>(null);
+// Not reactive on purpose: see the note on the table.
+let hoverRow: string | null = null;
+let hoverCol: string | null = null;
 
-const ordered = computed(() => orderNodes(props.nodes));
+// Explicit axes arrive in the order the caller chose -- for a region that is
+// most-connected first, which is the whole point of picking them. Only the
+// symmetric case gets the default group-then-name ordering.
+const orderedRows = computed(() => props.rowNodes ?? orderNodes(props.nodes));
+const orderedCols = computed(() => props.colNodes ?? orderNodes(props.nodes));
 
 const cellIndex = computed(() => {
   const map = new Map<string, CEdge>();
@@ -124,13 +139,25 @@ function cellStyle(row: string, col: string) {
   return { backgroundColor: `rgb(var(--c-blue-500) / ${alpha.toFixed(3)})` };
 }
 
+/** Node labels by id: an id is a component's name here and a file path at
+ *  file grain, and a tooltip reading two full paths is unreadable. */
+const labelOf = computed(() => {
+  const m = new Map<string, string>();
+  for (const n of [...props.nodes, ...(props.rowNodes ?? []), ...(props.colNodes ?? [])]) {
+    m.set(n.id, n.label);
+  }
+  return m;
+});
+
 function cellTitle(row: string, col: string): string | undefined {
   const e = edgeAt(row, col);
   if (!e) return undefined;
   const parts = [];
   if (e.references) parts.push(`${e.references} reference${e.references === 1 ? "" : "s"}`);
   if (e.sharedCommits) parts.push(`${e.sharedCommits} shared commit${e.sharedCommits === 1 ? "" : "s"}`);
-  return `${row} ${props.directed ? "uses" : "with"} ${col}: ${parts.join(", ")}`;
+  const from = labelOf.value.get(row) ?? row;
+  const to = labelOf.value.get(col) ?? col;
+  return `${from} ${props.directed ? "uses" : "with"} ${to}: ${parts.join(", ")}`;
 }
 
 function isSelectedPair(row: string, col: string): boolean {
@@ -139,10 +166,9 @@ function isSelectedPair(row: string, col: string): boolean {
   return (p[0] === row && p[1] === col) || (!props.directed && p[0] === col && p[1] === row);
 }
 
-function headClass(id: string, hoverId: string | null) {
+function headClass(id: string) {
   return {
     "is-selected": props.selectedId === id || props.multi.has(id),
-    "is-hover": hoverId === id || props.hovered === id,
     "is-cycle": !!props.cycleNodes?.has(id),
   };
 }
@@ -160,11 +186,59 @@ function clickCell(row: string, col: string) {
   if (edgeAt(row, col)) emit("select-pair", row, col);
 }
 
+function onOver(event: MouseEvent) {
+  const cell = (event.target as HTMLElement | null)?.closest("td, th") as HTMLTableCellElement | null;
+  if (!cell) return;
+  const tr = cell.parentElement as HTMLTableRowElement;
+  const col = cell.cellIndex > 0 ? orderedCols.value[cell.cellIndex - 1]?.id ?? null : null;
+  const row = tr.dataset.row ?? null;
+  hover(row, col);
+}
+
 function hover(row: string | null, col: string | null) {
-  hoverRow.value = row;
-  hoverCol.value = col;
+  if (row === hoverRow && col === hoverCol) return;
+  paint(hoverRow, hoverCol, false);
+  hoverRow = row;
+  hoverCol = col;
+  paint(row, col, true);
   emit("hover", row ?? col);
 }
+
+/** Row and column positions by id, for reaching their elements without a search. */
+const rowIndex = computed(() => new Map(orderedRows.value.map((n, i) => [n.id, i])));
+const colIndex = computed(() => new Map(orderedCols.value.map((n, i) => [n.id, i])));
+
+function paint(row: string | null, col: string | null, on: boolean) {
+  const t = table.value;
+  if (!t) return;
+  const body = t.tBodies[0];
+  const r = row === null ? undefined : rowIndex.value.get(row);
+  if (r !== undefined) {
+    const tr = body?.rows[r];
+    tr?.classList.toggle("is-hover", on);
+    tr?.cells[0]?.classList.toggle("is-hover", on);
+  }
+  const c = col === null ? undefined : colIndex.value.get(col);
+  if (c !== undefined) {
+    t.tHead?.rows[0]?.cells[c + 1]?.classList.toggle("is-hover", on);
+    if (body) for (const tr of body.rows) tr.cells[c + 1]?.classList.toggle("is-hover", on);
+  }
+}
+
+// A node hovered elsewhere lights its two headers, as the matrix's own hover does.
+let external: string | null = null;
+function paintExternal(id: string | null, on: boolean) {
+  const t = table.value;
+  if (!t || id === null) return;
+  const r = rowIndex.value.get(id);
+  if (r !== undefined) t.tBodies[0]?.rows[r]?.cells[0]?.classList.toggle("is-hover", on);
+  const c = colIndex.value.get(id);
+  if (c !== undefined) t.tHead?.rows[0]?.cells[c + 1]?.classList.toggle("is-hover", on);
+}
+watch(() => props.hovered, (id) => { paintExternal(external, false); external = id; paintExternal(id, true); });
+// A re-render rebuilds classes from the template, which knows nothing of hover.
+watch([orderedRows, orderedCols], () => { hoverRow = null; hoverCol = null; external = null; });
+onMounted(() => { external = props.hovered; paintExternal(external, true); });
 
 /** The matrix answer to focusing a node: put its row on screen. */
 function focusNode(id: string) {

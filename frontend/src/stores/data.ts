@@ -12,6 +12,7 @@ import {
 import type {Definition} from "~/utils/definition";
 import {StatNameResolver, getNiceStatName} from "~/utils/stat_resolver";
 import {WailsDb} from "~/utils/db";
+import {AnalysisRevision} from "wailsjs/go/app/QueryService";
 
 // Module-level, non-reactive handle. Historically this avoided Vue wrapping
 // the sql.js worker's internals (nextId, pending Map) in reactive proxies,
@@ -33,6 +34,10 @@ export const useDataStore = defineStore('data', {
         _fileComponents: Array<{ name: string; component: string | null }>;
         _initialized: boolean;
         _openScanId: string | null;
+        /** The analysis revision the open snapshot was written with; 0 for snapshots older than the stamp. */
+        _snapshotRevision: number | null;
+        /** The analysis revision this build scans with. */
+        _engineRevision: number | null;
     } => {
         return {
             _viewNames: [],
@@ -44,9 +49,19 @@ export const useDataStore = defineStore('data', {
             _fileComponents: [],
             _initialized: false,
             _openScanId: null,
+            _snapshotRevision: null,
+            _engineRevision: null,
         }
     },
     getters: {
+        /**
+         * The open snapshot was scanned before fixes this build has. A
+         * snapshot never changes after it is written, so a corrected rule,
+         * count or classification only reaches it through a new scan.
+         */
+        snapshotOutdated(state: any): boolean {
+            return state._engineRevision !== null && state._snapshotRevision !== null && state._snapshotRevision < state._engineRevision;
+        },
 
         statNames(state: any) {
             return (stats: string[]): string[] => {
@@ -137,8 +152,30 @@ export const useDataStore = defineStore('data', {
         componentGraph(): ComponentGraph {
             return createComponentGraph(this.allRawComponents, this.componentConnections);
         },
+        /**
+         * Runtime imports only, the edges the engine's cycles, dependents and
+         * coupling metrics are defined on. A type-only import (erased by the
+         * compiler) made pages count a "top dependent" the dependents number
+         * beside it did not, and let a cut plan chase a loop that does not
+         * exist at runtime. Connections reads its own query and shows type-only
+         * edges on purpose.
+         */
         componentConnections(state: any): RawComponentConnection[] {
-            return state._componentConnections;
+            return (state._componentConnections as any[]).filter((c) => c.kind !== "type_only");
+        },
+
+        /**
+         * component_connections_direct without its type-only edges, as SQL to
+         * select from. The engine builds the component graph -- cycles,
+         * coupling, reach -- from runtime edges, and a query that read the
+         * whole table drew LibreChat 105 dependencies that graph does not
+         * have. Snapshots from before edges had a kind are the table itself.
+         */
+        runtimeComponentEdges(state: any): string {
+            const hasKind = (state._componentConnections as any[]).some((c) => c && "kind" in c);
+            return hasKind
+                ? `(SELECT * FROM component_connections_direct WHERE kind IS NULL OR kind != 'type_only')`
+                : "component_connections_direct";
         },
 
         componentSubGraph(state: any) {
@@ -203,6 +240,19 @@ export const useDataStore = defineStore('data', {
             // Populate viewNames
             const viewResults = await this.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table'");
             this._viewNames = viewResults.map(x => x.name);
+
+            // Which analysis wrote this snapshot, against the one this build runs.
+            try {
+                const rev = this._viewNames.includes("_snapshot")
+                    ? await this.query<{ value: string }>("SELECT value FROM _snapshot WHERE key = 'analysis_revision'")
+                    : [];
+                this._snapshotRevision = Number(rev[0]?.value ?? 0) || 0;
+            } catch {
+                this._snapshotRevision = null;
+            }
+            if (this._engineRevision === null) {
+                try { this._engineRevision = await AnalysisRevision(); } catch { this._engineRevision = null; }
+            }
 
             // Populate definitions
             try {
