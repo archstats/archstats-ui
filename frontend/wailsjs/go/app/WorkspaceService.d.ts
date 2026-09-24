@@ -9,6 +9,8 @@ export function Delete(arg1:string):Promise<void>;
 
 export function DeleteScan(arg1:string):Promise<void>;
 
+export function DeleteScans(arg1:Array<string>):Promise<void>;
+
 export function Get(arg1:string):Promise<store.Workspace>;
 
 export function HeadDrift(arg1:string,arg2:string):Promise<app.HeadDrift>;
@@ -34,3 +36,5 @@ export function SelectFolder():Promise<app.FolderPick>;
 export function SetBaseline(arg1:string,arg2:string):Promise<void>;
 
 export function SnapshotPath(arg1:string):Promise<string>;
+
+export function StorageSummary():Promise<Array<app.StorageWorkspace>>;

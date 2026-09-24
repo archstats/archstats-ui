@@ -90,7 +90,11 @@ func (w *WorkspaceService) Delete(id string) error {
 			w.release(sc.ID)
 		}
 	}
-	return w.store.DeleteWorkspace(id)
+	if err := w.store.DeleteWorkspace(id); err != nil {
+		return err
+	}
+	removeWorkspaceLeftovers(w.store.Root(), id)
+	return nil
 }
 
 func (w *WorkspaceService) ListScans(workspaceID string) ([]*store.Scan, error) {

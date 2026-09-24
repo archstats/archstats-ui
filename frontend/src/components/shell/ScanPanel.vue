@@ -62,6 +62,7 @@
               :disabled="scan.status !== 'complete'"
               :aria-current="scan.id === openId ? 'true' : undefined"
               :aria-label="scanLabel(scan)"
+              :title="scan.status === 'complete' && scan.sizeBytes ? formatBytes(scan.sizeBytes) : undefined"
               @click="onRowClick(scan)"
           >
             <span class="flex w-3 shrink-0 justify-center" aria-hidden="true">
@@ -135,6 +136,11 @@
     >
       {{ showAll ? "Show fewer" : `Show all ${scans.length}` }}
     </button>
+    <div v-if="completeCount" class="mt-1 flex items-center gap-2 px-2 text-xs text-neutral-500">
+      <span class="font-mono tabular-nums">{{ completeCount }} snapshot{{ completeCount === 1 ? "" : "s" }} · {{ formatBytes(totalBytes) }}</span>
+      <button type="button" class="ml-auto font-medium transition-colors hover:text-neutral-900" @click="storageOpen = true">Manage…</button>
+    </div>
+    <StorageSheet v-model="storageOpen"/>
   </section>
 </template>
 
@@ -143,6 +149,8 @@ import { computed, nextTick, ref } from "vue";
 import { AlertTriangle, Flag, Loader2, MoreHorizontal, Play, X } from "lucide-vue-next";
 import { RevealSnapshot, SaveSnapshotCopy, SnapshotPath } from "wailsjs/go/app/WorkspaceService";
 import { copyText } from "~/utils/files";
+import { formatBytes } from "~/utils/format";
+import StorageSheet from "~/components/shell/StorageSheet.vue";
 import { usePlatform } from "~/composables/usePlatform";
 import type { store as models } from "wailsjs/go/models";
 import { useWorkspacesStore, type ScanPhase } from "~/stores/workspaces";
@@ -157,6 +165,9 @@ const progress = computed(() => store.activeProgress);
 const openId = computed(() => store.openScanId);
 
 const showAll = ref(false);
+const storageOpen = ref(false);
+const completeCount = computed(() => scans.value.filter(s => s.status === "complete").length);
+const totalBytes = computed(() => scans.value.reduce((sum, s: any) => sum + (Number(s.sizeBytes) || 0), 0));
 const visibleScans = computed(() => (showAll.value ? scans.value : scans.value.slice(0, COLLAPSED)));
 
 const confirmingId = ref<string | null>(null);
@@ -231,7 +242,8 @@ function scanLabel(scan: models.Scan): string {
   const when = formatScanTime(scan.startedAt, now.value);
   if (scan.status === "failed") return `Failed scan from ${when}. Show error`;
   if (scan.status === "running") return `Scan running since ${when}`;
-  return scan.id === openId.value ? `Snapshot from ${when}, open` : `Open snapshot from ${when}`;
+  const size = scan.sizeBytes ? `, ${formatBytes(scan.sizeBytes)}` : "";
+  return scan.id === openId.value ? `Snapshot from ${when}, open${size}` : `Open snapshot from ${when}${size}`;
 }
 
 async function onRowClick(scan: models.Scan) {

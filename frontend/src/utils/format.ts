@@ -41,3 +41,13 @@ export function formatReading(value: unknown): string {
   const decimals = a >= 100 ? 0 : a >= 10 ? 1 : a >= 0.1 ? 2 : 3
   return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
+
+/** Bytes as people read them: 812 MB, 1.3 GB. */
+export function formatBytes(bytes: number | null | undefined): string {
+  const b = Number(bytes) || 0
+  if (b < 1024) return `${b} B`
+  const units = ["KB", "MB", "GB", "TB"]
+  let v = b / 1024, i = 0
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++ }
+  return `${v >= 100 || i < 1 ? Math.round(v) : v.toFixed(1)} ${units[i]}`
+}

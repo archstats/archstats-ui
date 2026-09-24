@@ -14,6 +14,10 @@ export function DeleteScan(arg1) {
   return window['go']['app']['WorkspaceService']['DeleteScan'](arg1);
 }
 
+export function DeleteScans(arg1) {
+  return window['go']['app']['WorkspaceService']['DeleteScans'](arg1);
+}
+
 export function Get(arg1) {
   return window['go']['app']['WorkspaceService']['Get'](arg1);
 }
@@ -64,4 +68,8 @@ export function SetBaseline(arg1, arg2) {
 
 export function SnapshotPath(arg1) {
   return window['go']['app']['WorkspaceService']['SnapshotPath'](arg1);
+}
+
+export function StorageSummary() {
+  return window['go']['app']['WorkspaceService']['StorageSummary']();
 }
