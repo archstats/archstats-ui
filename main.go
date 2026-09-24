@@ -114,6 +114,7 @@ func main() {
 			app.NewQueryService(querySvc),
 			app.NewStateService(st),
 			menuSvc,
+			app.NewFilesService(func() context.Context { return appCtx }),
 		},
 	})
 	if err != nil {

@@ -223,6 +223,7 @@
 </template>
 
 <script setup lang="ts">
+import { FILTERS, saveText } from '~/utils/files'
 import { computed, nextTick, ref, watch } from 'vue'
 import Icon from '~/components/ui/common/Icon.vue'
 import LensHealth from '~/components/groups/LensHealth.vue'
@@ -443,14 +444,14 @@ function handleImport(event: Event) {
   reader.readAsText(file)
   input.value = ''
 }
-function handleExport() {
-  const blob = new Blob([groupsStore.exportGroups()], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'archstats-groups.json'
-  a.click()
-  URL.revokeObjectURL(url)
+// A Blob-and-anchor download does nothing in the desktop build; the native
+// save dialog does.
+async function handleExport() {
+  try {
+    await saveText('archstats-groups.json', groupsStore.exportGroups(), [FILTERS.json], 'Export groups')
+  } catch (e) {
+    importError.value = `Could not save the groups: ${e instanceof Error ? e.message : String(e)}`
+  }
 }
 </script>
 

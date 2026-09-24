@@ -24,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+import { copyText } from '~/utils/files'
 import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -231,7 +232,7 @@ watch(() => route.hash, () => {
 // ── Copy to Clipboard Helper ────────────────────────────────────
 function copyToClipboard() {
   if (!fileContents.value) return
-  navigator.clipboard.writeText(fileContents.value).then(() => {
+  copyText(fileContents.value).then(() => {
     copied.value = true
     setTimeout(() => {
       copied.value = false
