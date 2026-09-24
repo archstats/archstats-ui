@@ -65,7 +65,7 @@ export const DERIVED_METRICS: DerivedMetric[] = [
         category: "System shape",
         short: "Share of component pairs where a change in one can reach the other.",
         long: "MacCormack's propagation cost: the number of ordered pairs (a, b) where a reaches b through imports, directly or not, over the number of components squared. Near 0, changes stay local; past about 0.4, most changes can ripple through most of the system.",
-        sql: `SELECT 1.0 * (SELECT count(*) FROM component_connections_indirect WHERE "from" <> "to") / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`,
+        sql: `SELECT 1.0 * (SELECT count(*) FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')) / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`,
     },
     {
         id: "app__dependency_levels",

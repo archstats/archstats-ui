@@ -27,5 +27,6 @@ describe("trends", () => {
     it("uses commit time only when every point has one", () => {
         expect(xBasis([p("a", 1, 2, 1)])).toBe("commit")
         expect(xBasis([p("a", 1, 2, 1), { ...p("b", 2, 2, 1), headTime: null }])).toBe("scan")
+        expect(xBasis([p("a", 1, 2, 1), { ...p("b", 2, 2, 1), headTime: p("a", 1, 2, 1).headTime }])).toBe("scan")
     })
 })

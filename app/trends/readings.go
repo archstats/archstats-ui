@@ -10,7 +10,7 @@ import (
 
 // Version is stored with every scan's readings; bump it when a reading's
 // definition changes and every scan is read again on the next visit.
-const Version = 1
+const Version = 2
 
 const VersionKey = "app__readings_version"
 
@@ -79,7 +79,9 @@ func Compute(db *sql.DB) (map[string]*float64, error) {
 		out[DependencyLevels] = levels
 	}
 	if hasTable(db, "component_connections_indirect") {
-		out[PropagationCost] = one(db, `SELECT 1.0 * (SELECT count(*) FROM component_connections_indirect WHERE "from" <> "to") / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`)
+		// Distinct reachable pairs between non-root components: the table can
+		// list a pair more than once, and the root is outside the denominator.
+		out[PropagationCost] = one(db, `SELECT 1.0 * (SELECT count(*) FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')) / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`)
 	}
 	if hasColumn(db, "components", "modularity__instability") {
 		out[MedianInstability] = median(db, "modularity__instability")

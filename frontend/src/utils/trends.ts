@@ -97,7 +97,13 @@ export function latestChange(seg: { segments: Segment[] }): { latest: number | n
     return { latest, change: last.points.length > 1 ? latest - last.points[0].value : null }
 }
 
-/** Commit time when every point knows it; scan time otherwise (and say which). */
+/**
+ * Commit time when every point knows it and the commits differ; scan time
+ * otherwise (and the chart says which). Scans of one commit would otherwise
+ * stack on one x.
+ */
 export function xBasis(points: TrendPoint[]): "commit" | "scan" {
-    return points.length > 0 && points.every(p => p.headTime) ? "commit" : "scan"
+    if (points.length === 0 || !points.every(p => p.headTime)) return "scan"
+    const distinct = new Set(points.map(p => new Date(p.headTime as string).getTime()))
+    return distinct.size > 1 || points.length === 1 ? "commit" : "scan"
 }
