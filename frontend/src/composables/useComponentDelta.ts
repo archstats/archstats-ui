@@ -26,7 +26,15 @@ export function useComponentDelta(name: Ref<string>) {
     })
 
     const chosenId = ref<string | null>(null)
+    // The pinned baseline first (it may be newer than the open scan: reading
+    // an old scan against "now"), then a scan picked here, then the scan of
+    // the code just before this one.
     const baselineScan = computed(() => {
+        const pinned = (workspaces.active as any)?.baselineScanId
+        if (!chosenId.value && pinned && pinned !== workspaces.openScanId) {
+            const b = workspaces.scans.find(s => s.id === pinned && s.status === "complete")
+            if (b) return b
+        }
         const list = candidates.value
         if (list.length === 0) return null
         return list.find(s => s.id === chosenId.value) ?? list[0]

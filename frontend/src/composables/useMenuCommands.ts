@@ -2,6 +2,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { EventsOn } from "wailsjs/runtime/runtime";
 import { SetState } from "wailsjs/go/app/MenuService";
+import { RevealSnapshot, SaveSnapshotCopy } from "wailsjs/go/app/WorkspaceService";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { hasCommand, registerCommand, runCommand } from "~/utils/commands";
@@ -23,6 +24,9 @@ export function useMenuCommands() {
     off.push(registerCommand("nav:forward", () => router.forward()));
     off.push(registerCommand("help:shortcuts", () => { shortcutsOpen.value = true; }));
     off.push(registerCommand("help:metrics", () => { void router.push("/views/reference"); }));
+    // The open snapshot's file: shown, or copied out with its source.
+    off.push(registerCommand("snapshot:reveal", async () => { if (workspaces.openScanId) await RevealSnapshot(workspaces.openScanId); }));
+    off.push(registerCommand("snapshot:save", async () => { if (workspaces.openScanId) await SaveSnapshotCopy(workspaces.openScanId, true); }));
 
     function onKey(event: KeyboardEvent) {
         const t = event.target as HTMLElement | null;

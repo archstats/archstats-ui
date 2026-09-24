@@ -64,6 +64,26 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class HeadDrift {
+	    status: string;
+	    ahead: number;
+	    headSha: string;
+	    branch: string;
+	    branchChanged: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new HeadDrift(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.ahead = source["ahead"];
+	        this.headSha = source["headSha"];
+	        this.branch = source["branch"];
+	        this.branchChanged = source["branchChanged"];
+	    }
+	}
 	export class MenuState {
 	    hasWorkspace: boolean;
 	    hasSnapshot: boolean;

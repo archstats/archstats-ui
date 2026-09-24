@@ -18,6 +18,10 @@ export function Get(arg1) {
   return window['go']['app']['WorkspaceService']['Get'](arg1);
 }
 
+export function HeadDrift(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['HeadDrift'](arg1, arg2);
+}
+
 export function LabelScan(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['LabelScan'](arg1, arg2);
 }
@@ -34,10 +38,22 @@ export function Rename(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['Rename'](arg1, arg2);
 }
 
+export function RevealSnapshot(arg1) {
+  return window['go']['app']['WorkspaceService']['RevealSnapshot'](arg1);
+}
+
+export function SaveSnapshotCopy(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['SaveSnapshotCopy'](arg1, arg2);
+}
+
 export function SelectFolder() {
   return window['go']['app']['WorkspaceService']['SelectFolder']();
 }
 
 export function SetBaseline(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['SetBaseline'](arg1, arg2);
+}
+
+export function SnapshotPath(arg1) {
+  return window['go']['app']['WorkspaceService']['SnapshotPath'](arg1);
 }

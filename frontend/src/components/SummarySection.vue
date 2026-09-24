@@ -9,6 +9,12 @@
       <span v-if="isSpringProject" class="ui-tag">Spring</span>
       <span v-if="isJpaProject" class="ui-tag">JPA</span>
     </div>
+    <!-- Which code this is: the commit it read, how old that commit was, what was uncommitted. -->
+    <div v-if="identity || shallowClone" class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-neutral-500">
+      <span v-if="identity" class="font-mono" :title="store.snapshotInfo?.git_head_commit">{{ identity }}</span>
+      <span v-if="shallowClone" class="ui-tag" title="The repository was cloned with --depth, so its history stops where the clone did: commit counts, contributors and ages cover only that">shallow clone</span>
+      <router-link to="/views/about" class="text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline">About this snapshot</router-link>
+    </div>
 
     <!-- Stats strip: one hairline frame, six readings. -->
     <dl class="mt-5 grid grid-cols-3 overflow-hidden rounded-lg hairline lg:grid-cols-6">
@@ -119,6 +125,19 @@ const workspaces = useWorkspacesStore()
 const { isJavaProject, isSpringProject, isJpaProject } = useJavaMetrics()
 
 const workspaceName = computed(() => workspaces.active?.name ?? "")
+const identity = computed(() => {
+  const info: any = store.snapshotInfo ?? {}
+  if (!info.git_head_commit) return ""
+  const parts = [`${info.git_branch || "HEAD"} @ ${info.git_head_commit.slice(0, 7)}`]
+  const scan: any = workspaces.openScan
+  if (info.git_head_time && scan?.startedAt) {
+    const days = Math.round((new Date(scan.startedAt).getTime() - new Date(info.git_head_time).getTime()) / 86400000)
+    parts.push(days <= 0 ? "committed the day of the scan" : `committed ${days.toLocaleString("en-US")} day${days === 1 ? "" : "s"} before the scan`)
+  }
+  const dirty = Number(info.git_dirty_files ?? 0)
+  if (dirty > 0) parts.push(`${dirty} uncommitted file${dirty === 1 ? "" : "s"}`)
+  return parts.join(" · ")
+})
 const snapshotLabel = computed(() => {
   const scan = workspaces.openScan
   return scan ? formatScanTime(scan.startedAt) : ""

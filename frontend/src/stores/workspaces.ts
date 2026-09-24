@@ -10,6 +10,8 @@ import {
     ListScans,
     Rename,
     SelectFolder,
+    LabelScan,
+    SetBaseline,
 } from "wailsjs/go/app/WorkspaceService";
 import { Start } from "wailsjs/go/app/ScanService";
 import type { store } from "wailsjs/go/models";
@@ -349,6 +351,17 @@ export const useWorkspacesStore = defineStore("workspaces", {
             }
         },
 
+        /** Names a scan ("before the split"); an empty label clears it. */
+        async labelScan(scanId: string, label: string) {
+            await LabelScan(scanId, label.trim());
+            await this.refreshScans();
+        },
+        /** Pins the scan comparisons default to; null unpins. */
+        async setBaseline(scanId: string | null) {
+            if (!this.activeWorkspaceId) return;
+            await SetBaseline(this.activeWorkspaceId, scanId ?? "");
+            await this.refreshWorkspaces();
+        },
         async removeScan(scanId: string) {
             const scan = this.scans.find((s) => s.id === scanId);
             if (!scan) return;

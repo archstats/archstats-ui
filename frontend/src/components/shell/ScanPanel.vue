@@ -43,10 +43,21 @@
             <button type="button" class="ui-btn ui-btn-sm" @click="confirmingId = null">Keep</button>
           </div>
         </div>
-        <div v-else class="flex items-stretch rounded transition-colors" :class="scan.id === openId ? 'bg-neutral-100' : 'hover:bg-neutral-100'">
+        <form v-else-if="renamingId === scan.id" class="flex items-center gap-1 px-1 py-0.5" @submit.prevent="saveLabel(scan.id)">
+          <input
+              ref="renameInput"
+              v-model="labelDraft"
+              class="ui-input ui-input-sm min-w-0 flex-1"
+              placeholder="Label, e.g. before the split"
+              aria-label="Snapshot label"
+              @keydown.esc.prevent="renamingId = null"
+              @blur="saveLabel(scan.id)"
+          />
+        </form>
+        <div v-else class="relative flex items-stretch rounded transition-colors" :class="scan.id === openId ? 'bg-neutral-100' : 'hover:bg-neutral-100'">
           <button
               type="button"
-              class="flex h-[26px] min-w-0 flex-1 items-center gap-2 rounded px-2 text-left outline-none focus-visible:shadow-[0_0_0_2px_rgb(var(--c-accent-400))]"
+              class="flex min-h-[26px] min-w-0 flex-1 items-center gap-2 rounded px-2 py-0.5 text-left outline-none focus-visible:shadow-[0_0_0_2px_rgb(var(--c-accent-400))]"
               :class="scan.status === 'complete' ? '' : 'cursor-default'"
               :disabled="scan.status !== 'complete'"
               :aria-current="scan.id === openId ? 'true' : undefined"
@@ -59,8 +70,15 @@
               <AlertTriangle v-else-if="scan.status === 'failed'" :size="11" class="text-red-600"/>
               <span v-else class="h-1.5 w-1.5 rounded-full bg-neutral-300"/>
             </span>
-            <span class="min-w-0 flex-1 truncate text-sm leading-4" :class="rowTextClass(scan)">
-              {{ formatScanTime(scan.startedAt, now) }}
+            <span class="flex min-w-0 flex-1 flex-col">
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="truncate text-sm leading-4" :class="rowTextClass(scan)" :title="scan.label ? formatScanTime(scan.startedAt, now) : undefined">
+                  {{ scan.label || formatScanTime(scan.startedAt, now) }}
+                </span>
+                <Flag v-if="scan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" aria-label="Baseline"/>
+                <span v-if="scan.origin === 'import'" class="ui-tag shrink-0 !text-[10px]">imported</span>
+              </span>
+              <span v-if="identityOf(scan)" class="truncate font-mono text-[11px] leading-4 text-neutral-500" :title="scan.headCommit">{{ identityOf(scan) }}</span>
             </span>
             <span class="shrink-0 text-xs leading-4 text-neutral-500" :class="scan.status === 'complete' ? 'font-mono tabular-nums' : ''">
               {{ scan.status === 'running' ? 'running' : scan.status === 'failed' ? 'failed' : relativeAge(scan.startedAt, now) }}
@@ -69,13 +87,33 @@
           <button
               v-if="scan.status !== 'running'"
               type="button"
-              class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet my-0.5 mr-0.5 h-5 w-5 opacity-0 focus-visible:opacity-100 group-hover/scan:opacity-100 hover:text-red-600"
-              :aria-label="`Delete snapshot from ${formatScanTime(scan.startedAt, now)}`"
-              @click.stop="confirmingId = scan.id"
+              class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet my-0.5 mr-0.5 h-5 w-5 self-center opacity-0 focus-visible:opacity-100 group-hover/scan:opacity-100"
+              :class="{ '!opacity-100': menuId === scan.id }"
+              :aria-label="`Actions for the snapshot from ${formatScanTime(scan.startedAt, now)}`"
+              :aria-expanded="menuId === scan.id"
+              @click.stop="menuId = menuId === scan.id ? null : scan.id"
           >
-            <Trash2 :size="12" :stroke-width="1.75"/>
+            <MoreHorizontal :size="13" :stroke-width="1.75"/>
           </button>
+          <template v-if="menuId === scan.id">
+            <div class="fixed inset-0 z-40" @click="menuId = null"></div>
+            <div class="ui-menu absolute right-0 top-full z-50 mt-1 w-56 animate-in" role="menu">
+              <button v-if="scan.status === 'complete'" type="button" class="ui-menu-item" role="menuitem" @click="startRename(scan)">Rename…</button>
+              <button v-if="scan.status === 'complete' && scan.id !== baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(scan.id))">Set as baseline</button>
+              <button v-if="scan.id === baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(null))">Clear baseline</button>
+              <template v-if="scan.status === 'complete'">
+                <div class="my-1 hairline-b"></div>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="act(() => RevealSnapshot(scan.id))">Reveal in {{ fileManager }}</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="act(copyPath(scan.id))">Copy path</button>
+                <button type="button" class="ui-menu-item" role="menuitem" :title="sourceNote" @click="act(() => SaveSnapshotCopy(scan.id, true))">Save a copy…</button>
+                <button type="button" class="ui-menu-item" role="menuitem" title="The same snapshot without the stored text of every file" @click="act(() => SaveSnapshotCopy(scan.id, false))">Save a copy without source…</button>
+              </template>
+              <div class="my-1 hairline-b"></div>
+              <button type="button" class="ui-menu-item text-red-700" role="menuitem" @click="menuId = null; confirmingId = scan.id">Delete…</button>
+            </div>
+          </template>
         </div>
+        <p v-if="actionError && actionErrorId === scan.id" class="mx-2 mb-1 text-xs leading-4 text-red-700" role="alert">{{ actionError }}</p>
         <p
             v-if="scan.status === 'failed' && expandedId === scan.id"
             class="mx-2 mb-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap break-words rounded bg-red-50 px-2 py-1.5 font-mono text-xs leading-4 text-red-800"
@@ -98,8 +136,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { AlertTriangle, Loader2, Play, Trash2, X } from "lucide-vue-next";
+import { computed, nextTick, ref } from "vue";
+import { AlertTriangle, Flag, Loader2, MoreHorizontal, Play, X } from "lucide-vue-next";
+import { RevealSnapshot, SaveSnapshotCopy, SnapshotPath } from "wailsjs/go/app/WorkspaceService";
+import { copyText } from "~/utils/files";
+import { usePlatform } from "~/composables/usePlatform";
 import type { store as models } from "wailsjs/go/models";
 import { useWorkspacesStore, type ScanPhase } from "~/stores/workspaces";
 import { formatElapsed, formatScanTime, relativeAge } from "~/utils/time";
@@ -116,6 +157,48 @@ const showAll = ref(false);
 const visibleScans = computed(() => (showAll.value ? scans.value : scans.value.slice(0, COLLAPSED)));
 
 const confirmingId = ref<string | null>(null);
+const menuId = ref<string | null>(null);
+const renamingId = ref<string | null>(null);
+const labelDraft = ref("");
+const renameInput = ref<HTMLInputElement[] | HTMLInputElement | null>(null);
+const actionError = ref<string | null>(null);
+const actionErrorId = ref<string | null>(null);
+const baselineId = computed(() => (store.active as any)?.baselineScanId ?? null);
+const { isMac, isWindows } = usePlatform();
+const fileManager = computed(() => (isMac.value ? "Finder" : isWindows.value ? "Explorer" : "file manager"));
+const sourceNote = "The copy holds the stored text of every file, import lines, commit subjects and author emails.";
+
+/** "main @ 3f2a91c · +4": the commit a scan read, when the snapshot recorded it. */
+function identityOf(scan: models.Scan): string {
+  const s: any = scan;
+  if (!s.headCommit) return "";
+  const dirty = s.dirtyFiles ? ` · +${s.dirtyFiles}` : "";
+  return `${s.branch || "HEAD"} @ ${String(s.headCommit).slice(0, 7)}${dirty}`;
+}
+
+async function act(fn: () => Promise<unknown>) {
+  const id = menuId.value;
+  menuId.value = null;
+  actionError.value = null;
+  try { await fn(); } catch (e) { actionError.value = e instanceof Error ? e.message : String(e); actionErrorId.value = id; }
+}
+function copyPath(scanId: string) {
+  return async () => { await copyText(await SnapshotPath(scanId)); };
+}
+async function startRename(scan: models.Scan) {
+  menuId.value = null;
+  labelDraft.value = (scan as any).label ?? "";
+  renamingId.value = scan.id;
+  await nextTick();
+  const el = Array.isArray(renameInput.value) ? renameInput.value[0] : renameInput.value;
+  el?.focus();
+  el?.select();
+}
+async function saveLabel(scanId: string) {
+  if (renamingId.value !== scanId) return;
+  renamingId.value = null;
+  await store.labelScan(scanId, labelDraft.value);
+}
 const expandedId = ref<string | null>(null);
 
 // The store's shared clock drives every age and the elapsed counter.

@@ -31,5 +31,6 @@ export function usePlatform() {
   return {
     platform,
     isMac: computed(() => platform.value === "darwin"),
+    isWindows: computed(() => platform.value === "windows"),
   };
 }
