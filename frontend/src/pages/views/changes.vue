@@ -132,6 +132,25 @@
                 </div>
               </section>
 
+              <!-- 4b. The active lens's declared order, new and gone crossings. -->
+              <section v-if="lensDiff">
+                <h2 class="ui-section-title">Lens findings: {{ lens.active }}</h2>
+                <p v-if="!lensDiff.added.length && !lensDiff.gone.length" class="mt-2 text-sm text-neutral-500">No import started or stopped crossing the declared order.</p>
+                <div v-else class="mt-2 overflow-hidden rounded-lg hairline">
+                  <table class="ui-table">
+                    <thead><tr><th class="w-16"></th><th>From → to</th><th>Groups</th><th>Where</th></tr></thead>
+                    <tbody>
+                      <tr v-for="f in [...lensDiff.added.map(e => ({ e, kind: 'new' })), ...lensDiff.gone.map(e => ({ e, kind: 'gone' }))]" :key="f.kind + f.e.fromComponent + f.e.toComponent + f.e.file">
+                        <td class="text-sm" :class="f.kind === 'new' ? 'text-neutral-900' : 'text-neutral-500'">{{ f.kind === "new" ? "New" : "Gone" }}</td>
+                        <td class="max-w-0 truncate font-mono text-sm" :title="`${f.e.fromComponent} → ${f.e.toComponent}`">{{ f.e.fromComponent }} → {{ f.e.toComponent }}</td>
+                        <td class="text-sm text-neutral-600">{{ groupName(f.e.fromGroup) }} → {{ groupName(f.e.toGroup) }}</td>
+                        <td class="max-w-0 truncate font-mono text-sm"><router-link v-if="f.kind === 'new'" :to="`${filePath(f.e.file, 'source')}${f.e.line ? `#L${f.e.line}` : ''}`" class="hover:underline">{{ f.e.file.split("/").pop() }}{{ f.e.line ? `:${f.e.line}` : "" }}</router-link><span v-else class="text-neutral-500">{{ f.e.file.split("/").pop() }}</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
               <!-- 5. Largest moves. -->
               <section v-if="moves.length">
                 <div class="flex items-center gap-3">
@@ -166,6 +185,12 @@
 import { computed, defineComponent, h, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Compare } from "wailsjs/go/app/ChangesService";
+import { QueryIn } from "wailsjs/go/app/QueryService";
+import { checkLens, lensGroups } from "~/composables/useLensFindings";
+import { useGroupsStore } from "~/stores/groups";
+import { useLensStore } from "~/stores/lens";
+import { findingKey } from "~/utils/lensRules";
+import type { GroupEdge } from "~/utils/groupEdges";
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
 import ComparabilityGate from "~/components/changes/ComparabilityGate.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
@@ -259,6 +284,31 @@ const ruleRows = computed(() => [
 ]);
 const moves = computed<Move[]>(() => changeSet.value?.moves ?? []);
 const expanded = ref<string | null>(null);
+
+// ── Lens findings: the active lens's declaration, run on both sides ─────
+const lens = useLensStore();
+const groupsStore = useGroupsStore();
+const groupName = (id: string) => groupsStore.getGroupById(id)?.name ?? id;
+const lensDiff = ref<{ added: GroupEdge[]; gone: GroupEdge[] } | null>(null);
+watch([() => changeSet.value, () => lens.active, () => groupsStore.dimensionRecords], async () => {
+  lensDiff.value = null;
+  const cs = changeSet.value;
+  const dim = lens.active;
+  const declared = dim ? groupsStore.dimensionRecords.find(d => d.name === dim)?.declared : null;
+  if (!cs || !dim || !declared) return;
+  const groupsOfLens = lensGroups(dim);
+  const [base, head] = await Promise.all([
+    checkLens(sql => QueryIn(cs.baseId, sql) as Promise<any[]>, groupsOfLens, declared),
+    checkLens(sql => QueryIn(cs.headId, sql) as Promise<any[]>, groupsOfLens, declared),
+  ]);
+  const key = (e: GroupEdge) => `${e.fromGroup}>${e.toGroup}|${findingKey(e)}`;
+  const baseKeys = new Set(base.crossings.flatMap(c => c.edges).map(key));
+  const headKeys = new Set(head.crossings.flatMap(c => c.edges).map(key));
+  lensDiff.value = {
+    added: head.crossings.flatMap(c => c.edges).filter(e => !baseKeys.has(key(e))),
+    gone: base.crossings.flatMap(c => c.edges).filter(e => !headKeys.has(key(e))),
+  };
+}, { immediate: true });
 
 // ── Largest moves: one metric at a time, no composite ───────────────────
 const metric = ref("modularity__instability");
