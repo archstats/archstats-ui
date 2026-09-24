@@ -106,6 +106,12 @@ const props = defineProps<{
   badges: Map<string, number>
   /** A suggestion under the pointer: its members stay lit, the rest fades. */
   highlight?: { key: string; members: string[] } | null
+  /**
+   * Arranged by hand: saved positions (relative to the view's centre) pin
+   * their nodes, a drag places a node where it is dropped, and nodes with no
+   * position float. Null when the layout is left to the forces.
+   */
+  arrangement?: Record<string, { x: number; y: number }> | null
 }>();
 
 const emit = defineEmits<{
@@ -122,6 +128,8 @@ const emit = defineEmits<{
   (e: "drop-in-hull", payload: { id: string; key: string | null }): void
   (e: "close-hull", key: string): void
   (e: "context-hull", payload: { key: string; x: number; y: number }): void
+  /** Arranging: a node was dropped at a position (relative to the view's centre). */
+  (e: "place", payload: { id: string; x: number; y: number }): void
 }>();
 
 const host = ref<HTMLElement | null>(null);
@@ -236,6 +244,14 @@ function setup() {
       const d = event.subject as SimNode;
       dragging = false;
       if (!event.active) simulation?.alphaTarget(0);
+      // Arranging: the node stays where it was dropped, and the place is kept.
+      if (props.arrangement && d.node.kind !== "file") {
+        const w = host.value?.clientWidth || 800, hgt = host.value?.clientHeight || 600;
+        d.fx = d.x; d.fy = d.y;
+        emit("place", { id: d.id, x: Math.round((d.x ?? 0) - w / 2), y: Math.round((d.y ?? 0) - hgt / 2) });
+        dragFrom = null;
+        return;
+      }
       d.fx = null; d.fy = null;
       // A real drag that ends inside a region moves the node into it.
       if ((props.suggestions.length || props.hulls.length) && dragFrom && Math.hypot((d.x ?? 0) - dragFrom.x, (d.y ?? 0) - dragFrom.y) > 14) {
@@ -286,9 +302,12 @@ function rebuild() {
     const p = positions.get(n.id);
     const angle = (i / Math.max(props.nodes.length, 1)) * Math.PI * 2;
     const r = radius(n);
+    const saved = n.kind !== "file" ? props.arrangement?.[n.id] : undefined;
+    const x = saved ? width / 2 + saved.x : p?.x ?? width / 2 + Math.cos(angle) * 200;
+    const y = saved ? height / 2 + saved.y : p?.y ?? height / 2 + Math.sin(angle) * 200;
     return {
       id: n.id, node: n, r, shape: new Path2D(nodePath(n.kind, r)), wedges: wedgesOf(n, r),
-      x: p?.x ?? width / 2 + Math.cos(angle) * 200, y: p?.y ?? height / 2 + Math.sin(angle) * 200,
+      x, y, ...(saved ? { fx: x, fy: y } : {}),
     };
   });
   const byId = new Map(simNodes.map(n => [n.id, n]));
@@ -1007,5 +1026,9 @@ onBeforeUnmount(() => {
   media?.removeEventListener("change", onScheme);
 });
 watch(() => [props.nodes, props.edges, props.directed, props.hulls.map(h => h.key).join(), props.suggestions.map(s => s.key + ":" + s.members.length).join()], rebuild);
+// Arrange switched on or off, or reset: re-seat the nodes.
+watch(() => (props.arrangement ? Object.keys(props.arrangement).length : -1), (now, before) => {
+  if (now === -1 || now === 0 || before === -1) rebuild();
+});
 watch(() => [props.selectedId, props.selectedPair, props.multi, props.hovered, props.suggestions, props.hulls, props.cycleKeys, props.cycleNodes, props.cycleStrong, props.badges, props.highlight], () => { restyle(); placeSuggestionLabels(); });
 </script>

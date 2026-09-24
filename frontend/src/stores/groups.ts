@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { readDurable, writeDurable } from "~/utils/durable"
+import { useStateStore } from "~/stores/state"
 import { v4 as uuidv4 } from 'uuid'
 import { useDataStore } from '~/stores/data'
 import { isLive, parseQuery, runQuery, type Query } from '~/utils/query'
@@ -790,6 +791,10 @@ export const useGroupsStore = defineStore('groups', {
             const target = this.dimensionRecords.find(d => d.name === name)
             const source = this.dimensionRecords.find(d => d.name === from)
             for (const g of this.groups) if (g.dimension === from) g.dimension = name
+            // An arrangement belongs to the lens, whatever it is called.
+            const state = useStateStore()
+            const layout = state.get<unknown>(`layout:${from}`, null)
+            if (layout) { state.set(`layout:${name}`, layout); state.set(`layout:${from}`, null) }
             if (target) this.dimensionRecords = this.dimensionRecords.filter(d => d !== source)
             else if (source) source.name = name
             this._persist()

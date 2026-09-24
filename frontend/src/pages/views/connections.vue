@@ -103,6 +103,13 @@
       <button v-if="rep === 'matrix' && crossingKeys.size" type="button" class="ui-btn ui-btn-sm" :aria-pressed="showCrossings" :class="{ 'bg-neutral-100': showCrossings }" :title="`Mark the ${crossingKeys.size} group pairs whose imports cross ${lens.active}'s declared order`" @click="showCrossings = !showCrossings">
         <Icon icon="scale" :size="13" :class="showCrossings ? 'text-red-600' : 'text-neutral-500'"/><span>Crossings</span>
       </button>
+      <div v-if="rep === 'graph' && canArrange" class="relative flex items-center gap-1">
+        <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="arranging" :class="{ 'bg-neutral-100': arranging }" title="Place nodes by hand; the arrangement is kept for this lens" @click="arranging = !arranging">
+          <Icon icon="maximize" :size="13" class="text-neutral-500"/><span>Arrange</span>
+        </button>
+        <span v-if="arranging && unplaced" class="ui-tag" :title="`${unplaced} nodes have no place yet: drag them where they belong`">Unplaced ({{ unplaced }})</span>
+        <button v-if="arranging && Object.keys(arrangement).length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Forget this lens's arrangement" @click="resetArrangement">Reset</button>
+      </div>
       <div v-if="rep === 'matrix'" class="ui-segmented" role="group" aria-label="Matrix order" :title="model.directed.value ? '' : 'Co-change has no direction, so it has no levels'">
         <button type="button" :aria-pressed="!orderByLevels" @click="setState({ order: 'name' })">Name</button>
         <button type="button" :aria-pressed="orderByLevels" :disabled="!model.directed.value" :title="`Callers on top, dependencies below; ${levels.depth} levels, tangles boxed`" @click="setState({ order: 'levels' })">Levels</button>
@@ -253,6 +260,8 @@
         :highlight="suggestHighlight"
         :levels="rep === 'matrix' && orderByLevels ? levels : null"
         :marked-keys="rep === 'matrix' && showCrossings ? crossingKeys : undefined"
+        :arrangement="rep === 'graph' && arranging ? arrangement : null"
+        @place="place"
         @select="onSelect"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
@@ -390,6 +399,8 @@ import ConnectionsMatrix from "~/components/connections/ConnectionsMatrix.vue";
 import ConnectionsList from "~/components/connections/ConnectionsList.vue";
 import { edgeKey as crossingEdgeKey, levelize } from "~/utils/connections";
 import { useLensFindings } from "~/composables/useLensFindings";
+import { useStateStore } from "~/stores/state";
+const stateStoreForLayout = useStateStore();
 import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";
 import ConnectionsInspector from "~/components/connections/ConnectionsInspector.vue";
 import ConnectionsCrosscut from "~/components/connections/ConnectionsCrosscut.vue";
@@ -466,6 +477,17 @@ const draft = useDraftStore();
 const workspaceKey = computed(() => workspaces.active?.id ?? store.datasetKey ?? "default");
 watch(workspaceKey, (k) => draft.load(k), { immediate: true });
 const lens = useLensStore();
+// Arranged layout: hand-placed positions per lens (or for components when
+// nothing rolls up), kept in the workspace. Groups, or up to 150 nodes.
+const arranging = ref(false);
+const layoutKey = computed(() => `layout:${effectiveBy.value ?? "__components"}`);
+const arrangement = computed<Record<string, { x: number; y: number }>>(() => stateStoreForLayout.get(layoutKey.value, {}) ?? {});
+const canArrange = computed(() => model.nodes.value.every(n => n.kind === "group") || model.nodes.value.length <= 150);
+const unplaced = computed(() => model.nodes.value.filter(n => n.kind !== "file" && !arrangement.value[n.id]).length);
+function place(p: { id: string; x: number; y: number }) {
+  stateStoreForLayout.set(layoutKey.value, { ...arrangement.value, [p.id]: { x: p.x, y: p.y } });
+}
+function resetArrangement() { stateStoreForLayout.set(layoutKey.value, null); }
 // The active lens's declared order, crossed: marked on the group matrix.
 const { check: lensCheck } = useLensFindings(computed(() => lens.active));
 const showCrossings = ref(true);
