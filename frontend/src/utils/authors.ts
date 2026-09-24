@@ -38,7 +38,7 @@ export function authorStatsSql(where = "1", opts: { aliases?: AliasMap; includeB
         ].join(", ")
     }).join(",\n    ")
     return `
-  WITH now AS (SELECT ${opts.anchor ?? "julianday(max(timestamp))"} AS now FROM git_commits),
+  WITH now AS (SELECT ${opts.anchor ? `${opts.anchor} AS now` : "julianday(max(timestamp)) AS now FROM git_commits"}),
   c AS (
     SELECT ${canonicalAuthorSql(opts.aliases ?? {})} AS author_name, author_email, commit_hash, file, component, commit_time,
            coalesce(file_additions, 0) AS a, coalesce(file_deletions, 0) AS d, julianday(commit_time) AS t

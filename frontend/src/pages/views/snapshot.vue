@@ -174,7 +174,7 @@ const pct = (n: number, total: number) => {
   if (p > 0 && p < 0.1) return "<0.1%";
   return `${p.toLocaleString("en-US", { maximumFractionDigits: p < 1 ? 1 : 0 })}%`;
 };
-const LANGUAGE_NAMES: Record<string, string> = { java: "Java", kotlin: "Kotlin", csharp: "C#", typescript: "TypeScript and JavaScript", python: "Python", go: "Go", php: "PHP" };
+const LANGUAGE_NAMES: Record<string, string> = { java: "Java", kotlin: "Kotlin", csharp: "C#", typescript: "TypeScript/JS", python: "Python", go: "Go", php: "PHP" };
 const formatDay = (v: string | number | Date | null | undefined) => (v ? new Date(v).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 // ── Composition ─────────────────────────────────────────────────────────

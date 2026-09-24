@@ -51,8 +51,11 @@ function createComponentGraph(components: RawComponent[], connections: RawCompon
 
     connections.forEach(connection => {
         let {from, to, count} = connection;
-        const fromComponent = graph.get(from)!;
-        const toComponent = graph.get(to)!;
+        const fromComponent = graph.get(from);
+        const toComponent = graph.get(to);
+        // An edge to a component the table does not hold (one a scan left
+        // out) has nothing to hang on; it is dropped, not a crash.
+        if (!fromComponent || !toComponent) return;
 
         fromComponent.connections.push({
             from: fromComponent,

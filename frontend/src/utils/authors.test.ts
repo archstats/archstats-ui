@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { canonicalAuthorSql, isBotAuthor, isBotCommit, maskPeople, namesOf, pseudonymLabels } from "./authors"
+import { authorStatsSql, canonicalAuthorSql, isBotAuthor, isBotCommit, maskPeople, namesOf, pseudonymLabels } from "./authors"
 
 describe("bots", () => {
     it("recognises the usual machine accounts", () => {
@@ -42,5 +42,12 @@ describe("maskPeople", () => {
     it("masks handles, emails and trailers", () => {
         expect(maskPeople("Fix #12 (thanks @jdoe, mail x.y@corp.com)\n\nCo-authored-by: Jane <j@x.io>"))
             .toBe("Fix #12 (thanks @…, mail …@…)\n\nCo-authored-by: …")
+    })
+})
+
+describe("authorStatsSql", () => {
+    it("anchors on one row, never one per commit", () => {
+        const sql = authorStatsSql("1", { anchor: "julianday('2026-01-01')" })
+        expect(sql).toMatch(/WITH now AS \(SELECT julianday\('2026-01-01'\) AS now\)/)
     })
 })
