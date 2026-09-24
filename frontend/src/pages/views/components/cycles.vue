@@ -317,6 +317,7 @@
 </template>
 
 <script setup lang="ts">
+import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -553,7 +554,7 @@ const { data: loadedEdges, loading: edgesLoading } = useAsyncQuery<EdgeDetail[]>
       const rows = await store.query<{ pair_1: string; pair_2: string; shared_commits: number }>(`
         SELECT pair_1, pair_2, shared_commits
         FROM git_component_shared_commits
-        WHERE ${predicate}
+        WHERE (${predicate}) AND ${TRUSTED_PAIR_SQL}
       `)
       for (const r of rows) {
         const n = Number(r.shared_commits) || 0

@@ -365,6 +365,15 @@ export const useDataStore = defineStore('data', {
                             }
                         })
                         const avgHotspot = validCount > 0 ? (totalHotspot / validCount) : 0
+                        // A member with no commits shares none. Before analysis
+                        // revision 2 the engine reported the others' commits
+                        // as shared in that case; this table has no
+                        // percentages to catch it by, so the members do.
+                        const withoutCommits = nodesInCycle.some(n => {
+                            const comp = compIndex.get(n)
+                            return comp && Number(comp.git__commits__total ?? 1) === 0
+                        })
+                        if (withoutCommits) c.shared_commits = 0
                         const severity = c.cycle_size * (1 + c.shared_commits) * (1 + avgHotspot)
 
                         return {

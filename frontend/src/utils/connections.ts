@@ -264,7 +264,9 @@ export function undirectedSharedCommitEdges(rows: Array<{ from: string; to: stri
     const [a, b] = canonicalPair(r.from, r.to)
     const key = `${a}${KEY_SEP}${b}`
     const entry = map.get(key) ?? { from: a, to: b, references: 0, sharedCommits: 0 }
-    entry.sharedCommits += r.sharedCommits
+    // Shared commits are one number for a pair; a row listed both ways is
+    // the same commits twice, not twice the commits.
+    entry.sharedCommits = Math.max(entry.sharedCommits, r.sharedCommits)
     map.set(key, entry)
   }
   return Array.from(map.values())

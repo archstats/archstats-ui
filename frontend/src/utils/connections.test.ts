@@ -126,12 +126,12 @@ describe("raw edge shaping", () => {
     expect(out).toEqual([{ from: "a", to: "b", references: 3, sharedCommits: 0 }])
   })
 
-  it("undirectedSharedCommitEdges canonicalizes direction and sums duplicates", () => {
+  it("undirectedSharedCommitEdges canonicalizes direction and never counts a pair twice", () => {
     const out = undirectedSharedCommitEdges([
       { from: "b", to: "a", sharedCommits: 3 },
       { from: "a", to: "b", sharedCommits: 4 },
     ])
-    expect(out).toEqual([{ from: "a", to: "b", references: 0, sharedCommits: 7 }])
+    expect(out).toEqual([{ from: "a", to: "b", references: 0, sharedCommits: 4 }])
   })
 })
 

@@ -215,6 +215,7 @@
 </template>
 
 <script setup lang="ts">
+import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
 // A component's cycles, drawn rather than listed.
 //
@@ -305,7 +306,7 @@ const { data: coChange } = useAsyncQuery<Map<string, number>>(
     if (names.length < 2 || !store.hasView("git_component_shared_commits")) return new Map()
     const rows = await store.query<{ pair_1: string; pair_2: string; shared_commits: number }>(`
       SELECT pair_1, pair_2, shared_commits FROM git_component_shared_commits
-      WHERE pair_1 IN ${sqlIn(names)} AND pair_2 IN ${sqlIn(names)}`)
+      WHERE pair_1 IN ${sqlIn(names)} AND pair_2 IN ${sqlIn(names)} AND ${TRUSTED_PAIR_SQL}`)
     const out = new Map<string, number>()
     for (const r of rows) {
       const n = Number(r.shared_commits) || 0

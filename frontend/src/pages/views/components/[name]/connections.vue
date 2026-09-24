@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -337,7 +338,7 @@ const { data, loading } = useAsyncQuery(
       ? await store.query<MatrixRow>(`select "from", "to", git_co_changes from component_matrix where "from" = ${lit} or "to" = ${lit}`)
       : []
     const shared = store.hasView("git_component_shared_commits")
-      ? await store.query<SharedRow>(`select pair_1, pair_2, shared_commits, percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2 from git_component_shared_commits where pair_1 = ${lit} or pair_2 = ${lit}`)
+      ? await store.query<SharedRow>(`select pair_1, pair_2, shared_commits, percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2 from git_component_shared_commits where (pair_1 = ${lit} or pair_2 = ${lit}) and ${TRUSTED_PAIR_SQL}`)
       : []
     return { direct, indirect, matrix, shared }
   },

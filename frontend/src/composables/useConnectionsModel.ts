@@ -19,6 +19,7 @@ import { useWorkspacesStore } from "~/stores/workspaces";
 import { componentLabel } from "~/utils/routes";
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { queryFileImportEdges } from "~/utils/fileImports";
+import { TRUSTED_PAIR_SQL } from "~/utils/cochange";
 import {
   type CEdge, type CNode, type CycleMode, type Level, type RawEdge, type Source,
   buildTreeNodes, cycleEdgeKeys, directedReferenceEdges, levelOf, normalizeEdges, presetOpenIds,
@@ -73,7 +74,7 @@ export function useConnectionsModel(opts: {
       store.query<{ component: string; n: number }>(`select component, count(*) as n from files group by component`),
       store.query<{ name: string; lines: number | null }>(`select name, complexity__lines as lines from files`),
       store.query<{ from: string; to: string; references: number }>(`select "from", "to", sum(reference_count) as "references" from ${store.runtimeComponentEdges} group by "from", "to"`),
-      hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number }>(`select pair_1 as "from", pair_2 as "to", shared_commits as sharedCommits from git_component_shared_commits where shared_commits > 0`) : Promise.resolve([]),
+      hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number }>(`select pair_1 as "from", pair_2 as "to", shared_commits as sharedCommits from git_component_shared_commits where shared_commits > 0 and ${TRUSTED_PAIR_SQL}`) : Promise.resolve([]),
     ]);
     return { components, filesPerComponent: new Map(fileCounts.map(r => [r.component, r.n])), fileLines: new Map(fileLineRows.map(r => [r.name, Number(r.lines) || 0])), staticEdges: directedReferenceEdges(staticRows), gitEdges: undirectedSharedCommitEdges(gitRows) };
   }, [], { initial: EMPTY_COMPONENTS });
