@@ -128,6 +128,8 @@
         <UsedSurface :name="name"/>
       </ReadingBand>
 
+      <WhoKnowsIt :name="name"/>
+
       <!-- 4. How it stands against every other component. -->
       <ReadingBand title="Standing" :lede="standingLede" :to="`${base}/history`" link-label="History">
         <PercentileStrip :rows="standing" :total="total"/>
@@ -228,6 +230,7 @@
 
 <script setup lang="ts">
 import UsedSurface from "~/components/component/UsedSurface.vue"
+import WhoKnowsIt from "~/components/git/WhoKnowsIt.vue";
 import { leansOnLessStable } from "~/utils/sdp"
 import { ageShares, useCodeAge } from "~/composables/useCodeAge"
 import { componentPath, filePath } from "~/utils/routes"

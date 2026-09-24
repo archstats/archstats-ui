@@ -3,10 +3,10 @@
     :queryable="false"
     title="Authors"
     v-model:search-query="searchQuery"
-    search-placeholder="Search authors"
+    :search-placeholder="grain === 'authors' ? 'Search authors' : 'Search components'"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
-    :tabs="tabs"
+    :tabs="grain === 'authors' ? tabs : []"
     sidebar-width="300px"
   >
     <template #stats>
@@ -19,7 +19,11 @@
     </template>
 
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Period">
+      <div class="ui-segmented" role="group" aria-label="Rows">
+        <button type="button" :aria-pressed="grain === 'authors'" @click="setGrain('authors')">Authors</button>
+        <button type="button" :aria-pressed="grain === 'components'" title="Per component: how few people added most of its lines" @click="setGrain('components')">Components</button>
+      </div>
+      <div v-if="grain === 'authors'" class="ui-segmented" role="group" aria-label="Period">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days)" @click="period = p.id">{{ p.label }}</button>
       </div>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.pseudonymise" :class="{ 'bg-neutral-100': authorsStore.pseudonymise }"
@@ -37,7 +41,8 @@
     </template>
 
     <template #visualizer>
-      <LoadingState v-if="loading" text="Reading authors…"/>
+      <KnowledgeTable v-if="grain === 'components'" :search="searchQuery"/>
+      <LoadingState v-else-if="loading" text="Reading authors…"/>
       <EmptyState v-else-if="error" title="Could not read authors" :text="error" icon="alert"/>
       <EmptyState
         v-else-if="rows.length === 0"
@@ -162,7 +167,8 @@ import { scopeWhere } from "~/utils/scopeSql"
 import { useWorkspacesStore } from "~/stores/workspaces"
 import SingleSelect from "~/components/ui/common/SingleSelect.vue"
 import { computed, ref, watch } from "vue"
-import { useRouter } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
+import KnowledgeTable from "~/components/git/KnowledgeTable.vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
 import { useExportables } from "~/composables/useExportables"
@@ -173,6 +179,14 @@ import LoadingState from "~/components/ui/common/LoadingState.vue"
 
 const store = useDataStore()
 const router = useRouter()
+const route = useRoute()
+// Authors, or components by how concentrated their authorship is.
+const grain = computed(() => (route.query.grain === "components" ? "components" : "authors"))
+function setGrain(g: "authors" | "components") {
+  const query: Record<string, any> = { ...route.query }
+  if (g === "components") query.grain = "components"; else delete query.grain
+  void router.replace({ query })
+}
 const workspaces = useWorkspacesStore()
 const authorsStore = useAuthorsStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })

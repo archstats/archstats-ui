@@ -12,6 +12,9 @@
             <template v-if="row.id === 'ca'">Highest Ca among components with I &gt;
               <input v-model.number="caThreshold" type="number" min="0" max="1" step="0.05" class="ui-input ui-input-sm inline-block w-16 px-1 py-0 font-mono" aria-label="Instability threshold">
             </template>
+            <template v-else-if="row.id === 'knowledge'">Fewest authors covering 80% of lines, among components with ≥
+              <input v-model.number="knowledgeFloor" type="number" min="0" step="500" class="ui-input ui-input-sm inline-block w-20 px-1 py-0 font-mono" aria-label="Lines added floor"> lines added
+            </template>
             <template v-else>{{ row.title }}</template>
           </p>
           <p class="text-xs text-neutral-500">{{ row.filter }}</p>
@@ -33,6 +36,8 @@ import { computed, ref } from "vue";
 import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { useDataStore } from "~/stores/data";
 import { useScopeStore } from "~/stores/scope";
+import { useAuthorsStore } from "~/stores/authors";
+import { knowledgeSql } from "~/utils/authors";
 import { looksLikeProductionCode } from "~/utils/fileRole";
 import { componentPath, filePath } from "~/utils/routes";
 import { scopeLabel } from "~/utils/scopeSql";
@@ -63,6 +68,14 @@ const { data: tangles } = useAsyncQuery<Array<{ group: string; size: number; mem
     ? data.query(`SELECT "group", count(*) AS size, group_concat(component, char(10)) AS members FROM component_strongly_connected_groups GROUP BY 1 HAVING count(*) > 1 ORDER BY 2 DESC`)
     : Promise.resolve([]),
   [],
+  { initial: [] },
+);
+// Row 5: knowledge concentration, among components with enough history to say.
+const authors = useAuthorsStore();
+const knowledgeFloor = ref(1000);
+const { data: knowledge } = useAsyncQuery<Array<{ component: string; added: number; cover80: number; authors: number; main: string }>>(
+  () => data.hasView("git_commits") ? data.query(knowledgeSql(authors.aliases, authors.showBots)) : Promise.resolve([]),
+  [() => authors.aliases, () => authors.showBots],
   { initial: [] },
 );
 // Row 4: rule findings by the component they start in.
@@ -116,6 +129,27 @@ const rows = computed<Row[]>(() => {
     sentence: !data.hasView("rules") ? "Rules were not checked in this snapshot." : rc.length ? `${rc[0].component} starts ${fmt(rc[0].n)} forbidden import${rc[0].n === 1 ? "" : "s"}.` : "No module rule is broken.",
     evidence: rc.map(r => ({ label: r.component, to: componentPath(r.component), title: `${r.n} findings` })),
     open: { label: "Rules", to: "/views/rules" },
+  });
+
+  // Mostly production code: a vendored library committed by one person is concentrated by construction.
+  const production = (component: string) => {
+    const files = data.componentFilesIndex.get(component) ?? [];
+    const ok = files.filter(f => (recorded ? (data.fileRoleIndex.get(f) ?? "production") === "production" : looksLikeProductionCode(f))).length;
+    return files.length > 0 && ok * 2 >= files.length;
+  };
+  const k = knowledge.value
+    .filter(r => Number(r.added) >= knowledgeFloor.value && scope.componentInScope(r.component) && production(r.component))
+    .sort((a, b) => Number(a.cover80) - Number(b.cover80) || Number(b.added) - Number(a.added))
+    .slice(0, 3);
+  out.push({
+    id: "knowledge",
+    title: "",
+    filter: recorded ? "Mostly production files · lines added, not blame · bots hidden · aliases merged" : "Mostly production files by path convention · lines added, not blame · bots hidden · aliases merged",
+    sentence: !data.hasView("git_commits") ? "No git history in this snapshot." : k.length
+      ? `${k[0].component}: ${Number(k[0].cover80) === 1 ? `one author, ${authors.display(k[0].main)},` : `${fmt(Number(k[0].cover80))} of ${fmt(Number(k[0].authors))} authors`} added 80% of its ${fmt(Number(k[0].added))} lines.`
+      : `No component has ${fmt(knowledgeFloor.value)} lines added.`,
+    evidence: k.map(r => ({ label: r.component, to: componentPath(r.component), title: `${r.cover80} of ${r.authors} authors cover 80% of ${fmt(Number(r.added))} lines` })),
+    open: { label: "Authors", to: "/views/git/authors?grain=components" },
   });
   return out;
 });

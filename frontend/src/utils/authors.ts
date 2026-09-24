@@ -151,3 +151,59 @@ export function maskPeople(text: string): string {
         .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "…@…")
         .replace(/(^|[^\w@])@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/g, "$1@…")
 }
+
+// ── Knowledge concentration ──────────────────────────────────────────────
+// Who added a component's lines: lines added by each person (aliases merged,
+// bots out), across the files the component has now. Lines added, not blame:
+// a person who wrote a file and saw it rewritten still counts, which is the
+// right reading for "whom to ask", and the wrong one for "who owns it now".
+
+/** How many of the largest contributions it takes to reach `fraction` of the total. */
+export function coverCount(added: number[], fraction: number): number {
+    const sorted = [...added].filter(n => n > 0).sort((a, b) => b - a)
+    const total = sorted.reduce((s, n) => s + n, 0)
+    if (!total) return 0
+    let sum = 0
+    for (let i = 0; i < sorted.length; i++) {
+        sum += sorted[i]
+        if (sum >= fraction * total - 1e-9) return i + 1
+    }
+    return sorted.length
+}
+
+/** One component's contributors: author, lines added, last commit. */
+export function componentAuthorsSql(component: string, aliases: AliasMap, includeBots = false): string {
+    const lit = `'${component.replace(/'/g, "''")}'`
+    return `SELECT ${canonicalAuthorSql(aliases, "c.author_name")} AS author, sum(coalesce(c.file_additions, 0)) AS added, max(c.commit_time) AS last
+    FROM git_commits c JOIN files f ON f.name = c.file
+    WHERE f.component = ${lit}${includeBots ? "" : ` AND ${NOT_BOT_SQL}`}
+    GROUP BY 1 HAVING added > 0 ORDER BY added DESC, author`
+}
+
+/**
+ * Every component: authors, how few cover half and four fifths of the lines
+ * added, the main author with their share and last commit.
+ */
+export function knowledgeSql(aliases: AliasMap, includeBots = false): string {
+    return `
+    WITH a AS (
+      SELECT f.component AS component, ${canonicalAuthorSql(aliases, "c.author_name")} AS author,
+             sum(coalesce(c.file_additions, 0)) AS added, max(c.commit_time) AS last
+      FROM git_commits c JOIN files f ON f.name = c.file
+      WHERE f.component IS NOT NULL AND f.component <> ''${includeBots ? "" : ` AND ${NOT_BOT_SQL}`}
+      GROUP BY 1, 2
+    ), r AS (
+      SELECT component, author, added, last,
+             sum(added) OVER (PARTITION BY component) AS total,
+             sum(added) OVER (PARTITION BY component ORDER BY added DESC, author ROWS UNBOUNDED PRECEDING) AS cum,
+             row_number() OVER (PARTITION BY component ORDER BY added DESC, author) AS rank
+      FROM a WHERE added > 0
+    )
+    SELECT component, count(*) AS authors, max(total) AS added,
+           min(CASE WHEN cum >= 0.5 * total THEN rank END) AS cover50,
+           min(CASE WHEN cum >= 0.8 * total THEN rank END) AS cover80,
+           max(CASE WHEN rank = 1 THEN author END) AS main,
+           max(CASE WHEN rank = 1 THEN added * 1.0 / total END) AS mainShare,
+           max(CASE WHEN rank = 1 THEN last END) AS mainLast
+    FROM r GROUP BY component`
+}
