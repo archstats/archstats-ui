@@ -142,12 +142,13 @@
                     <h4 class="ui-label">Where</h4>
                     <p v-if="cutDetail.sites.length === 0" class="mt-1.5 text-sm text-neutral-500">The snapshot records no file-level import for this edge.</p>
                     <ul v-else class="mt-1.5 flex flex-col">
-                      <li v-for="site in cutDetail.sites" :key="site.file" class="flex h-6 items-center gap-3">
+                      <li v-for="site in cutDetail.sites" :key="site.file" class="group flex h-6 items-center gap-3">
                         <router-link :to="`/views/files/${site.file}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="site.file">
                           {{ basename(site.file) }}<span v-if="site.line" class="text-neutral-500">:{{ site.line }}</span>
                           <span class="ml-1.5 text-xs text-neutral-400">{{ dirname(site.file) }}</span>
                         </router-link>
-                        <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatNumber(site.references) }}</span>
+                        <OpenInEditor :file="site.file" :line="site.line || undefined" class="ml-auto opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"/>
+                        <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatNumber(site.references) }}</span>
                       </li>
                     </ul>
                   </div>
@@ -215,6 +216,7 @@
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
 // A component's cycles, drawn rather than listed.

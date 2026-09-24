@@ -34,12 +34,20 @@ export function ListScans(arg1) {
   return window['go']['app']['WorkspaceService']['ListScans'](arg1);
 }
 
+export function OpenInEditor(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['app']['WorkspaceService']['OpenInEditor'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function Rename(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['Rename'](arg1, arg2);
 }
 
 export function RevealSnapshot(arg1) {
   return window['go']['app']['WorkspaceService']['RevealSnapshot'](arg1);
+}
+
+export function RevealWorkspaceFile(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['RevealWorkspaceFile'](arg1, arg2);
 }
 
 export function SaveSnapshotCopy(arg1, arg2) {

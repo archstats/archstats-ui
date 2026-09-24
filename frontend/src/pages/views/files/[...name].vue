@@ -9,6 +9,7 @@
     fallback="/views/metrics?grain=files"
   >
     <template #actions>
+      <OpenInEditor v-if="file" :file="filePath" button-class="!h-7 !w-7"/>
       <router-link v-if="file?.component" :to="componentPath(file.component)" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
         <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>Component</span>
       </router-link>
@@ -21,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { componentPath } from "~/utils/routes"
 import { computed } from "vue"
 import { useDataStore } from "~/stores/data"

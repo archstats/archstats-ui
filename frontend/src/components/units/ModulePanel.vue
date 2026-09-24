@@ -17,9 +17,10 @@
           </button>
         </div>
 
-        <router-link :to="`/views/files/${module.path}`"
-                     class="mt-1 block truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-900 hover:underline"
-                     :title="module.path">{{ module.path }}</router-link>
+        <div class="mt-1 flex items-center gap-1">
+          <router-link :to="`/views/files/${module.path}`" class="block min-w-0 truncate font-mono text-[11px] text-neutral-500 hover:text-neutral-900 hover:underline" :title="module.path">{{ module.path }}</router-link>
+          <OpenInEditor :file="module.path" class="-my-1"/>
+        </div>
 
         <dl class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           <div><dt class="ui-label">Lane</dt><dd class="text-xs text-neutral-700">{{ laneLabel(module.lane) }}</dd></div>
@@ -92,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { computed } from "vue"
 import Icon from "~/components/ui/common/Icon.vue"
 import ModuleRelationList from "~/components/units/ModuleRelationList.vue"

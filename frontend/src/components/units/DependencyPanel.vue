@@ -73,12 +73,14 @@
         <router-link :to="`/views/files/${to.path}`" class="ui-btn ui-btn-sm">
           <Icon icon="file-code" :size="12"/><span>Open {{ to.name }}</span>
         </router-link>
+        <OpenInEditor :file="from.path"/>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { computed } from "vue"
 import Icon from "~/components/ui/common/Icon.vue"
 import { laneDotClass, type LaneColor } from "~/utils/javaFrameworks"

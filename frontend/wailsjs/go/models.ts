@@ -16,6 +16,20 @@ export namespace app {
 	        this.base64 = source["base64"];
 	    }
 	}
+	export class EditorOpened {
+	    status: string;
+	    changedSinceScan: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditorOpened(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.changedSinceScan = source["changedSinceScan"];
+	    }
+	}
 	export class FileFilter {
 	    name: string;
 	    patterns: string;

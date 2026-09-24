@@ -53,15 +53,16 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(v, i) in group.violations" :key="`${group.id}-${i}`">
+                    <tr v-for="(v, i) in group.violations" :key="`${group.id}-${i}`" class="group">
                       <td class="max-w-0 truncate font-mono text-sm text-neutral-800" :title="v.from">{{ v.from }}</td>
                       <td class="max-w-0 truncate font-mono text-sm text-neutral-800" :title="v.to">{{ v.to }}</td>
                       <td>
                         <span class="ui-tag" :title="kindHint(v.kind)">{{ kindLabel(v.kind) }}</span>
                       </td>
-                      <td class="max-w-0">
+                      <td class="relative max-w-0 pr-9">
+                        <OpenInEditor :file="v.file" :line="v.line" class="absolute right-1 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"/>
                         <router-link
-                          :to="`/views/files/${v.file}`"
+                          :to="`${filePath(v.file, 'source')}${v.line ? `#L${v.line}` : ''}`"
                           class="block truncate font-mono text-sm text-neutral-600 hover:text-neutral-900 hover:underline"
                           :title="atLine(v.file, v.line)"
                         >{{ shortLocation(v.file, v.line) }}</router-link>
@@ -115,6 +116,8 @@
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
+import { filePath } from "~/utils/routes"
 import { computed } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"

@@ -7,6 +7,7 @@
       <span v-if="detectedLanguageLabel" class="ui-tag">{{ detectedLanguageLabel }}</span>
       <span v-if="highlightStart > 0" class="ui-tag">L{{ highlightStart === highlightEnd ? highlightStart : `${highlightStart}–${highlightEnd}` }}</span>
       <span class="ml-auto font-mono text-xs text-neutral-400">{{ codeLines.length }} lines</span>
+      <OpenInEditor :file="filePath" :line="highlightStart > 0 ? highlightStart : undefined"/>
       <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!fileContents" @click="copyToClipboard">
         <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/>
         <span>{{ copied ? 'Copied' : 'Copy' }}</span>
@@ -24,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { copyText } from '~/utils/files'
 import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRoute } from "vue-router"

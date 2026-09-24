@@ -19,9 +19,13 @@ export function List():Promise<Array<store.Workspace>>;
 
 export function ListScans(arg1:string):Promise<Array<store.Scan>>;
 
+export function OpenInEditor(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number,arg6:string):Promise<app.EditorOpened>;
+
 export function Rename(arg1:string,arg2:string):Promise<store.Workspace>;
 
 export function RevealSnapshot(arg1:string):Promise<void>;
+
+export function RevealWorkspaceFile(arg1:string,arg2:string):Promise<void>;
 
 export function SaveSnapshotCopy(arg1:string,arg2:boolean):Promise<string>;
 
