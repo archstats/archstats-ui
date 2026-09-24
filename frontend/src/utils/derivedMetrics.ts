@@ -63,9 +63,9 @@ export const DERIVED_METRICS: DerivedMetric[] = [
         id: "app__propagation_cost",
         name: "Propagation cost",
         category: "System shape",
-        short: "Share of component pairs where a change in one can reach the other.",
-        long: "MacCormack's propagation cost: the number of ordered pairs (a, b) where a reaches b through imports, directly or not, over the number of components squared. Near 0, changes stay local; past about 0.4, most changes can ripple through most of the system.",
-        sql: `SELECT 1.0 * (SELECT count(*) FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')) / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`,
+        short: "Share of component pairs where a change in one can reach the other: (reachable pairs + N) / N².",
+        long: "MacCormack's propagation cost: the ordered pairs (a, b) where a reaches b through imports, directly or not, plus the N pairs of each component with itself, over the number of components squared. Near 0, changes stay local; past about 0.4, most changes can ripple through most of the system. Pairs are counted once: the snapshot's table can repeat a row.",
+        sql: `SELECT 1.0 * ((SELECT count(*) FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')) + (SELECT count(*) FROM components WHERE name <> '.')) / nullif((SELECT count(*) * count(*) FROM components WHERE name <> '.'), 0)`,
     },
     {
         id: "app__dependency_levels",

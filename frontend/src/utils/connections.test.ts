@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-  feedbackEdges, idsInRect, isDynamicOnly, neighboursOf,
+  feedbackEdges, idsInRect, isDynamicOnly, levelize, neighboursOf,
   buildTreeNodes, treeResolver, presetOpenIds, levelOf, stronglyConnectedSets, cycleEdgeKeys, edgeKey, type ConnectionsQueryState,
   DEFAULT_CONNECTIONS_STATE,
   buildMixedGrainNodes,
@@ -357,4 +357,18 @@ describe("dynamic references", () => {
         expect(rolled).toEqual([{ from: "G", to: "H", references: 8, dynamicRefs: 5, sharedCommits: 0 }])
         expect(isDynamicOnly(rolled[0])).toBe(false)
     })
+})
+
+describe("levelize", () => {
+  it("puts callers on top, dependencies below, tangles boxed together", () => {
+    const edges = [{ from: "web", to: "svc" }, { from: "svc", to: "dom" }, { from: "svc", to: "util" }, { from: "util", to: "svc" }, { from: "web", to: "dom" }]
+    const lv = levelize(["dom", "svc", "util", "web"], edges)
+    expect(lv.order).toEqual(["web", "svc", "util", "dom"])
+    expect(lv.boxes).toEqual([["svc", "util"]])
+    expect(lv.depth).toBe(3)
+    // Every edge runs downward or stays inside a box.
+    const pos = new Map(lv.order.map((id, i) => [id, i]))
+    const boxOf = new Map(lv.boxes.flatMap((b, i) => b.map(id => [id, i])))
+    for (const e of edges) expect(pos.get(e.from)! < pos.get(e.to)! || boxOf.get(e.from) === boxOf.get(e.to)).toBe(true)
+  })
 })

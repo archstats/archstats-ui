@@ -46,6 +46,7 @@
                   : { borderColor: row.color ?? 'rgb(var(--c-neutral-300))', backgroundColor: row.kind === 'group' ? (row.color ?? 'rgb(var(--c-neutral-300))') : 'transparent', opacity: row.kind === 'group' ? 0.85 : 1 }"
                 :title="row.kind"
               ></span>
+              <span v-if="levels" class="w-5 shrink-0 text-right text-[10px] text-neutral-400" :title="`Dependency level ${(levels.level.get(row.id) ?? 0) + 1} of ${levels.depth}`">{{ (levels.level.get(row.id) ?? 0) + 1 }}</span>
               <span class="min-w-0 truncate">{{ row.label }}</span>
               <span v-if="badges?.get(row.id)" class="ml-auto rounded-full bg-red-600 px-1.5 font-mono text-[10px] font-semibold leading-4 text-white" :title="`${badges.get(row.id)} cycles inside`">{{ badges.get(row.id) }}</span>
             </span>
@@ -54,10 +55,10 @@
             v-for="col in orderedCols"
             :key="col.id"
             class="cell"
-            :class="{ 'is-self': row.id === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)) }"
-            :style="cellStyle(row.id, col.id)"
+            :class="{ 'is-self': row.id === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)), 'is-marked': markedKeys?.has(edgeKey(row.id, col.id)) }"
+            :style="[cellStyle(row.id, col.id), boxShadow(row.id, col.id) ? { boxShadow: boxShadow(row.id, col.id) } : {}]"
             :title="cellTitle(row.id, col.id)"
-            @click="clickCell(row.id, col.id)"
+            @click="boxOf.get(row.id) !== undefined && boxOf.get(row.id) === boxOf.get(col.id) && !edgeAt(row.id, col.id) ? emit('select-cycle', row.id) : clickCell(row.id, col.id)"
           ></td>
         </tr>
       </tbody>
@@ -67,7 +68,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { type CEdge, type CNode, edgeKey, orderNodes } from "~/utils/connections";
+import { type CEdge, type CNode, type Levels, edgeKey, orderNodes } from "~/utils/connections";
 
 // A dependency structure matrix: rows use columns when the source is
 // directed; otherwise the grid is symmetric. Cells shade on the blue data
@@ -92,6 +93,10 @@ const props = defineProps<{
   cycleKeys?: Set<string>
   cycleNodes?: Set<string>
   badges?: Map<string, number>
+  /** Rows and columns in dependency levels, tangles boxed on the diagonal. */
+  levels?: Levels | null
+  /** Cells to mark as crossings of a declared order (edge keys). */
+  markedKeys?: Set<string>
 }>();
 
 const emit = defineEmits<{
@@ -99,6 +104,7 @@ const emit = defineEmits<{
   (e: "select-pair", from: string, to: string): void
   (e: "hover", id: string | null): void
   (e: "activate", id: string): void
+  (e: "select-cycle", id: string): void
   (e: "context", payload: { id: string; x: number; y: number }): void
 }>();
 
@@ -116,8 +122,33 @@ let hoverCol: string | null = null;
 // Explicit axes arrive in the order the caller chose -- for a region that is
 // most-connected first, which is the whole point of picking them. Only the
 // symmetric case gets the default group-then-name ordering.
-const orderedRows = computed(() => props.rowNodes ?? orderNodes(props.nodes));
-const orderedCols = computed(() => props.colNodes ?? orderNodes(props.nodes));
+function levelOrder(nodes: CNode[]): CNode[] {
+  const lv = props.levels;
+  if (!lv) return orderNodes(nodes);
+  const pos = new Map(lv.order.map((id, i) => [id, i]));
+  return [...nodes].sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9) || a.label.localeCompare(b.label));
+}
+const orderedRows = computed(() => props.rowNodes ?? levelOrder(props.nodes));
+const orderedCols = computed(() => props.colNodes ?? levelOrder(props.nodes));
+// Tangle boxes: the cells whose row and column sit in the same tangle.
+const boxOf = computed(() => new Map((props.levels?.boxes ?? []).flatMap((b, i) => b.map(id => [id, i] as [string, number]))));
+const boxEdges = computed(() => {
+  const first = new Map<number, string>(), last = new Map<number, string>();
+  for (const n of orderedRows.value) { const b = boxOf.value.get(n.id); if (b === undefined) continue; if (!first.has(b)) first.set(b, n.id); last.set(b, n.id); }
+  return { first, last };
+});
+function boxShadow(row: string, col: string): string | undefined {
+  const b = boxOf.value.get(row);
+  if (b === undefined || boxOf.value.get(col) !== b) return undefined;
+  const { first, last } = boxEdges.value;
+  const c = "rgb(var(--c-neutral-500))";
+  const parts: string[] = [];
+  if (first.get(b) === row) parts.push(`inset 0 1.5px 0 ${c}`);
+  if (last.get(b) === row) parts.push(`inset 0 -1.5px 0 ${c}`);
+  if (first.get(b) === col) parts.push(`inset 1.5px 0 0 ${c}`);
+  if (last.get(b) === col) parts.push(`inset -1.5px 0 0 ${c}`);
+  return parts.join(", ") || undefined;
+}
 
 const cellIndex = computed(() => {
   const map = new Map<string, CEdge>();
@@ -268,6 +299,10 @@ tr.is-hover .cell, .cell.is-hover {
 }
 .cell.is-cycle {
   box-shadow: inset 0 0 0 1.5px rgb(var(--c-red-500));
+}
+/* A crossing of the declared order: a red corner, not the cycle's ring. */
+.cell.is-marked {
+  background-image: linear-gradient(135deg, rgb(var(--c-red-500)) 0 30%, transparent 30%);
 }
 .cell.is-pair {
   box-shadow: inset 0 0 0 2px rgb(var(--c-accent-500));

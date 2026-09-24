@@ -77,6 +77,10 @@
         <button type="button" :aria-pressed="rep === 'chord'" @click="setState({ rep: 'chord' })">Chord</button>
         <button type="button" :aria-pressed="rep === 'crosscut'" title="Two lenses at once: rows by one, columns by the other" @click="setState({ rep: 'crosscut' })">Cross-cut</button>
       </div>
+      <div v-if="rep === 'matrix'" class="ui-segmented" role="group" aria-label="Matrix order" :title="model.directed.value ? '' : 'Co-change has no direction, so it has no levels'">
+        <button type="button" :aria-pressed="!orderByLevels" @click="setState({ order: 'name' })">Name</button>
+        <button type="button" :aria-pressed="orderByLevels" :disabled="!model.directed.value" :title="`Callers on top, dependencies below; ${levels.depth} levels, tangles boxed`" @click="setState({ order: 'levels' })">Levels</button>
+      </div>
     </template>
 
     <template #actions>
@@ -208,6 +212,7 @@
         :cycle-strong="cycles === 'selected' || selection?.type === 'cycle'"
         :badges="model.badges.value"
         :highlight="suggestHighlight"
+        :levels="rep === 'matrix' && orderByLevels ? levels : null"
         @select="onSelect"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
@@ -342,6 +347,7 @@ import Icon from "~/components/ui/common/Icon.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
 import ConnectionsGraph from "~/components/connections/ConnectionsGraph.vue";
 import ConnectionsMatrix from "~/components/connections/ConnectionsMatrix.vue";
+import { levelize } from "~/utils/connections";
 import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";
 import ConnectionsInspector from "~/components/connections/ConnectionsInspector.vue";
 import ConnectionsCrosscut from "~/components/connections/ConnectionsCrosscut.vue";
@@ -381,6 +387,9 @@ const CYCLE_MODES: Array<{ id: CycleMode; label: string }> = [
 // ── URL state ────────────────────────────────────────────────────────────
 const state = computed(() => parseConnectionsQuery(route.query as Record<string, unknown>));
 const rep = computed(() => state.value.rep);
+// Matrix order: levels by default at group grain, where the layers are the question.
+const orderByLevels = computed(() => model.directed.value && (state.value.order ? state.value.order === "levels" : state.value.level === "groups"));
+const levels = computed(() => levelize(model.nodes.value.map(n => n.id), model.edges.value));
 const source = computed(() => state.value.source);
 const cycles = computed(() => state.value.cycles);
 const selection = computed<Selection | null>(() => decodeSelection(state.value.sel));

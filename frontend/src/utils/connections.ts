@@ -81,6 +81,8 @@ export interface ConnectionsQueryState {
   /** Cross-cut: what a cell shows. */
   measure: CrossMeasure
   cycles: CycleMode
+  /** Matrix order: by name, or by dependency level; null picks levels at group grain. */
+  order: "name" | "levels" | null
   q: string
   sel: string | null
 }
@@ -97,6 +99,7 @@ export const DEFAULT_CONNECTIONS_STATE: ConnectionsQueryState = {
   x: null,
   measure: "coupling",
   cycles: "all",
+  order: null,
   q: "",
   sel: null,
 }
@@ -145,6 +148,7 @@ export function parseConnectionsQuery(query: Record<string, unknown>): Connectio
     x: x && x.length > 0 ? x : null,
     measure: measure === "files" || measure === "cycles" ? measure : "coupling",
     cycles: parseCycles(query.cycles),
+    order: firstString(query.order) === "name" ? "name" : firstString(query.order) === "levels" ? "levels" : null,
     q: q ?? "",
     sel: sel && sel.length > 0 ? sel : null,
   }
@@ -161,6 +165,7 @@ export function toConnectionsQuery(state: ConnectionsQueryState): Record<string,
   if (state.x) out.x = state.x
   if (state.measure !== "coupling") out.measure = state.measure
   if (state.cycles !== DEFAULT_CONNECTIONS_STATE.cycles) out.cycles = state.cycles
+  if (state.order) out.order = state.order
   if (state.q) out.q = state.q
   if (state.sel) out.sel = state.sel
   return out
@@ -649,4 +654,67 @@ export function cycleEdgeKeys(edges: Array<{ from: string; to: string }>, sets: 
     if (a !== undefined && a === b) out.add(edgeKey(e.from, e.to))
   }
   return out
+}
+
+// ── Levels ───────────────────────────────────────────────────────────────
+// The layers the code really has: collapse each tangle to one node, then
+// place every node one level below the deepest thing that depends on it.
+// Callers sit on top, dependencies below, so in a matrix whose rows and
+// columns follow this order every edge lies above the diagonal, except
+// inside a tangle's box on it.
+
+export interface Levels {
+  /** Ids, top level first; a tangle's members are contiguous. */
+  order: string[]
+  /** Id → level, 0 at the top. */
+  level: Map<string, number>
+  /** Tangles of two or more, in order. */
+  boxes: string[][]
+  /** Number of levels. */
+  depth: number
+}
+
+export function levelize(ids: string[], edges: Array<{ from: string; to: string }>): Levels {
+  const present = new Set(ids)
+  const sets = stronglyConnectedSets(ids, edges)
+  const compOf = new Map<string, number>()
+  const members: string[][] = []
+  for (const set of sets) { const c = members.length; members.push([...set].sort()); for (const id of set) compOf.set(id, c) }
+  for (const id of [...ids].sort()) if (!compOf.has(id)) { compOf.set(id, members.length); members.push([id]) }
+  const out = new Map<number, Set<number>>()
+  const indeg = new Map<number, number>(members.map((_, i) => [i, 0]))
+  for (const e of edges) {
+    if (!present.has(e.from) || !present.has(e.to)) continue
+    const a = compOf.get(e.from)!, b = compOf.get(e.to)!
+    if (a === b) continue
+    const set = out.get(a) ?? new Set<number>()
+    if (!set.has(b)) { set.add(b); out.set(a, set); indeg.set(b, (indeg.get(b) ?? 0) + 1) }
+  }
+  // Kahn's order with the longest path from a source as the level.
+  const lvl = new Map<number, number>()
+  const queue = [...indeg.entries()].filter(([, d]) => d === 0).map(([c]) => c)
+  for (const c of queue) lvl.set(c, 0)
+  while (queue.length) {
+    const c = queue.shift()!
+    for (const n of out.get(c) ?? []) {
+      lvl.set(n, Math.max(lvl.get(n) ?? 0, (lvl.get(c) ?? 0) + 1))
+      indeg.set(n, indeg.get(n)! - 1)
+      if (indeg.get(n) === 0) queue.push(n)
+    }
+  }
+  // Components that neither depend nor are depended on go last: they have
+  // no place in the layering, and on top they push the layers off screen.
+  const linked = new Set<number>()
+  for (const [a, set] of out) { linked.add(a); for (const b of set) linked.add(b) }
+  const comps = members.map((m, i) => ({ i, m, level: lvl.get(i) ?? 0, alone: !linked.has(i) && m.length === 1 }))
+  comps.sort((a, b) => Number(a.alone) - Number(b.alone) || a.level - b.level || (b.m.length > 1 ? 1 : 0) - (a.m.length > 1 ? 1 : 0) || a.m[0].localeCompare(b.m[0]))
+  const order: string[] = []
+  const level = new Map<string, number>()
+  const boxes: string[][] = []
+  for (const c of comps) {
+    for (const id of c.m) { order.push(id); level.set(id, c.level) }
+    if (c.m.length > 1) boxes.push(c.m)
+  }
+  const depth = comps.length ? Math.max(...comps.map(c => c.level)) + 1 : 0
+  return { order, level, boxes, depth }
 }
