@@ -29,7 +29,7 @@ describe("URL state round-trip", () => {
   })
 
   it("round-trips every field", () => {
-    const state: ConnectionsQueryState = { rep: "crosscut", source: "git", level: "files", by: "Domain", color: "Layer", x: "Team", measure: "files", cycles: "selected", q: "dto", sel: "a" }
+    const state: ConnectionsQueryState = { rep: "crosscut", source: "git", level: "files", by: "Domain", color: "Layer", x: "Team", measure: "files", cycles: "selected", order: "levels", q: "dto", sel: "a" }
     expect(parseConnectionsQuery(toConnectionsQuery(state))).toEqual(state)
   })
 
