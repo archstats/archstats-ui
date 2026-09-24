@@ -35,7 +35,11 @@ type Service struct {
 
 	mu      sync.Mutex
 	running map[string]bool // workspaceID → scan in flight
+	onDone  func(scanID string)
 }
+
+// SetOnDone runs after each scan is saved (in production: its readings are computed).
+func (s *Service) SetOnDone(fn func(scanID string)) { s.onDone = fn }
 
 func NewService(st *store.Store) *Service {
 	return &Service{
@@ -160,6 +164,9 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 	// scans never has to open one. A failure here costs a label, not a scan.
 	if ident, err := snapshotinfo.ReadIdentity(snapshot, scan.StartedAt); err == nil {
 		_ = s.store.SetScanIdentity(scan.ID, ident)
+	}
+	if s.onDone != nil {
+		s.onDone(scan.ID)
 	}
 	s.emit(EventScanDone, payload(ws.ID, scan.ID, map[string]any{"snapshotPath": snapshot}))
 }

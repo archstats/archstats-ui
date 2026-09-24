@@ -154,6 +154,227 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class float64 {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new float64(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class TrendPoint {
+	    scanId: string;
+	    label: string;
+	    // Go type: time
+	    startedAt: any;
+	    // Go type: time
+	    headTime?: any;
+	    headCommit: string;
+	    analysisRevision: number;
+	    ignoreGlobs: string;
+	    extensions: string;
+	    readings: Record<string, number>;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrendPoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scanId = source["scanId"];
+	        this.label = source["label"];
+	        this.startedAt = this.convertValues(source["startedAt"], null);
+	        this.headTime = this.convertValues(source["headTime"], null);
+	        this.headCommit = source["headCommit"];
+	        this.analysisRevision = source["analysisRevision"];
+	        this.ignoreGlobs = source["ignoreGlobs"];
+	        this.extensions = source["extensions"];
+	        this.readings = source["readings"];
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace changes {
+	
+	export class Move {
+	    component: string;
+	    metric: string;
+	    before: number;
+	    after: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Move(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.component = source["component"];
+	        this.metric = source["metric"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	    }
+	}
+	export class Finding {
+	    rule: string;
+	    from: string;
+	    to: string;
+	    file: string;
+	    line: number;
+	    kind: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Finding(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rule = source["rule"];
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.file = source["file"];
+	        this.line = source["line"];
+	        this.kind = source["kind"];
+	    }
+	}
+	export class TangleChange {
+	    kind: string;
+	    before: string[];
+	    after: string[];
+	    joined: string[];
+	    left: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TangleChange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	        this.joined = source["joined"];
+	        this.left = source["left"];
+	    }
+	}
+	export class EdgeDelta {
+	    from: string;
+	    to: string;
+	    before: number;
+	    after: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EdgeDelta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	    }
+	}
+	export class Edge {
+	    from: string;
+	    to: string;
+	    refs: number;
+	    files: string[];
+	    dynamic: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Edge(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.refs = source["refs"];
+	        this.files = source["files"];
+	        this.dynamic = source["dynamic"];
+	    }
+	}
+	export class ChangeSet {
+	    baseId: string;
+	    headId: string;
+	    componentsAdded: string[];
+	    componentsRemoved: string[];
+	    edgesAdded: Edge[];
+	    edgesRemoved: Edge[];
+	    edgesChanged: EdgeDelta[];
+	    tangles: TangleChange[];
+	    rulesNew: Finding[];
+	    rulesGone: Finding[];
+	    rulesChecked: Record<string, boolean>;
+	    moves: Move[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ChangeSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.baseId = source["baseId"];
+	        this.headId = source["headId"];
+	        this.componentsAdded = source["componentsAdded"];
+	        this.componentsRemoved = source["componentsRemoved"];
+	        this.edgesAdded = this.convertValues(source["edgesAdded"], Edge);
+	        this.edgesRemoved = this.convertValues(source["edgesRemoved"], Edge);
+	        this.edgesChanged = this.convertValues(source["edgesChanged"], EdgeDelta);
+	        this.tangles = this.convertValues(source["tangles"], TangleChange);
+	        this.rulesNew = this.convertValues(source["rulesNew"], Finding);
+	        this.rulesGone = this.convertValues(source["rulesGone"], Finding);
+	        this.rulesChecked = source["rulesChecked"];
+	        this.moves = this.convertValues(source["moves"], Move);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
 
 }
 

@@ -56,6 +56,7 @@ func (s *Store) Close() error {
 var migrations = []func(tx *sql.Tx) error{
 	migrate0,
 	migrate1,
+	migrate2,
 }
 
 func (s *Store) migrate() error {
@@ -173,4 +174,19 @@ CREATE TABLE workspace_state (
 // SnapshotPath returns the canonical path for a scan's snapshot database.
 func (s *Store) SnapshotPath(workspaceID, scanID string) string {
 	return filepath.Join(s.root, "scans", workspaceID, scanID+".db")
+}
+
+// migrate2 caches the app's readings per scan (propagation cost, tangles,
+// medians), so Over time reads one row per point instead of opening every
+// snapshot. A snapshot never changes, so a reading never goes stale; the
+// analysis that computes it is versioned in the key.
+func migrate2(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+CREATE TABLE scan_readings (
+	scan_id TEXT NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+	reading TEXT NOT NULL,
+	value   REAL,
+	PRIMARY KEY (scan_id, reading)
+);`)
+	return err
 }

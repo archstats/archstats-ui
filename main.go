@@ -83,7 +83,10 @@ func main() {
 	defer querySvc.Close()
 	var appCtx context.Context
 	menuSvc := app.NewMenuService(func() context.Context { return appCtx })
-	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, querySvc.Release)
+	changesSvc := app.NewChangesService(st, querySvc)
+	release := func(scanID string) { changesSvc.ForgetScan(scanID); querySvc.Release(scanID) }
+	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
+	scanSvc.SetOnDone(func(scanID string) { go changesSvc.ComputeReadings(scanID) })
 
 	err = wails.Run(&options.App{
 		Title:     "Archstats Desktop",
@@ -116,6 +119,7 @@ func main() {
 			menuSvc,
 			app.NewAppService(version),
 			app.NewFilesService(func() context.Context { return appCtx }),
+			changesSvc,
 		},
 	})
 	if err != nil {
