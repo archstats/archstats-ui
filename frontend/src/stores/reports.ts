@@ -15,6 +15,20 @@ import { formatScanTime } from "~/utils/time"
 // the pool of pins. One is open at a time; edits save themselves a moment
 // after the typing stops, and every edit can be undone.
 
+/** Something a view hands over, held while the Add to report sheet is open. */
+export interface ImportDraft {
+    kind: "figure" | "table" | "document"
+    title: string
+    view: string
+    route: string
+    ranOn: import("~/utils/reportDoc").RanOn
+    /** A figure, as PNG base64, and how to draw it again in the other appearance. */
+    figure?: string
+    renderFigure?: (light: boolean) => Promise<string>
+    table?: import("~/utils/reportDoc").TableOutput
+    markdown?: string
+}
+
 export interface ReportRecord {
     id: string
     workspaceId: string
@@ -41,6 +55,7 @@ export const useReportsStore = defineStore("reports", {
         figures: {} as Record<string, string>,
         saving: false,
         loaded: false,
+        importing: null as ImportDraft | null,
     }),
     getters: {
         current(s): ReportRecord | null { return s.list.find(r => r.id === s.currentId) ?? null },
@@ -337,6 +352,31 @@ export const useReportsStore = defineStore("reports", {
             const last = this.doc.blocks[this.doc.blocks.length - 1]
             const after = last && !isCell(last) && last.kind === "p" && !last.text.trim() ? this.doc.blocks[this.doc.blocks.length - 2]?.id ?? null : last?.id ?? null
             this.insert(after, blocks)
+            this.flushSave()
+        },
+
+        /** Opens the Add to report sheet with what a view handed over. */
+        async beginImport(draft: ImportDraft) {
+            const ws = useWorkspacesStore()
+            if (ws.active) await this.load(ws.active.id)
+            this.importing = markRaw(draft) as ImportDraft
+        },
+        /**
+         * Inserts blocks into a report after a block (null: at the top; "end":
+         * at the end), creating the report when no id is given.
+         */
+        async insertInto(reportId: string | null, after: string | null | "end", blocks: Block[], newTitle = "Untitled report") {
+            if (!reportId) {
+                await this.create(newTitle, [...blocks, { id: newId(), kind: "p", text: "" }])
+                return
+            }
+            if (reportId !== this.currentId) this.open(reportId)
+            let at = after
+            if (at === "end") {
+                const last = this.doc.blocks[this.doc.blocks.length - 1]
+                at = last && !isCell(last) && last.kind === "p" && !last.text.trim() ? this.doc.blocks[this.doc.blocks.length - 2]?.id ?? null : last?.id ?? null
+            }
+            this.insert(at, blocks)
             this.flushSave()
         },
 

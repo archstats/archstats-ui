@@ -8,7 +8,7 @@
     @mousedown="$emit('select')"
   >
     <!-- The run gutter, outside the reading column: like a notebook's In [n]. -->
-    <div class="absolute -left-[104px] top-2.5 flex w-[64px] flex-col items-end gap-1 text-right">
+    <div v-if="gutter" class="absolute -left-[104px] top-2.5 flex w-[64px] flex-col items-end gap-1 text-right">
       <button
         v-if="runnable"
         type="button"
@@ -112,6 +112,8 @@ const props = defineProps<{
   figure: string | null
   workspace: string
   label: (id: string) => string
+  /** The run gutter; a preview outside the notebook goes without. */
+  gutter?: boolean
 }>();
 defineEmits<{
   (e: "select"): void
@@ -121,6 +123,7 @@ defineEmits<{
 }>();
 
 const ROWS = 12;
+const gutter = computed(() => props.gutter !== false);
 const allRows = ref(false);
 const runnable = computed(() => props.cell.spec.type !== "capture");
 const kindLabel = computed(() => {

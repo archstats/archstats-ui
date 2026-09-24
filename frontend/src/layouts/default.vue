@@ -36,6 +36,7 @@
     <ShortcutSheet v-model="shortcutsOpen"/>
     <ExportMenu headless/>
     <GoToAnything/>
+    <AddToReportSheet/>
     <RescanCommitSheet/>
     <ImportSnapshotSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
@@ -58,6 +59,7 @@ import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
 import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
 import ExportMenu from "~/components/ui/ExportMenu.vue";
 import GoToAnything from "~/components/shell/GoToAnything.vue";
+import AddToReportSheet from "~/components/report/AddToReportSheet.vue";
 // Provides the code search that `contains` lines in live groups answer from.
 import "~/utils/codeSearch";
 import RescanCommitSheet from "~/components/shell/RescanCommitSheet.vue";
