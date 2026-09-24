@@ -46,6 +46,23 @@
       <!-- 2. Where it sits in the graph. -->
       <ReadingBand title="Position" :lede="positionLede" :to="`${base}/connections`" link-label="Connections">
         <p v-if="testDependentsLine" class="-mt-2 mb-3 text-sm text-neutral-600">{{ testDependentsLine }}</p>
+        <div v-if="leans.length" class="-mt-1 mb-4">
+          <button type="button" class="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900" :aria-expanded="leansOpen" @click="leansOpen = !leansOpen">
+            <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform" :class="{ 'rotate-90': leansOpen }"/>
+            <span>{{ leans.length }} of its {{ dependencyRows.length }} dependencies are less stable than it<template v-if="leansInTangle"> ({{ leansInTangle }} inside its tangle)</template>.</span>
+          </button>
+          <table v-if="leansOpen" class="ui-table mt-2 max-w-[640px]">
+            <thead><tr><th>Dependency</th><th class="w-[120px] text-right">Instability</th><th class="w-16 text-right">Ca</th><th class="w-16 text-right">Ce</th></tr></thead>
+            <tbody>
+              <tr v-for="l in leans" :key="l.to.name">
+                <td class="max-w-0 truncate font-mono text-sm"><router-link :to="componentPath(l.to.name)" class="text-neutral-900 hover:underline" :title="l.to.name">{{ l.to.name }}</router-link><span v-if="l.inTangle" class="ui-tag ml-2">tangle</span></td>
+                <td class="is-num text-right">{{ l.from.instability?.toFixed(2) }} → {{ l.to.instability?.toFixed(2) }}</td>
+                <td class="is-num text-right">{{ l.to.afferent ?? "—" }}</td>
+                <td class="is-num text-right">{{ l.to.efferent ?? "—" }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <dl class="ui-kv grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-6 gap-y-1">
           <template v-for="cell in positionCells" :key="cell.label">
             <div class="flex flex-col gap-0.5">
@@ -209,6 +226,7 @@
 </template>
 
 <script setup lang="ts">
+import { leansOnLessStable } from "~/utils/sdp"
 import { ageShares, useCodeAge } from "~/composables/useCodeAge"
 import { componentPath, filePath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
@@ -498,6 +516,20 @@ const age = computed(() => ageShares((loaded.value?.files ?? []).map(f => ({ lin
 const pctOf = (v: number) => `${Math.round(v * 100)}%`
 const ageLine = computed(() => `${pctOf(age.value.over2)} of its lines are in files unchanged for more than 2 years; ${pctOf(age.value.over1)} for more than a year.`)
 const ageTitle = computed(() => `Lines in files unchanged for > 5 y: ${pctOf(age.value.over5)}, > 2 y: ${pctOf(age.value.over2)}, > 1 y: ${pctOf(age.value.over1)}`)
+
+// ── Leaning on something more volatile (stable dependencies) ───────
+const stab = (n: string) => {
+  const c: any = store.allComponentsIndex.get(n)
+  const v = (k: string) => (c && c[k] !== null && c[k] !== undefined && Number.isFinite(Number(c[k])) ? Number(c[k]) : null)
+  return { name: n, instability: v("modularity__instability"), afferent: v("modularity__coupling__afferent"), efferent: v("modularity__coupling__efferent") }
+}
+const dependencyRows = computed(() => [...new Set((store.componentConnections as any[]).filter(c => c.from === name.value && c.to !== name.value).map(c => c.to as string))].map(stab))
+const leans = computed(() => {
+  const members = new Set(position.value?.tangleMembers ?? [])
+  return leansOnLessStable(stab(name.value), dependencyRows.value, n => (members.has(n) || (n === name.value && members.size) ? "tangle" : null))
+})
+const leansInTangle = computed(() => leans.value.filter(l => l.inTangle).length)
+const leansOpen = ref(false)
 
 // ── Tests: here, and elsewhere reaching in ──────────────────────────
 // Whether a component is tested, read from file roles (recorded, or by path
