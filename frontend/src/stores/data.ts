@@ -38,6 +38,10 @@ export const useDataStore = defineStore('data', {
         _snapshotRevision: number | null;
         /** The analysis revision this build scans with. */
         _engineRevision: number | null;
+        /** Every key of the open snapshot's _snapshot table. */
+        _snapshotInfo: Record<string, string>;
+        /** Columns per table of the open snapshot. */
+        _columns: Record<string, string[]>;
     } => {
         return {
             _viewNames: [],
@@ -51,9 +55,18 @@ export const useDataStore = defineStore('data', {
             _openScanId: null,
             _snapshotRevision: null,
             _engineRevision: null,
+            _snapshotInfo: {},
+            _columns: {},
         }
     },
     getters: {
+        snapshotInfo(state: any): Record<string, string> {
+            return state._snapshotInfo;
+        },
+        /** Whether the open snapshot has this column; older snapshots lack newer ones. */
+        hasColumn(state: any) {
+            return (table: string, column: string): boolean => (state._columns[table] ?? []).includes(column);
+        },
         /**
          * The open snapshot was scanned before fixes this build has. A
          * snapshot never changes after it is written, so a corrected rule,
@@ -225,6 +238,8 @@ export const useDataStore = defineStore('data', {
         // and every view watching hasData tears down. Used when the active
         // workspace has nothing to show yet.
         closeScan() {
+            this._snapshotInfo = {};
+            this._columns = {};
             this._openScanId = null;
             this._initialized = false;
             this._viewNames = [];
@@ -242,13 +257,31 @@ export const useDataStore = defineStore('data', {
             this._viewNames = viewResults.map(x => x.name);
 
             // Which analysis wrote this snapshot, against the one this build runs.
+            // Every fact the snapshot records about itself, and every table's
+            // columns, so a reader can ask what an older snapshot has instead
+            // of guessing from errors.
             try {
-                const rev = this._viewNames.includes("_snapshot")
-                    ? await this.query<{ value: string }>("SELECT value FROM _snapshot WHERE key = 'analysis_revision'")
-                    : [];
-                this._snapshotRevision = Number(rev[0]?.value ?? 0) || 0;
+                const info: Record<string, string> = {};
+                if (this._viewNames.includes("_snapshot")) {
+                    for (const r of await this.query<{ key: string; value: string }>("SELECT key, value FROM _snapshot")) {
+                        if (!(r.key in info)) info[r.key] = String(r.value ?? "");
+                    }
+                }
+                this._snapshotInfo = info;
+                this._snapshotRevision = Number(info.analysis_revision ?? 0) || 0;
             } catch {
+                this._snapshotInfo = {};
                 this._snapshotRevision = null;
+            }
+            try {
+                const cols: Record<string, string[]> = {};
+                await Promise.all(this._viewNames.map(async (t) => {
+                    const rows = await this.query<{ name: string }>(`SELECT name FROM pragma_table_info('${t.replace(/'/g, "''")}')`);
+                    cols[t] = rows.map(r => r.name);
+                }));
+                this._columns = cols;
+            } catch {
+                this._columns = {};
             }
             if (this._engineRevision === null) {
                 try { this._engineRevision = await AnalysisRevision(); } catch { this._engineRevision = null; }

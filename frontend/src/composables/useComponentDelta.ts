@@ -3,6 +3,8 @@ import { useDataStore } from "~/stores/data"
 import { useWorkspacesStore } from "~/stores/workspaces"
 import { sqlLiteral } from "~/utils/sql"
 import { deltaFrom, NO_DELTA, type Delta } from "~/utils/delta"
+import { comparability } from "~/utils/comparability"
+import { olderThan } from "~/utils/scanOrder"
 
 // Reading the same component in an earlier snapshot.
 //
@@ -15,11 +17,12 @@ export function useComponentDelta(name: Ref<string>) {
     const store = useDataStore()
     const workspaces = useWorkspacesStore()
 
-    // Complete scans older than the open one, newest first.
+    // Complete scans of older code than the open one, newest first. Older by
+    // the commit they read: a rescan of last month runs after today's scan
+    // but belongs before it.
     const candidates = computed(() => {
-        const scans = workspaces.scans.filter(s => s.status === "complete")
-        const openIndex = scans.findIndex(s => s.id === workspaces.openScanId)
-        return openIndex === -1 ? [] : scans.slice(openIndex + 1)
+        const open = workspaces.scans.find(s => s.id === workspaces.openScanId)
+        return open ? olderThan(workspaces.scans as any[], open as any) as typeof workspaces.scans : []
     })
 
     const chosenId = ref<string | null>(null)
@@ -60,8 +63,15 @@ export function useComponentDelta(name: Ref<string>) {
 
     watch([name, baselineScan, () => store.datasetKey], () => { void load() }, { immediate: true })
 
+    // Two snapshots read by different analyses disagree for reasons that are
+    // not the code; a delta across them would be an artefact.
+    const comparable = computed(() => {
+        const open = workspaces.scans.find(s => s.id === workspaces.openScanId)
+        return open && baselineScan.value ? comparability(open as any, baselineScan.value as any) : { ok: false, reasons: [] }
+    })
+
     function deltaFor(key: string, current: number | null): Delta {
-        if (!baselineScan.value) return NO_DELTA
+        if (!baselineScan.value || !comparable.value.ok) return NO_DELTA
         return deltaFrom(current, row.value?.[key], true, present.value)
     }
 
@@ -71,6 +81,8 @@ export function useComponentDelta(name: Ref<string>) {
         baselineScan,
         chosenId,
         hasBaseline: computed(() => baselineScan.value !== null),
+        /** Why the baseline cannot be compared, when it cannot. */
+        comparable,
         isNew: computed(() => baselineScan.value !== null && !present.value && !loading.value),
         loading,
         deltaFor,

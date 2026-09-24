@@ -9,6 +9,7 @@
           <span>Compared with</span>
           <SingleSelect :model-value="baselineOption" :options="baselineOptions" @update:model-value="pickBaseline"/>
           <span v-if="delta.isNew.value" class="text-accent-700">Not in that scan</span>
+          <span v-if="!delta.comparable.value.ok" class="truncate" :title="delta.comparable.value.reasons.map(r => r.text).join(' ')">Not comparable: {{ delta.comparable.value.reasons[0]?.text }}</span>
         </template>
         <span v-else>No earlier scan to compare with.</span>
       </div>

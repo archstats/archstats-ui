@@ -1,3 +1,4 @@
+import { newestFirst } from "~/utils/scanOrder";
 import { useStateStore } from "~/stores/state";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { EventsOn } from "wailsjs/runtime/runtime";
@@ -208,7 +209,8 @@ export const useWorkspacesStore = defineStore("workspaces", {
                 return;
             }
             try {
-                this.scans = (await ListScans(this.activeWorkspaceId)) ?? [];
+                // Ordered by the code each scan read, then by when it ran.
+                this.scans = newestFirst((await ListScans(this.activeWorkspaceId)) ?? []);
             } catch (e) {
                 this.error = errorText(e);
             }
