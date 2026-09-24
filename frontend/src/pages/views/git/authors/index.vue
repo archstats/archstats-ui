@@ -158,6 +158,7 @@
 import { anchorLabel, anchorSql } from "~/utils/history"
 import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/utils/authors"
 import { useAuthorsStore } from "~/stores/authors"
+import { scopeWhere } from "~/utils/scopeSql"
 import { useWorkspacesStore } from "~/stores/workspaces"
 import SingleSelect from "~/components/ui/common/SingleSelect.vue"
 import { computed, ref, watch } from "vue"
@@ -206,9 +207,9 @@ interface AuthorRow extends PeriodStats {
 // One query for the whole view; period and search work on the loaded rows.
 const { data: raw, loading, error } = useAsyncQuery<Record<string, any>[]>(
   () => store.hasView("git_commits")
-    ? store.query<Record<string, any>>(authorStatsSql("1", { aliases: authorsStore.aliases, includeBots: authorsStore.showBots, anchor: anchorSql() }))
+    ? store.query<Record<string, any>>(authorStatsSql(scopeWhere() ?? "1", { aliases: authorsStore.aliases, includeBots: authorsStore.showBots, anchor: anchorSql() }))
     : Promise.resolve([]),
-  [() => authorsStore.aliases, () => authorsStore.showBots],
+  [() => authorsStore.aliases, () => authorsStore.showBots, () => scopeWhere()],
   { initial: [] },
 )
 

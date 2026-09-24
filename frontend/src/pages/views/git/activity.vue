@@ -12,7 +12,7 @@
         text="Scan a git checkout to see commits by month and by author."
         icon="git-branch"
       />
-      <CommitHistory v-else where="file IN (SELECT name FROM files)" monthly empty-text="No git history in this snapshot."/>
+      <CommitHistory v-else :where="where" monthly :empty-text="scoped ? 'No commits touch the files in scope.' : 'No git history in this snapshot.'"/>
     </template>
   </ViewWorkspaceLayout>
 </template>
@@ -23,10 +23,14 @@ import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
 import { ageShares, useCodeAge } from "~/composables/useCodeAge"
 import { anchorLabel } from "~/utils/history"
+import { scopeWhere } from "~/utils/scopeSql"
 import CommitHistory from "~/components/git/CommitHistory.vue"
 import EmptyState from "~/components/ui/common/EmptyState.vue"
 
 const store = useDataStore()
+// History of the files in scope, when a scope is set.
+const scoped = computed(() => !!scopeWhere())
+const where = computed(() => ["file IN (SELECT name FROM files)", scopeWhere()].filter(Boolean).join(" AND "))
 
 // How much of the code has sat still: one number, file-grained, beside the history.
 const codeAge = useCodeAge()

@@ -160,10 +160,12 @@ import { filePath } from "~/utils/routes"
 import DeclareSheet from "~/components/groups/DeclareSheet.vue"
 import { useLensFindings } from "~/composables/useLensFindings"
 import { useLensStore } from "~/stores/lens"
+import { useScopeStore } from "~/stores/scope"
 import { useGroupsStore } from "~/stores/groups"
 import { computed as vueComputed, ref as vueRef } from "vue"
 
 const lens = useLensStore()
+const scopeStore = useScopeStore()
 const lensGroupsStore = useGroupsStore()
 const declaring = vueRef<string | null>(null)
 const lensExpanded = vueRef(new Set<string>())
@@ -219,7 +221,11 @@ const definitionFor = (id: string) => {
 const findings = computed(() => {
   const files: string[] = []
   for (const list of (store.componentFilesIndex as Map<string, string[]>).values()) files.push(...list)
-  return scopeToEcosystems(rawFindings.value, files)
+  const all = scopeToEcosystems(rawFindings.value, files)
+  // The scope narrows violations to the files it holds; kept and silent
+  // rules stay, since they say something about the whole project.
+  if (!scopeStore.isActive) return all
+  return all.filter((f: any) => f.status !== "violation" || !f.file || scopeStore.fileInScope(f.file, store.fileComponentIndex.get(f.file)))
 })
 const verdict = computed(() => verdictOf(findings.value))
 const brokenRules = computed(() => groupByRule(findings.value, definitionFor))

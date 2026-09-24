@@ -129,7 +129,8 @@
             {{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} import${lensCheck.count === 1 ? "" : "s"} cross the declared order` : "Nothing crosses the declared order" }}
           </router-link>
           <ul class="ml-3 flex flex-col">
-            <li v-for="g in bucket.groups" :key="g.id">
+            <li v-for="g in bucket.groups" :key="g.id" class="group/grp relative">
+              <router-link :to="groupPath(g.id)" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet absolute right-7 top-1 z-10 h-5 w-5 opacity-0 focus:opacity-100 group-hover/grp:opacity-100" :title="`Open ${g.name}`" :aria-label="`Open ${g.name}`"><Icon icon="arrow-up-right" :size="11"/></router-link>
               <button
                   type="button"
                   class="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
@@ -170,6 +171,7 @@ import {
 import LensHealth from "~/components/groups/LensHealth.vue";
 import GroupsManager from "~/components/groups/GroupsManager.vue";
 import DeclareSheet from "~/components/groups/DeclareSheet.vue";
+import { groupPath } from "~/utils/routes";
 import { useLensFindings } from "~/composables/useLensFindings";
 import Icon from "~/components/ui/common/Icon.vue";
 import { DEFAULT_DIMENSION, useGroupsStore } from "~/stores/groups";

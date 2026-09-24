@@ -28,3 +28,9 @@ export function filePath(name: string, tab?: string): string {
   const base = `/views/files/${name.split("/").map(encodeURIComponent).join("/")}`
   return tab ? `${base}/${tab}` : base
 }
+
+/** A group's page, or one of its tabs. */
+export function groupPath(id: string, tab?: string): string {
+  const base = `/views/groups/${encodeURIComponent(id)}`
+  return tab ? `${base}/${tab}` : base
+}

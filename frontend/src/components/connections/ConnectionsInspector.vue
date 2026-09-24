@@ -151,6 +151,10 @@
         <Icon icon="scale" :size="13"/>
         <span>Scope views</span>
       </button>
+      <router-link :to="groupPath(node.id)" class="ui-btn ui-btn-sm">
+        <Icon icon="arrow-up-right" :size="13"/>
+        <span>Open group</span>
+      </router-link>
     </div>
 
     <!-- Cycles: not only that it is in one, but how much of it is. -->
@@ -183,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { groupPath } from "~/utils/routes";
 import { computed, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import StatStrip from "~/components/detail/StatStrip.vue";
