@@ -3,6 +3,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSvgFigure } from "~/composables/useExportables"
 import { componentPath } from "~/utils/routes"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
@@ -240,4 +241,6 @@ function renderChart() {
     .style("cursor", "pointer")
     .text(n => n.label)
 }
+
+useSvgFigure("Cycle loop", () => chartRef.value?.querySelector("svg") as SVGSVGElement | null)
 </script>

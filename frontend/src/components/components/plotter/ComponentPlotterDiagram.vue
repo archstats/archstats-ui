@@ -91,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSvgFigure } from "~/composables/useExportables"
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type PropType } from "vue";
 import * as d3 from "d3";
 import { chartTheme, useChartTheme, withAlpha } from "~/composables/useChartTheme";
@@ -416,4 +417,6 @@ function markClicked(event: MouseEvent, row: Row) {
     emit("clicked", row);
   }
 }
+
+useSvgFigure("Component plot", () => svg.value)
 </script>

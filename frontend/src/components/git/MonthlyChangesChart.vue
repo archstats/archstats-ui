@@ -5,6 +5,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSvgFigure } from "~/composables/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import type { GitCommit } from "~/utils/git"
@@ -130,4 +131,6 @@ onMounted(() => {
 })
 onBeforeUnmount(() => ro?.disconnect())
 watch([() => props.commits, () => props.height, version], () => draw(), { flush: "post" })
+
+useSvgFigure("Lines added and removed by month", () => svgRef.value)
 </script>

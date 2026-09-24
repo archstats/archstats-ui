@@ -6,6 +6,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSvgFigure } from "~/composables/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { chartTheme, useChartTheme, withAlpha } from "~/composables/useChartTheme"
@@ -276,4 +277,6 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   if (resizeTimer) clearTimeout(resizeTimer)
 })
+
+useSvgFigure("Bean wiring", () => svgRef.value)
 </script>

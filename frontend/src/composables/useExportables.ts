@@ -66,3 +66,23 @@ export function useExportables() {
     if (getCurrentInstance()) onBeforeUnmount(() => mine.forEach(k => registry.delete(k)));
     return { register };
 }
+
+/**
+ * Registers an SVG chart as a figure: the element when it is drawn, at the
+ * size it is drawn. Every chart made of one <svg> exports this way.
+ */
+export function useSvgFigure(title: string | (() => string), svg: () => SVGSVGElement | null | undefined, legend?: () => import("~/utils/figure").LegendItem[]) {
+    const { register } = useExportables();
+    register({
+        kind: "figure",
+        get title() { return typeof title === "function" ? title() : title; },
+        ready: () => !!svg()?.firstChild,
+        svg: true,
+        render: () => {
+            const el = svg();
+            if (!el || !el.firstChild) return null;
+            const box = el.getBoundingClientRect();
+            return { kind: "svg", svg: el, width: Math.round(box.width), height: Math.round(box.height), legend: legend?.() };
+        },
+    });
+}

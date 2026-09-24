@@ -122,6 +122,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSvgFigure } from "~/composables/useExportables"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { laneDotClass, type LaneColor } from "~/utils/javaFrameworks"
 import type { BoundaryFlow, FlowNode, FlowRibbon } from "~/utils/boundaryFlow"
@@ -571,6 +572,8 @@ function onKey(event: KeyboardEvent) {
   hovered.value = null
   if (next?.path) emit("select", next.path)
 }
+
+useSvgFigure("Boundary flow", () => svg.value)
 </script>
 
 <style scoped>
