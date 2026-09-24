@@ -16,6 +16,7 @@
         <ul class="flex list-disc flex-col gap-1.5 pl-4 text-sm text-neutral-700">
           <li v-for="r in reasons" :key="r">{{ r }}</li>
         </ul>
+        <router-link to="/views/snapshot" class="mt-3 inline-block text-sm text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @click="open = false">About this snapshot</router-link>
       </div>
     </div>
     <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" :disabled="workspaces.isScanning" @click="rescan">
