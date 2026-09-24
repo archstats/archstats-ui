@@ -41,7 +41,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 
 1. **Local-first, no server, no account.** Everything runs on the user's machine. No upload, no SaaS, no login. The retirement of app.archstats.io is a deliberate move toward this.
 2. **Open data contract.** Each scan is a plain SQLite file with a documented schema and embedded metric definitions (`_metric_definitions` table). The user owns it and can query it with any tool, including an LLM.
-3. **Language-agnostic through regex snippets and extensions.** Users can define their own snippet types with named regex groups; a microkernel extension model adds languages (Java, Kotlin, Scala, PHP, C#) without touching the core.
+3. **Language-agnostic through regex snippets and extensions.** Users can define their own snippet types with named regex groups; a microkernel extension model adds languages (Java, Kotlin, Scala, PHP, C#) without touching the core. Custom regex snippets are a CLI capability (`--snippet`); the desktop does not expose them.
 4. **Structure and history in one model.** Robert C. Martin package metrics, graph centrality (PageRank, betweenness, HITS), cycle detection, and git churn all land on the same component rows, so hotspot views combine static shape with change history natively.
 
 ## Operating Context
@@ -51,6 +51,10 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - **Data path:** the frontend sends SQL over Wails bindings to a Go query service; the `query(sql)` choke point in `stores/data.ts` is the single frontend data seam. No sql.js or WASM in the runtime path.
 - **Scan behaviour:** a scan runs asynchronously with progress events; a mid-sized repo (roughly 5k files) must not freeze the UI. Extensions are auto-detected per scan in v1.
 - **Related artifacts the user reads alongside the app:** the archstats CLI and its metric reference (`docs/metrics.md` in the archstats repo), ADRs in `docs/adr/`, and the SQLite export used by other tooling.
+- **app.db** holds workspace state (`workspace_state`), settings, evidence pins, saved queries and cached readings, with versioned migrations and a backup before each one.
+- **Snapshots** record their identity and settings in a `_snapshot` table per report: analysis revision, scanned commit and branch, uncommitted files, extensions, ignore globs.
+- **History windows** count back from the scanned commit (`git_based_on`) from analysis revision 2 on, and from scan time for older snapshots; every period names its anchor.
+- **Engine revisions** are tagged in the archstats repo, and the UI pins the tag it builds against in `go.mod`.
 - **Platforms shipped:** macOS is the primary target. Windows (NSIS installer, zip) and Linux (tar.gz, deb, rpm) are built and verified on native runners. Builds are unsigned until an Apple developer account exists.
 
 ## Capabilities and Constraints
@@ -60,14 +64,21 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - Async scan with progress, immutable snapshots, full history, manual delete.
 - Read-only SQL query service over a selected snapshot.
 - All view families ported from the web app (48 routed pages): components (walker, matrix, chord, clustering, comparison, cycles, group coupling, hotspots, plotter, table), per-component drill-down (circle of influence, component matrix, cycles, external/internal file matrix, files, git, java, static coupling), files (table, treemap, dependencies, per-file contents/git/imports/java), git (churn, coupling, timeline, authors with per-author components/files/timeline), groups (per-group explorer), java (class connections, JPA, OOP, Spring).
-- Groups: user-defined component groupings, to persist per workspace.
+- Groups: user-defined sets of components or files, persisted per workspace; lenses (dimensions) of groups, proposed from the code, the history, CODEOWNERS or the build modules, with declared dependencies checked import by import.
+- Scan comparison: Changes compares a snapshot against a baseline, and Over time across snapshots. Both read existing snapshots and never change them; a baseline commit can be rescanned so that both sides share one analysis revision.
+- Rescanning a commit, and backfilling tags, each in a temporary clone that leaves the working copy untouched.
+- Report output v1: CSV and Markdown for tables, PNG and SVG for figures, each captioned with provenance (workspace, snapshot, commit, analysis revision, lens, scope). The evidence board exports a Markdown report with a methodology header and its figures. No PDF in v1.
+- Pseudonymised authors in every view and export.
+- Native macOS menu; ⌘P Go to anything; ⌘E Export.
+- Snapshot import (⌘O, drop, command line) and reveal.
+- Per-workspace ignore globs.
+- Find in code, a read-only SQL console with saved queries, Libraries, a directory tree, and a what-if sandbox on Connections.
 - Headless `--selfcheck` and `--version` flags for CI.
 
 **Deferred or undecided:**
 - Tabs and resizable split-pane IDE chrome: deferred to v2. v1 is a sidebar plus a single view area.
-- Scan comparison and diff views: out of scope for v1; storage model must not preclude them.
 - Per-workspace extension/language configuration UI: v1 auto-detects; config UI later.
-- Retention policies for old scans: not planned for v1.
+- Retention policies for old scans: not planned. Manual cleanup (the storage sheet) is not a policy.
 - Several views carry known pre-existing breakage from the async-query migration (churn, timeline, plotter, walker, treemap, author pages, some Java pages); a parity sweep (T13) is open.
 
 **Hard constraints:**
@@ -75,7 +86,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - Nothing is stored outside the designated app-data directory.
 - CGO is mandatory (tree-sitter and go-sqlite3), so Wails apps are built natively per OS.
 - Nuxt 3 in SPA mode with hash routing; devtools disabled; `emitRouteChunkError: false`. Dist output only when `NUXT_DIST_OUTPUT=1`.
-- Frontend stack is fixed: Vue 3, TypeScript, Pinia, Tailwind, D3 (+ d3-force), gridjs, splitpanes. Adding dependencies requires asking first.
+- Frontend stack is fixed: Vue 3, TypeScript, Pinia, Tailwind, D3 (+ d3-force), gridjs, splitpanes. Adding dependencies requires asking first. The persona roadmap (2026-09) added no npm or Go modules.
 - Any change to the archstats engine repo requires asking first.
 
 **Terminology (use consistently in UI copy):**
@@ -84,7 +95,15 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - *View*: a tabular or visual output of the engine (matrix, chord, hotspots, and so on).
 - *Component*: the package/namespace/module unit; the physical manifestation of a software module (Mark Richards' definition).
 - *Snippet*: the smallest analyzed unit of code, typed (`component:declaration`, `component:import`, `function`, `type`, `type:abstract`, or user-defined).
-- *Group*: a user-defined set of components.
+- *Group*: a user-defined set of components or files.
+- *Lens*: a named way of slicing the code into groups (a dimension).
+- *Baseline*: the snapshot Changes compares against, marked with a flag. Never "pinned".
+- *Analysis revision*: the version of the engine's analysis a snapshot was read with. *Comparable*: same revision and same ignore globs.
+- *Tangle*: a strongly connected set of two or more components.
+- *Role*: production, test, generated, third-party or non-code, per file.
+- *Pin*: an item on the evidence board, and only that. *Evidence board*: the pinned findings with their provenance.
+- *Arrange* and *Unplaced*: graph positions kept by hand, and nodes not yet placed.
+- *Extremes*: the Overview's fixed sorts, one per row.
 - Metric names follow the engine's `family__metric` ids (for example `modularity__instability`, `graph__page_rank`, `git__commits__total`) with friendly names supplied by `_metric_definitions`.
 
 ## Brand Commitments

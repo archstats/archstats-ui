@@ -905,3 +905,33 @@ Corners are small and consistent: 2px on checkboxes, 3px on tags and segmented-c
 - **Aim Is Not Paint.** What the pointer must hit is never the size of what is
   drawn. Every node carries an invisible target that stays a fingertip wide
   however far the view is zoomed out.
+
+## Persona roadmap patterns (added 2026-09-24)
+
+The patterns the three roadmap waves introduced, as shipped. Each keeps the tool-window frame and the rules above.
+
+1. **Provenance line.** Figures, tables and documents carry where they came from: workspace, snapshot time, commit, analysis revision, lens, scope, role facet, history range. The short form is mono 11px Ink Muted under a figure and after a Markdown table; CSV carries it as a `# key: value` preamble; the full form appears only in documents. Never a toast or banner, and never the folder path.
+2. **Identity line.** A scan row and the Overview header read "branch @ sha · +N uncommitted" in mono, with the flag glyph and a Baseline tag on the baseline. A backfilled tag reads as the tag and its commit date, with a "rescan" tag.
+3. **Row overflow menu.** List rows hold their actions in a "…" menu that appears on hover or focus; Delete goes last, after a separator, and asks inline.
+4. **Export menu.** One download button in `actions` (⌘E), with Figure, Table and Document sections from whatever the view registered. One feedback pattern: "Copied" or "Saved", the inline error, and disabled items that say why. Table exports may add notes (a rollup rule per column) to the CSV preamble.
+5. **Movement ink (named rule).** Green and Red Ink appear only on git ± lines. Every other movement is neutral ink with + or − and a mono `12 → 9`; DeltaChip follows it.
+6. **Comparability gate and notice strip.** A comparison that cannot be made lists its reasons (revision, ignore globs) and offers the rescan that fixes it; "Compare anyway" uses the OutdatedSnapshotBar notice style. No amber in chrome.
+7. **Trend rows.** 72px small multiples with comparability hairlines at revision changes, hollow dots for r0 snapshots, and one captioned time basis.
+8. **Pin button and board.** The bookmark is the only pin icon. The evidence board is ReadingBand-style strips, each with a status chip against the newest snapshot, reorderable by drag, with headings.
+9. **MetricHint.** Metric labels open their definition through MetricHint; no metric label uses a native `title`.
+10. **Key chips and the shortcut sheet.** Shortcuts show as mono key chips (⌘ on macOS, Ctrl elsewhere); the "?" sheet lists them by area.
+11. **Deduction table.** Health breakdowns read input · threshold · rule · points, with a sum row that equals the health shown.
+12. **Matrix annotations.** A level gutter, tangle boxes, crossing marks for a declared lens, and declare-mode cell states (unset, forbidden by layers, set forbidden, set allowed).
+13. **Dashed edges** for dependencies found only by runtime lookup, with a legend entry.
+14. **Swapping asides and trays.** A selected commit's footprint replaces the Contributors aside; the Unplaced tray holds nodes not yet arranged; the SQL console pairs a schema browser with a result grid whose status line states rows, time and truncation.
+15. **Global role facet.** One All | Production | Tests switch in the rail, beside the scope chip, silent at All; every view obeys it.
+16. **Group from selection.** Every component or file list multi-selects into GroupActionBar. Where the rows came from a question (a query, a text search, directories), the view also offers "Keep as live group", which stores the question.
+17. **Sheet vs popover.** Backfill, rescan, import, declare, storage and workspace settings are sheets (centred, scrim, footer actions). Floors, patterns, ranges and editor choice are popovers anchored to their control.
+18. **Component page band order.** Summary, Position, Blast radius, Who knows it, Standing; a conditional band renders only when it has something to say.
+19. **Overview budget.** The identity line, the Structure panel (system shape) and Extremes; nothing else competes for the first screen.
+20. **Rail budget.** Changes (Compare | Over time) under Overview; Units and Libraries under Code; Evidence and SQL console under Tools. The metric reference and Find in code have no rail rows: they are reached from ⌘P, Help and links.
+21. **Formula in reach (named rule).** Every derived number exposes its formula and inputs within one hover or one click: MetricHint for metrics, the rollup rule in a header title, the SQL in the metric reference.
+
+**Go to anything.** ⌘P opens a centred popover with a mono input; results group by kind (Views, Metric reference, Components, Files, Units, Authors, Groups, Lenses) with a `ui-tag` per row, recents when empty, and a last row that always searches the code. It is kept apart from ⌘K, which only sets the scope query.
+
+**Plan window.** The what-if sandbox fills the inspector's Plan tab: results first (before → after key/value rows, how tangles gone, split or formed, the components whose coupling moves), then the edits with undo and redo, then the form that adds one. Every number states it was projected from this snapshot's resolved imports.
