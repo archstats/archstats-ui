@@ -20,7 +20,7 @@
             <h3 class="ui-label mb-2">{{ group.label }}</h3>
             <dl class="ui-kv">
               <template v-for="m in group.metrics" :key="m.key">
-                <dt :title="m.definition || m.key">{{ m.label }}</dt>
+                <dt><MetricHint :id="m.key">{{ m.label }}</MetricHint></dt>
                 <dd>{{ m.value }}</dd>
               </template>
             </dl>
@@ -32,7 +32,7 @@
         </button>
         <dl v-if="showRest" class="ui-kv mt-2 max-w-[520px]">
           <template v-for="m in metricGroups.rest" :key="m.key">
-            <dt :title="m.definition || m.key" :class="{ 'font-mono text-sm': !m.definition }">{{ m.label }}</dt>
+            <dt :class="{ 'font-mono text-sm': !m.definition }"><MetricHint :id="m.key">{{ m.label }}</MetricHint></dt>
             <dd>{{ m.value }}</dd>
           </template>
         </dl>
@@ -81,6 +81,7 @@
 
 <script setup lang="ts">
 import StatStrip from "~/components/detail/StatStrip.vue"
+import MetricHint from "~/components/ui/common/MetricHint.vue"
 import { computed, ref } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"

@@ -297,7 +297,8 @@ export const useDataStore = defineStore('data', {
                         short: def.short_description || def.short || "",
                         long: def.long_description || def.long || "",
                         short_description: def.short_description || def.short || "",
-                        long_description: def.long_description || def.long || ""
+                        long_description: def.long_description || def.long || "",
+                        category: def.category || ""
                     } as Definition);
                     return acc;
                 }, new Map<string, Definition>());

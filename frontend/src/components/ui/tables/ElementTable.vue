@@ -14,7 +14,7 @@
           </th>
           <th v-if="showGroups">Groups</th>
           <th class="cursor-pointer select-none text-right hover:text-neutral-900" v-for="column in columns" :key="column.name" @click="toggleSort(column.name)">
-            <span class="inline-flex items-center gap-1" :title="column.name">{{ niceName(column.name) }}<Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+            <span class="inline-flex items-center gap-1"><MetricHint :id="column.name" :focusable="false">{{ niceName(column.name) }}</MetricHint><Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
           </th>
         </tr>
         </thead>
@@ -55,6 +55,7 @@ import {formatReading} from "~/utils/format";
 import {useWorkspacesStore} from "~/stores/workspaces";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
 import Checkbox from "~/components/ui/common/Checkbox.vue";
+import MetricHint from "~/components/ui/common/MetricHint.vue";
 import Icon from "~/components/ui/common/Icon.vue";
 import {useGroupsStore} from "~/stores/groups";
 import {useDataStore} from "~/stores/data";

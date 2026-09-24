@@ -51,7 +51,7 @@
               <dt title="package and namespace statements, one per file that has one">Package declarations</dt><dd>{{ formatVal(getVal('modularity__component__declarations')) }}</dd>
             </template>
             <template v-if="componentDependencies !== null">
-              <dt title="distinct pairs of components where one imports the other">Component dependencies</dt><dd>{{ formatVal(componentDependencies) }}</dd>
+              <dt><MetricHint id="app__cross_component_edges">Component dependencies</MetricHint></dt><dd>{{ formatVal(componentDependencies) }}</dd>
             </template>
             <template v-if="getVal('connection_count') !== null">
               <dt title="individual imports that cross from one component into another">Cross-component imports</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
@@ -102,7 +102,7 @@
       </summary>
       <dl class="ui-kv gap-y-1.5 px-4 pb-4 pt-2 hairline-t sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:gap-x-6">
         <template v-for="stat in extraStats" :key="stat.key">
-          <dt :title="stat.key">{{ stat.label }}</dt>
+          <dt><MetricHint :id="stat.key">{{ stat.label }}</MetricHint></dt>
           <dd>{{ formatStatValue(stat.value) }}</dd>
         </template>
       </dl>
@@ -110,6 +110,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import MetricHint from "~/components/ui/common/MetricHint.vue"
 import { computed, ref, watch } from "vue"
 import { useDataStore } from "~/stores/data"
 import Icon from "~/components/ui/common/Icon.vue"
