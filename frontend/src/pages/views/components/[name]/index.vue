@@ -125,6 +125,7 @@
             </ul>
           </div>
         </div>
+        <UsedSurface :name="name"/>
       </ReadingBand>
 
       <!-- 4. How it stands against every other component. -->
@@ -226,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import UsedSurface from "~/components/component/UsedSurface.vue"
 import { leansOnLessStable } from "~/utils/sdp"
 import { ageShares, useCodeAge } from "~/composables/useCodeAge"
 import { componentPath, filePath } from "~/utils/routes"
