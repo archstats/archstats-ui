@@ -276,3 +276,30 @@ export function foldEdges(rows: Array<{ from: string; to: string; file?: string 
     }
     return [...by.values()].map(e => ({ from: e.from, to: e.to, imports: e.imports, files: e.files.size }))
 }
+
+/**
+ * The loop an import closes: `from`, `to`, then the shortest way back from
+ * `to` to `from` over the imports not cut. Null when there is none left,
+ * which is when cutting it breaks nothing more.
+ */
+export function loopThrough(edges: Iterable<Pick<WEdge, "from" | "to">>, from: string, to: string, cut?: ReadonlySet<string>): string[] | null {
+    const adj = new Map<string, string[]>()
+    for (const e of edges) {
+        if (e.from === e.to || (cut && cut.has(edgeId(e.from, e.to))) || (e.from === from && e.to === to)) continue
+        ;(adj.get(e.from) ?? adj.set(e.from, []).get(e.from)!).push(e.to)
+    }
+    const prev = new Map<string, string>([[to, ""]])
+    const queue = [to]
+    while (queue.length) {
+        const v = queue.shift()!
+        if (v === from) {
+            const back: string[] = []
+            for (let x = from; x !== to; x = prev.get(x)!) back.push(x)
+            back.push(to)
+            back.reverse() // to … from
+            return [from, ...back.slice(0, -1)]
+        }
+        for (const w of (adj.get(v) ?? []).slice().sort()) if (!prev.has(w)) { prev.set(w, v); queue.push(w) }
+    }
+    return null
+}

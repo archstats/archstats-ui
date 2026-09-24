@@ -77,7 +77,7 @@
             <span class="text-neutral-500">{{ after.tangles.length ? `${after.tangles.length} ${after.tangles.length === 1 ? "tangle" : "tangles"} left (${after.tangles.map(t => t.length).join(", ")})` : "no cycle left" }}</span>
             <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">Undo cuts</button>
           </template>
-          <span v-else class="text-neutral-500">Nothing cut yet. The plan lists {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this tangle; apply them one by one, or drag through them.</span>
+          <span v-else class="text-neutral-500">Nothing cut yet. The guide on the right takes you through {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this knot, the one that frees most first.</span>
         </div>
 
         <div class="relative min-h-0 grow">
@@ -95,6 +95,9 @@
             :lines="linesOf"
             :step="stepOf"
             :title="figureTitle"
+            :focus="guideFocus"
+            :callout="guideCallout"
+            :flashed="flashed"
             @select-edge="selectEdge"
             @select-node="selectNode"
             @open="n => router.push(componentPath(n))"
@@ -116,6 +119,100 @@
           />
         </div>
       </template>
+    </template>
+
+    <!-- The guide: one cut at a time, in words, with the loop it breaks in the drawing. -->
+    <template #tab-guide>
+      <div v-if="tangle && layout" class="flex flex-col gap-4 outline-none" tabindex="-1" @keydown="onGuideKey">
+        <!-- Where the walk is. -->
+        <div>
+          <div class="flex items-baseline text-[12px] text-neutral-500">
+            <span class="flex-1">{{ guideStep === 0 ? "Before you start" : guideStep > plan.length || !after.tangles.length ? "Done" : `Cut ${guideStep} of ${plan.length}` }}</span>
+            <span class="tabular-nums">{{ after.freed.size }} of {{ tangle.members.length }} free</span>
+          </div>
+          <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200" role="progressbar" :aria-valuenow="after.freed.size" :aria-valuemax="tangle.members.length" aria-label="Components out of the knot">
+            <div class="h-full rounded-full bg-accent-500 transition-[width] duration-500 ease-out" :style="{ width: `${(100 * after.freed.size) / tangle.members.length}%` }"></div>
+          </div>
+        </div>
+
+        <!-- What the drawing shows, in plain words. -->
+        <section v-if="guideStep === 0" class="flex flex-col gap-3 text-[13px] leading-[1.6] text-neutral-800">
+          <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">These {{ tangle.members.length }} components are knotted together</h3>
+          <p>Follow the imports from any one of them and you reach all the others. That is what a cycle is, and it means none of them can be changed, tested or released on its own.</p>
+          <p>
+            The drawing puts them in order, top to bottom, so that most imports point down
+            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-neutral-400))" stroke-width="1.5"/></svg>.
+            The {{ layout.against.length }} in orange point back up
+            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-accent-500))" stroke-width="2.5"/></svg>:
+            each of those closes loops. Cut them and the knot comes apart.
+          </p>
+          <p>{{ plan.length }} of them are enough. This guide takes them one at a time, the one that frees the most first, and shows the loop each one closes and the lines of code it is.</p>
+          <p class="text-[12px] leading-5 text-neutral-500">Cutting here changes nothing in the code or the snapshot; it shows what the change would do.</p>
+          <button type="button" class="ui-btn ui-btn-primary self-start" @click="goStep(1)">Start with the first cut<Icon icon="arrow-right" :size="14"/></button>
+        </section>
+
+        <!-- One cut. -->
+        <section v-else-if="guideCurrent && after.tangles.length" class="flex flex-col gap-3">
+          <h3 class="flex flex-wrap items-center gap-1.5 break-all font-mono text-[14px] font-semibold leading-6 text-neutral-950">
+            <span>{{ shortName(guideCurrent.from) }}</span>
+            <Icon icon="arrow-right" :size="14" class="shrink-0 text-accent-600"/>
+            <span>{{ shortName(guideCurrent.to) }}</span>
+          </h3>
+          <p class="text-[13px] leading-[1.6] text-neutral-800">
+            <code class="gd-name">{{ shortName(guideCurrent.from) }}</code> imports <code class="gd-name">{{ shortName(guideCurrent.to) }}</code>,
+            <template v-if="!guideLoop || guideLoop.length < 2">and the cuts before it already broke the way back.</template>
+            <template v-else-if="guideLoop.length === 2">and <code class="gd-name">{{ shortName(guideCurrent.to) }}</code> imports it straight back.</template>
+            <template v-else>and <code class="gd-name">{{ shortName(guideCurrent.to) }}</code> leads back to it through <template v-for="(n, i) in guideLoop.slice(2, 5)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(3, guideLoop.length - 2) - 1 ? ", " : "" }}</template><template v-if="guideLoop.length > 5"> and {{ guideLoop.length - 5 }} more</template>.</template>
+            That loop is lit in the drawing.
+          </p>
+          <p class="rounded-md bg-accent-50 px-3 py-2 text-[13px] leading-[1.55] text-neutral-900">
+            <template v-if="guideEffect.freed.length">Cutting it frees <b>{{ guideEffect.freed.length }} {{ guideEffect.freed.length === 1 ? "component" : "components" }}</b>: <template v-for="(n, i) in guideEffect.freed.slice(0, 6)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(6, guideEffect.freed.length) - 1 ? ", " : "" }}</template><template v-if="guideEffect.freed.length > 6"> and {{ guideEffect.freed.length - 6 }} more</template>.</template>
+            <template v-else-if="guideEffect.split">Cutting it frees no one yet, but splits the knot in {{ guideEffect.after.length }}: {{ guideEffect.after.join(" and ") }} components.</template>
+            <template v-else-if="guideEffect.already">It is cut.</template>
+            <template v-else>On its own it frees no one yet; it opens the way for the cuts after it.</template>
+          </p>
+
+          <div class="flex flex-col gap-1.5">
+            <h4 class="ui-label">What to change: {{ guideCurrent.imports }} {{ guideCurrent.imports === 1 ? "import" : "imports" }} in {{ guideCurrent.files }} {{ guideCurrent.files === 1 ? "file" : "files" }}</h4>
+            <p v-if="guideLinesLoading" class="text-[12px] text-neutral-500">Reading the code…</p>
+            <ul v-else class="flex flex-col gap-1.5">
+              <li v-for="l in guideLines" :key="`${l.file}:${l.line}`" class="overflow-hidden rounded-md bg-neutral-50 hairline">
+                <router-link :to="fileSourcePath(l.file, l.line)" class="flex items-baseline gap-2 px-2.5 pt-1.5 text-[11.5px] text-neutral-600 hover:text-neutral-950" :title="l.file">
+                  <span class="min-w-0 truncate font-medium">{{ l.file.split("/").pop() }}</span><span class="shrink-0 font-mono text-neutral-400">line {{ l.line }}</span>
+                </router-link>
+                <pre class="overflow-x-auto px-2.5 pb-1.5 pt-0.5 font-mono text-[12px] leading-5 text-neutral-900">{{ l.text || "(line not kept in the snapshot)" }}</pre>
+              </li>
+            </ul>
+            <p v-if="guideMoreLines" class="text-[11.5px] text-neutral-500">And {{ guideMoreLines }} more; Selection lists every file.</p>
+            <p v-if="cochange.get(edgeId(guideCurrent.from, guideCurrent.to))" class="text-[11.5px] leading-4 text-neutral-500">The two components changed together in {{ cochange.get(edgeId(guideCurrent.from, guideCurrent.to)) }} commits.</p>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <button type="button" class="ui-btn ui-btn-primary" :title="guideEffect.already ? 'Next cut (→)' : 'Cut it and go to the next (→ or ↵)'" @click="cutAndNext">{{ guideEffect.already ? "Next cut" : "Cut it, next" }}<Icon icon="arrow-right" :size="14"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Leave it, go to the next (S)" @click="goStep(guideStep + 1)">Skip</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :disabled="guideStep <= 0" title="Back (←)" @click="goStep(guideStep - 1)"><Icon icon="arrow-left" :size="13"/>Back</button>
+          </div>
+        </section>
+
+        <!-- The end of the walk. -->
+        <section v-else class="flex flex-col gap-3 text-[13px] leading-[1.6] text-neutral-800">
+          <template v-if="!after.tangles.length">
+            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">The knot is undone</h3>
+            <p>With {{ cut.size }} {{ cut.size === 1 ? "cut" : "cuts" }} ({{ fmt(cutImports) }} {{ cutImports === 1 ? "import" : "imports" }}), all {{ tangle.members.length }} components are free: every import chain among them runs one way.</p>
+          </template>
+          <template v-else>
+            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ after.freed.size }} of {{ tangle.members.length }} free</h3>
+            <p>You skipped some cuts, so {{ after.tangles.reduce((s, t) => s + t.length, 0) }} components are still knotted. Go back to a skipped cut, or apply the rest in All cuts.</p>
+          </template>
+          <p>Next: try the cuts in the sandbox to see what they do to coupling, or export the plan for a report (⌘E).</p>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!cut.size" @click="openInSandbox"><Icon icon="flask" :size="13"/>Try in the sandbox</button>
+            <button type="button" class="ui-btn ui-btn-sm" @click="goStep(0)">Start over</button>
+            <button v-if="nextTangle" type="button" class="ui-btn ui-btn-sm" @click="selectTangle(nextTangle.key)">Next knot ({{ nextTangle.members.length }})<Icon icon="arrow-right" :size="13"/></button>
+          </div>
+        </section>
+        <p v-if="guideCurrent && after.tangles.length" class="text-[11px] text-neutral-400">→ or ↵ cut and go on · S skip · ← back</p>
+      </div>
     </template>
 
     <!-- The plan: what to cut, in the order that untangles most. -->
@@ -307,7 +404,7 @@ import { TRUSTED_PAIR_SQL } from "~/utils/cochange";
 import { formatNumber } from "~/utils/format";
 import { componentPath } from "~/utils/routes";
 import { sqlIn, sqlLiteral } from "~/utils/sql";
-import { afterCuts, edgeId, foldEdges, layoutTangle, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/utils/untangle";
+import { afterCuts, edgeId, foldEdges, layoutTangle, loopThrough, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/utils/untangle";
 
 // Cycles, read as tangles: sets of components that all reach each other.
 // Hundreds of listed cycles overlap on a few imports; laid out in levels,
@@ -325,8 +422,8 @@ const fmt = (n: number) => formatNumber(n);
 
 const searchQuery = ref("");
 const isSidebarOpen = ref(true);
-const activeTab = ref("plan");
-const tabs = [{ id: "plan", label: "Plan" }, { id: "selection", label: "Selection" }, { id: "cycles", label: "Cycles" }];
+const activeTab = ref("guide");
+const tabs = [{ id: "guide", label: "Guide" }, { id: "plan", label: "All cuts" }, { id: "selection", label: "Selection" }, { id: "cycles", label: "Cycles" }];
 
 // ── The graph and its tangles ───────────────────────────────────────────
 const edges = computed<WEdge[]>(() => (store.hasData ? foldEdges(store.componentConnections as any[]) : []));
@@ -456,10 +553,123 @@ function onCurveClick(e: MouseEvent) {
   applyFirst(Math.max(0, Math.min(plan.value.length, k)));
 }
 
+// ── The guide ───────────────────────────────────────────────────────────
+// Step 0 explains the drawing; step k is the plan's k-th cut. Each tangle keeps its own place.
+const guideSteps = ref<Record<string, number>>({});
+const guideStep = computed(() => (tangle.value ? guideSteps.value[tangle.value.key] ?? 0 : 0));
+const guideCurrent = computed(() => (guideStep.value >= 1 ? plan.value[guideStep.value - 1] ?? null : null));
+function goStep(k: number) {
+  if (!tangle.value) return;
+  guideSteps.value = { ...guideSteps.value, [tangle.value.key]: Math.max(0, Math.min(plan.value.length + 1, k)) };
+  activeTab.value = "guide";
+  isSidebarOpen.value = true;
+}
+const allEdges = computed(() => (layout.value ? layout.value.forward.concat(layout.value.against) : []));
+/** The loop the current cut closes, over what the other cuts leave. */
+const guideLoop = computed(() => {
+  const s = guideCurrent.value;
+  if (!s) return null;
+  const others = new Set(cut.value);
+  others.delete(edgeId(s.from, s.to));
+  return loopThrough(allEdges.value, s.from, s.to, others);
+});
+const guideFocus = computed(() => (activeTab.value === "guide" && guideCurrent.value && after.value.tangles.length ? { from: guideCurrent.value.from, to: guideCurrent.value.to, loop: guideLoop.value ?? [guideCurrent.value.from, guideCurrent.value.to] } : null));
+/** What cutting it does from where the cuts stand now, not from where the plan assumed. */
+const guideEffect = computed(() => {
+  const s = guideCurrent.value;
+  const empty = { freed: [] as string[], split: false, after: [] as number[], already: false };
+  if (!s || !tangle.value) return empty;
+  const id = edgeId(s.from, s.to);
+  if (cut.value.has(id)) return { ...empty, already: true };
+  const next = afterCuts(tangle.value.members, allEdges.value, new Set([...cut.value, id]));
+  const freed = [...next.freed].filter(n => !after.value.freed.has(n)).sort();
+  return { freed, split: next.tangles.length > after.value.tangles.length, after: next.tangles.map(t => t.length), already: false };
+});
+const guideCallout = computed(() => {
+  const e = guideEffect.value;
+  if (!guideCurrent.value) return null;
+  return e.already ? "Cut" : e.freed.length ? `Cut here · frees ${e.freed.length}` : e.split ? "Cut here · splits the knot" : "Cut here";
+});
+const flashed = ref<ReadonlySet<string>>(new Set());
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
+function cutAndNext() {
+  const s = guideCurrent.value;
+  if (!s) return;
+  if (!cut.value.has(edgeId(s.from, s.to))) {
+    const freed = guideEffect.value.freed;
+    toggleCut(s.from, s.to);
+    flashed.value = new Set(freed);
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flashed.value = new Set(); }, 1200);
+  }
+  // Past cuts the ones before already made unnecessary: straight to one that still closes a loop.
+  let k = guideStep.value + 1;
+  while (k <= plan.value.length && after.value.tangles.length) {
+    const n = plan.value[k - 1];
+    const w = afterCuts(tangle.value!.members, allEdges.value, cut.value).tangles;
+    const where = new Map<string, number>();
+    w.forEach((t, i) => t.forEach(m => where.set(m, i)));
+    if (where.has(n.from) && where.get(n.from) === where.get(n.to)) break;
+    k++;
+  }
+  goStep(k);
+}
+function onGuideKey(e: KeyboardEvent) {
+  if ((e.target as HTMLElement)?.tagName === "INPUT") return;
+  if (guideStep.value === 0 && (e.key === "Enter" || e.key === "ArrowRight")) { e.preventDefault(); goStep(1); }
+  else if (guideCurrent.value && (e.key === "Enter" || e.key === "ArrowRight")) { e.preventDefault(); cutAndNext(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); goStep(guideStep.value - 1); }
+  else if (e.key.toLowerCase() === "s" && guideCurrent.value) { e.preventDefault(); goStep(guideStep.value + 1); }
+}
+const cutImports = computed(() => plan.value.filter(s => cut.value.has(edgeId(s.from, s.to))).reduce((n, s) => n + s.imports, 0));
+const nextTangle = computed(() => {
+  const i = scopedTangles.value.findIndex(t => t.key === tangle.value?.key);
+  return scopedTangles.value.slice(i + 1).find(t => t.members.length > 1) ?? null;
+});
+
+// The import lines of the current cut, read from the snapshot's copy of each file.
+interface CodeLine { file: string; line: number; text: string }
+const guideLines = ref<CodeLine[]>([]);
+const guideMoreLines = ref(0);
+const guideLinesLoading = ref(false);
+watch(guideCurrent, async (s) => {
+  guideLines.value = [];
+  guideMoreLines.value = 0;
+  if (!s) return;
+  const files = [...new Set((store.componentConnections as any[]).filter(r => r.from === s.from && r.to === s.to && r.file).map(r => String(r.file)))];
+  if (!files.length || !store.hasView("snippets")) return;
+  guideLinesLoading.value = true;
+  try {
+    const rows: Array<{ file: string; begin_position: string }> = await store.query(`
+      SELECT file, begin_position FROM snippets
+      WHERE snippet_type = ${sqlLiteral(store.statName("modularity__component__imports"))}
+        AND file IN ${sqlIn(files)} AND content = ${sqlLiteral(s.to)}
+      ORDER BY file, begin_position`);
+    const sites = rows.map(r => ({ file: r.file, line: parseInt(String(r.begin_position).split(":")[0], 10) })).filter(x => !Number.isNaN(x.line));
+    const shown = sites.slice(0, 5);
+    guideMoreLines.value = Math.max(0, sites.length - shown.length);
+    const texts = new Map<string, string[]>();
+    if (store.hasView("file_contents")) {
+      const want = [...new Set(shown.map(x => x.file))];
+      const contents: Array<{ file: string; content: string }> = await store.query(`SELECT file, content FROM file_contents WHERE file IN ${sqlIn(want)}`).catch(() => []);
+      for (const c of contents) texts.set(c.file, String(c.content ?? "").split("\n"));
+    }
+    if (guideCurrent.value !== s) return;
+    guideLines.value = shown.map(x => ({ ...x, text: (texts.get(x.file)?.[x.line - 1] ?? "").trim() }));
+  } finally {
+    guideLinesLoading.value = false;
+  }
+}, { immediate: true });
+
 // ── Selection ───────────────────────────────────────────────────────────
 const selectedEdge = ref<{ from: string; to: string } | null>(null);
 const selectedNode = ref<string | null>(null);
 function selectEdge(from: string, to: string, reveal = true) {
+  // Clicking a cut of the plan while the guide is open goes to that cut in the guide.
+  if (reveal && activeTab.value === "guide") {
+    const k = plan.value.findIndex(s => s.from === from && s.to === to);
+    if (k >= 0) { goStep(k + 1); return; }
+  }
   selectedEdge.value = { from, to };
   selectedNode.value = null;
   if (reveal) { activeTab.value = "selection"; isSidebarOpen.value = true; }
@@ -663,5 +873,6 @@ onMounted(() => { if (route.query.component) isSidebarOpen.value = true; });
 </script>
 
 <style scoped>
+.gd-name { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.88em; background: rgb(var(--c-neutral-100)); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
 .sq-range { accent-color: rgb(var(--c-accent-500)); height: 16px; }
 </style>

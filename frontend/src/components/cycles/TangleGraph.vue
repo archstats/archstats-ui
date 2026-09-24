@@ -25,9 +25,9 @@
             v-for="e in forward"
             :key="e.key"
             :d="e.d"
-            :stroke="e.lit ? t.inkSecondary : t.hairlineStrong"
-            :stroke-width="e.w"
-            :opacity="e.dim ? 0.12 : e.lit ? 0.9 : 0.55"
+            :stroke="e.inLoop ? t.ink : e.lit ? t.inkSecondary : t.hairlineStrong"
+            :stroke-width="e.inLoop ? e.w + 1 : e.w"
+            :opacity="e.dim ? (focus ? 0.07 : 0.12) : e.lit || e.inLoop ? 0.9 : 0.55"
             :marker-end="e.lit ? `url(#${uid}-arrow-fwd)` : undefined"
           />
         </g>
@@ -38,22 +38,31 @@
             <path :d="e.d" stroke="transparent" stroke-width="12"/>
             <path
               :d="e.d"
-              :stroke="e.selected ? t.ink : e.cut ? t.inkMuted : t.accent"
-              :stroke-width="e.selected || hoverEdge === e.key ? e.w + 1.25 : e.w"
-              :stroke-dasharray="e.cut ? '4 4' : undefined"
-              :opacity="e.dim ? 0.15 : e.cut ? 0.55 : 1"
-              :marker-end="e.cut ? undefined : `url(#${uid}-${e.selected ? 'arrow-sel' : 'arrow'})`"
+              :class="{ 'tg-ants': e.focused && !e.cut }"
+              :stroke="e.focused ? t.accent : e.inLoop ? t.ink : e.selected ? t.ink : e.cut ? t.inkMuted : t.accent"
+              :stroke-width="e.focused ? e.w + 2 : e.selected || e.inLoop || hoverEdge === e.key ? e.w + 1.25 : e.w"
+              :stroke-dasharray="e.focused && !e.cut ? '9 6' : e.cut ? '4 4' : undefined"
+              :opacity="e.dim ? (focus ? 0.07 : 0.15) : e.cut && !e.focused ? 0.55 : 1"
+              :marker-end="e.cut ? undefined : `url(#${uid}-${e.selected || (e.inLoop && !e.focused) ? 'arrow-sel' : 'arrow'})`"
             />
             <title>{{ e.title }}</title>
           </g>
+        </g>
+
+        <!-- The loop in hand: where to cut, and what it does. -->
+        <g v-if="calloutAt" class="pointer-events-none">
+          <rect :x="calloutAt.x" :y="calloutAt.y - 13" :width="calloutAt.w" height="26" rx="13" :fill="t.accent"/>
+          <text :x="calloutAt.x + 13" :y="calloutAt.y + 4.5" :font-family="t.fontSans" font-size="12" font-weight="600" :fill="t.surface">{{ callout }}</text>
         </g>
 
         <!-- Components. -->
         <g v-for="n in nodes" :key="n.name" class="cursor-pointer" :opacity="n.dim ? 0.25 : 1" @mouseenter="hover = n.name" @click.stop="$emit('selectNode', n.name)" @dblclick.stop="$emit('open', n.name)">
           <rect :x="n.x - n.labelW / 2 - 6" :y="n.y - n.r - 5" :width="n.labelW + 12" :height="n.r + 26" rx="5" :fill="n.selected ? t.accentSoft : t.surface" :opacity="n.selected ? 0.6 : 0.85"/>
           <circle :cx="n.x" :cy="n.y" :r="n.r + (n.tangled ? 2.5 : 0)" :fill="n.tangled ? t.accentSoft : 'none'" :opacity="n.tangled ? 0.9 : 0"/>
+          <circle v-if="n.inLoop" :cx="n.x" :cy="n.y" :r="n.r + 5" fill="none" :stroke="t.ink" stroke-width="1.5"/>
+          <circle v-if="flashed.has(n.name)" class="tg-flash" :cx="n.x" :cy="n.y" :r="n.r + 4" fill="none" :stroke="t.accent" stroke-width="3"/>
           <circle :cx="n.x" :cy="n.y" :r="n.r" :fill="n.freed ? t.surface : n.color" :stroke="n.freed ? t.inkMuted : n.color" stroke-width="1.5"/>
-          <text :x="n.x" :y="n.y + n.r + 14" text-anchor="middle" :font-family="t.fontMono" font-size="11" :fill="n.freed ? t.inkMuted : n.match ? t.accent : t.ink" :font-weight="n.selected || n.match ? 600 : 400">{{ n.label }}</text>
+          <text :x="n.x" :y="n.y + n.r + 14" text-anchor="middle" :font-family="t.fontMono" :font-size="n.inLoop ? 12 : 11" :fill="n.freed ? t.inkMuted : n.match ? t.accent : t.ink" :font-weight="n.selected || n.match || n.inLoop ? 600 : 400">{{ n.label }}</text>
           <title>{{ n.title }}</title>
         </g>
       </g>
@@ -61,8 +70,8 @@
 
     <!-- Reading the drawing. -->
     <div class="pointer-events-none absolute bottom-3 left-3 flex items-center gap-4 rounded-md bg-surface/90 px-3 py-1.5 text-[11.5px] text-neutral-600 shadow-[0_0_0_1px_rgb(var(--c-neutral-200))]">
-      <span class="flex items-center gap-1.5"><svg width="22" height="8" aria-hidden="true"><path d="M1 4 H21" :stroke="t.hairlineStrong" stroke-width="1.5"/></svg>imports, top to bottom</span>
-      <span class="flex items-center gap-1.5"><svg width="22" height="8" aria-hidden="true"><path d="M1 4 H21" :stroke="t.accent" stroke-width="2"/></svg>imports back up against the levels: these make the cycles</span>
+      <span class="flex items-center gap-1.5"><svg width="22" height="8" aria-hidden="true"><path d="M1 4 H21" :stroke="t.hairlineStrong" stroke-width="1.5"/></svg>imports pointing down</span>
+      <span class="flex items-center gap-1.5"><svg width="22" height="8" aria-hidden="true"><path d="M1 4 H21" :stroke="t.accent" stroke-width="2"/></svg>imports pointing back up: each closes loops</span>
       <span class="flex items-center gap-1.5"><svg width="22" height="8" aria-hidden="true"><path d="M1 4 H21" :stroke="t.inkMuted" stroke-width="1.5" stroke-dasharray="4 4"/></svg>cut</span>
     </div>
     <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-md bg-surface shadow-[0_0_0_1px_rgb(var(--c-neutral-200))]">
@@ -98,6 +107,12 @@ const props = defineProps<{
   lines: (name: string) => number
   step: (from: string, to: string) => number | null
   title: string
+  /** The loop the guide is on: the import to cut, and the way back that closes it. */
+  focus?: { from: string; to: string; loop: string[] } | null
+  /** The label at the import to cut. */
+  callout?: string | null
+  /** Components a cut just freed, marked once. */
+  flashed?: ReadonlySet<string>
 }>();
 defineEmits<{ (e: "selectEdge", from: string, to: string): void; (e: "selectNode", name: string): void; (e: "open", name: string): void; (e: "clear"): void }>();
 
@@ -134,7 +149,13 @@ const maxLines = computed(() => Math.max(1, ...props.layout.order.map(n => props
 const radius = (n: string) => 3.5 + 4.5 * Math.sqrt(props.lines(n) / maxLines.value);
 
 // What the pointer or the selection is about: its edges light up, the rest recede.
-const focusNode = computed(() => hover.value ?? props.selectedNode);
+const focusNode = computed(() => (props.focus ? null : hover.value ?? props.selectedNode));
+const flashed = computed(() => props.flashed ?? new Set<string>());
+const loopNodes = computed(() => new Set(props.focus?.loop ?? []));
+const loopEdges = computed(() => {
+  const l = props.focus?.loop ?? [];
+  return new Set(l.map((n, i) => edgeId(n, l[(i + 1) % l.length])));
+});
 const touches = (from: string, to: string) => !focusNode.value || from === focusNode.value || to === focusNode.value;
 
 const nodes = computed(() => props.layout.order.map(name => {
@@ -148,7 +169,8 @@ const nodes = computed(() => props.layout.order.map(name => {
     color: props.color(name) ?? t.value.ink,
     selected: props.selectedNode === name,
     match: props.matches.has(name),
-    dim: !!focusNode.value && focusNode.value !== name && !neighbours.value.get(focusNode.value)?.has(name),
+    inLoop: loopNodes.value.has(name),
+    dim: props.focus ? !loopNodes.value.has(name) : !!focusNode.value && focusNode.value !== name && !neighbours.value.get(focusNode.value)?.has(name),
     title: `${name}\n${lines.toLocaleString("en-US")} lines${freed ? "\nNo longer in a tangle with the cuts applied" : ""}\nDouble-click to open`,
   };
 }));
@@ -170,7 +192,8 @@ const forward = computed(() => props.layout.forward.map(e => {
   const dy = Math.max(24, (y2 - y1) * 0.5);
   const key = edgeId(e.from, e.to);
   const lit = props.lit.has(key) || (!!focusNode.value && touches(e.from, e.to));
-  return { key, d: `M${a.x},${y1} C${a.x},${y1 + dy} ${b.x},${y2 - dy} ${b.x},${y2}`, w: widthOf(e.imports), lit, dim: (!!focusNode.value || props.lit.size > 0) && !lit };
+  const inLoop = loopEdges.value.has(key);
+  return { key, d: `M${a.x},${y1} C${a.x},${y1 + dy} ${b.x},${y2 - dy} ${b.x},${y2}`, w: widthOf(e.imports), lit, inLoop, dim: props.focus ? !inLoop : (!!focusNode.value || props.lit.size > 0) && !lit };
 }));
 const against = computed(() => props.layout.against.map(e => {
   const a = place.value.get(e.from)!, b = place.value.get(e.to)!;
@@ -180,25 +203,39 @@ const against = computed(() => props.layout.against.map(e => {
   const r1 = radius(e.from), r2 = radius(e.to);
   const key = edgeId(e.from, e.to);
   let d: string;
+  let apex: { x: number; y: number };
   if (rise < 1) {
     const dip = 34 + Math.abs(a.x - b.x) * 0.12;
     d = `M${a.x},${a.y + r1} C${a.x},${a.y + dip} ${b.x},${b.y + dip} ${b.x},${b.y + r2 + 3}`;
+    apex = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + dip * 0.75 };
   } else {
     const bulge = 60 + rise * 0.32 + Math.abs(a.x - b.x) * 0.1;
     const x1 = a.x + r1 + 1, x2 = b.x + r2 + 3;
-    d = `M${x1},${a.y} C${Math.max(x1, x2) + bulge},${a.y} ${Math.max(x1, x2) + bulge},${b.y} ${x2},${b.y}`;
+    const cx = Math.max(x1, x2) + bulge;
+    d = `M${x1},${a.y} C${cx},${a.y} ${cx},${b.y} ${x2},${b.y}`;
+    // The curve's middle: (P0 + 3P1 + 3P2 + P3) / 8.
+    apex = { x: (x1 + 6 * cx + x2) / 8, y: (a.y + b.y) / 2 };
   }
   const selected = !!props.selectedEdge && props.selectedEdge.from === e.from && props.selectedEdge.to === e.to;
   const step = props.step(e.from, e.to);
   const lit = props.lit.has(key) || selected || (!!focusNode.value && touches(e.from, e.to)) || hoverEdge.value === key;
+  const focused = !!props.focus && props.focus.from === e.from && props.focus.to === e.to;
+  const inLoop = loopEdges.value.has(key);
   return {
-    key, from: e.from, to: e.to, selected, cut: props.cut.has(key),
+    key, from: e.from, to: e.to, selected, cut: props.cut.has(key), focused, inLoop, apex,
     d,
     w: widthOf(e.imports) + 0.6,
-    dim: (!!focusNode.value || props.lit.size > 0) && !lit,
+    dim: props.focus ? !inLoop : (!!focusNode.value || props.lit.size > 0) && !lit,
     title: `${props.label(e.from)} imports ${props.label(e.to)}, back up against the levels\n${e.imports} ${e.imports === 1 ? "import" : "imports"} in ${e.files} ${e.files === 1 ? "file" : "files"}${step ? `\nCut ${step} of the plan` : ""}`,
   };
 }));
+
+const calloutAt = computed(() => {
+  if (!props.focus || !props.callout) return null;
+  const e = against.value.find(x => x.focused);
+  if (!e) return null;
+  return { x: e.apex.x + 8, y: e.apex.y, w: props.callout.length * 6.7 + 26 };
+});
 
 // ── Zoom ────────────────────────────────────────────────────────────────
 const zt = ref(d3.zoomIdentity);
@@ -234,7 +271,28 @@ onMounted(() => {
   void nextTick(() => fit());
 });
 onBeforeUnmount(() => ro?.disconnect());
-watch(() => props.layout, () => void nextTick(() => fit()));
+watch(() => props.layout, () => void nextTick(() => (props.focus ? fitFocus() : fit())));
+
+/** Brings the loop in hand to the middle, large enough to read. */
+function fitFocus() {
+  const svg = svgRef.value;
+  if (!svg || !zoom || !props.focus) return;
+  const pts = props.focus.loop.map(n => place.value.get(n)).filter(Boolean) as Array<{ x: number; y: number }>;
+  const c = calloutAt.value;
+  if (c) pts.push({ x: c.x + c.w, y: c.y });
+  for (const e of against.value) if (e.focused) pts.push(e.apex);
+  if (!pts.length) return;
+  const x0 = Math.min(...pts.map(p => p.x)) - 110, x1 = Math.max(...pts.map(p => p.x)) + 110;
+  const y0 = Math.min(...pts.map(p => p.y)) - 60, y1 = Math.max(...pts.map(p => p.y)) + 70;
+  const { w, h } = size.value;
+  const k = Math.max(0.35, Math.min(1.35, w / (x1 - x0), h / (y1 - y0)));
+  const tx = w / 2 - ((x0 + x1) / 2) * k, ty = h / 2 - ((y0 + y1) / 2) * k;
+  d3.select(svg).transition().duration(matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 520).ease(d3.easeCubicOut).call(zoom.transform as any, d3.zoomIdentity.translate(tx, ty).scale(k));
+}
+watch(() => (props.focus ? `${props.focus.from}>${props.focus.to}` : ""), (k, was) => {
+  if (k) void nextTick(fitFocus);
+  else if (was) fit(true);
+});
 watch(size, (s, was) => { if (Math.abs(s.w - was.w) > 40 || Math.abs(s.h - was.h) > 40) fit(); });
 
 useSvgFigure(() => props.title, () => svgRef.value, () => [
@@ -243,3 +301,11 @@ useSvgFigure(() => props.title, () => svgRef.value, () => [
   { label: "Cut", color: t.value.inkMuted, dashed: true },
 ]);
 </script>
+
+<style scoped>
+.tg-ants { animation: tg-march 0.9s linear infinite; }
+@keyframes tg-march { to { stroke-dashoffset: -15; } }
+.tg-flash { transform-box: fill-box; transform-origin: center; animation: tg-flash 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes tg-flash { from { opacity: 1; transform: scale(0.6); } to { opacity: 0; transform: scale(2.6); } }
+@media (prefers-reduced-motion: reduce) { .tg-ants, .tg-flash { animation: none; } }
+</style>

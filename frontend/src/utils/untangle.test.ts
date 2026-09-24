@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { afterCuts, edgeId, foldEdges, layoutTangle, planCuts, tanglesOf, type WEdge } from "./untangle"
+import { afterCuts, edgeId, foldEdges, layoutTangle, loopThrough, planCuts, tanglesOf, type WEdge } from "./untangle"
 
 const e = (from: string, to: string, imports = 1, files = 1): WEdge => ({ from, to, imports, files })
 
@@ -30,5 +30,14 @@ describe("untangle", () => {
     it("folds connection rows into edges with imports and files", () => {
         const rows = [{ from: "a", to: "b", file: "x", count: 2 }, { from: "a", to: "b", file: "y", count: 1 }, { from: ".", to: "b", file: "z", count: 1 }, { from: "a", to: "a", file: "x", count: 4 }]
         expect(foldEdges(rows)).toEqual([{ from: "a", to: "b", imports: 3, files: 2 }])
+    })
+
+    it("finds the loop an import closes, over what is not cut", () => {
+        const edges = [e("http", "auth"), e("auth", "users"), e("users", "http"), e("auth", "http")]
+        // http → auth, then back: auth → http directly.
+        expect(loopThrough(edges, "http", "auth")).toEqual(["http", "auth"])
+        // With auth → http cut, the way back runs through users.
+        expect(loopThrough(edges, "http", "auth", new Set([edgeId("auth", "http")]))).toEqual(["http", "auth", "users"])
+        expect(loopThrough(edges, "http", "auth", new Set([edgeId("auth", "http"), edgeId("users", "http")]))).toBeNull()
     })
 })
