@@ -137,6 +137,7 @@
                     :stale="isStale(b)"
                     :kernel-label="kernelShort"
                     :figure="b.cell.output?.figure ? reports.figures[b.cell.output.figure] ?? null : null"
+                    :figure-missing="!!b.cell.output?.figure && reports.missingFigures.includes(b.cell.output.figure)"
                     :workspace="workspaceName"
                     :label="label"
                     @select="selectCell(b.id)"
@@ -260,6 +261,9 @@ watch(() => pool.value.map(p => p.figurePath).join(), async () => {
     if (b64) reports.figures = { ...reports.figures, [p.figurePath]: `data:image/png;base64,${b64}` };
   }
 }, { immediate: true });
+
+// Every figure the report holds is loaded, however it arrived: added, undone, pasted as Markdown.
+watch(() => reports.cells.map(c => c.cell.output?.figure ?? "").join(), () => void reports.loadFigures(), { immediate: true });
 
 // ── Kernel ──────────────────────────────────────────────────────────────
 const completeScans = computed(() => newestFirst(workspaces.scans.filter((s: any) => s.status === "complete")) as any[]);

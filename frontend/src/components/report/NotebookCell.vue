@@ -64,7 +64,8 @@
       <p v-else-if="cell.output.error" class="rounded-md bg-red-50 px-3 py-2 font-mono text-xs text-red-800" role="alert">{{ cell.output.error }}</p>
       <template v-else>
         <img v-if="figure" :src="figure" :alt="title || defaultTitle" class="max-h-[520px] w-full rounded-md object-contain object-left">
-        <p v-else-if="cell.output.figure" class="py-4 text-sm text-neutral-500">The figure file is missing.</p>
+        <p v-else-if="cell.output.figure && figureMissing" class="py-4 text-sm text-neutral-500">The figure file is missing. <template v-if="cell.spec.type === 'capture'">Open {{ cell.spec.view }} and add it again.</template></p>
+        <div v-else-if="cell.output.figure" class="h-40 w-full animate-pulse rounded-md bg-neutral-100" role="img" aria-label="Loading figure"></div>
         <p v-if="cell.output.pin?.note" class="mt-2 text-[14px] leading-6 text-neutral-700">{{ cell.output.pin.note }}</p>
         <div v-if="table" class="mt-2 overflow-x-auto">
           <table class="nb-data w-full">
@@ -112,6 +113,8 @@ const props = defineProps<{
   figure: string | null
   workspace: string
   label: (id: string) => string
+  /** The figure could not be read; until then it is loading. */
+  figureMissing?: boolean
   /** The run gutter; a preview outside the notebook goes without. */
   gutter?: boolean
 }>();

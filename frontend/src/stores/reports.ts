@@ -53,6 +53,8 @@ export const useReportsStore = defineStore("reports", {
         burst: "" as string,
         running: [] as string[],
         figures: {} as Record<string, string>,
+        /** Figure paths that could not be read: shown as missing, not as loading. */
+        missingFigures: [] as string[],
         saving: false,
         loaded: false,
         importing: null as ImportDraft | null,
@@ -329,16 +331,21 @@ export const useReportsStore = defineStore("reports", {
         async loadFigures() {
             for (const c of this.cells) {
                 const path = c.cell.output?.figure
-                if (!path || this.figures[path]) continue
-                try {
-                    const b64 = await Figure(path)
-                    if (b64) this.figures = { ...this.figures, [path]: `data:image/png;base64,${b64}` }
-                } catch { /* a missing figure shows as missing */ }
+                if (!path || this.figures[path] || this.missingFigures.includes(path)) continue
+                let b64 = ""
+                try { b64 = await Figure(path) } catch { b64 = "" }
+                if (b64) this.figures = { ...this.figures, [path]: `data:image/png;base64,${b64}` }
+                else this.missingFigures = [...this.missingFigures, path]
             }
         },
-        /** A PNG kept with the workspace's evidence, for a captured figure. */
+        /**
+         * A PNG kept with the workspace's evidence, for a captured figure. The
+         * image is cached as it is written, so the cell shows it at once.
+         */
         async keepFigure(pngBase64: string): Promise<string> {
-            return SaveFigure(this.workspace, `cell-${newId()}`, pngBase64)
+            const path = await SaveFigure(this.workspace, `cell-${newId()}`, pngBase64)
+            if (path) this.figures = { ...this.figures, [path]: `data:image/png;base64,${pngBase64}` }
+            return path
         },
 
         // ── Adding from elsewhere ───────────────────────────────────────────
@@ -378,6 +385,7 @@ export const useReportsStore = defineStore("reports", {
             }
             this.insert(at, blocks)
             this.flushSave()
+            void this.loadFigures()
         },
 
         // ── Export ──────────────────────────────────────────────────────────
