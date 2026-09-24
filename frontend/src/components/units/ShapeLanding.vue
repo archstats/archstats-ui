@@ -119,8 +119,8 @@ const composition = computed(() => {
   const article = props.frameworkName && /^[AEIOU]/i.test(props.frameworkName) ? "An" : "A"
   const what = props.frameworkName ? `${article} ${props.frameworkName} codebase` : "This codebase"
   const size = props.unitCount > props.moduleCount
-    ? `${n(props.moduleCount)} modules holding ${n(props.unitCount)} declared things`
-    : `${n(props.moduleCount)} modules`
+    ? `${n(props.moduleCount)} files holding ${n(props.unitCount)} declared things`
+    : `${n(props.moduleCount)} files`
   const ties = props.edgeCount > 0
     ? `${n(props.edgeCount)} references run between them.`
     : (props.componentEdgeCount ?? 0) > 0

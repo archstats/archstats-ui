@@ -67,6 +67,14 @@
 
         <footer class="flex items-center gap-2 px-5 py-3 hairline-t">
           <button v-if="existing" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="remove">Remove declaration</button>
+          <button
+            v-if="manifestGroups.size >= 2"
+            type="button"
+            class="ui-btn ui-btn-sm"
+            :title="`Allow exactly what the build files declare between ${manifestGroups.size} groups named for modules, and forbid the rest`"
+            @click="seedFromManifests"
+          >Declare what the manifests state</button>
+          <span v-if="source === 'manifests'" class="text-xs text-neutral-500">Declared by manifests</span>
           <span class="ml-auto"></span>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="groupList.length < 2" @click="save">Save</button>
@@ -85,6 +93,7 @@ import { useDataStore } from "~/stores/data";
 import { useGroupsStore, type Declaration } from "~/stores/groups";
 import { groupPairTotals, type GroupEdge } from "~/utils/groupEdges";
 import { crossingCount, crossings, verdictOf } from "~/utils/lensRules";
+import { useBuildModules } from "~/composables/useBuildModules";
 
 // Writing down the agreed architecture of one lens: the layer order and the
 // pairs that are allowed or forbidden whatever the layers say. The grid shows
@@ -102,7 +111,28 @@ const existing = computed(() => record.value?.declared ?? null);
 const layers = ref<string[]>([]);
 const pairs = ref<Declaration["pairs"]>([]);
 const unset = ref<Declaration["unset"]>("unjudged");
+const source = ref<Declaration["source"]>(undefined);
 const edges = ref<GroupEdge[]>([]);
+
+// Groups named for build modules, and the dependencies their manifests declare.
+const buildModules = useBuildModules();
+const manifestGroups = computed(() => {
+  const byName = new Map(buildModules.rows.value.map(m => [buildModules.nameOf(m), m]));
+  const out = new Map<string, { id: string; module: string; dependsOn: string[] }>();
+  for (const g of groupList.value) { const m = byName.get(g.name); if (m) out.set(g.name, { id: g.id, module: m.name, dependsOn: m.dependsOn }); }
+  return out;
+});
+function seedFromManifests() {
+  const byModule = new Map([...manifestGroups.value.values()].map(x => [x.module, x.id]));
+  const next: Declaration["pairs"] = [];
+  for (const g of manifestGroups.value.values()) {
+    for (const dep of g.dependsOn) { const to = byModule.get(dep); if (to && to !== g.id) next.push({ from: g.id, to, verdict: "allowed" }); }
+  }
+  pairs.value = next;
+  layers.value = [];
+  unset.value = "forbidden";
+  source.value = "manifests";
+}
 
 watch(lens, async (l) => {
   if (!l) return;
@@ -111,6 +141,7 @@ watch(lens, async (l) => {
   layers.value = d ? d.layers.filter(id => ids.has(id)) : record.value?.cut === "horizontal" ? groupList.value.map(g => g.id) : [];
   pairs.value = d ? d.pairs.filter(p => ids.has(p.from) && ids.has(p.to)).map(p => ({ ...p })) : [];
   unset.value = d?.unset ?? "unjudged";
+  source.value = d?.source;
   edges.value = [];
   const loaded = await resolveLensEdges(sql => data.query(sql), lensGroups(l));
   edges.value = (loaded?.result.edges ?? []).filter(e => e.kind !== "type_only");
@@ -120,7 +151,7 @@ const outOfLayers = computed(() => groupList.value.filter(g => !layers.value.inc
 const ordered = computed(() => [...layers.value.map(id => groupById.value.get(id)!).filter(Boolean), ...outOfLayers.value]);
 const totals = computed(() => groupPairTotals(edges.value));
 const refs = (a: string, b: string) => totals.value.get(`${a}>${b}`)?.refs ?? 0;
-const draft = computed<Declaration>(() => ({ layers: layers.value, pairs: pairs.value, unset: unset.value }));
+const draft = computed<Declaration>(() => ({ layers: layers.value, pairs: pairs.value, unset: unset.value, ...(source.value ? { source: source.value } : {}) }));
 
 function move(i: number, by: number) {
   const next = [...layers.value];

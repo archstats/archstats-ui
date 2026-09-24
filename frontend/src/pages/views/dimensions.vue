@@ -208,6 +208,7 @@
     @close="proposing = false"
     @propose="propose"
     @propose-repo="proposeRepo"
+    @repo-option="id => { if (id === 'modules') buildModules.withFixtures.value = !buildModules.withFixtures.value }"
   />
 
 </template>
@@ -228,6 +229,7 @@ import PilePanel from "~/components/dimensions/PilePanel.vue";
 import NearbyPanel, { type CandidateBand } from "~/components/dimensions/NearbyPanel.vue";
 import ProposeSheet, { type CutPreview, type RepoReading } from "~/components/dimensions/ProposeSheet.vue";
 import { useCodeowners } from "~/composables/useCodeowners";
+import { useBuildModules } from "~/composables/useBuildModules";
 import SelectionBar from "~/components/dimensions/SelectionBar.vue";
 import { useDimensionStudio } from "~/composables/useDimensionStudio";
 import { useQueryWorld } from "~/composables/useQueryWorld";
@@ -793,6 +795,7 @@ async function propose(id: WayId, grain: Grain) {
 // What the repository declares about itself, read as it stands: no measuring
 // of the code decides these groups, so they arrive proposed, never decided.
 const codeowners = useCodeowners();
+const buildModules = useBuildModules();
 function previewOf(suggestions: Array<{ key: string; name: string; components: string[] }>): CutPreview {
   const groups = suggestions.map(x => ({ key: x.key, name: x.name, members: x.components }));
   const measured = measureCut(groups, studio.qualityEdges.value, studio.coverage.value.total);
@@ -811,7 +814,21 @@ const repoReadings = computed<RepoReading[]>(() => {
     codeowners.singleRule.value ? `One rule (${codeowners.parsed.value?.rules[0].pattern}) owns every file: one group at 100%, which says who reviews, not how the code divides.` : "",
     unowned ? `${unowned.toLocaleString("en-US")} files match no rule and stay unplaced; About this snapshot lists them.` : "",
   ].filter(Boolean).join(" ");
-  return [{
+  const mWhy = buildModules.reason.value;
+  const mSug = buildModules.suggestions.value;
+  const fixtures = buildModules.fixtures.value.length;
+  const modulesReading: RepoReading = {
+    id: "modules",
+    label: "Build modules",
+    hint: `${buildModules.kindsText.value || "the manifests"}: one group per declared module`,
+    icon: "boxes",
+    ok: !mWhy && mSug.length > 1,
+    why: mWhy ?? (mSug.length > 1 ? undefined : "The modules hold no file of this snapshot."),
+    preview: !mWhy && mSug.length > 1 ? previewOf(mSug) : null,
+    note: "Declared by the build files. Declare the dependencies they state from the lens's Declare sheet once it is saved.",
+    option: fixtures ? { label: `Show ${fixtures} test fixture${fixtures === 1 ? "" : "s"}`, on: buildModules.withFixtures.value } : undefined,
+  };
+  return [modulesReading, {
     id: "codeowners",
     label: "Declared owners",
     hint: `${path}: one group per owner set, divided by files where owners share a component`,
@@ -823,13 +840,14 @@ const repoReadings = computed<RepoReading[]>(() => {
   }];
 });
 async function proposeRepo(id: string) {
-  if (id !== "codeowners") return;
+  const source = id === "codeowners" ? { name: "Owners", suggestions: codeowners.suggestions.value } : id === "modules" ? { name: "Modules", suggestions: buildModules.suggestions.value } : null;
+  if (!source) return;
   busy.value = true;
   try {
-    // Owners divide components by file, so the lens is made of files.
+    // Owners and modules divide components by file, so the lens is made of files.
     draft.setGrain("file", true);
-    if (!draft.dimension || draft.dimension === studio.way.value.dimension) draft.setDimension("Owners");
-    draft.fromSuggestions(draft.dimension || "Owners", codeowners.suggestions.value, "free");
+    if (!draft.dimension || draft.dimension === studio.way.value.dimension) draft.setDimension(source.name);
+    draft.fromSuggestions(draft.dimension || source.name, source.suggestions, "free");
     activeKey.value = null;
     proposing.value = false;
   } finally {

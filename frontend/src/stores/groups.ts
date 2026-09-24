@@ -104,6 +104,8 @@ export interface Declaration {
     layers: string[]
     pairs: Array<{ from: string; to: string; verdict: 'allowed' | 'forbidden' }>
     unset: 'unjudged' | 'forbidden'
+    /** Where the pairs came from: the build manifests' declared dependencies, when seeded from them. */
+    source?: 'manifests'
 }
 
 function normaliseDeclaration(raw: any): Declaration | undefined {
@@ -111,7 +113,7 @@ function normaliseDeclaration(raw: any): Declaration | undefined {
     const layers = Array.isArray(raw.layers) ? raw.layers.filter((x: unknown): x is string => typeof x === 'string') : []
     const pairs = Array.isArray(raw.pairs) ? raw.pairs.filter((p: any) => p && typeof p.from === 'string' && typeof p.to === 'string' && (p.verdict === 'allowed' || p.verdict === 'forbidden')).map((p: any) => ({ from: p.from, to: p.to, verdict: p.verdict })) : []
     if (layers.length === 0 && pairs.length === 0) return undefined
-    return { layers, pairs, unset: raw.unset === 'forbidden' ? 'forbidden' : 'unjudged' }
+    return { layers, pairs, unset: raw.unset === 'forbidden' ? 'forbidden' : 'unjudged', ...(raw.source === 'manifests' ? { source: 'manifests' as const } : {}) }
 }
 
 export function units(kind: UnitKind, names: Iterable<string>): Member[] {

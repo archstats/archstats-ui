@@ -117,6 +117,7 @@
           <section v-if="lensDeclared" id="lens" class="mt-10">
             <div class="flex items-baseline gap-3">
               <h2 class="ui-section-title">Lens rules: {{ lens.active }}</h2>
+              <span v-if="lensDeclared.source === 'manifests'" class="ui-tag" title="Seeded from the dependencies the build files declare">declared by manifests</span>
               <span class="text-sm text-neutral-500">{{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} imports cross the declared order` : "Nothing crosses the declared order" }}</span>
               <button type="button" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">Edit declaration…</button>
             </div>
@@ -130,6 +131,7 @@
                 <span class="text-base font-medium text-neutral-900">{{ groupName(c.from) }}</span>
                 <Icon icon="arrow-right" :size="12" class="text-neutral-400"/>
                 <span class="text-base font-medium text-neutral-900">{{ groupName(c.to) }}</span>
+                <span v-if="lensDeclared.source === 'manifests'" class="text-sm text-neutral-500">imported, not declared<template v-if="viaOf(c)"> (declared via {{ viaOf(c) }})</template></span>
                 <span class="ml-auto font-mono text-xs text-neutral-500">{{ c.edges.length }} import{{ c.edges.length === 1 ? "" : "s" }} · {{ c.refs.toLocaleString("en-US") }} refs<template v-if="c.typeOnly"> · also {{ c.typeOnly }} type-only</template></span>
               </div>
               <table class="ui-table">
@@ -158,6 +160,8 @@
 </template>
 
 <script setup lang="ts">
+import { useBuildModules } from "~/composables/useBuildModules"
+import { declaredVia } from "~/utils/modules"
 import PinButton from "~/components/evidence/PinButton.vue"
 import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { filePath } from "~/utils/routes"
@@ -174,6 +178,15 @@ const lensGroupsStore = useGroupsStore()
 const declaring = vueRef<string | null>(null)
 const lensExpanded = vueRef(new Set<string>())
 const { check: lensCheck, declared: lensDeclared, loading: lensLoading } = useLensFindings(vueComputed(() => lens.active))
+// For a declaration seeded from manifests: the declared path an undeclared import could lean on.
+const buildModules = useBuildModules()
+function viaOf(c: { from: string; to: string }): string {
+  const byName = new Map(buildModules.rows.value.map(m => [buildModules.nameOf(m), m.name]))
+  const from = byName.get(groupName(c.from)), to = byName.get(groupName(c.to))
+  if (!from || !to) return ""
+  const via = declaredVia(from, to, new Map(buildModules.rows.value.map(m => [m.name, m.dependsOn])))
+  return via && via.length ? via.join(" → ") : ""
+}
 const groupName = (id: string) => lensGroupsStore.getGroupById(id)?.name ?? id
 const lensShown = (c: { from: string; to: string }) => (lensExpanded.value.has(c.from + ">" + c.to) ? Infinity : 20)
 import { computed } from "vue"

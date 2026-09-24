@@ -178,6 +178,9 @@
                     <template v-if="r.preview.sizes.length > NAMES_SHOWN"><span class="text-neutral-550"> · … {{ r.preview.sizes.length - NAMES_SHOWN }} more</span></template>
                   </span>
                   <span v-if="r.note" class="ml-[21px] text-xs leading-4 text-amber-700">{{ r.note }}</span>
+                  <label v-if="r.option" class="ml-[21px] flex items-center gap-2 text-xs text-neutral-600" @click.stop>
+                    <input type="checkbox" :checked="r.option.on" @change="emit('repoOption', r.id)"> {{ r.option.label }}
+                  </label>
                 </template>
               </button>
             </template>
@@ -265,6 +268,8 @@ export interface RepoReading {
   preview: CutPreview | null
   /** Said under the reading when it is picked: a caveat about what it will make. */
   note?: string
+  /** A switch the reading offers, e.g. "Show 18 test fixtures". */
+  option?: { label: string; on: boolean }
 }
 
 export interface CutPreview {
@@ -302,6 +307,7 @@ const emit = defineEmits<{
   (e: "close"): void
   (e: "propose", id: WayId, grain: Grain): void
   (e: "proposeRepo", id: string): void
+  (e: "repoOption", id: string): void
   (e: "strike", word: string): void
   (e: "restore", word: string): void
 }>();
