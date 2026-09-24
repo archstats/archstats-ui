@@ -10,6 +10,8 @@
       </template>
     </SummarySection>
 
+    <Extremes/>
+
     <section class="mt-8" aria-labelledby="views-title">
       <h2 id="views-title" class="text-lg font-semibold text-neutral-900">Views</h2>
       <div class="mt-3 grid gap-5 lg:grid-cols-2">
@@ -25,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import Extremes from "~/components/overview/Extremes.vue";
 import { historyAnchor } from "~/utils/history";
 import ViewCard from "~/components/ViewCard.vue";
 import SummarySection from "~/components/SummarySection.vue";

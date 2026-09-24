@@ -46,3 +46,17 @@ export function componentPassesFacet(roles: FileRole[], facet: RoleFacet): boole
     const allTests = roles.every(r => r === "test")
     return facet === "test" ? allTests : !allTests
 }
+
+const NON_CODE_EXT = /\.(css|scss|sass|less|html?|json|ya?ml|md|rst|txt|svg|xml|xsd|properties|ini|toml|po|pot|mo|csv|lock|map|png|jpe?g|gif|ico|woff2?|ttf|eot)$/i
+const VENDORED = /(^|\/)(vendor|vendors|node_modules|third[_-]?party|bower_components|external)\/|(^|\/)lib\/[^/]*\.js$|\.min\.(js|css)$|(^|\/)static\/.*\/lib\//i
+// A library carried by name or by version: jquery-ui-1.13.3.custom.js, bootstrap.bundle.js.
+const LIBRARY = /(^|\/)(jquery|bootstrap|lodash|underscore|angular|backbone|moment|d3|select2|tinymce|ckeditor|codemirror|handlebars|knockout|modernizr|popper|chart)[^/]*\.js$|(^|\/)[^/]*[-.]\d+\.\d+(\.\d+)?[^/]*\.(js|css)$/i
+
+/**
+ * For snapshots without recorded roles: whether a path reads as production
+ * code by convention (not a test, not stylesheets or data, not a vendored
+ * library). Only a fallback; revision 2 records the role.
+ */
+export function looksLikeProductionCode(path: string): boolean {
+    return !isTestPath(path) && !NON_CODE_EXT.test(path) && !VENDORED.test(path) && !LIBRARY.test(path)
+}

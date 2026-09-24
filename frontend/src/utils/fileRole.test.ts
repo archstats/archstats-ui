@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { componentPassesFacet, isTestPath, passesFacet, roleOf } from "./fileRole"
+import { componentPassesFacet, isTestPath, looksLikeProductionCode, passesFacet, roleOf } from "./fileRole"
 
 describe("isTestPath", () => {
     it("follows the engine's conventions across languages", () => {
@@ -19,5 +19,15 @@ describe("facets", () => {
         expect(componentPassesFacet(["test", "test"], "test")).toBe(true)
         expect(componentPassesFacet(["test", "production"], "test")).toBe(false)
         expect(componentPassesFacet(["test", "production"], "production")).toBe(true)
+    })
+})
+
+describe("looksLikeProductionCode", () => {
+    it("leaves out stylesheets, data and vendored libraries", () => {
+        expect(looksLikeProductionCode("admin/js/admin/lib/redactor.js")).toBe(false)
+        expect(looksLikeProductionCode("admin/css/admin/blc-admin.css")).toBe(false)
+        expect(looksLikeProductionCode("web/app.min.js")).toBe(false)
+        expect(looksLikeProductionCode("admin/js/jquery-ui-1.13.3.custom.js")).toBe(false)
+        expect(looksLikeProductionCode("core/src/main/java/a/AdminBasicEntityController.java")).toBe(true)
     })
 })
