@@ -1,0 +1,17 @@
+# Answer key for d09de9f2-c9ff-4222-b84f-51feaa907bb3.db
+analysis revision: 3
+
+K1 shape: 21 components, 433 production files, 69,131 production lines; top extensions [('.vue', 217), ('.ts', 151), ('.go', 33), ('.js', 11)]
+K2 largest components by lines: frontend/src/utils (22,745 lines, 157 files); frontend/src/stores (4,692 lines, 18 files); frontend/src/composables (3,620 lines, 31 files); app (1,644 lines, 16 files); app/store (1,494 lines, 10 files)
+K3 tangles: 1; largest 3 components: frontend/src/composables, frontend/src/stores, frontend/src/utils
+K4 top production hotspots: frontend/wailsjs/go/models.ts (score 100, 1084 lines, 17 commits); frontend/src/pages/views/components/[name]/index.vue (score 67, 845 lines, 11 commits); frontend/src/pages/views/connections.vue (score 60, 784 lines, 10 commits); frontend/src/components/connections/ConnectionsGraph.vue (score 59, 1034 lines, 5 commits); frontend/src/pages/views/dimensions.vue (score 57, 910 lines, 6 commits)
+K5 most depended-on components (distinct dependents): app/store (5); frontend/wailsjs/runtime (4); app/query (3); app/snapshot (3); frontend/src/utils (3)
+K6 co-change without an import: app ~ frontend/wailsjs/go/app (19 shared); app ~ frontend/wailsjs/go (16 shared); app ~ frontend/src/utils (10 shared); . ~ frontend/wailsjs/go/app (8 shared); app/store ~ frontend/wailsjs/go (8 shared)
+K7 knowledge concentration (>=20 commits, top author share): frontend/wailsjs/go/app 100% Ryan Susana of 22; frontend/src/utils 100% Ryan Susana of 60; frontend/src/stores 100% Ryan Susana of 39; frontend/src/composables 100% Ryan Susana of 28; app 100% Ryan Susana of 24
+    distinct authors in history: 2
+
+D drift vs 0961b37e-929a-4238-8148-4374b369f830.db:
+  components 16 -> 21 (+5 / -0); added e.g. ['app/changes', 'app/report', 'app/snapshot', 'app/trends', 'tasks/acceptance']; removed e.g. []
+  grew most: [('frontend/src/utils', 13980), ('frontend/src/composables', 1866), ('app', 1398), ('frontend/src/stores', 1208), ('frontend/wailsjs/go', 959)]
+  component dependencies 22 -> 32
+  largest tangle 3 -> 3

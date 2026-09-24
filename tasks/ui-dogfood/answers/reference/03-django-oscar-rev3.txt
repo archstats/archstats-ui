@@ -1,0 +1,31 @@
+# Answer key for 091654b7-7bfd-4598-8b8a-be1ab07a6ce9.db
+analysis revision: 3
+
+K1 shape: 122 components, 649 production files, 55,787 production lines; top extensions [('.py', 383), ('.html', 242), ('.js', 8), ('.in', 1)]
+K2 largest components by lines: tests/functional/dashboard (4,258 lines, 20 files); tests/integration/dashboard (3,514 lines, 12 files); tests/integration/offer (3,485 lines, 27 files); src/oscar/apps/catalogue (3,062 lines, 13 files); src/oscar/apps/offer (2,975 lines, 15 files)
+K3 tangles: 3; largest 30 components: src/oscar/apps/search, tests/unit/customer, tests/unit/offer, src/oscar/apps/catalogue/reviews, src/oscar/apps/basket, src/oscar/apps/voucher, src/oscar/test, src/oscar/apps/dashboard, src/oscar/apps/customer, src/oscar/apps/dashboard/catalogue, src/oscar/apps/customer/alerts, src/oscar/apps/offer, 
+K4 top production hotspots: src/oscar/apps/catalogue/abstract_models.py (score 100, 1711 lines, 422 commits); src/oscar/apps/order/abstract_models.py (score 75, 1413 lines, 248 commits); src/oscar/apps/dashboard/catalogue/views.py (score 67, 1338 lines, 178 commits); src/oscar/apps/offer/abstract_models.py (score 62, 1362 lines, 113 commits); src/oscar/apps/basket/abstract_models.py (score 59, 1098 lines, 264 commits)
+K5 most depended-on components (distinct dependents): src/oscar/core (83); src/oscar/test/factories (28); tests/unit/catalogue (27); src/oscar/models/fields (25); src/oscar/apps/partner (24)
+K6 co-change without an import: src/oscar/apps/catalogue ~ src/oscar/apps/basket (98 shared); src/oscar/apps/offer ~ src/oscar/apps/basket (87 shared); src/oscar/apps/order ~ src/oscar/apps/basket (87 shared); src/oscar/apps/catalogue ~ src/oscar/apps/dashboard/catalogue (78 shared); src/oscar/apps/checkout ~ src/oscar/apps/basket (76 shared)
+K7 knowledge concentration (>=20 commits, top author share): src/oscar/apps/checkout 70% David Winterbottom of 459; docs/source 68% David Winterbottom of 28; tests/integration/partner 65% David Winterbottom of 98; tests/integration/shipping 63% David Winterbottom of 67; sandbox 62% David Winterbottom of 325
+    distinct authors in history: 370
+
+F focus components LIKE '%checkout%':
+  src/oscar/apps/checkout: 2182 lines, 12 files (0 test); depends on 9, depended on by 4
+    depends on: src/oscar/apps/address, src/oscar/apps/customer, src/oscar/apps/order, src/oscar/apps/payment, src/oscar/core, src/oscar/forms, tests/_site/shipping, tests/unit/basket, tests/unit/checkout
+    used by: tests/_site/apps/checkout, tests/integration/checkout, tests/integration/order, tests/unit/checkout
+    top authors: [('David Winterbottom', 321), ('Maik Hoepfel', 23), ('Michael van Tellingen', 12)]
+  tests/functional/checkout: 1028 lines, 4 files (4 test); depends on 10, depended on by 1
+    depends on: src/oscar/apps/address, src/oscar/apps/order, src/oscar/apps/payment, src/oscar/apps/shipping, src/oscar/core, src/oscar/test, tests/_site/shipping, tests/unit/basket, tests/unit/checkout, tests/unit/offer
+    used by: tests/integration/basket
+    top authors: [('David Winterbottom', 11), ('Samir Shah', 10), ('Michael van Tellingen', 9)]
+  tests/integration/checkout: 599 lines, 6 files (6 test); depends on 8, depended on by 0
+    depends on: src/oscar/apps/address, src/oscar/apps/checkout, src/oscar/apps/order, src/oscar/apps/shipping, src/oscar/core, src/oscar/test, src/oscar/test/factories, tests/unit/checkout
+    top authors: [('Samir Shah', 9), ('David Winterbottom', 6), ('Alexander Gaevsky', 5)]
+  tests/unit/checkout: 140 lines, 1 files (1 test); depends on 1, depended on by 7
+    depends on: src/oscar/apps/checkout
+    used by: src/oscar/apps/basket, src/oscar/apps/checkout, src/oscar/test, src/oscar/test/factories, tests/functional/checkout, tests/integration/checkout, tests/integration/order
+    top authors: [('Samir Shah', 2), ('Tobias', 1), ('Joseph Wayodi', 1)]
+  tests/_site/apps/checkout: 28 lines, 2 files (2 test); depends on 1, depended on by 0
+    depends on: src/oscar/apps/checkout
+    top authors: [('Viggo de Vries', 1), ('Hertog Jan', 1)]

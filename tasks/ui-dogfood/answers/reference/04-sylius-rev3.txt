@@ -1,0 +1,17 @@
+# Answer key for eaaa24e0-e63d-4b47-ad1b-09f88f9347ef.db
+analysis revision: 3
+
+K1 shape: 1378 components, 4651 production files, 183,370 production lines; top extensions [('.php', 2817), ('.twig', 1621), ('.dist', 43), ('.js', 33)]
+K2 largest components by lines: Symfony\Component\DependencyInjection\Loader\Configurator (17,032 lines, 226 files); Sylius\Behat\Context\Api\Admin (15,590 lines, 46 files); Sylius\Behat\Context\Ui\Admin (13,977 lines, 53 files); Sylius\Tests\Api\Admin (10,350 lines, 41 files); Sylius\Behat\Context\Setup (9,515 lines, 33 files)
+K3 tangles: 8; largest 4 components: Sylius\Component\Core\Statistics\Provider\OrdersCount, Sylius\Component\Core\Statistics\Provider, Sylius\Component\Core\Statistics\Provider\OrdersTotals, Sylius\Component\Core\Statistics\Registry
+K4 top production hotspots: src/Sylius/Bundle/CoreBundle/Doctrine/ORM/OrderRepository.php (score 39, 618 lines, 199 commits); src/Sylius/Component/Core/Model/Order.php (score 32, 512 lines, 193 commits); src/Sylius/Bundle/AdminBundle/Menu/MainMenuBuilder.php (score 22, 414 lines, 93 commits); src/Sylius/Component/Product/Model/Product.php (score 22, 382 lines, 121 commits); src/Sylius/Bundle/CoreBundle/Fixture/Factory/ProductExampleFactory.php (score 21, 373 lines, 110 commits)
+K5 most depended-on components (distinct dependents): Sylius\Component\Core\Model (443); Sylius\Component\Core\Repository (115); Sylius\Component\Payment\Model (92); Sylius\Component\Addressing\Model (85); Sylius\Bundle\CoreBundle\SectionResolver (80)
+K6 co-change without an import: Sylius\Behat\Context\Ui\Admin ~ Sylius\Behat\Context\Setup (377 shared); Sylius\Behat\Context\Api\Admin ~ Sylius\Behat\Context\Ui\Admin (255 shared); Sylius\Behat\Context\Setup ~ Sylius\Behat\Context\Ui\Shop (203 shared); Sylius\Behat\Context\Setup ~ Sylius\Behat\Context\Transform (151 shared); Sylius\Behat\Context\Api\Shop ~ Sylius\Behat\Context\Ui\Shop (105 shared)
+K7 knowledge concentration (>=20 commits, top author share): Sylius\Bundle\AddressingBundle\Repository 81% Jacob Tobiasz of 21; Sylius\Abstraction\StateMachine 80% Jacob Tobiasz of 25; Sylius\Bundle\AdminBundle\Grid 77% mamazu of 74; Sylius\Bundle\PaymentBundle\Provider 74% Francis Hilaire of 35; Sylius\Bundle\PayumBundle\PaymentRequest\CommandProvider 73% Francis Hilaire of 22
+    distinct authors in history: 855
+
+F focus components LIKE 'Sylius\\Component\\Core\\Model':
+  Sylius\Component\Core\Model: 4896 lines, 74 files (0 test); depends on 16, depended on by 443
+    depends on: Sylius\Component\Addressing\Model, Sylius\Component\Channel\Model, Sylius\Component\Core, Sylius\Component\Currency\Model, Sylius\Component\Customer\Model, Sylius\Component\Inventory\Model, Sylius\Component\Locale\Model, Sylius\Component\Order\Model, Sylius\Component\Payment\Model, Sylius\Component\Product\Model, Sylius\Component\Promotion\Model, Sylius\Component\Review\Model
+    used by: Fixture, Statistics\Provider, Sylius\Behat\Context\Api, Sylius\Behat\Context\Api\Admin, Sylius\Behat\Context\Api\Shop, Sylius\Behat\Context\Api\Shop\Checkout, Sylius\Behat\Context\Cli, Sylius\Behat\Context\Domain, Sylius\Behat\Context\Hybrid\Setup, Sylius\Behat\Context\Setup, Sylius\Behat\Context\Setup\Checkout, Sylius\Behat\Context\Transform
+    top authors: [('Mateusz Zalewski', 109), ('Kamil Kokot', 75), ('Grzegorz Sadowski', 65)]
