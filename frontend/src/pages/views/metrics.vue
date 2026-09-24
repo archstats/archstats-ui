@@ -66,7 +66,7 @@
           icon="search"
       >
         <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
-        <button v-if="scope.isActive" type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
+        <button v-if="scope.isActive" type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">Clear scope</button>
       </EmptyState>
       <div v-else-if="view === 'table'" class="min-h-0 grow overflow-y-auto px-4 py-3">
         <ElementTable

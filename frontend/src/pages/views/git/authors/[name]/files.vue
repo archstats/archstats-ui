@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { useScopeStore } from "~/stores/scope"
 import { useAuthorsStore } from "~/stores/authors"
 import { componentPath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
@@ -115,10 +116,13 @@ const { data: rows, loading, error } = useAsyncQuery<Row[]>(
   { initial: [] },
 )
 
+const scope = useScopeStore()
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q) return rows.value
-  return rows.value.filter(r => r.file.toLowerCase().includes(q) || r.component.toLowerCase().includes(q))
+  // The workspace's Production/Tests switch holds here too.
+  const onFacet = rows.value.filter(r => scope.fileInScope(r.file, r.component))
+  if (!q) return onFacet
+  return onFacet.filter(r => r.file.toLowerCase().includes(q) || r.component.toLowerCase().includes(q))
 })
 
 type SortKey = "file" | "component" | "commits" | "lines" | "last_commit"

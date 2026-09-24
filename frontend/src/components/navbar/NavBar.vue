@@ -69,8 +69,17 @@
         <h3 class="ui-section-title">Lenses</h3>
         <span v-if="savedNote" class="ml-2 min-w-0 truncate text-xs text-green-700" role="status">{{ savedNote }}</span>
         <div class="flex items-center gap-2">
-          <button v-if="scope.isActive" type="button" class="text-xs text-neutral-500 hover:text-neutral-900" @click="scope.clear()">Clear scope</button>
+          <button v-if="scope.hasSelection" type="button" class="text-xs text-neutral-500 hover:text-neutral-900" @click="scope.clear()">Clear scope</button>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" title="Build a new lens" aria-label="New lens" @click="buildDimension('new')"><Icon icon="plus" :size="13"/></button>
+        </div>
+      </div>
+      <!-- Production or tests: one switch every view obeys. -->
+      <div class="mb-2 flex items-center gap-2 px-2" :title="roleSource">
+        <span class="text-xs text-neutral-500">Files</span>
+        <div class="ui-segmented grow" role="group" aria-label="Which files every view counts">
+          <button type="button" class="grow" :aria-pressed="scope.facet === 'all'" @click="scope.setFacet('all')">All</button>
+          <button type="button" class="grow" :aria-pressed="scope.facet === 'production'" @click="scope.setFacet('production')">Production</button>
+          <button type="button" class="grow" :aria-pressed="scope.facet === 'test'" :disabled="testFiles === 0" :title="testFiles === 0 ? 'No test files in this snapshot' : `${testFiles.toLocaleString('en-US')} test files`" @click="scope.setFacet('test')">Tests</button>
         </div>
       </div>
       <div v-if="buckets.length" class="flex max-h-64 flex-col overflow-y-auto">
@@ -192,6 +201,8 @@ const hasRules = computed(() => dataStore.hasView("rules"));
 const hasUnits = computed(() => dataStore.hasView("units") || isJavaProject.value);
 
 const groupsStore = useGroupsStore();
+const testFiles = computed(() => { let n = 0; for (const r of dataStore.fileRoleIndex.values()) if (r === "test") n++; return n; });
+const roleSource = computed(() => dataStore.rolesRecorded ? "Roles as the scan recorded them" : "Roles by path convention (tests/, *Test.java, *_test.go, *.spec.ts …); scan again for the recorded roles");
 const health = computed(() => {
   const out = new Map<string, ReturnType<ReturnType<typeof useGroupsStore>["lensHealth"]>>();
   for (const d of groupsStore.dimensions) out.set(d, groupsStore.lensHealth(d));

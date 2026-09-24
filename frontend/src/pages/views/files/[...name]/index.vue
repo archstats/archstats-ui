@@ -185,6 +185,8 @@ const nature = computed(() => {
   if (!file.value) return null
   if (num("complexity__files__third_party") === 1) return { title: "Someone else's code.", text: "A vendored package, minified bundle or known library carried in the repository: counted in files and lines, never scored for health, and left out of hotspots." }
   if (num("complexity__files__generated") === 1) return { title: "Written by a tool.", text: "Its header says it was generated, so it is counted but not scored: nobody here wrote it, and nobody should refactor it by hand." }
+  const role = file.value.role ?? (store.fileRoleIndex.get(String(file.value.name)) ?? null)
+  if (role === "test") return { title: "Test code.", text: store.rolesRecorded ? "Counted with the tests: the Production switch leaves it out of every view." : "A test by its path; the Production switch leaves it out of every view." }
   if (num("codesmells__code_health") === null && (num("complexity__lines") ?? 0) > 0 && store.snapshotOutdated === false) {
     return { title: "Not code.", text: "Translations, stylesheets, data and documents get no health reading; one reads how code is shaped." }
   }

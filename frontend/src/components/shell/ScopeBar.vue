@@ -1,5 +1,12 @@
 <template>
   <span v-if="scope.isActive" class="flex min-w-0 items-center gap-1" :title="summary">
+    <span v-if="scope.facet !== 'all'" class="ui-chip is-active shrink-0">
+      <span>{{ scope.facet === "test" ? "Test files" : "Production files" }}</span>
+      <button type="button" class="-mr-1 flex h-4 w-4 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900" aria-label="Count all files" title="Count all files" @click.stop="scope.setFacet('all')">
+        <Icon icon="x" :size="11"/>
+      </button>
+    </span>
+    <span v-if="scope.facet !== 'all' && scope.byDimension.length" class="px-0.5 text-xs font-medium text-neutral-400">and</span>
     <template v-for="(bucket, i) in scope.byDimension" :key="bucket.dimension">
       <span v-if="i > 0" class="px-0.5 text-xs font-medium text-neutral-400">and</span>
       <template v-for="(g, j) in bucket.groups" :key="g.id">

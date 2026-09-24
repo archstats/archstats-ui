@@ -45,6 +45,7 @@
 
       <!-- 2. Where it sits in the graph. -->
       <ReadingBand title="Position" :lede="positionLede" :to="`${base}/connections`" link-label="Connections">
+        <p v-if="testDependentsLine" class="-mt-2 mb-3 text-sm text-neutral-600">{{ testDependentsLine }}</p>
         <dl class="ui-kv grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-6 gap-y-1">
           <template v-for="cell in positionCells" :key="cell.label">
             <div class="flex flex-col gap-0.5">
@@ -112,6 +113,7 @@
       <!-- 4. How it stands against every other component. -->
       <ReadingBand title="Standing" :lede="standingLede" :to="`${base}/history`" link-label="History">
         <PercentileStrip :rows="standing" :total="total"/>
+        <p v-if="testLine" class="mt-3 text-sm text-neutral-600">{{ testLine }}</p>
       </ReadingBand>
 
       <!-- 5. What it is made of. -->
@@ -474,6 +476,34 @@ const hotspotDelta = computed<Delta>(() => {
   const d = delta.deltaFor("codesmells__hotspot__raw", current)
   if (d.change === null) return d
   return { change: (d.change / max) * 100, baseline: d.baseline === null ? null : (d.baseline / max) * 100, isNew: d.isNew }
+})
+
+// ── Tests: here, and elsewhere reaching in ──────────────────────────
+// Whether a component is tested, read from file roles (recorded, or by path
+// convention on older snapshots): its own test files, and test files in other
+// components that import it.
+const { data: importers } = useAsyncQuery<Array<{ file: string; from: string }>>(
+  () => (name.value ? store.query(`SELECT DISTINCT file, "from" FROM ${store.runtimeComponentEdges} WHERE "to" = ${sqlLiteral(name.value)} AND "from" <> ${sqlLiteral(name.value)}`) : Promise.resolve([])),
+  [name, () => store.datasetKey],
+  { initial: [] },
+)
+const testLine = computed(() => {
+  const roles = store.fileRoleIndex
+  const mine = (loaded.value?.files ?? []).filter(f => roles.get(f.name) === "test")
+  const lines = mine.reduce((s, f) => s + (Number(f.complexity__lines) || 0), 0)
+  const outside = new Set(importers.value.filter(i => roles.get(i.file) === "test").map(i => i.file)).size
+  if (!mine.length && !outside) return (loaded.value?.files.length ?? 0) > 0 ? "No test file is here or imports it." : ""
+  const parts = [mine.length ? `Tests: ${formatNumber(lines)} lines in ${formatNumber(mine.length)} file${mine.length === 1 ? "" : "s"} here` : "No test files here"]
+  parts.push(outside ? `${formatNumber(outside)} test file${outside === 1 ? "" : "s"} elsewhere import${outside === 1 ? "s" : ""} it` : "no test file elsewhere imports it")
+  return parts.join(" · ") + (store.rolesRecorded ? "." : " (tests found by path convention).")
+})
+const testDependentsLine = computed(() => {
+  const dependents = [...new Set(importers.value.map(i => i.from))]
+  if (dependents.length === 0) return ""
+  const roles = store.fileRoleIndex
+  const files = store.componentFilesIndex
+  const tests = dependents.filter(d => { const fs = files.get(d) ?? []; return fs.length > 0 && fs.every(f => roles.get(f) === "test") }).length
+  return tests ? `${formatNumber(tests)} of ${formatNumber(dependents.length)} dependents are test components.` : ""
 })
 
 // ── Bands 3 and 5: one query for what the store does not hold ──────

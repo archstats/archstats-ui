@@ -3,6 +3,8 @@ import { useDataStore } from "~/stores/data";
 import { componentMembers, useGroupsStore, type SavedGroup } from "~/stores/groups";
 import { parseQuery, runQuery } from "~/utils/query";
 import { detectSeparator } from "~/utils/studio";
+import { useStateStore } from "~/stores/state";
+import { componentPassesFacet, passesFacet, type RoleFacet } from "~/utils/fileRole";
 
 // The active scope: any number of saved groups. Groups in the same dimension
 // widen the scope (Audits or Shipments); groups in different dimensions
@@ -12,6 +14,27 @@ import { detectSeparator } from "~/utils/studio";
 export const useScopeStore = defineStore("scope", {
     state: (): { groupIds: string[]; query: string; recents: string[] } => ({ groupIds: [], query: "", recents: [] }),
     getters: {
+        /**
+         * Production or tests, or all: one switch per workspace that every
+         * view obeys, kept with the workspace (app.db) because it is a way
+         * of working, not a passing question. All by default.
+         */
+        facet(): RoleFacet {
+            const v = useStateStore().get<string>("fileRole.facet", "all");
+            return v === "production" || v === "test" ? v : "all";
+        },
+        /** Components on the facet's side; null when the facet is All. */
+        facetComponents(): Set<string> | null {
+            const facet = this.facet;
+            if (facet === "all") return null;
+            const data = useDataStore();
+            const roles = data.fileRoleIndex;
+            const out = new Set<string>();
+            for (const [component, files] of data.componentFilesIndex) {
+                if (componentPassesFacet(files.map(f => roles.get(f) ?? "production"), facet)) out.add(component);
+            }
+            return out;
+        },
         /**
          * The ad-hoc half of the scope: a question typed rather than saved.
          *
@@ -64,6 +87,10 @@ export const useScopeStore = defineStore("scope", {
             return state.groupIds[0] ?? null;
         },
         isActive(): boolean {
+            return this.groups.length > 0 || !!this.query.trim() || this.facet !== "all";
+        },
+        /** Groups or a query: what Clear scope clears (the facet is a setting). */
+        hasSelection(): boolean {
             return this.groups.length > 0 || !!this.query.trim();
         },
         /** Groups bucketed by dimension, in the order they were added. */
@@ -86,6 +113,8 @@ export const useScopeStore = defineStore("scope", {
             }
             const typed = this.queryMatches;
             if (typed) result = result === null ? typed.components : new Set([...result].filter(c => typed.components.has(c)));
+            const facet = this.facetComponents;
+            if (facet) result = result === null ? facet : new Set([...result].filter(c => facet.has(c)));
             return result ?? new Set();
         },
         // Components listed whole by every dimension of the scope. Files of
@@ -112,6 +141,12 @@ export const useScopeStore = defineStore("scope", {
                 for (const g of list) for (const f of groups.filesOf(g)) union.add(f);
                 result = result === null ? union : new Set([...result].filter(f => union.has(f)));
             }
+            if (this.facet !== "all") {
+                const roles = useDataStore().fileRoleIndex;
+                const facet = this.facet;
+                const base: Iterable<string> = result ?? roles.keys();
+                result = new Set([...base].filter(f => passesFacet(roles.get(f) ?? "production", facet)));
+            }
             return result ?? new Set();
         },
     },
@@ -135,12 +170,14 @@ export const useScopeStore = defineStore("scope", {
         },
         clearQuery() { this.query = ""; },
         clear() { this.groupIds = []; this.query = ""; },
+        setFacet(facet: RoleFacet) { useStateStore().set("fileRole.facet", facet === "all" ? null : facet); },
         componentInScope(name: string): boolean {
             const set = this.componentNames;
             return set === null || set.has(name);
         },
         fileInScope(file: string, component: string | null | undefined): boolean {
             if (!this.isActive) return true;
+            if (this.facet !== "all" && !passesFacet(useDataStore().fileRoleIndex.get(file) ?? "production", this.facet)) return false;
             const typed = this.queryMatches;
             // A typed question that named files answers about those files; one
             // that named components answers about everything they hold.

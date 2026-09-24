@@ -1,4 +1,6 @@
 import {acceptHMRUpdate, defineStore} from 'pinia'
+import { roleOf } from "~/utils/fileRole";
+import type { FileRole } from "~/utils/languages";
 import {findCommonPrefix} from "~/utils/text";
 import {
     Component,
@@ -140,6 +142,17 @@ export const useDataStore = defineStore('data', {
                 if (f.component) m.set(f.name, f.component);
             }
             return m;
+        },
+
+        // file path -> role: recorded (revision 2) or by path convention.
+        fileRoleIndex(state: any): Map<string, FileRole> {
+            const m = new Map<string, FileRole>();
+            for (const f of state._fileComponents as Array<{ name: string; role?: string | null }>) m.set(f.name, roleOf(f));
+            return m;
+        },
+        /** Whether roles come from the snapshot rather than path conventions. */
+        rolesRecorded(state: any): boolean {
+            return (state._fileComponents as any[]).some((f) => f && "role" in f);
         },
 
         // component name -> its file paths, the inverse of fileComponentIndex.
@@ -325,7 +338,8 @@ export const useDataStore = defineStore('data', {
 
             // Populate the file -> component index
             try {
-                this._fileComponents = await this.query<{ name: string; component: string | null }>("SELECT name, component FROM files");
+                this._fileComponents = await this.query<{ name: string; component: string | null; role?: string | null }>(
+                    `SELECT name, component${this.hasColumn("files", "role") ? ", role" : ""} FROM files`);
             } catch {
                 this._fileComponents = [];
             }

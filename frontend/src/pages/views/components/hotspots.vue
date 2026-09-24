@@ -72,7 +72,7 @@
               :text="`Clear the scope to see all ${grainLabel.toLowerCase()}.`"
               icon="filter"
             >
-              <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
+              <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">Clear scope</button>
             </EmptyState>
             <EmptyState
               v-else-if="units.length === 0"
