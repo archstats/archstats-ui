@@ -75,6 +75,7 @@
         <button type="button" :aria-pressed="rep === 'graph'" @click="setState({ rep: 'graph' })">Graph</button>
         <button type="button" :aria-pressed="rep === 'matrix'" @click="setState({ rep: 'matrix' })">Matrix</button>
         <button type="button" :aria-pressed="rep === 'chord'" @click="setState({ rep: 'chord' })">Chord</button>
+        <button type="button" :aria-pressed="rep === 'list'" title="Every pair as a table, with no cap" @click="setState({ rep: 'list' })">List</button>
         <button type="button" :aria-pressed="rep === 'crosscut'" title="Two lenses at once: rows by one, columns by the other" @click="setState({ rep: 'crosscut' })">Cross-cut</button>
       </div>
       <button v-if="rep === 'matrix' && crossingKeys.size" type="button" class="ui-btn ui-btn-sm" :aria-pressed="showCrossings" :class="{ 'bg-neutral-100': showCrossings }" :title="`Mark the ${crossingKeys.size} group pairs whose imports cross ${lens.active}'s declared order`" @click="showCrossings = !showCrossings">
@@ -197,6 +198,19 @@
           <Icon icon="braces" :size="13" class="text-neutral-500"/><span>Lanes → lens in Classes</span>
         </router-link>
       </EmptyState>
+      <ConnectionsList
+        v-else-if="rep === 'list'"
+        :nodes="model.nodes.value"
+        :edges="model.edges.value"
+        :directed="model.directed.value"
+        :selected-pair="selectedPair"
+        :multi="multi"
+        :cycle-keys="model.cycleKeys.value"
+        :cycle-nodes="model.cycleNodes.value"
+        :with-history="source !== 'static'"
+        @select="onSelect"
+        @select-pair="onSelectPair"
+      />
       <component
         v-else
         :is="renderer"
@@ -351,6 +365,7 @@ import Icon from "~/components/ui/common/Icon.vue";
 import GroupActionBar from "~/components/groups/GroupActionBar.vue";
 import ConnectionsGraph from "~/components/connections/ConnectionsGraph.vue";
 import ConnectionsMatrix from "~/components/connections/ConnectionsMatrix.vue";
+import ConnectionsList from "~/components/connections/ConnectionsList.vue";
 import { edgeKey as crossingEdgeKey, levelize } from "~/utils/connections";
 import { useLensFindings } from "~/composables/useLensFindings";
 import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";

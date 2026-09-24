@@ -8,7 +8,7 @@ import { componentPath } from "./routes"
 
 export type Grain = "group" | "component" | "file"
 export type Source = "static" | "git" | "combined"
-export type Rep = "matrix" | "chord" | "graph" | "crosscut"
+export type Rep = "matrix" | "chord" | "graph" | "crosscut" | "list"
 export type CrossMeasure = "coupling" | "files" | "cycles"
 
 export interface CNode {
@@ -111,7 +111,7 @@ function firstString(v: unknown): string | undefined {
 
 export function parseRep(v: unknown): Rep {
   const s = firstString(v)
-  return s === "chord" || s === "matrix" || s === "crosscut" ? s : "graph"
+  return s === "chord" || s === "matrix" || s === "crosscut" || s === "list" ? s : "graph"
 }
 
 export function parseSource(v: unknown): Source {
