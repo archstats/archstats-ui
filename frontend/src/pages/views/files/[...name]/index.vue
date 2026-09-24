@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { useCodeAge } from "~/composables/useCodeAge"
 import StatStrip from "~/components/detail/StatStrip.vue"
 import MetricHint from "~/components/ui/common/MetricHint.vue"
 import HealthBreakdown from "~/components/files/HealthBreakdown.vue"
@@ -119,6 +120,8 @@ function num(key: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const codeAge = useCodeAge()
+const lastChanged = computed(() => (file.value ? codeAge.byFile.value.get(String(file.value.name)) ?? null : null))
 const strip = computed<{ label: string; value: string; level?: HealthLevel }[]>(() => {
   const health = num("codesmells__code_health")
   const hotspot = num("codesmells__hotspot_score")
@@ -129,8 +132,9 @@ const strip = computed<{ label: string; value: string; level?: HealthLevel }[]>(
     { label: "Hotspot", value: formatHotspot(hotspot), level: hotspotLevel(hotspot) },
     { label: "Commits", value: formatNumber(num("git__commits__total")) },
     { label: "Authors", value: formatNumber(num("git__authors__total")) },
-    { label: "Age", value: formatDays(age) },
-  ]
+    { label: "First commit", value: age === null ? "—" : `${formatDays(age)} ago` },
+    { label: "Last changed", value: lastChanged.value === null ? "—" : `${formatDays(lastChanged.value)} ago` },
+  ].filter(c => c.label !== "Authors" || lastChanged.value === null)
 })
 
 // Every numeric column of the row, grouped by the metric family prefix.

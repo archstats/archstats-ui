@@ -159,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import { LAST_CHANGED, useCodeAge } from "~/composables/useCodeAge";
 import { componentPath } from "~/utils/routes";
 import { computed, reactive, ref, watch } from "vue";
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
@@ -220,7 +221,16 @@ const filesQuery = useAsyncQuery<{ rows: Row[]; columns: string[] }>(async () =>
 
 const loading = computed(() => grain.value === "files" && filesQuery.loading.value);
 
-const allRows = computed<Row[]>(() => (grain.value === "files" ? filesQuery.data.value.rows : (store.allComponents as Row[])));
+// Days since last change joins every row, computed from history when the
+// snapshot does not carry it.
+const codeAge = useCodeAge();
+const allRows = computed<Row[]>(() => {
+  const rows = grain.value === "files" ? filesQuery.data.value.rows : (store.allComponents as Row[]);
+  if (!codeAge.available.value) return rows;
+  const ages = grain.value === "files" ? codeAge.byFile.value : codeAge.byComponent.value;
+  if (ages.size === 0) return rows;
+  return rows.map((r) => ({ ...r, [LAST_CHANGED]: ages.get(String(r.name)) ?? null }));
+});
 
 const scopedRows = computed<Row[]>(() => {
   if (!scope.isActive) return allRows.value;
@@ -249,9 +259,10 @@ const countText = computed(() =>
 );
 
 // ─── Columns ───
-const columnOptions = computed<string[]>(() =>
-    grain.value === "files" ? filesQuery.data.value.columns : store.getDistinctComponentColumns.filter((c) => !HIDDEN_COLUMNS.has(c)),
-);
+const columnOptions = computed<string[]>(() => {
+  const base = grain.value === "files" ? filesQuery.data.value.columns : store.getDistinctComponentColumns.filter((c) => !HIDDEN_COLUMNS.has(c));
+  return codeAge.available.value ? [...base, LAST_CHANGED] : base;
+});
 
 // Columns that hold a number somewhere in the loaded rows: the plot's axes.
 const numericColumns = computed<string[]>(() => {

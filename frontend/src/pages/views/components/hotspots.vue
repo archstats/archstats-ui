@@ -270,6 +270,7 @@
 </template>
 
 <script setup lang="ts">
+import { LAST_CHANGED, useCodeAge } from "~/composables/useCodeAge"
 import { componentPath } from "~/utils/routes"
 import { computed, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -352,9 +353,13 @@ const { data: queried, loading, error } = useAsyncQuery<HotspotUnit[]>(
   { initial: [] },
 )
 
+const codeAge = useCodeAge()
 const allUnits = computed<HotspotUnit[]>(() => {
-  if (grain.value === "components") return store.allComponents as unknown as HotspotUnit[]
-  return queried.value
+  const units = grain.value === "components" ? store.allComponents as unknown as HotspotUnit[] : queried.value
+  if (grain.value === "directories" || !codeAge.available.value) return units
+  const ages = grain.value === "files" ? codeAge.byFile.value : codeAge.byComponent.value
+  if (ages.size === 0) return units
+  return units.map(u => ({ ...u, [LAST_CHANGED]: ages.get(String((u as any).name)) ?? null }) as HotspotUnit)
 })
 
 // Directories are not scoped: a saved group names components or files.
@@ -371,8 +376,9 @@ const units = computed<HotspotUnit[]>(() => {
 // for the other tables read them off the rows.
 const columns = computed<string[]>(() => {
   if (!store.hasData) return []
-  if (grain.value === "components") return store.getDistinctComponentColumns as string[]
-  const seen = new Set<string>()
+  const age = codeAge.available.value && grain.value !== "directories" ? [LAST_CHANGED] : []
+  if (grain.value === "components") return [...(store.getDistinctComponentColumns as string[]), ...age]
+  const seen = new Set<string>(age)
   for (const row of queried.value.slice(0, 200)) {
     for (const [key, value] of Object.entries(row)) {
       if (key === "name" || key === "component") continue
@@ -458,6 +464,18 @@ const presets = computed<HotspotPreset[]>(() => {
       colorMetric: "modularity__instability",
       labelHigh: "Most unstable",
       labelLow: "Most stable",
+    })
+  }
+  if (hasColumn(lines) && codeAge.available.value && grain.value !== "directories") {
+    list.push({
+      id: "age",
+      label: "Code age",
+      description: "Sized by lines, hot where nothing has changed for longest: the code nobody has touched, and fewer people remember.",
+      icon: "history",
+      sizeMetric: lines,
+      colorMetric: LAST_CHANGED,
+      labelHigh: "Untouched longest",
+      labelLow: "Changed recently",
     })
   }
   if (hasColumn(lines) && hasColumn("complexity__indentation__max")) {

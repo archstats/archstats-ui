@@ -104,9 +104,9 @@ export const DERIVED_METRICS: DerivedMetric[] = [
         id: "app__last_changed_days",
         name: "Days since last change",
         category: "History",
-        short: "Days from the newest commit to a file to the snapshot's head commit.",
-        long: "Counted back from the newest commit in the scan, not from today, so a snapshot says the same thing whenever it is read. Engine revision 2 records this per file and component as git__last_change_age_in_days; older snapshots are computed in the app from git_commits.",
-        sql: `SELECT file, julianday((SELECT max(commit_time) FROM git_commits)) - julianday(max(commit_time)) AS days FROM git_commits GROUP BY file`,
+        short: "Days since a file last changed, counted back to the snapshot's head commit.",
+        long: "Counted back from the newest commit in the scan, not from today, so a snapshot says the same thing whenever it is read. A pure rename is not a change: a moved file keeps its age. A component takes its most recently changed file's. Engine revision 2 records this per file as git__last_change_age_in_days; older snapshots are computed in the app from git_commits (anchored at scan time).",
+        sql: `SELECT file, julianday((SELECT max(commit_time) FROM git_commits)) - julianday(max(commit_time)) AS days FROM git_commits WHERE file IN (SELECT name FROM files) AND coalesce(file_additions, 0) + coalesce(file_deletions, 0) > 0 GROUP BY file`,
     },
     {
         id: "app__test_importers",

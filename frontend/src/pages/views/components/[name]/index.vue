@@ -114,6 +114,19 @@
       <ReadingBand title="Standing" :lede="standingLede" :to="`${base}/history`" link-label="History">
         <PercentileStrip :rows="standing" :total="total"/>
         <p v-if="testLine" class="mt-3 text-sm text-neutral-600">{{ testLine }}</p>
+        <div v-if="age.lines" class="mt-4 max-w-[520px]">
+          <p class="text-sm text-neutral-600">{{ ageLine }}</p>
+          <div class="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-neutral-100" :title="ageTitle" role="img" :aria-label="ageTitle">
+            <span class="h-full bg-amber-600" :style="{ width: `${age.over5 * 100}%` }"></span>
+            <span class="h-full bg-amber-400" :style="{ width: `${(age.over2 - age.over5) * 100}%` }"></span>
+            <span class="h-full bg-amber-200" :style="{ width: `${(age.over1 - age.over2) * 100}%` }"></span>
+          </div>
+          <div class="mt-1 flex gap-3 text-xs text-neutral-500">
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-sm bg-amber-600"></span>&gt; 5 y</span>
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-sm bg-amber-400"></span>&gt; 2 y</span>
+            <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-sm bg-amber-200"></span>&gt; 1 y</span>
+          </div>
+        </div>
       </ReadingBand>
 
       <!-- 5. What it is made of. -->
@@ -196,6 +209,7 @@
 </template>
 
 <script setup lang="ts">
+import { ageShares, useCodeAge } from "~/composables/useCodeAge"
 import { componentPath, filePath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
@@ -477,6 +491,13 @@ const hotspotDelta = computed<Delta>(() => {
   if (d.change === null) return d
   return { change: (d.change / max) * 100, baseline: d.baseline === null ? null : (d.baseline / max) * 100, isNew: d.isNew }
 })
+
+// ── Code age: how much of it has sat untouched ─────────────────────
+const codeAge = useCodeAge()
+const age = computed(() => ageShares((loaded.value?.files ?? []).map(f => ({ lines: Number(f.complexity__lines) || 0, days: codeAge.byFile.value.get(f.name) }))))
+const pctOf = (v: number) => `${Math.round(v * 100)}%`
+const ageLine = computed(() => `${pctOf(age.value.over2)} of its lines are in files unchanged for more than 2 years; ${pctOf(age.value.over1)} for more than a year.`)
+const ageTitle = computed(() => `Lines in files unchanged for > 5 y: ${pctOf(age.value.over5)}, > 2 y: ${pctOf(age.value.over2)}, > 1 y: ${pctOf(age.value.over1)}`)
 
 // ── Tests: here, and elsewhere reaching in ──────────────────────────
 // Whether a component is tested, read from file roles (recorded, or by path

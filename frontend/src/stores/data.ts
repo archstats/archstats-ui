@@ -1,5 +1,6 @@
 import {acceptHMRUpdate, defineStore} from 'pinia'
 import { roleOf } from "~/utils/fileRole";
+import { derivedMetric } from "~/utils/derivedMetrics";
 import type { FileRole } from "~/utils/languages";
 import {findCommonPrefix} from "~/utils/text";
 import {
@@ -95,6 +96,8 @@ export const useDataStore = defineStore('data', {
                 if (def && def.name) {
                     return def.name;
                 }
+                const derived = derivedMetric(stat);
+                if (derived) return derived.name;
                 return getNiceStatName(stat);
             }
         },
