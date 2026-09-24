@@ -34,6 +34,47 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class MenuState {
+	    hasWorkspace: boolean;
+	    hasSnapshot: boolean;
+	    scanning: boolean;
+	    canExport: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MenuState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasWorkspace = source["hasWorkspace"];
+	        this.hasSnapshot = source["hasSnapshot"];
+	        this.scanning = source["scanning"];
+	        this.canExport = source["canExport"];
+	    }
+	}
+
+}
+
+export namespace query {
+	
+	export class Limited {
+	    columns: string[];
+	    rows: any[][];
+	    truncated: boolean;
+	    elapsedMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Limited(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.columns = source["columns"];
+	        this.rows = source["rows"];
+	        this.truncated = source["truncated"];
+	        this.elapsedMs = source["elapsedMs"];
+	    }
+	}
 
 }
 

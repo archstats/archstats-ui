@@ -6,8 +6,7 @@
   >
     <Icon icon="refresh" :size="13" class="shrink-0 text-accent-700"/>
     <p class="min-w-0 flex-1 truncate" :title="detail">
-      <span class="font-medium text-neutral-900">Scanned by an older analysis.</span>
-      <span class="text-neutral-600"> {{ reasons[0] ?? "The analysis has changed since." }}<template v-if="reasons.length > 1"> And {{ reasons.length - 1 }} more.</template> Scan again to see them.</span>
+      <span class="font-medium text-neutral-900">Scanned by an older analysis.</span>{{ " " }}<span class="text-neutral-600">{{ reasons[0] ?? "The analysis has changed since." }}<template v-if="reasons.length > 1"> And {{ reasons.length - 1 }} more.</template> Scan again to see them.</span>
     </p>
     <div v-if="reasons.length > 1" class="relative shrink-0">
       <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-expanded="open" @click.stop="open = !open">What changed</button>

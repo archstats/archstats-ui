@@ -82,6 +82,7 @@ func main() {
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
 	var appCtx context.Context
+	menuSvc := app.NewMenuService(func() context.Context { return appCtx })
 	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, querySvc.Release)
 
 	err = wails.Run(&options.App{
@@ -96,6 +97,8 @@ func main() {
 		// Wails only enables the macOS zoom (green) button when Mac options are
 		// present. The hidden-inset title bar lets the sidebar brand row carry
 		// the traffic lights; the frontend marks its own drag regions.
+		Menu:                     app.ApplicationMenu(menuSvc),
+		EnableDefaultContextMenu: true,
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
 		},
@@ -110,6 +113,7 @@ func main() {
 			app.NewScanService(scanSvc),
 			app.NewQueryService(querySvc),
 			app.NewStateService(st),
+			menuSvc,
 		},
 	})
 	if err != nil {

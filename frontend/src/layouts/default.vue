@@ -33,6 +33,7 @@
       <span v-if="anyScanning" class="shell-progress absolute inset-y-0 left-0 w-0.5" aria-hidden="true"><span/></span>
     </div>
 
+    <ShortcutSheet v-model="shortcutsOpen"/>
     <main class="flex min-w-0 flex-1 flex-col">
       <OutdatedSnapshotBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
@@ -50,12 +51,15 @@ import NavBar from "~/components/navbar/NavBar.vue";
 import PaneHandle from "~/components/shell/PaneHandle.vue";
 import WorkspaceEmptyState from "~/components/shell/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/components/shell/OutdatedSnapshotBar.vue";
+import ShortcutSheet from "~/components/shell/ShortcutSheet.vue";
+import { useMenuCommands } from "~/composables/useMenuCommands";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { SIDEBAR, usePanesStore } from "~/stores/panes";
 import { usePlatform } from "~/composables/usePlatform";
 
 const navExpanded = ref(true);
+const { shortcutsOpen } = useMenuCommands();
 
 const dataStore = useDataStore();
 const workspaces = useWorkspacesStore();
