@@ -48,6 +48,13 @@ func (q *QueryService) QueryIn(scanID string, sql string) ([]map[string]any, err
 	return q.svc.QueryIn(scanID, sql)
 }
 
+// QueryLimited runs SQL keeping at most maxRows and stopping after
+// timeoutMs, and says when it cut the result short. scanID "" is the open
+// snapshot.
+func (q *QueryService) QueryLimited(scanID, sql string, maxRows, timeoutMs int) (*query.Limited, error) {
+	return q.svc.QueryLimited(scanID, sql, maxRows, timeoutMs)
+}
+
 func (q *QueryService) CurrentScan() string {
 	return q.svc.CurrentScan()
 }

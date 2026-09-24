@@ -82,7 +82,7 @@ func main() {
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
 	var appCtx context.Context
-	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx })
+	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, querySvc.Release)
 
 	err = wails.Run(&options.App{
 		Title:     "Archstats Desktop",

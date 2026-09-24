@@ -17,10 +17,16 @@ type WorkspaceService struct {
 	// dialogs need it. A func rather than a field so nothing about it is
 	// exported to the frontend bindings.
 	ctx func() context.Context
+	// release closes any open handle on a scan's snapshot before its file
+	// is deleted; Windows refuses to delete a file that is open.
+	release func(scanID string)
 }
 
-func NewWorkspaceService(s *store.Store, ctx func() context.Context) *WorkspaceService {
-	return &WorkspaceService{store: s, ctx: ctx}
+func NewWorkspaceService(s *store.Store, ctx func() context.Context, release func(scanID string)) *WorkspaceService {
+	if release == nil {
+		release = func(string) {}
+	}
+	return &WorkspaceService{store: s, ctx: ctx, release: release}
 }
 
 // FolderPick is what the native picker returns to the frontend.
@@ -79,6 +85,11 @@ func (w *WorkspaceService) List() ([]*store.Workspace, error) {
 }
 
 func (w *WorkspaceService) Delete(id string) error {
+	if scans, err := w.store.ListScans(id); err == nil {
+		for _, sc := range scans {
+			w.release(sc.ID)
+		}
+	}
 	return w.store.DeleteWorkspace(id)
 }
 
@@ -87,6 +98,7 @@ func (w *WorkspaceService) ListScans(workspaceID string) ([]*store.Scan, error) 
 }
 
 func (w *WorkspaceService) DeleteScan(scanID string) error {
+	w.release(scanID)
 	return w.store.DeleteScan(scanID)
 }
 
