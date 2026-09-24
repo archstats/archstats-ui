@@ -72,6 +72,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - Native macOS menu; ⌘P Go to anything; ⌘E Export.
 - Snapshot import (⌘O, drop, command line) and reveal.
 - Per-workspace ignore globs.
+- Cycles read as tangles: each drawn in levels with the imports that run back against them, and a plan of cuts (most untangling first) that can be applied step by step and tried in the sandbox.
 - Find in code, a read-only SQL console with saved queries, Libraries, a directory tree, and a what-if sandbox on Connections.
 - Headless `--selfcheck` and `--version` flags for CI.
 

@@ -5,685 +5,663 @@
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
     :tabs="tabs"
-    sidebar-width="360px"
+    sidebar-width="380px"
   >
     <template #stats>
-      <span>{{ countText }}</span>
+      <span v-if="tangles.length">{{ tangles.length }} {{ tangles.length === 1 ? "tangle" : "tangles" }} · {{ fmt(tangledCount) }} of {{ fmt(componentCount) }} components · {{ fmt(listedCycles.length) }} listed cycles</span>
     </template>
 
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Sort cycles">
-        <button type="button" :aria-pressed="sortBy === 'severity'" @click="sortBy = 'severity'">Severity</button>
-        <button type="button" :aria-pressed="sortBy === 'size'" @click="sortBy = 'size'">Size</button>
-        <button type="button" :aria-pressed="sortBy === 'sharedCommits'" @click="sortBy = 'sharedCommits'">Co-changes</button>
+      <div v-if="tangle" class="ui-segmented" role="group" aria-label="Draw the tangle as">
+        <button type="button" :aria-pressed="mode === 'graph'" title="Levels, left to right: the imports back against them arc underneath" @click="mode = 'graph'">Levels</button>
+        <button type="button" :aria-pressed="mode === 'matrix'" title="Row imports column, in the same order: below the diagonal runs against the levels" @click="mode = 'matrix'">Matrix</button>
       </div>
-      <SingleSelect v-if="groupOptions.length > 1" v-model="groupFilter" :options="groupOptions" placeholder="All groups"/>
     </template>
 
-    <!-- Canvas: the selected cycle's loop and its connections. -->
     <template #visualizer>
-      <template v-if="selectedCycle">
-        <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-          <span class="font-mono text-sm font-medium text-neutral-900">Cycle #{{ positionOf(selectedCycle) }}</span>
-          <span class="ui-toolbar-meta flex items-center gap-1.5">
-            <span>{{ selectedCycle.size }} nodes</span>
-            <span class="text-neutral-300">·</span>
-            <span>severity {{ selectedCycle.severity }}</span>
-            <span class="text-neutral-300">·</span>
-            <span>{{ selectedCycle.sharedCommits }} co-changes</span>
+      <EmptyState v-if="!store.hasData" icon="recycle" title="No snapshot open" text="Open a scan to look for dependency cycles."/>
+      <div v-else-if="!tangles.length" class="flex h-full flex-col items-center justify-center px-8 text-center">
+        <Icon icon="recycle" :size="22" class="text-neutral-300"/>
+        <h2 class="mt-3 text-lg font-semibold text-neutral-900">No component is in a tangle</h2>
+        <p class="mt-2 max-w-[460px] text-sm leading-6 text-neutral-600">Every import chain between the {{ fmt(componentCount) }} components runs one way, so there is no cycle to break. That holds for runtime imports; type-only imports are left out, as the engine leaves them out.</p>
+      </div>
+      <div v-else-if="!scopedTangles.length" class="flex h-full items-center justify-center">
+        <EmptyState icon="recycle" title="No tangle in scope" :text="`No tangle has a component of ${scope.group?.name ?? 'the active scope'}.`">
+          <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
+        </EmptyState>
+      </div>
+
+      <template v-else-if="tangle && layout">
+        <!-- Every tangle, to scale: the knot the snapshot has, and which one is open. -->
+        <div class="flex shrink-0 items-center gap-3 px-4 py-2.5 hairline-b" role="tablist" aria-label="Tangles">
+          <div class="flex min-w-0 flex-1 gap-[3px]">
+            <button
+              v-for="(tg, i) in scopedTangles"
+              :key="tg.key"
+              type="button"
+              role="tab"
+              :aria-selected="tg.key === tangle.key"
+              class="group/tg relative flex h-7 min-w-[18px] items-center justify-center rounded-[4px] font-mono text-[11px] tabular-nums transition-colors"
+              :class="tg.key === tangle.key ? 'bg-accent-500 text-on-accent' : tg.matches ? 'bg-accent-200 text-accent-900 hover:bg-accent-300' : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300 hover:text-neutral-900'"
+              :style="{ flex: `${tg.members.length} 1 0` }"
+              :title="`Tangle ${i + 1}: ${tg.members.length} components, ${fmt(tg.lines)} lines, ${fmt(tg.cycles)} listed cycles`"
+              @click="selectTangle(tg.key)"
+            >
+              <span v-if="tg.members.length >= 3 || scopedTangles.length <= 8">{{ tg.members.length }}</span>
+            </button>
+          </div>
+          <span class="shrink-0 text-[12px] text-neutral-500">components per tangle</span>
+        </div>
+
+        <!-- What this one is, and what the cuts have done to it. -->
+        <div class="flex h-11 shrink-0 items-center gap-3 px-4 hairline-b">
+          <span class="shrink-0 whitespace-nowrap text-[13px] font-semibold text-neutral-900">Tangle {{ tangleNumber }}</span>
+          <span v-if="prefix" class="min-w-0 max-w-[32%] shrink truncate font-mono text-[12px] text-neutral-500" :title="`Names below leave out ${prefix}`">in {{ prefix.replace(/[./]$/, "") }}</span>
+          <span class="ui-toolbar-meta flex min-w-0 shrink items-center gap-1.5 truncate">
+            <span class="whitespace-nowrap">{{ tangle.members.length }} components</span><span class="text-neutral-300">·</span>
+            <span class="whitespace-nowrap">{{ fmt(tangle.lines) }} lines</span><span class="text-neutral-300">·</span>
+            <span class="whitespace-nowrap">{{ layout.layers.length }} levels</span><span class="text-neutral-300">·</span>
+            <span class="whitespace-nowrap">{{ fmt(tangle.cycles) }} listed cycles</span>
+            <template v-if="crossed.length > 1"><span class="text-neutral-300">·</span><span class="whitespace-nowrap" :title="crossed.map(c => `${c.name}: ${c.count}`).join('\n')">{{ crossed.length }} groups</span></template>
           </span>
-          <button type="button" class="ui-btn ui-btn-sm ml-auto" @click="saveCycleAsGroup">
-            <Icon icon="bookmark" :size="13" class="text-neutral-500"/>
-            <span>Save cycle as group</span>
-          </button>
+          <div class="ml-auto flex shrink-0 items-center gap-1.5">
+            <PinButton kind="cycle" :entity-key="[...tangle.members].sort().join('\n')" :title="`Tangle of ${tangle.members.length} components`" :values="{ size: tangle.members.length }"/>
+            <button type="button" class="ui-btn ui-btn-sm" title="Its components become a group" @click="saveAsGroup"><Icon icon="bookmark" :size="13" class="text-neutral-500"/><span>Save as group</span></button>
+          </div>
+        </div>
+
+        <!-- The cuts, as they stand: always here, so cutting never moves the drawing. -->
+        <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-[12.5px] hairline-b" role="status">
+          <template v-if="cut.size">
+            <span class="text-neutral-900"><span class="font-semibold tabular-nums">{{ cut.size }}</span> {{ cut.size === 1 ? "cut" : "cuts" }}: <span class="font-semibold tabular-nums">{{ after.freed.size }}</span> of {{ tangle.members.length }} components out of any tangle</span>
+            <span class="text-neutral-500">{{ after.tangles.length ? `${after.tangles.length} ${after.tangles.length === 1 ? "tangle" : "tangles"} left (${after.tangles.map(t => t.length).join(", ")})` : "no cycle left" }}</span>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">Undo cuts</button>
+          </template>
+          <span v-else class="text-neutral-500">Nothing cut yet. The plan lists {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this tangle; apply them one by one, or drag through them.</span>
         </div>
 
         <div class="relative min-h-0 grow">
-          <CycleLoopChart
-            :nodes="selectedCycle.nodes"
-            :edges="edges"
+          <TangleGraph
+            v-if="mode === 'graph'"
+            :layout="layout"
+            :cut="cut"
+            :freed="after.freed"
             :selected-edge="selectedEdge"
-            @select-edge="onSelectEdge"
+            :selected-node="selectedNode"
+            :matches="matches"
+            :lit="lit"
+            :label="shortName"
+            :color="groupColor"
+            :lines="linesOf"
+            :step="stepOf"
+            :title="figureTitle"
+            @select-edge="selectEdge"
+            @select-node="selectNode"
+            @open="n => router.push(componentPath(n))"
+            @clear="clearSelection"
+          />
+          <TangleMatrix
+            v-else
+            :layout="layout"
+            :cut="cut"
+            :freed="after.freed"
+            :selected-edge="selectedEdge"
+            :selected-node="selectedNode"
+            :matches="matches"
+            :label="shortName"
+            :title="figureTitle"
+            @select-edge="selectEdge"
+            @select-node="selectNode"
+            @open="n => router.push(componentPath(n))"
           />
         </div>
-
-        <!-- Loop connections: one row per edge, weakest first. -->
-        <div class="flex max-h-[38%] shrink-0 flex-col hairline-t">
-          <div class="flex h-9 shrink-0 items-center gap-2 px-4">
-            <span class="ui-section-title">Loop connections</span>
-            <span class="ui-toolbar-meta">{{ edgesLoading ? 'Reading imports and shared commits…' : 'Click a row or an edge to inspect it' }}</span>
-          </div>
-          <div class="min-h-0 overflow-y-auto">
-            <table class="ui-table">
-              <thead>
-                <tr>
-                  <th>From</th>
-                  <th></th>
-                  <th>To</th>
-                  <th class="text-right">Imports</th>
-                  <th class="text-right">Co-changes</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="edge in sortedEdges"
-                  :key="edgeKey(edge)"
-                  class="is-clickable"
-                  :class="{ 'is-selected': isSelectedEdge(edge) }"
-                  @click="selectedEdge = { from: edge.from, to: edge.to }"
-                >
-                  <td class="max-w-[280px] truncate">
-                    <span v-if="groupDot(edge.from)" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="groupDot(edge.from)!"></span>
-                    <router-link :to="componentPath(edge.from)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.from" @click.stop>{{ shortName(edge.from) }}</router-link>
-                  </td>
-                  <td class="w-6 px-0 text-center"><Icon icon="chevron-right" :size="12" class="inline text-neutral-400"/></td>
-                  <td class="max-w-[280px] truncate">
-                    <span v-if="groupDot(edge.to)" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="groupDot(edge.to)!"></span>
-                    <router-link :to="componentPath(edge.to)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.to" @click.stop>{{ shortName(edge.to) }}</router-link>
-                  </td>
-                  <td class="is-num text-right">{{ formatNumber(edge.referenceCount) }}</td>
-                  <td class="is-num text-right">{{ formatNumber(edge.sharedCommits) }}</td>
-                  <td class="w-24 text-right"><span v-if="isBreakingPoint(edge)" class="ui-tag">weakest</span></td>
-                </tr>
-                <tr v-if="!edgesLoading && sortedEdges.length === 0">
-                  <td colspan="6" class="text-neutral-500">No direct connections recorded for this cycle.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </template>
-
-      <EmptyState
-        v-else-if="!store.hasData"
-        icon="recycle"
-        title="No snapshot open"
-        text="Open a scan to look for dependency cycles."
-      />
-      <EmptyState
-        v-else-if="store.allCyclesExpanded.length === 0"
-        icon="recycle"
-        title="No dependency cycles"
-        text="Every import path is acyclic."
-      />
-      <EmptyState
-        v-else
-        icon="recycle"
-        title="No cycle selected"
-        text="Pick a cycle in the panel to see its loop, its co-change flows and the weakest link."
-      />
     </template>
 
-    <!-- Panel: the ranked list of cycles. -->
-    <template #tab-list>
-      <EmptyState
-        v-if="!store.hasData"
-        title="No snapshot open"
-        text="Open a scan to look for dependency cycles."
-      />
-      <EmptyState
-        v-else-if="store.allCyclesExpanded.length === 0"
-        title="No dependency cycles"
-        text="Every import path is acyclic."
-      />
-      <EmptyState
-        v-else-if="scopedCycles.length === 0"
-        title="No cycles in scope"
-        :text="`No cycle touches a component of ${scope.group?.name ?? 'the active scope'}.`"
-      >
-        <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
-      </EmptyState>
-      <EmptyState
-        v-else-if="filteredCycles.length === 0"
-        title="No cycles match"
-        :text="searchQuery.trim() ? `No cycle contains “${searchQuery.trim()}”.` : 'No cycle touches a component of the chosen group.'"
-      >
-        <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
-        <button v-if="selectedFilterGroupId" type="button" class="ui-btn ui-btn-sm" @click="selectedFilterGroupId = null">All groups</button>
-      </EmptyState>
+    <!-- The plan: what to cut, in the order that untangles most. -->
+    <template #tab-plan>
+      <div v-if="tangle && layout" class="flex flex-col gap-4">
+        <section>
+          <p class="text-[13px] leading-5 text-neutral-900">
+            <span class="font-semibold">{{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }}</span>, {{ fmt(planImports) }} {{ planImports === 1 ? "import" : "imports" }} in {{ fmt(planFiles) }} {{ planFiles === 1 ? "file" : "files" }}, leave no cycle in this tangle.
+            <template v-if="firstHalf"> The first {{ firstHalf.step }} free half of it.</template>
+          </p>
+          <p class="mt-1 text-[11.5px] leading-4 text-neutral-500">A plan, not the only one: each step takes the cut that untangles most, then the fewest imports. {{ totals ? `Across all ${tangles.length} tangles: ${fmt(totals.cuts)} cuts, ${fmt(totals.imports)} imports.` : "" }}</p>
+        </section>
 
-      <div v-else class="flex flex-col gap-1">
-        <div
-          v-for="cycle in paginatedCycles"
-          :key="cycle.id"
-          role="button"
-          tabindex="0"
-          class="flex cursor-pointer flex-col gap-1.5 rounded px-2.5 py-2 text-left transition-colors"
-          :class="selectedCycleId === cycle.id ? 'bg-accent-50 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]' : 'hover:bg-neutral-100'"
-          @click="selectCycle(cycle)"
-          @keydown.enter.prevent="selectCycle(cycle)"
-          @keydown.space.prevent="selectCycle(cycle)"
-        >
-          <div class="flex items-center justify-between">
-            <span class="font-mono text-sm text-neutral-500">#{{ positionOf(cycle) }}</span>
-            <span class="flex items-center gap-1">
-              <span class="font-mono text-sm tabular-nums text-neutral-500">severity {{ cycle.severity }}</span>
-              <PinButton icon kind="cycle" :entity-key="[...cycle.nodes].sort().join('\n')" :title="`Cycle ${cycle.nodes.map(shortName).join(' → ')}`" :values="{ size: cycle.nodes.length }"/>
-            </span>
+        <!-- How fast it comes apart. -->
+        <section aria-label="Components still tangled, cut by cut">
+          <svg :viewBox="`0 0 ${CW} ${CH}`" class="block w-full cursor-pointer" role="img" :aria-label="`${tangle.members.length} components tangled before any cut, none after ${plan.length}`" @click="onCurveClick">
+            <line :x1="PADL" :y1="CH - PADB" :x2="CW - 4" :y2="CH - PADB" stroke="rgb(var(--c-neutral-200))"/>
+            <path :d="curve.area" fill="rgb(var(--c-accent-200) / 0.45)"/>
+            <path :d="curve.line" fill="none" stroke="rgb(var(--c-accent-500))" stroke-width="1.75"/>
+            <line :x1="curve.x(cut.size)" :y1="6" :x2="curve.x(cut.size)" :y2="CH - PADB" stroke="rgb(var(--c-neutral-900))" stroke-width="1" stroke-dasharray="2 3"/>
+            <circle :cx="curve.x(cut.size)" :cy="curve.y(tangledAt(cut.size))" r="3.5" fill="rgb(var(--c-neutral-900))"/>
+            <text :x="PADL - 6" y="12" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))" font-family="JetBrains Mono, monospace">{{ tangle.members.length }}</text>
+            <text :x="PADL - 6" :y="CH - PADB" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))" font-family="JetBrains Mono, monospace">0</text>
+            <text :x="PADL" :y="CH - 2" font-size="10" fill="rgb(var(--c-neutral-500))">no cut</text>
+            <text :x="CW - 4" :y="CH - 2" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))">{{ plan.length }} cuts</text>
+          </svg>
+          <label class="mt-1 flex items-center gap-3 text-[12px] text-neutral-600">
+            <span class="w-[92px] shrink-0">Apply the first</span>
+            <input type="range" min="0" :max="plan.length" :value="prefixApplied" class="sq-range min-w-0 flex-1" aria-label="Cuts applied" @input="applyFirst(Number(($event.target as HTMLInputElement).value))">
+            <span class="w-14 shrink-0 text-right font-mono tabular-nums text-neutral-900">{{ cut.size }} / {{ plan.length }}</span>
+          </label>
+        </section>
+
+        <section>
+          <div class="mb-1 flex items-baseline">
+            <h3 class="ui-label flex-1">Cuts</h3>
+            <span class="text-[11px] text-neutral-500">↑↓ to move · Space to cut</span>
           </div>
+          <ol ref="planList" class="-mx-1 flex flex-col outline-none" tabindex="0" aria-label="Cut plan" @keydown="onPlanKey">
+            <li
+              v-for="s in plan"
+              :key="s.step"
+              :data-step="s.step"
+              class="group/cut flex cursor-default items-start gap-2 rounded px-1 py-1.5"
+              :class="isSelectedEdge(s) ? 'bg-accent-50 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]' : 'hover:bg-neutral-100'"
+              @click="selectEdge(s.from, s.to, false)"
+            >
+              <Checkbox :model-value="cut.has(edgeId(s.from, s.to))" :aria-label="`Cut ${shortName(s.from)} to ${shortName(s.to)}`" class="mt-[3px]" @click.stop @update:model-value="toggleCut(s.from, s.to)"/>
+              <span class="w-5 shrink-0 pt-px text-right font-mono text-[11px] tabular-nums text-neutral-400">{{ s.step }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="flex min-w-0 items-center gap-1 font-mono text-[12px] text-neutral-900">
+                  <span class="min-w-0 truncate" :title="s.from">{{ shortName(s.from) }}</span>
+                  <Icon icon="arrow-right" :size="11" class="shrink-0 text-accent-600"/>
+                  <span class="min-w-0 truncate" :title="s.to">{{ shortName(s.to) }}</span>
+                </span>
+                <span class="block text-[11.5px] leading-4 text-neutral-500">
+                  {{ s.imports }} {{ s.imports === 1 ? "import" : "imports" }} · {{ s.files }} {{ s.files === 1 ? "file" : "files" }}<template v-if="cochange.get(edgeId(s.from, s.to))"> · changed together {{ cochange.get(edgeId(s.from, s.to)) }}×</template>
+                </span>
+              </span>
+              <span class="shrink-0 pt-px text-right text-[11.5px] tabular-nums" :class="gain(s) > 0 ? 'font-medium text-accent-700' : 'text-neutral-400'" :title="`${s.tangled} components still tangled after this cut${s.left.length ? ` (${s.left.join(', ')})` : ''}`">{{ gain(s) > 0 ? `frees ${gain(s)}` : s.splits ? "splits" : "narrows" }}</span>
+            </li>
+          </ol>
+        </section>
 
-          <!-- The loop, as links: a → b → c → a -->
-          <div class="flex flex-wrap items-center gap-x-1 gap-y-0.5">
-            <template v-for="(node, i) in cycle.nodes" :key="node">
-              <Icon v-if="i > 0" icon="chevron-right" :size="11" class="shrink-0 text-neutral-400"/>
-              <router-link :to="componentPath(node)" class="font-mono text-sm text-neutral-900 hover:underline" :title="node" @click.stop>{{ shortName(node) }}</router-link>
-            </template>
-            <Icon icon="chevron-right" :size="11" class="shrink-0 text-neutral-400"/>
-            <span class="font-mono text-sm text-neutral-500" :title="cycle.nodes[0]">{{ shortName(cycle.nodes[0]) }}</span>
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <span class="ui-tag">{{ cycle.size }} nodes</span>
-            <span class="ui-tag">{{ cycle.sharedCommits }} co-changes</span>
-          </div>
-        </div>
-
-        <div v-if="totalPages > 1" class="mt-2 flex items-center justify-between pt-3 hairline-t">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Previous page" :disabled="page === 1" @click="page = Math.max(1, page - 1)">
-            <Icon icon="chevron-left" :size="14"/>
+        <section class="flex flex-col gap-2 pt-3 hairline-t">
+          <button type="button" class="ui-btn ui-btn-sm self-start" :disabled="!cut.size" :title="cut.size ? 'Opens Connections in the sandbox with these imports cut: the coupling and tangles they leave' : 'Cut something first'" @click="openInSandbox">
+            <Icon icon="flask" :size="13" class="text-neutral-500"/><span>Try {{ cut.size || "" }} {{ cut.size === 1 ? "cut" : "cuts" }} in the sandbox</span>
           </button>
-          <span class="font-mono text-sm tabular-nums text-neutral-500">{{ page }} / {{ totalPages }}</span>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Next page" :disabled="page === totalPages" @click="page = Math.min(totalPages, page + 1)">
-            <Icon icon="chevron-right" :size="14"/>
-          </button>
-        </div>
+          <p class="text-[11px] leading-4 text-neutral-500">The sandbox shows what the cuts do to coupling and the rest of the graph; nothing is changed in the snapshot.</p>
+        </section>
       </div>
     </template>
 
-    <!-- Panel: the weakest link and the selected edge's import locations. -->
-    <template #tab-diagnostics>
-      <template v-if="selectedCycle">
-        <LoadingState v-if="edgesLoading" text="Reading import locations and shared commits…"/>
-
-        <template v-else-if="activeInspectorEdge">
-          <section class="flex flex-col gap-3">
-            <span class="ui-section-title">{{ isBreakingPoint(activeInspectorEdge) ? 'Weakest link' : 'Selected edge' }}</span>
-            <div class="flex flex-wrap items-center gap-1 text-base text-neutral-900">
-              <span>Cut</span>
-              <router-link :to="componentPath(activeInspectorEdge.from)" class="font-mono text-sm hover:underline" :title="activeInspectorEdge.from">{{ shortName(activeInspectorEdge.from) }}</router-link>
-              <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
-              <router-link :to="componentPath(activeInspectorEdge.to)" class="font-mono text-sm hover:underline" :title="activeInspectorEdge.to">{{ shortName(activeInspectorEdge.to) }}</router-link>
-            </div>
-            <p v-if="isBreakingPoint(activeInspectorEdge)" class="text-sm leading-4 text-neutral-500">
-              The edge with the fewest imports in this loop. Removing it breaks the cycle at the lowest cost.
-            </p>
-            <p v-else-if="breakingPoint" class="flex flex-wrap items-center gap-1 text-sm leading-4 text-neutral-500">
-              <span>Weakest link is</span>
-              <span class="font-mono text-neutral-800" :title="breakingPoint.from">{{ shortName(breakingPoint.from) }}</span>
-              <Icon icon="chevron-right" :size="11" class="text-neutral-400"/>
-              <span class="font-mono text-neutral-800" :title="breakingPoint.to">{{ shortName(breakingPoint.to) }}</span>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selectedEdge = { from: breakingPoint.from, to: breakingPoint.to }">Inspect</button>
-            </p>
-            <dl class="ui-kv">
-              <dt>References</dt>
-              <dd>{{ formatNumber(activeInspectorEdge.referenceCount) }} imports</dd>
-              <dt>Shared commits</dt>
-              <dd>{{ formatNumber(activeInspectorEdge.sharedCommits) }}</dd>
-              <dt>Importing files</dt>
-              <dd>{{ formatNumber(activeInspectorEdge.files.length) }}</dd>
-            </dl>
-          </section>
-
-          <section v-if="hasTies" class="flex flex-col gap-2 pt-4 hairline-t">
-            <span class="ui-section-title">Tied edges</span>
-            <p class="text-sm leading-4 text-neutral-500">{{ tiedEdges.length }} edges share the minimum of {{ breakingPoint?.referenceCount }} imports; any of them is a candidate cut.</p>
-            <div class="-mx-4 overflow-x-auto">
-              <table class="ui-table">
-                <thead>
-                  <tr>
-                    <th>From</th>
-                    <th>To</th>
-                    <th class="text-right">Co-changes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="edge in tiedEdges"
-                    :key="edgeKey(edge)"
-                    class="is-clickable"
-                    :class="{ 'is-selected': isSelectedEdge(edge) }"
-                    @click="selectedEdge = { from: edge.from, to: edge.to }"
-                  >
-                    <td class="max-w-[140px] truncate"><router-link :to="componentPath(edge.from)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.from" @click.stop>{{ shortName(edge.from) }}</router-link></td>
-                    <td class="max-w-[140px] truncate"><router-link :to="componentPath(edge.to)" class="font-mono text-sm text-neutral-900 hover:underline" :title="edge.to" @click.stop>{{ shortName(edge.to) }}</router-link></td>
-                    <td class="is-num text-right">{{ formatNumber(edge.sharedCommits) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="flex flex-col gap-2 pt-4 hairline-t">
-            <span class="ui-section-title">Import locations</span>
-            <EmptyState
-              v-if="activeInspectorEdge.files.length === 0"
-              title="No import locations"
-              text="The snapshot records no file importing this component along this edge."
-            />
-            <ul v-else class="flex flex-col">
-              <li v-for="f in activeInspectorEdge.files" :key="f.file" class="flex flex-col py-1.5 hairline-b last:border-b-0">
-                <div class="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0"
-                    :aria-expanded="expandedFiles.has(f.file)"
-                    :aria-label="expandedFiles.has(f.file) ? 'Hide source' : 'Show source'"
-                    @click="toggleFile(f.file)"
-                  >
-                    <Icon :icon="expandedFiles.has(f.file) ? 'chevron-down' : 'chevron-right'" :size="13" class="text-neutral-500"/>
-                  </button>
-                  <router-link :to="fileSourcePath(f.file, f.firstLine)" class="min-w-0 truncate font-mono text-sm text-neutral-900 hover:underline" :title="f.file">{{ f.file }}</router-link>
-                  <span class="ui-tag ml-auto shrink-0">{{ f.count }} {{ f.count === 1 ? 'import' : 'imports' }}</span>
-                </div>
-                <div v-if="f.ranges.length" class="flex flex-wrap items-center gap-1 pl-7 font-mono text-sm text-neutral-500">
-                  <span>Lines</span>
-                  <SnippetPopover v-for="range in f.ranges" :key="range" :file="f.file" :lines="range">
-                    <router-link :to="fileSourcePath(f.file, rangeStart(range))" class="text-neutral-800 underline decoration-dotted hover:text-neutral-900">{{ range }}</router-link>
-                  </SnippetPopover>
-                </div>
-                <div v-if="expandedFiles.has(f.file)" class="mt-1.5 flex flex-col gap-1.5 pl-7">
-                  <template v-if="f.ranges.length > 0 && f.ranges.length <= inlineSnippetLimit">
-                    <SnippetPopover v-for="range in f.ranges" :key="'inline-' + range" :file="f.file" :lines="range" inline/>
-                  </template>
-                  <p v-else-if="f.ranges.length > inlineSnippetLimit" class="text-sm leading-4 text-neutral-500">
-                    {{ f.ranges.length }} import sites; hover a line range above to preview it, or open the file.
-                  </p>
-                  <p v-else class="text-sm leading-4 text-neutral-500">No line numbers recorded for this import.</p>
-                </div>
-              </li>
-            </ul>
-          </section>
-
-          <section v-if="groupSpanParts.length" class="flex flex-col gap-1 pt-4 hairline-t">
-            <span class="ui-section-title">Groups crossed</span>
-            <dl class="ui-kv">
-              <template v-for="part in groupSpanParts" :key="part.name">
-                <dt>{{ part.name }}</dt>
-                <dd>{{ part.count }} {{ part.count === 1 ? 'node' : 'nodes' }}</dd>
-              </template>
-            </dl>
-          </section>
-        </template>
-
-        <EmptyState
-          v-else
-          title="No connection data"
-          text="The snapshot has no direct connections along this cycle's edges."
-        />
+    <!-- The selected import or component, with its evidence. -->
+    <template #tab-selection>
+      <template v-if="selectedEdge && edgeDetail">
+        <section class="flex flex-col gap-2">
+          <p class="flex flex-wrap items-center gap-1 break-all font-mono text-[12.5px] text-neutral-900">
+            <router-link :to="componentPath(selectedEdge.from)" class="hover:underline" :title="selectedEdge.from">{{ shortName(selectedEdge.from) }}</router-link>
+            <Icon icon="arrow-right" :size="12" :class="isAgainst ? 'text-accent-600' : 'text-neutral-400'"/>
+            <router-link :to="componentPath(selectedEdge.to)" class="hover:underline" :title="selectedEdge.to">{{ shortName(selectedEdge.to) }}</router-link>
+          </p>
+          <p class="text-[12.5px] leading-5 text-neutral-700">
+            <template v-if="selectedStep">Cut {{ selectedStep.step }} of the plan. It runs back against the levels; {{ gain(selectedStep) > 0 ? `taken in order, it frees ${gain(selectedStep)} ${gain(selectedStep) === 1 ? "component" : "components"}` : selectedStep.splits ? "taken in order, it splits the tangle" : "taken in order, it narrows the loops that remain" }}.</template>
+            <template v-else-if="isAgainst">It runs back against the levels, but the cuts before it already undo what it closes.</template>
+            <template v-else>It runs with the levels: cutting it alone breaks no cycle.</template>
+          </p>
+          <dl class="ui-kv">
+            <dt>Imports</dt><dd>{{ fmt(edgeDetail.imports) }}</dd>
+            <dt>Files</dt><dd>{{ fmt(edgeDetail.files.length) }}</dd>
+            <template v-if="cochange.get(edgeId(selectedEdge.from, selectedEdge.to))"><dt>Changed together</dt><dd>{{ cochange.get(edgeId(selectedEdge.from, selectedEdge.to)) }} commits</dd></template>
+            <dt>Listed cycles</dt><dd>{{ fmt(cyclesThroughEdge) }}</dd>
+          </dl>
+          <div v-if="selectedStep" class="flex gap-2">
+            <button type="button" class="ui-btn ui-btn-sm" :class="cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? '' : 'ui-btn-primary'" @click="toggleCut(selectedEdge.from, selectedEdge.to)">{{ cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? "Undo this cut" : "Cut it" }}</button>
+          </div>
+        </section>
+        <section class="mt-4 flex flex-col gap-1 pt-3 hairline-t">
+          <h3 class="ui-label">Where the imports are</h3>
+          <LoadingState v-if="linesLoading" text="Reading import lines…"/>
+          <p v-else-if="!edgeDetail.files.length" class="text-xs text-neutral-500">The snapshot records no file for these imports.</p>
+          <ul v-else class="flex flex-col">
+            <li v-for="f in edgeDetail.files" :key="f.file" class="flex flex-col py-1.5 hairline-b last:shadow-none">
+              <div class="flex items-center gap-1.5">
+                <router-link :to="fileSourcePath(f.file, f.first)" class="min-w-0 truncate font-mono text-[12px] font-medium text-neutral-900 hover:underline" :title="f.file">{{ f.file.split("/").pop() }}</router-link>
+                <span class="ui-tag ml-auto shrink-0">{{ f.count }} {{ f.count === 1 ? "import" : "imports" }}</span>
+              </div>
+              <span class="truncate font-mono text-[11px] text-neutral-500 [direction:rtl] [text-align:left]" :title="f.file">{{ f.file.split("/").slice(0, -1).join("/") }}/</span>
+              <div v-if="f.ranges.length" class="flex flex-wrap items-center gap-1 font-mono text-[11.5px] text-neutral-500">
+                <span>lines</span>
+                <SnippetPopover v-for="range in f.ranges" :key="range" :file="f.file" :lines="range">
+                  <router-link :to="fileSourcePath(f.file, Number(range.split('-')[0]))" class="text-neutral-800 underline decoration-dotted hover:text-neutral-950">{{ range }}</router-link>
+                </SnippetPopover>
+              </div>
+            </li>
+          </ul>
+        </section>
       </template>
-      <EmptyState v-else title="No cycle selected" text="Pick a cycle to see its weakest link."/>
+
+      <template v-else-if="selectedNode && nodeDetail">
+        <section class="flex flex-col gap-2">
+          <router-link :to="componentPath(selectedNode)" class="break-all font-mono text-[12.5px] font-medium text-neutral-900 hover:underline" :title="selectedNode">{{ shortName(selectedNode) }}</router-link>
+          <p class="text-[12.5px] leading-5 text-neutral-700">
+            Level {{ nodeDetail.level }} of {{ layout?.layers.length }}. {{ after.freed.has(selectedNode) ? "With the cuts applied it is out of every tangle." : "It is still in a tangle with the cuts applied." }}
+          </p>
+          <dl class="ui-kv">
+            <dt>Lines</dt><dd>{{ fmt(linesOf(selectedNode)) }}</dd>
+            <dt>Imports in the tangle</dt><dd>{{ nodeDetail.out }} components</dd>
+            <dt>Imported by</dt><dd>{{ nodeDetail.in }} of them</dd>
+            <dt>Against the levels</dt><dd>{{ nodeDetail.against.length }}</dd>
+            <dt>Listed cycles</dt><dd>{{ fmt(nodeDetail.cycles) }}</dd>
+          </dl>
+        </section>
+        <section v-if="nodeDetail.against.length" class="mt-4 flex flex-col gap-1 pt-3 hairline-t">
+          <h3 class="ui-label">Its imports against the levels</h3>
+          <button v-for="e in nodeDetail.against" :key="edgeId(e.from, e.to)" type="button" class="flex items-center gap-1 rounded px-1 py-1 text-left font-mono text-[12px] text-neutral-800 hover:bg-neutral-100" @click="selectEdge(e.from, e.to)">
+            <span class="min-w-0 truncate">{{ shortName(e.from) }}</span><Icon icon="arrow-right" :size="11" class="shrink-0 text-accent-600"/><span class="min-w-0 truncate">{{ shortName(e.to) }}</span>
+            <span class="ml-auto shrink-0 font-sans text-[11px] text-neutral-500">{{ e.imports }} {{ e.imports === 1 ? "import" : "imports" }}</span>
+          </button>
+        </section>
+      </template>
+      <p v-else class="text-sm leading-5 text-neutral-500">Select an import or a component in the drawing or the plan to see where it is and what cutting it does.</p>
+    </template>
+
+    <!-- The engine's listed cycles in this tangle, and which the cuts break. -->
+    <template #tab-cycles>
+      <div v-if="tangle" class="flex flex-col gap-3">
+        <p class="text-[12.5px] leading-5 text-neutral-700">
+          {{ fmt(tangleCycles.length) }} listed cycles run inside this tangle<template v-if="cut.size">; the cuts break {{ fmt(brokenCount) }} of them</template>. The engine lists the shortest cycle through each component, so a tangle holds more loops than these; the plan breaks them all.
+        </p>
+        <ul class="-mx-1 flex flex-col">
+          <li v-for="c in shownCycles" :key="c.id">
+            <button type="button" class="flex w-full flex-col gap-0.5 rounded px-1.5 py-1.5 text-left" :class="litCycleId === c.id ? 'bg-accent-50 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]' : 'hover:bg-neutral-100'" @click="litCycleId = litCycleId === c.id ? null : c.id">
+              <span class="flex flex-wrap items-center gap-x-1 font-mono text-[11.5px]" :class="c.broken ? 'text-neutral-400 line-through decoration-neutral-300' : 'text-neutral-900'">
+                <template v-for="(n, i) in c.nodes" :key="i"><Icon v-if="i > 0" icon="arrow-right" :size="10" class="text-neutral-400"/><span :title="n">{{ shortName(n) }}</span></template>
+                <Icon icon="arrow-right" :size="10" class="text-neutral-400"/><span class="text-neutral-400">{{ shortName(c.nodes[0]) }}</span>
+              </span>
+              <span class="text-[11px] text-neutral-500">{{ c.nodes.length }} components<template v-if="c.sharedCommits"> · {{ c.sharedCommits }} commits touched them all</template><template v-if="c.broken"> · broken by cut {{ c.brokenBy }}</template></span>
+            </button>
+          </li>
+        </ul>
+        <button v-if="tangleCycles.length > cycleLimit" type="button" class="ui-btn ui-btn-sm self-start" @click="cycleLimit += 60">Show {{ Math.min(60, tangleCycles.length - cycleLimit) }} more</button>
+      </div>
     </template>
   </ViewWorkspaceLayout>
-
   <GroupActionBar ref="trayRef" :selected-items="traySelection" kind="component" @clear="traySelection = []"/>
 </template>
 
 <script setup lang="ts">
-import PinButton from "~/components/evidence/PinButton.vue"
-import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
-import { componentPath } from "~/utils/routes"
-import { computed, nextTick, ref, watch } from "vue"
-import { useRoute } from "vue-router"
-import { useDataStore } from "~/stores/data"
-import { useGroupsStore } from "~/stores/groups"
-import { useLensStore } from "~/stores/lens"
-import { useScopeStore } from "~/stores/scope"
-import { useAsyncQuery } from "~/composables/useAsyncQuery"
-import { sqlIn, sqlLiteral } from "~/utils/sql"
-import { formatNumber } from "~/utils/format"
-import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue"
-import SingleSelect from "~/components/ui/common/SingleSelect.vue"
-import Icon from "~/components/ui/common/Icon.vue"
-import EmptyState from "~/components/ui/common/EmptyState.vue"
-import LoadingState from "~/components/ui/common/LoadingState.vue"
-import SnippetPopover from "~/components/SnippetPopover.vue"
-import GroupActionBar from "~/components/groups/GroupActionBar.vue"
-import CycleLoopChart from "~/components/components/cycles/CycleLoopChart.vue"
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import TangleGraph from "~/components/cycles/TangleGraph.vue";
+import TangleMatrix from "~/components/cycles/TangleMatrix.vue";
+import PinButton from "~/components/evidence/PinButton.vue";
+import GroupActionBar from "~/components/groups/GroupActionBar.vue";
+import SnippetPopover from "~/components/SnippetPopover.vue";
+import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
+import Checkbox from "~/components/ui/common/Checkbox.vue";
+import EmptyState from "~/components/ui/common/EmptyState.vue";
+import Icon from "~/components/ui/common/Icon.vue";
+import LoadingState from "~/components/ui/common/LoadingState.vue";
+import { useExportables } from "~/composables/useExportables";
+import { useDataStore } from "~/stores/data";
+import { useGroupsStore } from "~/stores/groups";
+import { useLensStore } from "~/stores/lens";
+import { useSandboxStore } from "~/stores/sandbox";
+import { useScopeStore } from "~/stores/scope";
+import { TRUSTED_PAIR_SQL } from "~/utils/cochange";
+import { formatNumber } from "~/utils/format";
+import { componentPath } from "~/utils/routes";
+import { sqlIn, sqlLiteral } from "~/utils/sql";
+import { afterCuts, edgeId, foldEdges, layoutTangle, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/utils/untangle";
 
-const route = useRoute()
-const store = useDataStore()
-const groupsStore = useGroupsStore()
-const scope = useScopeStore()
+// Cycles, read as tangles: sets of components that all reach each other.
+// Hundreds of listed cycles overlap on a few imports; laid out in levels,
+// the imports that run back against them are what make every one, and a
+// plan of cuts, most untangling first, shows what it takes to undo them.
 
-interface Cycle {
-  id: number
-  cycleText: string
-  nodes: string[]
-  size: number
-  sharedCommits: number
-  severity: number
-}
+const store = useDataStore();
+const groupsStore = useGroupsStore();
+const lens = useLensStore();
+const scope = useScopeStore();
+const sandbox = useSandboxStore();
+const route = useRoute();
+const router = useRouter();
+const fmt = (n: number) => formatNumber(n);
 
-interface EdgeFile {
-  file: string
-  count: number
-  ranges: string[]
-  firstLine: number | null
-}
+const searchQuery = ref("");
+const isSidebarOpen = ref(true);
+const activeTab = ref("plan");
+const tabs = [{ id: "plan", label: "Plan" }, { id: "selection", label: "Selection" }, { id: "cycles", label: "Cycles" }];
 
-interface EdgeDetail {
-  from: string
-  to: string
-  referenceCount: number
-  sharedCommits: number
-  files: EdgeFile[]
-}
+// ── The graph and its tangles ───────────────────────────────────────────
+const edges = computed<WEdge[]>(() => (store.hasData ? foldEdges(store.componentConnections as any[]) : []));
+const componentNames = computed(() => (store.hasData ? (store.allComponents as any[]).map(c => String(c.name)).filter(n => n !== ".") : []));
+const componentCount = computed(() => componentNames.value.length);
+const lineIndex = computed(() => new Map((store.allComponents as any[]).map(c => [String(c.name), Number(c.complexity__lines) || 0])));
+const linesOf = (n: string) => lineIndex.value.get(n) ?? 0;
 
-// ── Toolbar state ────────────────────────────────────────────────
-const searchQuery = ref("")
-const sortBy = ref<"severity" | "size" | "sharedCommits">("severity")
-const selectedFilterGroupId = ref<string | null>(null)
-const isSidebarOpen = ref(true)
-const activeTab = ref("list")
-const page = ref(1)
-const itemsPerPage = 12
+interface ListedCycle { id: number; nodes: string[]; sharedCommits: number }
+const listedCycles = computed<ListedCycle[]>(() => (store.hasData ? (store.allCyclesExpanded as any[]).map(c => ({ id: c.id, nodes: c.nodes, sharedCommits: Number(c.sharedCommits) || 0 })) : []));
 
-// A component detail links here with ?component=<name>; seed the search with it.
-watch(() => route.query.component, (component) => {
-  const value = Array.isArray(component) ? component[0] : component
-  if (value) searchQuery.value = String(value)
-}, { immediate: true })
+interface Tangle { key: string; members: string[]; lines: number; cycles: number; matches: boolean }
+const rawTangles = computed(() => tanglesOf(new Set([...componentNames.value, ...edges.value.flatMap(e => [e.from, e.to])]), edges.value));
+const matches = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  return new Set(q ? rawTangles.value.flat().filter(n => n.toLowerCase().includes(q)) : []);
+});
+const tangles = computed<Tangle[]>(() => rawTangles.value.map(members => {
+  const set = new Set(members);
+  return {
+    key: members[0],
+    members,
+    lines: members.reduce((s, m) => s + linesOf(m), 0),
+    cycles: listedCycles.value.filter(c => c.nodes.every(n => set.has(n))).length,
+    matches: members.some(m => matches.value.has(m)),
+  };
+}));
+const tangledCount = computed(() => rawTangles.value.reduce((s, t) => s + t.length, 0));
+const scopedTangles = computed(() => (scope.isActive ? tangles.value.filter(t => t.members.some(m => scope.componentInScope(m))) : tangles.value));
 
-watch([searchQuery, selectedFilterGroupId, () => scope.groupIds], () => { page.value = 1 })
-
-type GroupOption = { name: string; id: string | null }
-const allGroupsOption: GroupOption = { name: "All groups", id: null }
-const groupOptions = computed<GroupOption[]>(() => [
-  allGroupsOption,
-  ...groupsStore.groups.filter(g => !lens.active || g.dimension === lens.active).map(g => ({ name: g.name, id: g.id })),
-])
-const groupFilter = computed<GroupOption>({
-  get: () => groupOptions.value.find(o => o.id === selectedFilterGroupId.value) ?? allGroupsOption,
-  set: (option) => { selectedFilterGroupId.value = option?.id ?? null },
-})
-
-const tabs = computed(() => {
-  const list = [{ id: "list", label: "Cycles" }]
-  if (selectedCycle.value) list.push({ id: "diagnostics", label: "Diagnostics" })
-  return list
-})
-
-// ── Cycles: scope, group filter, search, sort ────────────────────
-const allCycles = computed<Cycle[]>(() => store.hasData ? (store.allCyclesExpanded as Cycle[]) : [])
-
-const scopedCycles = computed(() => {
-  if (!scope.isActive) return allCycles.value
-  return allCycles.value.filter(c => c.nodes.some(n => scope.componentInScope(n)))
-})
-
-const filteredCycles = computed(() => {
-  let list = scopedCycles.value
-  if (selectedFilterGroupId.value) {
-    const group = groupsStore.getGroupById(selectedFilterGroupId.value)
-    if (group) {
-      const members = new Set(groupsStore.componentsOf(group).keys())
-      list = list.filter(c => c.nodes.some(n => members.has(n)))
-    }
+// ── The open tangle ─────────────────────────────────────────────────────
+const selectedKey = ref<string | null>(null);
+const tangle = computed(() => scopedTangles.value.find(t => t.key === selectedKey.value) ?? scopedTangles.value[0] ?? null);
+const tangleNumber = computed(() => (tangle.value ? scopedTangles.value.indexOf(tangle.value) + 1 : 0));
+const layoutCache = new Map<string, { layout: TangleLayout; plan: CutStep[] }>();
+watch(edges, () => layoutCache.clear());
+function prepared(t: Tangle) {
+  const k = t.members.join("\n");
+  let hit = layoutCache.get(k);
+  if (!hit) {
+    const inside = new Set(t.members);
+    const own = edges.value.filter(e => inside.has(e.from) && inside.has(e.to));
+    const layout = layoutTangle(t.members, own);
+    hit = { layout, plan: planCuts(t.members, layout) };
+    layoutCache.set(k, hit);
   }
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) list = list.filter(c => c.nodes.some(n => n.toLowerCase().includes(q)))
+  return hit;
+}
+const layout = computed(() => (tangle.value ? prepared(tangle.value).layout : null));
+const plan = computed(() => (tangle.value ? prepared(tangle.value).plan : []));
+const planImports = computed(() => plan.value.reduce((s, x) => s + x.imports, 0));
+const planFiles = computed(() => {
+  const want = new Set(plan.value.map(s => edgeId(s.from, s.to)));
+  const files = new Set<string>();
+  for (const r of store.componentConnections as any[]) if (r.file && want.has(edgeId(String(r.from), String(r.to)))) files.add(String(r.file));
+  return files.size || plan.value.reduce((s, x) => s + x.files, 0);
+});
+const firstHalf = computed(() => (tangle.value ? plan.value.find(s => s.freed >= tangle.value!.members.length / 2 && s.step < plan.value.length) ?? null : null));
+const gain = (s: CutStep) => s.freed - (plan.value[s.step - 2]?.freed ?? 0);
+const stepOf = (from: string, to: string) => plan.value.find(s => s.from === from && s.to === to)?.step ?? null;
+const figureTitle = computed(() => (tangle.value ? `Tangle ${tangleNumber.value}: ${tangle.value.members.length} components in ${layout.value?.layers.length ?? 0} levels` : "Tangle"));
+// Drawn while it stays legible; past that, the matrix reads the whole of it.
+const autoMode = computed<"graph" | "matrix">(() => ((tangle.value?.members.length ?? 0) > 60 || Math.max(0, ...(layout.value?.layers.map(l => l.length) ?? [0])) > 12 ? "matrix" : "graph"));
+const chosenMode = ref<"graph" | "matrix" | null>(null);
+const mode = computed<"graph" | "matrix">({ get: () => chosenMode.value ?? autoMode.value, set: v => { chosenMode.value = v; } });
 
-  return [...list].sort((a, b) => {
-    if (sortBy.value === "size") return b.size - a.size || b.severity - a.severity
-    if (sortBy.value === "sharedCommits") return b.sharedCommits - a.sharedCommits || b.severity - a.severity
-    return b.severity - a.severity
-  })
-})
+// Totals across every tangle, planned once the page has drawn.
+const totals = ref<{ cuts: number; imports: number } | null>(null);
+watch(tangles, (list) => {
+  totals.value = null;
+  if (!list.length) return;
+  setTimeout(() => {
+    let cuts = 0, imports = 0;
+    for (const t of list) { const p = prepared(t).plan; cuts += p.length; imports += p.reduce((s, x) => s + x.imports, 0); }
+    totals.value = { cuts, imports };
+  }, 120);
+}, { immediate: true });
 
-const countText = computed(() => {
-  const n = scopedCycles.value.length
-  const m = allCycles.value.length
-  return scope.isActive ? `${formatNumber(n)} of ${formatNumber(m)} cycles` : `${formatNumber(m)} ${m === 1 ? 'cycle' : 'cycles'}`
-})
+function selectTangle(key: string) {
+  if (selectedKey.value === key) return;
+  selectedKey.value = key;
+}
+watch(() => tangle.value?.key, () => {
+  clearSelection();
+  litCycleId.value = null;
+  cycleLimit.value = 60;
+});
 
-// A cycle is numbered by where it stands in the list as sorted now. Its
-// stored id read #2, #1, #4 down a list sorted by severity.
-const position = computed(() => new Map(filteredCycles.value.map((c, i) => [c.id, i + 1])))
-function positionOf(cycle: Cycle): number | string {
-  return position.value.get(cycle.id) ?? "–"
+// ── Cuts ────────────────────────────────────────────────────────────────
+const cutsByTangle = ref<Record<string, string[]>>({});
+const cut = computed<ReadonlySet<string>>(() => new Set(tangle.value ? cutsByTangle.value[tangle.value.key] ?? [] : []));
+function setCuts(ids: string[]) {
+  if (!tangle.value) return;
+  cutsByTangle.value = { ...cutsByTangle.value, [tangle.value.key]: ids };
+}
+function toggleCut(from: string, to: string) {
+  const id = edgeId(from, to);
+  const now = [...cut.value];
+  setCuts(now.includes(id) ? now.filter(x => x !== id) : [...now, id]);
+}
+function applyFirst(k: number) { setCuts(plan.value.slice(0, k).map(s => edgeId(s.from, s.to))); }
+const prefixApplied = computed(() => {
+  let k = 0;
+  while (k < plan.value.length && cut.value.has(edgeId(plan.value[k].from, plan.value[k].to))) k++;
+  return k === cut.value.size ? k : cut.value.size;
+});
+const after = computed(() => (tangle.value && layout.value ? afterCuts(tangle.value.members, layout.value.forward.concat(layout.value.against), cut.value) : { tangles: [], freed: new Set<string>() }));
+
+// The curve: components still tangled after each cut of the plan.
+const CW = 340, CH = 84, PADL = 26, PADB = 14;
+const tangledAt = (k: number) => (k === 0 ? tangle.value?.members.length ?? 0 : plan.value[Math.min(k, plan.value.length) - 1]?.tangled ?? 0);
+const curve = computed(() => {
+  const n = Math.max(1, plan.value.length);
+  const total = Math.max(1, tangle.value?.members.length ?? 1);
+  const x = (k: number) => PADL + (k / n) * (CW - PADL - 4);
+  const y = (v: number) => 6 + (1 - v / total) * (CH - PADB - 6);
+  const pts: Array<[number, number]> = [[x(0), y(total)]];
+  plan.value.forEach((s, i) => { pts.push([x(i + 1), y(plan.value[i - 1]?.tangled ?? total)]); pts.push([x(i + 1), y(s.tangled)]); });
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join("");
+  return { x, y, line, area: `${line}L${x(n).toFixed(1)},${CH - PADB}L${x(0).toFixed(1)},${CH - PADB}Z` };
+});
+function onCurveClick(e: MouseEvent) {
+  const svg = e.currentTarget as SVGSVGElement;
+  const r = svg.getBoundingClientRect();
+  const vx = ((e.clientX - r.left) / r.width) * CW;
+  const k = Math.round(((vx - PADL) / (CW - PADL - 4)) * plan.value.length);
+  applyFirst(Math.max(0, Math.min(plan.value.length, k)));
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredCycles.value.length / itemsPerPage)))
-const paginatedCycles = computed(() => {
-  const start = (page.value - 1) * itemsPerPage
-  return filteredCycles.value.slice(start, start + itemsPerPage)
-})
-
-// ── Selection ────────────────────────────────────────────────────
-const selectedCycleId = ref<number | null>(null)
-const selectedCycle = computed<Cycle | null>(() => {
-  if (selectedCycleId.value === null) return null
-  return allCycles.value.find(c => c.id === selectedCycleId.value) ?? null
-})
-
-function selectCycle(cycle: Cycle) {
-  selectedCycleId.value = cycle.id
+// ── Selection ───────────────────────────────────────────────────────────
+const selectedEdge = ref<{ from: string; to: string } | null>(null);
+const selectedNode = ref<string | null>(null);
+function selectEdge(from: string, to: string, reveal = true) {
+  selectedEdge.value = { from, to };
+  selectedNode.value = null;
+  if (reveal) { activeTab.value = "selection"; isSidebarOpen.value = true; }
 }
+function selectNode(name: string) {
+  selectedNode.value = name;
+  selectedEdge.value = null;
+  activeTab.value = "selection";
+  isSidebarOpen.value = true;
+}
+function clearSelection() { selectedEdge.value = null; selectedNode.value = null; }
+const isSelectedEdge = (e: { from: string; to: string }) => !!selectedEdge.value && selectedEdge.value.from === e.from && selectedEdge.value.to === e.to;
+const selectedStep = computed(() => (selectedEdge.value ? plan.value.find(s => isSelectedEdge(s)) ?? null : null));
+const isAgainst = computed(() => !!selectedEdge.value && !!layout.value?.against.some(e => isSelectedEdge(e)));
 
-// The view never opens empty: the top cycle of the current list is selected
-// on arrival and whenever the list no longer contains the selection. An
-// automatic selection keeps the list tab; a click moves to Diagnostics.
-let autoSelected = false
-watch(filteredCycles, (list) => {
-  if (list.length === 0) return
-  if (selectedCycleId.value === null || !list.some(c => c.id === selectedCycleId.value)) {
-    autoSelected = true
-    selectedCycleId.value = list[0].id
+const planList = ref<HTMLElement | null>(null);
+function onPlanKey(e: KeyboardEvent) {
+  const i = plan.value.findIndex(s => isSelectedEdge(s));
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const j = Math.max(0, Math.min(plan.value.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    const s = plan.value[j];
+    if (!s) return;
+    selectEdge(s.from, s.to, false);
+    void nextTick(() => planList.value?.querySelector(`[data-step="${s.step}"]`)?.scrollIntoView({ block: "nearest" }));
+  } else if (e.key === " " && i >= 0) {
+    e.preventDefault();
+    toggleCut(plan.value[i].from, plan.value[i].to);
   }
-}, { immediate: true })
+}
 
-watch(selectedCycle, (cycle) => {
-  selectedEdge.value = null
-  expandedFiles.value = new Set()
-  activeTab.value = cycle && !autoSelected ? "diagnostics" : "list"
-  autoSelected = false
-})
+// A component named in the address (the component page links here) opens its tangle, selected.
+watch([() => route.query.component, tangles], ([c]) => {
+  const name = Array.isArray(c) ? c[0] : c;
+  if (!name) return;
+  const t = tangles.value.find(x => x.members.includes(String(name)));
+  if (t) { selectedKey.value = t.key; void nextTick(() => selectNode(String(name))); }
+  else searchQuery.value = String(name);
+}, { immediate: true });
+// Searching opens the first tangle that has a match.
+watch(searchQuery, (q) => {
+  if (!q.trim() || tangle.value?.matches) return;
+  const t = scopedTangles.value.find(x => x.matches);
+  if (t) selectedKey.value = t.key;
+});
 
-// ── Per-edge detail: two queries per selected cycle ──────────────
-// Imports and import sites come from the direct-connection rows already in
-// memory plus one `snippets` query for every file of the loop; shared commits
-// come from one `git_component_shared_commits` query for every pair.
-function toRanges(numbers: number[]): string[] {
-  const ranges: string[] = []
-  if (numbers.length === 0) return ranges
-  let start = numbers[0]
-  let end = numbers[0]
-  const flush = () => ranges.push(start === end ? String(start) : `${start}-${end}`)
-  for (const n of numbers.slice(1)) {
-    if (n === end + 1) { end = n; continue }
-    flush()
-    start = n
-    end = n
+// ── Evidence ────────────────────────────────────────────────────────────
+// Co-change for every cut of the plan, in one query.
+const cochange = ref(new Map<string, number>());
+watch(plan, async (steps) => {
+  cochange.value = new Map();
+  if (!steps.length || !store.hasView("git_component_shared_commits")) return;
+  const names = [...new Set(steps.flatMap(s => [s.from, s.to]))];
+  const rows: Array<{ pair_1: string; pair_2: string; shared_commits: number }> = await store.query(`
+    SELECT pair_1, pair_2, shared_commits FROM git_component_shared_commits
+    WHERE pair_1 IN ${sqlIn(names)} AND pair_2 IN ${sqlIn(names)} AND ${TRUSTED_PAIR_SQL}`).catch(() => []);
+  const by = new Map<string, number>();
+  for (const r of rows) { const n = Number(r.shared_commits) || 0; by.set(edgeId(r.pair_1, r.pair_2), n); by.set(edgeId(r.pair_2, r.pair_1), n); }
+  const out = new Map<string, number>();
+  for (const s of steps) { const n = by.get(edgeId(s.from, s.to)); if (n) out.set(edgeId(s.from, s.to), n); }
+  cochange.value = out;
+}, { immediate: true });
+
+interface EdgeFile { file: string; count: number; ranges: string[]; first: number | null }
+const edgeDetail = ref<{ imports: number; files: EdgeFile[] } | null>(null);
+const linesLoading = ref(false);
+watch(selectedEdge, async (sel) => {
+  edgeDetail.value = null;
+  if (!sel) return;
+  const files = new Map<string, number>();
+  let imports = 0;
+  for (const r of store.componentConnections as any[]) {
+    if (r.from !== sel.from || r.to !== sel.to) continue;
+    const n = Number(r.reference_count ?? r.count) || 1;
+    imports += n;
+    if (r.file) files.set(String(r.file), (files.get(String(r.file)) ?? 0) + n);
   }
-  flush()
-  return ranges
-}
-
-const pairKey = (a: string, b: string) => `${a}|${b}`
-
-const { data: loadedEdges, loading: edgesLoading } = useAsyncQuery<EdgeDetail[]>(
-  async () => {
-    const cycle = selectedCycle.value
-    if (!cycle) return []
-    const nodes = cycle.nodes
-    const connections = store.componentConnections as any[]
-
-    // Base edges from the in-memory direct connections, in loop order.
-    const base = nodes.map((from, i) => {
-      const to = nodes[(i + 1) % nodes.length]
-      const files = new Map<string, number>()
-      let referenceCount = 0
-      for (const c of connections) {
-        if (c.from !== from || c.to !== to) continue
-        const count = Number(c.reference_count ?? c.count) || 0
-        referenceCount += count
-        if (count > 0) {
-          const file = String(c.file || "unknown")
-          files.set(file, (files.get(file) || 0) + count)
-        }
-      }
-      return { from, to, referenceCount, files }
-    })
-
-    // One snippets query for every importing file of the loop.
-    const filePaths = Array.from(new Set(base.flatMap(e => Array.from(e.files.keys())))).filter(f => f !== "unknown")
-    const linesByFileTarget = new Map<string, number[]>()
-    if (filePaths.length > 0 && store.hasView("snippets")) {
-      const rows = await store.query<{ file: string; content: string; begin_position: string }>(`
-        SELECT file, content, begin_position
-        FROM snippets
-        WHERE snippet_type = ${sqlLiteral(store.statName("modularity__component__imports"))}
-          AND file IN ${sqlIn(filePaths)}
-          AND content IN ${sqlIn(nodes)}
-      `)
-      for (const r of rows) {
-        const line = parseInt(String(r.begin_position).split(":")[0], 10)
-        if (Number.isNaN(line)) continue
-        const key = pairKey(r.file, r.content)
-        const list = linesByFileTarget.get(key) ?? []
-        list.push(line)
-        linesByFileTarget.set(key, list)
-      }
-    }
-
-    // One shared-commits query for every pair of the loop, either direction.
-    const sharedByPair = new Map<string, number>()
-    if (store.hasView("git_component_shared_commits")) {
-      const predicate = base.map(e => {
-        const a = sqlLiteral(e.from)
-        const b = sqlLiteral(e.to)
-        return `(pair_1 = ${a} AND pair_2 = ${b}) OR (pair_1 = ${b} AND pair_2 = ${a})`
-      }).join(" OR ")
-      const rows = await store.query<{ pair_1: string; pair_2: string; shared_commits: number }>(`
-        SELECT pair_1, pair_2, shared_commits
-        FROM git_component_shared_commits
-        WHERE (${predicate}) AND ${TRUSTED_PAIR_SQL}
-      `)
-      for (const r of rows) {
-        const n = Number(r.shared_commits) || 0
-        sharedByPair.set(pairKey(r.pair_1, r.pair_2), Math.max(n, sharedByPair.get(pairKey(r.pair_1, r.pair_2)) ?? 0))
-        sharedByPair.set(pairKey(r.pair_2, r.pair_1), Math.max(n, sharedByPair.get(pairKey(r.pair_2, r.pair_1)) ?? 0))
-      }
-    }
-
-    return base.map(e => ({
-      from: e.from,
-      to: e.to,
-      referenceCount: e.referenceCount,
-      sharedCommits: sharedByPair.get(pairKey(e.from, e.to)) ?? 0,
-      files: Array.from(e.files.entries()).map(([file, count]) => {
-        const lines = (linesByFileTarget.get(pairKey(file, e.to)) ?? []).sort((a, b) => a - b)
-        return { file, count, ranges: toRanges(lines), firstLine: lines.length ? lines[0] : null }
-      }).sort((a, b) => b.count - a.count || a.file.localeCompare(b.file)),
-    }))
-  },
-  [selectedCycleId],
-  { initial: [] },
-)
-
-// The previous cycle's edges never show under the new cycle's nodes.
-const edges = computed<EdgeDetail[]>(() => edgesLoading.value ? [] : loadedEdges.value)
-
-const edgeKey = (e: { from: string; to: string }) => `${e.from}→${e.to}`
-
-const sortedEdges = computed(() => [...edges.value].sort((a, b) => a.referenceCount - b.referenceCount))
-const breakingPoint = computed<EdgeDetail | null>(() => sortedEdges.value[0] ?? null)
-const tiedEdges = computed(() => {
-  const bp = breakingPoint.value
-  if (!bp) return []
-  return sortedEdges.value.filter(e => e.referenceCount === bp.referenceCount)
-})
-const hasTies = computed(() => tiedEdges.value.length > 1)
-
-const selectedEdge = ref<{ from: string; to: string } | null>(null)
-
-// A freshly loaded cycle starts on its weakest link.
-watch(edges, (list) => {
-  const bp = breakingPoint.value
-  selectedEdge.value = bp ? { from: bp.from, to: bp.to } : (list[0] ? { from: list[0].from, to: list[0].to } : null)
-})
-
-const activeInspectorEdge = computed<EdgeDetail | null>(() => {
-  const sel = selectedEdge.value
-  if (!sel) return breakingPoint.value
-  return edges.value.find(e => e.from === sel.from && e.to === sel.to) ?? breakingPoint.value
-})
-
-function onSelectEdge(edge: { from: string; to: string }) {
-  selectedEdge.value = edge
-  activeTab.value = "diagnostics"
-  isSidebarOpen.value = true
-}
-
-function isSelectedEdge(e: { from: string; to: string }): boolean {
-  return !!selectedEdge.value && selectedEdge.value.from === e.from && selectedEdge.value.to === e.to
-}
-
-function isBreakingPoint(e: { from: string; to: string }): boolean {
-  const bp = breakingPoint.value
-  return !!bp && bp.from === e.from && bp.to === e.to
-}
-
-// ── Import locations ─────────────────────────────────────────────
-const inlineSnippetLimit = 3
-const expandedFiles = ref<Set<string>>(new Set())
-
-function toggleFile(file: string) {
-  const next = new Set(expandedFiles.value)
-  if (next.has(file)) next.delete(file); else next.add(file)
-  expandedFiles.value = next
-}
-
-watch(selectedEdge, () => { expandedFiles.value = new Set() })
-
-function rangeStart(range: string): number | null {
-  const n = parseInt(range.split("-")[0], 10)
-  return Number.isNaN(n) ? null : n
-}
-
-function fileSourcePath(file: string, line: number | null): string {
-  return `/views/files/${file}/source${line ? `#L${line}` : ""}`
-}
-
-// ── Names, groups ────────────────────────────────────────────────
-function shortName(name: string): string {
-  return store.getComponentName(name) || name
-}
-
-const lens = useLensStore()
-const lensGroupsOf = (componentName: string) => groupsStore.getGroupsForComponent(componentName).filter(g => !lens.active || g.dimension === lens.active)
-function groupDot(componentName: string): { backgroundColor: string } | null {
-  const groups = lensGroupsOf(componentName)
-  return groups.length ? { backgroundColor: groups[0].color } : null
-}
-
-const groupSpanParts = computed(() => {
-  const cycle = selectedCycle.value
-  if (!cycle) return []
-  const counts = new Map<string, number>()
-  let unassigned = 0
-  for (const node of cycle.nodes) {
-    const groups = lensGroupsOf(node)
-    if (groups.length === 0) { unassigned++; continue }
-    for (const g of groups) counts.set(g.name, (counts.get(g.name) || 0) + 1)
+  const list: EdgeFile[] = [...files].map(([file, count]) => ({ file, count, ranges: [], first: null })).sort((a, b) => b.count - a.count || a.file.localeCompare(b.file));
+  edgeDetail.value = { imports, files: list };
+  if (!list.length || !store.hasView("snippets")) return;
+  linesLoading.value = true;
+  try {
+    const rows: Array<{ file: string; begin_position: string }> = await store.query(`
+      SELECT file, begin_position FROM snippets
+      WHERE snippet_type = ${sqlLiteral(store.statName("modularity__component__imports"))}
+        AND file IN ${sqlIn(list.map(f => f.file))} AND content = ${sqlLiteral(sel.to)}`);
+    if (selectedEdge.value !== sel) return;
+    const byFile = new Map<string, number[]>();
+    for (const r of rows) { const line = parseInt(String(r.begin_position).split(":")[0], 10); if (!Number.isNaN(line)) (byFile.get(r.file) ?? byFile.set(r.file, []).get(r.file)!).push(line); }
+    edgeDetail.value = { imports, files: list.map(f => { const lines = (byFile.get(f.file) ?? []).sort((a, b) => a - b); return { ...f, ranges: toRanges(lines), first: lines[0] ?? null }; }) };
+  } finally {
+    linesLoading.value = false;
   }
-  if (counts.size === 0) return []
-  const parts = Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
-  if (unassigned > 0) parts.push({ name: "Unassigned", count: unassigned })
-  return parts
-})
-
-// ── Save cycle as group ──────────────────────────────────────────
-// The cycle's nodes become the selection and the shared tray names the group,
-// so saving a cycle is the same gesture as creating a group anywhere else.
-const trayRef = ref<{ startCreate: (name?: string) => void } | null>(null)
-const traySelection = ref<string[]>([])
-
-async function saveCycleAsGroup() {
-  if (!selectedCycle.value) return
-  traySelection.value = [...selectedCycle.value.nodes]
-  await nextTick()
-  trayRef.value?.startCreate(`Cycle ${selectedCycle.value.id}`)
+});
+function toRanges(ns: number[]): string[] {
+  const out: string[] = [];
+  if (!ns.length) return out;
+  let a = ns[0], b = ns[0];
+  for (let i = 1; i <= ns.length; i++) {
+    if (i < ns.length && ns[i] === b + 1) { b = ns[i]; continue; }
+    out.push(a === b ? String(a) : `${a}-${b}`);
+    a = ns[i]; b = ns[i];
+  }
+  return out;
 }
+const fileSourcePath = (file: string, line: number | null) => `/views/files/${file}/source${line ? `#L${line}` : ""}`;
+
+const cyclesThroughEdge = computed(() => {
+  const e = selectedEdge.value;
+  if (!e) return 0;
+  return tangleCycles.value.filter(c => c.nodes.some((n, i) => n === e.from && c.nodes[(i + 1) % c.nodes.length] === e.to)).length;
+});
+const nodeDetail = computed(() => {
+  const n = selectedNode.value, l = layout.value;
+  if (!n || !l) return null;
+  const all = l.forward.concat(l.against);
+  return {
+    level: (l.layerOf.get(n) ?? 0) + 1,
+    out: all.filter(e => e.from === n).length,
+    in: all.filter(e => e.to === n).length,
+    against: l.against.filter(e => e.from === n || e.to === n),
+    cycles: tangleCycles.value.filter(c => c.nodes.includes(n)).length,
+  };
+});
+
+// ── Listed cycles ───────────────────────────────────────────────────────
+const litCycleId = ref<number | null>(null);
+const cycleLimit = ref(60);
+const tangleCycles = computed(() => {
+  if (!tangle.value) return [];
+  const set = new Set(tangle.value.members);
+  const stepByEdge = new Map(plan.value.map(s => [edgeId(s.from, s.to), s.step]));
+  return listedCycles.value.filter(c => c.nodes.every(n => set.has(n))).map(c => {
+    let brokenBy: number | null = null;
+    c.nodes.forEach((n, i) => {
+      const id = edgeId(n, c.nodes[(i + 1) % c.nodes.length]);
+      if (cut.value.has(id)) { const s = stepByEdge.get(id) ?? 0; brokenBy = brokenBy === null ? s : Math.min(brokenBy, s); }
+    });
+    return { ...c, broken: brokenBy !== null, brokenBy };
+  }).sort((a, b) => Number(a.broken) - Number(b.broken) || a.nodes.length - b.nodes.length || b.sharedCommits - a.sharedCommits);
+});
+const brokenCount = computed(() => tangleCycles.value.filter(c => c.broken).length);
+const shownCycles = computed(() => tangleCycles.value.slice(0, cycleLimit.value));
+const lit = computed<ReadonlySet<string>>(() => {
+  const c = tangleCycles.value.find(x => x.id === litCycleId.value);
+  return new Set(c ? c.nodes.map((n, i) => edgeId(n, c.nodes[(i + 1) % c.nodes.length])) : []);
+});
+
+// ── Names and groups ────────────────────────────────────────────────────
+/** What every member of the open tangle's name starts with, to a separator: said once, left out below. */
+const prefix = computed(() => {
+  const m = tangle.value?.members ?? [];
+  if (m.length < 2) return "";
+  let p = m[0];
+  for (const n of m) while (p && !n.startsWith(p)) p = p.slice(0, -1);
+  const cut = Math.max(p.lastIndexOf("."), p.lastIndexOf("/"));
+  const at = cut + 1;
+  // Keep something of every name: a member equal to the prefix would vanish.
+  return at > 0 && m.every(n => n.length > at) ? p.slice(0, at) : "";
+});
+const shortName = (n: string) => (prefix.value && n.startsWith(prefix.value) ? n.slice(prefix.value.length) : store.getComponentName(n) || n);
+const lensGroupsOf = (n: string) => groupsStore.getGroupsForComponent(n).filter(g => !lens.active || g.dimension === lens.active);
+const groupColor = (n: string) => lensGroupsOf(n)[0]?.color ?? null;
+const crossed = computed(() => {
+  if (!tangle.value) return [];
+  const counts = new Map<string, number>();
+  for (const m of tangle.value.members) for (const g of lensGroupsOf(m)) counts.set(g.name, (counts.get(g.name) ?? 0) + 1);
+  return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+});
+
+// ── Actions ─────────────────────────────────────────────────────────────
+const trayRef = ref<{ startCreate: (name?: string) => void } | null>(null);
+const traySelection = ref<string[]>([]);
+async function saveAsGroup() {
+  if (!tangle.value) return;
+  traySelection.value = [...tangle.value.members];
+  await nextTick();
+  trayRef.value?.startCreate(`Tangle ${tangleNumber.value}`);
+}
+async function openInSandbox() {
+  const edits = plan.value.filter(s => cut.value.has(edgeId(s.from, s.to))).map(s => ({ kind: "cut" as const, from: s.from, to: s.to }));
+  if (!edits.length) return;
+  await sandbox.load();
+  const keep = sandbox.edits.filter(e => !(e.kind === "cut" && edits.some(x => x.from === e.from && x.to === e.to)));
+  sandbox.apply([...keep, ...edits]);
+  void router.push("/views/connections?level=components&sandbox=1");
+}
+
+useExportables().register({
+  kind: "table",
+  get title() { return `Cut plan, tangle ${tangleNumber.value}`; },
+  rows: () => plan.value.map(s => ({ step: s.step, from: s.from, to: s.to, imports: s.imports, files: s.files, changed_together: cochange.value.get(edgeId(s.from, s.to)) ?? null, frees: gain(s), still_tangled: s.tangled })),
+  columns: () => [
+    { id: "step", label: "Cut" }, { id: "from", label: "From" }, { id: "to", label: "To" }, { id: "imports", label: "Imports" }, { id: "files", label: "Files" },
+    { id: "changed_together", label: "Changed together" }, { id: "frees", label: "Frees" }, { id: "still_tangled", label: "Still tangled" },
+  ],
+  disabledReason: () => (plan.value.length ? null : "No tangle is open."),
+});
+
+onMounted(() => { if (route.query.component) isSidebarOpen.value = true; });
 </script>
+
+<style scoped>
+.sq-range { accent-color: rgb(var(--c-accent-500)); height: 16px; }
+</style>

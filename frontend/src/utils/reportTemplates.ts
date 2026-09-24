@@ -88,7 +88,7 @@ const VIEWS = {
     graph: { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, groups" },
     focus: (c: string) => ({ view: "Connections", route: `/views/connections?level=components&sel=${encodeURIComponent(c)}`, hint: `Graph, components, ${c} selected` }),
     hotspots: { view: "Hotspots", route: "/views/components/hotspots", hint: "Components, packed" },
-    cycles: { view: "Cycles", route: "/views/components/cycles", hint: "The tangles and their shortest cycles" },
+    cycles: { view: "Cycles", route: "/views/components/cycles", hint: "The largest tangle, in levels, with its cut plan" },
     knowledge: { view: "Authors", route: "/views/git/authors?grain=components", hint: "Components grain: fewest authors covering half" },
     effort: { view: "Activity", route: "/views/git/activity?tab=effort", hint: "Effort: where changed lines went" },
     libraries: { view: "Libraries", route: "/views/libraries", hint: "Rolled up to two segments" },
