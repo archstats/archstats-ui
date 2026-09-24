@@ -18,3 +18,13 @@ export function componentPath(name: string, tab?: string): string {
 export function componentLabel(name: string, projectName = ""): string {
   return name === "." ? `${projectName || "project"} (root)` : name
 }
+
+/**
+ * The detail page of a file. Files are paths and the route is a catch-all, so
+ * slashes stay; each segment is encoded for the characters a path may hold
+ * and a URL may not (`#`, `?`, `%`, spaces).
+ */
+export function filePath(name: string, tab?: string): string {
+  const base = `/views/files/${name.split("/").map(encodeURIComponent).join("/")}`
+  return tab ? `${base}/${tab}` : base
+}

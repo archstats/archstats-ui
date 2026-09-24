@@ -62,7 +62,7 @@
           <span class="text-neutral-300">·</span>
           <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.authors) }}</span></span>
           <span class="text-neutral-300">·</span>
-          <span class="flex items-center gap-1.5">
+          <span class="flex items-center gap-1.5" :title="selectedFile.deductions ?? undefined">
             Health
             <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(selectedFile.health))"></span>
             <span class="font-mono" :class="levelTextClass(healthLevel(selectedFile.health))">{{ formatHealth(selectedFile.health) }}</span>
@@ -106,6 +106,8 @@ interface InsideFile {
   health: number | null
   hotspot: number | null
   roles: string[]
+  /** "10 − 3 (size) − 0.5 (deepest nesting) − 0 (average nesting)", on revision 2 snapshots. */
+  deductions: string | null
 }
 
 const route = useRoute()
@@ -151,7 +153,17 @@ const files = computed<InsideFile[]>(() => rawFiles.value.map(f => ({
   health: optional(f, "codesmells__code_health"),
   hotspot: optional(f, "codesmells__hotspot_score"),
   roles: rolesByFile.value.get(f.name) ?? [],
+  deductions: deductionsOf(f),
 })))
+
+function deductionsOf(f: RawFile): string | null {
+  const size = optional(f, "codesmells__health__deduction__size")
+  const max = optional(f, "codesmells__health__deduction__max_nesting")
+  const avg = optional(f, "codesmells__health__deduction__avg_nesting")
+  if (size === null || max === null || avg === null) return null
+  const n = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 })
+  return `10 − ${n(size)} (size) − ${n(max)} (deepest nesting) − ${n(avg)} (average nesting), never below 1`
+}
 
 const has = (pick: (f: InsideFile) => number | null) => computed(() => files.value.some(f => pick(f) !== null && pick(f) !== 0))
 const hasHealth = has(f => f.health)

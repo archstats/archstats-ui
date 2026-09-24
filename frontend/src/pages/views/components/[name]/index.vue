@@ -13,6 +13,13 @@
         </template>
         <span v-else>No earlier scan to compare with.</span>
       </div>
+      <p v-if="scoredFiles || hottestFile" class="text-sm text-neutral-500">
+        <template v-if="scoredFiles">Health is the line-weighted mean of {{ formatNumber(scoredFiles) }} scored file{{ scoredFiles === 1 ? "" : "s" }}.</template>
+        <template v-if="hottestFile && Number(hottestFile.codesmells__hotspot_score) > 0">
+          Hottest file: <router-link :to="filePath(hottestFile.name)" class="font-mono text-neutral-800 underline-offset-2 hover:underline">{{ hottestFile.name.split("/").pop() }}</router-link>
+          ({{ formatHotspot(Number(hottestFile.codesmells__hotspot_score)) }} of 100), which sets the component's hotspot.
+        </template>
+      </p>
 
       <!-- 1. What kind of thing is this. -->
       <ReadingBand title="Shape" :lede="role.evidence" :to="`${base}/connections`" link-label="Connections">
@@ -187,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { componentPath } from "~/utils/routes"
+import { componentPath, filePath } from "~/utils/routes"
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/stores/data"
@@ -199,6 +206,7 @@ import { componentRole, componentZone, rankOf } from "~/utils/componentRole"
 import { cycleCountsByComponent, type CyclePath } from "~/utils/cycles"
 import { formatNumber } from "~/utils/format"
 import { formatScanTime } from "~/utils/time"
+import { NO_DELTA, type Delta } from "~/utils/delta"
 import { sqlLiteral } from "~/utils/sql"
 import { healthLevel, levelDotClass, formatHealth, formatHotspot, hotspotLevel, type HealthLevel } from "~/composables/useHealth"
 import StatStrip, { type StatCell } from "~/components/detail/StatStrip.vue"
@@ -269,8 +277,8 @@ const strip = computed<StatCell[]>(() => {
     const n = raw(key)
     if (n === null) return
     cells.push({
-      label: STRIP_LABELS[key] ?? label(key), value: format(n), title: definitionOf(key),
-      level: level ? level(n) : undefined, delta: deltaOf(key), direction, decimals,
+      key, label: STRIP_LABELS[key] ?? label(key), value: format(n), title: definitionOf(key),
+      level: level ? level(n) : undefined, delta: key === "codesmells__hotspot_score" ? hotspotDelta.value : deltaOf(key), direction, decimals,
     })
   }
   push("codesmells__code_health", formatHealth, "up-good", 1, healthLevel)
@@ -436,8 +444,40 @@ const positionCells = computed(() => {
   return cells
 })
 
+// ── Why the health and hotspot read what they do ───────────────────
+// A component's health is the line-weighted mean of its scored files; its
+// hotspot is its hottest file's. Both say so under the strip, with the file.
+const scoredFiles = computed(() => (loaded.value?.files ?? []).filter(f => f.codesmells__code_health !== null).length)
+const hottestFile = computed(() => {
+  let best: FileRow | null = null
+  for (const f of loaded.value?.files ?? []) if (f.codesmells__hotspot_score !== null && (!best || Number(f.codesmells__hotspot_score) > Number(best.codesmells__hotspot_score))) best = f
+  return best
+})
+
+// The hotspot score is scaled against each snapshot's own hottest file, so
+// two scores from two scans do not compare. The raw value does (revision 2):
+// its change is shown in this snapshot's points, and nothing is shown when
+// either side lacks it.
+const { data: maxRawHotspot } = useAsyncQuery<number | null>(
+  async () => {
+    if (!store.hasColumn("files", "codesmells__hotspot__raw")) return null
+    const rows = await store.query<{ m: number | null }>("SELECT max(codesmells__hotspot__raw) AS m FROM files")
+    return rows[0]?.m ?? null
+  },
+  [() => store.datasetKey],
+  { initial: null },
+)
+const hotspotDelta = computed<Delta>(() => {
+  const current = raw("codesmells__hotspot__raw")
+  const max = maxRawHotspot.value
+  if (current === null || !max) return NO_DELTA
+  const d = delta.deltaFor("codesmells__hotspot__raw", current)
+  if (d.change === null) return d
+  return { change: (d.change / max) * 100, baseline: d.baseline === null ? null : (d.baseline / max) * 100, isNew: d.isNew }
+})
+
 // ── Bands 3 and 5: one query for what the store does not hold ──────
-interface FileRow { name: string; directory: string | null; codesmells__code_health: number | null; complexity__lines: number | null }
+interface FileRow { name: string; directory: string | null; codesmells__code_health: number | null; complexity__lines: number | null; codesmells__hotspot_score: number | null }
 interface IncomingFile { file: string; references: number }
 interface Loaded {
   incomingFiles: IncomingFile[]
@@ -466,7 +506,7 @@ const { data: loaded } = useAsyncQuery<Loaded>(
       : []
 
     const files = await store.query<FileRow>(`
-      SELECT name, directory, codesmells__code_health, complexity__lines
+      SELECT name, directory, codesmells__code_health, complexity__lines${store.hasColumn("files", "codesmells__hotspot_score") ? ", codesmells__hotspot_score" : ", NULL AS codesmells__hotspot_score"}
       FROM files WHERE component = ${lit}`)
 
     // Co-change that stays inside the component against co-change that leaves

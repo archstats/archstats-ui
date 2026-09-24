@@ -10,6 +10,8 @@
         <span class="font-medium text-neutral-900">{{ nature.title }}</span> {{ nature.text }}
       </p>
 
+      <HealthBreakdown :file="file"/>
+
       <!-- Metrics: the named readings this file has, grouped by family. Zeros
            and readings without a definition wait behind the disclosure. -->
       <section class="mt-5 pt-5 hairline-t">
@@ -82,6 +84,7 @@
 <script setup lang="ts">
 import StatStrip from "~/components/detail/StatStrip.vue"
 import MetricHint from "~/components/ui/common/MetricHint.vue"
+import HealthBreakdown from "~/components/files/HealthBreakdown.vue"
 import { computed, ref } from "vue"
 import { useDataStore } from "~/stores/data"
 import { useAsyncQuery } from "~/composables/useAsyncQuery"
