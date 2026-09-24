@@ -36,6 +36,8 @@ export interface CEdge {
   references: number
   /** Of `references`, those made only by a runtime lookup (a string naming a module). */
   dynamicRefs?: number
+  /** Co-change as a share of the smaller side's commits (0–1), for component pairs. */
+  rate?: number
   sharedCommits: number
   /** 0–1, meaning depends on `source`: refs share, shared-commits share, or the 50/50 blend. */
   weight: number
@@ -83,6 +85,13 @@ export interface ConnectionsQueryState {
   cycles: CycleMode
   /** Matrix order: by name, or by dependency level; null picks levels at group grain. */
   order: "name" | "levels" | null
+  /** Co-change only: every pair, or the pairs no import joins (hidden coupling). */
+  relation: "all" | "no-import"
+  /** Co-change floors: at least this many shared commits, and this share of the smaller side's commits (0–1). */
+  minShared: number | null
+  minRate: number | null
+  /** Co-change window, from the engine's precomputed columns. */
+  period: "all" | "180" | "90" | "30"
   q: string
   sel: string | null
 }
@@ -100,6 +109,10 @@ export const DEFAULT_CONNECTIONS_STATE: ConnectionsQueryState = {
   measure: "coupling",
   cycles: "all",
   order: null,
+  relation: "all",
+  minShared: null,
+  minRate: null,
+  period: "all",
   q: "",
   sel: null,
 }
@@ -129,6 +142,11 @@ export function parseCycles(v: unknown): CycleMode {
   return s === "off" || s === "selected" ? s : "all"
 }
 
+function parseFloor(v: unknown): number | null {
+  const n = Number(firstString(v))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 /** Parses a route's `query` object (as vue-router hands it) into full state. Old `grain` links still land. */
 export function parseConnectionsQuery(query: Record<string, unknown>): ConnectionsQueryState {
   const q = firstString(query.q)
@@ -149,6 +167,10 @@ export function parseConnectionsQuery(query: Record<string, unknown>): Connectio
     measure: measure === "files" || measure === "cycles" ? measure : "coupling",
     cycles: parseCycles(query.cycles),
     order: firstString(query.order) === "name" ? "name" : firstString(query.order) === "levels" ? "levels" : null,
+    relation: firstString(query.relation) === "no-import" ? "no-import" : "all",
+    minShared: parseFloor(query.min),
+    minRate: parseFloor(query.rate) === null ? null : Math.min(1, (parseFloor(query.rate) as number) / 100),
+    period: (["180", "90", "30"] as const).find(p => p === firstString(query.period)) ?? "all",
     q: q ?? "",
     sel: sel && sel.length > 0 ? sel : null,
   }
@@ -166,6 +188,10 @@ export function toConnectionsQuery(state: ConnectionsQueryState): Record<string,
   if (state.measure !== "coupling") out.measure = state.measure
   if (state.cycles !== DEFAULT_CONNECTIONS_STATE.cycles) out.cycles = state.cycles
   if (state.order) out.order = state.order
+  if (state.relation !== "all") out.relation = state.relation
+  if (state.minShared !== null) out.min = String(state.minShared)
+  if (state.minRate !== null) out.rate = String(Math.round(state.minRate * 100))
+  if (state.period !== "all") out.period = state.period
   if (state.q) out.q = state.q
   if (state.sel) out.sel = state.sel
   return out
@@ -222,6 +248,8 @@ export interface RawEdge {
   references: number
   dynamicRefs?: number
   sharedCommits: number
+  /** Shared commits as a share of the smaller side's commits (0–1); only for component pairs read from the engine. */
+  rate?: number
 }
 
 /** A pair joined only by runtime lookups: no import names the other, so a rename breaks it silently. */
@@ -252,6 +280,7 @@ export function normalizeEdges(source: Source, edges: RawEdge[]): CEdge[] {
     to: e.to,
     references: e.references,
     ...(e.dynamicRefs ? { dynamicRefs: e.dynamicRefs } : {}),
+    ...(e.rate !== undefined ? { rate: e.rate } : {}),
     sharedCommits: e.sharedCommits,
     weight: edgeWeight(source, e.references, e.sharedCommits, maxRefs, maxShared),
   }))
@@ -271,7 +300,7 @@ export function directedReferenceEdges(rows: Array<{ from: string; to: string; r
 }
 
 /** Undirected git edges, canonicalized (used only when source === "git" and nothing is being rolled up). */
-export function undirectedSharedCommitEdges(rows: Array<{ from: string; to: string; sharedCommits: number }>): RawEdge[] {
+export function undirectedSharedCommitEdges(rows: Array<{ from: string; to: string; sharedCommits: number; rate?: number | null }>): RawEdge[] {
   const map = new Map<string, RawEdge>()
   for (const r of rows) {
     if (r.from === r.to) continue
@@ -281,6 +310,7 @@ export function undirectedSharedCommitEdges(rows: Array<{ from: string; to: stri
     // Shared commits are one number for a pair; a row listed both ways is
     // the same commits twice, not twice the commits.
     entry.sharedCommits = Math.max(entry.sharedCommits, r.sharedCommits)
+    if (r.rate !== null && r.rate !== undefined) entry.rate = Math.max(entry.rate ?? 0, Number(r.rate))
     map.set(key, entry)
   }
   return Array.from(map.values())
@@ -322,8 +352,12 @@ export function reindexEdges(edges: RawEdge[], resolve: IdResolver, directed = f
     if (!from || !to || from === to) continue
     const [a, b] = directed ? [from, to] : canonicalPair(from, to)
     const key = `${a}${KEY_SEP}${b}`
+    const had = map.has(key)
     const entry = map.get(key) ?? { from: a, to: b, references: 0, sharedCommits: 0 }
     entry.references += e.references
+    // A rate is a component pair's; merged pairs have none (their commits overlap).
+    if (!had && e.rate !== undefined) entry.rate = e.rate
+    else if (had) delete entry.rate
     if (e.dynamicRefs) entry.dynamicRefs = (entry.dynamicRefs ?? 0) + e.dynamicRefs
     entry.sharedCommits += e.sharedCommits
     map.set(key, entry)

@@ -59,6 +59,8 @@ export function useConnectionsModel(opts: {
   openIds: Ref<Set<string>>
   selectedId: Ref<string | null>
   selectedCycleId: Ref<string | null>
+  /** Co-change window: all history, or the engine's last-N-days columns. */
+  period?: Ref<"all" | "180" | "90" | "30">
 }) {
   const store = useDataStore();
   const groups = useGroupsStore();
@@ -74,10 +76,14 @@ export function useConnectionsModel(opts: {
       store.query<{ component: string; n: number }>(`select component, count(*) as n from files group by component`),
       store.query<{ name: string; lines: number | null }>(`select name, complexity__lines as lines from files`),
       store.query<{ from: string; to: string; references: number; dynamicRefs: number | null }>(`select "from", "to", sum(reference_count) as "references"${store.hasColumn("component_connections_direct", "kind") ? `, sum(case when kind = 'dynamic' then reference_count else 0 end) as dynamicRefs` : ""} from ${store.runtimeComponentEdges} group by "from", "to"`),
-      hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number }>(`select pair_1 as "from", pair_2 as "to", shared_commits as sharedCommits from git_component_shared_commits where shared_commits > 0 and ${TRUSTED_PAIR_SQL}`) : Promise.resolve([]),
+      hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number; rate: number | null }>((() => {
+        // The smaller side's share is the larger of the two percentages.
+        const sfx = opts.period && opts.period.value !== "all" ? `__last_${opts.period.value}_days` : "";
+        return `select pair_1 as "from", pair_2 as "to", shared_commits${sfx} as sharedCommits, max(percentage_of_all_commits_pair_1${sfx}, percentage_of_all_commits_pair_2${sfx}) / 100.0 as rate from git_component_shared_commits where shared_commits${sfx} > 0 and ${TRUSTED_PAIR_SQL}`;
+      })()) : Promise.resolve([]),
     ]);
     return { components, filesPerComponent: new Map(fileCounts.map(r => [r.component, r.n])), fileLines: new Map(fileLineRows.map(r => [r.name, Number(r.lines) || 0])), staticEdges: directedReferenceEdges(staticRows), gitEdges: undirectedSharedCommitEdges(gitRows) };
-  }, [], { initial: EMPTY_COMPONENTS });
+  }, [() => opts.period?.value], { initial: EMPTY_COMPONENTS });
 
   const componentIds = computed(() => new Set(componentData.data.value.components.map(c => c.name)));
   // File rows are only worth loading once a component is open.
@@ -226,6 +232,28 @@ export function useConnectionsModel(opts: {
     return normalizeEdges(opts.source.value, reindexEdges(raw, resolve, directed.value));
   });
 
+  const undirectedKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  // Pairs an import joins, at the current level and in either direction: what
+  // hidden coupling (co-change without an import) is measured against.
+  const importPairs = computed(() => {
+    const useFiles = needFiles.value && fileData.data.value.files.length > 0;
+    const isOpen = (component: string | null | undefined) => !!component && opts.openIds.value.has(component);
+    const raw = useFiles
+      ? [
+          ...componentData.data.value.staticEdges.filter(e => !isOpen(e.from) && !isOpen(e.to)),
+          ...fileData.data.value.staticEdges.filter(e => isOpen(fileRows.value.get(e.from)?.component) || isOpen(fileRows.value.get(e.to)?.component)),
+        ]
+      : componentData.data.value.staticEdges;
+    const resolve = treeResolver({
+      groupOf: c => rollupOf.value.get(c)?.id ?? null,
+      componentOf: f => fileRows.value.get(f)?.component ?? null,
+      isFile: id => useFiles && fileRows.value.has(id),
+      openIds: opts.openIds.value,
+      visible: visibleIds.value,
+    });
+    return new Set(reindexEdges(raw, resolve, false).map(e => undirectedKey(e.from, e.to)));
+  });
+
   // ── Cycles at the current level ─────────────────────────────────────────
   const cycleSets = computed<string[][]>(() => (directed.value ? stronglyConnectedSets(visibleIds.value, edges.value) : []));
   const cycleSetOf = computed(() => { const m = new Map<string, string[]>(); for (const set of cycleSets.value) for (const id of set) m.set(id, set); return m; });
@@ -281,6 +309,8 @@ export function useConnectionsModel(opts: {
   };
 
   return {
+    importPairs,
+    undirectedKey,
     nodes, edges, directed, loading, error, hasGit, componentEdges, filesOfComponent,
     dimensions, rollupDimension, colorDimension, rollupGroups, level, openIdsForLevel, componentIds, fileRows,
     cycleSets, cycleSetOf, cycleKeys, cycleNodes, badges, hulls, membershipsOf, coverageOf,

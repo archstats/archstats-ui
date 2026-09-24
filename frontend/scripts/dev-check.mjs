@@ -42,8 +42,26 @@ if (!files.length) {
 files = files.map((f) => relative(frontendDir, f)).filter((f) => existsSync(resolve(frontendDir, f)));
 if (!files.length) { console.log("\nNo changed modules to check."); process.exit(0); }
 
+// The dev server can answer 200 for a module whose script block does not
+// compile (the error surfaces later, in the browser overlay), so each SFC's
+// script is also compiled here.
+const { parse, compileScript } = await import("@vue/compiler-sfc");
+const { readFileSync } = await import("node:fs");
+function sfcError(file) {
+  try {
+    const { descriptor, errors } = parse(readFileSync(resolve(frontendDir, file), "utf8"), { filename: file });
+    if (errors.length) return String(errors[0].message ?? errors[0]);
+    if (descriptor.script || descriptor.scriptSetup) compileScript(descriptor, { id: file });
+    return null;
+  } catch (e) { return String(e.message ?? e).split("\n")[0]; }
+}
+
 let failed = 0;
 for (const f of files) {
+  if (f.endsWith(".vue")) {
+    const err = sfcError(f);
+    if (err) { failed++; console.log(`FAIL  ${f}\n      ${err}`); continue; }
+  }
   const url = `${NUXT}/_nuxt/${f}`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(20000) });

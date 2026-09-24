@@ -18,6 +18,28 @@
         <button type="button" :aria-pressed="source === 'git'" :title="model.hasGit.value ? 'Shared commits between units' : 'No git history in this snapshot'" @click="setState({ source: 'git' })">Git</button>
         <button type="button" :aria-pressed="source === 'combined'" :title="model.hasGit.value ? 'Imports and shared commits together' : 'No git history in this snapshot'" @click="setState({ source: 'combined' })">Combined</button>
       </div>
+      <!-- Co-change: which pairs, how strong, over what window. Hidden coupling
+           is the pairs that change together with no import between them. -->
+      <template v-if="source === 'git' && model.hasGit.value">
+        <div class="ui-segmented" role="group" aria-label="Relation">
+          <button type="button" :aria-pressed="state.relation === 'all'" @click="setState({ relation: 'all', minShared: null, minRate: null })">All pairs</button>
+          <button type="button" :aria-pressed="state.relation === 'no-import'" title="Pairs that change together while no import joins them: implicit contracts" @click="setState({ relation: 'no-import', rep: 'list' })">Without an import</button>
+        </div>
+        <div class="relative">
+          <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="floorsOpen" title="How strong a pair must be to show" @click="floorsOpen = !floorsOpen">≥ {{ floors.shared }} shared · ≥ {{ Math.round(floors.rate * 100) }}%</button>
+          <template v-if="floorsOpen">
+            <div class="fixed inset-0 z-40" @click="floorsOpen = false"></div>
+            <div class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-64 flex-col gap-3 p-3 animate-in">
+              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Shared commits, at least <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="floors.shared" @change="setState({ minShared: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
+              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Of the smaller side, at least <span class="flex items-center gap-1"><input type="number" min="0" max="100" class="ui-input ui-input-sm w-16" :value="Math.round(floors.rate * 100)" @change="setState({ minRate: Math.min(100, Math.max(0, Number(($event.target as HTMLInputElement).value) || 0)) / 100 })">%</span></label>
+              <p class="text-xs leading-4 text-neutral-500">The smaller side is the one with fewer commits: a pair that shares 12 of a component's 40 commits reads 30%. Co-change is only seen within one repository.</p>
+            </div>
+          </template>
+        </div>
+        <div class="ui-segmented" role="group" aria-label="Window">
+          <button v-for="p in (['all', '180', '90', '30'] as const)" :key="p" type="button" :aria-pressed="state.period === p" @click="setState({ period: p })">{{ p === "all" ? "All" : `${p} d` }}</button>
+        </div>
+      </template>
 
       <!-- Level: which dimension rolls the tree up, which colours it, and how far it is open. -->
       <div class="relative">
@@ -201,7 +223,7 @@
       <ConnectionsList
         v-else-if="rep === 'list'"
         :nodes="model.nodes.value"
-        :edges="model.edges.value"
+        :edges="shownEdges"
         :directed="model.directed.value"
         :selected-pair="selectedPair"
         :multi="multi"
@@ -216,7 +238,7 @@
         :is="renderer"
         ref="rendererRef"
         :nodes="model.nodes.value"
-        :edges="model.edges.value"
+        :edges="shownEdges"
         :directed="model.directed.value"
         :selected-id="selectedId"
         :selected-pair="selectedPair"
@@ -461,7 +483,22 @@ const selectedCycleId = computed(() => (selection.value?.type === "cycle" ? sele
 
 // With no roll-up chosen in the URL the first dimension rolls up; "none" turns it off and sticks.
 const effectiveBy = computed(() => (by.value === "none" ? null : by.value ?? lens.active ?? null));
-const model = useConnectionsModel({ source, by: effectiveBy, color, cycles, query: q, hidden, openIds, selectedId, selectedCycleId });
+const model = useConnectionsModel({ source, by: effectiveBy, color, cycles, query: q, hidden, openIds, selectedId, selectedCycleId, period: computed(() => state.value.period) });
+// Co-change pairs, filtered by relation and floors. Hidden coupling has
+// floors by default: a pair of two shared commits is noise.
+const floorsOpen = ref(false);
+const floors = computed(() => ({
+  shared: state.value.minShared ?? (state.value.relation === "no-import" ? 10 : 1),
+  rate: state.value.minRate ?? (state.value.relation === "no-import" ? 0.3 : 0),
+}));
+const shownEdges = computed(() => {
+  if (source.value !== "git") return model.edges.value;
+  const imports = model.importPairs.value;
+  return model.edges.value.filter(e =>
+    e.sharedCommits >= floors.value.shared &&
+    (e.rate === undefined || e.rate >= floors.value.rate) &&
+    (state.value.relation === "all" || !imports.has(model.undirectedKey(e.from, e.to))));
+});
 // ── Cross-cut: rows by the roll-up dimension, columns by another ──────────
 const crossRowDim = computed(() => effectiveBy.value ?? model.dimensions.value[0] ?? null);
 const crossColDim = computed(() => {

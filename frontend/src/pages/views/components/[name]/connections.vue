@@ -129,6 +129,27 @@
           </ul>
         </section>
 
+        <!-- Hidden coupling: components that change with this one while no
+             import joins them in either direction. An implicit contract. -->
+        <section v-if="coChangeOnly.length" class="px-4 pb-2 pt-5">
+          <div class="flex items-baseline gap-2">
+            <h3 class="ui-section-title">Changes with, doesn't import</h3>
+            <router-link :to="`/views/connections?source=git&rep=list&relation=no-import&level=components&q=${encodeURIComponent(current)}`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">All hidden coupling</router-link>
+          </div>
+          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">They share commits (sweeping ones left out) but no import joins them: a contract the code does not state.</p>
+          <table class="ui-table mt-2">
+            <thead><tr><th>Component</th><th class="w-24 text-right">Shared</th><th class="w-28 text-right">Of its commits</th></tr></thead>
+            <tbody>
+              <tr v-for="c in coChangeOnly.slice(0, 20)" :key="c.name">
+                <td class="max-w-0 truncate font-mono text-sm"><router-link :to="componentPath(c.name, 'connections')" class="text-neutral-900 hover:underline" :title="c.name">{{ c.name }}</router-link></td>
+                <td class="is-num text-right">{{ formatNumber(c.shared) }}</td>
+                <td class="is-num text-right">{{ c.rate === null ? "—" : `${Math.round(c.rate * 100)}%` }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="coChangeOnly.length > 20" class="mt-1 text-sm text-neutral-500">And {{ coChangeOnly.length - 20 }} more.</p>
+        </section>
+
         <!-- Lookups the analysis saw but could not tie to a component: a string
              naming a module that is not in the scan. Each is a dependency the
              numbers above leave out. -->
@@ -421,6 +442,22 @@ const neighbours = computed<Neighbour[]>(() => {
     row.direction = out && inc ? "both" : out ? "out" : "in"
   }
   return Array.from(byName.values())
+})
+
+// Partners by co-change alone, strongest first; three shared commits is the least worth a line.
+const coChangeOnly = computed(() => {
+  const me = current.value
+  const linked = new Set<string>()
+  for (const r of data.value.direct) linked.add(r.from === me ? r.to : r.from)
+  for (const r of data.value.indirect) linked.add(r.from === me ? r.to : r.from)
+  return data.value.shared
+    .map(r => {
+      const other = r.pair_1 === me ? r.pair_2 : r.pair_1
+      const pct = r.pair_1 === me ? r.percentage_of_all_commits_pair_1 : r.percentage_of_all_commits_pair_2
+      return { name: other, shared: Number(r.shared_commits) || 0, rate: pct === null || pct === undefined ? null : Number(pct) > 1 ? Number(pct) / 100 : Number(pct) }
+    })
+    .filter(c => c.name !== me && c.name !== "." && !linked.has(c.name) && c.shared >= 3)
+    .sort((a, b) => b.shared - a.shared)
 })
 
 const dependents = computed(() => neighbours.value.filter(n => n.direction !== "out"))

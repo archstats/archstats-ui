@@ -96,7 +96,8 @@ const { data: extras } = useAsyncQuery<{ hops: Map<string, number>; kinds: Map<s
 // (summing component pairs counts a commit once for every pair it touches).
 const { data: history } = useAsyncQuery<{ perNode: Map<string, number>; shared: Map<string, number> } | null>(
   async () => {
-    if (!props.withHistory || !data.hasView("git_commits")) return null;
+    // Component pairs come counted by the engine; only groups need the pass.
+    if (!props.withHistory || componentGrain.value || !data.hasView("git_commits")) return null;
     const perNode = new Map<string, number>(), shared = new Map<string, number>();
     const [lim] = await data.query<{ v: string | null }>(`SELECT (SELECT value FROM _snapshot WHERE key = 'git_max_changes_per_commit' LIMIT 1) AS v`).catch(() => [{ v: null }]);
     const max = Number(lim?.v) || 100;
@@ -152,7 +153,7 @@ const rows = computed<Row[]>(() => props.edges.map(e => {
     fromLabel: labelOf.value.get(e.from) ?? e.from, toLabel: labelOf.value.get(e.to) ?? e.to,
     references: e.references, dynamicRefs: e.dynamicRefs ?? 0,
     shared,
-    rate: smaller && shared ? shared / smaller : null,
+    rate: e.rate !== undefined ? e.rate : smaller && shared ? shared / smaller : null,
     hops: hopsOf(e.from, e.to),
     weight: e.weight,
     kinds: kindsOf(e.from, e.to),

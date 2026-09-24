@@ -84,6 +84,7 @@
       <Icon icon="refresh" :size="13"/>
       <span>This edge is part of a cycle.</span>
     </p>
+    <SharedCommitList v-if="source !== 'static' && pairFileSql" :a-files="pairFileSql[0]" :b-files="pairFileSql[1]"/>
   </div>
 
   <!-- A node, answering three questions in order: what is this, what is
@@ -187,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import SharedCommitList from "~/components/git/SharedCommitList.vue";
 import { groupPath } from "~/utils/routes";
 import { computed, ref, watch } from "vue";
 import Icon from "~/components/ui/common/Icon.vue";
@@ -452,6 +454,23 @@ const pairBack = computed(() => {
   const { from, to } = props.selection;
   return props.edges.filter(e => e.from === to && e.to === from).reduce((s, e) => s + e.references, 0);
 });
+// Each end of a pair as an SQL predicate on git_commits, for its evidence.
+const pairFileSql = computed<[string, string] | null>(() => {
+  if (props.selection?.type !== "pair") return null;
+  const sel = props.selection;
+  const side = (id: string): string | null => {
+    const n = props.nodes.find(x => x.id === id);
+    if (!n) return null;
+    if (n.kind === "component") return `component = ${sqlLiteral(id)}`;
+    if (n.kind === "file") return `file = ${sqlLiteral(id)}`;
+    const g = groups.groups.find(x => x.id === id);
+    const files = g ? [...groups.filesOf(g)] : [];
+    return files.length ? `file IN (${files.map(sqlLiteral).join(", ")})` : null;
+  };
+  const a = side(sel.from), b = side(sel.to);
+  return a && b ? [a, b] : null;
+});
+
 const pairCells = computed(() => {
   if (props.selection?.type !== "pair") return [];
   const { from, to } = props.selection;
