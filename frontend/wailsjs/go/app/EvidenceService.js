@@ -6,6 +6,10 @@ export function Delete(arg1) {
   return window['go']['app']['EvidenceService']['Delete'](arg1);
 }
 
+export function DeleteReport(arg1) {
+  return window['go']['app']['EvidenceService']['DeleteReport'](arg1);
+}
+
 export function Figure(arg1) {
   return window['go']['app']['EvidenceService']['Figure'](arg1);
 }
@@ -14,12 +18,28 @@ export function List(arg1) {
   return window['go']['app']['EvidenceService']['List'](arg1);
 }
 
+export function RenderPDF(arg1) {
+  return window['go']['app']['EvidenceService']['RenderPDF'](arg1);
+}
+
 export function Reorder(arg1, arg2) {
   return window['go']['app']['EvidenceService']['Reorder'](arg1, arg2);
 }
 
+export function ReorderReports(arg1, arg2) {
+  return window['go']['app']['EvidenceService']['ReorderReports'](arg1, arg2);
+}
+
+export function Reports(arg1) {
+  return window['go']['app']['EvidenceService']['Reports'](arg1);
+}
+
 export function SaveFigure(arg1, arg2, arg3) {
   return window['go']['app']['EvidenceService']['SaveFigure'](arg1, arg2, arg3);
+}
+
+export function SaveReport(arg1) {
+  return window['go']['app']['EvidenceService']['SaveReport'](arg1);
 }
 
 export function Upsert(arg1) {

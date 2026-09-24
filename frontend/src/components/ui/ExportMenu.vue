@@ -66,6 +66,20 @@
               </button>
             </template>
           </template>
+
+          <template v-if="!isReportView && (item.kind !== 'table' || !tableReason(item)) && (item.kind !== 'document' || !item.disabledReason?.())">
+            <button type="button" class="ui-menu-item" role="menuitem" :aria-expanded="addFor === i" :disabled="item.kind === 'figure' && !item.ready()" @click.stop="toggleAdd(i)">
+              <Icon icon="file-text" :size="12" class="text-neutral-500"/><span class="flex-1">Add to report</span><Icon :icon="addFor === i ? 'chevron-down' : 'chevron-right'" :size="12" class="text-neutral-400"/>
+            </button>
+            <div v-if="addFor === i" class="mb-1 ml-6 flex flex-col">
+              <button v-for="r in reportList" :key="r.id" type="button" class="ui-menu-item" role="menuitem" @click="addTo(item, r.id, r.title)">
+                <span class="min-w-0 flex-1 truncate">{{ r.title || "Untitled report" }}</span>
+              </button>
+              <button type="button" class="ui-menu-item text-neutral-600" role="menuitem" @click="addTo(item, null, item.title)">
+                <Icon icon="plus" :size="12" class="text-neutral-500"/><span>New report</span>
+              </button>
+            </div>
+          </template>
         </template>
 
         <template v-if="dark && hasFigures">
@@ -106,6 +120,10 @@ import { FILTERS, copyText, lastExport, reveal, saveBase64, saveText } from "~/u
 import { isDarkAppearance, pngBase64, svgDocument } from "~/utils/figure";
 import { buildProvenance, provenanceShort } from "~/utils/provenance";
 import { useEvidenceStore } from "~/stores/evidence";
+import { useReportsStore } from "~/stores/reports";
+import { useWorkspacesStore } from "~/stores/workspaces";
+import { fromMarkdown, newId, type Block, type RanOn } from "~/utils/reportDoc";
+import { formatScanTime } from "~/utils/time";
 
 // The one Export menu. In a view's toolbar it is a button; the shell mounts a
 // headless one so ⌘E works on views without a toolbar. Every action ends the
@@ -210,6 +228,48 @@ async function pinView() {
     await evidence.pin({ kind: "view", entityKey: location.hash.replace(/^#/, ""), title, figure });
     done("Pinned");
   } catch (e) { fail("Pin", e); }
+}
+
+// ── Add to report: what the view shows, kept as a cell of a report ──────
+const addFor = ref<number | null>(null);
+const reportsStore = useReportsStore();
+const workspacesStore = useWorkspacesStore();
+const reportList = computed(() => reportsStore.list);
+const isReportView = computed(() => typeof location !== "undefined" && location.hash.startsWith("#/views/evidence"));
+function toggleAdd(i: number) {
+  addFor.value = addFor.value === i ? null : i;
+  if (addFor.value !== null && workspacesStore.active) void reportsStore.load(workspacesStore.active.id);
+}
+function ranOnNow(): RanOn {
+  const p = buildProvenance();
+  const scan: any = workspacesStore.scans.find((s: any) => s.id === workspacesStore.openScanId);
+  return {
+    scanId: workspacesStore.openScanId ?? "", label: scan ? formatScanTime(scan.headTime ?? scan.startedAt) : p.snapshot, commit: p.commit, revision: p.revision,
+    at: new Date().toISOString(), lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined,
+  };
+}
+async function addTo(item: Exportable, reportId: string | null, title: string) {
+  close();
+  addFor.value = null;
+  try {
+    const route = location.hash.replace(/^#/, "");
+    const view = (document.querySelector(".ui-toolbar-title")?.textContent?.trim() || item.title);
+    let blocks: Block[];
+    if (item.kind === "figure") {
+      const out = await renderFigure(item);
+      const path = await reportsStore.keepFigure(await pngBase64(out, "", { light: true }));
+      blocks = [{ id: newId(), kind: "cell", cell: { spec: { type: "capture", kind: "figure", route, view }, title: item.title, caption: "", output: { figure: path }, ranOn: ranOnNow() } }];
+    } else if (item.kind === "table") {
+      const cols = item.columns();
+      const rows = item.rows().slice(0, 500);
+      const numeric = (id: string) => rows.some(r => typeof r[id] === "number") && rows.every(r => r[id] === null || r[id] === undefined || r[id] === "" || typeof r[id] === "number");
+      blocks = [{ id: newId(), kind: "cell", cell: { spec: { type: "capture", kind: "table", route, view }, title: item.title, caption: "", output: { table: { columns: cols.map(c => ({ id: c.id, label: c.label, numeric: numeric(c.id) })), rows, total: item.rows().length } }, ranOn: ranOnNow() } }];
+    } else {
+      blocks = fromMarkdown(await item.markdown());
+    }
+    await reportsStore.append(reportId, blocks, title);
+    done(`Added to ${reportsStore.current?.title || title}`);
+  } catch (e) { fail("Add to report", e); }
 }
 
 async function revealLast() {

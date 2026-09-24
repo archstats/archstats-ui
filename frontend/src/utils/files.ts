@@ -15,6 +15,7 @@ export const FILTERS = {
     svg: { name: "SVG image", patterns: "*.svg" },
     json: { name: "JSON", patterns: "*.json" },
     db: { name: "Archstats snapshot", patterns: "*.db" },
+    pdf: { name: "PDF document", patterns: "*.pdf" },
 } satisfies Record<string, Filter>
 
 /** The path of the last file saved this session, for "Reveal last export". */

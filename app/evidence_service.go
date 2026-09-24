@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/archstats/archstats-ui/app/report"
 	"github.com/archstats/archstats-ui/app/store"
 	"github.com/google/uuid"
 )
@@ -79,4 +80,42 @@ func (e *EvidenceService) Figure(path string) (string, error) {
 		return "", nil
 	}
 	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// Reports lists a workspace's report notebooks, in their order.
+func (e *EvidenceService) Reports(workspaceID string) ([]*store.Report, error) {
+	rs, err := e.store.Reports(workspaceID)
+	if rs == nil {
+		rs = []*store.Report{}
+	}
+	return rs, err
+}
+
+// SaveReport inserts a report (a new id when it has none) or saves its title and body.
+func (e *EvidenceService) SaveReport(r store.Report) (*store.Report, error) {
+	if r.ID == "" {
+		r.ID = uuid.NewString()
+	}
+	if err := e.store.UpsertReport(&r); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+func (e *EvidenceService) ReorderReports(workspaceID string, ids []string) error {
+	return e.store.ReorderReports(workspaceID, ids)
+}
+
+func (e *EvidenceService) DeleteReport(id string) error {
+	return e.store.DeleteReport(id)
+}
+
+// RenderPDF lays a report out as a PDF and returns it as base64, for the
+// files service to save where the user chooses.
+func (e *EvidenceService) RenderPDF(doc report.Doc) (string, error) {
+	out, err := report.Render(doc)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(out), nil
 }

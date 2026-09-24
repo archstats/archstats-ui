@@ -599,6 +599,130 @@ export namespace query {
 
 }
 
+export namespace report {
+	
+	export class Table {
+	    columns: string[];
+	    align: string[];
+	    rows: string[][];
+	
+	    static createFrom(source: any = {}) {
+	        return new Table(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.columns = source["columns"];
+	        this.align = source["align"];
+	        this.rows = source["rows"];
+	    }
+	}
+	export class Run {
+	    text: string;
+	    bold: boolean;
+	    italic: boolean;
+	    code: boolean;
+	    link: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Run(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.bold = source["bold"];
+	        this.italic = source["italic"];
+	        this.code = source["code"];
+	        this.link = source["link"];
+	    }
+	}
+	export class Block {
+	    kind: string;
+	    runs: Run[];
+	    items: Run[][];
+	    start: number;
+	    code: string;
+	    table?: Table;
+	    image: string;
+	    title: string;
+	    caption: string;
+	    provenance: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Block(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.runs = this.convertValues(source["runs"], Run);
+	        this.items = this.convertValues(source["items"], Run);
+	        this.start = source["start"];
+	        this.code = source["code"];
+	        this.table = this.convertValues(source["table"], Table);
+	        this.image = source["image"];
+	        this.title = source["title"];
+	        this.caption = source["caption"];
+	        this.provenance = source["provenance"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Doc {
+	    title: string;
+	    meta: string[];
+	    blocks: Block[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Doc(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.meta = source["meta"];
+	        this.blocks = this.convertValues(source["blocks"], Block);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+
+}
+
 export namespace scan {
 	
 	export class CommitInfo {
@@ -770,6 +894,48 @@ export namespace store {
 	        this.note = source["note"];
 	        this.figurePath = source["figurePath"];
 	        this.createdAt = this.convertValues(source["createdAt"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Report {
+	    id: string;
+	    workspaceId: string;
+	    position: number;
+	    title: string;
+	    body: string;
+	    createdAt: time.Time;
+	    updatedAt: time.Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new Report(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.workspaceId = source["workspaceId"];
+	        this.position = source["position"];
+	        this.title = source["title"];
+	        this.body = source["body"];
+	        this.createdAt = this.convertValues(source["createdAt"], time.Time);
+	        this.updatedAt = this.convertValues(source["updatedAt"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

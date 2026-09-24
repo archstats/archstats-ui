@@ -16,7 +16,7 @@ import {
   RotateCcw,
   Footprints,
   Pencil,
-  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search, SearchCode, Undo2, Redo2, FlaskConical,
+  ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search, SearchCode, Undo2, Redo2, FlaskConical, Heading, List, ListOrdered, TextQuote, Code, RefreshCw as RefreshCwIcon, Terminal as TerminalIcon, GripVertical, FileDown,
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal
@@ -68,6 +68,24 @@ const iconComponent = computed(() => {
       return ArrowLeft
     case "x":
       return X
+    case "heading":
+      return Heading;
+    case "list":
+      return List;
+    case "list-ordered":
+      return ListOrdered;
+    case "quote":
+      return TextQuote;
+    case "code":
+      return Code;
+    case "refresh-cw":
+      return RefreshCwIcon;
+    case "terminal":
+      return TerminalIcon;
+    case "grip":
+      return GripVertical;
+    case "file-down":
+      return FileDown;
     case "undo":
       return Undo2;
     case "redo":

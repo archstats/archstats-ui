@@ -65,3 +65,38 @@ export function pickValues(row: Record<string, unknown> | null | undefined, metr
     }
     return out
 }
+
+/** A pin as the evidence store keeps it: enough to measure it again. */
+export interface MeasurablePin { kind: PinKind; entityKey: string }
+
+/**
+ * What a pin measures in one snapshot, or null when what it names is gone.
+ * `cache` holds the tangle membership between calls on the same snapshot.
+ */
+export async function measurePin(p: MeasurablePin, q: (sql: string) => Promise<any[]>, cache: { groupOf?: Map<string, string> } = {}): Promise<PinValues | null> {
+    const lit = (s: string) => `'${String(s).replace(/'/g, "''")}'`
+    if (p.kind === "component" || p.kind === "file") {
+        const table = p.kind === "component" ? "components" : "files"
+        const [row] = await q(`SELECT * FROM ${table} WHERE name = ${lit(p.entityKey)} LIMIT 1`)
+        return row ? pickValues(row, PIN_METRICS[p.kind]) : null
+    }
+    if (p.kind === "cycle") {
+        if (!cache.groupOf) {
+            cache.groupOf = new Map()
+            for (const r of await q(`SELECT "group", component FROM component_strongly_connected_groups WHERE "group" IN (SELECT "group" FROM component_strongly_connected_groups GROUP BY 1 HAVING count(*) > 1)`)) cache.groupOf.set(String(r.component), String(r.group))
+        }
+        const members = p.entityKey.split("\n")
+        return cycleHolds(members, cache.groupOf) ? { size: members.length } : null
+    }
+    if (p.kind === "rule") {
+        const [rule, from, to, file] = p.entityKey.split("|")
+        const [r] = await q(`SELECT count(*) AS n FROM rules WHERE status = 'violation' AND rule = ${lit(rule)} AND "from" = ${lit(from)} AND "to" = ${lit(to)} AND file = ${lit(file ?? "")}`)
+        return Number(r?.n) ? { findings: Number(r.n) } : null
+    }
+    if (p.kind === "pair") {
+        const [from, to] = p.entityKey.split(">")
+        const [r] = await q(`SELECT sum(reference_count) AS n FROM component_connections_direct WHERE "from" = ${lit(from)} AND "to" = ${lit(to)}`)
+        return Number(r?.n) ? { references: Number(r.n) } : null
+    }
+    return null
+}

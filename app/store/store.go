@@ -58,6 +58,7 @@ var migrations = []func(tx *sql.Tx) error{
 	migrate1,
 	migrate2,
 	migrate3,
+	migrate4,
 }
 
 func (s *Store) migrate() error {
@@ -217,5 +218,23 @@ CREATE TABLE evidence_pins (
 	created_at   DATETIME NOT NULL
 );
 CREATE INDEX idx_evidence_workspace ON evidence_pins(workspace_id, position);`)
+	return err
+}
+
+// migrate4 keeps reports: notebooks of prose and evidence cells written from
+// the pins. The body is the document as JSON, owned by the frontend; the row
+// only knows what a list of reports needs.
+func migrate4(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+CREATE TABLE reports (
+	id           TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+	position     INTEGER NOT NULL,
+	title        TEXT NOT NULL DEFAULT '',
+	body         TEXT NOT NULL DEFAULT '{}',
+	created_at   DATETIME NOT NULL,
+	updated_at   DATETIME NOT NULL
+);
+CREATE INDEX idx_reports_workspace ON reports(workspace_id, position);`)
 	return err
 }

@@ -67,7 +67,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - Groups: user-defined sets of components or files, persisted per workspace; lenses (dimensions) of groups, proposed from the code, the history, CODEOWNERS or the build modules, with declared dependencies checked import by import.
 - Scan comparison: Changes compares a snapshot against a baseline, and Over time across snapshots. Both read existing snapshots and never change them; a baseline commit can be rescanned so that both sides share one analysis revision.
 - Rescanning a commit, and backfilling tags, each in a temporary clone that leaves the working copy untouched.
-- Report output v1: CSV and Markdown for tables, PNG and SVG for figures, each captioned with provenance (workspace, snapshot, commit, analysis revision, lens, scope). The evidence board exports a Markdown report with a methodology header and its figures. No PDF in v1.
+- Report output: CSV and Markdown for tables, PNG and SVG for figures, each captioned with provenance (workspace, snapshot, commit, analysis revision, lens, scope). Evidence is a set of reports written as notebooks (Markdown prose and evidence cells frozen at their run, re-runnable on a newer snapshot) drawing on one pool of pins; each exports as a PDF laid out natively and as Markdown with its figures.
 - Pseudonymised authors in every view and export.
 - Native macOS menu; ⌘P Go to anything; ⌘E Export.
 - Snapshot import (⌘O, drop, command line) and reveal.
@@ -86,7 +86,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - Nothing is stored outside the designated app-data directory.
 - CGO is mandatory (tree-sitter and go-sqlite3), so Wails apps are built natively per OS.
 - Nuxt 3 in SPA mode with hash routing; devtools disabled; `emitRouteChunkError: false`. Dist output only when `NUXT_DIST_OUTPUT=1`.
-- Frontend stack is fixed: Vue 3, TypeScript, Pinia, Tailwind, D3 (+ d3-force), gridjs, splitpanes. Adding dependencies requires asking first. The persona roadmap (2026-09) added no npm or Go modules.
+- Frontend stack is fixed: Vue 3, TypeScript, Pinia, Tailwind, D3 (+ d3-force), gridjs, splitpanes. Adding dependencies requires asking first. The persona roadmap (2026-09) added no npm modules; PDF reports use `github.com/go-pdf/fpdf`, already in the engine's module graph.
 - Any change to the archstats engine repo requires asking first.
 
 **Terminology (use consistently in UI copy):**
@@ -101,7 +101,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 - *Analysis revision*: the version of the engine's analysis a snapshot was read with. *Comparable*: same revision and same ignore globs.
 - *Tangle*: a strongly connected set of two or more components.
 - *Role*: production, test, generated, third-party or non-code, per file.
-- *Pin*: an item on the evidence board, and only that. *Evidence board*: the pinned findings with their provenance.
+- *Pin*: a finding kept in the pool, and only that. *Pool*: a workspace's pins. *Report*: a notebook of prose and evidence cells drawn from the pool. *Cell*: evidence in a report, frozen at the snapshot it ran on.
 - *Arrange* and *Unplaced*: graph positions kept by hand, and nodes not yet placed.
 - *Extremes*: the Overview's fixed sorts, one per row.
 - Metric names follow the engine's `family__metric` ids (for example `modularity__instability`, `graph__page_rank`, `git__commits__total`) with friendly names supplied by `_metric_definitions`.
