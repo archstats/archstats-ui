@@ -30,7 +30,7 @@
       </button>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.showBots" :class="{ 'bg-neutral-100': authorsStore.showBots }"
               title="Dependency bumpers, CI accounts and release-plugin commits are hidden unless shown here"
-              @click="authorsStore.showBots = !authorsStore.showBots">
+              @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
         <span>{{ authorsStore.showBots ? "Bots shown" : "Bots hidden" }}</span>
       </button>

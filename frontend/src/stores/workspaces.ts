@@ -17,6 +17,7 @@ import { Start } from "wailsjs/go/app/ScanService";
 import type { store } from "wailsjs/go/models";
 import { useDataStore } from "~/stores/data";
 import { useGroupsStore } from "~/stores/groups";
+import { useAuthorsStore } from "~/stores/authors";
 import { useLensStore } from "~/stores/lens";
 import { useDraftStore } from "~/stores/draft";
 import { useScopeStore } from "~/stores/scope";
@@ -237,6 +238,7 @@ export const useWorkspacesStore = defineStore("workspaces", {
             if (this.activeWorkspaceId !== workspaceId) return;
             useGroupsStore().initForProject(workspaceId);
             useLensStore().load(workspaceId);
+            useAuthorsStore().load(workspaceId, true);
             useDraftStore().load(workspaceId);
             await this.refreshScans();
 

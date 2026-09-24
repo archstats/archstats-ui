@@ -7,7 +7,7 @@
       </div>
       <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
               :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
-              @click="authorsStore.showBots = !authorsStore.showBots">
+              @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
         <span>{{ authorsStore.showBots ? "Bots shown" : `${formatNumber(botCommits)} bot commits hidden` }}</span>
       </button>

@@ -211,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import { readDurable, writeDurable } from "~/utils/durable";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ViewWorkspaceLayout from "~/components/ViewWorkspaceLayout.vue";
@@ -308,7 +309,7 @@ watch(() => draft.justMade, key => {
 const wayKey = () => `archstats.studio.way.${workspaceKey.value}.${draft.dimension}`;
 function rememberedWay(): WayId {
   try {
-    const saved = localStorage.getItem(wayKey());
+    const saved = readDurable(workspaceKey.value, `studio.way.${draft.dimension}`, wayKey());
     if (saved && WAYS.some(w => w.id === saved)) return saved as WayId;
   } catch {}
   // A cut across the codebase is a job-shaped question and a cut down it is
@@ -597,7 +598,7 @@ function pickWay(id: WayId) {
   // A layer is the one question a package can answer two ways at once, so it
   // arrives able to divide one — unless work or an explicit choice says not.
   draft.followWay(studio.way.value);
-  try { localStorage.setItem(wayKey(), id); } catch {}
+  writeDurable(workspaceKey.value, `studio.way.${draft.dimension}`, wayKey(), id);
   pinned.value = null;
   clearSelection();
 }

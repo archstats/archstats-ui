@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { useGroupsStore } from "~/stores/groups";
+import { readDurable, writeDurable } from "~/utils/durable";
 
 // The lens: the one dimension the workspace is currently looked at through.
 // Views colour, legend and roll up by it unless their own state says
@@ -9,7 +10,7 @@ import { useGroupsStore } from "~/stores/groups";
 const PREFIX = "archstats.lens.";
 
 export const useLensStore = defineStore("lens", {
-  state: (): { dimension: string | null; storageKey: string | null } => ({ dimension: null, storageKey: null }),
+  state: (): { dimension: string | null; storageKey: string | null; workspace: string } => ({ dimension: null, storageKey: null, workspace: "" }),
   getters: {
     /** The chosen dimension when it still exists, else the first one, else null. */
     active(state): string | null {
@@ -25,14 +26,13 @@ export const useLensStore = defineStore("lens", {
   actions: {
     load(workspaceKey: string) {
       this.storageKey = PREFIX + workspaceKey;
-      try { this.dimension = localStorage.getItem(this.storageKey) || null; } catch { this.dimension = null; }
+      this.workspace = workspaceKey;
+      this.dimension = readDurable(workspaceKey, "lens.active", this.storageKey) || null;
     },
     set(dimension: string | null) {
       this.dimension = dimension;
-      try {
-        if (!this.storageKey) return;
-        if (dimension) localStorage.setItem(this.storageKey, dimension); else localStorage.removeItem(this.storageKey);
-      } catch {}
+      if (!this.storageKey) return;
+      writeDurable(this.workspace, "lens.active", this.storageKey, dimension || null);
     },
   },
 });

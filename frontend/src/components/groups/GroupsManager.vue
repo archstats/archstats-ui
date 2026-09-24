@@ -20,17 +20,30 @@
               <h2 class="text-base font-semibold text-neutral-900">Groups</h2>
               <span class="text-sm text-neutral-500">{{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? '' : 's' }} · {{ groupsStore.dimensions.length }} {{ groupsStore.dimensions.length === 1 ? 'lens' : 'lenses' }}</span>
               <div class="ml-auto flex items-center gap-1.5">
-                <button type="button" class="ui-btn ui-btn-sm" title="Import groups from a JSON file" @click="fileInputRef?.click()">
-                  <Icon icon="folder" :size="13" class="text-neutral-500"/><span>Import</span>
+                <button type="button" class="ui-btn ui-btn-sm" title="Import a workspace config or groups export" @click="fileInputRef?.click()">
+                  <Icon icon="folder" :size="13" class="text-neutral-500"/><span>Import…</span>
                 </button>
-                <button type="button" class="ui-btn ui-btn-sm" :disabled="groupsStore.groups.length === 0" title="Export every group as JSON" @click="handleExport">
-                  <Icon icon="download" :size="13" class="text-neutral-500"/><span>Export</span>
+                <button type="button" class="ui-btn ui-btn-sm" :disabled="groupsStore.groups.length === 0" title="Groups, lenses, author merges and arrangements, as one file" @click="handleExport">
+                  <Icon :icon="exportStatus ? 'check' : 'download'" :size="13" :class="exportStatus ? 'text-green-600' : 'text-neutral-500'"/><span>{{ exportStatus || "Export config…" }}</span>
                 </button>
                 <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden" @change="handleImport"/>
                 <span class="ui-toolbar-sep"></span>
                 <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="close"><Icon icon="x" :size="14"/></button>
               </div>
             </header>
+            <!-- What an import holds, and whether it adds to this workspace or replaces it. -->
+            <div v-if="pendingImport" class="flex flex-col gap-3 bg-accent-50 px-5 py-3 hairline-b" role="dialog" aria-label="Import workspace config">
+              <p class="text-base text-neutral-900">
+                <span class="font-medium">{{ pendingImport.name }}</span> holds
+                {{ importSummary }}.
+              </p>
+              <div class="flex items-center gap-2">
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" title="Add what is new; keep everything here" @click="applyImport('merge')">Merge</button>
+                <button type="button" class="ui-btn ui-btn-sm" title="Replace this workspace's groups, lenses, merges and arrangements with the file's" @click="applyImport('replace')">Replace</button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pendingImport = null">Cancel</button>
+                <span class="ml-auto text-sm text-neutral-500">Replace removes {{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? "" : "s" }} here.</span>
+              </div>
+            </div>
 
             <p v-if="importError" class="flex items-center gap-2 px-5 py-2 text-sm text-red-700 hairline-b" role="alert">
               <Icon icon="alert" :size="13"/><span>{{ importError }}</span>
@@ -233,6 +246,10 @@ import { generalise, parseQuery, runQuery } from '~/utils/query'
 import { detectSeparator } from '~/utils/studio'
 import { useDataStore } from '~/stores/data'
 import { useScopeStore } from '~/stores/scope'
+import { useAuthorsStore } from '~/stores/authors'
+import { useStateStore } from '~/stores/state'
+import { useWorkspacesStore } from '~/stores/workspaces'
+import { buildConfig, countsOf, isLayoutKey, parseConfig, type WorkspaceConfig } from '~/utils/workspaceConfig'
 
 const groupsStore = useGroupsStore()
 const dataStore = useDataStore()
@@ -247,6 +264,9 @@ const editName = ref('')
 const deleteConfirming = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const importError = ref<string | null>(null)
+const authorsStore = useAuthorsStore()
+const stateStore = useStateStore()
+const workspaces = useWorkspacesStore()
 
 // ── Open / close ───────────────────────────────────────
 function open() {
@@ -433,24 +453,54 @@ function confirmCreate() {
 }
 
 // ── Import / Export ───────────────────────────────────
+const pendingImport = ref<{ name: string; config: WorkspaceConfig } | null>(null)
+const importSummary = computed(() => {
+  if (!pendingImport.value) return ""
+  const c = countsOf(pendingImport.value.config)
+  const n = (v: number, one: string, many: string) => `${v} ${v === 1 ? one : many}`
+  return [n(c.groups, "group", "groups"), n(c.lenses, "lens", "lenses"), n(c.aliases, "author merge", "author merges"), n(c.layouts, "arrangement", "arrangements"), ...(c.queries ? [n(c.queries, "saved query", "saved queries")] : [])].join(", ")
+})
+
 function handleImport(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   const reader = new FileReader()
   reader.onload = () => {
-    try { groupsStore.importGroups(reader.result as string, 'merge'); importError.value = null } catch (e) { importError.value = 'That file is not an Archstats groups export. Nothing was imported.'; console.error('Import failed:', e) }
+    try {
+      pendingImport.value = { name: file.name, config: parseConfig(reader.result as string) }
+      importError.value = null
+    } catch (e) {
+      importError.value = `${e instanceof Error ? e.message : String(e)} Nothing was imported.`
+    }
   }
   reader.readAsText(file)
   input.value = ''
 }
+
+function applyImport(mode: 'merge' | 'replace') {
+  const p = pendingImport.value
+  if (!p) return
+  const c = p.config
+  groupsStore.importGroups(JSON.stringify({ version: 4, groups: c.groups, dimensions: c.dimensions }), mode)
+  authorsStore.setAliases(mode === 'replace' ? c.authorAliases : { ...authorsStore.aliases, ...c.authorAliases })
+  if (mode === 'replace') for (const k of Object.keys(stateStore.values)) if (isLayoutKey(k)) stateStore.set(k, null)
+  for (const [k, v] of Object.entries(c.layouts)) stateStore.set(k, v)
+  if (c.savedQueries.length) stateStore.set('queries.saved', mode === 'replace' ? c.savedQueries : [...(stateStore.get<unknown[]>('queries.saved', []) ?? []), ...c.savedQueries])
+  pendingImport.value = null
+}
+
 // A Blob-and-anchor download does nothing in the desktop build; the native
 // save dialog does.
+const exportStatus = ref("")
 async function handleExport() {
   try {
-    await saveText('archstats-groups.json', groupsStore.exportGroups(), [FILTERS.json], 'Export groups')
+    const cfg = buildConfig(groupsStore.groups, groupsStore.dimensionRecords, authorsStore.aliases, stateStore.values)
+    const slug = (workspaces.active?.name ?? 'workspace').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const path = await saveText(`${slug}.archstats.json`, JSON.stringify(cfg, null, 2), [FILTERS.json], 'Export workspace config')
+    if (path) { exportStatus.value = "Saved"; setTimeout(() => { exportStatus.value = "" }, 1600) }
   } catch (e) {
-    importError.value = `Could not save the groups: ${e instanceof Error ? e.message : String(e)}`
+    importError.value = `Could not save the config: ${e instanceof Error ? e.message : String(e)}`
   }
 }
 </script>

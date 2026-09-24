@@ -2,6 +2,7 @@ import { acceptHMRUpdate, defineStore } from "pinia"
 import { canonicalAuthor, maskPeople, pseudonymLabels, type AliasMap } from "~/utils/authors"
 import { useDataStore } from "~/stores/data"
 import { useStateStore } from "~/stores/state"
+import { readDurable, writeDurable } from "~/utils/durable"
 
 // The architect's corrections to the git history: which names are one person,
 // and whether machine accounts are counted. Merges belong to a workspace --
@@ -62,15 +63,21 @@ export const useAuthorsStore = defineStore("authors", {
         },
     },
     actions: {
-        load(workspace: string) {
-            if (this.workspace === workspace) return
+        /** Reads the workspace's merges; `force` after hydration, when app.db has become the source. */
+        load(workspace: string, force = false) {
+            if (this.workspace === workspace && !force) return
             this.workspace = workspace
             try {
-                const raw = localStorage.getItem(key(workspace))
+                const raw = readDurable(workspace, "authors.aliases", key(workspace))
                 this.aliases = raw ? JSON.parse(raw) : {}
             } catch {
                 this.aliases = {}
             }
+            this.showBots = readDurable(workspace, "authors.showBots", `archstats:author-bots:${workspace}`) === "true"
+        },
+        setShowBots(on: boolean) {
+            this.showBots = on
+            writeDurable(this.workspace, "authors.showBots", `archstats:author-bots:${this.workspace}`, on ? "true" : null)
         },
         async setPseudonymise(on: boolean) {
             if (on) await this.loadLabels(true)
@@ -87,7 +94,11 @@ export const useAuthorsStore = defineStore("authors", {
             this.labelsFor = key
         },
         save() {
-            try { localStorage.setItem(key(this.workspace), JSON.stringify(this.aliases)) } catch { /* private mode */ }
+            writeDurable(this.workspace, "authors.aliases", key(this.workspace), JSON.stringify(this.aliases))
+        },
+        setAliases(aliases: AliasMap) {
+            this.aliases = { ...aliases }
+            this.save()
         },
         /** Fold `alias` (and anything already merged into it) into `into`. */
         merge(alias: string, into: string) {

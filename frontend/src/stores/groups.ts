@@ -1,4 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
+import { readDurable, writeDurable } from "~/utils/durable"
 import { v4 as uuidv4 } from 'uuid'
 import { useDataStore } from '~/stores/data'
 import { isLive, parseQuery, runQuery, type Query } from '~/utils/query'
@@ -266,19 +267,18 @@ export function parseDimensions(data: any, groups: SavedGroup[]): Dimension[] {
     return out.sort((a, b) => a.order - b.order).map((d, i) => ({ ...d, order: i }))
 }
 
+// Groups are the architect's months of work: they live in app.db (the
+// versioned blob stored opaque under "groups"), carried up from the browser
+// copy earlier versions kept.
 function saveToLocalStorage(projectKey: string, groups: SavedGroup[], dimensions: Dimension[]) {
     if (!projectKey) return
-    try {
-        localStorage.setItem(getStorageKey(projectKey), JSON.stringify({ version: STORAGE_VERSION, groups, dimensions }))
-    } catch (e) {
-        console.warn('Failed to save groups to localStorage:', e)
-    }
+    writeDurable(projectKey, 'groups', getStorageKey(projectKey), JSON.stringify({ version: STORAGE_VERSION, groups, dimensions }))
 }
 
 function loadFromLocalStorage(projectKey: string): { groups: SavedGroup[]; dimensions: Dimension[] } | null {
     if (!projectKey) return null
     try {
-        const raw = localStorage.getItem(getStorageKey(projectKey))
+        const raw = readDurable(projectKey, 'groups', getStorageKey(projectKey))
         if (!raw) return null
         const data = JSON.parse(raw)
         // Migration here is one-way and these are hand-made decisions, so the
