@@ -89,6 +89,11 @@ func main() {
 	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
 	scanSvc.SetOnDone(func(scanID string) { go changesSvc.ComputeReadings(scanID) })
 
+	appSvc := app.NewAppService(version)
+	if wd, err := os.Getwd(); err == nil {
+		appSvc.QueueSnapshots(os.Args[1:], wd)
+	}
+
 	err = wails.Run(&options.App{
 		Title:     "Archstats Desktop",
 		Width:     1280,
@@ -101,7 +106,23 @@ func main() {
 		// Wails only enables the macOS zoom (green) button when Mac options are
 		// present. The hidden-inset title bar lets the sidebar brand row carry
 		// the traffic lights; the frontend marks its own drag regions.
-		Menu:                     app.ApplicationMenu(menuSvc),
+		Menu: app.ApplicationMenu(menuSvc),
+		// A .db dropped on the window is offered for import.
+		DragAndDrop: &options.DragAndDrop{EnableFileDrop: true},
+		// "archstats-desktop x.db" while the app runs opens the import in the
+		// running window instead of a second copy of the app.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "dev.archstats.desktop",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				if appSvc.QueueSnapshots(data.Args, data.WorkingDirectory) && appCtx != nil {
+					runtime.EventsEmit(appCtx, "import:pending")
+				}
+				if appCtx != nil {
+					runtime.WindowUnminimise(appCtx)
+					runtime.WindowShow(appCtx)
+				}
+			},
+		},
 		EnableDefaultContextMenu: true,
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
@@ -118,7 +139,7 @@ func main() {
 			app.NewQueryService(querySvc),
 			app.NewStateService(st),
 			menuSvc,
-			app.NewAppService(version),
+			appSvc,
 			app.NewFilesService(func() context.Context { return appCtx }),
 			changesSvc,
 		},

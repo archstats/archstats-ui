@@ -44,6 +44,7 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	file.AddSeparator()
 	m.add(file, "snapshot:reveal", "Reveal Snapshot in Finder", keys.Combo("r", keys.CmdOrCtrlKey, keys.OptionOrAltKey))
 	m.add(file, "snapshot:save", "Save a Copy of Snapshot…", nil)
+	m.add(file, "snapshot:import", "Import Snapshot…", keys.CmdOrCtrl("o"))
 	file.AddSeparator()
 	m.add(file, "export", "Export…", keys.CmdOrCtrl("e"))
 

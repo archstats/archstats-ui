@@ -77,6 +77,8 @@ export const useWorkspacesStore = defineStore("workspaces", {
         activeWorkspaceId: null as string | null,
         /** The scan whose commit the rescan sheet is offering to rebuild. */
         rescanFor: null as string | null,
+        /** A snapshot file the import sheet is offering to take in. */
+        importPath: null as string | null,
         // Scans of the active workspace, newest first.
         scans: [] as store.Scan[],
         // Snapshot counts per workspace, for the switcher's meta line.

@@ -26,6 +26,14 @@ export function HeadDrift(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['HeadDrift'](arg1, arg2);
 }
 
+export function ImportSnapshot(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['ImportSnapshot'](arg1, arg2);
+}
+
+export function InspectSnapshot(arg1) {
+  return window['go']['app']['WorkspaceService']['InspectSnapshot'](arg1);
+}
+
 export function LabelScan(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['LabelScan'](arg1, arg2);
 }
@@ -40,6 +48,10 @@ export function ListScans(arg1) {
 
 export function OpenInEditor(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['app']['WorkspaceService']['OpenInEditor'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function PickSnapshot() {
+  return window['go']['app']['WorkspaceService']['PickSnapshot']();
 }
 
 export function Rename(arg1, arg2) {

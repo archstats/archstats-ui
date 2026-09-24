@@ -15,6 +15,10 @@ export function Get(arg1:string):Promise<store.Workspace>;
 
 export function HeadDrift(arg1:string,arg2:string):Promise<app.HeadDrift>;
 
+export function ImportSnapshot(arg1:string,arg2:string):Promise<store.Scan>;
+
+export function InspectSnapshot(arg1:string):Promise<app.SnapshotInfo>;
+
 export function LabelScan(arg1:string,arg2:string):Promise<void>;
 
 export function List():Promise<Array<store.Workspace>>;
@@ -22,6 +26,8 @@ export function List():Promise<Array<store.Workspace>>;
 export function ListScans(arg1:string):Promise<Array<store.Scan>>;
 
 export function OpenInEditor(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number,arg6:string):Promise<app.EditorOpened>;
+
+export function PickSnapshot():Promise<string>;
 
 export function Rename(arg1:string,arg2:string):Promise<store.Workspace>;
 

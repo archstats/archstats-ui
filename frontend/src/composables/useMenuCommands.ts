@@ -1,8 +1,9 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { EventsOn } from "wailsjs/runtime/runtime";
+import { EventsOn, OnFileDrop, OnFileDropOff } from "wailsjs/runtime/runtime";
+import { TakePendingSnapshots } from "wailsjs/go/app/AppService";
 import { SetState } from "wailsjs/go/app/MenuService";
-import { RevealSnapshot, SaveSnapshotCopy } from "wailsjs/go/app/WorkspaceService";
+import { PickSnapshot, RevealSnapshot, SaveSnapshotCopy } from "wailsjs/go/app/WorkspaceService";
 import { useDataStore } from "~/stores/data";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { hasCommand, registerCommand, runCommand } from "~/utils/commands";
@@ -27,6 +28,12 @@ export function useMenuCommands() {
     // The open snapshot's file: shown, or copied out with its source.
     off.push(registerCommand("snapshot:reveal", async () => { if (workspaces.openScanId) await RevealSnapshot(workspaces.openScanId); }));
     off.push(registerCommand("snapshot:save", async () => { if (workspaces.openScanId) await SaveSnapshotCopy(workspaces.openScanId, true); }));
+    // A snapshot from elsewhere: picked (⌘O), dropped on the window, or
+    // named on the command line (at launch or to the running app).
+    off.push(registerCommand("snapshot:import", async () => { const p = await PickSnapshot(); if (p) workspaces.importPath = p; }));
+    async function takePending() {
+        try { const paths = (await TakePendingSnapshots()) ?? []; if (paths.length) workspaces.importPath = paths[0]; } catch { /* not in the desktop shell */ }
+    }
 
     function onKey(event: KeyboardEvent) {
         const t = event.target as HTMLElement | null;
@@ -43,13 +50,26 @@ export function useMenuCommands() {
     }
 
     let unlisten: (() => void) | null = null;
+    let unlistenImport: (() => void) | null = null;
     onMounted(() => {
         window.addEventListener("keydown", onKey);
         try { unlisten = EventsOn("menu", (id: string) => { void runCommand(id); }); } catch { unlisten = null; }
+        try { unlistenImport = EventsOn("import:pending", () => { void takePending(); }); } catch { unlistenImport = null; }
+        try {
+            OnFileDrop((_x: number, _y: number, paths: string[]) => {
+                const db = paths.find(p => p.toLowerCase().endsWith(".db"));
+                if (db) workspaces.importPath = db;
+            }, false);
+        } catch { /* not in the desktop shell */ }
+        // Wait for the workspace list so the sheet can suggest one.
+        let taken = false;
+        watch(() => workspaces.loaded, (l) => { if (l && !taken) { taken = true; void takePending(); } }, { immediate: true });
     });
     onBeforeUnmount(() => {
         window.removeEventListener("keydown", onKey);
         unlisten?.();
+        unlistenImport?.();
+        try { OnFileDropOff(); } catch { /* not in the desktop shell */ }
         off.forEach(f => f());
     });
 

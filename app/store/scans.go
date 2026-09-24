@@ -264,3 +264,16 @@ func (s *Store) SetScanLabel(id, label string) error {
 	}
 	return nil
 }
+
+// AddImportedScan records a snapshot brought in from a file as a complete
+// scan, dated by when it was scanned.
+func (s *Store) AddImportedScan(id, workspaceID string, scannedAt time.Time, snapshotPath string) (*Scan, error) {
+	_, err := s.db.Exec(
+		`INSERT INTO scans (id, workspace_id, status, started_at, finished_at, snapshot_path, origin) VALUES (?, ?, ?, ?, ?, ?, 'import')`,
+		id, workspaceID, ScanStatusComplete, scannedAt, scannedAt, snapshotPath,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetScan(id)
+}
