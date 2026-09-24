@@ -120,6 +120,18 @@
       <button
         type="button"
         class="ui-btn ui-btn-sm"
+        :aria-pressed="sandboxOn"
+        :class="{ 'bg-neutral-100': sandboxOn }"
+        :disabled="!sandboxAvailable"
+        :title="sandboxAvailable ? 'What if: move files, merge components, cut imports, and see the tangles and coupling that result' : 'The sandbox works on components and imports: choose Components and Static'"
+        @click="toggleSandbox"
+      >
+        <Icon icon="flask" :size="13" class="text-neutral-500"/>
+        <span class="hidden min-[1440px]:inline">Sandbox</span>
+      </button>
+      <button
+        type="button"
+        class="ui-btn ui-btn-sm"
         :title="draft.isOpen ? `Carry on building ${draft.dimension}` : 'Build a lens in the studio'"
         @click="openBuilder"
       >
@@ -350,6 +362,10 @@
       </Teleport>
     </template>
 
+    <template #tab-plan>
+      <SandboxPlan :pair="sandboxPair" @changed="sandboxChanged = $event"/>
+    </template>
+
     <template #tab-inspector>
       <CrosscutInspector
         v-if="rep === 'crosscut' && crossRowDim && crossColDim"
@@ -403,6 +419,7 @@ import { useStateStore } from "~/stores/state";
 const stateStoreForLayout = useStateStore();
 import ConnectionsChord from "~/components/connections/ConnectionsChord.vue";
 import ConnectionsInspector from "~/components/connections/ConnectionsInspector.vue";
+import SandboxPlan from "~/components/connections/SandboxPlan.vue";
 import ConnectionsCrosscut from "~/components/connections/ConnectionsCrosscut.vue";
 import CrosscutInspector from "~/components/connections/CrosscutInspector.vue";
 import { useLensStore } from "~/stores/lens";
@@ -494,11 +511,10 @@ const showCrossings = ref(true);
 const crossingKeys = computed(() => new Set(lensCheck.value.crossings.map(c => crossingEdgeKey(c.from, c.to))));
 const { isJavaProject } = useJavaMetrics();
 const activeTab = ref("inspector");
-const tabs = computed(() => [{ id: "inspector", label: "Inspector" }]);
+const tabs = computed(() => (sandboxOn.value ? [{ id: "plan", label: "Plan" }, { id: "inspector", label: "Inspector" }] : [{ id: "inspector", label: "Inspector" }]));
 // A dimension is built in the studio, so this view draws none of one: no
 // dashed hulls, no dials, no draft tab. It reads the graph and the lens.
 const EMPTY_SUGGESTIONS: GroupSuggestion[] = [];
-const suggestHighlight = computed(() => null);
 
 const menu = ref<{ id: string; x: number; y: number } | null>(null);
 const menuMode = ref<"main" | "add">("main");
@@ -511,6 +527,19 @@ const selectedCycleId = computed(() => (selection.value?.type === "cycle" ? sele
 // With no roll-up chosen in the URL the first dimension rolls up; "none" turns it off and sticks.
 const effectiveBy = computed(() => (by.value === "none" ? null : by.value ?? lens.active ?? null));
 const model = useConnectionsModel({ source, by: effectiveBy, color, cycles, query: q, hidden, openIds, selectedId, selectedCycleId, period: computed(() => state.value.period) });
+// What if: a plan of edits on this snapshot's imports, in the inspector's
+// Plan tab; the components it changes are lit in the graph.
+const sandboxAvailable = computed(() => source.value === "static" && model.level.value === "components");
+const sandboxOn = computed(() => route.query.sandbox === "1" && sandboxAvailable.value);
+const sandboxChanged = ref<string[]>([]);
+const sandboxPair = computed(() => (selection.value?.type === "pair" ? { from: selection.value.from, to: selection.value.to } : null));
+function toggleSandbox() {
+  const query: Record<string, any> = { ...route.query };
+  if (sandboxOn.value) delete query.sandbox; else query.sandbox = "1";
+  void router.replace({ query });
+}
+watch(sandboxOn, on => { if (on) { activeTab.value = "plan"; inspectorOpen.value = true; } else if (activeTab.value === "plan") activeTab.value = "inspector"; }, { immediate: true });
+const suggestHighlight = computed(() => (sandboxOn.value && sandboxChanged.value.length ? { key: "sandbox", members: sandboxChanged.value } : null));
 // Co-change pairs, filtered by relation and floors. Hidden coupling has
 // floors by default: a pair of two shared commits is noise.
 const floorsOpen = ref(false);

@@ -139,9 +139,9 @@
       {{ showAll ? "Show fewer" : `Show all ${scans.length}` }}
     </button>
     <div v-if="completeCount" class="mt-1 flex items-center gap-2 px-2 text-xs text-neutral-500">
-      <span class="font-mono tabular-nums">{{ completeCount }} snapshot{{ completeCount === 1 ? "" : "s" }} · {{ formatBytes(totalBytes) }}</span>
-      <button type="button" class="ml-auto font-medium transition-colors hover:text-neutral-900" title="Scan the repository's tags, each in a clean clone, to fill in history" @click="tagsOpen = true">Tags…</button>
-      <button type="button" class="font-medium transition-colors hover:text-neutral-900" @click="storageOpen = true">Manage…</button>
+      <span class="min-w-0 truncate font-mono tabular-nums">{{ completeCount }} snapshot{{ completeCount === 1 ? "" : "s" }} · {{ formatBytes(totalBytes) }}</span>
+      <button type="button" class="ml-auto shrink-0 font-medium transition-colors hover:text-neutral-900" title="Scan the repository's tags, each in a clean clone, to fill in history" @click="tagsOpen = true">Tags…</button>
+      <button type="button" class="shrink-0 font-medium transition-colors hover:text-neutral-900" @click="storageOpen = true">Manage…</button>
     </div>
     <StorageSheet v-model="storageOpen"/>
     <ScanTagsSheet v-model="tagsOpen"/>

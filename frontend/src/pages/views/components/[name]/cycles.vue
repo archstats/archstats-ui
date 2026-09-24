@@ -66,6 +66,7 @@
         <div class="flex items-baseline justify-between gap-4">
           <h3 class="ui-section-title">Where to cut</h3>
           <span class="text-sm text-neutral-500">{{ planLede }}</span>
+          <button type="button" class="ui-btn ui-btn-sm ml-auto shrink-0" title="Open this plan in the Connections sandbox: every cut as an edit, with the tangles and coupling that result" @click="tryInSandbox">Try in the sandbox</button>
         </div>
         <p class="mt-1.5 max-w-[92ch] text-sm text-neutral-500">
           A cycle breaks if you remove any one import in it. These are chosen greedily: the import that appears in the most
@@ -216,6 +217,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSandboxStore } from "~/stores/sandbox"
 import OpenInEditor from "~/components/ui/OpenInEditor.vue"
 import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath } from "~/utils/routes"
@@ -362,6 +364,14 @@ const verdict = computed(() => {
   }
   return `Those break every cycle listed here, but the snapshot lists only the shortest ones. Longer loops remain beyond the ${formatNumber(extra.length)} further cuts below: this component sits in a tangle deeper than a short plan can undo.`
 })
+
+// The plan as sandbox edits: every cut, then Connections with the plan open.
+const sandbox = useSandboxStore()
+async function tryInSandbox() {
+  await sandbox.load()
+  sandbox.apply(fullPlan.value.map(step => ({ kind: "cut" as const, from: step.from, to: step.to })))
+  void router.push({ path: "/views/connections", query: { level: "components", sandbox: "1" } })
+}
 
 const selectedCut = computed(() => (selectedIndex.value === null ? null : fullPlan.value[selectedIndex.value] ?? null))
 function toggleCut(i: number) {
