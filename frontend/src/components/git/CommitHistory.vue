@@ -28,6 +28,7 @@
         <button type="button" :aria-pressed="order === 'date'" @click="order = 'date'">Date</button>
         <button type="button" :aria-pressed="order === 'widest'" title="Commits that touched the most components first" @click="order = 'widest'">Widest</button>
       </div>
+      <MessagePattern v-model:active="fixOnly" :messages="periodCommits.map(c => c.commit_message)"/>
       <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Commits touching more than ${sweepLimit} files: renames, reformats, merges`" @click="showSweeping = !showSweeping">
         {{ showSweeping ? "Sweeping commits shown" : `${formatNumber(sweeping)} sweeping commits hidden` }}
       </button>
@@ -38,7 +39,8 @@
         <span>{{ authorsStore.showBots ? "Bots shown" : `${formatNumber(botCommits)} bot commits hidden` }}</span>
       </button>
       <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
-        <span>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
+        <span v-if="fixOnly" :title="`Subject lines matching /${fixSource}/i`">Commits matching <span class="font-mono text-neutral-700">/{{ fixSource.length > 28 ? fixSource.slice(0, 27) + '…' : fixSource }}/</span> <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span> of <span class="font-mono">{{ formatNumber(periodCommits.length) }}</span></span>
+        <span v-else>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
         <span class="text-neutral-300">·</span>
         <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(authors.length) }}</span></span>
         <span class="text-neutral-300">·</span>
@@ -140,6 +142,8 @@ import { useWorkspacesStore } from "~/stores/workspaces";
 import Icon from "~/components/ui/common/Icon.vue";
 import GitActivityChart from "~/components/components/git/git-activity/GitActivityChart.vue";
 import MonthlyChangesChart from "~/components/git/MonthlyChangesChart.vue";
+import MessagePattern from "~/components/git/MessagePattern.vue";
+import { fixPattern, fixPatternSource, matchesFix } from "~/utils/commitPattern";
 import EmptyState from "~/components/ui/common/EmptyState.vue";
 import LoadingState from "~/components/ui/common/LoadingState.vue";
 
@@ -156,6 +160,8 @@ const props = defineProps<{
 }>()
 
 const store = useDataStore()
+const route = useRoute()
+const router = useRouter()
 const authorsStore = useAuthorsStore()
 const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
@@ -223,7 +229,7 @@ const isBot = (c: GitCommit) => Number((c as any).is_bot) === 1
 const botCommits = computed(() => allCommits.value.filter(isBot).length)
 const counted = computed(() => (props.includeBots || authorsStore.showBots ? allCommits.value : allCommits.value.filter(c => !isBot(c))))
 
-const commits = computed(() => {
+const periodCommits = computed(() => {
   if (period.value === "custom" && range.value) {
     const from = new Date(`${range.value.since}T00:00:00Z`).getTime()
     const to = new Date(`${range.value.until}T23:59:59Z`).getTime()
@@ -232,6 +238,18 @@ const commits = computed(() => {
   if (!periodDays.value) return counted.value
   const cutoff = now.value.getTime() - periodDays.value * 86400000
   return counted.value.filter(c => new Date(c.commit_time).getTime() >= cutoff)
+})
+
+// Commits whose subject matches the workspace's fix pattern, when asked.
+const fixOnly = computed({
+  get: () => route.query.fix === "1",
+  set: (on: boolean) => { const query = { ...route.query }; if (on) query.fix = "1"; else delete query.fix; void router.replace({ query }) },
+})
+const fixSource = computed(() => { void stateStore.get("git.fixPattern", ""); return fixPatternSource() })
+const commits = computed(() => {
+  if (!fixOnly.value) return periodCommits.value
+  const re = fixPattern()
+  return periodCommits.value.filter(c => matchesFix(re, c.commit_message))
 })
 
 // Date or Widest: the commits that touched the most components first. Widest
@@ -252,8 +270,6 @@ const ordered = computed(() => {
 const visibleCommits = computed(() => ordered.value.slice(0, limit.value))
 
 // The selected commit, kept in the URL (?commit=) so a footprint can be linked.
-const route = useRoute()
-const router = useRouter()
 const selectedHash = computed(() => (typeof route.query.commit === "string" ? route.query.commit : null))
 function select(hash: string | null) {
   const query = { ...route.query }
