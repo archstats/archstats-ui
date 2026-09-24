@@ -2,6 +2,7 @@ package scan
 
 import (
 	"fmt"
+	snapshotinfo "github.com/archstats/archstats-ui/app/snapshot"
 	"os"
 	"path/filepath"
 	"sync"
@@ -147,6 +148,11 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan) {
 	if err := s.store.FinishScan(scan.ID, snapshot); err != nil {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("recording scan completion: %v", err))
 		return
+	}
+	// The registry keeps what the snapshot says about itself, so listing
+	// scans never has to open one. A failure here costs a label, not a scan.
+	if ident, err := snapshotinfo.ReadIdentity(snapshot, scan.StartedAt); err == nil {
+		_ = s.store.SetScanIdentity(scan.ID, ident)
 	}
 	s.emit(EventScanDone, payload(ws.ID, scan.ID, map[string]any{"snapshotPath": snapshot}))
 }

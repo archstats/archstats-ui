@@ -10,6 +10,7 @@ import (
 	"github.com/archstats/archstats-ui/app"
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
+	"github.com/archstats/archstats-ui/app/snapshot"
 	"github.com/archstats/archstats-ui/app/store"
 	"github.com/rs/zerolog"
 	"github.com/wailsapp/wails/v2"
@@ -67,6 +68,16 @@ func main() {
 		log.Printf("marked %d interrupted scan(s) as failed", n)
 	}
 
+	// Scans taken before the registry recorded identities get theirs read
+	// from their snapshots, once, off the startup path.
+	go func() {
+		if n, err := snapshot.FillMissing(st); err != nil {
+			log.Printf("reading scan identities: %v", err)
+		} else if n > 0 {
+			log.Printf("read the identity of %d older scan(s)", n)
+		}
+	}()
+
 	scanSvc := scan.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
@@ -98,6 +109,7 @@ func main() {
 			workspaceSvc,
 			app.NewScanService(scanSvc),
 			app.NewQueryService(querySvc),
+			app.NewStateService(st),
 		},
 	})
 	if err != nil {

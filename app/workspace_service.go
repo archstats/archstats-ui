@@ -89,3 +89,13 @@ func (w *WorkspaceService) ListScans(workspaceID string) ([]*store.Scan, error) 
 func (w *WorkspaceService) DeleteScan(scanID string) error {
 	return w.store.DeleteScan(scanID)
 }
+
+// SetBaseline pins the scan a workspace compares against; "" unpins.
+func (w *WorkspaceService) SetBaseline(workspaceID, scanID string) error {
+	return w.store.SetBaseline(workspaceID, scanID)
+}
+
+// LabelScan names a scan ("before the split"); "" clears the label.
+func (w *WorkspaceService) LabelScan(scanID, label string) error {
+	return w.store.SetScanLabel(scanID, label)
+}

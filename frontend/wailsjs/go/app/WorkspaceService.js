@@ -18,6 +18,10 @@ export function Get(arg1) {
   return window['go']['app']['WorkspaceService']['Get'](arg1);
 }
 
+export function LabelScan(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['LabelScan'](arg1, arg2);
+}
+
 export function List() {
   return window['go']['app']['WorkspaceService']['List']();
 }
@@ -32,4 +36,8 @@ export function Rename(arg1, arg2) {
 
 export function SelectFolder() {
   return window['go']['app']['WorkspaceService']['SelectFolder']();
+}
+
+export function SetBaseline(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['SetBaseline'](arg1, arg2);
 }

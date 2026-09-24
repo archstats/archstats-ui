@@ -11,6 +11,8 @@ export function DeleteScan(arg1:string):Promise<void>;
 
 export function Get(arg1:string):Promise<store.Workspace>;
 
+export function LabelScan(arg1:string,arg2:string):Promise<void>;
+
 export function List():Promise<Array<store.Workspace>>;
 
 export function ListScans(arg1:string):Promise<Array<store.Scan>>;
@@ -18,3 +20,5 @@ export function ListScans(arg1:string):Promise<Array<store.Scan>>;
 export function Rename(arg1:string,arg2:string):Promise<store.Workspace>;
 
 export function SelectFolder():Promise<app.FolderPick>;
+
+export function SetBaseline(arg1:string,arg2:string):Promise<void>;

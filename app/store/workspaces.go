@@ -17,6 +17,9 @@ type Workspace struct {
 	Name       string    `json:"name"`
 	FolderPath string    `json:"folderPath"`
 	CreatedAt  time.Time `json:"createdAt"`
+	// BaselineScanID is the scan this workspace compares against by
+	// default; nil when none is pinned. Cleared when that scan is deleted.
+	BaselineScanID *string `json:"baselineScanId"`
 }
 
 var (
@@ -63,9 +66,9 @@ func (s *Store) CreateWorkspace(name, folderPath string) (*Workspace, error) {
 }
 
 func (s *Store) GetWorkspace(id string) (*Workspace, error) {
-	row := s.db.QueryRow(`SELECT id, name, folder_path, created_at FROM workspaces WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT id, name, folder_path, created_at, baseline_scan_id FROM workspaces WHERE id = ?`, id)
 	w := &Workspace{}
-	err := row.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt)
+	err := row.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt, &w.BaselineScanID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("workspace %s: %w", id, ErrNotFound)
 	}
@@ -82,9 +85,9 @@ func (s *Store) FindWorkspaceByFolder(folderPath string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	row := s.db.QueryRow(`SELECT id, name, folder_path, created_at FROM workspaces WHERE folder_path = ?`, abs)
+	row := s.db.QueryRow(`SELECT id, name, folder_path, created_at, baseline_scan_id FROM workspaces WHERE folder_path = ?`, abs)
 	w := &Workspace{}
-	err = row.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt)
+	err = row.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt, &w.BaselineScanID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -115,7 +118,7 @@ func (s *Store) RenameWorkspace(id, name string) (*Workspace, error) {
 }
 
 func (s *Store) ListWorkspaces() ([]*Workspace, error) {
-	rows, err := s.db.Query(`SELECT id, name, folder_path, created_at FROM workspaces ORDER BY created_at`)
+	rows, err := s.db.Query(`SELECT id, name, folder_path, created_at, baseline_scan_id FROM workspaces ORDER BY created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +127,7 @@ func (s *Store) ListWorkspaces() ([]*Workspace, error) {
 	workspaces := []*Workspace{}
 	for rows.Next() {
 		w := &Workspace{}
-		if err := rows.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt, &w.BaselineScanID); err != nil {
 			return nil, err
 		}
 		workspaces = append(workspaces, w)
@@ -147,4 +150,27 @@ func (s *Store) DeleteWorkspace(id string) error {
 		return fmt.Errorf("workspace %s: %w", id, ErrNotFound)
 	}
 	return os.RemoveAll(filepath.Join(s.root, "scans", id))
+}
+
+// SetBaseline pins the scan a workspace compares against; "" unpins.
+func (s *Store) SetBaseline(workspaceID, scanID string) error {
+	var v any
+	if scanID != "" {
+		scan, err := s.GetScan(scanID)
+		if err != nil {
+			return err
+		}
+		if scan.WorkspaceID != workspaceID {
+			return fmt.Errorf("scan %s belongs to another workspace", scanID)
+		}
+		v = scanID
+	}
+	res, err := s.db.Exec(`UPDATE workspaces SET baseline_scan_id = ? WHERE id = ?`, v, workspaceID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("workspace %s: %w", workspaceID, ErrNotFound)
+	}
+	return nil
 }

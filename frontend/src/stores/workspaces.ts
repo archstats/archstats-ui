@@ -1,3 +1,4 @@
+import { useStateStore } from "~/stores/state";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { EventsOn } from "wailsjs/runtime/runtime";
 import {
@@ -227,6 +228,9 @@ export const useWorkspacesStore = defineStore("workspaces", {
             // Another workspace is another world: nothing scoped, drafted or
             // looked through carries over.
             useScopeStore().clear();
+            // Durable state first: lenses, merges and facets read it as they load.
+            await useStateStore().hydrate(workspaceId);
+            if (this.activeWorkspaceId !== workspaceId) return;
             useGroupsStore().initForProject(workspaceId);
             useLensStore().load(workspaceId);
             useDraftStore().load(workspaceId);

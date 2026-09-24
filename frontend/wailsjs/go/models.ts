@@ -49,6 +49,19 @@ export namespace store {
 	    finishedAt?: any;
 	    error: string;
 	    snapshotPath: string;
+	    label: string;
+	    origin: string;
+	    headCommit: string;
+	    branch: string;
+	    // Go type: time
+	    headTime?: any;
+	    headTimeSource: string;
+	    dirtyFiles?: number;
+	    analysisRevision: number;
+	    extensions: string;
+	    ignoreGlobs: string;
+	    revisionRef: string;
+	    sizeBytes: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Scan(source);
@@ -63,6 +76,18 @@ export namespace store {
 	        this.finishedAt = this.convertValues(source["finishedAt"], null);
 	        this.error = source["error"];
 	        this.snapshotPath = source["snapshotPath"];
+	        this.label = source["label"];
+	        this.origin = source["origin"];
+	        this.headCommit = source["headCommit"];
+	        this.branch = source["branch"];
+	        this.headTime = this.convertValues(source["headTime"], null);
+	        this.headTimeSource = source["headTimeSource"];
+	        this.dirtyFiles = source["dirtyFiles"];
+	        this.analysisRevision = source["analysisRevision"];
+	        this.extensions = source["extensions"];
+	        this.ignoreGlobs = source["ignoreGlobs"];
+	        this.revisionRef = source["revisionRef"];
+	        this.sizeBytes = source["sizeBytes"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -89,6 +114,7 @@ export namespace store {
 	    folderPath: string;
 	    // Go type: time
 	    createdAt: any;
+	    baselineScanId?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Workspace(source);
@@ -100,6 +126,7 @@ export namespace store {
 	        this.name = source["name"];
 	        this.folderPath = source["folderPath"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.baselineScanId = source["baselineScanId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

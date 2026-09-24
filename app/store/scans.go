@@ -24,6 +24,27 @@ type Scan struct {
 	FinishedAt   *time.Time `json:"finishedAt"`
 	Error        string     `json:"error"`
 	SnapshotPath string     `json:"snapshotPath"`
+
+	// Identity: what this scan read and what wrote it.
+	Label  string `json:"label"`
+	Origin string `json:"origin"` // scan | import | backfill
+	ScanIdentity
+	// SizeBytes is the snapshot file's size, read from disk on listing.
+	SizeBytes int64 `json:"sizeBytes"`
+}
+
+// ScanIdentity is what a snapshot says about itself, copied into the
+// registry when the scan finishes so listing never opens a snapshot.
+type ScanIdentity struct {
+	HeadCommit       string     `json:"headCommit"`
+	Branch           string     `json:"branch"`
+	HeadTime         *time.Time `json:"headTime"`
+	HeadTimeSource   string     `json:"headTimeSource"` // head | max_commit | scan
+	DirtyFiles       *int       `json:"dirtyFiles"`
+	AnalysisRevision int        `json:"analysisRevision"`
+	Extensions       string     `json:"extensions"`
+	IgnoreGlobs      string     `json:"ignoreGlobs"`
+	RevisionRef      string     `json:"revisionRef"`
 }
 
 // ErrScanInterrupted is the recorded error for scans that were still running
@@ -114,7 +135,7 @@ func (s *Store) finish(id, status, errMsg, snapshotPath string) error {
 
 func (s *Store) GetScan(id string) (*Scan, error) {
 	row := s.db.QueryRow(
-		`SELECT id, workspace_id, status, started_at, finished_at, error, snapshot_path FROM scans WHERE id = ?`, id)
+		`SELECT `+scanColumns+` FROM scans WHERE id = ?`, id)
 	scan, err := scanRow(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("scan %s: %w", id, ErrNotFound)
@@ -125,7 +146,7 @@ func (s *Store) GetScan(id string) (*Scan, error) {
 // ListScans returns a workspace's scans, newest first.
 func (s *Store) ListScans(workspaceID string) ([]*Scan, error) {
 	rows, err := s.db.Query(
-		`SELECT id, workspace_id, status, started_at, finished_at, error, snapshot_path
+		`SELECT `+scanColumns+`
 		 FROM scans WHERE workspace_id = ? ORDER BY started_at DESC`, workspaceID)
 	if err != nil {
 		return nil, err
@@ -160,16 +181,76 @@ func (s *Store) DeleteScan(id string) error {
 	return nil
 }
 
+const scanColumns = `id, workspace_id, status, started_at, finished_at, error, snapshot_path,
+	label, origin, head_commit, branch, head_time, head_time_source, dirty_files,
+	analysis_revision, extensions, ignore_globs, revision_ref`
+
 func scanRow(scanFn func(dest ...any) error) (*Scan, error) {
 	scan := &Scan{}
-	var finishedAt sql.NullTime
+	var finishedAt, headTime sql.NullTime
+	var dirty sql.NullInt64
 	err := scanFn(&scan.ID, &scan.WorkspaceID, &scan.Status, &scan.StartedAt,
-		&finishedAt, &scan.Error, &scan.SnapshotPath)
+		&finishedAt, &scan.Error, &scan.SnapshotPath,
+		&scan.Label, &scan.Origin, &scan.HeadCommit, &scan.Branch, &headTime, &scan.HeadTimeSource, &dirty,
+		&scan.AnalysisRevision, &scan.Extensions, &scan.IgnoreGlobs, &scan.RevisionRef)
 	if err != nil {
 		return nil, err
 	}
 	if finishedAt.Valid {
 		scan.FinishedAt = &finishedAt.Time
 	}
+	if headTime.Valid {
+		scan.HeadTime = &headTime.Time
+	}
+	if dirty.Valid {
+		d := int(dirty.Int64)
+		scan.DirtyFiles = &d
+	}
+	if scan.SnapshotPath != "" {
+		if info, err := os.Stat(scan.SnapshotPath); err == nil {
+			scan.SizeBytes = info.Size()
+		}
+	}
 	return scan, nil
+}
+
+// SetScanIdentity records what a finished snapshot says about itself.
+func (s *Store) SetScanIdentity(id string, ident ScanIdentity) error {
+	_, err := s.db.Exec(`UPDATE scans SET head_commit = ?, branch = ?, head_time = ?, head_time_source = ?,
+		dirty_files = ?, analysis_revision = ?, extensions = ?, ignore_globs = ?, revision_ref = ?, identity_read = 1
+		WHERE id = ?`,
+		ident.HeadCommit, ident.Branch, ident.HeadTime, ident.HeadTimeSource, ident.DirtyFiles,
+		ident.AnalysisRevision, ident.Extensions, ident.IgnoreGlobs, ident.RevisionRef, id)
+	return err
+}
+
+// ScansWithoutIdentity lists complete scans whose identity was never read:
+// every scan taken before the registry recorded identities.
+func (s *Store) ScansWithoutIdentity() ([]*Scan, error) {
+	rows, err := s.db.Query(`SELECT `+scanColumns+` FROM scans WHERE status = ? AND identity_read = 0`, ScanStatusComplete)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*Scan
+	for rows.Next() {
+		scan, err := scanRow(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, scan)
+	}
+	return out, rows.Err()
+}
+
+// SetScanLabel names a scan ("before the split"); empty clears it.
+func (s *Store) SetScanLabel(id, label string) error {
+	res, err := s.db.Exec(`UPDATE scans SET label = ? WHERE id = ?`, label, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("scan %s: %w", id, ErrNotFound)
+	}
+	return nil
 }
