@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/archstats/archstats/core/walker"
 	"path/filepath"
 
 	"github.com/archstats/archstats-ui/app/store"
@@ -114,4 +115,42 @@ func (w *WorkspaceService) SetBaseline(workspaceID, scanID string) error {
 // LabelScan names a scan ("before the split"); "" clears the label.
 func (w *WorkspaceService) LabelScan(scanID, label string) error {
 	return w.store.SetScanLabel(scanID, label)
+}
+
+// IgnorePreview is what a set of patterns would leave out of the next scan.
+type IgnorePreview struct {
+	Files    int      `json:"files"`
+	Excluded int      `json:"excluded"`
+	Sample   []string `json:"sample"`
+}
+
+// PreviewIgnore walks the workspace folder with and without the patterns and
+// says how many files they would leave out, with a few of them.
+func (w *WorkspaceService) PreviewIgnore(workspaceID string, patterns []string) (*IgnorePreview, error) {
+	ws, err := w.store.GetWorkspace(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	all, err := walker.GetAllFiles(ws.FolderPath)
+	if err != nil {
+		return nil, err
+	}
+	kept, err := walker.GetAllFiles(ws.FolderPath, walker.Options{IgnorePatterns: patterns})
+	if err != nil {
+		return nil, err
+	}
+	keep := make(map[string]bool, len(kept))
+	for _, f := range kept {
+		keep[f.Path()] = true
+	}
+	out := &IgnorePreview{Files: len(all)}
+	for _, f := range all {
+		if !keep[f.Path()] {
+			out.Excluded++
+			if len(out.Sample) < 8 {
+				out.Sample = append(out.Sample, f.Path())
+			}
+		}
+	}
+	return out, nil
 }

@@ -194,7 +194,7 @@ func TestScanFailureIsRecorded(t *testing.T) {
 
 func TestExtensionsForAutoDetection(t *testing.T) {
 	root := writeFixtureRepo(t)
-	extensions, names, err := extensionsFor(root)
+	extensions, names, err := extensionsFor(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

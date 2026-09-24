@@ -19,6 +19,12 @@ export const REVISION_REASONS: Record<number, string[]> = {
         "Files carry a role (production, test, generated, third-party, non-code) and health scores keep their deductions.",
         "Snapshots say what the walker left out, and how long each file has sat untouched.",
     ],
+    3: [
+        "Snapshots are smaller: pairs of files that never changed together are no longer stored, and Java class reachability is off.",
+        "A workspace's own ignore patterns apply to its files and their history.",
+        "File pairs that change together are recorded with how much of each side they cover.",
+        "An ambiguous runtime lookup resolves the same way on every scan.",
+    ],
 }
 
 /** Every reason between the revision a snapshot was written with and the current one. */

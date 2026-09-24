@@ -136,16 +136,22 @@
               </span>
               Add workspace…
             </button>
+            <button v-if="store.active" type="button" class="ui-menu-item" @click="settingsOpen = true; open = false">
+              <span class="flex w-3.5 justify-center text-neutral-500" aria-hidden="true"><Settings2 :size="14" :stroke-width="1.75"/></span>
+              Workspace settings…
+            </button>
           </div>
         </div>
       </Transition>
     </Teleport>
+    <WorkspaceSettingsSheet v-model="settingsOpen"/>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { Check, ChevronsUpDown, FolderOpen, FolderPlus, Loader2, Trash2 } from "lucide-vue-next";
+import { Check, ChevronsUpDown, FolderOpen, FolderPlus, Loader2, Settings2, Trash2 } from "lucide-vue-next";
+import WorkspaceSettingsSheet from "~/components/shell/WorkspaceSettingsSheet.vue";
 import { useWorkspacesStore } from "~/stores/workspaces";
 import { relativeAge } from "~/utils/time";
 import { shortenPath } from "~/utils/shell";
@@ -160,6 +166,7 @@ const conflict = computed(() => store.pickConflict);
 
 // ── Popover ─────────────────────────────────────────────
 const open = ref(false);
+const settingsOpen = ref(false);
 const trigger = ref<HTMLButtonElement | null>(null);
 const panel = ref<HTMLDivElement | null>(null);
 const panelStyle = ref<Record<string, string>>({});

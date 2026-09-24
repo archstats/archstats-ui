@@ -29,6 +29,8 @@ export function OpenInEditor(arg1:string,arg2:string,arg3:string,arg4:number,arg
 
 export function PickSnapshot():Promise<string>;
 
+export function PreviewIgnore(arg1:string,arg2:Array<string>):Promise<app.IgnorePreview>;
+
 export function Rename(arg1:string,arg2:string):Promise<store.Workspace>;
 
 export function RevealSnapshot(arg1:string):Promise<void>;

@@ -54,6 +54,10 @@ export function PickSnapshot() {
   return window['go']['app']['WorkspaceService']['PickSnapshot']();
 }
 
+export function PreviewIgnore(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['PreviewIgnore'](arg1, arg2);
+}
+
 export function Rename(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['Rename'](arg1, arg2);
 }

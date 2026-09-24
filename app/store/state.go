@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 )
@@ -78,4 +79,18 @@ func (s *Store) GetSettings() (map[string]string, error) {
 		out[k] = v
 	}
 	return out, rows.Err()
+}
+
+// IgnoreGlobs is a workspace's scan exclusions (the workspace_state key
+// scan.ignoreGlobs, a JSON array of gitignore patterns); none when unset.
+func (s *Store) IgnoreGlobs(workspaceID string) []string {
+	var raw string
+	if err := s.db.QueryRow(`SELECT value FROM workspace_state WHERE workspace_id = ? AND key = 'scan.ignoreGlobs'`, workspaceID).Scan(&raw); err != nil {
+		return nil
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil
+	}
+	return out
 }

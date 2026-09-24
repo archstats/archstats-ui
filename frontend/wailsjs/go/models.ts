@@ -98,6 +98,22 @@ export namespace app {
 	        this.branchChanged = source["branchChanged"];
 	    }
 	}
+	export class IgnorePreview {
+	    files: number;
+	    excluded: number;
+	    sample: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IgnorePreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.files = source["files"];
+	        this.excluded = source["excluded"];
+	        this.sample = source["sample"];
+	    }
+	}
 	export class MenuState {
 	    hasWorkspace: boolean;
 	    hasSnapshot: boolean;

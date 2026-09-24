@@ -112,7 +112,9 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done f
 
 	s.emit(EventScanStarted, payload(ws.ID, scan.ID, nil))
 
-	extensions, names, err := extensionsFor(root)
+	// The workspace's own exclusions, on top of the tree's ignore files.
+	ignore := s.store.IgnoreGlobs(ws.ID)
+	extensions, names, err := extensionsFor(root, ignore)
 	if err != nil {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("detecting extensions: %v", err))
 		return
@@ -123,8 +125,9 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done f
 	}))
 
 	results, err := core.New(&core.Config{
-		RootPath:   root,
-		Extensions: extensions,
+		RootPath:       root,
+		Extensions:     extensions,
+		IgnorePatterns: ignore,
 	}).Analyze()
 	if err != nil {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("analyzing %s: %v", ws.Name, err))
@@ -200,8 +203,8 @@ func payload(workspaceID, scanID string, extra map[string]any) map[string]any {
 // extensions for rootDir, each configured with its CLI-default settings.
 // Fresh instances are constructed per call: extensions (git in particular)
 // cache per-run state and must never be reused across scans.
-func extensionsFor(rootDir string) ([]core.Extension, []string, error) {
-	files, err := walker.GetAllFiles(rootDir)
+func extensionsFor(rootDir string, ignore []string) ([]core.Extension, []string, error) {
+	files, err := walker.GetAllFiles(rootDir, walker.Options{IgnorePatterns: ignore})
 	if err != nil {
 		return nil, nil, err
 	}
