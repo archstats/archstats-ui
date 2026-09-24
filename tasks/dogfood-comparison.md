@@ -1,201 +1,196 @@
-# Dogfooding Archstats on archstats-ui: by hand vs. through the app
+# Dogfooding Archstats on archstats-ui: three ways to plan one restructure
 
-2026-09-24. The same job was done twice on the same commit (`cffe84f`): restructure
-the frontend, which the owner called "poorly structured, lots of utils, very
-hard to navigate".
+2026-09-24. The same job was done three times from the same commit
+(`cffe84f`): restructure the frontend, which the owner called "poorly
+structured, lots of utils, very hard to navigate".
 
-| | Branch | How the findings were made |
-| --- | --- | --- |
-| **By hand** | `refactor/manual-modules` | Reading code, plus small scripts over it (import graph, reachability, `unimport`, bundle grep, `git log`). No Archstats. |
-| **Through the app** | `refactor/archstats-guided` | Three Sonnet agents with the Archstats desktop app as their only window into the code: two explorers (structure, history), then one synthesiser who turned their reports into a move map. They could use every view and the app's SQL console, but no files, `git` or `grep`. The plan was implemented exactly as written. |
+| Run | Branch | How the findings were made | Cost |
+| --- | --- | --- | --- |
+| **1. By hand** | `refactor/manual-modules` | Reading code, plus scripts over it (import graph, reachability, `unimport`, bundle grep, `git log`). No Archstats. | One session, about 20 analysis commands before the plan. |
+| **2. App + SQL console** | `refactor/archstats-guided` | Three Sonnet agents using only the app. More than half their calls were SQL. `file_contents` let them read source through the console. | 99 app calls, about 47 minutes, about 555k tokens. |
+| **3. UI only, as an architect** | `refactor/archstats-clicks` | An Opus lead architect and 14 Sonnet navigators. No SQL, no page scripting. They drove the real UI with clicks and screenshots, and used the intended workflows: groups by query, Declare → Rules, Cross-cut, Sandbox, pins. | About 1,000 UI actions in three rounds, about 2 hours of agent time, about 2.8M tokens. |
 
-Material: `tasks/archstats-dogfood/` (brief, both reports, plan, move map,
-screenshots). The by-hand account is `tasks/refactor-manual.md` on the other
-branch, with its review in `docs/modularity-review/2026-09-24/`.
+Material for each run:
+
+- Run 1: `tasks/refactor-manual.md` and `docs/modularity-review/2026-09-24/`.
+- Run 2: `tasks/archstats-dogfood/`.
+- Run 3: `tasks/archstats-clicks/`, including every mission and report, the
+  final plan, and the facilitator's notes separating harness, product and
+  engine faults.
 
 ## Verdict
 
-**By hand was better, by a wide margin on the outcome.** The app was faster
-at orientation and found three things the manual pass missed, but its plan was
-structurally unsound. That was not bad judgement by the agents. The app could
-not see most of the code's dependencies, so the plan could not be checked
-against them.
+**By hand was clearly best on the outcome.** The two app runs landed in the
+same place: plausible feature folders with broken layering underneath. The
+UI-only run reasoned best (hypotheses, predictions, evidence per decision),
+cost the most, and **found the most bugs in Archstats itself**. For the owner
+of the tool, run 3 was the most valuable of the three.
 
-| Outcome | By hand | Through the app |
-| --- | --- | --- |
-| Top-level modules | 22 features + `shared` + `platform` | 15 |
-| Pairs of modules that depend on each other | **5**, each documented | **26** |
-| Violations of the plan's own layering rule | **0** (enforced by a test) | **46** (`ui-kit`, `catalog` and `data-access`, declared as foundations, import stores, features and the shell) |
-| Unreachable code | 41 files (~3,000 lines) deleted | all kept; the app cannot tell what is unused |
-| Hidden (auto-import) dependencies | 5 found and made explicit, auto-scan off | none found; the move broke 4 views at runtime (see below) |
-| Duplicated business rules | found (`isTestPath` ×2, language ×3), documented | not found |
-| Misnamed modules | `javaFrameworks` → `frameworks/frameworkProfiles` | kept as `java-analysis/javaFrameworks` |
-| Tests | 709 pass (767 − 62 in deleted files + 4 architecture tests) | 767 pass |
-| Runtime (36 routes rendered headless) | identical to the original | 4 routes blank until fixed (Rules, Activity, Timeline, Authors) |
-| Diff | 435 files, +2,900 / −5,155 | 432 files, +2,612 / −1,505 |
-| Cost | one session, ~20 analysis commands before the plan | 3 agents, 99 app calls, ~47 min, ~555k tokens |
+| Outcome | 1. By hand | 2. App + SQL | 3. UI only |
+| --- | --- | --- | --- |
+| Top-level modules | 22 features + shared + platform | 15 | 16 (12 features, 3 core, shared) |
+| Pairs of modules that depend on each other | **5**, documented | 26 | 32 |
+| Violations of the plan's own layering rule | **0**, enforced by a test | 46 | 51 (core→features 6, shared→core 20, shared→features 25) |
+| Unreachable code | 41 files deleted | kept | kept ("never imported" correctly distrusted) |
+| Hidden auto-import dependencies | made explicit; auto-scan off | not seen; 4 views broke until fixed | not listed, but inferred (H4); auto-imports kept working by widening Nuxt's scan, which grew duplicate names from 6 to 82 |
+| Workspace store calling feature stores | documented as debt | not seen | **inverted** (hooks + plugin), because the plan's rule demanded it |
+| Duplicated business rules | found and documented | not found | not found |
+| Tests | 709 (767 − 62 deleted + 4 architecture) | 767 | 767 |
+| Runtime, 36 routes | identical to original | 4 blank until fixed | identical to run 1 |
 
-The runtime breakage deserves a sentence. Both plans moved files out of
-`utils/`, `composables/` and `components/`. That silently ended Nuxt's
-auto-imports from them, and five files relied on those. The app's plan had
-no way to know. The standard verification (tests, build, route sweep)
-caught three of the five. The other two only break on interaction. They
-were fixed in a separate commit and labelled as carried over from the manual
-review.
+**Why the app runs lost.** Both app plans were argued from file names and
+doc comments. The app could not show the imports that decide layering:
 
-## The two approaches, side by side
+- `.vue` files are not parsed, so 217 files (the whole UI layer) have no
+  edges.
+- Nuxt auto-imports are invisible.
 
-**By hand** was a loop: build a graph → classify → move → measure the new
-graph → move again. The measuring is what made it good. After the first
-move, the module graph showed groups↔lens-builder and groups↔rules cycles,
-and `shared/ui` components reading feature stores. Each came down to one
-misplaced function or component, and was fixed and re-measured. A fitness test
-now holds the result. The domain classification itself came from reading
-the header comment of every `utils/` module.
+Run 3 also could not *test* its plan in the app. The structure it declared as
+a lens and checked with Rules was only a probe, because building file-grain
+groups was so fragile. The Sandbox cannot create a component or move many
+files at once.
 
-**Through the app** was a survey: views and SQL for sizes, hotspots, cycles,
-co-change and authors, then `file_contents` in the SQL console to read the
-same header comments. That was the only way to find out what a file is
-about. There was no loop. The app cannot evaluate a proposed structure, so
-the plan's layering rule was stated but never checked, and 46 violations went
-unseen. The synthesiser also merged groups with the lens engine (a 44-file
-module) specifically "to avoid recreating a cross-module cycle". The manual
-pass found that the cycle came from one function in the wrong place.
+## How the three approaches worked
 
-What the two shared: in both, the classification of the 90 `utils/` modules
-came from their doc comments, not from any metric. The app added nothing
-there beyond giving access to the text.
+- **By hand: a loop.** Graph → classify → move → re-measure → fix → hold it
+  with a test. The re-measuring found two misplaced helpers that caused two
+  cycles, and made them one-line moves.
+- **App + SQL: a survey.** Views for orientation, then SQL and `file_contents`
+  to read the code. There was no loop, and the plan's rule was never checked.
+- **UI only: an architect's arc,** after a correction. Round 1 used the app as
+  a table reader. After the switch to the architect stance and the product
+  guide, the lead architect:
+  1. oriented itself;
+  2. stated five falsifiable hypotheses;
+  3. sent navigators to test them with lenses, declarations, Rules, Cross-cut,
+     the Sandbox and search;
+  4. recorded confirmed, refuted or can't tell.
 
-## Findings, how easy each was, and what would have helped
+  The reasoning is the best of the three runs. Two of its conclusions came
+  from the Sandbox and are not in run 1:
+  - Moving all session stores down does not dissolve the tangle (the
+    prediction was refuted).
+  - The workspace store should stop calling feature stores (run 1 left this
+    as debt).
 
-"Calls" counts app invocations (probe runs) for the app, and commands for the
-manual pass.
+  Execution was dominated by friction: most navigators overran their budget
+  2–4×, on the group editor, the lens menu and the Sandbox form.
 
-| # | Finding | By hand | Through the app | What would have made it easier in Archstats |
-| --- | --- | --- | --- | --- |
-| 1 | `utils/` is one bucket of ~17 unrelated concerns | Easy: import-graph script + reading 90 headers (3 commands) | Size: easy (Files table, Hotspots treemap, 1–2 calls). Concerns: some digging, 5 batched `file_contents` queries to read doc comments | A directory "what's inside" panel: each file's first comment and exports, grouped by who imports it. Components finer than one-per-directory, so `utils` is not a single node. |
-| 2 | Each feature is smeared over 3–8 folders | Easy after classifying (1 script over the move map); `git log` confirmed it (46 of 67 commits touch ≥3 layers) | Some digging: SQL on `git_directory_shared_commits` (utils co-changes with pages 28×, stores 24×, composables 22×) | A "feature smear" view: file-grain co-change clusters, drawn over the directory tree, so a cluster spanning 4 folders is visible at once. |
-| 3 | `utils → stores → composables` tangle; `utils/java.ts:1` closes it | Easy (script listed 17 upward imports) | **Easy, the app's best moment**: the Cycles view named the tangle and the exact closing import in 1–3 calls | Nothing; this worked. |
-| 4 | 5 files depend on code they never import (Nuxt auto-imports) | **Hard**: build warnings → ran `unimport` over every file and triaged the false positives → built with registration off and grepped the bundle | **Not possible** | Read `.nuxt/imports.d.ts` and `.nuxt/components.d.ts` (or the framework's equivalent) as edges, and flag files that use a symbol without importing it. |
-| 5 | Same name exported by several modules (`Edge`, `Finding`, `Query`, `isTestPath`, `languageOf`); two different `isTestPath` rules | Some digging (the build warnings pointed at it, then read both) | Not found | A "same exported name in N files" list from the units table. Cheap, and it points straight at duplicated rules. |
-| 6 | 41 files (~3,000 lines) unreachable, 6 of them tested | Easy once the graph existed (reachability script, 1 command) | **Not possible**; the agents rightly refused to guess | Reachability from entry points (pages, layouts, plugins, `main`), which needs #A below. |
-| 7 | `javaFrameworks` is really every language's framework catalogue | Easy (its header) | Missed; placed in `java-analysis` | Showing who imports a module, by feature (Units imports it 11×), hints that a name no longer fits. |
-| 8 | `components/component/` vs `components/components/` confusion | Easy | Easy (Files table) | — |
-| 9 | Groups↔lens-builder cycle comes from one function (`detectSeparator`) | Easy, but only because the loop re-measured after moving | Not found; merged the modules instead | What-if at file grain: apply a move map, recompute cycles and mutual dependencies (#C below). |
-| 10 | Fat pages and hotspots (`components/[name]/index.vue` 845 lines, score 67) | Easy (`wc -l`), no score | Easy (Hotspots / SQL), with scores and health | — |
-| 11 | Single author, big-bang commits (a commit touches 13–33 files) | Not looked at | Easy (Authors, Activity) | A commit → files-by-directory rollup; the agent rebuilt it from the Activity table row by row. |
-| 12 | Go backend and `frontend/src/utils` change together in 45% of utils' commits with no import between them | **Missed** | **Easy**: Hidden coupling view, 1 call | Show which files drive a component-level pair (here: the generated Wails bindings and `models.ts`). |
-| 13 | `utils/cycles.ts` and `utils/boundaryFlow.ts` are missing from the scan (a literal NUL byte makes them "binary") | **Missed**: `grep` printed "Binary file matches" for both and I read past it | Surfaced indirectly and hard: two tests import files the app says don't exist. Root cause found by the implementer. | Never drop a file silently: record skipped files and why in the snapshot, and show them in "About this snapshot". |
-| 14 | The workspace store orchestrates every feature store, and they read it back | Easy (module graph) | Not found; put the workspaces store in the `data-access` foundation | Needs the `.vue` edges, then the Connections view would show it. |
-| 15 | `useEmitter` is dead (only a dead modal uses it) | Found (reachability) | Wrong: read it and its plugin side by side and concluded "producer/consumer pair, not dead" | Same as #6. |
+## Findings, per run: found?, effort, and what would have made it easier
 
-Tally: of 15 findings, the manual pass got 12 and missed 3 (#11, #12, #13).
-The app got 7 fully (#1, #2, #3, #8, #10, #11, #12) and 1 partly (#13), and
-missed or got wrong 7 (#4, #5, #6, #7, #9, #14, #15). The three the app found
-alone are all history or engine facts that a code-first approach never looks
-at.
+Ease: easy / some digging / hard / not possible. For runs 2 and 3, "found"
+means through the app.
 
-## How Archstats helped
+| # | Finding | 1. By hand | 2. App + SQL | 3. UI only | What would have made it easier in Archstats |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `utils/` holds about 12 unrelated features | easy (3 cmds) | some digging (SQL `file_contents` ×5) | some digging (Source tab per file, about 3 actions each; lens builder "Components and parts" did not split utils) | Components finer than directories; a directory "what's inside" panel (first comment, exports); a reading that splits a component by file topic |
+| 2 | Each feature smeared over 3–8 folders | easy | some digging (SQL dir co-change) | some digging (Search + Connections → Git List; Cross-cut never reached) | File-grain co-change clusters drawn over the tree; Cross-cut that works with file groups |
+| 3 | `utils→stores→composables` tangle, closed by `java.ts:1` and 14 `utils→stores` imports | easy | easy (Cycles) | **easy** (Cycles guide); full 9-file list via the matrix cell: some digging | Expand "And 9 more" inline |
+| 4 | 5 files depend on code they never import (Nuxt auto-imports) | hard | not possible | inferred, not enumerable ("no framework packages imported" on About; every `.vue` shows 0 imports) | Resolve `.nuxt/imports.d.ts` / `components.d.ts` as edges |
+| 5 | Duplicate exported names; two `isTestPath` rules | some digging | no | no | "Same exported name in N files" |
+| 6 | 41 unreachable files | easy | not possible | not possible (Units "never imported" rightly distrusted) | Reachability from entry points, after `.vue` parsing |
+| 7 | `javaFrameworks` is every language's framework catalogue | easy | missed | missed | Importers by feature |
+| 8 | `components/component` vs `components/components` | easy | easy | easy (Metrics → Directories) | Expand-all under a path |
+| 9 | groups↔lens cycle comes from one function | easy (loop) | missed | missed | File-grain what-if with a verdict |
+| 10 | Fat pages and hotspots | easy (no score) | easy | easy (Overview links; no top-N table) | Sortable Hotspots top-N table |
+| 11 | One author, big-bang commits | not looked | easy | easy (Authors) | — |
+| 12 | Go backend ↔ `utils` co-change with no import | missed | easy | some digging (Connections → Configure → Git → List; the "Without an import" toggle is hard to find); files not attributable | Drill-down from a pair to its files and commits |
+| 13 | Two files missing from the scan (NUL byte) | missed | hard, found indirectly | not found (a 159-vs-157 gap noticed, unexplained) | Record skipped files and show them on About |
+| 14 | Workspace store calls every feature store | easy (graph) | missed | found via search + Sandbox What-if B, and **acted on** | A projected-cycle inspector in the Sandbox |
+| 15 | `useUnitsModel` ↔ `moduleGraph` import each other | inside one module | yes (implemented) | **easy** (Units → pairs, 1 click) | — |
+| 16 | `provenance.ts` imports 5 stores and calls the backend directly | easy | easy | easy (Cycles matrix cell + Source) | — |
+| 17 | Go imports of `wails/.../runtime` resolve to `frontend/wailsjs/runtime` (engine bug) | missed | missed | **found**, hard (Declare on a Layers lens, then Rules) | — (fix the engine) |
 
-- **Orientation in minutes.** Sizes, the hotspot treemap, the Cycles view
-  and Authors gave an accurate first picture before reading any code.
-- **The Cycles view** named the one import that closes the tangle, with file
-  and line. It was the single most useful screen.
-- **History as evidence.** Co-change quantified the "feature smear" (#2) and
-  found the Go↔frontend coupling (#12). Neither was in the manual pass.
-- **The SQL console with `file_contents`** made the agents' work possible at
-  all. It is also where the "only the app" rule turned into reading code
-  through SQL.
-- **It found a bug in itself** (#13), and exercising it found an app bug
-  (`openScan` has no guard against overlapping loads; a task has been queued).
+Counts:
 
-## What Archstats is missing, in priority order
+| Run | Got | Partly | Missed |
+| --- | --- | --- | --- |
+| 1. By hand | 13 of 17 | — | 11, 12, 13, 17 |
+| 2. App + SQL | 9 | 1 | 7 |
+| 3. UI only | 11 | 2 | 4, plus 3 not possible |
 
-**A. Parse `.vue` (and `.svelte`) files.** This is the one that decided the outcome. The engine has no
-handling for single-file components. All 217 `.vue` files in this snapshot
-have no component and no import edges, so half the frontend, the whole UI
-layer, is invisible to every structural view. Every placement of a `.vue`
-file in the app's plan rested on its comment and folder, never on an edge.
-That is where the 46 layering violations came from. The fix: run the
-TypeScript/JavaScript grammar over the `<script>` / `<script setup>` block,
-offset the line numbers, and treat template tags that name imported
-components as uses.
+Run 3 found two things neither other run did: the engine's Go import bug
+(#17), and acting on #14.
 
-**B. See framework-implicit dependencies.** Nuxt auto-imports and
-auto-registered components are real dependencies with no import statement
-(finding #4). Reading the generated declaration files (`.nuxt/imports.d.ts`,
-`.nuxt/components.d.ts`) would turn them into edges. The same idea covers
-Spring's component scan and Laravel's facades.
+## What Archstats needs, merged from all three runs, in priority order
 
-**C. A structure what-if at file grain, with a verdict.** The manual pass won
-because it could move files and re-measure. The app has a sandbox for
-components but not for "apply this move map". The missing loop: paste or
-build a move map (the lens builder at file grain would do), then see new
-cycles, pairs of modules that depend on each other, and violations of
-declared layer rules before touching the code. The structure agent wanted
-exactly this and could not try its proposal in the app. The group builder
-only offered the 21 directory components.
+Every item below was verified against the code or the snapshot by the
+facilitator (`tasks/archstats-clicks/FACILITATOR-NOTES.md`). Harness faults
+are excluded.
 
-**D. Components finer than directories.** With one component per directory,
-`utils/` (159 files) is one node, so the question the owner asked cannot be
-asked at component grain. Options: a depth or size cap that splits big
-directories, or treating files as components under a threshold.
+### Engine (decides what any plan can see)
 
-**E. Never drop a file silently.** The NUL-byte heuristic (git's) skipped two
-TypeScript files that a language pack claims. At least record skipped files
-and the reason in the snapshot, and list them in "About this snapshot". Better:
-don't apply the binary test to extensions a pack parses.
+1. **Parse `.vue` / `.svelte` single-file components**: the script blocks,
+   plus template tags that name imported components. 217 files had no edges.
+   It is the root cause of both app plans' layering failures.
+2. **Resolve framework auto-imports.** Nuxt's `.nuxt/imports.d.ts` and
+   `components.d.ts` hold real dependencies with no import statement.
+3. **Go imports must not resolve to same-named local directories.**
+   `wails/v2/pkg/runtime` became `frontend/wailsjs/runtime`, a fake
+   cross-language edge.
+4. **Never drop a file silently.** NUL-byte files a language pack claims were
+   skipped as binary. Record skipped files and show them.
 
-**F. Reachability and dead code.** From entry points (pages, layouts, plugins,
-`main`) over the import graph. It needs A and B to be trustworthy.
+### The workflows an architect relies on (UI)
 
-**G. Duplicate exported names across files** (#5): one query over the units
-table, and it surfaces duplicated rules.
+5. **File-grain groups that behave:**
+   - counters that count files, not only components;
+   - no `**` pre-fill that typing appends to;
+   - Query mode that persists after Save (it resets to Members);
+   - per-line "matched N files" diagnostics;
+   - an accessible lens menu (it is icon-only and closes before it can be
+     used);
+   - "Declare dependencies…" that warns when only some groups were placed
+     (it silently placed 3 of 7);
+   - Rules and Cycles that agree on the same lens (Rules said 0 crossings
+     while Cycles showed a 3-group cycle).
+6. **A Sandbox that can carve a feature:**
+   - move many files at once, from a selection or a search;
+   - move into a new component (today: "Both must be components");
+   - explain a projected tangle ("why is this still tangled?");
+   - redraw the graph for the plan;
+   - clicking a node should not leave what-if mode;
+   - a real autocomplete instead of a hidden `<datalist>`, with an error that
+     says which path format it wants;
+   - Pin inside the panel.
+7. **File-level co-change**: on file pages ("changed together with") and as a
+   drill-down from any component or group pair, including "Without an
+   import".
+8. **Direction-correct dependency counts.** "Depends on" and "Used by" show
+   the same both-ways sum (`references` in `utils/neighbours.ts`).
 
-**H. Smaller gaps the agents hit:**
-- Hidden coupling is component-grain only, and its threshold reads as a
-  control but is fixed text. The file-pair co-change table has a floor of 3
-  shared commits, so one-shot histories (most files here have 1 commit) show
-  no pairs at all.
-- Churn is a chart with no table, so it can't be read as text.
-- `unresolved_edges` is empty for the whole snapshot. That is either correct
-  or unpopulated for TypeScript; worth checking.
-- Abstractness reads ~1.0 for TypeScript composables and stores. It is
-  class-based, so it is noise for functional code.
-- "Dependency matrix" opens the same force graph as Connections.
-- The scope query (`**.controller`) persisted from another workspace shows
-  on every page and reads as an applied filter.
-- The SQL console has no schema or column browser; `from`/`to` columns need
-  quoting and were found by trial.
-- Reported by one agent and not reproduced: `LIKE '%…'` queries and large
-  unbounded `ORDER BY` results came back as `{}` through the harness. This is
-  probably shell quoting in the test harness, not the console.
+### Smaller, cheap wins
 
-## What each approach missed, and why
+9. **Complete lists:**
+   - "And N more" expands inline;
+   - Search results group by folder;
+   - a sortable Hotspots top-N table;
+   - an export for Units tables;
+   - component names are links in the Metrics table;
+   - a "Components" entry in the sidebar.
+10. **Discoverability:**
+    - explain disabled buttons visibly, not in a native tooltip (the
+      Sandbox);
+    - make the lens builder's "Cut by" either a control or plain text;
+    - say when a reading declined to split a component;
+    - show the `?` shortcut sheet on first run;
+    - Hotspots search should not reset the chosen perspective;
+    - pinned group evidence should render in reports;
+    - "Who works on it" split one author into two identities.
 
-- **By hand missed history and the scanner's own gaps** (#11, #12, #13):
-  nothing in reading code points at co-change with the Go backend. The
-  NUL-byte files were visible (`grep` said "Binary file matches") and
-  ignored.
-- **The app missed everything that needs a complete import graph** (#4–#7,
-  #9, #14, #15): with A and B missing, the graph it had covered the 120 `.ts`
-  files and none of the 217 `.vue` files. It also could not test its own plan
-  (C).
+## Method notes
 
-With A, B and C, the app would have had everything the manual pass had, plus
-history. That combination would beat either approach alone.
-
-## Method notes, for the next run
-
-- The headless harness (`probe.mjs`) had a race that mixed in another
-  workspace's data. It was fixed mid-run, the agents were told, and they
-  re-checked. Their reports note it. It came from the real `openScan` race.
-- Subagents could not write report files (policy). Their reports were copied
-  from their final messages into `tasks/archstats-dogfood/`.
-- The "only the app" rule allowed the SQL console, and `file_contents` in it
-  is effectively a file reader. Without it, the app's plan would have been
-  name-guessing. That is itself a finding for D and for finding #1's
-  suggestion.
-- `persona-roadmap` gained three commits during the run (`f4db285`,
-  `b906fa2`, `9906210`). Both branches start at `cffe84f` and need a rebase
-  before either is merged.
+- **Harness.** A sandboxed server (`serve-ui.mjs`) and a driver
+  (`drive.mjs`) let agents use the real app safely: the owner's open
+  snapshot never moved, and nothing was written. Both are reusable for
+  agent-driven UI testing of Archstats.
+- **Harness faults were separated from findings.**
+  - The driver did not show native tooltips at first.
+  - It could not clear fields at first.
+  - One mission used a wrong route.
+- **Round 1 of run 3 is not representative of the product's intent.**
+  Navigators used it as a table reader until given the architect stance and
+  the product guide. How hard the intended features were to discover without
+  a guide is itself a finding.
+- **Rebase needed.** All three branches start at `cffe84f`;
+  `persona-roadmap`/`main` moved during the run.
