@@ -66,6 +66,7 @@ export const VIEWS: ViewEntry[] = [
   { label: "Timeline", to: "/views/git/timeline" },
   { label: "Hidden coupling", to: "/views/git/coupling", also: "co-change changes together" },
   { label: "Units", to: "/views/units", also: "classes functions modules" },
+  { label: "Libraries", to: "/views/libraries", also: "imports frameworks external dependencies" },
   { label: "Rules", to: "/views/rules", also: "violations lens rules" },
   { label: "Changes", to: "/views/changes", also: "compare diff" },
   { label: "Over time", to: "/views/trends", also: "trends history" },

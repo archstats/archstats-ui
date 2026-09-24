@@ -167,7 +167,7 @@ import { useAsyncQuery } from "~/composables/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package,
 } from "lucide-vue-next";
 import LensHealth from "~/components/groups/LensHealth.vue";
 import GroupsManager from "~/components/groups/GroupsManager.vue";
@@ -209,9 +209,10 @@ const gitViews = [
 ];
 // Units, not classes: gin is 1,327 functions to 204 types and LibreChat
 // 3,241 to 294, so a section called Classes shows a fraction of either.
-const codeViews = [
-  { label: "Units", to: "/views/units", icon: Braces },
-];
+const codeViews = computed(() => [
+  ...(hasUnits.value ? [{ label: "Units", to: "/views/units", icon: Braces }] : []),
+  ...(dataStore.hasView("snippets") ? [{ label: "Libraries", to: "/views/libraries", icon: Package }] : []),
+]);
 const architectureViews = [
   { label: "Rules", to: "/views/rules", icon: Scale },
 ];
@@ -311,7 +312,7 @@ const groups = computed(() => {
     { title: "Components", items: componentViews },
     { title: "Git", items: gitViews, muted: !hasGitHistory.value, mutedWhy: "No git history in this snapshot: scan a git checkout to see authors and activity" },
   ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
-  if (hasUnits.value) list.push({ title: "Code", items: codeViews });
+  if (codeViews.value.length) list.push({ title: "Code", items: codeViews.value });
   if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
   list.push({ title: "Tools", items: toolViews.value as any });
   return list;

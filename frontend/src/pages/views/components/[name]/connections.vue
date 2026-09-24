@@ -169,6 +169,23 @@
             </table>
           </div>
         </section>
+        <!-- What it imports from outside the project, rolled up to two segments. -->
+        <section v-if="external.length" class="px-4 pb-6 pt-5">
+          <div class="flex items-baseline gap-3">
+            <h3 class="ui-section-title">External</h3>
+            <span class="text-sm text-neutral-500">Imports of anything that is not one of the project's components</span>
+            <router-link :to="`/views/libraries`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">Libraries →</router-link>
+          </div>
+          <ul class="mt-2 flex flex-col">
+            <li v-for="l in external.slice(0, 30)" :key="l.name" class="flex h-7 items-center gap-2">
+              <span class="min-w-0 truncate font-mono text-sm text-neutral-800" :title="l.name">{{ l.name }}</span>
+              <span v-if="l.platform" class="ui-tag shrink-0">Platform</span>
+              <span v-if="l.internal" class="ui-tag shrink-0" title="Starts where the project's own names start">Looks internal</span>
+              <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ l.imports.toLocaleString("en-US") }} in {{ l.files.toLocaleString("en-US") }} {{ l.files === 1 ? "file" : "files" }}</span>
+            </li>
+          </ul>
+          <p v-if="external.length > 30" class="mt-1 text-sm text-neutral-500">And {{ external.length - 30 }} more.</p>
+        </section>
       </div>
 
       <!-- Inspector: the one place a selection explains itself, and the only
@@ -284,6 +301,8 @@
 </template>
 
 <script setup lang="ts">
+import { libraries as rollLibraries, ownPrefixes } from "~/utils/libraries"
+import { sqlLiteral as externalLiteral } from "~/utils/sql"
 import { TRUSTED_PAIR_SQL } from "~/utils/cochange"
 import { componentPath, filePath } from "~/utils/routes"
 import { computed, nextTick, ref, watch } from "vue"
@@ -704,4 +723,15 @@ function basename(path: string): string {
   const i = path.lastIndexOf("/")
   return i === -1 ? path : path.slice(i + 1)
 }
+
+// What it imports that is not one of the project's components.
+const externalStore = useDataStore()
+const { data: externalRows } = useAsyncQuery<Array<{ content: string; file: string; component: string | null }>>(
+  () => (externalStore.hasView("snippets")
+    ? externalStore.query(`SELECT content, file, component FROM snippets WHERE snippet_type = 'modularity__component__imports' AND component = ${externalLiteral(String(route.params.name ?? ""))} AND content NOT IN (SELECT name FROM components)`)
+    : Promise.resolve([])),
+  [() => route.params.name, () => externalStore.datasetKey],
+  { initial: [] },
+)
+const external = computed(() => rollLibraries(externalRows.value, 2, ownPrefixes(externalStore.allComponents.map(c => c.name))))
 </script>
