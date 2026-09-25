@@ -119,7 +119,8 @@
               <h2 class="ui-section-title">Lens rules: {{ lens.active }}</h2>
               <span v-if="lensDeclared.source === 'manifests'" class="ui-tag" title="Seeded from the dependencies the build files declare">declared by manifests</span>
               <span class="text-sm text-neutral-500">{{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} imports cross the declared order` : "Nothing crosses the declared order" }}</span>
-              <button type="button" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">Edit declaration…</button>
+              <RulesExport v-if="lens.active" :lens="lens.active" class="ml-auto"/>
+              <button type="button" class="text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">Edit declaration…</button>
             </div>
             <p v-if="lensCheck.ambiguous || lensCheck.unplacedFrom" class="mt-1 text-sm text-neutral-500">
               <template v-if="lensCheck.unplacedFrom">{{ lensCheck.unplacedFrom.toLocaleString("en-US") }} imports come from files in no group and are not judged. </template>
@@ -173,6 +174,7 @@ import PinButton from "~/features/reports/components/PinButton.vue"
 import OpenInEditor from "~/features/files/components/OpenInEditor.vue"
 import { filePath } from "~/features/navigation/routes"
 import DeclareSheet from "~/features/rules/components/DeclareSheet.vue"
+import RulesExport from "~/features/rules/components/RulesExport.vue"
 import { useLensFindings } from "~/features/rules/useLensFindings"
 import { useLensStore } from "~/features/groups/lens.store"
 import { useScopeStore } from "~/features/groups/scope.store"

@@ -89,7 +89,7 @@ A new view, `/views/restructure`, under Architecture.
 
 | Item | What |
 | --- | --- |
-| 5.1 | Plan export (see 3). The import rewriter is bundled and documented: `python3 restructure.py <map> <frontend>`. |
+| 5.1 | Plan export (see 3). The import rewriter is bundled as `restructure.mjs` (`node restructure.mjs --dry`, then without `--dry`). |
 | 5.2 | **Compare through a lens.** In Changes, pick a lens or the saved plan and compare two snapshots at module level: module dependencies, mutual pairs, cycles, and violations before and after. Scan a branch with Rescan (a commit or a branch name). |
 
 ## 6. Hold the line
@@ -119,3 +119,48 @@ standard). It must beat the 2026-09-24 baseline:
 - coverage of the 17 findings better than 12/17;
 - the implemented plan has fewer than 10 mutual pairs and under 10
   violations of its own rule.
+
+## Status, 2026-09-25
+
+| Stage | Where | Measured |
+| --- | --- | --- |
+| S1 coverage | banner, About this snapshot | archstats-ui: 198 of 421 code files have import data; the 217 `.vue` files have none |
+| S2 Folder X-ray | `/views/xray` | `frontend/src/utils`: 90 files in 11 topics (report, sql, graph, trends…) |
+| S3 Structure checks | `/views/checks` | Reachability finds 39 of the 40 non-test files the hand refactor deleted, plus `ClassGraph.vue`, which main deleted separately; 4 false positives (stand-alone scripts). Layer inversions and duplicate names. |
+| S4 Restructure planner | `/views/restructure` | The exported `restructure.mjs`, run with the hand refactor's 196 moves on its parent commit, edited 263 files; 769 of 770 tests passed. The one failure reads a file by a path built at run time. |
+| S5 Sandbox and groups | Connections → Plan; groups, lens menu, Declare, Rules | U1–U10 and U20 fixed, except that the graph does not draw new components (U9) |
+| S6 Compare and drift | Changes → Structure; drift banner | Through the hand refactor's own plan: mutual pairs 9 → 5, crossing imports 551 → 452, module dependencies 120 → 108 |
+| S7 Rules as code | Rules → Rules for CI… | No new engine command: the export is an assertions file for the existing `archstats assert --rules`. On the scanned commit it lists the 11 crossings of a five-layer lens, with file and line, in 2 s, and exits 1. |
+| S8 auto-import edges | engine | Waiting on E1, whose `.vue` parser is in progress in another worktree. Until then the UI reads `.vue` imports, component tags (with Nuxt's prefixed names) and auto-imported names from file text, and marks them. |
+
+The file graph behind S3, S4 and S6 joins three sources: unit references,
+the raw import specifiers the engine keeps (`modularity__import__raw`,
+resolved to files, which catches a Pinia store's `defineStore` const), and
+the text of file types the engine did not parse.
+
+Not yet run: the acceptance re-run of scenario 06.
+
+### Rules in CI
+
+Save a lens's declaration with **Rules for CI…** (Rules, lens section) as
+`archstats-rules.yml` at the repository root, then:
+
+```yaml
+# .github/workflows/architecture.yml
+name: Architecture
+on: [pull_request]
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.24" }
+      - run: go install github.com/archstats/archstats@latest
+      - run: archstats assert --rules archstats-rules.yml -f .
+```
+
+A live group made only of patterns is written as its patterns (SQLite
+`GLOB`, with the separator count pinned so `*` stays in one folder). Any
+other group is written as the components it holds whole plus the files it
+holds besides.
