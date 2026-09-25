@@ -115,19 +115,10 @@
               <LensHealth :lens="bucket.dimension" compact/>
             </button>
             <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet opacity-0 group-hover:opacity-100 focus:opacity-100" :title="`Edit ${bucket.dimension} in the builder`" :aria-label="`Edit ${bucket.dimension}`" @click="buildDimension(bucket.dimension)"><Icon icon="pencil" :size="12"/></button>
-            <div class="relative">
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet opacity-0 group-hover:opacity-100 focus:opacity-100" :aria-label="`More for ${bucket.dimension}`" :aria-expanded="dimMenu === bucket.dimension" @click.stop="dimMenu = dimMenu === bucket.dimension ? null : bucket.dimension"><Icon icon="more-vertical" :size="12"/></button>
-              <div v-if="dimMenu === bucket.dimension" class="fixed inset-0 z-40" @click="dimMenu = null"></div>
-              <div v-if="dimMenu === bucket.dimension" class="ui-menu absolute left-0 z-50 mt-1 flex w-48 flex-col animate-in" role="menu">
-                <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; buildDimension(bucket.dimension)"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Edit in builder</span></button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; declaring = bucket.dimension"><Icon icon="scale" :size="12" class="text-neutral-500"/><span>Declare dependencies…</span></button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; startRename(bucket.dimension)"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Rename</span></button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="dimMenu = null; confirming = bucket.dimension"><Icon icon="trash" :size="12" class="text-neutral-500"/><span>Delete lens</span></button>
-              </div>
-            </div>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet group-hover:opacity-100 focus:opacity-100" :class="lens.active === bucket.dimension || dimMenu === bucket.dimension ? 'opacity-100' : 'opacity-0'" :title="`More for ${bucket.dimension}: declare dependencies, rename, delete`" :aria-label="`More for ${bucket.dimension}`" aria-haspopup="menu" :aria-expanded="dimMenu === bucket.dimension" @click.stop="openDimMenu(bucket.dimension, $event.currentTarget as HTMLElement)"><Icon icon="more-vertical" :size="12"/></button>
           </div>
           <router-link v-if="lens.active === bucket.dimension && activeDeclared" to="/views/rules#lens" class="ml-7 block truncate font-mono text-[11px] leading-5 text-neutral-500 hover:text-neutral-900" :title="lensCheck.count ? 'Every import that crosses the declared order, with file and line' : 'Nothing crosses the declared order'">
-            {{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} import${lensCheck.count === 1 ? "" : "s"} cross the declared order` : "Nothing crosses the declared order" }}
+            {{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} import${lensCheck.count === 1 ? "" : "s"} cross the declared order` : "Nothing crosses the declared order" }}<template v-if="lensCheck.silent.length"> · {{ lensCheck.silent.length }} cycle{{ lensCheck.silent.length === 1 ? "" : "s" }} not judged</template>
           </router-link>
           <ul class="ml-3 flex flex-col">
             <li v-for="g in bucket.groups" :key="g.id" class="group/grp relative">
@@ -142,7 +133,7 @@
               >
                 <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
                 <span class="min-w-0 flex-1 truncate">{{ g.name }}</span>
-                <span class="font-mono text-xs text-neutral-400">{{ g.members.length }}</span>
+                <span class="font-mono text-xs text-neutral-400">{{ groupsStore.membersOf(g).length }}</span>
               </button>
             </li>
           </ul>
@@ -159,6 +150,17 @@
         <DeclareSheet v-model="declaring"/>
       </div>
     </section>
+    <!-- The lens menu lives on the body: inside the scrolling lens list it was
+         clipped, and closed before an item could be reached. -->
+    <Teleport to="body">
+      <div v-if="dimMenu" class="fixed inset-0 z-[69]" @click="dimMenu = null"></div>
+      <div v-if="dimMenu" ref="dimMenuEl" class="ui-menu flex w-52 flex-col animate-in" role="menu" :aria-label="`${dimMenu} lens`" :style="dimMenuStyle" @keydown.esc.prevent="closeDimMenu" @keydown.down.prevent="stepDimMenu(1)" @keydown.up.prevent="stepDimMenu(-1)">
+        <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('build')"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Edit in builder</span></button>
+        <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('declare')"><Icon icon="scale" :size="12" class="text-neutral-500"/><span>Declare dependencies…</span></button>
+        <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('rename')"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>Rename</span></button>
+        <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('delete')"><Icon icon="trash" :size="12" class="text-neutral-500"/><span>Delete lens</span></button>
+      </div>
+    </Teleport>
   </nav>
 </template>
 
@@ -167,9 +169,10 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package, ListChecks,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, ListChecks, FolderTree,
 } from "lucide-vue-next";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
+import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel";
 import GroupsManager from "~/features/groups/components/GroupsManager.vue";
 import DeclareSheet from "~/features/rules/components/DeclareSheet.vue";
 import { groupPath } from "~/features/navigation/routes";
@@ -216,6 +219,7 @@ const codeViews = computed(() => [
 // Structure checks read the import graph every snapshot has; Rules need declared rules.
 const architectureViews = computed(() => [
   { label: "Checks", to: "/views/checks", icon: ListChecks },
+  { label: "Restructure", to: "/views/restructure", icon: FolderTree },
   ...(hasRules.value ? [{ label: "Rules", to: "/views/rules", icon: Scale }] : []),
 ]);
 // The engagement's own working files: what was pinned, and the tools to look further.
@@ -262,6 +266,30 @@ const currentRoute = useRoute();
 const isChangesRoute = computed(() => currentRoute.path.startsWith("/views/changes") || currentRoute.path.startsWith("/views/trends"));
 const scanCount = computed(() => workspaces.scans.filter((s: any) => s.status === "complete").length);
 const dimMenu = ref<string | null>(null);
+const dimMenuTrigger = ref<HTMLElement | null>(null);
+const dimMenuEl = ref<HTMLElement | null>(null);
+const { style: dimMenuStyle } = useAnchoredPanel(dimMenuTrigger, computed(() => dimMenu.value !== null), "left");
+function openDimMenu(dimension: string, trigger: HTMLElement) {
+  if (dimMenu.value === dimension) { dimMenu.value = null; return; }
+  dimMenuTrigger.value = trigger;
+  dimMenu.value = dimension;
+  void nextTick(() => dimMenuEl.value?.querySelector<HTMLElement>("[role=menuitem]")?.focus());
+}
+function closeDimMenu() { dimMenu.value = null; dimMenuTrigger.value?.focus(); }
+function stepDimMenu(by: 1 | -1) {
+  const items = [...(dimMenuEl.value?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+  const i = items.indexOf(document.activeElement as HTMLElement);
+  items[(i + by + items.length) % items.length]?.focus();
+}
+function dimAction(action: "build" | "declare" | "rename" | "delete") {
+  const d = dimMenu.value;
+  dimMenu.value = null;
+  if (!d) return;
+  if (action === "build") buildDimension(d);
+  else if (action === "declare") declaring.value = d;
+  else if (action === "rename") startRename(d);
+  else confirming.value = d;
+}
 const componentTotal = computed(() => dataStore.componentFilesIndex.size);
 const coverage = (d: string) => groupsStore.dimensionCoverage(d);
 function buildDimension(name: string) {

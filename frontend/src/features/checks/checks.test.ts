@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { duplicateNames, globRegExp, inferEdges, inversions, layerOf, reachability, sameNamedFiles, type FileEdge } from "./checks"
+import { duplicateNames, globRegExp, inferEdges, inversions, resolveRawImports, layerOf, reachability, sameNamedFiles, type FileEdge } from "./checks"
 
 const e = (from: string, to: string, names: string[] = []): FileEdge => ({ from, to, names })
 
@@ -73,5 +73,24 @@ describe("duplicates", () => {
     })
     it("finds same-named files, ignoring index and __init__", () => {
         expect(sameNamedFiles(["a/cycles.ts", "b/cycles.vue", "a/index.ts", "b/index.ts"])).toEqual([{ name: "cycles", files: ["a/cycles.ts", "b/cycles.vue"] }])
+    })
+})
+
+describe("raw imports", () => {
+    const files = ["f/src/stores/data.ts", "f/src/utils/query.ts", "f/src/utils/index.ts", "core/file/role.go", "core/file/walk.go", "core/file/role_test.go", "cmd/main.go",
+        "src/main/java/org/acme/order/Order.java", "src/main/java/org/acme/order/Line.java", "src/main/java/org/acme/web/Api.java", "shop/models.py", "shop/app/__init__.py"]
+    it("resolves aliased, relative, dotted and package imports", () => {
+        const e = resolveRawImports([
+            { file: "f/src/utils/query.ts", spec: "~/stores/data" }, { file: "f/src/stores/data.ts", spec: "../utils" }, { file: "f/src/stores/data.ts", spec: "vue" },
+            { file: "cmd/main.go", spec: "github.com/acme/tool/core/file" },
+            { file: "src/main/java/org/acme/web/Api.java", spec: "org.acme.order.Order" }, { file: "src/main/java/org/acme/web/Api.java", spec: "org.acme.order.*" },
+            { file: "shop/app/__init__.py", spec: "shop.models" },
+        ], files)
+        expect(e.map(x => `${x.from}>${x.to}`)).toEqual([
+            "f/src/utils/query.ts>f/src/stores/data.ts", "f/src/stores/data.ts>f/src/utils/index.ts",
+            "cmd/main.go>core/file/role.go", "cmd/main.go>core/file/walk.go",
+            "src/main/java/org/acme/web/Api.java>src/main/java/org/acme/order/Order.java", "src/main/java/org/acme/web/Api.java>src/main/java/org/acme/order/Line.java",
+            "shop/app/__init__.py>shop/models.py",
+        ])
     })
 })

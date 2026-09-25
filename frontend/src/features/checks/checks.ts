@@ -204,6 +204,58 @@ const pascal = (s: string) => s.split(/[-_]/).map(w => w.charAt(0).toUpperCase()
 // Declared names count only when distinctive: camelCase or PascalCase, not a plain word.
 const distinctive = (n: string) => n.length >= 6 && /[a-z][A-Z]|^[A-Z][a-z]+[A-Z]/.test(n) && !COMMON_NAMES.has(n)
 
+/**
+ * File imports from the raw import specifiers the engine keeps per file,
+ * resolved to files here: relative and aliased paths (`./x`, `~/stores/data`),
+ * dotted names (`org.acme.Order`, `app.models`), and package paths
+ * (`github.com/acme/tool/core/file`, which is every file of that folder).
+ * They catch what unit references miss: an import whose name the engine
+ * declared no unit for. Packages from outside the repository resolve to nothing.
+ */
+export function resolveRawImports(raw: Array<{ file: string; spec: string }>, files: string[]): FileEdge[] {
+    const noExt = (f: string) => f.replace(/\.[^./]+$/, "")
+    const byStem = new Map<string, string[]>()
+    const byDir = new Map<string, string[]>()
+    const dirsByLast = new Map<string, string[]>()
+    for (const f of files) {
+        const n = noExt(f), stem = n.slice(n.lastIndexOf("/") + 1)
+        byStem.set(stem, [...(byStem.get(stem) ?? []), f])
+        const d = f.slice(0, Math.max(0, f.lastIndexOf("/")))
+        if (!byDir.has(d)) { byDir.set(d, []); const last = d.slice(d.lastIndexOf("/") + 1); dirsByLast.set(last, [...(dirsByLast.get(last) ?? []), d]) }
+        byDir.get(d)!.push(f)
+    }
+    const shared = (a: string, b: string) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i }
+    const nearest = (from: string, cands: string[]) => cands.reduce((best, c) => (shared(from, c) > shared(from, best) ? c : best), cands[0])
+    const norm = (p: string) => { const out: string[] = []; for (const x of p.split("/")) { if (!x || x === ".") continue; if (x === "..") out.pop(); else out.push(x) } return out.join("/") }
+    // Either side may be the longer: ~/stores/data inside f/src, or a Go module path around core/file.
+    const same = (a: string, b: string) => a === b || a.endsWith("/" + b) || b.endsWith("/" + a)
+    const isTest = (f: string) => /(_test\.go|\.(test|spec)\.[a-z]+)$/.test(f)
+    const out: FileEdge[] = []
+    const seen = new Set<string>()
+    const add = (from: string, to: string) => { const k = from + "\u0000" + to; if (to !== from && !seen.has(k)) { seen.add(k); out.push({ from, to, names: [] }) } }
+    for (const { file, spec: raw0 } of raw) {
+        const spec = raw0.trim().replace(/^["'`]|["'`]$/g, "")
+        if (!spec) continue
+        let path: string
+        if (spec.startsWith("./") || spec.startsWith("../")) path = norm(file.slice(0, file.lastIndexOf("/")) + "/" + spec)
+        else if (/^[~@#]{1,2}\//.test(spec)) path = spec.replace(/^[~@#]{1,2}\//, "")
+        else if (/^[A-Za-z_][\w]*(\.[A-Za-z_*][\w]*)+$/.test(spec) && !/\.(js|ts|vue|mjs|cjs|json|css)$/.test(spec)) path = spec.replace(/\.\*$/, "").replace(/\./g, "/")
+        else if (spec.includes("/")) path = spec
+        else continue
+        path = noExt(path.replace(/\/$/, ""))
+        const stem = path.slice(path.lastIndexOf("/") + 1)
+        // A file: the path, or the path's index.
+        const fileHits = (byStem.get(stem) ?? []).filter(f => same(noExt(f), path))
+        const indexHits = fileHits.length ? [] : (byStem.get("index") ?? []).concat(byStem.get("__init__") ?? []).filter(f => same(f.slice(0, f.lastIndexOf("/")), path))
+        const hits = fileHits.length ? fileHits : indexHits
+        if (hits.length) { add(file, nearest(file, hits)); continue }
+        // A package: every file of the folder the path names.
+        const dirs = (dirsByLast.get(stem) ?? []).filter(d => same(d, path))
+        if (dirs.length) for (const f of byDir.get(nearest(file, dirs))!) if (!isTest(f)) add(file, f)
+    }
+    return out
+}
+
 /** Contents of the files the graph cannot read, for {@link inferEdges}. */
 export async function loadUnseenContents(q: Query, files: string[]): Promise<Array<{ file: string; content: string }>> {
     const out: Array<{ file: string; content: string }> = []
@@ -276,19 +328,24 @@ export interface ChecksData {
     units: DeclaredUnit[]
     /** Files the import graph mentions at all. */
     seen: Set<string>
+    /** file → the component the scan put it in. */
+    component: Map<string, string>
 }
 
 export async function loadChecks(q: Query, has: (table: string, column?: string) => boolean, isTest: (path: string) => boolean): Promise<ChecksData> {
     const roleCol = has("files", "role") ? "role" : "NULL AS role"
-    const [rows, conns, markers, units] = await Promise.all([
-        q(`SELECT name, ${roleCol}, coalesce(complexity__lines, 0) AS lines FROM files`),
+    const compCol = has("files", "component") ? "component" : "NULL AS component"
+    const [rows, conns, markers, units, raw] = await Promise.all([
+        q(`SELECT name, ${roleCol}, ${compCol}, coalesce(complexity__lines, 0) AS lines FROM files`),
         has("unit_connections") ? q(`SELECT uc.from_file AS a, uc.to_file AS b, group_concat(DISTINCT u.name) AS names FROM unit_connections uc LEFT JOIN units u ON u.id = uc."to" WHERE uc.from_file <> uc.to_file GROUP BY 1, 2`) : Promise.resolve([]),
         has("unit_markers") && has("units") ? q(`SELECT DISTINCT u.file AS file, m.key AS key FROM unit_markers m JOIN units u ON u.id = m.unit WHERE m.source = 'annotation'`) : Promise.resolve([]),
         has("units") ? q(`SELECT u.name, u.file, u.kind, max(CASE WHEN uc.from_file IS NOT NULL AND uc.from_file <> u.file THEN 1 ELSE 0 END) AS shared FROM units u LEFT JOIN unit_connections uc ON uc."to" = u.id WHERE (u.owner IS NULL OR u.owner = '') AND u.kind IN ('type', 'function') GROUP BY u.id`) : Promise.resolve([]),
+        has("snippets") ? q(`SELECT DISTINCT file, content AS spec FROM snippets WHERE snippet_type = 'modularity__import__raw'`).catch(() => []) : Promise.resolve([]),
     ])
-    const files: string[] = [], tests = new Set<string>(), production = new Set<string>(), lines = new Map<string, number>()
+    const files: string[] = [], tests = new Set<string>(), production = new Set<string>(), lines = new Map<string, number>(), component = new Map<string, string>()
     for (const r of rows) {
         const f = String(r.name)
+        if (r.component) component.set(f, String(r.component))
         const role = r.role ? String(r.role) : (isTest(f) ? "test" : "production")
         if (role === "test") { tests.add(f); files.push(f) }
         else if (role === "production") { production.add(f); files.push(f) }
@@ -296,14 +353,20 @@ export async function loadChecks(q: Query, has: (table: string, column?: string)
     }
     const seen = new Set<string>()
     for (const c of conns) { seen.add(String(c.a)); seen.add(String(c.b)) }
+    for (const r of raw) seen.add(String(r.file))
+    // Unit references carry the names; raw imports add what they miss.
+    const edges: FileEdge[] = conns.map(c => ({ from: String(c.a), to: String(c.b), names: c.names ? String(c.names).split(",") : [] }))
+    const have = new Set(edges.map(e => e.from + "\u0000" + e.to))
+    for (const e of resolveRawImports(raw.map(r => ({ file: String(r.file), spec: String(r.spec) })), files)) if (!have.has(e.from + "\u0000" + e.to)) edges.push(e)
     for (const u of units) seen.add(String(u.file))
     const m = new Map<string, Set<string>>()
     for (const r of markers) { const f = String(r.file); if (!m.has(f)) m.set(f, new Set()); m.get(f)!.add(String(r.key)) }
     return {
         files, tests, production, lines,
-        edges: conns.map(c => ({ from: String(c.a), to: String(c.b), names: c.names ? String(c.names).split(",") : [] })),
+        edges,
         markers: m,
         units: units.map(u => ({ name: String(u.name), file: String(u.file), kind: String(u.kind), shared: Number(u.shared) > 0 })),
         seen,
+        component,
     }
 }

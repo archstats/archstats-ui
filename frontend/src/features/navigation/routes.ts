@@ -73,6 +73,7 @@ export const VIEWS: ViewEntry[] = [
   { label: "Folder X-ray", to: "/views/xray", also: "folder directory utils helpers topics grab-bag" },
   { label: "Units", to: "/views/units", also: "classes functions modules" },
   { label: "Libraries", to: "/views/libraries", also: "imports frameworks external dependencies" },
+  { label: "Restructure planner", to: "/views/restructure", also: "refactor plan move modules target structure migrate" },
   { label: "Structure checks", to: "/views/checks", also: "layers inversions unreachable dead code duplicates entry points" },
   { label: "Rules", to: "/views/rules", also: "violations lens rules" },
   { label: "Changes", to: "/views/changes", also: "compare diff" },

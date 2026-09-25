@@ -149,9 +149,7 @@ import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useDataStore } from "~/features/snapshot/data.store";
-import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
-import { isTestPath } from "~/features/snapshot/fileRole";
-import { CODE_EXTENSIONS, extensionOf } from "~/features/snapshot/coverage";
+import { useFileGraph } from "~/features/checks/useFileGraph";
 import { filePath } from "~/features/navigation/routes";
 import {
   LAYERS, duplicateNames, globRegExp, inversions, layerOf, loadChecks, inferEdges, loadUnseenContents, reachability, sameNamedFiles,
@@ -165,30 +163,8 @@ const store = useDataStore();
 const route = useRoute();
 const router = useRouter();
 
-const EMPTY: ChecksData = { files: [], tests: new Set(), production: new Set(), lines: new Map(), edges: [], markers: new Map(), units: [], seen: new Set() };
-const { data, loading, error } = useAsyncQuery<ChecksData>(
-  () => loadChecks(sql => store.query<any>(sql), (t, c) => (c ? store.hasColumn(t, c) : store.hasView(t)), isTestPath),
-  [() => store.datasetKey],
-  { initial: EMPTY },
-);
-
-// Only code files of a type the graph reads at all: a .vue file the engine
-// never parsed is not dead, it is unseen.
-const codeFiles = computed(() => data.value.files.filter(f => CODE_EXTENSIONS.has(extensionOf(f))));
-const extSeen = computed(() => {
-  const m = new Map<string, { files: number; seen: number }>();
-  for (const f of codeFiles.value) {
-    if (data.value.tests.has(f)) continue;
-    const e = extensionOf(f), c = m.get(e) ?? { files: 0, seen: 0 };
-    c.files++; if (data.value.seen.has(f)) c.seen++;
-    m.set(e, c);
-  }
-  return m;
-});
-const blindExt = computed(() => [...extSeen.value].filter(([, c]) => c.seen === 0 && c.files >= 3).map(([ext, c]) => ({ ext, files: c.files })).sort((a, b) => b.files - a.files));
-const coverageShare = computed(() => { let f = 0, s = 0; for (const c of extSeen.value.values()) { f += c.files; s += c.seen; } return f ? s / f : 1; });
+const { data, loading, error, codeFiles, production: readableProd, blindExt, coverageShare, inferred, edges } = useFileGraph();
 const readable = codeFiles;
-const readableProd = computed(() => new Set(readable.value.filter(f => data.value.production.has(f))));
 
 // Tabs, kept in the URL so a finding can be linked.
 const TABS = [
@@ -218,24 +194,6 @@ function toggleOpen(k: string) { const s = new Set(openInv.value); s.has(k) ? s.
 const extraDraft = ref(String(route.query.roots ?? ""));
 function applyExtra() { const v = extraDraft.value.trim(); void router.replace({ query: { ...route.query, roots: v || undefined }, hash: route.hash }); }
 const extraRoots = computed(() => String(route.query.roots ?? "").split("\n").map(s => s.trim()).filter(Boolean).map(globRegExp));
-// Files of a type the engine did not parse still say what they use; read
-// that from their text so a store only pages use is not called dead.
-const unseenFiles = computed(() => {
-  const blind = new Set(blindExt.value.map(b => b.ext));
-  return codeFiles.value.filter(f => blind.has(extensionOf(f)));
-});
-const { data: unseenContents } = useAsyncQuery<Array<{ file: string; content: string }>>(
-  () => (unseenFiles.value.length && store.hasView("file_contents") ? loadUnseenContents(sql => store.query<any>(sql), unseenFiles.value) : Promise.resolve([])),
-  [() => unseenFiles.value.length, () => store.datasetKey],
-  { initial: [] },
-);
-const declared = computed(() => {
-  const m = new Map<string, string[]>();
-  for (const u of data.value.units) m.set(u.file, [...(m.get(u.file) ?? []), u.name]);
-  return m;
-});
-const inferred = computed(() => inferEdges(unseenContents.value, codeFiles.value, declared.value));
-const edges = computed(() => (inferred.value.length ? [...data.value.edges, ...inferred.value] : data.value.edges));
 const reach = computed(() => reachability(readable.value, data.value.tests, edges.value, data.value.markers, { extraRoots: extraRoots.value }));
 const sumLines = (fs: string[]) => fs.reduce((n, f) => n + (data.value.lines.get(f) ?? 0), 0);
 

@@ -37,7 +37,8 @@
             <section class="mt-6">
               <div class="flex items-baseline justify-between">
                 <h2 class="ui-section-title">Topics</h2>
-                <p class="text-sm text-neutral-500">Files grouped by who uses them, what they use, what they change with and what they are named. Tests follow the file they test.</p>
+                <p class="text-sm text-neutral-500">Files grouped by who uses them, what they use, what they change with and what they are named. Tests follow the file they test.
+                  <button type="button" class="ml-1 underline hover:text-neutral-900" title="One module per topic in the restructure planner (loners stay unplaced)" @click="toPlanner(topicList.filter(t => t.name !== 'Unclustered'))">Every topic to the planner</button></p>
               </div>
               <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <div v-for="t in topicList" :key="t.name + t.files[0]" class="ui-panel flex flex-col p-3" :class="{ 'ring-1 ring-accent-400': topicFilter === t.name }">
@@ -54,6 +55,7 @@
                   <div class="mt-auto flex gap-1 pt-3">
                     <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-pressed="topicFilter === t.name" @click="topicFilter = topicFilter === t.name ? null : t.name">{{ topicFilter === t.name ? "Show all" : "Show only" }}</button>
                     <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Select these files, then Create group in the tray" @click="selectFiles(t.files)">Select</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Make this topic a module in the restructure planner" @click="toPlanner([t])">To planner</button>
                   </div>
                 </div>
               </div>
@@ -117,6 +119,8 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { CODE_EXTENSIONS, extensionOf } from "~/features/snapshot/coverage";
 import { filePath } from "~/features/navigation/routes";
 import { byArea, loadXray, topics, type XrayFile } from "~/features/xray/xray";
+import { useRestructureStore } from "~/features/restructure/restructure.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 
 // A folder, read file by file and grouped into topics: the first pass of a
 // restructure, which by hand means opening every file in the folder.
@@ -198,6 +202,21 @@ function toggle(p: string) { const s = new Set(selected.value); s.has(p) ? s.del
 function selectFiles(fs: string[]) { selected.value = new Set(fs); }
 const allSelected = computed(() => shown.value.length > 0 && shown.value.every(f => selected.value.has(f.path)));
 function toggleAll() { selected.value = allSelected.value ? new Set() : new Set(shown.value.map(f => f.path)); }
+
+// Topics as modules of a restructure plan: the X-ray's reading, made a draft.
+function toPlanner(ts: Array<{ name: string; files: string[] }>) {
+  const planner = useRestructureStore();
+  const ws = useWorkspacesStore().active?.id;
+  if (ws) planner.load(ws);
+  const taken = new Set(planner.plan.modules.map(m => m.name));
+  for (const t of ts) {
+    let name = t.name.charAt(0).toUpperCase() + t.name.slice(1), n = 2;
+    while (taken.has(name)) name = `${t.name} ${n++}`;
+    taken.add(name);
+    planner.add({ name, files: t.files });
+  }
+  void router.push("/views/restructure");
+}
 
 // "pages ×5 · stores ×2", with the files on hover.
 const AreaChips = defineComponent({

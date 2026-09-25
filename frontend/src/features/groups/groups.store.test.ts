@@ -154,6 +154,17 @@ describe("groups store", () => {
     expect(store.filesOf(store.getGroupById(g.id)!).size).toBe(3);
   });
 
+  it("a fixed save freezes what the query answers, even on a group that was never live", () => {
+    const store = useGroupsStore();
+    store.initForProject("q1b");
+    const g = store.createGroup("Audit", [], "Domain");
+    store.setQuery(g.id, "audit", "fixed");
+    const saved = store.getGroupById(g.id)!;
+    expect(saved.mode).toBe("fixed");
+    expect(componentMembers(saved)).toEqual(["audit"]);
+    expect(store.membersOf(saved).length).toBe(1);
+  });
+
   it("a live group follows the snapshot when a rename moves things", () => {
     const store = useGroupsStore();
     store.initForProject("q2");

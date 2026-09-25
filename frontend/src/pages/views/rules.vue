@@ -125,6 +125,12 @@
               <template v-if="lensCheck.unplacedFrom">{{ lensCheck.unplacedFrom.toLocaleString("en-US") }} imports come from files in no group and are not judged. </template>
               <template v-if="lensCheck.ambiguous">{{ lensCheck.ambiguous.toLocaleString("en-US") }} go to a component the groups split, where the target file is unknown: marked ambiguous.</template>
             </p>
+            <p v-for="sc in lensCheck.silent" :key="sc.groups.join()" class="mt-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              A cycle of {{ sc.groups.length }} groups ({{ sc.groups.map(groupName).join(", ") }}) crosses nothing declared:
+              <template v-if="sc.outOfLayers.length">{{ sc.outOfLayers.map(groupName).join(", ") }} {{ sc.outOfLayers.length === 1 ? "is" : "are" }} not in the layers, so {{ sc.outOfLayers.length === 1 ? "its" : "their" }} imports are not judged.</template>
+              <template v-else>pairs allowed by hand let it through.</template>
+              <button type="button" class="ml-1 underline" @click="declaring = lens.active">Edit declaration…</button>
+            </p>
             <LoadingState v-if="lensLoading" text="Checking the declaration…"/>
             <div v-for="c in lensCheck.crossings" :key="c.from + '>' + c.to" class="ui-panel mt-4 overflow-hidden">
               <div class="flex items-baseline gap-2 px-4 py-2.5 hairline-b">
