@@ -41,6 +41,7 @@
     <ImportSnapshotSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
       <OutdatedSnapshotBar v-if="hasData"/>
+      <ImportCoverageBar v-if="hasData"/>
       <SlotFillBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
         <WorkspaceEmptyState v-if="!hasData"/>
@@ -57,6 +58,7 @@ import NavBar from "~/features/shell/components/NavBar.vue";
 import PaneHandle from "~/features/shell/components/PaneHandle.vue";
 import WorkspaceEmptyState from "~/features/workspace/components/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapshotBar.vue";
+import ImportCoverageBar from "~/features/snapshot/components/ImportCoverageBar.vue";
 import ShortcutSheet from "~/features/shell/components/ShortcutSheet.vue";
 import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import GoToAnything from "~/features/shell/components/GoToAnything.vue";
