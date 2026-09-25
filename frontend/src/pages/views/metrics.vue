@@ -109,7 +109,7 @@
       </div>
       <EmptyState v-else title="Pick two metrics to plot." text="Choose an X and a Y metric above, or a preset." icon="settings"/>
 
-      <GroupActionBar v-if="grain !== 'directories'" :selected-items="selectedNames" :kind="grain === 'files' ? 'file' : 'component'" @clear="selectedNames = []"/>
+      <GroupActionBar v-if="grain !== 'directories'" :selected-items="selectedNames" :kind="grain === 'files' ? 'file' : 'component'" :universe="filteredRows.map(r => String(r.name))" :show-in-except="['metrics']" @replace="selectedNames = $event" @clear="selectedNames = []"/>
     </template>
 
     <template #visualizer-overlays>
@@ -175,6 +175,7 @@ import LoadingState from "~/shared/ui/LoadingState.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import ZoomControls from "~/shared/ui/ZoomControls.vue";
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
+import { useIncomingSelection } from "~/features/navigation/useIncomingSelection";
 import DirectoryTree from "~/features/metrics/components/DirectoryTree.vue";
 import ComponentPlotterDiagram from "~/features/metrics/components/ComponentPlotterDiagram.vue";
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction";
@@ -448,6 +449,8 @@ watch(() => route.query, (q) => {
 // ─── Selection and navigation ───
 const selectedNames = ref<string[]>([]);
 watch(grain, () => { selectedNames.value = []; });
+// Arriving from Show in: the ids come selected.
+useIncomingSelection(ids => { selectedNames.value = ids; });
 
 function detailRoute(name: string): string {
   return grain.value === "files" ? `/views/files/${name}` : componentPath(name);

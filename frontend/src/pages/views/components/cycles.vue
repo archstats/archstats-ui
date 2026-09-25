@@ -378,7 +378,7 @@
       </div>
     </template>
   </ViewWorkspaceLayout>
-  <GroupActionBar ref="trayRef" :selected-items="traySelection" kind="component" @clear="traySelection = []"/>
+  <GroupActionBar ref="trayRef" :selected-items="traySelection" kind="component" :show-in-except="['cycles']" @replace="traySelection = $event" @clear="traySelection = []"/>
 </template>
 
 <script setup lang="ts">

@@ -98,7 +98,7 @@
         </table>
         <button v-if="rows.length > shownRows.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 500">Show {{ Math.min(500, rows.length - shownRows.length) }} more of {{ (rows.length - shownRows.length).toLocaleString("en-US") }}</button>
       </div>
-      <GroupActionBar v-if="selectable && selected.size" :selected-items="[...selected]" :kind="grain === 'files' ? 'file' : 'component'" @clear="selected = new Set()" @created="selected = new Set()"/>
+      <GroupActionBar v-if="selectable && selected.size" :selected-items="[...selected]" :kind="grain === 'files' ? 'file' : 'component'" :show-in-except="['search']" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
 
     <template #tab-hits>

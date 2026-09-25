@@ -50,7 +50,7 @@
         </table>
         <button v-if="shown.length > visible.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 300">Show {{ Math.min(300, shown.length - visible.length) }} more</button>
       </div>
-      <GroupActionBar v-if="selected.size" :selected-items="[...selected]" kind="component" @clear="selected = new Set()" @created="selected = new Set()"/>
+      <GroupActionBar v-if="selected.size" :selected-items="[...selected]" kind="component" :show-in-except="[]" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
 
     <template #tab-users>

@@ -95,6 +95,49 @@
           Remove from groups
         </button>
 
+        <template v-if="!naming && kind === 'component'">
+          <span class="ui-toolbar-sep"></span>
+          <!-- Grow: the selection widened along the imports, so "this and
+               everything that uses it" is two clicks from any view. -->
+          <div v-if="onReplace" class="relative">
+            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="growOpen" title="Widen the selection along the imports" @click.stop="growOpen = !growOpen; focusOpen = false">
+              <Icon icon="waypoints" :size="13" class="text-neutral-500"/>
+              <span>Grow</span>
+              <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
+            </button>
+            <div v-if="growOpen" class="fixed inset-0 z-40" @click="growOpen = false"></div>
+            <div v-if="growOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 animate-in" role="menu">
+              <button v-for="g in growOptions" :key="g.id" type="button" class="ui-menu-item" role="menuitem" :disabled="g.adds === 0" @click="grow(g.id)">
+                <span class="flex-1">{{ g.label }}</span>
+                <span class="font-mono text-xs text-neutral-400">{{ g.adds > 0 ? `+${g.adds}` : "none" }}</span>
+              </button>
+              <template v-if="universe?.length">
+                <div class="my-1 hairline-b"></div>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="invert">
+                  <span class="flex-1">Invert</span>
+                  <span class="font-mono text-xs text-neutral-400">{{ (universe.length - selectedInUniverse).toLocaleString("en-US") }}</span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <div class="relative">
+            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="focusOpen" title="Show only this part of the codebase, in every view" @click.stop="focusOpen = !focusOpen; growOpen = false">
+              <Icon icon="focus" :size="13" class="text-neutral-500"/>
+              <span>Focus</span>
+              <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
+            </button>
+            <div v-if="focusOpen" class="fixed inset-0 z-40" @click="focusOpen = false"></div>
+            <div v-if="focusOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 animate-in" role="menu">
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('only')">Only the selection</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('around')">The selection and its neighbours</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependents')">The selection and what uses it</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependencies')">The selection and what it uses</button>
+              <button v-if="selectedItems.length > 1" type="button" class="ui-menu-item" role="menuitem" @click="focusOn('between')">Every route between them</button>
+            </div>
+          </div>
+        </template>
+        <ShowInMenu v-if="!naming" :kind="kind === 'file' ? 'file' : 'component'" :ids="selectedItems" :except="showInExcept" up/>
+
         <span class="ui-toolbar-sep"></span>
         <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear selection" title="Clear selection (Esc)" @click="emit('clear')">
           <Icon icon="x" :size="13"/>
@@ -113,6 +156,11 @@ import { DEFAULT_DIMENSION, units, useGroupsStore, type SavedGroup, type UnitKin
 import { useLensStore } from "~/features/groups/lens.store";
 import { generalise } from "~/features/groups/query";
 import { detectSeparator } from "~/features/snapshot/names";
+import { useDataStore } from "~/features/snapshot/data.store";
+import { useScopeStore } from "~/features/groups/scope.store";
+import ShowInMenu from "~/features/groups/components/ShowInMenu.vue";
+import { adjacency, between, reach, tangleOf } from "~/features/navigation/focus";
+import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
 
 // Module-level so every tray on every view shares the last used dimension;
 // the lens wins while it exists, so a quick group lands where you are looking.
@@ -129,7 +177,16 @@ const props = withDefaults(defineProps<{
   kind: UnitKind
   /** The word for one selected item; defaults to the kind. */
   noun?: string
-}>(), { noun: undefined });
+  /** Everything the view could select, for Invert. */
+  universe?: string[]
+  /**
+   * Replace the selection. A view that passes this (as `@replace`) gets the
+   * Grow menu; a view that cannot take a selection it did not make does not.
+   */
+  onReplace?: (ids: string[]) => void
+  /** Show in targets to leave out: the view the tray is on. */
+  showInExcept?: string[]
+}>(), { noun: undefined, universe: undefined, onReplace: undefined, showInExcept: () => [] });
 
 const emit = defineEmits<{
   (e: "clear"): void
@@ -137,6 +194,8 @@ const emit = defineEmits<{
 }>();
 
 const groupsStore = useGroupsStore();
+const dataStore = useDataStore();
+const scope = useScopeStore();
 const lens = useLensStore();
 const trayEl = ref<HTMLElement | null>(null);
 const startDimension = () => lens.active ?? lastDimension ?? DEFAULT_DIMENSION;
@@ -268,6 +327,49 @@ function removeFromAll() {
   emit("clear");
 }
 
+// ── Grow and focus ─────────────────────────────────────────────────────
+const growOpen = ref(false);
+const focusOpen = ref(false);
+type GrowId = "dependents" | "dependencies" | "around" | "tangle" | "between";
+const graph = computed(() => adjacency(dataStore.componentConnections));
+function grown(id: GrowId): Set<string> {
+  const ids = props.selectedItems;
+  if (id === "dependents") return reach(graph.value, ids, "in", 1);
+  if (id === "dependencies") return reach(graph.value, ids, "out", 1);
+  if (id === "around") return reach(graph.value, ids, "both", 1);
+  if (id === "tangle") return tangleOf(graph.value, ids);
+  return between(graph.value, ids, null);
+}
+// Counted only while the menu is open: a walk over a big graph per render is waste.
+const growOptions = computed(() => {
+  if (!growOpen.value) return [];
+  const list: Array<{ id: GrowId; label: string }> = [
+    { id: "dependents", label: "Add what uses them" },
+    { id: "dependencies", label: "Add what they use" },
+    { id: "around", label: "Add both, one hop" },
+    { id: "tangle", label: "Add their tangles" },
+  ];
+  if (props.selectedItems.length > 1) list.push({ id: "between", label: "Add what sits between them" });
+  return list.map(o => ({ ...o, adds: grown(o.id).size - props.selectedItems.length }));
+});
+const selectedInUniverse = computed(() => {
+  const all = new Set(props.universe ?? []);
+  return props.selectedItems.filter(id => all.has(id)).length;
+});
+function grow(id: GrowId) {
+  props.onReplace?.(Array.from(grown(id)));
+  growOpen.value = false;
+}
+function invert() {
+  const chosen = new Set(props.selectedItems);
+  props.onReplace?.((props.universe ?? []).filter(id => !chosen.has(id)));
+  growOpen.value = false;
+}
+function focusOn(op: FocusOp) {
+  scope.setFocus(focusText({ op, anchors: [...props.selectedItems], depth: op === "only" || op === "between" ? null : 1 }));
+  focusOpen.value = false;
+}
+
 // ⌘G / Ctrl+G creates from the current selection wherever the tray is shown.
 function onKey(event: KeyboardEvent) {
   if (!props.selectedItems.length) return;
@@ -284,7 +386,7 @@ function onKey(event: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener("keydown", onKey));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
-watch(() => props.selectedItems.length, (n) => { if (n === 0) { naming.value = false; addOpen.value = false; usePattern.value = false; } });
+watch(() => props.selectedItems.length, (n) => { if (n === 0) { naming.value = false; addOpen.value = false; usePattern.value = false; growOpen.value = false; focusOpen.value = false; } });
 
 defineExpose({ startCreate });
 </script>

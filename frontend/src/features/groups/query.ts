@@ -7,7 +7,15 @@
 // so, which is the whole reason this exists.
 //
 //   line   := ["!"] source ["where" cond {"and" cond}]
-//   source := <glob> | "components" | "files" | "contains" <text>
+//   source := <glob> | "components" | "files" | "contains" <text> | graph
+//   graph  := "around" names [depth]            // it and what it uses or is used by
+//           | "dependencies of" names [depth]   // it and what it uses
+//           | "dependents of" names [depth]     // it and what uses it
+//           | "between" names ["and" names]     // everything on a route between them
+//           | "path from" names "to" names      // only the shortest routes
+//           | "tangle of" names                 // the cycle it sits in
+//   names  := <glob> {"," <glob>}               // quote a name that holds spaces
+//   depth  := "depth" (<n> | "all")             // hops; one by default
 //   cond   := <metric> [op number]        // bare metric means "> 0"
 //   op     := >  >=  <  <=  =  !=
 //
@@ -21,6 +29,8 @@
 // fires and blocks. This describes a set and governs nothing.
 
 import { detectSeparator } from "~/features/snapshot/names"
+import { adjacency, between, reach, shortestPath, tangleOf, type Adjacency, type GraphEdge } from "~/features/navigation/focus"
+import type { FocusSpec, GraphOp } from "~/features/navigation/focusSpec"
 
 export type UnitKind = "component" | "file"
 export type Op = ">" | ">=" | "<" | "<=" | "=" | "!="
@@ -39,6 +49,13 @@ export type Source =
   | { kind: "all"; unit: UnitKind }
   /** Files whose source holds the text (any case), and the components they sit in. */
   | { kind: "contains"; needle: string }
+  /**
+   * A neighbourhood on the import graph, anchored on the components the
+   * names match. Components only: files have no edges here.
+   */
+  | { kind: "graph"; op: GraphOp; anchors: string[]; depth: number | null; to?: string[] }
+
+export type { GraphOp }
 
 export interface Line {
   /** Line numbers are 1-based and count blank and comment lines, so that an
@@ -137,8 +154,67 @@ function splitKeyword(text: string, word: string): string[] {
   return out
 }
 
+/** `a, b, "c d"`: names separated by commas, quoted when they hold spaces. */
+function parseNames(text: string): string[] | null {
+  const out: string[] = []
+  const re = /\s*(?:"([^"]+)"|([^,\s]+))\s*(,|$)/y
+  let at = 0
+  while (at < text.length) {
+    re.lastIndex = at
+    const m = re.exec(text)
+    if (!m) return null
+    out.push(m[1] ?? m[2])
+    at = re.lastIndex
+    if (!m[3]) break
+  }
+  return at >= text.length && out.length ? out : null
+}
+
+function parseDepth(text: string | undefined): number | null | undefined {
+  if (text === undefined) return 1
+  if (text.toLowerCase() === "all") return null
+  const n = Number(text)
+  return Number.isInteger(n) && n >= 1 ? n : undefined
+}
+
+function parseGraph(text: string): Source | null | undefined {
+  const walk = /^(around|dependencies\s+of|dependents\s+of)\s+(.+?)(?:\s+depth\s+(\S+))?$/i.exec(text)
+  if (walk) {
+    const anchors = parseNames(walk[2])
+    const depth = parseDepth(walk[3])
+    if (!anchors || depth === undefined) return null
+    const op = walk[1].toLowerCase().startsWith("around") ? "around" : walk[1].toLowerCase().startsWith("dependencies") ? "dependencies" : "dependents"
+    return { kind: "graph", op, anchors, depth }
+  }
+  const path = /^path\s+from\s+(.+?)\s+to\s+(.+)$/i.exec(text)
+  if (path) {
+    const anchors = parseNames(path[1])
+    const to = parseNames(path[2])
+    return anchors && to ? { kind: "graph", op: "path", anchors, to, depth: null } : null
+  }
+  const btw = /^between\s+(.+?)(?:\s+and\s+(.+))?$/i.exec(text)
+  if (btw) {
+    const anchors = parseNames(btw[1])
+    const to = btw[2] === undefined ? undefined : parseNames(btw[2])
+    if (!anchors || to === null) return null
+    return { kind: "graph", op: "between", anchors, depth: null, ...(to ? { to } : {}) }
+  }
+  const tangle = /^tangle\s+of\s+(.+)$/i.exec(text)
+  if (tangle) {
+    const anchors = parseNames(tangle[1])
+    return anchors ? { kind: "graph", op: "tangle", anchors, depth: null } : null
+  }
+  // Not a graph line at all: a glob, a keyword, or nothing.
+  return undefined
+}
+
 function parseSource(text: string): Source | null {
   if (!text) return null
+  const graph = parseGraph(text)
+  if (graph !== undefined) return graph
+  // A name with spaces in it, quoted: what a focus on such a component writes.
+  const quoted = /^"([^"]+)"$/.exec(text)
+  if (quoted) return { kind: "glob", pattern: quoted[1] }
   const contains = /^contains\s+(?:"([^"]+)"|(\S+))$/i.exec(text)
   if (contains) return { kind: "contains", needle: contains[1] ?? contains[2] }
   const word = text.toLowerCase()
@@ -257,6 +333,11 @@ export interface QueryWorld {
    * Defaults to the lookup the app provides (see provideContains).
    */
   contains?: ContainsLookup
+  /**
+   * The component import graph, for graph lines. Defaults to the graph the
+   * app provides (see provideGraph).
+   */
+  edges?: GraphEdge[]
 }
 
 export type ContainsLookup = (needle: string) => { components: Set<string>; files: Set<string> } | undefined
@@ -266,6 +347,13 @@ let providedContains: ContainsLookup | null = null
 /** The app's code search, for `contains` lines; kept out of this module so it stays pure. */
 export function provideContains(lookup: ContainsLookup | null) {
   providedContains = lookup
+}
+
+let providedGraph: (() => GraphEdge[]) | null = null
+
+/** The snapshot's import graph, for graph lines; kept out of this module so it stays pure. */
+export function provideGraph(lookup: (() => GraphEdge[]) | null) {
+  providedGraph = lookup
 }
 
 export interface QueryResult {
@@ -302,9 +390,36 @@ export function runQuery(query: Query, world: QueryWorld | null | undefined): Qu
 
   const contains = world.contains ?? providedContains
   const pending: number[] = []
+  let adj: Adjacency | null = null
+  const graph = () => (adj ??= adjacency(world.edges ?? providedGraph?.() ?? []))
+  const known = new Set(world.components)
+  const anchorsOf = (names: string[]) => {
+    const out: string[] = []
+    for (const n of names) {
+      if (known.has(n)) { out.push(n); continue }
+      const rx = re(n, sep)
+      for (const id of world.components) if (rx.test(id)) out.push(id)
+    }
+    return out
+  }
 
   /** Which units one line finds, before anything else is taken away; null while a search runs. */
   const hits = (line: Line): { components: string[]; files: string[] } | null => {
+    if (line.source.kind === "graph") {
+      const src = line.source
+      const anchors = anchorsOf(src.anchors)
+      if (anchors.length === 0) return { components: [], files: [] }
+      const to = src.to ? anchorsOf(src.to) : null
+      const g = graph()
+      const found =
+        src.op === "around" ? reach(g, anchors, "both", src.depth)
+        : src.op === "dependencies" ? reach(g, anchors, "out", src.depth)
+        : src.op === "dependents" ? reach(g, anchors, "in", src.depth)
+        : src.op === "between" ? between(g, anchors, to)
+        : src.op === "path" ? (to && to.length ? shortestPath(g, anchors, to).nodes : new Set<string>())
+        : tangleOf(g, anchors)
+      return { components: world.components.filter(id => found.has(id) && passes(line.conds, "component", id, world)), files: [] }
+    }
     if (line.source.kind === "contains") {
       const found = contains?.(line.source.needle)
       if (!found) return null
@@ -431,7 +546,8 @@ export function isBlankQuery(text: string): boolean {
 }
 
 export function isLive(query: Query): boolean {
-  return query.lines.some(l => l.conds.length > 0 || l.source.kind === "contains")
+  // A neighbourhood moves with the imports, so it is a finding like a metric is.
+  return query.lines.some(l => l.conds.length > 0 || l.source.kind === "contains" || l.source.kind === "graph")
 }
 
 /** Whether this text is only literal ids: what a hand-picked selection looks like. */
@@ -540,4 +656,23 @@ export function generalise(
     literals,
     exact: true,
   }
+}
+
+// ── Focus ────────────────────────────────────────────────────────────────
+
+/**
+ * The spec behind a focus text, or null for text no menu would have written
+ * (several graph lines, conditions). Such a focus still works; it just has
+ * no depth to step and reads back as its own text.
+ */
+export function parseFocus(text: string): FocusSpec | null {
+  const q = parseQuery(text)
+  if (q.errors.length || q.lines.length === 0 || q.lines.some(l => l.exclude || l.conds.length)) return null
+  if (q.lines.every(l => l.source.kind === "glob" && !/[*?]/.test(l.source.pattern))) {
+    return { op: "only", anchors: q.lines.map(l => (l.source.kind === "glob" ? l.source.pattern : "")), depth: null }
+  }
+  if (q.lines.length !== 1) return null
+  const src = q.lines[0].source
+  if (src.kind !== "graph") return null
+  return { op: src.op, anchors: src.anchors, depth: src.depth, ...(src.to ? { to: src.to } : {}) }
 }

@@ -5,7 +5,7 @@
 export interface Shortcut {
     keys: string[]
     label: string
-    area: "App" | "Views" | "Selection" | "Lens builder"
+    area: "App" | "Views" | "Focus" | "Selection" | "Lens builder"
     /** A command id from utils/commands, for shortcuts the shell binds itself. */
     command?: string
 }
@@ -22,6 +22,13 @@ export const SHORTCUTS: Shortcut[] = [
     { area: "Views", keys: ["Mod", "K"], label: "Query: find components and files by pattern" },
     { area: "Views", keys: ["Esc"], label: "Clear the selection, close a menu" },
     { area: "Views", keys: ["Enter"], label: "Open the selected node" },
+    { area: "Focus", keys: ["F"], label: "Focus on the selection and its neighbours (Connections)" },
+    { area: "Focus", keys: ["+"], label: "One hop more" },
+    { area: "Focus", keys: ["−"], label: "One hop less" },
+    { area: "Focus", keys: ["⌥", "←"], label: "Back to the previous focus" },
+    { area: "Focus", keys: ["⌥", "→"], label: "Forward again" },
+    { area: "Focus", keys: ["]"], label: "Walk to the strongest dependency (Connections)" },
+    { area: "Focus", keys: ["["], label: "Walk to the strongest dependent (Connections)" },
     { area: "Selection", keys: ["Shift", "Click"], label: "Add to the selection" },
     { area: "Selection", keys: ["Shift", "Drag"], label: "Select an area" },
     { area: "Selection", keys: ["Mod", "G"], label: "Create a group from the selection" },

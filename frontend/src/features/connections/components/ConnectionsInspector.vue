@@ -54,10 +54,16 @@
       </button>
     </div>
 
-    <router-link v-if="cycleMembers.every(id => byId.get(id)?.kind === 'component')" :to="`/views/components/cycles?component=${encodeURIComponent(cycleMembers[0])}`" class="ui-btn ui-btn-sm self-start">
-      <Icon icon="external-link" :size="13"/>
-      <span>Open in Cycles</span>
-    </router-link>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="ui-btn ui-btn-sm" title="Show only this tangle, in every view" @click="emit('focus', 'tangle')">
+        <Icon icon="focus" :size="13"/>
+        <span>Focus on the tangle</span>
+      </button>
+      <router-link v-if="cycleMembers.every(id => byId.get(id)?.kind === 'component')" :to="`/views/components/cycles?component=${encodeURIComponent(cycleMembers[0])}`" class="ui-btn ui-btn-sm">
+        <Icon icon="external-link" :size="13"/>
+        <span>Open in Cycles</span>
+      </router-link>
+    </div>
   </div>
 
   <!-- A pair: both ends and the numbers between them. -->
@@ -84,7 +90,12 @@
       <Icon icon="refresh" :size="13"/>
       <span>This edge is part of a cycle.</span>
     </p>
-    <div v-if="selection.type === 'pair' && pairEnds.every(e => e.kind === 'component')" class="flex">
+    <div v-if="selection.type === 'pair' && pairEnds.every(e => e.kind === 'component')" class="flex flex-wrap items-center gap-2">
+      <button type="button" class="ui-btn ui-btn-sm" title="Show only these two and what sits between them, in every view" @click="emit('focus', 'between')">
+        <Icon icon="focus" :size="13"/>
+        <span>Focus on both</span>
+      </button>
+      <ShowInMenu :pair="{ from: selection.from, to: selection.to }" :except="source === 'static' ? ['imports'] : ['cochange']"/>
       <PinButton kind="pair" :entity-key="`${selection.from}>${selection.to}`" :title="`${pairEnds[0]?.label} → ${pairEnds[1]?.label}`" :values="{ references: pairForward }"/>
     </div>
     <SharedCommitList v-if="source !== 'static' && pairFileSql" :a-files="pairFileSql[0]" :b-files="pairFileSql[1]"/>
@@ -114,6 +125,25 @@
           <span class="truncate">{{ m.name }}</span>
           <span v-if="m.part" class="font-mono text-xs text-neutral-400">{{ m.part }}</span>
         </span>
+      </div>
+    </div>
+
+    <!-- Focus: narrow every view to this and what talks to it. The first
+         answer to "where does this sit" is usually to look only there. -->
+    <div class="flex flex-col gap-1.5">
+      <div class="flex items-center gap-2">
+        <span class="ui-label">Focus</span>
+        <ShowInMenu v-if="node.kind !== 'group'" class="ml-auto" :kind="node.kind === 'file' ? 'file' : 'component'" :ids="[node.id]" :except="['connections']"/>
+      </div>
+      <div class="flex flex-wrap gap-1">
+        <button type="button" class="ui-chip" :title="`Show only ${node.label}, in every view`" @click="emit('focus', 'only')">Only this</button>
+        <button type="button" class="ui-chip" title="It and everything it imports or is imported by (F)" @click="emit('focus', 'around')">Neighbours</button>
+        <template v-if="directed">
+          <button type="button" class="ui-chip" title="It and what it imports" @click="emit('focus', 'dependencies')">What it uses</button>
+          <button type="button" class="ui-chip" title="It and what imports it" @click="emit('focus', 'dependents')">What uses it</button>
+          <button type="button" class="ui-chip" title="Everything that reaches it, however far: what a change here can break" @click="emit('focus', 'blast')">Blast radius</button>
+          <button type="button" class="ui-chip" title="Pick another node and see only the shortest routes between them" @click="emit('path-from')">Path to…</button>
+        </template>
       </div>
     </div>
 
@@ -199,6 +229,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import StatStrip from "~/features/metrics/components/StatStrip.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import KindMark from "./KindMark.vue";
+import ShowInMenu from "~/features/groups/components/ShowInMenu.vue";
 import PartnerList, { type PartnerRow } from "./PartnerList.vue";
 import { useGroupsStore, type SavedGroup } from "~/features/groups/groups.store";
 import { useDataStore } from "~/features/snapshot/data.store";
@@ -225,6 +256,10 @@ const emit = defineEmits<{
   (e: "select-cycle", id: string): void
   (e: "toggle-open", id: string): void
   (e: "scope", groupId: string): void
+  /** Narrow every view around the selection; the view turns it into anchors. */
+  (e: "focus", op: "only" | "around" | "dependencies" | "dependents" | "blast" | "between" | "tangle"): void
+  /** Start picking the other end of a path from the selected node. */
+  (e: "path-from"): void
 }>();
 
 const groups = useGroupsStore();

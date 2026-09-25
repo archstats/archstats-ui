@@ -77,4 +77,58 @@ describe("scope", () => {
     expect(scope.isActive).toBe(false);
     expect(scope.componentInScope("billing")).toBe(true);
   });
+
+  describe("focus", () => {
+    beforeEach(() => {
+      // billing -> audit -> shipping
+      (useDataStore() as any)._componentConnections = [
+        { from: "billing", to: "audit", count: 3 },
+        { from: "audit", to: "shipping", count: 1 },
+      ];
+    });
+
+    it("narrows every view to the neighbourhood, files too", () => {
+      const scope = useScopeStore();
+      scope.setFocus("dependencies of billing");
+      expect(scope.componentInScope("audit")).toBe(true);
+      expect(scope.componentInScope("shipping")).toBe(false);
+      expect(scope.fileInScope("audit/AuditService.java", "audit")).toBe(true);
+      expect(scope.fileInScope("shipping/ShipDao.java", "shipping")).toBe(false);
+      expect(scope.fileNames?.has("billing/BillingDao.java")).toBe(true);
+    });
+
+    it("intersects with a typed query instead of replacing it", () => {
+      const scope = useScopeStore();
+      scope.setQuery("audit");
+      scope.setFocus("around audit");
+      expect(Array.from(scope.componentNames ?? []).sort()).toEqual(["audit"]);
+      expect(scope.query).toBe("audit");
+    });
+
+    it("walks back and forward along the trail", () => {
+      const scope = useScopeStore();
+      scope.setFocus("billing");
+      scope.setFocus("around billing");
+      scope.setFocus("around billing depth 2");
+      scope.back();
+      expect(scope.focus).toBe("around billing");
+      scope.back();
+      expect(scope.focus).toBe("billing");
+      scope.forward();
+      expect(scope.focus).toBe("around billing");
+      scope.setFocus("audit");
+      expect(scope.focusAhead).toEqual([]);
+      scope.jumpBack(1);
+      expect(scope.focus).toBe("billing");
+    });
+
+    it("is cleared with the rest of the scope, and the clear can be undone", () => {
+      const scope = useScopeStore();
+      scope.setFocus("around billing");
+      scope.clear();
+      expect(scope.isActive).toBe(false);
+      scope.back();
+      expect(scope.focus).toBe("around billing");
+    });
+  });
 });

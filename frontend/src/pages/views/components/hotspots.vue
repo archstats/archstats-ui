@@ -112,6 +112,9 @@
               v-if="grain !== 'directories'"
               :selected-items="ringSelection"
               :kind="grain === 'files' ? 'file' : 'component'"
+              :universe="units.map(u => u.name)"
+              :show-in-except="['hotspots']"
+              @replace="selected = null; multiSelection = $event"
               @clear="selected = null; multiSelection = []"
             />
           </div>
@@ -264,6 +267,9 @@
       v-if="grain !== 'directories'"
       :selected-items="multiSelection"
       :kind="grain === 'files' ? 'file' : 'component'"
+      :universe="units.map(u => u.name)"
+      :show-in-except="['hotspots']"
+      @replace="multiSelection = $event"
       @clear="multiSelection = []"
     />
   </div>
@@ -289,6 +295,7 @@ import StatSelectSingle from "~/features/metrics/components/StatSelectSingle.vue
 import HotspotsTreemap, { type HotspotGrain, type HotspotLayout, type HotspotUnit } from "~/features/metrics/components/HotspotsTreemap.vue"
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
+import { useIncomingSelection } from "~/features/navigation/useIncomingSelection"
 
 const store = useDataStore()
 const router = useRouter()
@@ -602,6 +609,12 @@ function toggleSelection(name: string) {
   if (idx !== -1) multiSelection.value.splice(idx, 1)
   else multiSelection.value.push(name)
 }
+
+// Arriving from Show in: one id is the inspected unit, several a selection.
+useIncomingSelection(ids => {
+  if (ids.length === 1) onSelect(ids[0])
+  else multiSelection.value = ids
+})
 
 function replaceSelection(names: string[]) {
   multiSelection.value = [...names]

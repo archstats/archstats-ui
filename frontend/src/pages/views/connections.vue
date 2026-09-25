@@ -2,7 +2,7 @@
   <ViewWorkspaceLayout
     title="Connections"
     :nodes-count="model.nodes.value.length"
-    :connections-count="model.edges.value.length"
+    :connections-count="shownEdges.length"
     :stats-labels="{ nodes: 'Nodes', connections: 'Connections' }"
     v-model:search-query="q"
     search-placeholder="Search nodes"
@@ -17,6 +17,21 @@
         <button type="button" :aria-pressed="source === 'static'" @click="setState({ source: 'static' })">Static</button>
         <button type="button" :aria-pressed="source === 'git'" :title="model.hasGit.value ? 'Shared commits between units' : 'No git history in this snapshot'" @click="setState({ source: 'git' })">Git</button>
         <button type="button" :aria-pressed="source === 'combined'" :title="model.hasGit.value ? 'Imports and shared commits together' : 'No git history in this snapshot'" @click="setState({ source: 'combined' })">Combined</button>
+      </div>
+      <!-- Imports: on a big graph the edges are the clutter, and most of them
+           are one or two references. A floor keeps the ones that carry weight. -->
+      <div v-if="source === 'static'" class="relative">
+        <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="refsOpen" :class="{ 'bg-neutral-100': refsFloor > 1 }" title="How many references an import needs to be drawn" @click="refsOpen = !refsOpen">≥ {{ refsFloor }} ref{{ refsFloor === 1 ? "" : "s" }}</button>
+        <template v-if="refsOpen">
+          <div class="fixed inset-0 z-40" @click="refsOpen = false"></div>
+          <div class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-64 flex-col gap-3 p-3 animate-in">
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">References, at least <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="refsFloor" @change="setState({ minRefs: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
+            <div class="ui-segmented w-full" role="group" aria-label="Reference floor">
+              <button v-for="n in [1, 2, 5, 10, 25]" :key="n" type="button" class="flex-1" :aria-pressed="refsFloor === n" @click="setState({ minRefs: n })">{{ n }}</button>
+            </div>
+            <p class="text-xs leading-4 text-neutral-500">{{ weakEdges.toLocaleString("en-US") }} of {{ model.edges.value.length.toLocaleString("en-US") }} edges are hidden by this floor. Cycles and the inspector still count every import.</p>
+          </div>
+        </template>
       </div>
       <!-- Co-change: which pairs, how strong, over what window. Hidden coupling
            is the pairs that change together with no import between them. -->
@@ -172,9 +187,17 @@
     </template>
 
     <template #config-popover>
-      <div v-if="hidden.size > 0" class="flex items-center justify-between gap-3">
-        <span class="text-sm text-neutral-700">{{ hidden.size }} hidden from view</span>
-        <button type="button" class="ui-btn ui-btn-sm" @click="hidden = new Set()">Show all</button>
+      <div v-if="hidden.size > 0" class="flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm text-neutral-700">{{ hidden.size }} hidden from view</span>
+          <button type="button" class="ui-btn ui-btn-sm" @click="hidden = new Set()">Show all</button>
+        </div>
+        <ul class="flex max-h-56 flex-col overflow-y-auto">
+          <li v-for="id in hiddenList" :key="id" class="flex h-7 items-center gap-2">
+            <span class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-800" :title="id">{{ labelOf(id) }}</span>
+            <button type="button" class="text-xs text-neutral-500 hover:text-neutral-900" @click="unhide(id)">Show</button>
+          </li>
+        </ul>
       </div>
     </template>
 
@@ -298,7 +321,26 @@
       </div>
 
 
-      <GroupActionBar ref="trayRef" :selected-items="multiList" :kind="multiType" @clear="multi = new Set()"/>
+      <!-- Path to…: the next click picks the other end. -->
+      <div v-if="pathFrom" class="ui-popover absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 px-3 py-2" role="status">
+        <Icon icon="route" :size="14" class="text-accent-600"/>
+        <span class="text-sm text-neutral-700">Path from <span class="font-mono">{{ pathFromLabel }}</span>: click the other end.</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pathFrom = null">Cancel <kbd class="ml-1 font-mono text-xs text-neutral-400">Esc</kbd></button>
+      </div>
+      <div v-else-if="pathNote" class="ui-popover absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 px-3 py-2" role="status">
+        <span class="text-sm text-neutral-700">{{ pathNote }}</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Dismiss" @click="pathNote = ''"><Icon icon="x" :size="13"/></button>
+      </div>
+
+      <GroupActionBar
+        ref="trayRef"
+        :selected-items="multiList"
+        :kind="multiType"
+        :universe="model.nodes.value.filter(n => n.kind === multiType).map(n => n.id)"
+        :show-in-except="['connections']"
+        @replace="multi = new Set($event)"
+        @clear="multi = new Set()"
+      />
 
       <Teleport to="body">
         <div v-if="menu" class="fixed inset-0 z-40" @click="menu = null" @contextmenu.prevent="menu = null"></div>
@@ -328,21 +370,66 @@
               <span>Select all in {{ menuNode.group }}</span>
             </button>
             <div class="my-1 hairline-b"></div>
-            <button type="button" class="ui-menu-item" role="menuitem" @click="isolate">
+            <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'focus'">
+              <Icon icon="focus" :size="13" class="text-neutral-500"/>
+              <span class="flex-1">{{ menuTargets.length > 1 ? `Focus on ${menuTargets.length} selected` : 'Focus' }}</span>
+              <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
+            </button>
+            <button v-if="menuScopeGroup" type="button" class="ui-menu-item" role="menuitem" @click="scopeToGroup">
               <Icon icon="scale" :size="13" class="text-neutral-500"/>
-              <span>{{ isolateLabel }}</span>
+              <span class="truncate">Scope views to {{ menuScopeGroup.name }}</span>
             </button>
             <button type="button" class="ui-menu-item" role="menuitem" @click="hideFromMenu">
               <Icon icon="x" :size="13" class="text-neutral-500"/>
               <span>{{ multi.size > 1 && menu && multi.has(menu.id) ? `Hide ${multi.size} selected` : 'Hide' }}</span>
             </button>
-            <template v-if="menuRoute">
+            <template v-if="menuRoute || menuShowIn.length">
               <div class="my-1 hairline-b"></div>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="router.push(menuRoute); menu = null">
+              <button v-if="menuRoute" type="button" class="ui-menu-item" role="menuitem" @click="router.push(menuRoute); menu = null">
                 <Icon icon="external-link" :size="13" class="text-neutral-500"/>
                 <span>Open detail</span>
               </button>
+              <button v-if="menuShowIn.length" type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'showin'">
+                <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/>
+                <span class="flex-1">Show in</span>
+                <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
+              </button>
             </template>
+          </template>
+          <template v-else-if="menuMode === 'focus'">
+            <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
+              <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
+              <span>Back</span>
+            </button>
+            <div class="ui-menu-title">Show only, in every view</div>
+            <template v-if="menuTargets.length > 1">
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">The selection</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">The selection and its neighbours</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
+              <button v-if="model.directed.value" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('between')">Every route between them</button>
+            </template>
+            <template v-else>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">{{ menuNode?.kind === 'group' ? 'This group' : 'This only' }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">With its neighbours</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
+              <template v-if="model.directed.value">
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependencies')">With what it uses</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependents')">With what uses it</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('reach')">Everything it reaches</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('blast')">Everything that reaches it</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="startPath(menuTargets); menu = null">Path to…</button>
+                <button v-if="menu && model.cycleSetOf.value.has(menu.id)" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('tangle')">Its tangle</button>
+              </template>
+            </template>
+          </template>
+          <template v-else-if="menuMode === 'showin'">
+            <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
+              <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
+              <span>Back</span>
+            </button>
+            <button v-for="t in menuShowIn" :key="t.id" type="button" class="ui-menu-item" role="menuitem" @click="menu = null; showIn(t)">
+              <Icon :icon="t.icon" :size="13" class="text-neutral-500"/>
+              <span class="flex-1">{{ t.label }}</span>
+              <Icon v-if="t.focus" icon="focus" :size="12" class="text-neutral-400"/>
+            </button>
           </template>
           <template v-else>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
@@ -396,6 +483,8 @@
         @select-cycle="onSelectCycle"
         @toggle-open="toggleOpen"
         @scope="scopeStore.toggleGroup($event)"
+        @focus="focusFromInspector"
+        @path-from="selectedId && startPath([selectedId])"
       />
     </template>
   </ViewWorkspaceLayout>
@@ -431,6 +520,12 @@ import { units, useGroupsStore, type UnitKind } from "~/features/groups/groups.s
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useConnectionsModel } from "~/features/connections/useConnectionsModel";
+import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
+import { adjacency, shortestPath, strongestNeighbour } from "~/features/navigation/focus";
+import { showInTargets } from "~/features/navigation/showIn";
+import { useIncomingSelection } from "~/features/navigation/useIncomingSelection";
+import { useShowIn } from "~/features/groups/useShowIn";
+import { componentLabel } from "~/features/navigation/routes";
 import {
   type ConnectionsQueryState, type CycleMode, type GroupSuggestion, type Level, type Selection,
   capFor, decodeSelection, detailRoute, encodeSelection, isOverCap, parseConnectionsQuery,
@@ -466,9 +561,16 @@ const selection = computed<Selection | null>(() => decodeSelection(state.value.s
 const by = computed(() => state.value.by);
 const color = computed(() => state.value.color);
 
-function setState(patch: Partial<ConnectionsQueryState> & { by?: string | null }) {
+/**
+ * Settings replace the history entry; a jump to another node pushes one, so
+ * Back (⌘[) walks back through where you have been rather than skipping the
+ * whole exploration in one step.
+ */
+function setState(patch: Partial<ConnectionsQueryState> & { by?: string | null }, push = false) {
   const next = { ...state.value, ...patch };
-  router.replace({ query: toConnectionsQuery(next) });
+  const query = toConnectionsQuery(next);
+  if (route.query.sandbox === "1") query.sandbox = "1";
+  if (push) router.push({ query }); else router.replace({ query });
 }
 const q = computed({ get: () => state.value.q, set: (v: string) => setState({ q: v }) });
 const measure = computed(() => state.value.measure);
@@ -482,11 +584,8 @@ const hairballDismissed = ref(false);
 
 // ── View state (not in the URL) ──────────────────────────────────────────
 const multi = ref(new Set<string>());
-// ?hl= seeds the selection: a commit's footprint shown here arrives selected.
-{
-  const hl = route.query.hl;
-  if (typeof hl === "string") { try { const ids = JSON.parse(hl); if (Array.isArray(ids)) multi.value = new Set(ids.filter((x: unknown): x is string => typeof x === "string")); } catch { /* ignored */ } }
-}
+// ?hl= seeds the selection: a commit's footprint, or anything sent here with Show in, arrives selected.
+useIncomingSelection(ids => { multi.value = new Set(ids); });
 const hidden = ref(new Set<string>());
 const openIds = ref(new Set<string>());
 // ── Draft: suggestions become a draft dimension the architect edits, then saves ──
@@ -517,7 +616,7 @@ const tabs = computed(() => (sandboxOn.value ? [{ id: "plan", label: "Plan" }, {
 const EMPTY_SUGGESTIONS: GroupSuggestion[] = [];
 
 const menu = ref<{ id: string; x: number; y: number } | null>(null);
-const menuMode = ref<"main" | "add">("main");
+const menuMode = ref<"main" | "add" | "focus" | "showin">("main");
 const trayRef = ref<{ startCreate: (name?: string) => void } | null>(null);
 
 const selectedId = computed(() => (selection.value?.type === "node" ? selection.value.id : null));
@@ -547,7 +646,11 @@ const floors = computed(() => ({
   shared: state.value.minShared ?? (state.value.relation === "no-import" ? 10 : 1),
   rate: state.value.minRate ?? (state.value.relation === "no-import" ? 0.3 : 0),
 }));
+const refsOpen = ref(false);
+const refsFloor = computed(() => state.value.minRefs ?? 1);
+const weakEdges = computed(() => (source.value === "static" ? model.edges.value.filter(e => e.references < refsFloor.value).length : 0));
 const shownEdges = computed(() => {
+  if (source.value === "static") return refsFloor.value > 1 ? model.edges.value.filter(e => e.references >= refsFloor.value) : model.edges.value;
   if (source.value !== "git") return model.edges.value;
   const imports = model.importPairs.value;
   return model.edges.value.filter(e =>
@@ -619,6 +722,7 @@ watch([source, by, () => store.datasetKey], () => { multi.value = new Set(); hid
 
 // ── Selection ────────────────────────────────────────────────────────────
 function onSelect(id: string | null, mods: { shift: boolean; meta: boolean }) {
+  if (pathFrom.value && id) { finishPath(id); return; }
   if (id && (mods.shift || mods.meta)) {
     let next = multi.value;
     if (next.size === 0 && selectedId.value && selectedId.value !== id) next = new Set([selectedId.value]);
@@ -635,7 +739,7 @@ function onSelect(id: string | null, mods: { shift: boolean; meta: boolean }) {
  * defined it, so the click did nothing and Vue warned on every render.
  */
 function focusNode(id: string) {
-  setState({ sel: id });
+  setState({ sel: id }, true);
   nextTick(() => rendererRef.value?.focusNode?.(id));
 }
 function onSelectPair(from: string, to: string) { setState({ sel: encodeSelection({ type: "pair", from, to }) }); }
@@ -689,11 +793,19 @@ const menuCloseParent = computed<{ id: string; name: string } | null>(() => {
   const name = n.kind === "file" ? (n.group ?? id) : model.rollupGroups.value.find(g => g.id === id)?.name ?? id;
   return { id, name };
 });
-const isolateLabel = computed(() => {
+// The group a node belongs to, for "Scope views to": a lens slice, where Focus is a graph slice.
+const menuScopeGroup = computed<{ id: string; name: string } | null>(() => {
   const n = menuNode.value;
-  if (!n) return "Isolate";
-  if (n.kind === "group") return "Scope views to this group";
-  return n.group && n.kind === "component" ? `Scope views to ${n.group}` : "Isolate by search";
+  if (!n || n.kind === "file") return null;
+  if (n.kind === "group") return { id: n.id, name: "this group" };
+  const g = n.group ? model.rollupGroups.value.find(x => x.name === n.group) ?? groupsStore.groups.find(x => x.name === n.group) : null;
+  return g ? { id: g.id, name: g.name } : null;
+});
+const menuShowIn = computed(() => {
+  const n = menuNode.value;
+  if (!n || n.kind === "group") return [];
+  const ids = menuTargets.value.filter(id => nodeById.value.get(id)?.kind === n.kind);
+  return showInTargets(n.kind === "file" ? "file" : "component", ids).filter(t => t.id !== "connections" && t.id !== "detail");
 });
 const menuTargets = computed(() => (menu.value && multi.value.size > 1 && multi.value.has(menu.value.id) ? Array.from(multi.value) : menu.value ? [menu.value.id] : []));
 
@@ -738,14 +850,103 @@ function selectAllInGroup() {
   multi.value = next;
   menu.value = null;
 }
-function isolate() {
-  const n = menuNode.value;
+function scopeToGroup() {
+  const g = menuScopeGroup.value;
   menu.value = null;
-  if (!n) return;
-  if (n.kind === "group") { scopeStore.toggleGroup(n.id); return; }
-  const g = n.kind === "component" ? model.rollupGroups.value.find(x => x.name === n.group) ?? groupsStore.groups.find(x => x.name === n.group) : null;
-  if (g) scopeStore.toggleGroup(g.id); else setState({ q: n.label });
+  if (g) scopeStore.toggleGroup(g.id);
 }
+
+// ── Focus ────────────────────────────────────────────────────────────────
+// Focus narrows every view to a neighbourhood on the component graph. The
+// picture here can be groups, components or files, so a node becomes the
+// components it stands for: a group its members, a file its component.
+const showIn = useShowIn();
+function labelOf(id: string) { return nodeById.value.get(id)?.label ?? componentLabel(id, workspaces.active?.name); }
+function anchorsOf(ids: string[]): string[] {
+  const out = new Set<string>();
+  for (const id of ids) {
+    const n = nodeById.value.get(id);
+    if (n?.kind === "group" || (!n && model.rollupGroups.value.some(g => g.id === id))) {
+      for (const m of model.rollupGroups.value.find(g => g.id === id)?.members ?? []) out.add(m);
+    } else if (n?.kind === "file") {
+      const c = n.group ?? store.fileComponentIndex.get(id);
+      if (c) out.add(c);
+    } else if (model.componentIds.value.has(id)) out.add(id);
+  }
+  return Array.from(out);
+}
+type FocusChoice = FocusOp | "reach" | "blast";
+function focusOn(choice: FocusChoice, ids: string[]) {
+  const anchors = anchorsOf(ids);
+  if (!anchors.length) return;
+  const op: FocusOp = choice === "reach" ? "dependencies" : choice === "blast" ? "dependents" : choice;
+  const depth = choice === "reach" || choice === "blast" ? null : 1;
+  scopeStore.setFocus(focusText({ op, anchors, depth }));
+  // The thing pointed at stays selected in what is left.
+  const keep = ids.length === 1 ? ids[0] : null;
+  if (keep) nextTick(() => { if (nodeById.value.has(keep)) setState({ sel: keep }); });
+}
+function focusMenu(choice: FocusChoice) {
+  const ids = menuTargets.value;
+  menu.value = null;
+  hullMenuGroup.value = null;
+  focusOn(choice, ids);
+}
+function focusFromInspector(choice: "only" | "around" | "dependencies" | "dependents" | "blast" | "between" | "tangle") {
+  const sel = selection.value;
+  if (!sel) return;
+  if (sel.type === "pair") { focusOn(choice === "between" ? "between" : "only", [sel.from, sel.to]); return; }
+  if (sel.type === "cycle") { focusOn("tangle", [sel.id]); return; }
+  focusOn(choice, [sel.id]);
+}
+
+// Path to…: pick one end, click the other, and only the shortest routes stay.
+const pathFrom = ref<string[] | null>(null);
+const pathNote = ref("");
+const pathFromLabel = computed(() => (pathFrom.value ? (pathFrom.value.length === 1 ? labelOf(pathFrom.value[0]) : `${pathFrom.value.length} selected`) : ""));
+function startPath(ids: string[]) {
+  pathFrom.value = ids.length ? ids : null;
+  pathNote.value = "";
+}
+function finishPath(id: string) {
+  const from = anchorsOf(pathFrom.value ?? []);
+  const to = anchorsOf([id]);
+  pathFrom.value = null;
+  if (!from.length || !to.length) return;
+  // Said before it is set: an empty focus would blank every view.
+  const found = shortestPath(adjacency(store.componentConnections), from, to);
+  if (found.nodes.size === 0) { pathNote.value = `No import route joins ${labelOf(from[0])} and ${labelOf(to[0])} in either direction.`; return; }
+  pathNote.value = found.reversed ? `Nothing leads that way; this is the route back, ${found.hops} hop${found.hops === 1 ? "" : "s"}.` : "";
+  scopeStore.setFocus(focusText({ op: "path", anchors: from, to, depth: null }));
+}
+
+// With a lens rolled up, a small focus opens its groups: the neighbourhood
+// is the point, and closed groups would hide it behind their names.
+// Whatever changed the focus -- a menu, the chip, the trail -- the picture
+// reframes to the whole of it: a zoom chosen for the old picture cut the new
+// neighbourhood off at the edges.
+watch(() => scopeStore.focus, (focus) => {
+  nextTick(() => rendererRef.value?.resetZoom?.());
+  if (!model.rollupDimension.value) return;
+  const n = scopeStore.focusMatches?.size ?? 0;
+  openIds.value = focus && n > 0 && n <= 80 ? model.openIdsForLevel("components") : model.openIdsForLevel(state.value.level);
+});
+
+// ] and [ walk the graph along its heaviest edges, one node at a time.
+function walk(dir: "out" | "in") {
+  const from = selectedId.value;
+  if (!from) return;
+  // Not straight back to where the walk came from, unless there is nowhere else.
+  const back = walkedFrom.value ? new Set([walkedFrom.value]) : new Set<string>();
+  const next = strongestNeighbour(shownEdges.value, from, dir, back) ?? strongestNeighbour(shownEdges.value, from, dir);
+  if (!next) return;
+  walkedFrom.value = from;
+  focusNode(next);
+}
+const walkedFrom = ref<string | null>(null);
+
+const hiddenList = computed(() => Array.from(hidden.value).sort((a, b) => labelOf(a).localeCompare(labelOf(b))));
+function unhide(id: string) { const next = new Set(hidden.value); next.delete(id); hidden.value = next; }
 function hideFromMenu() {
   const next = new Set(hidden.value);
   for (const id of menuTargets.value) next.add(id);
@@ -767,6 +968,7 @@ function onKey(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null;
   if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
   if (event.key === "Escape") {
+    if (pathFrom.value) { pathFrom.value = null; return; }
     if (menu.value || levelOpen.value || cyclesOpen.value) { menu.value = null; levelOpen.value = false; cyclesOpen.value = false; return; }
     if (multi.value.size) { multi.value = new Set(); return; }
     if (selection.value) setState({ sel: null });
@@ -774,6 +976,12 @@ function onKey(event: KeyboardEvent) {
     const n = nodeById.value.get(selectedId.value);
     const to = n ? detailRoute(n.kind, n.id) : null;
     if (to) router.push(to); else if (n) toggleOpen(n.id);
+  } else if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "f" || event.key === "F")) {
+    const ids = multi.value.size ? Array.from(multi.value) : selectedId.value ? [selectedId.value] : [];
+    if (ids.length) { event.preventDefault(); focusOn("around", ids); }
+  } else if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "]" || event.key === "[")) {
+    event.preventDefault();
+    walk(event.key === "]" ? "out" : "in");
   } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g" && multi.value.size === 0 && selectedId.value && nodeById.value.get(selectedId.value)?.kind !== "group") {
     event.preventDefault();
     openCreate([selectedId.value]);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { globToRegExp, isBlankQuery, isLive, isLiteral, literalQuery, parseQuery, runQuery, SEARCH_SEED, type QueryWorld } from "./query"
+import { focusText, graphLine, type FocusSpec } from "~/features/navigation/focusSpec"
+import { globToRegExp, parseFocus, isBlankQuery, isLive, isLiteral, literalQuery, parseQuery, runQuery, SEARCH_SEED, type QueryWorld } from "./query"
 
 // Real names from the qp-visualizer snapshot. A fixture of `a.b.c` proves the
 // regex works; these prove it works on the thing it is for — a codebase whose
@@ -261,5 +262,86 @@ describe("contains", () => {
     expect(r.components).toEqual([])
     expect(r.empty).toEqual([])
     expect(r.pending).toEqual([1])
+  })
+})
+
+describe("graph lines", () => {
+  const world = {
+    components: ["shop.web", "shop.api", "shop.service", "shop.repo", "shop.audit", "admin", "my comp"],
+    files: [],
+    componentSep: ".",
+    edges: [
+      { from: "shop.web", to: "shop.api" },
+      { from: "shop.api", to: "shop.service" },
+      { from: "shop.service", to: "shop.repo" },
+      { from: "admin", to: "shop.service" },
+      { from: "shop.service", to: "shop.audit" },
+      { from: "shop.audit", to: "shop.service" },
+      { from: "my comp", to: "admin" },
+    ],
+  }
+  const run = (text: string) => runQuery(parseQuery(text), world).components.sort()
+
+  it("around is one hop both ways by default", () => {
+    expect(run("around shop.api")).toEqual(["shop.api", "shop.service", "shop.web"])
+  })
+  it("walks deeper on request", () => {
+    expect(run("dependencies of shop.web depth all")).toEqual(["shop.api", "shop.audit", "shop.repo", "shop.service", "shop.web"])
+  })
+  it("reads the blast radius", () => {
+    expect(run("dependents of shop.repo depth 2")).toEqual(["admin", "shop.api", "shop.audit", "shop.repo", "shop.service"])
+  })
+  it("anchors on globs and name lists", () => {
+    expect(run("tangle of shop.audit, admin")).toEqual(["admin", "shop.audit", "shop.service"])
+    expect(run("dependents of shop.** depth 1").includes("admin")).toBe(true)
+  })
+  it("takes quoted names", () => {
+    expect(run(`around "my comp"`)).toEqual(["admin", "my comp"])
+  })
+  it("finds routes and shortest paths", () => {
+    expect(run("between shop.web and shop.repo")).toEqual(["shop.api", "shop.audit", "shop.repo", "shop.service", "shop.web"])
+    expect(run("path from shop.web to shop.repo")).toEqual(["shop.api", "shop.repo", "shop.service", "shop.web"])
+  })
+  it("narrows with where like any line", () => {
+    const metric = (_k: string, id: string) => (id === "shop.service" ? 10 : 1)
+    expect(runQuery(parseQuery("around shop.api where lines > 5"), { ...world, metric }).components).toEqual(["shop.service"])
+  })
+  it("reports an empty neighbourhood as an empty line", () => {
+    expect(runQuery(parseQuery("around nothing.here"), world).empty).toEqual([1])
+  })
+  it("rejects a bad depth", () => {
+    expect(parseQuery("around shop.api depth zero").errors).toHaveLength(1)
+  })
+  it("round-trips through graphLine", () => {
+    for (const text of ["around shop.api depth 2", "dependents of shop.repo depth all", "path from shop.web to shop.repo", "between a, b", `tangle of "my comp"`]) {
+      const src = parseQuery(text).lines[0].source
+      if (src.kind !== "graph") throw new Error(text)
+      expect(graphLine(src.op, src.anchors, { depth: src.depth, to: src.to })).toBe(text)
+    }
+  })
+  it("counts as live", () => {
+    expect(isLive(parseQuery("around shop.api"))).toBe(true)
+  })
+})
+
+describe("parseFocus", () => {
+  it("round-trips through text", () => {
+    const specs: FocusSpec[] = [
+      { op: "only", anchors: ["a.b", "c"], depth: null },
+      { op: "around", anchors: ["a.b"], depth: 2 },
+      { op: "dependents", anchors: ["a"], depth: null },
+      { op: "path", anchors: ["a"], depth: null, to: ["b"] },
+      { op: "tangle", anchors: ["my comp"], depth: null },
+    ]
+    for (const s of specs) expect(parseFocus(focusText(s))).toEqual(s)
+  })
+
+  it("is null for text no menu writes", () => {
+    expect(parseFocus("a.**")).toBeNull()
+    expect(parseFocus("around a where lines > 3")).toBeNull()
+  })
+
+  it("finds a quoted name with spaces", () => {
+    expect(runQuery(parseQuery(focusText({ op: "only", anchors: ["my comp"], depth: null })), { components: ["my comp", "other"], files: [] }).components).toEqual(["my comp"])
   })
 })

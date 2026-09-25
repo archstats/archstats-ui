@@ -1,7 +1,7 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { componentMembers, useGroupsStore, type SavedGroup } from "./groups.store";
-import { parseQuery, runQuery } from "./query";
+import { parseQuery, provideGraph, runQuery } from "./query";
 import { detectSeparator } from "~/features/snapshot/names";
 import { useStateStore } from "~/platform/state.store";
 import { componentPassesFacet, passesFacet, type RoleFacet } from "~/features/snapshot/fileRole";
@@ -11,8 +11,21 @@ import { componentPassesFacet, passesFacet, type RoleFacet } from "~/features/sn
 // narrow it (… and Controllers). Views read `componentNames` / `fileNames`
 // and filter their rows; the sidebar toggles groups and the toolbar chips
 // remove them. Session-local on purpose: a scope is a lens, not a setting.
+//
+// The focus is the pointed half: "this component and what talks to it",
+// set from a menu rather than typed. It is query text like the typed half,
+// kept apart so pointing never overwrites a question someone wrote, and it
+// keeps a trail so a walk through the graph can be walked back.
+
+// Graph lines read the snapshot's runtime import graph, the one the engine's
+// own coupling and cycles are measured on.
+provideGraph(() => useDataStore().componentConnections);
+
+const TRAIL = 30;
+
 export const useScopeStore = defineStore("scope", {
-    state: (): { groupIds: string[]; query: string; recents: string[] } => ({ groupIds: [], query: "", recents: [] }),
+    state: (): { groupIds: string[]; query: string; recents: string[]; focus: string; focusBack: string[]; focusAhead: string[] } =>
+        ({ groupIds: [], query: "", recents: [], focus: "", focusBack: [], focusAhead: [] }),
     getters: {
         /**
          * Production or tests, or all: one switch per workspace that every
@@ -74,6 +87,14 @@ export const useScopeStore = defineStore("scope", {
             for (const f of r.files) { const c = data.fileComponentIndex.get(f); if (c) holders.add(c); }
             return { components: holders, files: new Set(r.files), direct };
         },
+        /** The components the focus holds; null with no focus. */
+        focusMatches(state): Set<string> | null {
+            if (!state.focus.trim()) return null;
+            const data = useDataStore();
+            const components = Array.from(data.componentFilesIndex.keys()) as string[];
+            if (!components.length) return null;
+            return new Set(runQuery(parseQuery(state.focus), { components, files: [], componentSep: detectSeparator(components) }).components);
+        },
         groups(state): SavedGroup[] {
             const store = useGroupsStore();
             return state.groupIds.map(id => store.getGroupById(id)).filter((g): g is SavedGroup => !!g);
@@ -87,11 +108,11 @@ export const useScopeStore = defineStore("scope", {
             return state.groupIds[0] ?? null;
         },
         isActive(): boolean {
-            return this.groups.length > 0 || !!this.query.trim() || this.facet !== "all";
+            return this.groups.length > 0 || !!this.query.trim() || !!this.focus.trim() || this.facet !== "all";
         },
         /** Groups or a query: what Clear scope clears (the facet is a setting). */
         hasSelection(): boolean {
-            return this.groups.length > 0 || !!this.query.trim();
+            return this.groups.length > 0 || !!this.query.trim() || !!this.focus.trim();
         },
         /** Groups bucketed by dimension, in the order they were added. */
         byDimension(): Array<{ dimension: string; groups: SavedGroup[] }> {
@@ -113,6 +134,8 @@ export const useScopeStore = defineStore("scope", {
             }
             const typed = this.queryMatches;
             if (typed) result = result === null ? typed.components : new Set([...result].filter(c => typed.components.has(c)));
+            const focus = this.focusMatches;
+            if (focus) result = result === null ? focus : new Set([...result].filter(c => focus.has(c)));
             const facet = this.facetComponents;
             if (facet) result = result === null ? facet : new Set([...result].filter(c => facet.has(c)));
             return result ?? new Set();
@@ -129,6 +152,8 @@ export const useScopeStore = defineStore("scope", {
             }
             const typed = this.queryMatches;
             if (typed) result = result === null ? typed.components : new Set([...result].filter(c => typed.components.has(c)));
+            const focus = this.focusMatches;
+            if (focus) result = result === null ? focus : new Set([...result].filter(c => focus.has(c)));
             return result ?? new Set();
         },
         // File names inside the scope: listed files plus the files of listed components.
@@ -140,6 +165,13 @@ export const useScopeStore = defineStore("scope", {
                 const union = new Set<string>();
                 for (const g of list) for (const f of groups.filesOf(g)) union.add(f);
                 result = result === null ? union : new Set([...result].filter(f => union.has(f)));
+            }
+            const focus = this.focusMatches;
+            if (focus) {
+                const data = useDataStore();
+                const held = new Set<string>();
+                for (const c of focus) for (const f of data.componentFilesIndex.get(c) ?? []) held.add(f);
+                result = result === null ? held : new Set([...result].filter(f => held.has(f)));
             }
             if (this.facet !== "all") {
                 const roles = useDataStore().fileRoleIndex;
@@ -169,7 +201,39 @@ export const useScopeStore = defineStore("scope", {
             this.recents = [text, ...this.recents.filter(q => q !== text)].slice(0, 12);
         },
         clearQuery() { this.query = ""; },
-        clear() { this.groupIds = []; this.query = ""; },
+        clear() { this.groupIds = []; this.query = ""; if (this.focus) this.setFocus(""); },
+        /**
+         * Point the views somewhere. The focus it replaces goes on the trail,
+         * so Back returns to it; a new focus drops whatever was ahead, the
+         * way a browser does.
+         */
+        setFocus(text: string) {
+            const next = text.trim();
+            if (next === this.focus) return;
+            this.focusBack = [...this.focusBack, this.focus].slice(-TRAIL);
+            this.focusAhead = [];
+            this.focus = next;
+        },
+        clearFocus() { this.setFocus(""); },
+        back() {
+            if (!this.focusBack.length) return;
+            this.focusAhead = [this.focus, ...this.focusAhead].slice(0, TRAIL);
+            this.focus = this.focusBack[this.focusBack.length - 1];
+            this.focusBack = this.focusBack.slice(0, -1);
+        },
+        forward() {
+            if (!this.focusAhead.length) return;
+            this.focusBack = [...this.focusBack, this.focus].slice(-TRAIL);
+            this.focus = this.focusAhead[0];
+            this.focusAhead = this.focusAhead.slice(1);
+        },
+        /** Jump to a focus on the trail, keeping the rest of the trail either side. */
+        jumpBack(index: number) {
+            if (index < 0 || index >= this.focusBack.length) return;
+            this.focusAhead = [...this.focusBack.slice(index + 1), this.focus, ...this.focusAhead].slice(0, TRAIL);
+            this.focus = this.focusBack[index];
+            this.focusBack = this.focusBack.slice(0, index);
+        },
         setFacet(facet: RoleFacet) { useStateStore().set("fileRole.facet", facet === "all" ? null : facet); },
         componentInScope(name: string): boolean {
             const set = this.componentNames;
@@ -182,6 +246,8 @@ export const useScopeStore = defineStore("scope", {
             // A typed question that named files answers about those files; one
             // that named components answers about everything they hold.
             if (typed && !(typed.files.has(file) || (!!component && typed.direct.has(component)))) return false;
+            const focus = this.focusMatches;
+            if (focus && !(!!component && focus.has(component))) return false;
             if (this.groupIds.length === 0) return true;
             if ((this.fileNames as Set<string>).has(file)) return true;
             return !!component && (this.wholeComponentNames as Set<string>).has(component);

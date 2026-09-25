@@ -90,6 +90,8 @@ export interface ConnectionsQueryState {
   /** Co-change floors: at least this many shared commits, and this share of the smaller side's commits (0–1). */
   minShared: number | null
   minRate: number | null
+  /** Imports only: an edge needs at least this many references to be drawn. */
+  minRefs: number | null
   /** Co-change window, from the engine's precomputed columns. */
   period: "all" | "180" | "90" | "30"
   q: string
@@ -112,6 +114,7 @@ export const DEFAULT_CONNECTIONS_STATE: ConnectionsQueryState = {
   relation: "all",
   minShared: null,
   minRate: null,
+  minRefs: null,
   period: "all",
   q: "",
   sel: null,
@@ -170,6 +173,7 @@ export function parseConnectionsQuery(query: Record<string, unknown>): Connectio
     relation: firstString(query.relation) === "no-import" ? "no-import" : "all",
     minShared: parseFloor(query.min),
     minRate: parseFloor(query.rate) === null ? null : Math.min(1, (parseFloor(query.rate) as number) / 100),
+    minRefs: parseFloor(query.refs),
     period: (["180", "90", "30"] as const).find(p => p === firstString(query.period)) ?? "all",
     q: q ?? "",
     sel: sel && sel.length > 0 ? sel : null,
@@ -191,6 +195,7 @@ export function toConnectionsQuery(state: ConnectionsQueryState): Record<string,
   if (state.relation !== "all") out.relation = state.relation
   if (state.minShared !== null) out.min = String(state.minShared)
   if (state.minRate !== null) out.rate = String(Math.round(state.minRate * 100))
+  if (state.minRefs !== null && state.minRefs > 1) out.refs = String(state.minRefs)
   if (state.period !== "all") out.period = state.period
   if (state.q) out.q = state.q
   if (state.sel) out.sel = state.sel

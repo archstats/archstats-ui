@@ -176,7 +176,7 @@
           </template>
         </template>
       </div>
-      <GroupActionBar v-if="selected.size" :selected-items="[...selected]" kind="component" @clear="selected = new Set()" @created="selected = new Set()"/>
+      <GroupActionBar v-if="selected.size" :selected-items="[...selected]" kind="component" :show-in-except="[]" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
   </ViewWorkspaceLayout>
 </template>

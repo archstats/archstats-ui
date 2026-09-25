@@ -39,7 +39,7 @@ const open = defineModel<boolean>({ default: false });
 const { isMac } = usePlatform();
 
 const areas = computed(() => {
-  const order = ["App", "Views", "Selection", "Lens builder"] as const;
+  const order = ["App", "Views", "Focus", "Selection", "Lens builder"] as const;
   return order.map(name => ({ name, items: SHORTCUTS.filter(s => s.area === name) }));
 });
 

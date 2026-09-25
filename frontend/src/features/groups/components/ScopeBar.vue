@@ -1,4 +1,5 @@
 <template>
+  <FocusChip/>
   <span v-if="scope.isActive" class="flex min-w-0 items-center gap-1" :title="summary">
     <span v-if="scope.facet !== 'all'" class="ui-chip is-active shrink-0">
       <span>{{ scope.facet === "test" ? "Test files" : "Production files" }}</span>
@@ -25,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
+import FocusChip from "~/features/groups/components/FocusChip.vue";
 import { useScopeStore } from "~/features/groups/scope.store";
 // The one place a view announces its scope. Groups in the same dimension read
 // "or", different dimensions read "and": "Audits or Shipments and Controllers".
