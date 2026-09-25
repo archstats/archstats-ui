@@ -21,6 +21,7 @@
       <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
         <input v-model="search" type="search" class="ui-input ui-input-sm min-w-0 grow" placeholder="Search files" aria-label="Search files"/>
         <SingleSelect v-if="roleFilterOptions.length > 1" v-model="roleFilter" :options="roleFilterOptions" placeholder="All roles"/>
+        <router-link v-if="folder" :to="xrayPath(folder)" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="`X-ray ${folder}: every file read and grouped into topics`">X-ray</router-link>
       </div>
       <div class="flex h-8 shrink-0 items-center gap-1 px-3 hairline-b">
         <span class="ui-label">Sort</span>
@@ -82,6 +83,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
+import { xrayPath } from "~/features/navigation/routes"
 import { useRoute } from "vue-router"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
@@ -120,6 +122,15 @@ const { data: rawFiles, loading, error } = useAsyncQuery<RawFile[]>(
   [name],
   { initial: [] },
 )
+
+// The folder the component's files share, for the X-ray.
+const folder = computed(() => {
+  const dirs = rawFiles.value.map(f => String(f.name).split("/").slice(0, -1))
+  if (!dirs.length) return ""
+  const common: string[] = []
+  for (let i = 0; i < dirs[0].length; i++) { const seg = dirs[0][i]; if (dirs.every(d => d[i] === seg)) common.push(seg); else break }
+  return common.join("/")
+})
 
 // Java roles come from the same reading the wiring uses; on any other project
 // the composable simply returns nothing and the role column disappears.

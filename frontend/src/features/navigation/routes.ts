@@ -40,6 +40,11 @@ export function searchPath(needle: string): string {
   return `/views/search?q=${encodeURIComponent(needle)}`
 }
 
+/** The Folder X-ray of a directory. */
+export function xrayPath(dir: string): string {
+  return `/views/xray?dir=${encodeURIComponent(dir)}`
+}
+
 export interface ViewEntry { label: string; to: string; also?: string }
 
 /**
@@ -65,6 +70,7 @@ export const VIEWS: ViewEntry[] = [
   { label: "Churn", to: "/views/git/churn" },
   { label: "Timeline", to: "/views/git/timeline" },
   { label: "Hidden coupling", to: "/views/git/coupling", also: "co-change changes together" },
+  { label: "Folder X-ray", to: "/views/xray", also: "folder directory utils helpers topics grab-bag" },
   { label: "Units", to: "/views/units", also: "classes functions modules" },
   { label: "Libraries", to: "/views/libraries", also: "imports frameworks external dependencies" },
   { label: "Rules", to: "/views/rules", also: "violations lens rules" },
