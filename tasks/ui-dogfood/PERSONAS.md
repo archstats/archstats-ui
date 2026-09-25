@@ -6,7 +6,7 @@ collectors: they ask a question, predict an answer, look, and decide what it
 means. Anything that does not change the persona's decision gets skimmed.
 
 The first two personas are the product's two primary users (`PRODUCT.md`).
-The other four are real jobs the same people do. Each one stresses a
+The other five are real jobs the same people do. Each one stresses a
 different part of the app.
 
 ## The common arc (every persona)
@@ -126,3 +126,32 @@ the feedback.
   - reorganising by name only.
 - **Stresses in the app:** Metrics → Directories, Units, Cycles, Connections at
   file grain, groups by query, Declare → Rules, the Sandbox, and Source.
+
+## P7 · The evaluator (fit-gap: is this codebase good enough to adopt?)
+
+- **Who:** a platform architect who must recommend whether their
+  organisation adopts, forks or builds on a codebase they do not own: an open
+  source platform, an acquired product, or a vendor's source drop. They judge
+  it against their own **architecture quality standard**: explicit criteria
+  with thresholds.
+- **Cares about:**
+  - each criterion answered **fit / partial / gap / can't tell**, with
+    evidence;
+  - the gaps that would cost the most to live with;
+  - a remediation backlog;
+  - an overall recommendation that survives a review board.
+- **Mistakes to avoid:**
+  - judging criteria the tool cannot evidence (say "can't tell" instead);
+  - letting scan scope distort a verdict (ignored folders, generated or
+    third-party code);
+  - averaging away one critical gap.
+- **Stresses in the app:**
+  - About this snapshot (scope, composition, coverage);
+  - build modules and the "Build modules" lens reading;
+  - Declare dependencies → Rules;
+  - Cycles, and Metrics (instability, main sequence, health);
+  - the Production/Tests facet and test ratio;
+  - Authors and Knowledge, and Activity (effort into unhealthy code);
+  - Connections with co-change "Without an import";
+  - Libraries;
+  - Evidence, report and export.

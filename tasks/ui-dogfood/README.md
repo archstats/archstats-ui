@@ -28,7 +28,7 @@ not possible) and what would have made it easier. Verified problems go into
           └──────────── re-run the same scenario, compare the scorecard ◄┘
 ```
 
-## The six scenarios
+## The seven scenarios
 
 | # | Persona | Codebase | Language and shape | What it stresses |
 | --- | --- | --- | --- | --- |
@@ -38,6 +38,7 @@ not possible) and what would have made it easier. Verified problems go into
 | [04](scenarios/04-modernisation-sylius.md) | Modernisation: first package to extract | Sylius | PHP / Symfony, 1,378 comps | lens builder, groups by query, Rules, Sandbox at scale |
 | [05](scenarios/05-manager-librechat.md) | Eng manager: knowledge risk and team split | LibreChat | TS / React monorepo, 234 authors | people views, CODEOWNERS, fix pattern, pseudonyms |
 | [06](scenarios/06-developer-archstats-ui.md) | Developer: restructure own app (regression baseline) | archstats-ui @ cffe84f | TS / Vue / Nuxt + Go | `.vue` and auto-import gaps, file-grain groups, Sandbox |
+| [07](scenarios/07-fitgap-fineract.md) | Evaluator: fit-gap against a quality standard (adopt or not) | Apache Fineract | Java / Spring, about 35 Gradle modules, core banking | About/scope, build modules vs imports, Rules, health, tests, people, Libraries, Evidence |
 
 ## Running one
 
@@ -60,12 +61,12 @@ tasks for new P0 and P1 issues.
 | Path | What it is |
 | --- | --- |
 | `RUNBOOK.md` | the facilitator's protocol, step by step |
-| `PERSONAS.md` | the six personas and the stance every agent works in |
+| `PERSONAS.md` | the seven personas and the stance every agent works in |
 | `PRODUCT-GUIDE.md` | how the product is meant to be used (guided mode only) |
 | `SCORING.md` | how a run is scored |
 | `ISSUES.md` | the verified issue backlog, with IDs, severity and scenarios seen |
 | `scenarios/` | one file per scenario: codebase, pinned commit and scan, persona, task, deliverable, "done looks like" |
-| `answers/` | **facilitator only**: `keys.py`, per-scenario keys, reference keys |
+| `answers/` | **facilitator only**: `keys.py` (add `--fitgap` for scenario 07), per-scenario keys, reference keys |
 | `harness/` | `serve-ui.mjs` (the sandboxed server) and `drive.mjs` (the UI driver); see `harness/README.md` |
 | `templates/` | `brief.md` (the brief every agent reads) and `prompts.md` (the lead and navigator prompts, and report extraction) |
 | `results/` | one folder per run, plus `SCORECARD.md` |
