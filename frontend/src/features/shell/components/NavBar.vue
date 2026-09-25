@@ -167,7 +167,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, ListChecks,
 } from "lucide-vue-next";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
 import GroupsManager from "~/features/groups/components/GroupsManager.vue";
@@ -213,9 +213,11 @@ const codeViews = computed(() => [
   ...(hasUnits.value ? [{ label: "Units", to: "/views/units", icon: Braces }] : []),
   ...(dataStore.hasView("snippets") ? [{ label: "Libraries", to: "/views/libraries", icon: Package }] : []),
 ]);
-const architectureViews = [
-  { label: "Rules", to: "/views/rules", icon: Scale },
-];
+// Structure checks read the import graph every snapshot has; Rules need declared rules.
+const architectureViews = computed(() => [
+  { label: "Checks", to: "/views/checks", icon: ListChecks },
+  ...(hasRules.value ? [{ label: "Rules", to: "/views/rules", icon: Scale }] : []),
+]);
 // The engagement's own working files: what was pinned, and the tools to look further.
 const evidenceStore = useEvidenceStore();
 watch(() => workspaces.active?.id, (id) => { if (id) void evidenceStore.load(id); }, { immediate: true });
@@ -313,7 +315,7 @@ const groups = computed(() => {
     { title: "Git", items: gitViews, muted: !hasGitHistory.value, mutedWhy: "No git history in this snapshot: scan a git checkout to see authors and activity" },
   ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
   if (codeViews.value.length) list.push({ title: "Code", items: codeViews.value });
-  if (hasRules.value) list.push({ title: "Architecture", items: architectureViews });
+  list.push({ title: "Architecture", items: architectureViews.value });
   list.push({ title: "Tools", items: toolViews.value as any });
   return list;
 });
