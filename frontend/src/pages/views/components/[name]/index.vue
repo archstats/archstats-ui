@@ -205,6 +205,21 @@
         </div>
       </ReadingBand>
 
+      <!-- 6. What it ships in: the deployables that hold it, from the
+           build, pipeline and deployment files (engine revision 5). -->
+      <ReadingBand v-if="deployablesKnown" title="Ships in" :lede="shipsLede" to="/views/deployables" link-label="Deployables">
+        <ul v-if="ships.length" class="flex flex-col gap-1">
+          <li v-for="s in ships" :key="s.deployable.id" class="flex items-baseline gap-3 text-sm">
+            <span class="font-mono text-neutral-800">{{ s.deployable.id }}</span>
+            <span class="text-neutral-500">{{ s.deployable.kind }}<template v-if="s.deployable.runtime"> · {{ s.deployable.runtime }}</template></span>
+            <span class="ml-auto tabular-nums text-neutral-500" :title="`${s.files} of this component's files are in it`">{{ formatNumber(s.files) }} files</span>
+          </li>
+        </ul>
+        <p v-if="shipCalls.length" class="mt-3 text-sm text-neutral-600">
+          At run time {{ ships.length === 1 ? "it calls" : "they call" }} {{ shipCalls.slice(0, 6).join(", ") }}<template v-if="shipCalls.length > 6"> and {{ shipCalls.length - 6 }} more</template>.
+        </p>
+      </ReadingBand>
+
       <!-- The reference, kept but folded away. -->
       <details class="group mt-9 pt-5 hairline-t">
         <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900">
@@ -255,6 +270,8 @@ import PercentileStrip, { type StandingRow } from "~/features/metrics/components
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { useDeployables } from "~/features/deployables/useDeployables"
+import { shipsIn } from "~/features/deployables/deployables"
 import { hopsOf } from "~/features/snapshot/hops"
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction"
 
@@ -263,6 +280,20 @@ const store = useDataStore()
 const groupsStore = useGroupsStore()
 
 const name = computed(() => String(route.params.name ?? ""))
+
+// Which deployables hold this component, and what those call.
+const { model: deployables, available: deployablesAvailable } = useDeployables()
+const deployablesKnown = computed(() => deployablesAvailable() && deployables.value.deployables.length > 0)
+const ships = computed(() => shipsIn(deployables.value, name.value))
+const shipCalls = computed(() => {
+  const mine = new Set(ships.value.map(s => s.deployable.id))
+  return [...new Set(deployables.value.links.filter(l => mine.has(l.from) && l.kind === "calls" && l.to_kind === "deployable" && !mine.has(l.to)).map(l => l.to))].sort()
+})
+const shipsLede = computed(() => {
+  if (!ships.value.length) return "No build file puts this component in a container, app or function."
+  if (ships.value.length === 1) return `It ships in ${ships.value[0].deployable.id}.`
+  return `It ships in ${ships.value.length} deployables; a change to it is a change to each.`
+})
 const base = computed(() => componentPath(name.value))
 const component = computed<any>(() => store.allComponentsIndex.get(name.value))
 const total = computed(() => store.allComponents.length)

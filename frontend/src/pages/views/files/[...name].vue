@@ -66,8 +66,15 @@ const stats = computed<DetailStat[]>(() => {
     { label: "Lines", value: formatNumber(row.complexity__lines) },
     { label: "Commits", value: formatNumber(row.git__commits__total) },
     { label: "Authors", value: formatNumber(row.git__authors__total) },
+    // What part of building, shipping or running the software the file
+    // describes; engine revision 5 and later, empty for most files.
+    ...(row.system_kind ? [{ label: "Kind", value: SYSTEM_KIND_LABEL[row.system_kind] ?? row.system_kind }] : []),
   ]
 })
+
+const SYSTEM_KIND_LABEL: Record<string, string> = {
+  build: "Build file", lockfile: "Lockfile", ci: "Pipeline", container: "Container", deploy: "Deployment", infra: "Infrastructure", config: "Runtime config",
+}
 
 // The Java tab only exists when the engine found something Java-shaped in
 // this file; the per-file metrics call answers that.
