@@ -60,7 +60,7 @@
                   <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!(seedRoot.trim() || guessRoot)" @click="seedFolders">Start</button>
                 </div>
               </div>
-              <p>Or pick a folder on the map and make it a module. Folder X-ray topics, check findings and any file selection can be sent here too (<span class="font-medium text-neutral-800">To planner</span> in the selection tray).</p>
+              <p>Or pick a folder on the map and make it a module. Folder X-ray topics, Units findings and any file selection can be sent here too (<span class="font-medium text-neutral-800">To planner</span> in the selection tray).</p>
             </div>
 
             <template v-else>

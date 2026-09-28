@@ -77,12 +77,22 @@
                         :auto-label="model.detection.value.confident ? model.profile.value.label : 'by folder structure'"
                         :detected="model.detection.value.confident && model.profile.value.id !== 'structure'"
                         :profiles="model.offeredProfiles.value"
+                        :files="landingFiles" :lines="moduleLines" :paint="lanePaint" :describe="describeModule"
+                        :highlight-for="filesLitBy"
                         @open="descendToFinding" @lane="descendToLane" @flow="descendToFlow"
+                        @place="descendToPlace" @open-file="openModuleFile"
                         @framework="setFramework"/>
 
           <EmptyState v-else-if="rowCount === 0" icon="braces"
                       title="Nothing here"
                       text="Nothing in this region matches the current search and scope."/>
+
+          <!-- A finding about where code lives lands on the map it lives on. -->
+          <EvidenceMap v-else-if="region.map" class="min-h-0"
+                       :mode="region.map" :files="prodFiles" :lines="fileGraph.data.value.lines"
+                       :reach="reach" :dup-names="dupNames" :dup-files="dupFiles"
+                       :tray="trayPaths" :roots="String(route.query.roots ?? '')"
+                       @toggle="toggleTray" @tray="trayPaths = $event" @open="openModuleFile" @roots="setRoots"/>
 
           <div v-else class="flex min-h-0 flex-1 overflow-hidden">
             <!-- A boundary region is a question about two groups, so it is
@@ -162,6 +172,10 @@ import { dirTail } from "~/features/units/moduleGraph"
 import { laneFlows, reachOf } from "~/features/units/graph"
 import { findingsFor, type Finding, type Reference, type Region } from "~/features/units/findings"
 import { readRelationship } from "~/features/units/relationship"
+import EvidenceMap from "~/features/units/components/EvidenceMap.vue"
+import { duplicateFinding, reachFinding } from "~/features/units/checkFindings"
+import { useFileGraph } from "~/features/checks/useFileGraph"
+import { duplicateNames, globRegExp, reachability, sameNamedFiles } from "~/features/checks/checks"
 
 // Units, read at the grain that actually has edges.
 //
@@ -221,13 +235,56 @@ const flows = computed(() => laneFlows(laneOfModule.value, graph.value.edges))
 const referencesUnresolved = computed(() => graph.value.edges.length === 0 && store.componentConnections.length > 0)
 /** Distinct component pairs, the figure Connections shows, not import rows. */
 const componentPairs = computed(() => new Set((store.componentConnections as Array<{ from: string; to: string }>).filter((c) => c.from !== c.to).map((c) => c.from + "\u0000" + c.to)).size)
+// The file import graph -- unit references plus resolved raw imports plus the
+// imports read from files the engine could not parse -- is the one the
+// structure checks walk. The unit graph above is the one lanes are read on.
+const fileGraph = useFileGraph()
+const prodFiles = computed(() => [...fileGraph.production.value])
+const extraRoots = computed(() => String(route.query.roots ?? "").split("\n").map((x) => x.trim()).filter(Boolean).map(globRegExp))
+const reach = computed(() => reachability(fileGraph.codeFiles.value, fileGraph.data.value.tests, fileGraph.edges.value, fileGraph.data.value.markers, { extraRoots: extraRoots.value }))
+const dupNames = computed(() => duplicateNames(fileGraph.data.value.units, fileGraph.production.value))
+const dupFiles = computed(() => sameNamedFiles(prodFiles.value))
+function setRoots(globs: string) { router.replace({ query: { ...route.query, roots: globs || undefined } }) }
+
 const findings = computed(() => {
   const all = findingsFor({
     graph: graph.value, laneLabel, generated: model.generated.value,
     definitional: new Set(model.profile.value.lanes.filter((l) => l.byReferences).map((l) => l.id)),
   })
-  return referencesUnresolved.value ? all.filter((f) => f.id !== "dark") : all
+  // "Never imported" is the half of reachability a leaf can show; once the
+  // entry-point walk is in, it says the same thing less well.
+  const walked = !fileGraph.loading.value && fileGraph.edges.value.length > 0
+  const checks = walked
+    ? [reachFinding(reach.value, fileGraph.data.value.lines), duplicateFinding(dupNames.value, dupFiles.value)].filter((f): f is Finding => !!f)
+    : []
+  const kept = all.filter((f) => f.id !== "dark" || (!referencesUnresolved.value && !walked && !fileGraph.loading.value))
+  return [...kept, ...checks]
 })
+
+// ---- the landing map --------------------------------------------------
+
+const landingFiles = computed(() => graph.value.modules.map((m) => m.path).filter(Boolean))
+const moduleLines = computed(() => new Map(graph.value.modules.map((m) => [m.path, m.lines])))
+function lanePaint(path: string) {
+  const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
+  return c === "neutral" ? "rgb(var(--c-neutral-300))" : `rgb(var(--c-${c}-400))`
+}
+function describeModule(path: string) {
+  const m = graph.value.byPath.get(path)
+  if (!m) return ""
+  return `${laneLabel(m.lane)} · imported by ${m.fanIn}, imports ${m.fanOut}${m.inCycle.length ? " · in a cycle" : ""}`
+}
+/** The files a hovered lane, or a hovered link between two lanes, is made of. */
+function filesLitBy(on: { lane: string } | { a: string; b: string }) {
+  const lanes = laneOfModule.value
+  if ("lane" in on) return new Set(graph.value.modules.filter((m) => m.lane === on.lane).map((m) => m.path))
+  const out = new Set<string>()
+  for (const e of graph.value.edges) {
+    const f = lanes.get(e.from), t = lanes.get(e.to)
+    if ((f === on.a && t === on.b) || (f === on.b && t === on.a)) { out.add(e.from); out.add(e.to) }
+  }
+  return out
+}
 
 // ---- the descent ------------------------------------------------------
 //
@@ -331,6 +388,30 @@ function regionFromQuery(): Region | null {
       },
     }
   }
+  if (q.dir) {
+    const dir = String(q.dir)
+    const inDir = graph.value.modules.filter((m) => m.path.startsWith(dir + "/"))
+    if (!inDir.length) return null
+    const byLane = new Map<string, number>()
+    for (const m of inDir) byLane.set(m.lane, (byLane.get(m.lane) ?? 0) + 1)
+    const lanesHere = [...byLane].sort((a, b) => b[1] - a[1])
+    const knotted = inDir.filter((m) => m.inCycle.length > 0).length
+    const n = inDir.length.toLocaleString()
+    return {
+      id: "dir:" + dir,
+      label: dir.split("/").slice(-2).join("/") + "/",
+      paths: inDir.map((m) => m.path),
+      note: "Sorted by how much the rest of the codebase leans on them.",
+      claim: {
+        headline: `${dir}/ holds ${n} ${inDir.length === 1 ? "module" : "modules"}.`,
+        detail: (lanesHere.length === 1
+          ? `All of them in ${laneLabel(lanesHere[0][0])}.`
+          : `Most in ${laneLabel(lanesHere[0][0])} (${lanesHere[0][1]}), then ${lanesHere.slice(1, 3).map(([l, c]) => `${laneLabel(l)} (${c})`).join(" and ")}.`)
+          + (knotted ? ` ${knotted} are in a cycle with a neighbour.` : ""),
+        tone: knotted > 0 ? "warn" : "neutral",
+      },
+    }
+  }
   if (q.q) {
     const needle = String(q.q).toLowerCase()
     return {
@@ -355,7 +436,7 @@ function regionFromQuery(): Region | null {
 watch(searchQuery, (q) => {
   const next: Record<string, any> = { ...route.query }
   const needle = q.trim()
-  if (needle) { delete next.finding; delete next.lane; delete next.flow; next.q = needle }
+  if (needle) { delete next.finding; delete next.lane; delete next.flow; delete next.dir; next.q = needle }
   else delete next.q
   delete next.m
   router.replace({ query: next })
@@ -370,6 +451,11 @@ function descend(query: Record<string, string>) {
 function descendToFinding(f: Finding) { descend({ finding: f.id }) }
 function descendToLane(id: string) { descend({ lane: id }) }
 function descendToFlow(a: string, b: string) { descend({ flow: a + "," + b }) }
+/** A folder on the landing map is a region; a file is its folder, with it picked. */
+function descendToPlace(path: string, kind: "file" | "folder") {
+  if (kind === "folder") descend({ dir: path })
+  else descend({ dir: path.slice(0, path.lastIndexOf("/")), m: path })
+}
 
 const steps = computed(() => {
   const out: Array<{ label: string; title?: string }> = []
@@ -485,11 +571,12 @@ function openAnomaly(id: string) {
   router.replace({ query: next })
 }
 
-const rowCount = computed(() => references.value?.length ?? visible.value.length)
-const rowNoun = computed(() => (references.value ? "reference" : "module"))
+const rowCount = computed(() => (region.value?.map ? region.value.paths.length : references.value?.length ?? visible.value.length))
+const rowNoun = computed(() => (region.value?.map ? "file" : references.value ? "reference" : "module"))
 
 /** What the rows below do, said once rather than left to be discovered. */
 const hint = computed(() => {
+  if (region.value?.map) return "Click a file on the map or in the list to collect it into a group; pick a folder to narrow the list. Double-click opens a file."
   if (relationship.value) return "Open a warning to see the dependencies behind it, or a module to inspect it."
   if (references.value) return "Click either side of a row to inspect that module."
   return "Click a module to inspect it. Hold ⌘ to collect modules into a group instead. Red marks a cycle."

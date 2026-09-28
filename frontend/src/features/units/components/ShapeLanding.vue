@@ -1,10 +1,11 @@
 <template>
   <!-- The top of the descent: the whole codebase in one read.
-       A picture of how the lanes lean on each other, and beside it the
-       handful of claims worth making, each one a way down into its own
-       evidence. Nothing here is a number waiting to be interpreted. -->
+       How the lanes lean on each other, and beside it where each lane lives
+       in the folders; under both, the handful of claims worth making, each
+       one a way down into its own evidence. Hovering a lane or a link lights
+       its files on the map; a folder on the map is a way down too. -->
   <div class="h-full overflow-y-auto">
-    <div class="mx-auto flex max-w-[1180px] flex-col gap-10 px-8 py-8">
+    <div class="mx-auto flex max-w-[1480px] flex-col gap-10 px-8 py-8">
       <p class="max-w-[58ch] text-lg leading-6 text-neutral-800">{{ composition }}</p>
 
       <div class="flex flex-col gap-10 min-[1080px]:flex-row min-[1080px]:gap-12">
@@ -42,13 +43,29 @@
             </template>
           </p>
           <LaneFlow :lanes="lanes" :flows="flows"
-                    @lane="$emit('lane', $event)" @flow="(a, b) => $emit('flow', a, b)"/>
+                    @lane="$emit('lane', $event)" @flow="(a, b) => $emit('flow', a, b)" @hover="lit = $event"/>
         </section>
 
-        <section class="min-w-0 flex-1">
-          <h2 class="ui-section-title mb-1">What it says</h2>
-          <ul class="divide-y divide-neutral-200">
-            <li v-for="f in findings" :key="f.id">
+        <section class="flex min-w-0 flex-1 flex-col" aria-label="Where each lane lives">
+          <div class="flex items-baseline gap-3">
+            <h2 class="ui-section-title">Where each lane lives</h2>
+            <span class="truncate text-sm text-neutral-500">Every file, sized by its lines. Pick a folder to go into it.</span>
+          </div>
+          <div class="mt-3 h-[480px] rounded-md ring-1 ring-neutral-200">
+            <FolderMap
+              :files="files" :lines="lines" :paint="paint" :highlight="lit ? highlightFor(lit) : null"
+              :describe="describe"
+              aria-label="Every module by folder, coloured by its lane"
+              @select="(path, kind) => path && $emit('place', path, kind)" @open="$emit('open-file', $event)"
+            />
+          </div>
+        </section>
+      </div>
+
+      <section>
+        <h2 class="ui-section-title mb-1">What it says</h2>
+        <ul class="grid grid-cols-1 gap-x-12 min-[1080px]:grid-cols-2">
+            <li v-for="f in findings" :key="f.id" class="hairline-t">
               <button type="button"
                       class="group -mx-3 block w-full rounded px-3 py-4 text-left transition-colors duration-100 hover:bg-neutral-100"
                       @click="$emit('open', f)">
@@ -66,20 +83,20 @@
                 </p>
               </button>
             </li>
-          </ul>
-          <p v-if="!findings.length" class="py-4 text-base text-neutral-500">
-            Nothing stands out in this snapshot. Every module sits on its own.
-          </p>
-        </section>
-      </div>
+        </ul>
+        <p v-if="!findings.length" class="py-4 text-base text-neutral-500">
+          Nothing stands out in this snapshot. Every module sits on its own.
+        </p>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import LaneFlow from "./LaneFlow.vue"
+import FolderMap from "~/features/checks/components/FolderMap.vue"
 import { AUTO, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow as Flow } from "~/features/units/graph"
 import type { Finding } from "~/features/units/findings"
@@ -98,8 +115,18 @@ const props = defineProps<{
   autoLabel: string
   detected: boolean
   profiles: Array<{ id: string; label: string }>
+  /** The modules, by path, that the folder map draws. */
+  files: string[]
+  lines: ReadonlyMap<string, number>
+  paint: (file: string) => string
+  describe: (file: string) => string
+  /** The files a hovered lane or link stands for. */
+  highlightFor: (on: { lane: string } | { a: string; b: string }) => Set<string>
 }>()
+const lit = ref<{ lane: string } | { a: string; b: string } | null>(null)
 defineEmits<{
+  (e: "place", path: string, kind: "file" | "folder"): void
+  (e: "open-file", path: string): void
   (e: "open", finding: Finding): void
   (e: "framework", value: string): void
   (e: "lane", id: string): void

@@ -169,7 +169,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container, ListChecks, FolderTree,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container, FolderTree,
 } from "lucide-vue-next";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
 import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel";
@@ -217,11 +217,10 @@ const codeViews = computed(() => [
   ...(dataStore.hasView("snippets") ? [{ label: "Libraries", to: "/views/libraries", icon: Package }] : []),
 ]);
 // What the workspace builds and ships (engine revision 5 and later), the
-// structure checks every snapshot's import graph allows, and the Rules that
-// need declared rules.
+// restructure planner, and the Rules that need declared rules. The structure
+// checks are findings in Units.
 const architectureViews = computed(() => [
   ...(dataStore.hasView("deployables") ? [{ label: "Deployables", to: "/views/deployables", icon: Container }] : []),
-  { label: "Checks", to: "/views/checks", icon: ListChecks },
   { label: "Restructure", to: "/views/restructure", icon: FolderTree },
   ...(hasRules.value ? [{ label: "Rules", to: "/views/rules", icon: Scale }] : []),
 ]);

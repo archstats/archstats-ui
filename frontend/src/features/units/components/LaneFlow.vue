@@ -15,7 +15,7 @@
                 :class="active(lane.id) ? 'bg-neutral-100' : 'hover:bg-neutral-50'"
                 :style="{ height: PITCH + 'px', gridTemplateColumns: 'minmax(3.5rem, 9rem) minmax(24px, 1fr) 2.75rem' }"
                 :title="lane.count + ' modules in ' + lane.label"
-                @mouseenter="hoveredLane = lane.id" @mouseleave="hoveredLane = null"
+                @mouseenter="hoveredLane = lane.id; $emit('hover', { lane: lane.id })" @mouseleave="hoveredLane = null; $emit('hover', null)"
                 @click="$emit('lane', lane.id)">
           <span class="flex min-w-0 items-center gap-2">
             <span class="h-2 w-2 shrink-0 rounded-full transition-transform duration-150"
@@ -64,7 +64,7 @@
         <!-- A fat transparent copy so the arc is grabbable at any weight. -->
         <path :d="arc(link)" fill="none" stroke="transparent" stroke-width="16"
               class="cursor-pointer"
-              @mouseenter="hoveredLink = link.key" @mouseleave="hoveredLink = null"
+              @mouseenter="hoveredLink = link.key; $emit('hover', { a: link.a, b: link.b })" @mouseleave="hoveredLink = null; $emit('hover', null)"
               @click="$emit('flow', link.a, link.b)">
           <title>{{ describe(link) }}</title>
         </path>
@@ -112,7 +112,12 @@ const props = defineProps<{
   lanes: Array<{ id: string; label: string; color: LaneColor; count: number }>
   flows: LaneFlow[]
 }>()
-defineEmits<{ (e: "lane", id: string): void; (e: "flow", a: string, b: string): void }>()
+defineEmits<{
+  (e: "lane", id: string): void
+  (e: "flow", a: string, b: string): void
+  /** What the pointer is on, so a picture beside this one can light the same files. */
+  (e: "hover", on: { lane: string } | { a: string; b: string } | null): void
+}>()
 
 // The export copy's layout: label, bar, count, then the arcs.
 const LABEL_W = 170

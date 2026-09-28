@@ -55,6 +55,11 @@ export interface Region {
      * at the ends, two grains below what was asked.
      */
     sides?: { a: string; b: string }
+    /**
+     * Set when the evidence is best seen where it lives: the region opens on
+     * the folder map, painted by reach or by repeated names, not on a list.
+     */
+    map?: "reach" | "dupes"
 }
 
 export interface Finding {
