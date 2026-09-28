@@ -8,7 +8,7 @@
     @mousedown="$emit('select')"
   >
     <!-- The run gutter, outside the reading column: like a notebook's In [n]. -->
-    <div v-if="gutter" class="absolute -left-[104px] top-2.5 flex w-[64px] flex-col items-end gap-1 text-right">
+    <div v-if="gutter" class="absolute -left-[96px] top-2.5 flex w-[58px] flex-col items-end gap-1 text-right">
       <button
         v-if="runnable"
         type="button"
@@ -69,12 +69,13 @@
         <p v-else-if="cell.output.figure && figureMissing" class="py-4 text-sm text-neutral-500">The figure file is missing. <template v-if="cell.spec.type === 'capture'">Open {{ cell.spec.view }} and add it again.</template></p>
         <div v-else-if="cell.output.figure" class="h-40 w-full animate-pulse rounded-md bg-neutral-100" role="img" aria-label="Loading figure"></div>
         <p v-if="cell.output.pin?.note" class="mt-2 text-[14px] leading-6 text-neutral-700">{{ cell.output.pin.note }}</p>
-        <div v-if="table" class="mt-2 overflow-x-auto">
+        <p v-if="table && !table.rows.length && cell.output.table" class="mt-2 text-[13.5px] text-neutral-500">{{ EMPTY_TABLE }}</p>
+        <div v-else-if="table" class="mt-2 overflow-x-auto">
           <table class="nb-data w-full">
-            <thead><tr><th v-for="(c, i) in table.columns" :key="i" :class="[table.align[i] === 'r' ? 'text-right' : 'text-left', i === 0 ? 'w-full' : '']">{{ c }}</th></tr></thead>
+            <thead><tr><th v-for="(c, i) in table.columns" :key="i" :class="[table.align[i] === 'r' ? 'text-right' : 'text-left', i === 0 ? 'w-full' : '']">{{ headParts(c)[0] }}<span v-if="headParts(c)[1]" class="ml-1.5 whitespace-normal font-mono text-[11px] font-normal text-neutral-400">all in {{ headParts(c)[1] }}</span></th></tr></thead>
             <tbody>
               <tr v-for="(r, i) in shownRows" :key="i">
-                <td v-for="(v, j) in r" :key="j" :class="[table.align[j] === 'r' ? 'whitespace-nowrap text-right font-mono tabular-nums' : '', j === 0 ? 'nb-name font-mono' : '']" :title="j === 0 ? v : undefined">{{ v }}</td>
+                <td v-for="(v, j) in r" :key="j" :class="[table.align[j] === 'r' ? 'whitespace-nowrap text-right font-mono tabular-nums' : '', j === 0 ? 'nb-name font-mono' : identifier(v) ? 'nb-ident font-mono' : '']" :title="j === 0 || identifier(v) || table.full?.[i]?.[j] !== v ? table.full?.[i]?.[j] ?? v : undefined"><span v-if="j === 0 || identifier(v)" class="flex min-w-0"><span class="min-w-0 truncate">{{ splitTail(v)[0] }}</span><span class="shrink-0 whitespace-pre">{{ splitTail(v)[1] }}</span></span><template v-else>{{ v }}</template></td>
               </tr>
             </tbody>
           </table>
@@ -103,7 +104,7 @@
 import { computed, ref, watch } from "vue";
 import SqlEditor from "~/features/sql/components/SqlEditor.vue";
 import { Loader2, Play } from "lucide-vue-next";
-import { describeChange, displayTable, provenanceLine } from "~/features/reports/reportCells";
+import { EMPTY_TABLE, describeChange, displayTable, provenanceLine } from "~/features/reports/reportCells";
 import type { Cell, CellSpec } from "~/features/reports/reportDoc";
 
 const props = withDefaults(defineProps<{
@@ -157,8 +158,8 @@ const shownRows = computed(() => (table.value ? (allRows.value ? table.value.row
 const totalNote = computed(() => {
   const t = props.cell.output?.table;
   if (!t) return "";
-  if (t.total < 0) return `First ${t.rows.length} rows; the query returned more.`;
-  return t.total > t.rows.length ? `${t.rows.length} of ${t.total.toLocaleString("en-US")}.` : "";
+  const of = t.total < 0 ? `First ${t.rows.length} rows; the query returned more.` : t.total > t.rows.length ? `${t.rows.length} of ${t.total.toLocaleString("en-US")}.` : "";
+  return [of, t.note ?? ""].filter(Boolean).join(" ");
 });
 const provenance = computed(() => provenanceLine(props.cell.ranOn, props.workspace));
 const runLabel = computed(() => {
@@ -167,6 +168,27 @@ const runLabel = computed(() => {
   const d = new Date(r.label);
   return Number.isNaN(d.getTime()) ? r.label.split(",")[0] : r.label.split(",")[0];
 });
+/** "Package (all in org.example)" as the label and the parent every row shares. */
+function headParts(c: string): [string, string] {
+  const m = /^(.*) \(all in (.+)\)$/.exec(c);
+  return m ? [m[1], m[2]] : [c, ""];
+}
+/** A path or dotted name, which reads cut in the middle rather than wrapped mid-word. */
+function identifier(v: unknown): boolean {
+  const s = String(v ?? "");
+  return s.length > 24 && !s.includes(" ") && /[./\\]/.test(s);
+}
+/** A name cut in the middle: the head can shrink to an ellipsis, the last segment always shows. */
+function splitTail(v: unknown): [string, string] {
+  const s = String(v ?? "");
+  // A path splits at its last folder, a dotted name at its last dot; words are cut at the end.
+  const slash = Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\"));
+  if (slash <= 0 && s.includes(" ")) return [s, ""];
+  const at = slash > 0 ? slash : s.lastIndexOf(".");
+  // No separator, or a last segment too long to keep whole: an ordinary cut at the end.
+  if (at <= 0 || s.length - at > 32) return [s, ""];
+  return [s.slice(0, at), s.slice(at)];
+}
 const changeText = computed(() => describeChange(props.cell.previous, props.cell.output, props.label).replace(/^Unchanged.*$/, ""));
 </script>
 
@@ -175,6 +197,10 @@ const changeText = computed(() => describeChange(props.cell.previous, props.cell
 .nb-data th { font-weight: 500; font-size: 11.5px; color: rgb(var(--c-neutral-500)); padding: 4px 10px 5px 0; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-300)); white-space: nowrap; }
 .nb-data td { padding: 4px 10px 4px 0; color: rgb(var(--c-neutral-800)); box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-200)); }
 .nb-data td:last-child, .nb-data th:last-child { padding-right: 0; }
-/* The name takes what the numbers leave, and keeps its tail when cut. */
-.nb-data td.nb-name { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+/* The name takes what the numbers leave; when cut, the middle goes and the last segment stays. */
+.nb-data td.nb-name { max-width: 0; width: 100%; min-width: 16ch; overflow: hidden; white-space: nowrap; }
+/* Other text columns wrap rather than push the name column to nothing. */
+.nb-data td:not(.nb-name):not(.nb-ident) { overflow-wrap: break-word; }
+/* A path or dotted name in another column: one line, its middle cut, the whole on hover. */
+.nb-data td.nb-ident { max-width: 30ch; overflow: hidden; white-space: nowrap; }
 </style>

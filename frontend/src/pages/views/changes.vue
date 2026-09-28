@@ -101,9 +101,9 @@
                 <ul class="mt-2 flex flex-col gap-3">
                   <li v-for="(t, i) in changeSet.tangles" :key="i" class="rounded-lg p-3 hairline">
                     <p class="text-base text-neutral-900"><span class="font-medium capitalize">{{ t.kind }}</span>
-                      <span class="ml-2 font-mono text-sm text-neutral-500">{{ t.before.length }} → {{ t.after.length }} components</span></p>
+                      <span class="ml-2 font-mono text-sm text-neutral-500">{{ t.before?.length ?? 0 }} → {{ t.after?.length ?? 0 }} components</span></p>
                     <div class="mt-2 flex flex-wrap gap-1.5">
-                      <router-link v-for="m in (t.after.length ? t.after : t.before)" :key="m" :to="componentLink(m)" class="ui-chip font-mono"
+                      <router-link v-for="m in (t.after?.length ? t.after : t.before ?? [])" :key="m" :to="componentLink(m)" class="ui-chip font-mono"
                                    :class="{ 'text-green-700': t.kind !== 'formed' && t.joined.includes(m) }" :title="t.joined.includes(m) && t.kind !== 'formed' ? 'Joined the tangle' : m">
                         {{ t.joined.includes(m) && t.kind !== "formed" ? "+ " : "" }}{{ m }}
                       </router-link>
@@ -203,7 +203,7 @@ import SingleSelect from "~/shared/ui/SingleSelect.vue";
 import { useExportables } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
-import { changesMarkdown, countChanges, isUnchanged, pickSides, summaryLine, type ChangeSet, type Move } from "~/features/trends/changes";
+import { changesMarkdown, countChanges, isUnchanged, normalizeChangeSet, pickSides, summaryLine, type ChangeSet, type Move } from "~/features/trends/changes";
 import { comparability } from "~/features/trends/comparability";
 import { buildProvenance, provenanceShort } from "~/features/export/provenance";
 import { componentPath, filePath } from "~/features/navigation/routes";
@@ -259,7 +259,7 @@ watch([() => sides.value.base?.id, () => sides.value.head?.id, gated], async ([b
   changeSet.value = null; error.value = "";
   if (!b || !hd || g) return;
   loading.value = true;
-  try { changeSet.value = (await Compare(b, hd)) as any; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
+  try { changeSet.value = normalizeChangeSet((await Compare(b, hd)) as any); } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
 }, { immediate: true });
 
 const counts = computed(() => (changeSet.value ? countChanges(changeSet.value) : null));
@@ -275,8 +275,9 @@ const compRows = computed(() => [
   ...(changeSet.value?.componentsRemoved ?? []).map(name => ({ kind: "removed" as const, name })),
 ]);
 const edgeRows = computed(() => [
-  ...(changeSet.value?.edgesAdded ?? []).map(e => ({ kind: "added" as const, key: `+${e.from}>${e.to}`, ...e, before: 0, after: e.refs })),
-  ...(changeSet.value?.edgesRemoved ?? []).map(e => ({ kind: "removed" as const, key: `-${e.from}>${e.to}`, ...e, before: e.refs, after: 0 })),
+  // Go sends an empty list as null: an edge's files, a tangle's other side.
+  ...(changeSet.value?.edgesAdded ?? []).map(e => ({ kind: "added" as const, key: `+${e.from}>${e.to}`, ...e, files: e.files ?? [], before: 0, after: e.refs })),
+  ...(changeSet.value?.edgesRemoved ?? []).map(e => ({ kind: "removed" as const, key: `-${e.from}>${e.to}`, ...e, files: e.files ?? [], before: e.refs, after: 0 })),
   ...(changeSet.value?.edgesChanged ?? []).map(e => ({ kind: "changed" as const, key: `~${e.from}>${e.to}`, from: e.from, to: e.to, refs: e.after, files: [] as string[], dynamic: false, before: e.before, after: e.after })),
 ]);
 const ruleRows = computed(() => [

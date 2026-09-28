@@ -18,7 +18,7 @@
         <div class="flex flex-col gap-3 px-5 py-3">
           <label class="flex flex-col gap-1 text-[12.5px] text-neutral-700">
             Name
-            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm" aria-label="Template name" required>
+            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm" aria-label="Template name" required @focus="selectFresh" @mouseup="keepSelection" @input="fresh = false">
           </label>
           <label class="flex flex-col gap-1 text-[12.5px] text-neutral-700">
             What it is for <span class="sr-only">(optional)</span>
@@ -28,7 +28,7 @@
             <Checkbox v-model="prompts" aria-label="Turn paragraphs into prompts" class="mt-[2px]"/>
             <span class="text-[12.5px] leading-5 text-neutral-800">
               Turn my paragraphs into prompts
-              <span class="block text-neutral-500">Your words stay as guidance in the empty page; headings, lists and cells come as they are.</span>
+              <span class="block text-neutral-500">Your words stay as guidance in the empty page; the template's explanations of terms, headings, lists and cells come as they are.</span>
             </span>
           </label>
           <div>
@@ -41,9 +41,10 @@
           </div>
         </div>
         <footer class="flex items-center gap-2 px-5 pb-4 pt-2">
+          <p v-if="savedAs" class="flex items-center gap-1.5 text-[12.5px] text-green-800" role="status"><Icon icon="check" :size="13"/>Saved “{{ savedAs }}”. It is under Yours when you start a new report.</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">Cancel</button>
-          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="saving || !name.trim()">{{ saving ? "Saving…" : "Save template" }}</button>
+          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="saving || !!savedAs || !name.trim()">{{ saving ? "Saving…" : savedAs ? "Saved" : "Save template" }}</button>
         </footer>
       </form>
     </div>
@@ -70,6 +71,11 @@ const summary = ref("");
 const prompts = ref(true);
 const saving = ref(false);
 const error = ref("");
+const savedAs = ref("");
+// The suggested name is selected until the writer changes it, so typing replaces it, even after a click into the field.
+const fresh = ref(true);
+function selectFresh(e: FocusEvent) { if (fresh.value) (e.target as HTMLInputElement).select(); }
+function keepSelection(e: MouseEvent) { if (fresh.value) { e.preventDefault(); fresh.value = false; } }
 const nameEl = ref<HTMLInputElement | null>(null);
 
 watch(report, (r) => {
@@ -78,6 +84,8 @@ watch(report, (r) => {
   summary.value = "";
   prompts.value = true;
   error.value = "";
+  savedAs.value = "";
+  fresh.value = true;
   void nextTick(() => { nameEl.value?.focus(); nameEl.value?.select(); });
 });
 
@@ -92,7 +100,7 @@ const blocks = computed(() => toTemplate(source.value, { promptParagraphs: promp
 
 const count = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 const keeps = computed(() => {
-  let headings = 0, cells = 0, slots = 0, readings = 0, promptsN = 0, text = 0;
+  let headings = 0, cells = 0, slots = 0, readings = 0, promptsN = 0, text = 0, explains = 0;
   for (const b of blocks.value) {
     if (isCell(b)) {
       if (b.cell.spec.type === "slot") slots++;
@@ -100,13 +108,15 @@ const keeps = computed(() => {
       else cells++;
     } else if (b.kind === "h1" || b.kind === "h2" || b.kind === "h3") headings++;
     else if (!b.text && b.prompt) promptsN++;
+    else if (b.explain) explains++;
     else text++;
   }
   return [
     headings ? count(headings, "heading") : "",
     readings ? `${count(readings, "counted paragraph")}, counted afresh` : "",
     cells ? `${count(cells, "table or query", "tables and queries")}, run afresh` : "",
-    slots ? `${count(slots, "figure")} as slots to add from the same views` : "",
+    explains ? `${count(explains, "explanation")} of the terms, left out when “Explain the terms” is off` : "",
+    slots ? `${count(slots, "figure or table", "figures and tables")} to add from the same views` : "",
     promptsN ? count(promptsN, "prompt") : "",
     text ? `${count(text, "block")} of your text as written` : "",
   ].filter(Boolean);
@@ -121,7 +131,9 @@ async function save() {
   error.value = "";
   try {
     await reports.saveTemplate({ id: newId(), name: name.value.trim(), summary: summary.value.trim(), from: workspaces.active?.name ?? "", savedAt: new Date().toISOString(), blocks: blocks.value });
-    report.value = null;
+    // Said before the sheet goes, so the save is seen to have happened.
+    savedAs.value = name.value.trim();
+    setTimeout(() => { if (savedAs.value) report.value = null; }, 1600);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {

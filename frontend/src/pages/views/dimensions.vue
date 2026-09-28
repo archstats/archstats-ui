@@ -67,6 +67,7 @@
         />
         <div class="relative min-w-0 grow">
           <LoadingState v-if="studio.loading.value" text="Reading the codebase"/>
+          <EmptyState v-else-if="studio.error.value" title="Could not read this snapshot" :text="studio.error.value" icon="alert"/>
           <EmptyState v-else-if="studio.coverage.value.total === 0" title="Nothing to sort" text="This snapshot has no components." icon="layers"/>
           <ConnectionsGraph
             v-else

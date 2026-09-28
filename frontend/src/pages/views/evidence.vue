@@ -18,7 +18,7 @@
       <template v-if="reports.current">
         <label class="flex shrink-0 items-center whitespace-nowrap">
           <select class="ui-input ui-input-sm max-w-[240px]" :value="reports.doc.kernel" aria-label="Snapshot the cells run on" title="The snapshot this report's cells run on" @change="reports.setKernel(($event.target as HTMLSelectElement).value)">
-            <option value="newest">Runs on newest · {{ newestLabel }}</option>
+            <option value="newest">Always the newest · {{ newestLabel }}</option>
             <option v-for="s in completeScans" :key="s.id" :value="s.id">{{ scanLabel(s) }}</option>
           </select>
         </label>
@@ -34,7 +34,7 @@
           <span>{{ reports.running.length ? "Running…" : `Run ${reports.stale.length} stale` }}</span>
         </button>
         <button
-          v-if="reports.slots.length"
+          v-if="reports.slots.length && figuresHidden"
           type="button"
           class="ui-btn ui-btn-sm"
           :title="takeTitle"
@@ -69,7 +69,7 @@
           @jump="jump"
         />
 
-        <div ref="scroller" class="relative min-h-0 flex-1 overflow-y-auto bg-surface" @dragover="onDragOver" @drop="onDrop" @dragleave="onDragLeave">
+        <div ref="scroller" class="relative min-h-0 flex-1 overflow-auto" :class="reports.current ? 'bg-ground' : 'bg-surface'" @dragover="onDragOver" @drop="onDrop" @dragleave="onDragLeave">
           <!-- No report yet. -->
           <div v-if="!reports.current" class="mx-auto flex h-full max-w-[520px] flex-col items-center justify-center px-8 text-center">
             <Icon icon="file-text" :size="22" class="text-neutral-300"/>
@@ -79,21 +79,45 @@
             <p class="mt-3 text-xs leading-5 text-neutral-500">From a blank page, or a template written for this codebase: facts counted from the snapshot, the tables to run, the figures to add, and prompts for what they mean.</p>
           </div>
 
-          <article v-else class="mx-auto w-full max-w-[880px] pb-[40vh] pl-[118px] pr-12 pt-12">
-            <input
+          <div v-else class="flex min-w-max flex-col items-center px-8 pb-[30vh] pt-5">
+            <!-- The work around the page: what is still to do, on the ground above it, never printed. -->
+            <div class="w-[210mm]">
+              <p v-if="promptsLeft || reports.running.length || reports.stale.length" class="flex items-center gap-1.5 text-[12px] text-neutral-500" role="status">
+                <template v-if="promptsLeft"><span :title="'Grey italic lines say what to write there; they are never printed'">{{ promptsLeft }} {{ promptsLeft === 1 ? "prompt" : "prompts" }} to write</span></template>
+                <template v-if="reports.running.length"><span v-if="promptsLeft" aria-hidden="true">·</span><span class="text-neutral-600">Counting…</span></template>
+                <template v-else-if="reports.stale.length"><span v-if="promptsLeft" aria-hidden="true">·</span><span class="text-accent-700">{{ reports.stale.length }} {{ reports.stale.length === 1 ? "cell" : "cells" }} not run on this snapshot yet</span></template>
+              </p>
+              <p v-if="exportNote" class="mt-2 text-sm text-red-700" role="alert" @click="exportNote = ''">{{ exportNote }}</p>
+            <FiguresToAdd
+              v-if="!raw && !figuresHidden"
+              :slots="reports.slots"
+              :numbers="numbers"
+              :log="reports.takeLog?.reportId === reports.currentId ? reports.takeLog : null"
+              :paused="pausedHere"
+              @take="taking.start([$event])"
+              @take-all="takeAll"
+              @jump="jump"
+              @hide="hideFigures"
+            />
+            </div>
+
+          <!-- The page: A4, white in either appearance, set as the PDF prints it. -->
+          <article class="paper paper-sheet relative mt-4 shrink-0" aria-label="Report page">
+            <!-- A long title wraps: a one-line textarea that grows with it. -->
+            <textarea
+              ref="titleEl"
               :value="titleDraft"
-              class="w-full bg-transparent text-[30px] font-semibold leading-tight tracking-[-0.02em] text-neutral-950 outline-none placeholder:text-neutral-300"
+              rows="1"
+              class="doc-title block w-full resize-none overflow-hidden bg-transparent outline-none placeholder:text-neutral-300"
               placeholder="Untitled report"
               aria-label="Report title"
-              @input="titleDraft = ($event.target as HTMLInputElement).value"
+              @input="titleDraft = ($event.target as HTMLTextAreaElement).value.replace(/\n/g, ' '); fitTitle()"
               @change="saveTitle"
+              @blur="saveTitle"
               @keydown.enter.prevent="saveTitle(); editFirst()"
-            >
-            <p class="mt-2 font-mono text-[11.5px] text-neutral-500">
-              {{ kernelLine }}
-              <template v-if="reports.stale.length"> · <span class="text-accent-700">{{ reports.stale.length }} {{ reports.stale.length === 1 ? "cell ran" : "cells ran" }} elsewhere</span></template>
-            </p>
-            <p v-if="exportNote" class="mt-2 text-sm text-red-700" role="alert" @click="exportNote = ''">{{ exportNote }}</p>
+            ></textarea>
+            <div class="doc-rule" aria-hidden="true"></div>
+            <p class="doc-meta">{{ kernelLine }}</p>
 
             <!-- The whole report as Markdown; cells are fenced archstats blocks. -->
             <textarea
@@ -106,7 +130,7 @@
               @input="onRawInput"
             ></textarea>
 
-            <div v-else class="mt-8" role="document" aria-label="Report">
+            <div v-else class="doc-body" role="document" aria-label="Report">
               <div
                 v-for="(b, i) in reports.doc.blocks"
                 :key="b.id"
@@ -182,6 +206,7 @@
               <div v-if="dropIndex === reports.doc.blocks.length" class="nb-drop" aria-hidden="true"><span>{{ dropLabel }}</span></div>
             </div>
           </article>
+          </div>
         </div>
       </div>
 
@@ -252,6 +277,7 @@ import InsertMenu, { type InsertChoice } from "~/features/reports/components/Ins
 import NotebookCell from "~/features/reports/components/NotebookCell.vue";
 import NotebookReading from "~/features/reports/components/NotebookReading.vue";
 import NotebookSlot from "~/features/reports/components/NotebookSlot.vue";
+import FiguresToAdd from "~/features/reports/components/FiguresToAdd.vue";
 import SaveTemplateSheet from "~/features/reports/components/SaveTemplateSheet.vue";
 import TemplateSheet from "~/features/reports/components/TemplateSheet.vue";
 import NotebookText from "~/features/reports/components/NotebookText.vue";
@@ -272,7 +298,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { saveBundle } from "~/platform/files";
 import { cellNumbers, isCell, newId, plainText, runnable, type Block, type CellBlock, type CellSpec, type TextKind } from "~/features/reports/reportDoc";
 import { newestFirst } from "~/features/workspace/scanOrder";
-import { formatScanTime } from "~/shared/time";
+import { snapshotName } from "~/features/workspace/snapshotName";
 
 // Evidence as a notebook: reports on the left, the open report in the middle,
 // the pool of pins and the selected cell on the right. Prose is Markdown that
@@ -286,7 +312,8 @@ const data = useDataStore();
 const state = useStateStore();
 
 const tab = ref("pool");
-const paneOpen = ref(true);
+// The document gets the room; the pane opens for a selected cell, or for the pool when there is no report.
+const paneOpen = ref(false);
 const tabs = computed(() => [{ id: "pool", label: "Pool" }, { id: "cell", label: "Cell" }]);
 
 watch(() => workspaces.active?.id, async (id) => {
@@ -315,14 +342,14 @@ watch(() => reports.cells.map(c => c.cell.output?.figure ?? "").join(), () => vo
 
 // ── Kernel ──────────────────────────────────────────────────────────────
 const completeScans = computed(() => newestFirst(workspaces.scans.filter((s: any) => s.status === "complete")) as any[]);
-const scanLabel = (s: any) => `${s.label || formatScanTime(s.headTime ?? s.startedAt)}${s.headCommit ? ` · ${String(s.headCommit).slice(0, 7)}` : ""}`;
+const scanLabel = (s: any) => `Snapshot of ${snapshotName(s)}${s.headCommit ? ` · ${String(s.headCommit).slice(0, 7)}` : ""}`;
 const newestLabel = computed(() => (completeScans.value[0] ? scanLabel(completeScans.value[0]) : "none"));
 const kernelShort = computed(() => reports.kernel?.label ?? "no snapshot");
 const kernelLine = computed(() => {
   const k = reports.kernel;
   if (!k) return "No complete snapshot to run on yet.";
   const cells = reports.cells.length;
-  return `Runs on ${k.label}${k.headCommit ? ` · ${k.headCommit.slice(0, 7)}` : ""} · analysis r${k.revision} · ${cells} ${cells === 1 ? "cell" : "cells"}`;
+  return `Snapshot of ${k.label}${k.headCommit ? ` · commit ${k.headCommit.slice(0, 7)}${k.committed ? ` of ${k.committed}` : ""}` : ""} · analysis r${k.revision} · ${cells} ${cells === 1 ? "cell" : "cells"}`;
 });
 const isStale = (b: CellBlock) => runnable(b.cell.spec) && (!b.cell.ranOn || b.cell.ranOn.scanId !== reports.kernel?.id);
 
@@ -337,7 +364,17 @@ watch(() => reports.kernel?.id, async (id) => {
 
 // ── Title ───────────────────────────────────────────────────────────────
 const titleDraft = ref("");
-watch(() => reports.current?.title, t => { titleDraft.value = t && t !== "Untitled report" ? t : ""; }, { immediate: true });
+const titleEl = ref<HTMLTextAreaElement | null>(null);
+function fitTitle() {
+  const el = titleEl.value;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+watch(() => reports.current?.title, t => { titleDraft.value = t && t !== "Untitled report" ? t : ""; void nextTick(fitTitle); }, { immediate: true });
+onMounted(() => { window.addEventListener("resize", fitTitle); void nextTick(fitTitle); });
+onBeforeUnmount(() => window.removeEventListener("resize", fitTitle));
+watch(() => !!reports.current, has => { if (!has) tab.value = "pool"; paneOpen.value = !has; }, { immediate: true });
 function saveTitle() {
   if (reports.current && (titleDraft.value || "Untitled report") !== reports.current.title) void reports.rename(reports.current.id, titleDraft.value || "Untitled report");
 }
@@ -503,7 +540,8 @@ function openInsert(id: string | null, mode: "below" | "above" | "replace") {
   const row = id ? scroller.value?.querySelector(`[data-id="${id}"]`) as HTMLElement | null : null;
   const col = scroller.value?.querySelector("article") as HTMLElement | null;
   const r = row?.getBoundingClientRect();
-  const left = (col?.getBoundingClientRect().left ?? 200) + 118;
+  // The text column starts 27 mm into the page.
+  const left = (col?.getBoundingClientRect().left ?? 200) + 27 * 96 / 25.4;
   insertAt.value = { id, mode, anchor: { left, top: r ? (mode === "above" ? r.top : r.bottom) : 200 } };
 }
 function closeInsert() {
@@ -644,6 +682,24 @@ const takeLabel = computed(() => {
   return `Take ${n} ${tables === 0 ? (n === 1 ? "figure" : "figures") : tables === n ? (n === 1 ? "table" : "tables") : "figures and tables"}`;
 });
 const takeTitle = computed(() => "Opens each view the template names, set as it asks, and shows what it took before it goes in");
+/** Paragraphs a template left for the writer, still empty. */
+const promptsLeft = computed(() => reports.doc.blocks.filter(b => !isCell(b) && !b.text.trim() && !!b.prompt).length);
+/** Reports whose "Figures to add" list was hidden, this session. */
+const hiddenFigures = ref(new Set<string>());
+const figuresHidden = computed(() => !!reports.currentId && hiddenFigures.value.has(reports.currentId));
+// A run that ends shows its summary, even where the list was hidden.
+watch(() => reports.takeLog?.done, done => {
+  const id = reports.takeLog?.reportId;
+  if (!done || !id || !hiddenFigures.value.has(id)) return;
+  const next = new Set(hiddenFigures.value);
+  next.delete(id);
+  hiddenFigures.value = next;
+});
+function hideFigures() {
+  if (!reports.currentId) return;
+  hiddenFigures.value = new Set(hiddenFigures.value).add(reports.currentId);
+  if (reports.takeLog?.reportId === reports.currentId && reports.takeLog.done) reports.takeLog = null;
+}
 function takeAll() {
   const ids = reports.slots.map(s => s.id);
   if (pausedHere.value) { reports.takeQueue = { ...reports.takeQueue!, ids, at: 0 }; void taking.retake(); return; }

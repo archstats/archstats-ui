@@ -4,6 +4,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { queryFileImportEdges } from "~/features/connections/fileImports";
 import { frameworkStorageKey, rememberedFramework } from "~/features/frameworks/classFacts";
 import { loadUnits } from "~/features/units/units";
+import { fileCoChangePairs, sweepingLimit } from "~/features/snapshot/fileCoChange";
 import { classify, detectFramework, languageOf, profileById } from "~/features/frameworks/frameworkProfiles";
 import { EMPTY_SOURCES, buildSuggestInput, placeRest, suggest, type Constraints, type Grain, type Placement, type SignalSources, type SuggestInput, type SuggestSettings, type Suggestion , type GraphMetrics } from "./suggest";
 
@@ -55,6 +56,8 @@ export async function loadSignalSources(
   framework?: string | null,
   /** Where component edges are read from; the store's runtime-only subquery in the app. */
   componentEdges = "component_connections_direct",
+  /** Commits touching more files than this are left out of file co-change. */
+  sweeping = 100,
 ): Promise<SignalSources> {
   const q = query;
   const hasGit = hasView("git_component_shared_commits");
@@ -68,7 +71,7 @@ export async function loadSignalSources(
     q(`select "from", "to", sum(reference_count) as "references" from ${componentEdges} group by "from", "to"`),
     hasGit && hasView("git_commits") ? q(COCHANGE_SQL) : Promise.resolve([]),
     queryFileImportEdges(q, hasView),
-    hasGit && hasView("file_matrix") ? q(`select "from", "to", git_co_changes as count from file_matrix where git_co_changes > 0`) : Promise.resolve([]),
+    hasGit && hasView("git_commits") ? fileCoChangePairs(q, sweeping).then(rows => rows.map(r => ({ from: r.from, to: r.to, count: r.shared }))) : Promise.resolve([]),
     hasView("git_commits") ? q(`select distinct author_name as author, file from git_commits`) as Promise<Array<{ author: string; file: string }>> : Promise.resolve([]),
     hasUnits ? loadUnits(q, hasView) : Promise.resolve(new Map()),
     hasJava ? q("SELECT `from`, `to` FROM java_class_connections_direct") as Promise<Array<{ from: string; to: string }>> : Promise.resolve([]),
@@ -154,6 +157,7 @@ export function useSuggestModel() {
         v => store.hasView(v),
         rememberedFramework(frameworkStorageKey(workspaces.active?.id, store.datasetKey)),
         store.runtimeComponentEdges,
+        sweepingLimit(store.snapshotInfo),
       );
       loadedFor = key;
       return sources.value;

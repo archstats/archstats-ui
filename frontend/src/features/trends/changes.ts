@@ -28,7 +28,8 @@ export interface Sides<T> { base: T | null; head: T | null; swapped: boolean }
 
 /**
  * Head is the open scan (or the one asked for); base is the one asked for,
- * else the pinned baseline, else the scan of the code just before head. A
+ * else the pinned baseline, else the scan of the code just before head,
+ * preferring another commit over a rescan of head's own. A
  * base that read newer code than head is swapped, and says so.
  */
 export function pickSides<T extends OrderedScan>(scans: T[], opts: { head?: string | null; base?: string | null; baseline?: string | null }): Sides<T> {
@@ -37,7 +38,14 @@ export function pickSides<T extends OrderedScan>(scans: T[], opts: { head?: stri
     const head = byId(opts.head) ?? newestFirst(complete)[0] ?? null
     if (!head) return { base: null, head: null, swapped: false }
     let base = byId(opts.base) ?? (opts.baseline && opts.baseline !== head.id ? byId(opts.baseline) : null)
-    if (!base) base = newestFirst(complete.filter(s => s.id !== head.id && compareScans(s, head) < 0))[0] ?? null
+    if (!base) {
+        // The code just before head: a scan of a different commit when there is one.
+        // A rescan of the same commit is older only by when it ran, and comparing
+        // it finds nothing (the check-in's "What changed" slot came back empty).
+        const older = newestFirst(complete.filter(s => s.id !== head.id && compareScans(s, head) < 0))
+        const commit = (s: T) => (s as any).headCommit || ""
+        base = older.find(s => !commit(head) || commit(s) !== commit(head)) ?? older[0] ?? null
+    }
     if (base && base.id === head.id) base = null
     if (base && compareScans(base, head) > 0) return { base: head, head: base, swapped: true }
     return { base, head, swapped: false }
@@ -48,6 +56,25 @@ export interface ChangeCounts {
     edgesAdded: number; edgesRemoved: number
     tanglesFormed: number; tanglesDissolved: number; tanglesChanged: number
     rulesNew: number; rulesGone: number
+}
+
+/**
+ * The change set as the page reads it: Go sends an empty list as null (a
+ * formed tangle has no "before", an edge may list no files), so every list is
+ * made a list once, where it arrives.
+ */
+export function normalizeChangeSet(cs: ChangeSet): ChangeSet {
+    const list = <T>(x: T[] | null | undefined): T[] => x ?? []
+    const c = cs as any
+    return {
+        ...cs,
+        componentsAdded: list(c.componentsAdded), componentsRemoved: list(c.componentsRemoved),
+        edgesAdded: list(c.edgesAdded).map((e: any) => ({ ...e, files: list(e.files) })),
+        edgesRemoved: list(c.edgesRemoved).map((e: any) => ({ ...e, files: list(e.files) })),
+        edgesChanged: list(c.edgesChanged),
+        tangles: list(c.tangles).map((t: any) => ({ ...t, before: list(t.before), after: list(t.after), joined: list(t.joined), left: list(t.left) })),
+        rulesNew: list(c.rulesNew), rulesGone: list(c.rulesGone), moves: list(c.moves),
+    } as ChangeSet
 }
 
 export function countChanges(cs: ChangeSet): ChangeCounts {

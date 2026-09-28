@@ -206,6 +206,8 @@ function keepLive() {
 useExportables().register({
   kind: "table",
   title: "Metrics: directories",
+  // Commits load after the tree; a take before then would fill the column with dashes.
+  ready: () => commits.value !== null,
   rows: () => rows.value.map(n => ({ directory: n.path, files: n.files.length, lines: n.lines, components: n.components.size, commits: commits.value?.get(n.path) ?? null, max_hotspot: n.maxHotspot, lowest_health: n.minHealth, edges_out: edgesOf(n).length })),
   columns: () => [{ id: "directory", label: "Directory" }, ...NUM_COLUMNS.map(c => ({ id: c.id, label: c.label }))],
   notes: () => [

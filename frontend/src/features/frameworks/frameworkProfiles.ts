@@ -46,6 +46,8 @@ export function languageOfFile(path: string): Language | null {
 
 export interface ClassFacts {
   name: string
+  /** The file the unit is declared in, when known. */
+  file?: string
   annotations: ReadonlySet<string>
   supertypes: ReadonlySet<string>
   /** Older engine snippet types, so snapshots scanned before the neutral facts still classify. */
@@ -81,6 +83,8 @@ export interface LaneDef {
   imports?: string[]
   /** A structural rule, after the fact-based signals and before naming. */
   rule?: (facts: ClassFacts, signals: ClassSignals) => boolean
+  /** The rule decides before imports and names: a React component that imports axios is still a component. */
+  ruleFirst?: boolean
   /** Simple-name suffixes, the weakest signal. */
   nameSuffixes?: string[]
   /**
@@ -139,7 +143,7 @@ export const SPRING: FrameworkProfile = {
   label: "Spring",
   detect: { imports: ["org.springframework.boot", "org.springframework.web", "org.springframework.stereotype", "org.springframework.data", "org.springframework.context"], weakImports: ["org.springframework"], annotations: ["SpringBootApplication"], legacy: ["java__spring__bean"] },
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice"], legacy: ["java__spring__controller"], hint: "Web entry points" },
+    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice", "Path"], legacy: ["java__spring__controller"], hint: "Web entry points, JAX-RS resources among them" },
     { id: "services", label: "Services & Other", color: "green", annotations: ["Service", "Component", "Configuration", "SpringBootApplication"], legacy: ["java__spring__service", "java__spring__component", "java__spring__configuration"], hint: "Beans and everything unclassified" },
     { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository"], hint: "Data access" },
     { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: "Persistent models" },
@@ -298,13 +302,16 @@ export const ANGULAR: FrameworkProfile = {
   fallback: "services",
 }
 
+/** A React component: a top-level name in Pascal case, not an interface, in a .tsx or .jsx file. The report's tables count the same way (REACT_COMPONENT). */
+export const isReactComponent = (f: ClassFacts) => /^[A-Z]/.test(f.name) && !f.isInterface && (!f.file || /\.[jt]sx$/.test(f.file))
+
 export const REACT: FrameworkProfile = {
   language: "typescript",
   id: "react",
   label: "React",
   detect: { imports: ["react", "react-dom", "next/", "@remix-run/"], weakImports: ["@testing-library/react"] },
   lanes: [
-    { id: "components", label: "Components", color: "blue", rule: (f) => /^[A-Z]/.test(f.name) && !f.isInterface, hint: "Named in Pascal case and rendered" },
+    { id: "components", label: "Components", color: "blue", rule: isReactComponent, ruleFirst: true, hint: "Named in Pascal case, in a .tsx or .jsx file" },
     { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), hint: "Reusable stateful logic" },
     { id: "data", label: "Data & Clients", color: "amber", imports: ["@tanstack/react-query", "swr", "axios", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Store", "Repository"], hint: "What talks to a server" },
     { id: "models", label: "Types & Models", color: "violet", rule: (f) => f.isInterface, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
@@ -455,7 +462,8 @@ export const SYMFONY: FrameworkProfile = {
   weight: 2,
   lanes: [
     { id: "controllers", label: "Controllers", color: "blue", annotations: ["Route", "AsController"], nameSuffixes: ["Controller", "Action"], hint: "What answers a request" },
-    { id: "models", label: "Entities", color: "violet", annotations: ["Entity", "Embeddable", "ORM"], nameSuffixes: ["Entity"], hint: "Persistent state" },
+    // Sylius-style models map to Doctrine in XML, not in attributes: they are known by the resource interface or a Model folder.
+    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Embeddable", "ORM"], supertypes: ["ResourceInterface", "Model", "Authenticatable"], rule: (f) => !f.isInterface && !!f.file && /\/Model\//.test(f.file), nameSuffixes: ["Entity"], hint: "Persistent state" },
     { id: "data", label: "Repositories", color: "amber", nameSuffixes: ["Repository", "Provider", "Loader", "Client"], hint: "Data access" },
     { id: "wiring", label: "Bundles & Subscribers", color: "red", annotations: ["AsEventListener", "AsMessageHandler"], nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Compiler", "Pass"], hint: "Registration and events" },
     { id: "logic", label: "Services & Other", color: "green", nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver"], hint: "Everything unclassified" },
@@ -635,7 +643,7 @@ export function detectFramework(facts: Iterable<ClassFacts>, language: Language 
 
 /** The lane a class lands in: facts, then imports, then structure, then naming, then the fallback. */
 export function classify(profile: FrameworkProfile, facts: ClassFacts, signals: ClassSignals = NO_SIGNALS): string {
-  for (const lane of profile.lanes) if (hasAny(facts.annotations, lane.annotations) || hasAny(facts.supertypes, lane.supertypes) || hasAny(facts.legacy, lane.legacy)) return lane.id
+  for (const lane of profile.lanes) if (hasAny(facts.annotations, lane.annotations) || hasAny(facts.supertypes, lane.supertypes) || hasAny(facts.legacy, lane.legacy) || (lane.ruleFirst && lane.rule?.(facts, signals))) return lane.id
   for (const lane of profile.lanes) if (importsAny(facts.usedImports ?? facts.imports, lane.imports)) return lane.id
   for (const lane of profile.lanes) if (lane.rule && lane.rule(facts, signals)) return lane.id
   for (const lane of profile.lanes) if (lane.nameSuffixes?.some(suffix => facts.name.endsWith(suffix) && facts.name !== suffix)) return lane.id

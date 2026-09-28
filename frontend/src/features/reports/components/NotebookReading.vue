@@ -8,7 +8,7 @@
     :aria-label="`Computed: ${def?.label ?? cell.spec.type}`"
     @mousedown="$emit('select')"
   >
-    <div v-if="gutter" class="absolute -left-[92px] top-[5px] flex w-[64px] flex-col items-end gap-1 text-right">
+    <div v-if="gutter" class="absolute -left-[92px] top-[5px] flex w-[58px] flex-col items-end gap-1 text-right">
       <button
         type="button"
         class="flex h-6 w-6 items-center justify-center rounded-full transition-colors"
@@ -26,11 +26,18 @@
       <span v-if="changeText" class="font-mono text-[10px] leading-3 text-accent-700" :title="changeText">moved</span>
     </div>
 
-    <p v-if="!out" class="nb-rd-text py-[3px]" aria-busy="true">
+    <p v-if="!out" class="nb-rd-text doc-prose" aria-busy="true">
       <span class="nb-rd-skel" style="width: 96%"></span><span class="nb-rd-skel" style="width: 88%"></span><span class="nb-rd-skel" style="width: 54%"></span>
     </p>
-    <p v-else-if="out.absent" class="nb-rd-text py-[3px] italic text-neutral-500" :title="def?.describe">{{ plain }}</p>
-    <p v-else class="nb-rd-text py-[3px]" :title="def?.describe" v-html="html"></p>
+    <p v-else-if="out.absent" class="nb-rd-text doc-prose italic !text-neutral-500" :title="def?.describe">{{ plain }}</p>
+    <div v-else class="nb-rd-text doc-prose" :title="def?.describe">
+      <template v-for="(blk, k) in blocks" :key="k">
+        <ul v-if="blk.kind === 'ul'" class="nb-rd-list">
+          <li v-for="(item, m) in blk.items" :key="m" v-html="inlineHtml(item)"></li>
+        </ul>
+        <p v-else v-html="inlineHtml(blk.text)"></p>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -38,7 +45,7 @@
 import { computed } from "vue";
 import { Loader2, Play } from "lucide-vue-next";
 import { describeChange } from "~/features/reports/reportCells";
-import { inlineHtml, plainText, type Cell } from "~/features/reports/reportDoc";
+import { inlineHtml, plainText, readingBlocks, type Cell } from "~/features/reports/reportDoc";
 import { readingDef } from "~/features/reports/readings";
 
 const props = withDefaults(defineProps<{
@@ -55,15 +62,19 @@ defineEmits<{ (e: "select"): void; (e: "run"): void }>();
 const gutter = computed(() => props.gutter !== false);
 const def = computed(() => (props.cell.spec.type === "reading" ? readingDef(props.cell.spec.reading) : undefined));
 const out = computed(() => props.cell.output?.reading ?? (props.cell.output?.error ? { text: props.cell.output.error, values: {}, absent: true } : null));
-const html = computed(() => inlineHtml(out.value?.text ?? ""));
+const blocks = computed(() => readingBlocks(out.value?.text ?? ""));
 const plain = computed(() => plainText(out.value?.text ?? ""));
 const changeText = computed(() => describeChange(props.cell.previous, props.cell.output).replace(/^Unchanged.*$/, ""));
 </script>
 
 <style scoped>
-.nb-rd-text { font-size: 15px; line-height: 1.65; color: rgb(var(--c-neutral-800)); }
-.nb-rd-text :deep(strong) { font-weight: 600; color: rgb(var(--c-neutral-950)); font-variant-numeric: tabular-nums; }
-.nb-rd-text :deep(code) { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.86em; background: rgb(var(--c-neutral-100)); border-radius: 4px; padding: 1px 5px; }
+/* Set as the prose around it (.doc-prose): a paragraph, or a lead sentence and a list. */
+.nb-rd-text { padding: 4pt 0; }
+.nb-rd-text :deep(p) { margin: 0; }
+.nb-rd-text :deep(p + p), .nb-rd-text :deep(ul + p), .nb-rd-text :deep(p + ul) { margin-top: 5pt; }
+.nb-rd-list { margin: 0; padding: 0; list-style: none; }
+.nb-rd-list > li { position: relative; padding: 1.5pt 0 1.5pt 1.4em; }
+.nb-rd-list > li::before { content: "•"; position: absolute; left: 0.35em; color: rgb(var(--c-neutral-400)); }
 /* The mark of a counted paragraph: a dotted rule in the margin, solid when selected. */
 .nb-reading::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 0; border-left: 2px dotted rgb(var(--c-neutral-300)); }
 .nb-reading-on::before { border-left-style: solid; border-left-color: rgb(var(--c-accent-500)); top: 0; bottom: 0; }

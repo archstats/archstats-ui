@@ -1,5 +1,6 @@
 <template>
-  <div class="flex h-full min-h-[160px] w-full flex-col items-center justify-center gap-2 px-6 py-10 text-center">
+  <!-- data-view-reason: why the view shows nothing, read by a report's figure-taking run. -->
+  <div :data-view-reason="title" class="flex h-full min-h-[160px] w-full flex-col items-center justify-center gap-2 px-6 py-10 text-center">
     <Icon v-if="icon" :icon="icon" :size="20" class="text-neutral-300"/>
     <p class="text-base font-medium text-neutral-700">{{ title }}</p>
     <p v-if="text" class="max-w-[42ch] text-sm leading-4 text-neutral-500">{{ text }}</p>

@@ -122,6 +122,7 @@ import { useReportsStore } from "~/features/reports/reports.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import type { RanOn } from "~/features/reports/reportDoc";
 import { formatScanTime } from "~/shared/time";
+import { snapshotName } from "~/features/workspace/snapshotName";
 
 // The one Export menu. In a view's toolbar it is a button; the shell mounts a
 // headless one so ⌘E works on views without a toolbar. Every action ends the
@@ -236,7 +237,7 @@ function ranOnNow(): RanOn {
   const p = buildProvenance();
   const scan: any = workspacesStore.scans.find((s: any) => s.id === workspacesStore.openScanId);
   return {
-    scanId: workspacesStore.openScanId ?? "", label: scan ? formatScanTime(scan.headTime ?? scan.startedAt) : p.snapshot, commit: p.commit, revision: p.revision,
+    scanId: workspacesStore.openScanId ?? "", label: scan ? snapshotName(scan) : p.snapshot, commit: p.commit, committed: scan?.headTime ? formatScanTime(scan.headTime) : undefined, revision: p.revision,
     at: new Date().toISOString(), lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined,
   };
 }
@@ -276,7 +277,10 @@ onMounted(() => {
   off = registerCommand("export", () => { dark.value = isDarkAppearance(); if (items.value.length || props.headless) open.value = !open.value; });
   // Filling a report's slot: what this view shows of the slot's kind, straight into Add to report.
   if (props.headless) offAdd = registerCommand("add-to-report", async () => {
-    const item = pickFor(reportsStore.filling?.kind);
+    // Never the report into itself: a late take landing on the report page would pick
+    // the report's own Markdown and fill the slot with the whole report (P1-13).
+    if (isReportView.value || !reportsStore.filling) return;
+    const item = pickFor(reportsStore.filling.kind, reportsStore.filling.take);
     if (!item) { fail("Add to report", new Error("this view has nothing to add yet")); return; }
     await addToReport(item);
   });

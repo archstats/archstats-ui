@@ -89,6 +89,12 @@ func (q *QueryService) Console(scanID, sql string) (*query.Limited, error) {
 	return q.svc.Console(scanID, sql)
 }
 
+// ReportConsole runs a report cell's statement as Console does, with 30
+// seconds instead of 10: a report runs its queries unattended.
+func (q *QueryService) ReportConsole(scanID, sql string) (*query.Limited, error) {
+	return q.svc.ReportConsole(scanID, sql)
+}
+
 // FindInCode counts a needle in every file whose source the scan kept.
 func (q *QueryService) FindInCode(scanID, needle string, opt query.FindOptions) (*query.FindResult, error) {
 	return q.svc.FindInCode(scanID, needle, opt)

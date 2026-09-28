@@ -28,9 +28,10 @@
         <button
           v-if="renaming !== r.id"
           type="button"
-          class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet absolute right-1 top-1.5 h-6 w-6 opacity-0 focus-visible:opacity-100 group-hover/r:opacity-100"
-          :class="{ '!opacity-100': menu === r.id }"
+          class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet absolute right-1 top-1.5 h-6 w-6 focus-visible:opacity-100 group-hover/r:opacity-100"
+          :class="menu === r.id ? 'opacity-100' : r.id === currentId ? 'opacity-60' : 'opacity-0'"
           :aria-label="`More for ${r.title}`"
+          title="Rename, duplicate, save as template or delete"
           @click.stop="menu = menu === r.id ? null : r.id"
         ><Icon icon="more-horizontal" :size="13"/></button>
         <template v-if="menu === r.id">

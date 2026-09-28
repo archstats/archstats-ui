@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isPlatform, libraries, looksInternal, ownPrefixes, rollup } from "./libraries"
+import { displayName, isPlatform, libraries, looksInternal, ownPrefixes, rollup } from "./libraries"
 
 describe("libraries", () => {
     it("tags platform modules by exact rules", () => {
@@ -34,6 +34,17 @@ describe("libraries", () => {
         expect(looksInternal("org/springframework/context", own)).toBe(false)
         expect(looksInternal("api", own)).toBe(true)
         expect(looksInternal("Symfony\\Component\\Form", own)).toBe(false)
+    })
+    it("knows a folder component under a source root by its namespace", () => {
+        const own = ownPrefixes(["src/Sylius/Bundle/CoreBundle", "src/Sylius/Bundle/AdminBundle", "src/Sylius/Bundle/ShopBundle", "src/Sylius/Component/Core"])
+        expect(looksInternal("Sylius\\Bundle", own)).toBe(true)
+        expect(looksInternal("Symfony\\Component", own)).toBe(false)
+    })
+    it("gives Go module paths their dots back", () => {
+        expect(displayName("github/com/stretchr/testify", "go")).toBe("github.com/stretchr/testify")
+        expect(displayName("golang/org/x/net", "go")).toBe("golang.org/x/net")
+        expect(displayName("net/http", "go")).toBe("net/http")
+        expect(displayName("github/com/x", "javascript")).toBe("github/com/x")
     })
     it("counts imports, files and components per library", () => {
         const rows = [

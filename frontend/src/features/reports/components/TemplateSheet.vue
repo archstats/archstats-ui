@@ -23,7 +23,11 @@
         <div class="flex min-h-0 flex-1">
           <!-- The templates, this codebase's first. -->
           <nav class="flex w-[284px] shrink-0 flex-col overflow-y-auto bg-ground pb-4 hairline-r" aria-label="Templates">
-            <ul class="px-2 pt-2" role="listbox" aria-label="Templates" :aria-activedescendant="`tpl-${selected}`">
+            <div class="sticky top-0 z-[1] bg-ground px-3 pb-1 pt-3">
+              <input v-model="query" type="search" class="ui-input ui-input-sm w-full" placeholder="Find a template" aria-label="Find a template" @keydown.down.prevent="moveSelection(1)" @keydown.up.prevent="moveSelection(-1)" @keydown.enter.prevent="create">
+            </div>
+            <p v-if="query && !choices.length" class="px-4 pt-3 text-[12.5px] text-neutral-500">No template mentions “{{ query }}”.</p>
+            <ul class="px-2 pt-1" role="listbox" aria-label="Templates" :aria-activedescendant="`tpl-${selected}`">
               <li v-for="row in rows" :key="row.key" :role="row.heading ? 'presentation' : undefined">
                 <h3 v-if="row.heading" class="ui-label flex items-center gap-1.5 px-2 pb-1" :class="row.first ? 'pt-1.5' : 'pt-4'">
                   <button v-if="row.toggle" type="button" class="flex items-center gap-1 hover:text-neutral-900" :aria-expanded="showOthers" @click="showOthers = !showOthers">
@@ -43,8 +47,8 @@
                 >
                   <Icon :icon="row.icon" :size="14" class="mt-[2px] shrink-0" :class="selected === row.key ? 'text-accent-600' : 'text-neutral-400'"/>
                   <span class="min-w-0 flex-1">
-                    <span class="block truncate text-[13px] text-neutral-900">{{ row.name }}</span>
-                    <span class="block truncate text-[11.5px] leading-4" :class="row.why ? 'text-accent-700' : 'text-neutral-500'" :title="row.why || row.audience">{{ row.why || row.audience }}</span>
+                    <span class="block truncate text-[13px]" :class="row.empty ? 'text-neutral-500' : 'text-neutral-900'">{{ row.name }}</span>
+                    <span class="block truncate text-[11.5px] leading-4" :class="row.empty ? 'text-neutral-400' : row.why ? 'text-accent-700' : 'text-neutral-500'" :title="row.empty ? emptyWhy : row.why || row.audience">{{ row.empty ? "Nothing in this snapshot fits it" : row.why || row.audience }}</span>
                   </span>
                   <button
                     v-if="row.saved"
@@ -67,13 +71,20 @@
               <section class="border-b border-neutral-200/70 bg-ground/60 px-10 pb-4 pt-5">
                 <div class="mx-auto max-w-[620px]">
                   <p class="text-[13px] font-semibold text-neutral-900">{{ chosen.name }} <span class="font-normal text-neutral-500">· {{ chosen.audience }}</span></p>
-                  <p class="mt-1 text-[12.5px] leading-5 text-neutral-600">{{ chosen.summary }}</p>
+                  <p class="mt-1 text-[12.5px] leading-5 text-neutral-600" v-html="inlineHtml(chosen.summary)"></p>
+                  <p v-if="chosen.when" class="mt-1.5 text-[12.5px] leading-5 text-neutral-600">{{ chosen.when }}</p>
+                  <p v-if="facts && selected !== 'blank' && emptyChosen" class="mt-2.5 rounded bg-amber-50 px-2.5 py-1.5 text-[12.5px] leading-5 text-amber-900 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-200))]" role="alert">
+                    Nothing in this snapshot fits this template: every section it would write is left out{{ built.skipped.length ? ` (${skippedLine})` : "" }}. The report would hold only headings and prompts.
+                  </p>
+                  <p v-else-if="built.skipped.length" class="mt-2.5 rounded bg-amber-50 px-2.5 py-1.5 text-[12.5px] leading-5 text-amber-900 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-200))]">
+                    Leaves out {{ skippedLine }}.
+                  </p>
                   <p v-if="selected !== 'blank'" class="mt-2.5 text-[12.5px] leading-5 text-neutral-800">
                     <template v-if="!facts">Reading the snapshot…</template>
                     <template v-else>{{ tallyLine }}</template>
                   </p>
-                  <p v-if="built.skipped.length" class="mt-1 text-[12px] leading-5 text-neutral-500">
-                    Leaves out {{ skippedLine }}.
+                  <p v-if="facts && selected !== 'blank' && tallied.prompts" class="mt-1 text-[12px] leading-5 text-neutral-500">
+                    The grey italic lines are prompts: they say what to write there, and are never printed or exported.
                   </p>
                   <label v-for="p in chosen.params ?? []" :key="p.id" class="mt-3 flex items-center gap-3 text-[12.5px] text-neutral-700">
                     <span class="w-20 shrink-0">{{ p.label }}</span>
@@ -90,11 +101,14 @@
                 </div>
               </section>
 
-              <article class="mx-auto max-w-[620px] px-10 pb-20 pt-8" aria-label="Preview">
-                <p class="text-[26px] font-semibold leading-tight tracking-[-0.02em] text-neutral-950">{{ name || "Untitled report" }}</p>
-                <p class="mt-1.5 font-mono text-[11px] text-neutral-500">{{ kernelLine }}</p>
-                <div class="pointer-events-none mt-6 select-none" aria-hidden="true">
-                  <p v-if="selected === 'blank'" class="py-2 text-[15px] text-neutral-400">An empty page. Write, or press / to add evidence.</p>
+              <!-- The report as it will open: its first page, set as it prints. -->
+              <div class="bg-ground px-5 py-6">
+              <article class="paper paper-sheet mx-auto" aria-label="Preview">
+                <p class="font-sans text-[22pt] font-semibold leading-[1.15] tracking-[-0.02em] text-neutral-950">{{ name || "Untitled report" }}</p>
+                <div class="mt-[3mm] h-[0.7mm] w-[24mm] bg-accent-500" aria-hidden="true"></div>
+                <p class="mt-[4mm] font-sans text-[8pt] leading-[1.5] text-neutral-500">{{ kernelLine }}</p>
+                <div class="pointer-events-none mt-[7mm] select-none" aria-hidden="true">
+                  <p v-if="selected === 'blank'" class="doc-prose py-2 !text-neutral-400">An empty page. Write, or press / to add evidence.</p>
                   <template v-for="b in built.blocks" :key="b.id">
                     <NotebookText v-if="!isCell(b)" :block="b" :editing="false" :number="olNumbers.get(b.id)"/>
                     <NotebookReading v-else-if="b.cell.spec.type === 'reading'" :cell="readingCell(b)" :selected="false" :running="false" :stale="false" kernel-label="" :gutter="false"/>
@@ -107,6 +121,7 @@
                   </template>
                 </div>
               </article>
+              </div>
             </template>
           </div>
         </div>
@@ -116,12 +131,13 @@
             <span class="shrink-0 text-[12.5px] text-neutral-600">Name</span>
             <input ref="nameEl" v-model="name" class="ui-input ui-input-sm w-full max-w-[380px]" aria-label="Report name" @input="nameTouched = true" @keydown.enter.prevent="create">
           </label>
-          <label v-if="slotCount" class="flex shrink-0 cursor-default items-center gap-2 text-[12.5px] text-neutral-700" :title="`Opens each view the template names, set as it asks, and shows what it took before it goes in`">
-            <Checkbox v-model="takeAfter" :aria-label="takeText"/>{{ takeText }}
+          <label v-if="template || savedExplains" class="flex shrink-0 cursor-default items-center gap-2 text-[12.5px] text-neutral-700" title="Each section opens with a short paragraph that explains its terms in plain words. They are printed; turn them off for readers who know the terms.">
+            <Checkbox v-model="explain" aria-label="Explain the terms"/>Explain the terms
           </label>
+          <p v-if="slotCount" class="min-w-0 shrink truncate text-[12.5px] text-neutral-500" :title="takeText">{{ takeText }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="creating || (selected !== 'blank' && !kernel)" title="⌘↵" @click="create">{{ creating ? "Writing…" : "Create report" }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="creating || (selected !== 'blank' && !kernel)" title="⌘↵" @click="create">{{ creating ? "Writing…" : emptyChosen ? "Create it anyway" : "Create report" }}</button>
         </footer>
       </div>
     </div>
@@ -135,14 +151,13 @@ import NotebookSlot from "./NotebookSlot.vue";
 import NotebookText from "./NotebookText.vue";
 import Checkbox from "~/shared/ui/Checkbox.vue";
 import Icon from "~/shared/ui/Icon.vue";
-import { useSlotTaking } from "~/features/reports/useSlotTaking";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useReportsStore } from "~/features/reports/reports.store";
 import { useStateStore } from "~/platform/state.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { ecosystems, probe, runReading, type Ecosystem, type SnapshotFacts } from "~/features/reports/readings";
-import { cellNumbers, isCell, type Block, type Cell, type CellBlock, type RanOn, type ReadingOutput } from "~/features/reports/reportDoc";
-import { buildTemplate, ECOSYSTEM_TEMPLATES, fromSaved, GENERAL_TEMPLATES, tally, type BuiltTemplate, type ReportTemplate, type SavedTemplate } from "~/features/reports/reportTemplates";
+import { cellNumbers, inlineHtml, isCell, type Block, type Cell, type CellBlock, type RanOn, type ReadingOutput } from "~/features/reports/reportDoc";
+import { bestTemplate, buildTemplate, ECOSYSTEM_TEMPLATES, fromSaved, GENERAL_TEMPLATES, hasEvidence, QUICK_TEMPLATES, tally, type BuiltTemplate, type ReportTemplate, type SavedTemplate } from "~/features/reports/reportTemplates";
 
 const emit = defineEmits<{ (e: "blank"): void; (e: "created"): void }>();
 
@@ -152,8 +167,10 @@ const data = useDataStore();
 const state = useStateStore();
 const open = computed(() => reports.choosingTemplate);
 const workspace = computed(() => workspaces.active?.name ?? "this workspace");
-const kernel = computed(() => reports.kernel);
-const kernelLine = computed(() => (kernel.value ? `Runs on ${kernel.value.label}${kernel.value.headCommit ? ` · ${kernel.value.headCommit.slice(0, 7)}` : ""} · analysis r${kernel.value.revision}` : ""));
+// A new report runs on the snapshot open in the sidebar; so does its preview.
+const kernel = computed(() => reports.openKernel);
+const commitText = (k: { headCommit: string; committed?: string }) => (k.headCommit ? ` · commit ${k.headCommit.slice(0, 7)}${k.committed ? ` of ${k.committed}` : ""}` : "");
+const kernelLine = computed(() => (kernel.value ? `Snapshot of ${kernel.value.label}${commitText(kernel.value)} · analysis r${kernel.value.revision}` : ""));
 const sourceLine = computed(() => (kernel.value ? `Written for ${workspace.value} from the snapshot of ${kernel.value.label}` : ""));
 
 // ── What the snapshot holds ─────────────────────────────────────────────
@@ -162,7 +179,7 @@ const ecos = ref<Ecosystem[]>([]);
 const hottest = ref("");
 watch([open, () => kernel.value?.id], async ([o]) => {
   if (!o) return;
-  const ctx = reports.readingContext();
+  const ctx = reports.readingContext(kernel.value);
   if (!ctx) return;
   await state.loadSettings();
   const f = await probe(ctx);
@@ -174,42 +191,93 @@ watch([open, () => kernel.value?.id], async ([o]) => {
     hottest.value = r ? String(r.name) : "";
   } catch { hottest.value = ""; }
   if (!params.value.component && hottest.value) params.value = { ...params.value, component: hottest.value };
-  if (!chosenOnce.value) select(ecoTemplates.value[0]?.id ?? "architecture-review");
+  if (!chosenOnce.value) select(bestTemplate(f, ecos.value));
 }, { immediate: true });
 const componentNames = computed(() => (data.allComponents ?? []).map((c: any) => String(c.name)).filter((n: string) => n !== ".").sort());
 
 // ── The list ────────────────────────────────────────────────────────────
-const BLANK = { id: "blank", name: "Blank report", audience: "An empty page", summary: "Start from nothing; add facts, tables, queries and pins as you write." };
+const BLANK = { id: "blank", name: "Blank report", audience: "An empty page", summary: "Start from nothing; add facts, tables, queries and pins as you write.", when: "" };
 const saved = computed<SavedTemplate[]>(() => reports.savedTemplates());
-const detected = computed(() => new Map(ecos.value.map(e => [e.id, e])));
+const detected = computed(() => {
+  const m = new Map(ecos.value.map(e => [e.id, e]));
+  // A Django project is a Python codebase too: the Python review fits it, the Django review more closely.
+  const dj = m.get("django");
+  if (dj && !m.has("python")) m.set("python", { id: "python", label: "Python codebase", why: `${dj.why}; the Django project review covers it more closely` });
+  return m;
+});
 const ecoTemplates = computed(() => ECOSYSTEM_TEMPLATES.filter(t => t.ecosystem && detected.value.has(t.ecosystem)));
 const otherTemplates = computed(() => ECOSYSTEM_TEMPLATES.filter(t => !t.ecosystem || !detected.value.has(t.ecosystem)));
 const showOthers = ref(false);
+const query = ref("");
 
-interface Row { key: string; heading?: string; first?: boolean; toggle?: boolean; name?: string; audience?: string; why?: string; icon?: string; saved?: boolean }
+/** Templates that would write nothing from this snapshot: every section left out. */
+const emptyIds = computed(() => {
+  const f = facts.value;
+  if (!f) return new Set<string>();
+  const out = new Set<string>();
+  for (const t of [...GENERAL_TEMPLATES, ...QUICK_TEMPLATES, ...ECOSYSTEM_TEMPLATES]) {
+    try { if (!hasEvidence(buildTemplate(t, { facts: f, ecosystems: ecos.value, params: params.value, explain: false }).blocks)) out.add(t.id); } catch { /* shown as it builds */ }
+  }
+  return out;
+});
+const emptyChosen = computed(() => !!template.value && emptyIds.value.has(template.value.id));
+const emptyWhy = "Every section this template writes needs something this snapshot does not have; choose it to see what.";
+
+interface Row { key: string; heading?: string; first?: boolean; toggle?: boolean; name?: string; audience?: string; why?: string; icon?: string; saved?: boolean; empty?: boolean }
 const rows = computed<Row[]>(() => {
+  const all = allRows.value;
+  const q = query.value.trim().toLowerCase();
+  if (!q) return all;
+  // Searching looks through every template, the other ecosystems' too, and keeps the headings that still head something.
+  const summaries = new Map([...GENERAL_TEMPLATES, ...QUICK_TEMPLATES, ...ECOSYSTEM_TEMPLATES].map(t => [t.id, `${t.summary} ${t.when ?? ""}`]));
+  const hit = (r: Row) => `${r.name} ${r.audience} ${r.why ?? ""} ${summaries.get(r.key) ?? ""}`.toLowerCase().includes(q);
+  const out: Row[] = [];
+  let heading: Row | null = null;
+  for (const r of withOthers(all, true)) {
+    if (r.heading) { heading = { ...r, toggle: false }; continue; }
+    if (!hit(r)) continue;
+    if (heading) { out.push({ ...heading, first: !out.length }); heading = null; }
+    out.push(r);
+  }
+  return out;
+});
+function withOthers(all: Row[], open: boolean): Row[] {
+  if (!open || showOthers.value) return all;
+  return [...all, ...otherTemplates.value.map(t => ({ key: t.id, name: t.name, audience: `${t.audience}; not found here`, icon: "layout-list", empty: emptyIds.value.has(t.id) }))];
+}
+function moveSelection(d: 1 | -1) {
+  const list = choices.value;
+  if (!list.length) return;
+  const i = list.indexOf(selected.value);
+  select(list[Math.max(0, Math.min(list.length - 1, i < 0 ? 0 : i + d))]);
+}
+watch(query, () => { const list = choices.value; if (list.length && !list.includes(selected.value)) select(list[0]); });
+const allRows = computed<Row[]>(() => {
   const out: Row[] = [{ key: "h:start", heading: "Start", first: true }, { key: "blank", name: BLANK.name, audience: BLANK.audience, icon: "file-text" }];
   if (ecoTemplates.value.length) {
     out.push({ key: "h:eco", heading: `For ${workspace.value}` });
-    for (const t of ecoTemplates.value) out.push({ key: t.id, name: t.name, audience: t.audience, why: `Found: ${detected.value.get(t.ecosystem!)!.why}`, icon: "scan-line" });
+    for (const t of ecoTemplates.value) out.push({ key: t.id, name: t.name, audience: t.audience, why: `Found: ${detected.value.get(t.ecosystem!)!.why}`, icon: "scan-line", empty: emptyIds.value.has(t.id) });
   }
+  out.push({ key: "h:quick", heading: "Quick wins" });
+  for (const t of QUICK_TEMPLATES) out.push({ key: t.id, name: t.name, audience: t.audience, icon: t.icon ?? "layout-list", empty: emptyIds.value.has(t.id) });
   out.push({ key: "h:general", heading: "General" });
-  for (const t of GENERAL_TEMPLATES) out.push({ key: t.id, name: t.name, audience: t.audience, icon: "layout-list" });
+  for (const t of GENERAL_TEMPLATES) out.push({ key: t.id, name: t.name, audience: t.audience, icon: "layout-list", empty: emptyIds.value.has(t.id) });
   if (saved.value.length) {
     out.push({ key: "h:saved", heading: "Yours" });
     for (const t of saved.value) out.push({ key: `saved:${t.id}`, name: t.name, audience: t.summary || `Saved from ${t.from}`, icon: "bookmark", saved: true });
   }
   out.push({ key: "h:others", heading: `Other ecosystems (${otherTemplates.value.length})`, toggle: true });
-  if (showOthers.value) for (const t of otherTemplates.value) out.push({ key: t.id, name: t.name, audience: `${t.audience}; not found here`, icon: "layout-list" });
+  if (showOthers.value) for (const t of otherTemplates.value) out.push({ key: t.id, name: t.name, audience: `${t.audience}; not found here`, icon: "layout-list", empty: emptyIds.value.has(t.id) });
   return out;
 });
 const choices = computed(() => rows.value.filter(r => !r.heading).map(r => r.key));
 
 const selected = ref("blank");
 const chosenOnce = ref(false);
-const template = computed<ReportTemplate | null>(() => [...GENERAL_TEMPLATES, ...ECOSYSTEM_TEMPLATES].find(t => t.id === selected.value) ?? null);
+const template = computed<ReportTemplate | null>(() => [...GENERAL_TEMPLATES, ...QUICK_TEMPLATES, ...ECOSYSTEM_TEMPLATES].find(t => t.id === selected.value) ?? null);
+const savedExplains = computed(() => !!savedChosen.value?.blocks.some(b => !isCell(b) && b.explain));
 const savedChosen = computed(() => (selected.value.startsWith("saved:") ? saved.value.find(t => `saved:${t.id}` === selected.value) ?? null : null));
-const chosen = computed(() => template.value ?? (savedChosen.value ? { id: selected.value, name: savedChosen.value.name, audience: `Yours, saved from ${savedChosen.value.from}`, summary: savedChosen.value.summary || "Your structure, cells and prompts; nothing it found before comes with it.", params: undefined } : BLANK) as { name: string; audience: string; summary: string; params?: ReportTemplate["params"] });
+const chosen = computed(() => template.value ?? (savedChosen.value ? { id: selected.value, name: savedChosen.value.name, audience: `Yours, saved from ${savedChosen.value.from}`, summary: savedChosen.value.summary || "Your structure, cells and prompts; nothing it found before comes with it.", when: "", params: undefined } : BLANK) as { name: string; audience: string; summary: string; when: string; params?: ReportTemplate["params"] });
 
 function select(key: string) {
   selected.value = key;
@@ -219,6 +287,10 @@ function select(key: string) {
   scroller.value?.scrollTo({ top: 0 });
 }
 const params = ref<Record<string, string>>({});
+// Explanations of each section's terms, for readers new to them; remembered per viewer.
+const EXPLAIN_KEY = "reports.templates.explain";
+const explain = ref((() => { try { return localStorage.getItem(EXPLAIN_KEY) !== "0"; } catch { return true; } })());
+watch(explain, on => { try { localStorage.setItem(EXPLAIN_KEY, on ? "1" : "0"); } catch { /* not remembered */ } });
 function setParam(id: string, v: string) {
   params.value = { ...params.value, [id]: v.trim() };
   if (!nameTouched.value) name.value = defaultName();
@@ -227,9 +299,9 @@ function setParam(id: string, v: string) {
 // ── The report it writes ────────────────────────────────────────────────
 const built = computed<BuiltTemplate>(() => {
   if (!facts.value || selected.value === "blank") return { blocks: [], skipped: [] };
-  if (savedChosen.value) return { blocks: fromSaved(savedChosen.value), skipped: [] };
+  if (savedChosen.value) return { blocks: fromSaved(savedChosen.value, explain.value), skipped: [] };
   if (!template.value) return { blocks: [], skipped: [] };
-  return buildTemplate(template.value, { facts: facts.value, ecosystems: ecos.value, params: params.value });
+  return buildTemplate(template.value, { facts: facts.value, ecosystems: ecos.value, params: params.value, explain: explain.value });
 });
 const numbers = computed(() => cellNumbers(built.value.blocks));
 const olNumbers = computed(() => {
@@ -239,18 +311,22 @@ const olNumbers = computed(() => {
   return out;
 });
 const count = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+/** "2 tables and 1 figure": what the run takes from the views. */
+const slotPhrase = (t: { figures: number; slotTables: number }) => [t.slotTables ? count(t.slotTables, "table") : "", t.figures ? count(t.figures, "figure") : ""].filter(Boolean).join(" and ");
+const tallied = computed(() => tally(built.value.blocks));
 const tallyLine = computed(() => {
-  const t = tally(built.value.blocks);
+  const t = tallied.value;
   const parts = [
+    t.explanations ? count(t.explanations, "paragraph") + " explaining the terms" : "",
     t.readings ? count(t.readings, "paragraph") + " counted from the snapshot" : "",
-    t.tables ? count(t.tables, "table") : "",
-    t.figures ? `${count(t.figures, "figure")} to add from the views` : "",
+    t.tables ? `${count(t.tables, "table")} run from the snapshot` : "",
+    t.slots ? `${slotPhrase(t)} to add from the views` : "",
     t.prompts ? count(t.prompts, "prompt") + " for your reading" : "",
   ].filter(Boolean);
   const last = parts.pop();
   return `Writes ${count(t.sections, "section")}: ${parts.length ? `${parts.join(", ")} and ${last}` : last ?? "nothing yet"}.`;
 });
-const skippedLine = computed(() => built.value.skipped.map(s => `${s.section} (${s.why})`).join(", "));
+const skippedLine = computed(() => built.value.skipped.map(s => `“${s.section}”, because ${s.why}`).join("; "));
 function tableHint(b: CellBlock) {
   const s = b.cell.spec;
   if (s.type === "table") return `${s.limit} ${s.source} · runs when created`;
@@ -266,7 +342,7 @@ function readingCell(b: CellBlock): Cell {
 }
 let counting = 0;
 watch(built, async (next) => {
-  const ctx = reports.readingContext();
+  const ctx = reports.readingContext(kernel.value);
   if (!ctx) return;
   const mine = ++counting;
   for (const b of next.blocks) {
@@ -296,22 +372,24 @@ function defaultName() {
 async function create() {
   if (creating.value) return;
   if (selected.value === "blank") { reports.choosingTemplate = false; emit("blank"); return; }
-  const rc = reports.runContext();
+  const rc = reports.runContext(kernel.value);
   if (!rc) return;
   creating.value = true;
   error.value = "";
   try {
-    const ranOn: RanOn = { scanId: rc.scan.id, label: rc.scan.label, commit: rc.scan.headCommit, revision: rc.scan.revision, at: new Date().toISOString(), ...rc.context() };
+    const ranOn: RanOn = { scanId: rc.scan.id, label: rc.scan.label, commit: rc.scan.headCommit, committed: rc.scan.committed, revision: rc.scan.revision, at: new Date().toISOString(), ...rc.context() };
     const blocks: Block[] = built.value.blocks.map(b => {
       if (!isCell(b) || b.cell.spec.type !== "reading") return b;
       const out = counted.value[readingKey(b)];
       return out ? { ...b, cell: { ...b.cell, output: { reading: out }, ranOn } } : b;
     });
+    const made = await reports.create(name.value.trim() || defaultName() || "Untitled report", blocks);
+    if (!made) throw new Error("The report could not be made: no workspace is open.");
+    // Made: the gallery closes for good, whatever the cells do next, so a second Create cannot copy it.
     reports.choosingTemplate = false;
-    const take = takeAfter.value && slotCount.value > 0;
-    await reports.createFrom(name.value.trim() || defaultName() || "Untitled report", blocks);
+    // The report opens and stays open; its "Figures to add" block starts taking them.
     emit("created");
-    if (take) void taking.start(reports.slots.map(s => s.id));
+    reports.runAll().catch(e => console.error("Running the new report's cells failed", e));
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     reports.choosingTemplate = true;
@@ -321,10 +399,8 @@ async function create() {
 }
 
 // Figures the template asks for can be taken from their views as soon as the report exists.
-const taking = useSlotTaking();
-const takeAfter = ref(true);
-const slotCount = computed(() => tally(built.value.blocks).figures);
-const takeText = computed(() => `Then take the ${slotCount.value === 1 ? "figure" : `${slotCount.value} figures`} from ${slotCount.value === 1 ? "its view" : "their views"}`);
+const slotCount = computed(() => tallied.value.slots);
+const takeText = computed(() => `The report lists the ${slotPhrase(tallied.value)} to take from ${slotCount.value === 1 ? "its view" : "their views"} at its top`);
 
 const confirmRemove = ref<string | null>(null);
 async function removeSaved(key: string) {

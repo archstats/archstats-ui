@@ -9,3 +9,21 @@ export function hopsOf(path: string | null | undefined, fallback?: number | stri
   if (path) return path.split(" -> ").length - 1
   return Number(fallback) || 0
 }
+
+/**
+ * The route between two components, walked from next_hop (analysis revision
+ * 4 on): the row for (from, to) names the first step, the row for (that
+ * step, to) the next, and so on to `to`. `towards` maps each component to
+ * its next hop towards `to`. Empty when `from` does not reach `to`.
+ */
+export function walkNextHops(towards: Map<string, string>, from: string, to: string): string[] {
+  const steps = [from]
+  for (let at = from; at !== to;) {
+    const next = towards.get(at)
+    // Every step lands one hop closer, so a repeat means rows from two scans.
+    if (!next || steps.includes(next)) return []
+    steps.push(next)
+    at = next
+  }
+  return steps.length > 1 ? steps : []
+}

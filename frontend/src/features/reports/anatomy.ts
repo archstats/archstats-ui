@@ -1,0 +1,295 @@
+// Framework anatomy: the codebase read through the framework it is built on.
+//
+// The Classes view sorts every class or function into its framework's roles
+// (a Spring controller, a Django model, a React hook) with the profiles in
+// features/frameworks. These readings put the same sorting into words: how
+// many of each role there are and where they live, which roles reference
+// which, and where references skip a layer or run back up against it. A role
+// is what the profile's rules say, never a guess; what no rule matched is
+// counted apart as unclassified and left out of every claim about layers.
+
+import { classify, detectFramework, languageOf, languageOfFile, profileById, UNCLASSIFIED, type FrameworkProfile, type Language } from "~/features/frameworks/frameworkProfiles"
+import { isTestPath } from "~/features/snapshot/fileRole"
+import { loadUnits } from "~/features/units/units"
+import { proseName, proseNames, type ReadingOutput } from "./reportDoc"
+import type { ReadingContext, ReadingDef } from "./readings"
+
+export interface AnatomyUnit { id: string; name: string; lane: string; component: string; fanIn: number; fanOut: number }
+
+export interface Anatomy {
+    profile: FrameworkProfile
+    /** The profile was detected with confidence, rather than asked for or fallen back to. */
+    confident: boolean
+    reason: string
+    /** Units carrying the framework's own annotations, base types or imports, and all units read. */
+    evidence: { strong: number; total: number }
+    language: Language | null
+    /** Declared units outside tests, each with its role. */
+    units: AnatomyUnit[]
+    /** Distinct unit-to-unit references between those units, members rolled up to their owners. */
+    edges: Array<[string, string]>
+    /** The snapshot records which unit uses which; without it there are no edges to read. */
+    linked: boolean
+}
+
+/**
+ * Each profile's roles from the top of a request to the bottom, for the ones
+ * that have a direction. Cross-cutting roles (middleware, wiring, messaging)
+ * are left out: they sit beside the layers, not in them.
+ */
+const LAYERS: Record<string, string[]> = {
+    spring: ["controllers", "services", "repositories", "entities"],
+    jakarta: ["endpoints", "beans", "repositories", "entities"],
+    quarkus: ["resources", "beans", "data", "entities"],
+    micronaut: ["controllers", "beans", "repositories", "entities"],
+    dropwizard: ["resources", "app", "data", "models"],
+    android: ["screens", "viewmodels", "data", "models"],
+    nestjs: ["controllers", "providers", "data", "models"],
+    angular: ["components", "services", "data", "models"],
+    react: ["components", "hooks", "data", "models"],
+    express: ["routes", "services", "data", "models"],
+    django: ["views", "forms", "models"],
+    fastapi: ["routes", "data", "models"],
+    "go-http": ["handlers", "logic", "data", "models"],
+    "go-cli": ["commands", "logic", "data", "models"],
+    aspnet: ["controllers", "services", "data", "models"],
+    laravel: ["controllers", "logic", "data", "models"],
+    symfony: ["controllers", "logic", "data", "models"],
+    ktor: ["routes", "logic", "data", "models"],
+    structure: ["entry", "logic", "data", "models"],
+}
+
+/** The profile's layers, top first, as far as the profile has them. */
+export function layersOf(profile: FrameworkProfile): string[] {
+    const have = new Set(profile.lanes.map(l => l.id))
+    return (LAYERS[profile.id] ?? []).filter(id => have.has(id) && id !== UNCLASSIFIED)
+}
+
+const NOUN: Record<Language, string> = {
+    java: "classes", kotlin: "classes", csharp: "classes", php: "classes",
+    python: "classes and functions", go: "types and functions", typescript: "functions, classes and types",
+}
+
+const cache = new WeakMap<ReadingContext, Map<string, Promise<Anatomy | null>>>()
+
+/**
+ * The anatomy under a profile: the one asked for, else the detected one; with
+ * a language, only that language's code, so a Go review of a Go and Vue
+ * repository reads the Go. Read once per run context, profile and language.
+ */
+export function anatomy(ctx: ReadingContext, profileId = "", language = ""): Promise<Anatomy | null> {
+    let byProfile = cache.get(ctx)
+    if (!byProfile) cache.set(ctx, (byProfile = new Map()))
+    const key = `${profileId}\n${language}`
+    let p = byProfile.get(key)
+    if (!p) { p = readAnatomy(ctx, profileId, language); byProfile.set(key, p) }
+    return p
+}
+/** Java and Kotlin read as one language. */
+const sameLanguage = (file: string, language: string) => { const l = languageOfFile(file); return l === language || (language === "java" && l === "kotlin") }
+
+async function readAnatomy(ctx: ReadingContext, profileId: string, only: string): Promise<Anatomy | null> {
+    const q = async (sql: string) => { try { return await ctx.query(sql) } catch { return [] } }
+    const tables = new Set((await q(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view')`)).map(r => String(r.name)))
+    if (!tables.has("units")) return null
+    const facts = await loadUnits(ctx.query, v => tables.has(v))
+    if (!facts.size) return null
+
+    const fileRows = tables.has("files") ? await q(`SELECT name, ${(await q(`SELECT name FROM pragma_table_info('files') WHERE name = 'role'`)).length ? "role" : "'production' AS role"} FROM files`) : []
+    const test = new Set(fileRows.filter(r => r.role === "test").map(r => String(r.name)))
+    const language = only ? (only as Language) : languageOf(fileRows.filter(r => (r.role || "production") === "production").map(r => String(r.name)))
+    const detection = detectFramework([...facts.values()].map(f => f.facts), language)
+    const profile = profileById(profileId || detection.id)
+
+    // Members reach the graph through their owners, as they do in the Classes view.
+    const unitRows = await q(`SELECT id, kind, owner FROM units`)
+    const ownerOf = new Map<string, string>()
+    const kindOf = new Map<string, string>()
+    for (const r of unitRows) { kindOf.set(String(r.id), String(r.kind ?? "")); if (r.owner) ownerOf.set(String(r.id), String(r.owner)) }
+    const top = (id: string) => { let x = id; for (let i = 0; ownerOf.has(x) && i < 8; i++) x = ownerOf.get(x)!; return x }
+
+    const kept = new Map<string, AnatomyUnit>()
+    for (const f of facts.values()) {
+        if (kindOf.get(f.id) === "module") continue
+        if (test.has(f.file) || isTestPath(f.file)) continue
+        if (only && !sameLanguage(f.file, only)) continue
+        kept.set(f.id, { id: f.id, name: f.name, lane: UNCLASSIFIED, component: f.component, fanIn: 0, fanOut: 0 })
+    }
+    const raw = tables.has("unit_connections") ? await q(`SELECT DISTINCT "from", "to" FROM unit_connections WHERE "from" <> "to"`) : []
+    const seen = new Set<string>()
+    const edges: Array<[string, string]> = []
+    for (const r of raw) {
+        const a = top(String(r.from)), z = top(String(r.to))
+        if (a === z || !kept.has(a) || !kept.has(z)) continue
+        const key = `${a}\n${z}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        edges.push([a, z])
+        kept.get(a)!.fanOut++
+        kept.get(z)!.fanIn++
+    }
+    for (const u of kept.values()) u.lane = classify(profile, facts.get(u.id)!.facts, { inDegree: u.fanIn, outDegree: u.fanOut })
+    const best = detection.candidates.find(c => c.id === profile.id)
+    return { profile, confident: !profileId && detection.confident, reason: detection.reason, evidence: { strong: best?.strong ?? 0, total: detection.total }, language, units: [...kept.values()], edges, linked: raw.length > 0 }
+}
+
+// ── Writing it down ───────────────────────────────────────────────────────
+
+const n = (v: number) => Math.round(v).toLocaleString("en-US")
+const b = (s: string) => `**${s}**`
+/** A name set as code, shortened for prose (proseName); the root folder's component "." reads as "(root)". */
+const code = (s: string) => `\`${proseName(s).replace(/`/g, "'")}\``
+const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`
+/** "`a` (10) and `b` (7)": places with their counts, names kept apart when shortened. */
+const places = (where: Array<[string, number]>) => { const shown = proseNames(where.map(([c]) => c)); return listOf(where.map(([, x], i) => `\`${shown[i].replace(/`/g, "'")}\` (${n(x)})`)) }
+const listOf = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`)
+const absent = (text: string): ReadingOutput => ({ text, values: {}, absent: true })
+const noAnatomy = absent("This scan did not record classes and functions, so they cannot be sorted into roles. Scanning again adds them.")
+
+const labelOf = (p: FrameworkProfile, lane: string) => p.lanes.find(l => l.id === lane)?.label ?? lane
+const hintOf = (p: FrameworkProfile, lane: string) => p.lanes.find(l => l.id === lane)?.hint
+/** A role's label as a sentence says it: "Entities & Models" reads "entities and models"; "DTOs" keeps its capitals. */
+const inProse = (label: string) => label.replace(/ & /g, " and ").split(" ").map(w => (/^[A-Z][a-z]/.test(w) ? w.toLowerCase() : w)).join(" ")
+/** "58 controllers", "1 controller", or "1 of the services and other" where a label has no one-word singular. */
+const countRole = (k: number, p: FrameworkProfile, lane: string) => {
+    const label = inProse(labelOf(p, lane))
+    if (k !== 1) return `${n(k)} ${label}`
+    return /\s/.test(label) ? `1 of the ${label}` : `1 ${label.replace(/ies$/, "y").replace(/(ss)es$/, "$1").replace(/s$/, "")}`
+}
+/** A lane's hint as an aside: "(what answers a request)". */
+const aside = (p: FrameworkProfile, lane: string) => { const h = hintOf(p, lane); return h ? ` (${/^[A-Z][a-z]/.test(h) ? h.charAt(0).toLowerCase() + h.slice(1) : h})` : "" }
+/** "Go services' own" where a name ends in s, "Symfony's own" otherwise. */
+const possessive = (s: string) => (s.endsWith("s") ? `${s}'` : `${s}'s`)
+
+function countBy<T>(xs: T[], key: (x: T) => string): Array<[string, number]> {
+    const m = new Map<string, number>()
+    for (const x of xs) m.set(key(x), (m.get(key(x)) ?? 0) + 1)
+    return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+}
+
+/** The units of one lane, the same unit ids as a set. */
+const inLane = (a: Anatomy, lane: string) => a.units.filter(u => u.lane === lane)
+
+// Parameters, set by templates and not offered in the cell pane: `profile`,
+// a profile id to read the code as (the detected one when empty), and for
+// "role", `lane`, the role to describe.
+export const ANATOMY_READINGS: ReadingDef[] = [
+    {
+        id: "roles",
+        label: "Roles in the framework",
+        describe: "Every class or function outside tests, sorted into its framework's roles by the Classes view's profiles (annotations, base types, imports, then names), with where each role lives.",
+        async run(ctx, p) {
+            const a = await anatomy(ctx, p.profile, p.language)
+            if (!a) return noAnatomy
+            const noun = a.language ? NOUN[a.language] : "declarations"
+            const counts = new Map(countBy(a.units, u => u.lane))
+            const lanes = a.profile.lanes.filter(l => l.id !== UNCLASSIFIED && counts.get(l.id))
+            if (!lanes.length) return absent(`None of the code's ${noun} match a ${a.profile.label} role.`)
+            const unclassified = counts.get(UNCLASSIFIED) ?? 0
+            const classified = a.units.length - unclassified
+            const name = a.profile.label
+            const lead = a.evidence.strong && (p.profile || a.confident)
+                ? `This is a ${b(name)} codebase: ${n(a.evidence.strong)} of its ${n(a.evidence.total)} ${noun} (tests included) use ${possessive(name)} annotations, base classes or imports.`
+                : p.profile ? `The ${noun} are sorted into the roles ${name} gives them.`
+                : `No single framework stands out, so the ${noun} are sorted by their structure instead.`
+            const intro = `${lead} Outside the tests there are ${b(n(a.units.length))} ${noun}. ${classified >= unclassified ? "Most of them" : "Some of them"} fit one of ${possessive(name)} roles:`
+            const layers = new Set(layersOf(a.profile))
+            const top = layersOf(a.profile)[0]
+            const items = lanes.map(l => {
+                const us = inLane(a, l.id)
+                const k = us.length
+                const where = countBy(us, u => u.component || "(no component)")
+                const lives = where.length === 1
+                    ? `${k === 1 ? "lives" : "all live"} in ${code(where[0][0])}`
+                    : `live mostly in ${places(where.slice(0, 2))}`
+                const reaches = l.id === top || !layers.has(l.id)
+                const pick = reaches
+                    ? [...us].sort((x, y) => y.fanOut - x.fanOut || x.name.localeCompare(y.name))[0]
+                    : [...us].sort((x, y) => y.fanIn - x.fanIn || x.name.localeCompare(y.name))[0]
+                const note = pick && (reaches ? pick.fanOut : pick.fanIn) > 0 && k > 1
+                    ? reaches ? ` ${code(pick.name)} uses the most other classes (${n(pick.fanOut)}).` : ` The most used is ${code(pick.name)}, by ${plural(pick.fanIn, "class", "classes")}.`
+                    : ""
+                return `- ${b(countRole(k, a.profile, l.id))}${aside(a.profile, l.id)} ${lives}.${note}`
+            })
+            const rest = unclassified ? `\n\nThe other ${b(n(unclassified))} fit none of these roles. They are counted apart rather than guessed at.` : ""
+            return {
+                text: `${intro}\n\n${items.join("\n")}${rest}`,
+                values: { declared: a.units.length, ...Object.fromEntries(lanes.map(l => [labelOf(a.profile, l.id), counts.get(l.id) ?? 0])), unclassified },
+            }
+        },
+    },
+    {
+        id: "layers",
+        label: "How the roles reference each other",
+        describe: "References between classes (unit_connections, members rolled up to their owners) counted by the roles at each end, against the framework's order from entry points down to data: one step down, a skipped layer, or back up.",
+        async run(ctx, p) {
+            const a = await anatomy(ctx, p.profile, p.language)
+            if (!a) return noAnatomy
+            const order = layersOf(a.profile)
+            if (order.length < 2) return absent(`${a.profile.label} has no top-to-bottom order of roles to check.`)
+            const rank = new Map(order.map((id, i) => [id, i]))
+            const byId = new Map(a.units.map(u => [u.id, u]))
+            const down: Array<[string, string]> = [], skip: Array<[string, string]> = [], back: Array<[string, string]> = []
+            for (const e of a.edges) {
+                const f = rank.get(byId.get(e[0])!.lane), t = rank.get(byId.get(e[1])!.lane)
+                if (f === undefined || t === undefined || f === t) continue
+                if (t === f + 1) down.push(e); else if (t > f + 1) skip.push(e); else back.push(e)
+            }
+            if (!a.linked) return absent("This scan does not record which classes use which, so the references between roles cannot be counted. A newer scan records them.")
+            if (!down.length && !skip.length && !back.length) return absent(`No reference runs between two ${a.profile.label} roles.`)
+            const pairText = (list: Array<[string, string]>) => {
+                const pairs = countBy(list, e => `${byId.get(e[0])!.lane}\n${byId.get(e[1])!.lane}`)
+                const [key, k] = pairs[0]
+                const [fl, tl] = key.split("\n")
+                const own = list.filter(e => byId.get(e[0])!.lane === fl && byId.get(e[1])!.lane === tl)
+                const who = countBy(own, e => byId.get(e[0])!.name).slice(0, 3)
+                return `Most go from ${inProse(labelOf(a.profile, fl))} into ${inProse(labelOf(a.profile, tl))} (${n(k)}, from ${plural(new Set(own.map(e => e[0])).size, "class", "classes")})${who[0][1] > 1 ? `; ${code(who[0][0])} makes the most (${n(who[0][1])})` : ""}.`
+            }
+            const chain = order.map(id => inProse(labelOf(a.profile, id))).join(" → ")
+            const parts = [
+                `${a.profile.label} code is meant to run one way: ${chain}. Between classes in those roles:`,
+                "",
+                `- ${b(n(down.length))} ${down.length === 1 ? "reference goes" : "references go"} one step down, as expected.`,
+                skip.length ? `- ${b(n(skip.length))} skip a layer. ${pairText(skip)}` : "- None skip a layer.",
+                back.length ? `- ${b(n(back.length))} run back up, against the order. ${pairText(back)}` : "- None run back up.",
+            ]
+            return { text: parts.join("\n"), values: { "one step down": down.length, "skip a layer": skip.length, "back up": back.length } }
+        },
+    },
+    {
+        id: "role",
+        label: "One role",
+        describe: "One of the framework's roles: how many, where they live, what they reference and what references them, by role, and the ones that reach furthest or are used most.",
+        async run(ctx, p) {
+            const a = await anatomy(ctx, p.profile, p.language)
+            if (!a) return noAnatomy
+            const lane = p.lane
+            const us = inLane(a, lane)
+            const label = labelOf(a.profile, lane)
+            if (!us.length) return absent(`The code has no ${a.profile.label} ${inProse(label)}.`)
+            const ids = new Set(us.map(u => u.id))
+            const byId = new Map(a.units.map(u => [u.id, u]))
+            const where = countBy(us, u => u.component || "(no component)")
+            const outTo = countBy(a.edges.filter(e => ids.has(e[0]) && !ids.has(e[1])), e => byId.get(e[1])!.lane).filter(([l]) => l !== UNCLASSIFIED)
+            const inFrom = countBy(a.edges.filter(e => ids.has(e[1]) && !ids.has(e[0])), e => byId.get(e[0])!.lane).filter(([l]) => l !== UNCLASSIFIED)
+            const reach = [...us].sort((x, y) => y.fanOut - x.fanOut || x.name.localeCompare(y.name)).filter(u => u.fanOut > 0).slice(0, 3)
+            const used = [...us].sort((x, y) => y.fanIn - x.fanIn || x.name.localeCompare(y.name)).filter(u => u.fanIn > 0).slice(0, 3)
+            const unused = us.filter(u => u.fanIn === 0).length
+            const noun = inProse(label)
+            const lines = [
+                `There ${us.length === 1 ? "is" : "are"} ${b(countRole(us.length, a.profile, lane))}${aside(a.profile, lane)} in ${plural(where.length, "component")}. ${where.length === 1 ? `${us.length === 1 ? "It lives" : "They all live"} in ${code(where[0][0])}.` : `Most live in ${places(where.slice(0, 3))}.`}`,
+            ]
+            const items: string[] = []
+            if (!a.linked) lines.push("This scan does not record which classes use which, so what they use and what uses them is not counted.")
+            else {
+                items.push(outTo.length ? `They use ${listOf(outTo.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${n(k)} ${k === 1 ? "time" : "times"})`))}.` : "They use no class in another role.")
+                items.push(inFrom.length ? `They are used by ${listOf(inFrom.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${n(k)})`))}.` : "No class in another role uses them.")
+            }
+            if (reach.length) items.push(`${code(reach[0].name)} uses the most other classes (${n(reach[0].fanOut)})${reach.length > 1 ? `, then ${listOf(reach.slice(1).map(u => `${code(u.name)} (${n(u.fanOut)})`))}` : ""}.`)
+            if (used.length) items.push(`The most used is ${code(used[0].name)}, by ${plural(used[0].fanIn, "class", "classes")}${used.length > 1 ? `, then ${listOf(used.slice(1).map(u => `${code(u.name)} (${n(u.fanIn)})`))}` : ""}.`)
+            if (a.linked && unused && unused < us.length) items.push(`${n(unused)} of the ${noun} ${unused === 1 ? "is" : "are"} used by nothing in the code.`)
+            const text = [lines.join(" "), items.length ? items.map(t => `- ${t}`).join("\n") : ""].filter(Boolean)
+            return { text: text.join("\n\n"), values: { [label]: us.length, components: where.length, "referenced by nothing": unused } }
+        },
+    },
+]

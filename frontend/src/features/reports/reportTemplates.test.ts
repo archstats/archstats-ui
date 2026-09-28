@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { dependencyLevels, ecosystems, listOf, runReading, type SnapshotFacts } from "./readings"
 import { describeChange, exportMarkdown, pdfBlocks } from "./reportCells"
 import { cellNumbers, fromMarkdown, isCell, toMarkdown, type Block } from "./reportDoc"
-import { buildTemplate, fromSaved, TEMPLATES, toTemplate, tally } from "./reportTemplates"
+import { bestTemplate, buildTemplate, fromSaved, hasEvidence, TEMPLATES, toTemplate, tally } from "./reportTemplates"
 
 const facts = (over: Partial<SnapshotFacts> = {}): SnapshotFacts => ({
     tables: new Set(["files", "components", "component_connections_direct", "snippets", "modules", "rules"]),
@@ -13,7 +13,7 @@ const facts = (over: Partial<SnapshotFacts> = {}): SnapshotFacts => ({
     production: { files: 10, lines: 1000 },
     languages: [{ language: "Java", files: 10, lines: 1000 }],
     components: 5, moduleKinds: {}, commits: 100, authors: 4,
-    rules: { applicable: 0, violations: 0 }, tangles: 0, reactImporters: 0,
+    revision: 4, rules: { applicable: 0, violations: 0 }, tangles: 0, reactImporters: 0, markers: new Set(), indirectColumns: new Set(),
     ...over,
 })
 
@@ -48,7 +48,7 @@ describe("readings", () => {
         const ctx = { query: async () => [], revision: 3, label: (x: string) => x, aliases: {} }
         const out = await runReading("rules", undefined, ctx)
         expect(out.absent).toBe(true)
-        expect(out.text).toBe("No dependency rule applies to this snapshot.")
+        expect(out.text).toBe("No dependency rule applies to this code.")
         expect((await runReading("nope", undefined, ctx)).absent).toBe(true)
     })
 
@@ -64,8 +64,8 @@ describe("templates", () => {
     it("leaves out what the snapshot cannot fill, and names it", () => {
         const t = TEMPLATES.find(x => x.id === "architecture-review")!
         const built = buildTemplate(t, { facts: facts({ commits: 0 }), ecosystems: [], params: {} })
-        expect(built.skipped.map(s => s.section)).toEqual(["Dependency rules", "Hotspots"])
-        expect(built.skipped[1].why).toBe("no git history")
+        expect(built.skipped.map(s => s.section)).toEqual(["Dependency rules", "Hotspots: complicated code that changes often"])
+        expect(built.skipped[1].why).toBe("the scan has no git history")
         const withRules = buildTemplate(t, { facts: facts({ rules: { applicable: 2, violations: 1 } }), ecosystems: [], params: {} })
         expect(withRules.skipped).toEqual([])
     })
@@ -76,14 +76,79 @@ describe("templates", () => {
             expect(blocks.length, t.id).toBeGreaterThan(2)
             expect(isCell(blocks[blocks.length - 1]), t.id).toBe(false)
             expect(tally(blocks).sections, t.id).toBeGreaterThan(0)
+            expect(t.when, t.id).toMatch(/^Use it /)
         }
+    })
+
+    it("opens the gallery on the ecosystem that holds most of the code", () => {
+        const php = facts({ languages: [{ language: "PHP", files: 900, lines: 86000 }, { language: "JavaScript", files: 40, lines: 14000 }], production: { files: 940, lines: 100000 }, moduleKinds: { composer: 60, node: 2 } })
+        expect(bestTemplate(php, ecosystems(php))).toBe("php-review")
+        const tiny = facts({ languages: [{ language: "Go", files: 3, lines: 100 }, { language: "Markdown", files: 30, lines: 900 }], production: { files: 33, lines: 1000 }, moduleKinds: { go: 1 } })
+        expect(bestTemplate(tiny, ecosystems(tiny))).toBe("architecture-review")
+    })
+
+    it("keeps a template's explanations as explanations when saved", () => {
+        const blocks: Block[] = [{ id: "e", kind: "p", text: "A *hotspot* is…", explain: true }, { id: "w", kind: "p", text: "We found three." }]
+        const t = toTemplate(blocks, { promptParagraphs: true, pinRoute: () => null })
+        expect(t.map(b => (isCell(b) ? "" : `${b.text}|${b.prompt ?? ""}|${!!b.explain}`))).toEqual(["A *hotspot* is…||true", "|We found three.|false"])
+        const saved = { id: "s", name: "S", summary: "", from: "x", savedAt: "", blocks: t }
+        expect(fromSaved(saved, false).filter(b => !isCell(b) && b.explain)).toHaveLength(0)
+    })
+
+    it("knows a template that would write nothing", () => {
+        expect(hasEvidence([{ id: "h", kind: "h2", text: "A" }, { id: "p", kind: "p", text: "", prompt: "Write" }])).toBe(false)
+    })
+
+    it("counts a table taken from a view as a table, not a figure", () => {
+        const slot = (kind: "table" | "figure") => ({ id: kind, kind: "cell" as const, cell: { id: kind, spec: { type: "slot" as const, kind, route: "/", view: "V", hint: "" }, output: null } }) as unknown as Block
+        const t = tally([slot("table"), slot("table"), slot("figure")])
+        expect([t.slotTables, t.figures, t.slots]).toEqual([2, 1, 3])
+    })
+
+    it("explains each section's terms unless asked not to", () => {
+        const t = TEMPLATES.find(x => x.id === "architecture-review")!
+        const on = buildTemplate(t, { facts: facts(), ecosystems: [], params: {} })
+        const off = buildTemplate(t, { facts: facts(), ecosystems: [], params: {}, explain: false })
+        expect(tally(on.blocks).explanations).toBeGreaterThan(4)
+        expect(tally(off.blocks).explanations).toBe(0)
+        expect(tally(off.blocks).readings).toBe(tally(on.blocks).readings)
+        const text = on.blocks.map(b => (isCell(b) ? "" : b.text)).join(" ")
+        expect(text).toContain("A *tangle* is")
+        expect(text).toContain("A *hotspot* is")
+    })
+
+    it("writes a framework template from the framework's own evidence, and leaves out what the scan lacks", () => {
+        const t = TEMPLATES.find(x => x.id === "spring-review")!
+        const bare = buildTemplate(t, { facts: facts(), ecosystems: [], params: {} })
+        expect(bare.skipped.map(s => s.section)).toContain("The web layer: how the controllers are split up")
+        const spring = facts({
+            tables: new Set(["files", "components", "component_connections_direct", "units", "unit_markers", "unit_connections"]),
+            markers: new Set(["annotation:RestController", "annotation:Entity", "annotation:Transactional", "annotation:ConditionalOnProperty"]),
+        })
+        const built = buildTemplate(t, { facts: spring, ecosystems: [], params: {} })
+        expect(built.skipped.map(s => s.section)).not.toContain("The web layer: how the controllers are split up")
+        const readings = built.blocks.flatMap(b => (isCell(b) && b.cell.spec.type === "reading" ? [`${b.cell.spec.reading}:${b.cell.spec.params?.lane ?? ""}`] : []))
+        expect(readings).toEqual(expect.arrayContaining(["roles:", "layers:", "role:controllers", "role:entities"]))
+        const slots = built.blocks.flatMap(b => (isCell(b) && b.cell.spec.type === "slot" ? [b.cell.spec.route] : []))
+        expect(slots).toContain("/views/units?flow=controllers,services")
+    })
+
+    it("asks for a component before a quick win can say what it affects", () => {
+        const t = TEMPLATES.find(x => x.id === "change-impact")!
+        const f = facts({ tables: new Set(["files", "components", "component_connections_direct", "component_connections_indirect", "git_component_shared_commits"]), roles: { production: { files: 10, lines: 1000 }, test: { files: 3, lines: 90 } } })
+        expect(buildTemplate(t, { facts: f, ecosystems: [], params: {} }).skipped.map(s => s.why)).toEqual(["no component is chosen", "no component is chosen", "no component is chosen"])
+        const chosen = buildTemplate(t, { facts: f, ecosystems: [], params: { component: "o'core" } })
+        expect(chosen.skipped).toEqual([])
+        const sql = chosen.blocks.flatMap(b => (isCell(b) && b.cell.spec.type === "sql" ? [b.cell.spec.sql] : []))
+        expect(sql).toHaveLength(4)
+        expect(sql.every(q => q.includes("'o''core'"))).toBe(true)
     })
 
     it("numbers slots as the figures they will be; readings take no number", () => {
         const t = TEMPLATES.find(x => x.id === "architecture-review")!
         const { blocks } = buildTemplate(t, { facts: facts(), ecosystems: [], params: {} })
         const labels = [...cellNumbers(blocks).values()]
-        expect(labels.filter(l => l.startsWith("Figure"))).toEqual(["Figure 1", "Figure 2"])
+        expect(labels.filter(l => l.startsWith("Figure"))).toEqual(["Figure 1", "Figure 2", "Figure 3", "Figure 4"])
         const readings = blocks.filter(b => isCell(b) && b.cell.spec.type === "reading")
         expect(readings.every(b => !cellNumbers(blocks).has(b.id))).toBe(true)
     })
@@ -100,12 +165,34 @@ describe("templates", () => {
         const back = fromMarkdown(md)
         expect(back[1]).toMatchObject({ kind: "p", text: "", prompt: "What the reader should leave with." })
         const pdf = pdfBlocks(blocks, { workspace: "w", label: x => x, figure: () => null })
-        expect(pdf.map(b => b.kind)).toEqual(["h2", "p"])
+        // The unfilled slot is left out, and said to be: the last line names it.
+        expect(pdf.map(b => b.kind)).toEqual(["h2", "p", "p"])
         expect(pdf[1].runs?.map(r => r.text).join("")).toBe("It holds 3 files.")
+        expect(pdf[2].runs?.[0].text).toMatch(/^Not included: Hotspots \(figure, from Hotspots\)/)
         const out = exportMarkdown("R", [], blocks, { workspace: "w", label: x => x, figureFile: () => null })
         expect(out).not.toContain("prompt")
-        expect(out).not.toContain("Hotspots")
+        expect(out).not.toContain("**Hotspots**")
+        expect(out).toContain("Not included: Hotspots")
         expect(out).toContain("It holds **3** files.")
+    })
+
+    it("prints what was filled: no gaps in numbering, no explanation of a missing figure, no instructions, row counts", () => {
+        const slot = (id: string, title: string): Block => ({ id, kind: "cell", cell: { spec: { type: "slot", kind: "table", view: "Connections", route: "/views/connections", hint: "" }, title, caption: "", output: null, ranOn: null } })
+        const table = (id: string, title: string, rows: number, total: number): Block => ({ id, kind: "cell", cell: { spec: { type: "sql", sql: "SELECT 1", limit: rows }, title, caption: "", output: { table: { columns: [{ id: "a", label: "A", numeric: false }], rows: Array.from({ length: rows }, (_, i) => ({ a: String(i) })), total } }, ranOn: null } })
+        const blocks: Block[] = [
+            table("t1", "First", 2, 2),
+            { id: "e", kind: "p", text: "In the dependency matrix each row…", beforeSlot: true },
+            slot("s", "Dependency matrix"),
+            table("t2", "Second", 2, 170),
+            { id: "r", kind: "cell", cell: { spec: { type: "reading", reading: "focus" }, title: "", caption: "", output: { reading: { text: "Choose a component for this paragraph.", values: {}, absent: true, instruction: true } }, ranOn: null } },
+        ]
+        const pdf = pdfBlocks(blocks, { workspace: "w", label: x => x, figure: () => null })
+        expect(pdf.filter(b => b.kind === "table").map(b => b.title)).toEqual(["Table 1. First", "Table 2. Second"])
+        expect(pdf.find(b => b.title === "Table 2. Second")?.caption).toBe("2 of 170 rows.")
+        const text = pdf.flatMap(b => b.runs ?? []).map(r => r.text).join(" ")
+        expect(text).not.toContain("In the dependency matrix")
+        expect(text).not.toContain("Choose a component")
+        expect(text).toContain("Not included: Dependency matrix (table, from Connections)")
     })
 
     it("saves structure, not results: captures and pins become slots, paragraphs prompts", () => {

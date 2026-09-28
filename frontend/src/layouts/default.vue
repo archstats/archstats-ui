@@ -40,7 +40,8 @@
     <RescanCommitSheet/>
     <ImportSnapshotSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
-      <OutdatedSnapshotBar v-if="hasData"/>
+      <!-- A figure-taking run has the view's top to itself: its strip is the one thing to read there. -->
+      <OutdatedSnapshotBar v-if="hasData && !reportsStore.takeQueue"/>
       <SlotFillBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
         <WorkspaceEmptyState v-if="!hasData"/>
@@ -62,6 +63,7 @@ import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import GoToAnything from "~/features/shell/components/GoToAnything.vue";
 import AddToReportSheet from "~/features/reports/components/AddToReportSheet.vue";
 import SlotFillBar from "~/features/reports/components/SlotFillBar.vue";
+import { useReportsStore } from "~/features/reports/reports.store";
 // Provides the code search that `contains` lines in live groups answer from.
 import "~/features/files/codeSearch";
 import RescanCommitSheet from "~/features/workspace/components/RescanCommitSheet.vue";
@@ -85,6 +87,7 @@ const anyScanning = computed(() => workspaces.anyScanning);
 
 // Pseudonyms follow the open snapshot and the merges; numbered once per change.
 const authors = useAuthorsStore();
+const reportsStore = useReportsStore();
 watch(() => workspaces.active?.id, (id) => { if (id) authors.load(id); }, { immediate: true });
 watch(() => [authors.pseudonymise, dataStore._openScanId, dataStore.hasData, authors.aliases] as const, ([on]) => { if (on) void authors.loadLabels(); }, { immediate: true });
 

@@ -33,6 +33,13 @@ ${block(light)}
 ${block(dark)}
   }
 }
+
+/* Paper: a report is a printed page, white in either appearance. Everything
+   inside takes the light values, so its text, rules and tints read as print. */
+.paper {
+  color-scheme: light;
+${block(light)}
+}
 `;
 
 const out = join(__dirname, "..", "src", "assets", "tokens.css");

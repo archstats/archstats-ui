@@ -19,3 +19,5 @@ export function Query(arg1:string):Promise<Array<Record<string, any>>>;
 export function QueryIn(arg1:string,arg2:string):Promise<Array<Record<string, any>>>;
 
 export function QueryLimited(arg1:string,arg2:string,arg3:number,arg4:number):Promise<query.Limited>;
+
+export function ReportConsole(arg1:string,arg2:string):Promise<query.Limited>;

@@ -5,10 +5,12 @@
 // taken) and fills it, skips it, or stops.
 
 import { useRouter } from "vue-router"
-import { pickFor } from "~/features/export/useExportables"
+import { exportables, pickFor } from "~/features/export/useExportables"
 import { useReportsStore } from "./reports.store"
 import { runCommand } from "~/platform/commands"
 import { cellNumbers, isCell } from "./reportDoc"
+import { useScopeStore } from "~/features/groups/scope.store"
+import type { RoleFacet } from "~/features/snapshot/fileRole"
 
 /** The newest take wins; an older one still waiting stops where it is. */
 let token = 0
@@ -16,6 +18,28 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** A force layout keeps moving for a while after its first frame. */
 const SETTLE = { figure: 1400, table: 300 } as const
 const PATIENCE = 15000
+/** How long a slot's first choice of exportable may take before an alternative is accepted. */
+const FALLBACK_AFTER = 3000
+
+/**
+ * A slot may ask for the Files facet (facet=production in its route): the
+ * facet is a setting, not part of a view's address, so the run sets it for
+ * the take and gives the viewer's own back when the run ends.
+ */
+let facetBefore: RoleFacet | null = null
+function applyFacet(route: string) {
+    const scope = useScopeStore()
+    const asked = new URLSearchParams(route.split("?")[1] ?? "").get("facet") as RoleFacet | null
+    if (asked && asked !== scope.facet) {
+        if (facetBefore === null) facetBefore = scope.facet
+        scope.setFacet(asked)
+    } else if (!asked && facetBefore !== null) restoreFacet()
+}
+function restoreFacet() {
+    if (facetBefore === null) return
+    useScopeStore().setFacet(facetBefore)
+    facetBefore = null
+}
 
 export function useSlotTaking() {
     const reports = useReportsStore()
@@ -26,6 +50,7 @@ export function useSlotTaking() {
         if (!ids.length || !reports.currentId) return
         reports.flushSave()
         reports.takeQueue = { reportId: reports.currentId, ids, at: 0 }
+        reports.takeLog = { reportId: reports.currentId, asked: [...ids], filled: [], skipped: [], stopped: false, done: false }
         await takeCurrent()
     }
 
@@ -39,38 +64,73 @@ export function useSlotTaking() {
         // Filled or removed since: on to the next.
         if (!b || !isCell(b) || b.cell.spec.type !== "slot") { q.at++; return takeCurrent() }
         const kind = b.cell.spec.kind
+        const take = b.cell.spec.take
         const route = reports.beginFill(id, cellNumbers(reports.doc.blocks).get(id) ?? "")
         if (!route) { q.at++; return takeCurrent() }
+        applyFacet(route)
         const mine = ++token
         reports.taking = "waiting"
+        reports.takeWhy = ""
         await router.push(route)
         // The view left behind unregisters its figures a frame after the route changes.
         await sleep(250)
         const path = route.split("?")[0]
-        const drawn = () => router.currentRoute.value.path === path && pickFor(kind)?.kind === kind
+        // With alternatives ("Boundary flow|How the layers lean"), the first choice gets
+        // a head start; a later one is taken only once the first has had time to draw.
+        const first = take?.split("|")[0]
+        const began = Date.now()
+        const drawn = () => router.currentRoute.value.path === path &&
+            (pickFor(kind, first)?.kind === kind || (Date.now() - began > FALLBACK_AFTER && pickFor(kind, take)?.kind === kind))
+        // A view that says why it has nothing to hand over is not waited on.
+        const blocked = () => router.currentRoute.value.path === path ? reasonOf(kind) : null
+        let blockedSince = 0
         const until = Date.now() + PATIENCE
-        while (!drawn() && Date.now() < until && mine === token) await sleep(200)
+        while (!drawn() && Date.now() < until && mine === token) {
+            if (blocked()) { blockedSince ||= Date.now(); if (Date.now() - blockedSince > 1200) break } else blockedSince = 0
+            await sleep(200)
+        }
         if (mine !== token) return
-        if (!drawn()) { reports.taking = "failed"; return }
+        if (!drawn()) {
+            const why = blocked()
+            reports.takeWhy = why ? `${b.cell.spec.view} has nothing to take: ${why}` : `${b.cell.spec.view} drew nothing to take in ${PATIENCE / 1000} seconds. Set the view so it draws something and add it, or skip this one.`
+            reports.taking = "failed"
+            return
+        }
         await sleep(SETTLE[kind])
         if (mine !== token) return
+        // Still on the slot's view: a run stopped or moved on meanwhile takes nothing.
+        if (router.currentRoute.value.path !== path || reports.takeQueue?.ids[reports.takeQueue.at] !== id) return
         reports.taking = "idle"
         await runCommand("add-to-report")
     }
 
     /** After a slot was filled or skipped: the next one, or back to the report. */
-    async function advance() {
+    async function advance(outcome: "filled" | "skipped" = "filled", why = "") {
         const q = reports.takeQueue
         if (!q) return
+        const id = q.ids[q.at]
+        const log = reports.takeLog
+        if (log && id) {
+            if (outcome === "filled") log.filled.push(id)
+            else log.skipped.push({ id, why })
+        }
         q.at++
         await takeCurrent()
     }
 
     async function skip() {
         token++
+        const why = reports.taking === "failed" ? reports.takeWhy : "skipped"
         reports.importing = null
+        reports.adjusting = false
         reports.filling = null
-        await advance()
+        await advance("skipped", why)
+    }
+
+    /** Takes what the view handed over into the slot in hand, then goes on. */
+    async function take() {
+        if (!(await reports.takeDraft())) { reports.adjusting = true; return }
+        await advance("filled")
     }
 
     /** The view again, set as the slot asks, and a fresh take. */
@@ -90,20 +150,38 @@ export function useSlotTaking() {
         if (reports.takeQueue) reports.taking = "paused"
     }
 
-    function stop() {
+    /** Ends the run and goes back to the report; the slots left stay asked for. */
+    async function stop() {
+        restoreFacet()
         token++
+        if (reports.takeLog && reports.takeQueue) { reports.takeLog.stopped = true; reports.takeLog.done = true }
         reports.takeQueue = null
+        reports.importing = null
+        reports.adjusting = false
         reports.filling = null
         reports.taking = "idle"
+        if (!router.currentRoute.value.path.startsWith("/views/evidence")) await router.push("/views/evidence")
     }
 
     async function finish() {
+        restoreFacet()
         token++
+        if (reports.takeLog) reports.takeLog.done = true
         reports.takeQueue = null
         reports.filling = null
         reports.taking = "idle"
         await router.push("/views/evidence")
     }
 
-    return { start, advance, skip, retake, pause, stop }
+    return { start, advance, skip, take, retake, pause, stop }
+}
+
+/** Why the open view cannot hand over something of this kind, when it says so. */
+function reasonOf(kind: "figure" | "table"): string | null {
+    const all = exportables.value
+    return all.filter(i => i.kind === kind).map(i => i.disabledReason?.() ?? null).find(Boolean)
+        ?? all.map(i => i.disabledReason?.() ?? null).find(Boolean)
+        // A view that registered nothing may still say why on the page, in its empty state.
+        ?? (!all.some(i => i.kind === kind) ? document.querySelector("[data-view-reason]")?.getAttribute("data-view-reason") || null : null)
+        ?? null
 }
