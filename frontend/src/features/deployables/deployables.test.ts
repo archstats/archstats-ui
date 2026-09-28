@@ -1,7 +1,7 @@
 import { createRequire } from "node:module"
 import { describe, expect, it } from "vitest"
 import {
-  EMPTY_MODEL, envDiff, environmentsOf, envOrder, layoutMap, loadModel, pinOf, proposeLens, sharedModules, shipsIn,
+  EMPTY_MODEL, arrangeMap, environmentRoster, pipelineRoster, envDiff, environmentsOf, envOrder, layoutMap, loadModel, pinOf, proposeLens, sharedModules, shipsIn,
   spread, stageStrip, talksTo, technology, type DeployableModel, type EnvValue, type Link,
 } from "./deployables"
 
@@ -207,5 +207,32 @@ describe.runIf(!!snap)("a real snapshot", () => {
     expect(technology(m).length).toBe(m.deployables.length)
     const p = proposeLens(m, [...new Set(m.components.map(c => c.component))], true)
     expect(p.groups.length).toBeGreaterThan(0)
+  })
+})
+
+describe("arrangeMap", () => {
+  const dep = (id: string) => ({ id, name: id, kind: "image", repository: "", file: "", line: 0, built_by: "", context: "", base_image: "", runtime: "", files: 1, components: 1 })
+  const link = (from: string, to: string, kind = "calls", to_kind = "deployable") => ({ from, to, to_kind, kind, mode: "", via: "", file: "f", line: 1, resolution: "declared" })
+  it("shelves what no line touches and names externals by their links", () => {
+    const m = { ...EMPTY_MODEL, deployables: ["web", "api", "db-migrate"].map(dep), links: [link("web", "api"), link("api", "pg", "uses_datastore", "external"), link("api", "kafka", "messages", "external")] }
+    const a = arrangeMap(m)
+    expect(a.isolated).toEqual(["db-migrate"])
+    expect(a.columns[0]).toEqual(["web"])
+    expect(a.columns[1]).toEqual(["api"])
+    expect(a.external.get("pg")).toBe("data")
+    expect(a.external.get("kafka")).toBe("broker")
+  })
+})
+
+describe("rosters", () => {
+  it("orders environments the way they are promoted and counts idle pipelines apart", () => {
+    const env = (deployable: string, environment: string) => ({ deployable, environment, kind: "enumerated", source: "", file: "", line: 0 })
+    const m = { ...EMPTY_MODEL, environments: [env("a", "production"), env("a", "dev"), env("b", "dev")],
+      pipelines: [{ id: "p1", name: "Build" }, { id: "p2", name: "Stale" }] as any,
+      pipelineLinks: [{ pipeline: "p1", deployable: "a", action: "builds", file: "", line: 0, resolution: "" }, { pipeline: "p1", deployable: "b", action: "builds", file: "", line: 0, resolution: "" }] }
+    expect(environmentRoster(m).map(e => [e.environment, e.deployables.length])).toEqual([["dev", 2], ["production", 1]])
+    const r = pipelineRoster(m)
+    expect(r.acting[0].actions.get("builds")).toEqual(["a", "b"])
+    expect(r.idle.map(p => p.id)).toEqual(["p2"])
   })
 })

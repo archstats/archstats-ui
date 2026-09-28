@@ -450,3 +450,88 @@ export function layoutMap(m: DeployableModel, kinds = new Set(["calls", "message
   ;[...external].sort().forEach((id, row) => nodes.push({ id, external: true, column: extCol, row }))
   return { nodes, edges, columns: extCol + 1 }
 }
+
+export interface ArrangedMap {
+  /** Node ids per column, left to right, each column ordered to keep lines short. */
+  columns: string[][]
+  edges: MapEdge[]
+  /** Built here, but no drawn line touches them: they go on a shelf, not the map. */
+  isolated: string[]
+  /** Named in configuration, not built here, by what the links say they are. */
+  external: Map<string, "data" | "broker" | "service">
+}
+
+/**
+ * The map's final arrangement: `layoutMap`'s columns, without the deployables
+ * nothing links to, each column sorted by where its neighbours sit (a few
+ * barycentre sweeps), so lines cross as little as a cheap pass allows.
+ */
+export function arrangeMap(m: DeployableModel, kinds = new Set(["calls", "messages", "uses_datastore"])): ArrangedMap {
+  const base = layoutMap(m, kinds)
+  const touched = new Set(base.edges.flatMap(e => [e.from, e.to]))
+  const isolated = base.nodes.filter(n => !n.external && !touched.has(n.id)).map(n => n.id).sort()
+  const kept = base.nodes.filter(n => n.external || touched.has(n.id))
+  const cols = [...new Set(kept.map(n => n.column))].sort((a, b) => a - b)
+  const colIndex = new Map(cols.map((c, i) => [c, i]))
+  const columns: string[][] = cols.map(() => [])
+  const colOf = new Map<string, number>()
+  for (const n of kept.slice().sort((a, b) => a.row - b.row)) {
+    const c = colIndex.get(n.column)!
+    columns[c].push(n.id)
+    colOf.set(n.id, c)
+  }
+  const nbrs = new Map<string, string[]>()
+  for (const e of base.edges) {
+    nbrs.set(e.from, [...(nbrs.get(e.from) ?? []), e.to])
+    nbrs.set(e.to, [...(nbrs.get(e.to) ?? []), e.from])
+  }
+  const pos = new Map<string, number>()
+  const place = () => columns.forEach(col => col.forEach((id, i) => pos.set(id, i - (col.length - 1) / 2)))
+  place()
+  for (let sweep = 0; sweep < 4; sweep++) {
+    for (let c = 0; c < columns.length; c++) {
+      const bary = (id: string) => {
+        const ns = (nbrs.get(id) ?? []).filter(x => colOf.get(x) !== c && pos.has(x))
+        return ns.length ? ns.reduce((s, x) => s + pos.get(x)!, 0) / ns.length : pos.get(id)!
+      }
+      const b = new Map(columns[c].map(id => [id, bary(id)]))
+      columns[c].sort((x, y) => b.get(x)! - b.get(y)! || x.localeCompare(y))
+      place()
+    }
+  }
+  const external = new Map<string, "data" | "broker" | "service">()
+  for (const n of kept) {
+    if (!n.external) continue
+    const into = base.edges.filter(e => e.to === n.id).map(e => e.kind)
+    external.set(n.id, into.includes("uses_datastore") ? "data" : into.includes("messages") ? "broker" : "service")
+  }
+  return { columns, edges: base.edges, isolated, external }
+}
+
+/** What each environment runs, in promotion order: dev before prod. */
+export function environmentRoster(m: DeployableModel): Array<{ environment: string; pattern: boolean; deployables: string[] }> {
+  const by = new Map<string, { pattern: boolean; deployables: Set<string> }>()
+  for (const e of m.environments) {
+    const row = by.get(e.environment) ?? { pattern: false, deployables: new Set<string>() }
+    row.pattern = row.pattern || e.kind === "pattern"
+    row.deployables.add(e.deployable)
+    by.set(e.environment, row)
+  }
+  return [...by.entries()]
+    .map(([environment, r]) => ({ environment, pattern: r.pattern, deployables: [...r.deployables].sort() }))
+    .sort((a, b) => Number(a.pattern) - Number(b.pattern) || envOrder(a.environment) - envOrder(b.environment) || a.environment.localeCompare(b.environment))
+}
+
+/** Pipelines with what they do to which deployable, busiest first; the rest are counted apart. */
+export function pipelineRoster(m: DeployableModel): { acting: Array<{ pipeline: Pipeline; actions: Map<string, string[]> }>; idle: Pipeline[] } {
+  const by = new Map<string, Map<string, string[]>>()
+  for (const pl of m.pipelineLinks) {
+    const acts = by.get(pl.pipeline) ?? new Map<string, string[]>()
+    acts.set(pl.action, [...new Set([...(acts.get(pl.action) ?? []), pl.deployable])])
+    by.set(pl.pipeline, acts)
+  }
+  const size = (a: Map<string, string[]>) => new Set([...a.values()].flat()).size
+  const acting = m.pipelines.filter(p => by.has(p.id)).map(p => ({ pipeline: p, actions: by.get(p.id)! }))
+    .sort((a, b) => size(b.actions) - size(a.actions) || a.pipeline.name.localeCompare(b.pipeline.name))
+  return { acting, idle: m.pipelines.filter(p => !by.has(p.id)) }
+}

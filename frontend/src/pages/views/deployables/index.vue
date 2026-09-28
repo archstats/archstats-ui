@@ -24,9 +24,38 @@
       </div>
     </template>
     <template #actions>
-      <button v-if="model.deployables.length" type="button" class="ui-btn ui-btn-sm" title="Group components by the deployable they ship in" @click="proposing = !proposing">
-        <Icon icon="layers" :size="13" class="text-neutral-500"/><span>Make a lens</span>
-      </button>
+      <div v-if="model.deployables.length" class="relative" @keydown.esc.stop="proposing = false">
+        <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="proposing" title="Group components by the deployable they ship in" @click="proposing = !proposing">
+          <Icon icon="layers" :size="13" class="text-neutral-500"/><span>Make a lens</span>
+        </button>
+        <div v-if="proposing" class="fixed inset-0 z-40" @click="proposing = false"></div>
+        <section v-if="proposing" class="ui-popover absolute right-0 z-50 mt-1 flex w-[440px] flex-col gap-2 p-3 animate-in" aria-label="From how it ships">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-base font-semibold text-neutral-900">From how it ships</h3>
+            <p class="text-sm text-neutral-500">One group per deployable, holding the components it ships.</p>
+          </div>
+          <Checkbox v-model="mergeCoupled" class="text-sm">Merge deployables that call each other synchronously or share a database</Checkbox>
+          <p class="text-xs text-neutral-500">Deployables that only exchange messages stay apart: they deploy and fail apart.</p>
+          <p class="text-sm text-neutral-700">
+            {{ plural(proposal.groups.length, "group") }}
+            <template v-if="proposal.shared.length"> · {{ plural(proposal.shared.length, "component") }} in several deployables get a group of their own</template>
+            <template v-if="proposal.unshipped"> · {{ plural(proposal.unshipped, "component") }} ship in nothing and stay out</template>
+          </p>
+          <ul class="flex max-h-56 flex-col overflow-auto rounded ring-1 ring-neutral-200">
+            <li v-for="g in proposal.groups" :key="g.name" class="flex h-7 shrink-0 items-center gap-3 px-2 text-sm">
+              <span class="min-w-0 flex-1 truncate font-mono text-xs text-neutral-800" :title="g.deployables.join(', ')">{{ g.name }}</span>
+              <span v-if="g.sameCode" class="ui-tag" title="These deployables are built from exactly the same code">same code</span>
+              <span v-if="g.joinedBy.length" class="max-w-[140px] truncate text-xs text-neutral-500" :title="g.joinedBy.map(l => `${l.from} ${l.kind} ${l.to} (${l.file}:${l.line})`).join('\n')">joined by {{ joinSummary(g.joinedBy) }}</span>
+              <span class="shrink-0 font-mono text-[11px] text-neutral-500">{{ g.components.length }}</span>
+            </li>
+          </ul>
+          <div class="flex items-center gap-2 pt-1">
+            <input v-model="lensName" type="text" class="ui-input ui-input-sm w-48" aria-label="Lens name"/>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!proposal.groups.length || !lensName.trim()" @click="takeLens">Create lens</button>
+            <span v-if="lensMade" class="text-sm text-neutral-600">Lens “{{ lensMade }}” created.</span>
+          </div>
+        </section>
+      </div>
     </template>
 
     <template #visualizer>
@@ -34,42 +63,23 @@
       <EmptyState v-else-if="!available()" title="This snapshot predates deployables" text="Scans from engine revision 5 read what the workspace builds and ships: Dockerfiles, compose, Kubernetes and Helm, build plugins, pipelines. Rescan to see them." icon="boxes"/>
       <EmptyState v-else-if="!model.deployables.length && !model.pipelines.length" title="Nothing here builds or ships" text="No file in this workspace builds a container image, an executable app or a serverless function, and no pipeline was found. If the workspace ignores non-source files (an .archstatsignore with *.*), they were never read." icon="boxes"/>
       <div v-else class="flex min-h-0 grow flex-col">
-        <p v-if="!model.deployables.length" class="hairline-b px-4 py-2 text-sm text-neutral-600">No file here builds a container, app or function; this workspace's pipelines are listed below.</p>
-
-        <section v-if="proposing" class="hairline-b bg-ground px-4 py-3">
-          <div class="flex items-baseline gap-3">
-            <h3 class="ui-section-title">From how it ships</h3>
-            <p class="text-sm text-neutral-500">One group per deployable, holding the components it ships.</p>
+        <template v-if="mode === 'map' && model.deployables.length">
+          <SystemMap :model="filteredModel" :selected="picked?.id ?? null" :highlight="laneHighlight" @select="selectId"/>
+          <div v-if="isolated.length" class="flex h-9 shrink-0 items-center gap-2 overflow-x-auto px-4 hairline-t">
+            <span class="shrink-0 text-xs text-neutral-500" title="Built in this workspace, but no call, message or datastore line touches them">Linked to nothing on the map</span>
+            <button
+              v-for="id in isolated" :key="id" type="button" class="ui-chip shrink-0 font-mono !text-[11px]" :class="{ 'is-active': picked?.id === id, 'opacity-40': laneHighlight && !laneHighlight.has(id) }"
+              @click="selectId(id)"
+            >{{ id }}</button>
           </div>
-          <div class="mt-2 flex items-center gap-2 text-sm">
-            <Checkbox v-model="mergeCoupled">Merge deployables that call each other synchronously or share a database</Checkbox>
-            <span class="text-neutral-400" title="Deployables that only exchange messages stay apart: they deploy and fail apart">(messages never merge)</span>
-          </div>
-          <p class="mt-2 text-sm text-neutral-700">
-            {{ plural(proposal.groups.length, "group") }}
-            <template v-if="proposal.shared.length"> · {{ plural(proposal.shared.length, "component") }} in more than one deployable go into a group of their own</template>
-            <template v-if="proposal.unshipped"> · {{ plural(proposal.unshipped, "component") }} ship in nothing and stay out</template>
-          </p>
-          <ul class="mt-2 flex max-h-48 flex-col overflow-auto">
-            <li v-for="g in proposal.groups" :key="g.name" class="flex h-7 items-center gap-3 text-sm">
-              <span class="w-64 truncate font-mono text-neutral-800" :title="g.deployables.join(', ')">{{ g.name }}</span>
-              <span class="tabular-nums text-neutral-500">{{ plural(g.components.length, "component") }}</span>
-              <span v-if="g.sameCode" class="ui-tag" title="These deployables are built from exactly the same code">same code</span>
-              <span v-if="g.joinedBy.length" class="truncate text-xs text-neutral-500" :title="g.joinedBy.map(l => `${l.from} ${l.kind} ${l.to} (${l.file}:${l.line})`).join('\n')">joined by {{ joinSummary(g.joinedBy) }}</span>
-            </li>
-          </ul>
-          <div class="mt-3 flex items-center gap-2">
-            <input v-model="lensName" type="text" class="ui-input ui-input-sm w-56" aria-label="Lens name"/>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!proposal.groups.length || !lensName.trim()" @click="takeLens">Create lens</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="proposing = false">Cancel</button>
-            <span v-if="lensMade" class="text-sm text-neutral-600">Lens “{{ lensMade }}” created.</span>
-          </div>
-        </section>
+          <DeliveryLane :model="filteredModel" :focus="picked?.id ?? null" v-model:pipeline="lanePipeline" v-model:environment="laneEnvironment"/>
+        </template>
 
-        <DeployableMap v-if="mode === 'map' && model.deployables.length" :model="filteredModel" :selected="picked?.id ?? null" :kinds="mapKinds" @select="selectId"/>
+        <TechMatrix v-else-if="mode === 'technology' && model.deployables.length" :model="model" :selected="picked?.id ?? null" :filter="matches" @select="selectId"/>
 
-        <div v-else-if="mode === 'list' && model.deployables.length" class="min-h-0 grow overflow-auto">
-          <table class="ui-table">
+        <div v-else class="min-h-0 grow overflow-auto">
+          <p v-if="!model.deployables.length" class="px-4 py-2 text-sm text-neutral-600 hairline-b">No file here builds a container, app or function; this workspace's pipelines are listed below.</p>
+          <table v-if="model.deployables.length" class="ui-table">
             <thead>
               <tr>
                 <th class="w-8"></th>
@@ -95,10 +105,8 @@
               </tr>
             </tbody>
           </table>
-        </div>
-
-        <div v-else-if="mode === 'pipelines' || !model.deployables.length" class="min-h-0 grow overflow-auto">
-          <table class="ui-table">
+          <h3 v-if="model.pipelines.length" class="ui-section-title px-4 pb-1 pt-6">Pipelines</h3>
+          <table v-if="model.pipelines.length" class="ui-table">
             <thead>
               <tr>
                 <th>Pipeline</th>
@@ -126,37 +134,6 @@
                   <span v-if="!p.delegates_to" class="text-neutral-400">—</span>
                 </td>
                 <td class="is-num text-right">{{ fmt(p.deployables) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-else-if="mode === 'technology'" class="min-h-0 grow overflow-auto">
-          <div class="flex flex-wrap gap-x-8 gap-y-2 px-4 py-3 hairline-b">
-            <div v-for="s in spreads" :key="s.title" class="text-sm">
-              <span class="text-neutral-500">{{ s.title }}</span>
-              <span v-for="v in s.values.slice(0, 4)" :key="v.value" class="ml-2 text-neutral-800"><span class="font-mono">{{ v.value }}</span> <span class="tabular-nums text-neutral-500">on {{ v.count }} of {{ model.deployables.length }}</span></span>
-            </div>
-          </div>
-          <table class="ui-table">
-            <thead>
-              <tr>
-                <th>Deployable</th>
-                <th>Runtime</th>
-                <th>Framework</th>
-                <th>Base image</th>
-                <th title="Modules of this workspace it carries besides its own">Internal modules</th>
-                <th class="w-20 text-right" title="Direct dependencies its manifests declare">Libraries</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="t in shownTech" :key="t.deployable" class="cursor-default" :class="{ 'is-selected': picked?.id === t.deployable }" @click="selectId(t.deployable)">
-                <td class="max-w-[260px] truncate font-mono text-sm text-neutral-800">{{ t.deployable }}</td>
-                <td class="font-mono text-sm">{{ t.runtime || "—" }}</td>
-                <td class="max-w-[220px] truncate font-mono text-xs" :title="t.frameworks.join(', ')">{{ t.frameworks.join(", ") || "—" }}</td>
-                <td class="max-w-[220px] truncate font-mono text-xs" :title="t.baseImage">{{ t.baseImage || "—" }}</td>
-                <td class="max-w-[260px]"><span v-for="m in t.internal" :key="m" class="ui-tag mr-1 !text-[11px]">{{ m }}</span><span v-if="!t.internal.length" class="text-neutral-400">—</span></td>
-                <td class="is-num text-right">{{ fmt(t.libraries) }}</td>
               </tr>
             </tbody>
           </table>
@@ -313,13 +290,15 @@ import Checkbox from "~/shared/ui/Checkbox.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import Icon from "~/shared/ui/Icon.vue"
-import DeployableMap from "~/features/deployables/components/DeployableMap.vue"
+import SystemMap from "~/features/deployables/components/SystemMap.vue"
+import DeliveryLane from "~/features/deployables/components/DeliveryLane.vue"
+import TechMatrix from "~/features/deployables/components/TechMatrix.vue"
 import EvidenceLine from "~/features/deployables/components/EvidenceLine.vue"
 import StageStrip from "~/features/deployables/components/StageStrip.vue"
 import { useDeployables } from "~/features/deployables/useDeployables"
 import {
-  BUILT_BY_LABEL, KIND_LABEL, LINK_LABEL, PLATFORM_LABEL, SYSTEM_LABEL, UNRESOLVED_LABEL, calledBy, componentsOf, envDiff, environmentsOf,
-  list, pinOf, pipelinesOf, proposeLens, spread, talksTo, technology, type Deployable, type Link,
+  arrangeMap, BUILT_BY_LABEL, KIND_LABEL, LINK_LABEL, PLATFORM_LABEL, SYSTEM_LABEL, UNRESOLVED_LABEL, calledBy, componentsOf, envDiff, environmentsOf,
+  list, pinOf, pipelinesOf, proposeLens, talksTo, type Deployable, type Link,
 } from "~/features/deployables/deployables"
 import { componentPath } from "~/features/navigation/routes"
 import { units, useGroupsStore } from "~/features/groups/groups.store"
@@ -335,14 +314,13 @@ const fmt = (n: number) => n.toLocaleString("en-US")
 const plural = (n: number, word: string) => `${fmt(n)} ${word}${n === 1 ? "" : "s"}`
 
 const MODES = [
-  { id: "map", label: "Map", title: "What calls what, from the entry points to what the system rests on" },
-  { id: "list", label: "List", title: "Every deployable, how it is built and where it runs" },
-  { id: "pipelines", label: "Pipelines", title: "What each pipeline does, and what it hands to templates elsewhere" },
-  { id: "technology", label: "Technology", title: "Runtime, framework, base image and shared modules, side by side" },
+  { id: "map", label: "Map", title: "What calls what, and how it gets built and shipped" },
+  { id: "technology", label: "Technology", title: "Runtime, framework and base image of every deployable, side by side" },
+  { id: "list", label: "List", title: "Every deployable and every pipeline, as tables" },
 ] as const
 type Mode = typeof MODES[number]["id"]
 const mode = computed<Mode>({
-  get: () => (state.get<string>("deployables.mode", "map") as Mode),
+  get: () => { const m = state.get<string>("deployables.mode", "map"); return (MODES.some(x => x.id === m) ? m : m === "pipelines" ? "list" : "map") as Mode },
   set: v => state.set("deployables.mode", v === "map" ? null : v),
 })
 const TABS = [
@@ -353,7 +331,16 @@ const TABS = [
   { id: "tech", label: "Technology" },
 ]
 const tab = ref("built")
-const mapKinds = new Set(["calls", "messages", "uses_datastore"])
+
+// The lane picks a pipeline or an environment; the map lights what it ships.
+const lanePipeline = ref<string | null>(null)
+const laneEnvironment = ref<string | null>(null)
+const laneHighlight = computed<Set<string> | null>(() => {
+  if (lanePipeline.value) return new Set(model.value.pipelineLinks.filter(l => l.pipeline === lanePipeline.value).map(l => l.deployable))
+  if (laneEnvironment.value) return new Set(model.value.environments.filter(e => e.environment === laneEnvironment.value).map(e => e.deployable))
+  return null
+})
+const isolated = computed(() => arrangeMap(filteredModel.value).isolated)
 
 const search = ref("")
 const matches = (s: string) => { const q = search.value.trim().toLowerCase(); return !q || s.toLowerCase().includes(q) }
@@ -371,7 +358,7 @@ const picked = ref<Deployable | null>(null)
 function selectId(id: string | null) {
   picked.value = id ? model.value.deployables.find(d => d.id === id) ?? null : null
 }
-watch(() => data.datasetKey, () => { picked.value = null })
+watch(() => data.datasetKey, () => { picked.value = null; lanePipeline.value = null; laneEnvironment.value = null })
 
 const callsOut = (id: string) => model.value.links.filter(l => l.from === id && l.kind === "calls" && l.to_kind === "deployable").length
 const callsIn = (id: string) => model.value.links.filter(l => l.to === id && l.kind === "calls" && l.to_kind === "deployable").length
@@ -420,13 +407,6 @@ const techGroups = computed(() => {
     { role: "library", title: "Libraries", rows: by("library") },
   ]
 })
-const tech = computed(() => technology(model.value))
-const shownTech = computed(() => tech.value.filter(t => matches(t.deployable)))
-const spreads = computed(() => [
-  { title: "Runtime", values: spread(tech.value.map(t => t.runtime)) },
-  { title: "Framework", values: spread(tech.value.flatMap(t => t.frameworks)) },
-].filter(s => s.values.length))
-
 // Selection for groups: checked deployables stand for the components they ship.
 const checked = ref<Set<string>>(new Set())
 function toggle(id: string) { const s = new Set(checked.value); s.has(id) ? s.delete(id) : s.add(id); checked.value = s }
