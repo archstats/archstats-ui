@@ -14,6 +14,7 @@ const facts = (over: Partial<SnapshotFacts> = {}): SnapshotFacts => ({
     languages: [{ language: "Java", files: 10, lines: 1000 }],
     components: 5, moduleKinds: {}, commits: 100, authors: 4,
     rules: { applicable: 0, violations: 0 }, tangles: 0, reactImporters: 0,
+    moduleTypes: {}, mobileApps: [],
     ...over,
 })
 
@@ -125,5 +126,34 @@ describe("templates", () => {
         const fresh = fromSaved({ id: "t", name: "n", summary: "", from: "w", savedAt: "", blocks: kept })
         expect(fresh.map(b => b.id)).not.toContain(kept[0].id)
         expect(fresh[fresh.length - 1]).toMatchObject({ kind: "p", text: "" })
+    })
+})
+
+describe("mobile", () => {
+    it("reads mobile ecosystems from the apps the scan found", () => {
+        const android = ecosystems(facts({ mobileApps: [{ name: "app", platform: "android" }], moduleKinds: { gradle: 36 }, moduleTypes: { "android-application": 2, "android-library": 30 } }))
+        expect(android.map(e => e.id)).toContain("android")
+        expect(android.find(e => e.id === "android")!.why).toBe("the app app")
+        const kmp = ecosystems(facts({ mobileApps: [{ name: "tivi", platform: "ios" }, { name: "android-app", platform: "android" }], moduleTypes: { "kotlin-multiplatform": 40 } }))
+        expect(kmp.map(e => e.id)).toEqual(expect.arrayContaining(["android", "ios", "kmp"]))
+        const flutter = ecosystems(facts({ mobileApps: [{ name: "wonders", platform: "flutter" }], languages: [{ language: "Dart", files: 190, lines: 30000 }], production: { files: 190, lines: 30000 } }))
+        expect(flutter.map(e => e.id)).toContain("flutter")
+        expect(flutter.map(e => e.id)).not.toContain("android")
+    })
+
+    it("builds each mobile template, skipping what an old snapshot cannot fill", () => {
+        for (const id of ["android-review", "ios-review", "flutter-review", "react-native-review", "kmp-review"]) {
+            const t = TEMPLATES.find(x => x.id === id)!
+            expect(t, id).toBeTruthy()
+            const old = buildTemplate(t, { facts: facts(), ecosystems: [], params: {} })
+            expect(old.skipped.map(s => s.why).join(" "), id).toMatch(/revision 6|classes|no build modules/)
+            const full = buildTemplate(t, { facts: facts({ tables: new Set(["files", "components", "units", "unit_markers", "unit_connections", "app_declarations", "deployables", "deployable_dependencies", "modules"]), moduleKinds: { gradle: 3 }, mobileApps: [{ name: "app", platform: "android" }] }), ecosystems: [], params: {} })
+            expect(full.skipped.filter(s => s.section !== "Hotspots" && s.section !== "Objective-C"), id).toEqual([])
+        }
+    })
+
+    it("lists an app's samples and previews after it", () => {
+        const e = ecosystems(facts({ mobileApps: [{ name: "isowords", platform: "ios" }, { name: "cubecorepreview", platform: "ios" }, { name: "appclip", platform: "ios" }] }))
+        expect(e.find(x => x.id === "ios")!.why).toBe("2 apps isowords and appclip and 1 sample app")
     })
 })

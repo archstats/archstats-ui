@@ -19,6 +19,9 @@ const BY_EXT: Record<string, string> = {
     po: "Gettext translations", pot: "Gettext translations", mo: "Gettext (compiled)",
     feature: "Gherkin", proto: "Protocol Buffers", graphql: "GraphQL", gql: "GraphQL",
     svg: "SVG", lock: "Lock file", dockerfile: "Dockerfile",
+    dart: "Dart", arb: "Flutter translations",
+    pbxproj: "Xcode project", plist: "Property list", entitlements: "Property list", xcstrings: "String catalog",
+    strings: "String catalog", storyboard: "Interface Builder", xib: "Interface Builder",
 }
 
 const BY_NAME: Record<string, string> = {

@@ -109,6 +109,7 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
             facts: {
                 ...EMPTY_FACTS,
                 name: u.name || shortId(u.id),
+                file,
                 annotations: marks,
                 supertypes: supers,
                 // What the file actually asked for, before the component

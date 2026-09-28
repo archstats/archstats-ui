@@ -69,6 +69,10 @@ export interface SnapshotFacts {
     tangles: number
     /** Files that import react; the engine's component count alone also counts plain functions. */
     reactImporters: number
+    /** Modules by what they build (android-application, ios-application, flutter-app, kotlin-multiplatform…), from revision 6. */
+    moduleTypes: Record<string, number>
+    /** The mobile apps the scan found as deployables, from revision 6. */
+    mobileApps: Array<{ name: string; platform: string }>
 }
 
 const probes = new WeakMap<ReadingContext, Promise<SnapshotFacts>>()
@@ -116,6 +120,13 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
     const [rules] = tables.has("rules") ? await q(`SELECT coalesce(sum(status <> 'not_applicable'), 0) AS applicable, coalesce(sum(status = 'violation'), 0) AS violations FROM rules`) : [null]
     const [t] = tables.has("component_strongly_connected_groups") ? await q(`SELECT count(*) AS c FROM (SELECT "group" FROM component_strongly_connected_groups GROUP BY "group" HAVING count(*) > 1)`) : [null]
     const [c] = tables.has("components") ? await q(`SELECT count(*) AS c FROM components WHERE name <> '.'`) : [null]
+    const moduleTypes: Record<string, number> = {}
+    if (tables.has("modules") && (await cols("modules")).has("type")) {
+        for (const r of await q(`SELECT type, count(*) AS c FROM modules WHERE coalesce(type, '') <> '' GROUP BY type`)) moduleTypes[String(r.type)] = Number(r.c) || 0
+    }
+    const mobileApps = tables.has("deployables") && (await cols("deployables")).has("platform")
+        ? (await q(`SELECT name, platform FROM deployables WHERE kind = 'mobile_app' ORDER BY name`)).map(r => ({ name: String(r.name), platform: String(r.platform) }))
+        : []
     const [react] = tables.has("snippets") ? await q(`SELECT count(DISTINCT file) AS c FROM snippets WHERE snippet_type = 'modularity__component__imports' AND (content = 'react' OR content LIKE 'react/%')`) : [null]
     return {
         tables, fileColumns, componentColumns, summary, snapshot, roles,
@@ -128,12 +139,14 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         rules: { applicable: Number(rules?.applicable) || 0, violations: Number(rules?.violations) || 0 },
         tangles: Number(t?.c) || 0,
         reactImporters: Number(react?.c) || 0,
+        moduleTypes,
+        mobileApps,
     }
 }
 
 // ── Ecosystems ────────────────────────────────────────────────────────────
 
-export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "go" | "dotnet" | "php"
+export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "go" | "dotnet" | "php" | "android" | "ios" | "flutter" | "react-native" | "kmp"
 
 export interface Ecosystem { id: EcosystemId; label: string; why: string }
 
@@ -142,6 +155,7 @@ const MODULE_WORDS: Record<string, [string, string]> = {
     node: ["npm package", "npm packages"], go: ["Go module", "Go modules"],
     composer: ["Composer package", "Composer packages"], dotnet: [".NET project", ".NET projects"],
     django: ["Django app", "Django apps"],
+    swiftpm: ["Swift package target", "Swift package targets"], xcode: ["Xcode target", "Xcode targets"], pub: ["Dart package", "Dart packages"],
 }
 export const modulesPhrase = (kind: string, count: number) => {
     const w = MODULE_WORDS[kind] ?? [`${kind} module`, `${kind} modules`]
@@ -154,6 +168,13 @@ export function languageShare(f: SnapshotFacts, ...names: string[]): number {
     if (!total) return 0
     return f.languages.filter(l => names.some(x => l.language.startsWith(x))).reduce((s, l) => s + l.lines, 0) / total
 }
+
+/**
+ * An app built to show or try the real one: Signal ships fourteen demo:*
+ * apps beside its own, isowords a preview app per feature. Real apps come
+ * first wherever apps are listed.
+ */
+export const isSampleApp = (name: string) => /demo|sample|example|preview|catalog|playground|benchmark|showcase/i.test(name)
 
 /** The ecosystems a snapshot shows, each with the evidence it was read from. */
 export function ecosystems(f: SnapshotFacts): Ecosystem[] {
@@ -175,6 +196,25 @@ export function ecosystems(f: SnapshotFacts): Ecosystem[] {
     if ((mk.go ?? 0) > 0 || share("Go") >= 0.2) out.push({ id: "go", label: "Go module", why: mk.go ? modulesPhrase("go", mk.go) : langWhy("Go", "Go") })
     if ((mk.dotnet ?? 0) > 0 || share("C#") >= 0.2) out.push({ id: "dotnet", label: ".NET solution", why: mk.dotnet ? modulesPhrase("dotnet", mk.dotnet) : langWhy("C#", "C#") })
     if ((mk.composer ?? 0) > 0 || share("PHP") >= 0.2) out.push({ id: "php", label: "PHP application", why: mk.composer ? modulesPhrase("composer", mk.composer) : langWhy("PHP", "PHP") })
+    // Mobile, from the apps the scan found, or failing that the modules that build them.
+    const mt = f.moduleTypes
+    const apps = (platform: string) => f.mobileApps.filter(a => a.platform === platform)
+    const appsWhy = (platform: string, fallback: string) => {
+        const all = apps(platform)
+        if (!all.length) return fallback
+        const real = all.filter(a => !isSampleApp(a.name)), samples = all.length - real.length
+        const main = real.length ? `${real.length === 1 ? "the app" : plural(real.length, "app")} ${listOf(real.map(x => x.name))}` : ""
+        return [main, samples ? plural(samples, real.length ? "sample app" : "sample or preview app") : ""].filter(Boolean).join(" and ")
+    }
+    if (apps("android").length || (!f.mobileApps.length && (mt["android-application"] ?? 0) > 0)) out.push({ id: "android", label: "Android app", why: appsWhy("android", plural(mt["android-application"] ?? 0, "Android application module")) })
+    if (apps("ios").length || (!f.mobileApps.length && (mt["ios-application"] ?? 0) > 0) || share("Swift", "Objective-C") >= 0.3) out.push({ id: "ios", label: "iOS app", why: appsWhy("ios", langWhy("Swift and Objective-C", "Swift", "Objective-C")) })
+    if (apps("flutter").length || (mt["flutter-app"] ?? 0) > 0 || share("Dart") >= 0.3) out.push({ id: "flutter", label: "Flutter app", why: appsWhy("flutter", langWhy("Dart", "Dart")) })
+    if (apps("react-native").length) out.push({ id: "react-native", label: "React Native app", why: appsWhy("react-native", "") })
+    if ((mt["kotlin-multiplatform"] ?? 0) > 0) out.push({ id: "kmp", label: "Kotlin Multiplatform", why: plural(mt["kotlin-multiplatform"], "multiplatform module") })
+    // A Flutter or React Native app's android/ runner is a Gradle build of two
+    // or three projects; that is not a multi-module build worth reviewing.
+    const crossPlatform = out.some(e => e.id === "flutter" || e.id === "react-native")
+    if (crossPlatform && !(mk.maven ?? 0) && (mk.gradle ?? 0) <= 3) return out.filter(e => e.id !== "jvm")
     return out
 }
 
@@ -628,6 +668,108 @@ export const READINGS: ReadingDef[] = [
             return {
                 text: `${pkgs ? `Composer declares ${b(modulesPhrase("composer", pkgs))}. ` : ""}PHP is ${b(`${Math.round(100 * languageShare(f, "PHP"))}%`)} of the production lines, in ${plural(f.components, "namespace")}${nb ? `, ${n(nb)} of them inside a bundle` : ""}.`,
                 values: { packages: pkgs, namespaces: f.components, "bundle namespaces": nb },
+            }
+        },
+    },
+
+    // ── Mobile ────────────────────────────────────────────────────────────
+    {
+        id: "mobile-apps",
+        label: "Mobile apps",
+        describe: "The mobile apps the scan found (deployables of kind mobile_app), with the frameworks and SDK levels their builds declare (deployable_dependencies).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!f.mobileApps.length) return absent("The scan found no mobile app: no Android application module, iOS app target, Flutter app or React Native app.")
+            const deps = await ctx.query(`SELECT d.name AS app, dd.role, dd.name, dd.version FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role IN ('framework', 'runtime')`)
+            const libs = await ctx.query(`SELECT d.name AS app, count(*) AS c FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role = 'library' GROUP BY 1`)
+            const PLATFORM: Record<string, string> = { android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native" }
+            const real = f.mobileApps.filter(a => !isSampleApp(a.name))
+            const samples = f.mobileApps.filter(a => isSampleApp(a.name))
+            const described = real.length ? real : f.mobileApps.slice(0, 1)
+            const RUNTIME: Record<string, string> = { minSdk: "minimum SDK", targetSdk: "target SDK", compileSdk: "compile SDK", "deployment-target": "deployment target", swift: "Swift", "swift-tools": "Swift tools", dart: "Dart", node: "Node", java: "Java" }
+            const sentences = described.map(a => {
+                const mine = deps.filter(d => d.app === a.name)
+                const fw = mine.filter(d => d.role === "framework").map(d => String(d.name))
+                const rt = mine.filter(d => d.role === "runtime" && d.version).map(d => `${RUNTIME[String(d.name)] ?? d.name} ${d.version}`)
+                const count = Number(libs.find(l => l.app === a.name)?.c) || 0
+                return `${b(a.name)} (${PLATFORM[a.platform] ?? a.platform})${fw.length ? ` is built on ${listOf(fw)}` : ""}${rt.length ? `${fw.length ? "," : ""} ${listOf(rt)}` : ""}${count ? `, with ${plural(count, "library", "libraries")} declared` : ""}.`
+            })
+            const rest = f.mobileApps.filter(a => !described.includes(a))
+            const sampleNote = rest.length ? ` Beside ${described.length === 1 ? "it" : "them"}: ${plural(rest.length, samples.length === rest.length ? "sample, demo or preview app" : "other app")} (${listOf(rest.slice(0, 6).map(a => a.name))}${rest.length > 6 ? ", and more" : ""}).` : ""
+            return {
+                text: `The workspace ships ${plural(real.length || f.mobileApps.length, "mobile app")}. ${sentences.join(" ")}${sampleNote}`,
+                values: { apps: f.mobileApps.length },
+            }
+        },
+    },
+    {
+        id: "android",
+        label: "Android",
+        describe: "Android modules by type (modules), what the manifests declare (app_declarations), and composables against Activities, Fragments and Views (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            const apps = f.moduleTypes["android-application"] ?? 0, libraries = f.moduleTypes["android-library"] ?? 0
+            if (!apps && !libraries) return absent("The scan found no Android modules.")
+            const decl = f.tables.has("app_declarations") ? await ctx.query(`SELECT kind, count(*) AS c, sum(exported IN ('true', 'implied')) AS exported FROM app_declarations WHERE platform = 'android' GROUP BY kind`) : []
+            const d = (k: string) => decl.find(r => r.kind === k)
+            const [ui] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'Composable' THEN unit END) AS composables, count(DISTINCT CASE WHEN source = 'supertype' AND key IN ('Fragment', 'DialogFragment', 'BottomSheetDialogFragment') THEN unit END) AS fragments, count(DISTINCT CASE WHEN source = 'manifest' AND key = 'activity' THEN unit END) AS activities FROM unit_markers`) : [null]
+            const components = ["activity", "service", "receiver", "provider"].map(k => [k, Number(d(k)?.c) || 0, Number(d(k)?.exported) || 0] as const).filter(([, c]) => c)
+            const exported = components.reduce((s, [, , e]) => s + e, 0)
+            return {
+                text: `${plural(apps, "application module")} and ${plural(libraries, "library module")}.${components.length ? ` The manifests declare ${listOf(components.map(([k, c]) => plural(c, k, k === "activity" ? "activities" : `${k}s`)))}, ${b(`${n(exported)} of them exported`)} to other apps` : ""}${d("permission") ? `, and ask for ${b(plural(Number(d("permission").c), "permission"))}` : ""}${components.length ? "." : ""}${ui && Number(ui.composables) ? ` The UI is ${b(plural(Number(ui.composables), "composable"))} against ${plural(Number(ui.fragments) || 0, "Fragment")}.` : ""}`,
+                values: { "application modules": apps, "library modules": libraries, composables: Number(ui?.composables) || 0, fragments: Number(ui?.fragments) || 0, "exported components": exported },
+            }
+        },
+    },
+    {
+        id: "ios",
+        label: "iOS",
+        describe: "Swift package and Xcode targets (modules), SwiftUI views against UIKit view controllers and views (unit_markers), and Objective-C's share of the lines.",
+        async run(ctx) {
+            const f = await probe(ctx)
+            const swift = f.languages.find(l => l.language === "Swift")?.lines ?? 0, objc = f.languages.find(l => l.language === "Objective-C")?.lines ?? 0
+            if (!swift && !objc) return absent("The snapshot holds no Swift or Objective-C.")
+            const [ui] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'View' THEN unit END) AS swiftui, count(DISTINCT CASE WHEN key IN ('UIViewController', 'UITableViewController', 'UICollectionViewController') THEN unit END) AS controllers, count(DISTINCT CASE WHEN key IN ('UIView', 'UITableViewCell', 'UICollectionViewCell') THEN unit END) AS uiviews FROM unit_markers WHERE source = 'supertype'`) : [null]
+            const targets = (f.moduleKinds.swiftpm ?? 0) + (f.moduleKinds.xcode ?? 0)
+            const sw = Number(ui?.swiftui) || 0, uk = (Number(ui?.controllers) || 0) + (Number(ui?.uiviews) || 0)
+            return {
+                text: `${targets ? `The code is built as ${listOf([f.moduleKinds.xcode ? modulesPhrase("xcode", f.moduleKinds.xcode) : "", f.moduleKinds.swiftpm ? modulesPhrase("swiftpm", f.moduleKinds.swiftpm) : ""].filter(Boolean))}. ` : ""}${sw + uk ? `Its UI is ${b(plural(sw, "SwiftUI view"))} and ${b(`${n(uk)} UIKit views and view controllers`)}: ${pct(sw, sw + uk)} of it is SwiftUI.` : ""}${objc ? ` Objective-C is ${b(pct(objc, swift + objc))} of the Swift and Objective-C lines.` : ""}`,
+                values: { "SwiftUI views": sw, "UIKit views and controllers": uk, "Objective-C lines": objc, "Swift lines": swift },
+            }
+        },
+    },
+    {
+        id: "flutter",
+        label: "Flutter",
+        describe: "Dart packages (modules), widgets by base type, and the state management the code is built on (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!(f.moduleKinds.pub ?? 0) && !f.languages.some(l => l.language === "Dart")) return absent("The snapshot holds no Dart.")
+            const rows = f.tables.has("unit_markers") ? await ctx.query(`SELECT key, count(DISTINCT unit) AS c FROM unit_markers WHERE (source = 'supertype' AND key IN ('StatelessWidget', 'StatefulWidget', 'ConsumerWidget', 'ConsumerStatefulWidget', 'HookWidget', 'HookConsumerWidget', 'Bloc', 'Cubit', 'ChangeNotifier', 'StateNotifier', 'Notifier', 'AsyncNotifier', 'GetxController')) OR (source = 'annotation' AND key IN ('riverpod', 'Riverpod', 'freezed')) GROUP BY key`) : []
+            const c = (...keys: string[]) => rows.filter(r => keys.includes(String(r.key))).reduce((s, r) => s + Number(r.c), 0)
+            const widgets = c("StatelessWidget", "StatefulWidget", "ConsumerWidget", "ConsumerStatefulWidget", "HookWidget", "HookConsumerWidget")
+            const state = [["Bloc", c("Bloc", "Cubit")], ["Riverpod", c("ConsumerWidget", "ConsumerStatefulWidget", "HookConsumerWidget", "StateNotifier", "Notifier", "AsyncNotifier", "riverpod", "Riverpod")], ["Provider", c("ChangeNotifier")], ["GetX", c("GetxController")]] as const
+            const used = state.filter(([, k]) => k > 0)
+            return {
+                text: `${f.moduleKinds.pub ? `${modulesPhrase("pub", f.moduleKinds.pub)}. ` : ""}${b(plural(widgets, "widget"))}.${used.length ? ` State is managed with ${listOf(used.map(([name, k]) => `${name} (${n(k)} classes)`))}${used.length > 1 ? `: ${b("more than one approach")}` : ""}.` : ""}${c("freezed") ? ` ${plural(c("freezed"), "class", "classes")} are generated by freezed.` : ""}`,
+                values: { widgets, ...Object.fromEntries(state.map(([k, v]) => [k, v])) },
+            }
+        },
+    },
+    {
+        id: "kmp",
+        label: "Kotlin Multiplatform",
+        describe: "Kotlin lines by source set (the src/<name>Main folders), and expect declarations with the platforms that provide an actual (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!(f.moduleTypes["kotlin-multiplatform"] ?? 0)) return absent("The scan found no Kotlin Multiplatform module.")
+            const sets = await ctx.query(`SELECT substr(name, instr(name, '/src/') + 5, instr(substr(name, instr(name, '/src/') + 5), '/') - 1) AS source_set, sum(coalesce(complexity__lines, 0)) AS lines FROM files WHERE name GLOB '*/src/*Main/*.kt' GROUP BY 1 ORDER BY 2 DESC`)
+            const total = sets.reduce((s, r) => s + Number(r.lines), 0)
+            const common = Number(sets.find(r => r.source_set === "commonMain")?.lines) || 0
+            const [ea] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'expect' THEN unit END) AS expects FROM unit_markers WHERE source = 'keyword'`) : [null]
+            return {
+                text: `${plural(f.moduleTypes["kotlin-multiplatform"], "multiplatform module")}. ${total ? `${b(pct(common, total))} of the Kotlin in source sets is shared (commonMain); the rest is ${listOf(sets.filter(r => r.source_set !== "commonMain").slice(0, 4).map(r => `${r.source_set} (${pct(Number(r.lines), total)})`))}.` : ""}${Number(ea?.expects) ? ` Common code declares ${b(plural(Number(ea.expects), "expect declaration"))} for the platforms to provide.` : ""}`,
+                values: { "shared lines": common, "source-set lines": total, expects: Number(ea?.expects) || 0 },
             }
         },
     },
