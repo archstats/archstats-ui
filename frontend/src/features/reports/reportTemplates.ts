@@ -11,6 +11,7 @@
 
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange"
 import { ECOSYSTEM } from "./ecosystemTemplates"
+import { MOBILE } from "./mobileTemplates"
 import { isCell, newId, plainText, type Block, type Cell, type CellSpec, type TextBlock } from "./reportDoc"
 import { languageShare, prodFile, type Ecosystem, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
@@ -495,10 +496,10 @@ const QUICK: ReportTemplate[] = [
     },
 ]
 
-export const TEMPLATES: ReportTemplate[] = [...GENERAL, ...QUICK, ...ECOSYSTEM]
+export const TEMPLATES: ReportTemplate[] = [...GENERAL, ...QUICK, ...ECOSYSTEM, ...MOBILE]
 export const GENERAL_TEMPLATES = GENERAL
 export const QUICK_TEMPLATES = QUICK
-export const ECOSYSTEM_TEMPLATES = ECOSYSTEM
+export const ECOSYSTEM_TEMPLATES = [...ECOSYSTEM, ...MOBILE]
 
 export interface BuiltTemplate {
     blocks: Block[]
@@ -520,9 +521,11 @@ const ECO_LANGUAGES: Record<EcosystemId, string[]> = {
     spring: ["Java", "Kotlin"], jvm: ["Java", "Kotlin"], django: ["Python"], python: ["Python"],
     node: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"], react: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"],
     go: ["Go"], dotnet: ["C#"], php: ["PHP"],
+    android: ["Kotlin", "Java"], ios: ["Swift", "Objective-C"], flutter: ["Dart"], kmp: ["Kotlin"],
+    "react-native": ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"],
 }
 /** A framework's review says more than its language's: it wins a tie. */
-const SPECIFIC: EcosystemId[] = ["spring", "django", "react", "dotnet", "php", "go", "python", "jvm", "node"]
+const SPECIFIC: EcosystemId[] = ["android", "ios", "flutter", "react-native", "spring", "django", "react", "kmp", "dotnet", "php", "go", "python", "jvm", "node"]
 
 /**
  * The template the gallery opens on: the detected ecosystem whose code is the
@@ -530,7 +533,7 @@ const SPECIFIC: EcosystemId[] = ["spring", "django", "react", "dotnet", "php", "
  * the Architecture review. A JavaScript review never opens on a PHP codebase
  * because a few scripts were found.
  */
-export function bestTemplate(f: SnapshotFacts, ecos: Ecosystem[], templates: ReportTemplate[] = ECOSYSTEM): string {
+export function bestTemplate(f: SnapshotFacts, ecos: Ecosystem[], templates: ReportTemplate[] = [...ECOSYSTEM, ...MOBILE]): string {
     const lead = leadEcosystem(f, ecos.filter(e => templates.some(t => t.ecosystem === e.id)))
     return (lead && templates.find(t => t.ecosystem === lead)?.id) || "architecture-review"
 }

@@ -1,7 +1,13 @@
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
+github.com/UserNobody14/tree-sitter-dart v0.0.0-20251003151139-c8e7cbbd1589 h1:D34UVSkLCQFWREO3vFHSGCYlfB4V/CrIRtSFAiGChRQ=
+github.com/UserNobody14/tree-sitter-dart v0.0.0-20251003151139-c8e7cbbd1589/go.mod h1:6zSIbyfHyxL/+XWRHElGLw+EUPYbDOyhDqIiAX6svrE=
+github.com/alex-pinkus/tree-sitter-swift v0.0.0-20260601004120-31d17fe7e818 h1:oNZZFKvqDFHCSg+Ard8elsRqDKsstebWlzXNrgrApOM=
+github.com/alex-pinkus/tree-sitter-swift v0.0.0-20260601004120-31d17fe7e818/go.mod h1:nMZLtsEtko+0F2g09G5Tm16uRdDoczLZDE5O207ruYQ=
 github.com/archstats/archstats v0.7.0 h1:uftS7szqXY3csG/XX+IcrFn1idoj2Edx+fvszWoyG8A=
 github.com/archstats/archstats v0.7.0/go.mod h1:JYaKNfO8z3qpNrwGIaZ1yAGexBcOofXXTG7ihWQOlYQ=
+github.com/archstats/archstats v0.7.1-0.20260928123349-5609bb9c0916 h1:7VO8OEj7HTDXIyDoMz8DM/0xOF1xjVGS8X4hmVAD6PM=
+github.com/archstats/archstats v0.7.1-0.20260928123349-5609bb9c0916/go.mod h1:4nXRrVZZGPniIU9tVDfyq/hNr0QH6UN98lftgY6HsyQ=
 github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=
 github.com/bep/debounce v1.2.1/go.mod h1:H8yggRPQKLUhUoqrJC1bO2xNya7vanpDl7xR3ISbCJ0=
 github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
@@ -86,6 +92,8 @@ github.com/rs/zerolog v1.33.0/go.mod h1:/7mN4D5sKwJLZQ2b/znpjC3/GQWY/xaDXUM0kKWR
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfFZQK844Gfx8o5WFuvpxWRwnSoipWe/p622j1v06w=
 github.com/ruudk/golang-pdf417 v0.0.0-20201230142125-a7e3863a1245/go.mod h1:pQAZKsJ8yyVxGRWYNEm9oFB8ieLgKFnamEyDmSA0BRk=
+github.com/ryanuber/columnize v2.1.2+incompatible h1:C89EOx/XBWwIXl8wm8OPJBd7kPF25UfsK2X7Ph/zCAk=
+github.com/ryanuber/columnize v2.1.2+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 h1:OkMGxebDjyw0ULyrTYWeN0UNCCkmCWfjPnIA2W6oviI=
 github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06/go.mod h1:+ePHsJ1keEjQtpvf9HHw0f4ZeJ0TLRsxhunSI2hYJSs=
 github.com/samber/lo v1.49.1 h1:4BIFyVfuQSEpluc7Fua+j1NolZHiEHEpaSEKdsH0tew=
@@ -101,6 +109,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/tkrajina/go-reflector v0.5.8 h1:yPADHrwmUbMq4RGEyaOUpz2H90sRsETNVpjzo3DLVQQ=
 github.com/tkrajina/go-reflector v0.5.8/go.mod h1:ECbqLgccecY5kPmPmXg1MrHW585yMcDkVl6IvJe64T4=
+github.com/tree-sitter-grammars/tree-sitter-objc v1.2.1-0.20241216003420-18802acf31d0 h1:PEX9OkYmiPZ/o1m4oIjZL2JzI+xx+pAi7n0bxIms8Og=
+github.com/tree-sitter-grammars/tree-sitter-objc v1.2.1-0.20241216003420-18802acf31d0/go.mod h1:3WHVwcdAgzNBRoNnFqo5NFFpX9Im21tMlnwA9mIiDK8=
 github.com/tree-sitter/go-tree-sitter v0.24.0 h1:kRZb6aBNfcI/u0Qh8XEt3zjNVnmxTisDBN+kXK0xRYQ=
 github.com/tree-sitter/go-tree-sitter v0.24.0/go.mod h1:x681iFVoLMEwOSIHA1chaLkXlroXEN7WY+VHGFaoDbk=
 github.com/tree-sitter/tree-sitter-c v0.21.5-0.20240818205408-927da1f210eb h1:A8425heRM8mylnv4H58FPUiH+aYivyitre0PzxrfmWs=

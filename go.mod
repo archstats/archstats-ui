@@ -3,7 +3,7 @@ module github.com/archstats/archstats-ui
 go 1.25.4
 
 require (
-	github.com/archstats/archstats v0.7.0
+	github.com/archstats/archstats v0.7.1-0.20260928123349-5609bb9c0916
 	github.com/go-pdf/fpdf v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.17
@@ -14,6 +14,8 @@ require (
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
+	github.com/UserNobody14/tree-sitter-dart v0.0.0-20251003151139-c8e7cbbd1589 // indirect
+	github.com/alex-pinkus/tree-sitter-swift v0.0.0-20260601004120-31d17fe7e818 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/fwcd/tree-sitter-kotlin v0.0.0-20260801230305-1852ea17b7f6 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -35,10 +37,12 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/ryanuber/columnize v2.1.2+incompatible // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/samber/lo v1.49.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
+	github.com/tree-sitter-grammars/tree-sitter-objc v1.2.1-0.20241216003420-18802acf31d0 // indirect
 	github.com/tree-sitter/go-tree-sitter v0.24.0 // indirect
 	github.com/tree-sitter/tree-sitter-c-sharp v0.23.1 // indirect
 	github.com/tree-sitter/tree-sitter-go v0.23.4 // indirect

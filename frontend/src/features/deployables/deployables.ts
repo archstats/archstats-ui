@@ -14,6 +14,8 @@ export interface Deployable {
   context: string
   base_image: string
   runtime: string
+  /** For a mobile app (revision 7): android, ios, flutter or react-native. */
+  platform?: string
   files: number
   components: number
 }
@@ -56,7 +58,7 @@ type Query = <T>(sql: string) => Promise<T[]>
 export async function loadModel(query: Query, hasView: (v: string) => boolean): Promise<DeployableModel> {
   const read = <T>(view: string, sql: string) => (hasView(view) ? query<T>(sql) : Promise.resolve([] as T[]))
   const [deployables, contents, components, links, unresolved, pipelines, pipelineLinks, environments, values, dependencies] = await Promise.all([
-    read<Deployable>("deployables", "SELECT id, name, kind, repository, file, line, built_by, context, base_image, runtime, files, components FROM deployables ORDER BY id"),
+    read<Deployable>("deployables", "SELECT * FROM deployables ORDER BY id"),
     read<Content>("deployable_contents", "SELECT deployable, path, pattern, module, file, line, resolution FROM deployable_contents"),
     read<DeployableComponent>("deployable_components", "SELECT deployable, component, files FROM deployable_components"),
     read<Link>("deployable_links", "SELECT `from`, `to`, to_kind, kind, mode, via, file, line, resolution FROM deployable_links"),
@@ -74,12 +76,14 @@ export async function loadModel(query: Query, hasView: (v: string) => boolean): 
 // Words
 // ---------------------------------------------------------------------------
 
-export const KIND_LABEL: Record<string, string> = { image: "Image", app: "App", function: "Function" }
+export const KIND_LABEL: Record<string, string> = { image: "Image", app: "App", function: "Function", mobile_app: "Mobile app" }
+export const PLATFORM_LABEL: Record<string, string> = { android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native" }
 
 export const BUILT_BY_LABEL: Record<string, string> = {
   skaffold: "Skaffold", jib: "Jib", buildpacks: "Buildpacks", ko: "ko", bazel: "Bazel", pipeline: "a pipeline",
   compose: "Compose", "maven-docker": "a Maven plugin", "spring-boot": "Spring Boot", "dotnet-publish": "dotnet publish",
   dockerfile: "a Dockerfile only", maven: "Maven", gradle: "Gradle", dotnet: ".NET", aspire: "the Aspire app host",
+  xcode: "Xcode", flutter: "Flutter", "react-native": "React Native", expo: "Expo",
   sam: "SAM", serverless: "Serverless", delegated: "a template outside this workspace",
 }
 
