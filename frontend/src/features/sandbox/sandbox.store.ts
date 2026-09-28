@@ -41,6 +41,8 @@ export const useSandboxStore = defineStore("sandbox", {
             this.edits = next
         },
         add(edit: Edit) { this.apply([...this.edits, edit]) },
+        /** Several edits as one step, so one undo takes them all back. */
+        addMany(edits: Edit[]) { if (edits.length) this.apply([...this.edits, ...edits]) },
         remove(i: number) { this.apply(this.edits.filter((_, j) => j !== i)) },
         clear() { if (this.edits.length) this.apply([]) },
         stepBack() { const prev = this.undo.pop(); if (prev) { this.redo.push(this.edits); this.edits = prev } },

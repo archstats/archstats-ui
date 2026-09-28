@@ -181,7 +181,7 @@
                     <GroupDefinition
                       :query="selected.query"
                       :mode="selected.mode ?? 'fixed'"
-                      :size="selected.members.length"
+                      :size="groupsStore.membersOf(selected).length"
                       :candidates="watchlist?.extra ?? null"
                       :describe="describe"
                       @query="saveQuery"
@@ -317,7 +317,9 @@ function describe(): string | null {
 function saveQuery(text: string) {
   const g = selected.value
   if (!g) return
-  groupsStore.setQuery(g.id, text, g.mode === 'fixed' ? 'fixed' : 'live')
+  // A group's first query is the group: it answers live. After that the
+  // architect's choice of live or fixed stands.
+  groupsStore.setQuery(g.id, text, !g.query || g.mode !== 'fixed' ? 'live' : 'fixed')
 }
 
 function setMode(mode: GroupMode) {
@@ -354,8 +356,10 @@ const filteredBuckets = computed(() => {
 
 /** "3 components · 12 files": whole components, then files listed on their own. */
 function summary(g: SavedGroup): string {
-  const c = componentMembers(g).length
-  const f = fileMembers(g).length
+  // What the group resolves to: a live query's answer, not the list it caches.
+  const members = groupsStore.membersOf(g)
+  const c = members.filter(m => m.kind === 'component').length
+  const f = members.filter(m => m.kind === 'file').length
   const parts: string[] = []
   if (c) parts.push(`${c} component${c === 1 ? '' : 's'}`)
   if (f) parts.push(`${f} file${f === 1 ? '' : 's'}`)

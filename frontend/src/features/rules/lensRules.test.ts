@@ -19,3 +19,14 @@ describe("lens rules", () => {
         expect(crossingCount(cs)).toBe(2)
     })
 })
+
+describe("cycles the declaration does not judge", () => {
+    const edge = (fromGroup: string, toGroup: string) => ({ fromGroup, toGroup, kind: "import" }) as any
+    it("names a cycle through groups left out of the layers", async () => {
+        const { silentCycles } = await import("./lensRules")
+        const edges = [edge("a", "b"), edge("b", "c"), edge("c", "a"), edge("x", "y"), edge("y", "x")]
+        const d = { layers: ["a", "x", "y"], pairs: [], unset: "unjudged" } as any
+        // x ⇄ y are both layered, so one direction crosses; a → b → c → a runs through b and c, which nothing judges.
+        expect(silentCycles(edges, d)).toEqual([{ groups: ["a", "b", "c"], outOfLayers: ["b", "c"] }])
+    })
+})

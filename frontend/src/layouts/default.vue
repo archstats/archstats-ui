@@ -41,7 +41,11 @@
     <ImportSnapshotSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
       <!-- A figure-taking run has the view's top to itself: its strip is the one thing to read there. -->
-      <OutdatedSnapshotBar v-if="hasData && !reportsStore.takeQueue"/>
+      <template v-if="hasData && !reportsStore.takeQueue">
+        <OutdatedSnapshotBar/>
+        <ImportCoverageBar/>
+        <DriftBar/>
+      </template>
       <SlotFillBar v-if="hasData"/>
       <div class="min-h-0 flex-1 overflow-y-auto">
         <WorkspaceEmptyState v-if="!hasData"/>
@@ -58,6 +62,8 @@ import NavBar from "~/features/shell/components/NavBar.vue";
 import PaneHandle from "~/features/shell/components/PaneHandle.vue";
 import WorkspaceEmptyState from "~/features/workspace/components/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapshotBar.vue";
+import ImportCoverageBar from "~/features/snapshot/components/ImportCoverageBar.vue";
+import DriftBar from "~/features/rules/components/DriftBar.vue";
 import ShortcutSheet from "~/features/shell/components/ShortcutSheet.vue";
 import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import GoToAnything from "~/features/shell/components/GoToAnything.vue";

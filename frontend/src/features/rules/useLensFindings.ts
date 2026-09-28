@@ -5,7 +5,7 @@ import { useGroupsStore, type Declaration } from "~/features/groups/groups.store
 import { useScopeStore } from "~/features/groups/scope.store"
 import { type LensGroup } from "~/features/groups/groupEdges"
 import { lensGroups, resolveLensEdges, type Query } from "~/features/groups/lensEdges"
-import { crossingCount, crossings, type Crossing } from "./lensRules"
+import { crossingCount, crossings, silentCycles, type Crossing, type SilentCycle } from "./lensRules"
 import { sqlLiteral } from "~/shared/sql"
 
 // A lens's declared dependencies checked against a snapshot's imports. The
@@ -18,9 +18,11 @@ export interface LensCheck {
     unplacedFrom: number
     unplacedTo: number
     ambiguous: number
+    /** Cycles between groups that cross nothing declared. */
+    silent: SilentCycle[]
 }
 
-const EMPTY: LensCheck = { crossings: [], count: 0, unplacedFrom: 0, unplacedTo: 0, ambiguous: 0 }
+const EMPTY: LensCheck = { crossings: [], count: 0, unplacedFrom: 0, unplacedTo: 0, ambiguous: 0, silent: [] }
 
 export async function checkLens(q: Query, groups: LensGroup[], declared: Declaration, keepFile: (file: string, component: string) => boolean = () => true): Promise<LensCheck> {
     if (groups.length < 2) return EMPTY
@@ -45,7 +47,7 @@ export async function checkLens(q: Query, groups: LensGroup[], declared: Declara
         for (const e of staticEdges) e.line = lines.get(`${e.file}|${e.toComponent}`) ?? null
     }
     for (const c of cs) for (const e of c.edges) if (e.kind === "dynamic") e.line = null
-    return { crossings: cs, count: crossingCount(cs), unplacedFrom: resolved.unplacedFrom, unplacedTo: resolved.unplacedTo, ambiguous: resolved.ambiguous }
+    return { crossings: cs, count: crossingCount(cs), unplacedFrom: resolved.unplacedFrom, unplacedTo: resolved.unplacedTo, ambiguous: resolved.ambiguous, silent: silentCycles(resolved.edges, declared) }
 }
 
 /** The open snapshot checked against a lens's declaration, following the Production/Tests switch. */

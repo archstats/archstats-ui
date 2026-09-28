@@ -10,6 +10,8 @@
 // outside, both over runtime imports (type-only imports left out); A is
 // abstract types over types, I = Ce / (Ca + Ce), D = |A + I - 1|.
 
+import { globRegExp } from "~/features/checks/checks"
+
 export interface SandboxRow { from: string; to: string; file: string; refs: number }
 
 export interface SandboxBase {
@@ -45,6 +47,8 @@ export interface Projection {
     tangles: string[][]
     /** Import lines that name a moved file and would have to change, and the files holding them. */
     importSites: { sites: number; files: number }
+    /** Component pair "a>b" → the importing files behind it, with their references. */
+    pairFiles: Map<string, Map<string, number>>
 }
 
 const k = (a: string, b: string) => `${a}\u0000${b}`
@@ -80,11 +84,15 @@ export function project(base: SandboxBase, edits: Edit[]): Projection {
     }
 
     const pairs = new Map<string, number>()
+    const pairFiles = new Map<string, Map<string, number>>()
     const inFiles = new Map<string, Set<string>>()
     const outFiles = new Map<string, Set<string>>()
     for (const e of edges) {
         if (e.from === e.to || cuts.has(pairKey(e.from, e.to))) continue
-        pairs.set(pairKey(e.from, e.to), (pairs.get(pairKey(e.from, e.to)) ?? 0) + e.refs)
+        const pk = pairKey(e.from, e.to)
+        pairs.set(pk, (pairs.get(pk) ?? 0) + e.refs)
+        if (!pairFiles.has(pk)) pairFiles.set(pk, new Map())
+        pairFiles.get(pk)!.set(e.file, (pairFiles.get(pk)!.get(e.file) ?? 0) + e.refs)
         if (!inFiles.has(e.to)) inFiles.set(e.to, new Set())
         inFiles.get(e.to)!.add(e.file)
         if (!outFiles.has(e.from)) outFiles.set(e.from, new Set())
@@ -123,7 +131,7 @@ export function project(base: SandboxBase, edits: Edit[]): Projection {
         for (const imp of base.importers.get(f) ?? []) { if (moved.has(imp)) continue; sites++; siteFiles.add(imp) }
     }
 
-    return { compOf, pairs, metrics, tangles: tangles(pairs), importSites: { sites, files: siteFiles.size } }
+    return { compOf, pairs, metrics, tangles: tangles(pairs), importSites: { sites, files: siteFiles.size }, pairFiles }
 }
 
 /** Strongly connected sets of two or more, by Tarjan's algorithm, largest first. */
@@ -164,6 +172,38 @@ export function tangles(pairs: Map<string, number>): string[][] {
     }
     for (const v of adj.keys()) if (!idx.has(v)) strong(v)
     return out.sort((a, b) => b.length - a.length || a[0].localeCompare(b[0]))
+}
+
+export interface Link { from: string; to: string; refs: number; files: Array<{ file: string; refs: number }> }
+
+/**
+ * Why a tangle holds: the dependencies inside it, weakest first, each with
+ * the files that make it. Cutting (or moving) the thin ones is what opens it.
+ */
+export function tangleLinks(tangle: string[], p: Projection): Link[] {
+    const inside = new Set(tangle)
+    const out: Link[] = []
+    for (const [k, refs] of p.pairs) {
+        const [a, b] = k.split(">")
+        if (!inside.has(a) || !inside.has(b)) continue
+        const files = [...(p.pairFiles.get(k) ?? new Map())].map(([file, r]) => ({ file, refs: r })).sort((x, y) => y.refs - x.refs || x.file.localeCompare(y.file))
+        out.push({ from: a, to: b, refs, files })
+    }
+    return out.sort((x, y) => x.files.length - y.files.length || x.refs - y.refs || x.from.localeCompare(y.from))
+}
+
+/**
+ * Files a person means by what they typed: an exact path, a glob
+ * (`src/report/**`), or words every matching path contains.
+ */
+export function matchFiles(text: string, files: Iterable<string>): string[] {
+    const t = text.trim()
+    if (!t) return []
+    const all = [...files]
+    if (all.includes(t)) return [t]
+    if (/[*?]/.test(t)) { const rx = globRegExp(t); return all.filter(f => rx.test(f)).sort() }
+    const words = t.toLowerCase().split(/\s+/)
+    return all.filter(f => words.every(w => f.toLowerCase().includes(w))).sort()
 }
 
 /** One line per edit, for the plan and its Markdown. */

@@ -25,6 +25,7 @@
             </ol>
             <div v-if="outOfLayers.length" class="mt-3 flex flex-wrap gap-1.5">
               <button v-for="g in outOfLayers" :key="g.id" type="button" class="ui-chip" :title="`Add ${g.name} at the bottom`" @click="layers = [...layers, g.id]">+ {{ g.name }}</button>
+              <button v-if="outOfLayers.length > 1" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="layers = [...layers, ...outOfLayers.map(g => g.id)]">Add all {{ outOfLayers.length }}</button>
             </div>
             <fieldset class="mt-5">
               <legend class="ui-section-title">Anything not declared</legend>
@@ -76,6 +77,10 @@
           >Declare what the manifests state</button>
           <span v-if="source === 'manifests'" class="text-xs text-neutral-500">Declared by manifests</span>
           <span class="ml-auto"></span>
+          <!-- Saving with groups left out is allowed; doing it without knowing is not. -->
+          <span v-if="layers.length && outOfLayers.length" class="max-w-[320px] text-right text-xs text-amber-700" :title="outOfLayers.map(g => g.name).join(', ')">
+            {{ outOfLayers.length }} of {{ groupList.length }} groups are not in the layers ({{ outOfLayers.slice(0, 3).map(g => g.name).join(", ") }}{{ outOfLayers.length > 3 ? "…" : "" }}): only pairs judge them.
+          </span>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="groupList.length < 2" @click="save">Save</button>
         </footer>

@@ -115,6 +115,24 @@
             </dl>
           </ReadingBand>
 
+          <!-- 5a. How much of the code the import graph covers. -->
+          <div id="coverage"></div>
+          <ReadingBand title="Import coverage" :lede="coverageLede">
+            <LoadingState v-if="coverageLoading" text="Counting…"/>
+            <table v-else-if="coverage && coverage.byExtension.length" class="ui-table max-w-[640px]">
+              <thead><tr><th>Type</th><th class="text-right">Code files</th><th class="text-right">With import data</th><th class="text-right">Covered</th></tr></thead>
+              <tbody>
+                <tr v-for="r in coverage.byExtension" :key="r.extension">
+                  <td class="font-mono text-sm text-neutral-800">.{{ r.extension }}</td>
+                  <td class="is-num text-right">{{ fmt(r.files) }}</td>
+                  <td class="is-num text-right">{{ fmt(r.analysed) }}</td>
+                  <td class="is-num text-right" :class="r.analysed < r.files ? 'text-neutral-900 font-medium' : 'text-neutral-500'">{{ Math.round((r.analysed / Math.max(r.files, 1)) * 100) }}%</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="text-base text-neutral-600">No code files in this snapshot.</p>
+          </ReadingBand>
+
           <!-- 5. How dependencies were found. -->
           <div id="dependencies"></div>
           <ReadingBand title="Dependency evidence" :lede="evidenceLede">
@@ -169,6 +187,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useImportCoverage } from "~/features/snapshot/useImportCoverage";
+import { gapPhrase } from "~/features/snapshot/coverage";
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
 import Checkbox from "~/shared/ui/Checkbox.vue";
 import { useCodeowners } from "~/features/git/useCodeowners";
@@ -440,5 +460,15 @@ useExportables().register({
   title: "Composition by language",
   rows: () => compositionRows.value.map(r => ({ language: r.language, files: r.files, lines: r.lines, ...Object.fromEntries(ROLE_ORDER.map(k => [`lines_${k}`, r.roles[k]])) })),
   columns: () => [{ id: "language", label: "Language" }, { id: "files", label: "Files" }, { id: "lines", label: "Lines" }, ...ROLE_ORDER.map(k => ({ id: `lines_${k}`, label: `${ROLE_LABELS[k]} lines` }))],
+});
+
+// How much of the code the import graph covers, per file type.
+const { data: coverage, loading: coverageLoading } = useImportCoverage();
+const coverageLede = computed(() => {
+  const c = coverage.value;
+  if (!c || !c.files) return "Which code files the import graph knows anything about.";
+  const missing = c.files - c.analysed;
+  if (!missing) return `Every one of the ${fmt(c.files)} production code files has import data.`;
+  return `${fmt(c.analysed)} of ${fmt(c.files)} production code files have import data. ${gapPhrase(c)} have none, so every dependency, cycle, rule and dead-code answer leaves them out.`;
 });
 </script>

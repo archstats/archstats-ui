@@ -1,5 +1,6 @@
 import type { Declaration } from "~/features/groups/groups.store"
 import type { GroupEdge } from "~/features/groups/groupEdges"
+import { tangles } from "~/features/sandbox/sandbox"
 
 // Checking a lens's imports against what was declared for it. A layer may
 // use any layer below it; an explicit pair wins over the layers; anything
@@ -49,4 +50,25 @@ export function crossingCount(cs: Crossing[]): number {
 /** A key for comparing findings across snapshots: the components and file, not the line. */
 export function findingKey(e: Pick<GroupEdge, "fromComponent" | "toComponent" | "file">): string {
     return `${e.fromComponent}>${e.toComponent}@${e.file}`
+}
+
+/** A cycle between groups that no forbidden pair breaks, and the groups in it the layers leave out. */
+export interface SilentCycle { groups: string[]; outOfLayers: string[] }
+
+/**
+ * Cycles the declaration says nothing against. With every group of a cycle
+ * in the layers, one of its imports must point up and cross; a cycle that
+ * crosses nothing runs through groups left out of the layers, or pairs
+ * allowed by hand. "Nothing crosses" must not read as "no cycles".
+ */
+export function silentCycles(edges: GroupEdge[], d: Declaration): SilentCycle[] {
+    const pairs = new Map<string, number>()
+    for (const e of edges) if (e.kind !== "type_only" && e.fromGroup !== e.toGroup) pairs.set(`${e.fromGroup}>${e.toGroup}`, (pairs.get(`${e.fromGroup}>${e.toGroup}`) ?? 0) + 1)
+    const out: SilentCycle[] = []
+    for (const t of tangles(pairs)) {
+        const inside = new Set(t)
+        const judged = [...pairs.keys()].some(k => { const [a, b] = k.split(">"); return inside.has(a) && inside.has(b) && verdictOf(a, b, d) === "forbidden" })
+        if (!judged) out.push({ groups: t, outOfLayers: t.filter(g => !d.layers.includes(g)) })
+    }
+    return out
 }
