@@ -3,7 +3,7 @@ module github.com/archstats/archstats-ui
 go 1.25.4
 
 require (
-	github.com/archstats/archstats v0.3.1
+	github.com/archstats/archstats v0.7.0
 	github.com/go-pdf/fpdf v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.17
@@ -15,7 +15,7 @@ require (
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
-	github.com/fwcd/tree-sitter-kotlin v0.0.0-20241009173401-76f53c48d29e // indirect
+	github.com/fwcd/tree-sitter-kotlin v0.0.0-20260801230305-1852ea17b7f6 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -41,8 +41,10 @@ require (
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/tree-sitter/go-tree-sitter v0.24.0 // indirect
 	github.com/tree-sitter/tree-sitter-c-sharp v0.23.1 // indirect
+	github.com/tree-sitter/tree-sitter-go v0.23.4 // indirect
 	github.com/tree-sitter/tree-sitter-java v0.23.4 // indirect
 	github.com/tree-sitter/tree-sitter-javascript v0.23.0 // indirect
+	github.com/tree-sitter/tree-sitter-php v0.23.12 // indirect
 	github.com/tree-sitter/tree-sitter-python v0.23.0 // indirect
 	github.com/tree-sitter/tree-sitter-typescript v0.23.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
