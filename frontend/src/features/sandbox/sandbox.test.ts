@@ -82,3 +82,28 @@ describe("tangle changes", () => {
         expect(compareTangles([["a", "b"]], [["a", "b", "z"]]).formed).toEqual([["a", "b", "z"]])
     })
 })
+
+describe("explaining a projected tangle", () => {
+    it("lists the links inside a tangle, thinnest first, with their files", async () => {
+        const { project: proj, tangleLinks: links } = await import("./sandbox")
+        const base = {
+            compOf: new Map([["a/x.ts", "a"], ["a/y.ts", "a"], ["b/z.ts", "b"]]),
+            components: ["a", "b"],
+            rows: [{ from: "a", to: "b", file: "a/x.ts", refs: 3 }, { from: "a", to: "b", file: "a/y.ts", refs: 2 }, { from: "b", to: "a", file: "b/z.ts", refs: 1 }],
+            targets: new Map(), importers: new Map(), types: new Map(), componentTypes: new Map(),
+        }
+        const p = proj(base, [])
+        const l = links(p.tangles[0], p)
+        expect(l.map(x => `${x.from}>${x.to}:${x.files.map(f => f.file).join(",")}`)).toEqual(["b>a:b/z.ts", "a>b:a/x.ts,a/y.ts"])
+        const moved = proj(base, [{ kind: "move", file: "b/z.ts", to: "new" }])
+        expect(moved.tangles).toEqual([])
+        expect(moved.metrics.has("new")).toBe(true)
+    })
+    it("reads a path, a glob or words", async () => {
+        const { matchFiles } = await import("./sandbox")
+        const fs = ["src/utils/reportDoc.ts", "src/utils/reportCells.ts", "src/stores/reports.ts"]
+        expect(matchFiles("src/utils/report*", fs)).toEqual(["src/utils/reportCells.ts", "src/utils/reportDoc.ts"])
+        expect(matchFiles("report store", fs)).toEqual(["src/stores/reports.ts"])
+        expect(matchFiles("src/stores/reports.ts", fs)).toEqual(["src/stores/reports.ts"])
+    })
+})

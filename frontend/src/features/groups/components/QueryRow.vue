@@ -72,6 +72,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { highlight, type TokenKind } from "~/features/groups/queryAssist";
+import { SEARCH_SEED } from "~/features/groups/query";
 
 // One line of a query, coloured and counted.
 //
@@ -180,9 +181,24 @@ const noteTitle = computed(() => {
 
 function onInput(event: Event) {
   const el = event.target as HTMLInputElement;
+  // The seed fences a word for a substring search. A path or a pattern typed
+  // (or pasted) into it means itself, so it replaces the fence rather than
+  // landing inside it as **frontend/src/…**.
+  if (props.modelValue === SEARCH_SEED && el.value !== SEARCH_SEED) {
+    const typed = unfence(el.value);
+    if (typed !== null && /[/*!]/.test(typed)) { el.value = typed; el.setSelectionRange(typed.length, typed.length); }
+  }
   emit("update:modelValue", el.value);
   nextTick(syncScroll);
   emit("caret", el.selectionStart ?? el.value.length);
+}
+
+/** What was typed into the seed, with the seed's four stars taken out, or null if they are not all there. */
+function unfence(v: string): string | null {
+  if (v.startsWith("****")) return v.slice(4);
+  if (v.endsWith("****")) return v.slice(0, -4);
+  if (v.startsWith("**") && v.endsWith("**") && v.length >= 4) return v.slice(2, -2);
+  return null;
 }
 
 function report(event: Event) {

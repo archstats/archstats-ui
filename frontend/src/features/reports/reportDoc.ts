@@ -11,12 +11,19 @@ export type TextKind = "p" | "h1" | "h2" | "h3" | "ul" | "ol" | "quote" | "code"
  * A prose block. A prompt is what a template asks the writer to say there:
  * shown in place of the empty text, never printed.
  */
-export interface TextBlock { id: string; kind: TextKind; text: string; lang?: string; prompt?: string }
+export interface TextBlock {
+    id: string; kind: TextKind; text: string; lang?: string; prompt?: string
+    /** A template's explanation of its terms: kept as such by Save as template, left out when explanations are off. */
+    explain?: boolean
+    /** Explains the figure or table right after it: printed only when that slot was filled. */
+    beforeSlot?: boolean
+}
 
 export type TableSource = "components" | "files"
 
 export type CellSpec =
     | { type: "pin"; pinId: string }
+    /** scope "production": production files, or the components that hold them. */
     | { type: "table"; source: TableSource; columns: string[]; sort: string; desc: boolean; limit: number; scope?: string }
     | { type: "sql"; sql: string; limit: number }
     /** Captured from a view as it was on screen: kept, not re-run here. */
@@ -24,13 +31,15 @@ export type CellSpec =
     /** Facts written out as a paragraph: computed on the snapshot, re-run like any cell. */
     | { type: "reading"; reading: string; params?: Record<string, string> }
     /** A figure or table a template asks for: which view, set how; filled by adding from that view. */
-    | { type: "slot"; kind: "table" | "figure"; route: string; view: string; hint: string }
+    | { type: "slot"; kind: "table" | "figure"; route: string; view: string; hint: string; take?: string }
 
 export interface TableOutput {
     columns: Array<{ id: string; label: string; numeric: boolean }>
     rows: Array<Record<string, unknown>>
     /** Rows the query had before the limit, when known. */
     total: number
+    /** What the rows cover, when it is not everything: "Production code only." */
+    note?: string
 }
 
 export interface PinOutput {
@@ -58,14 +67,18 @@ export interface ReadingOutput {
     values: Record<string, number>
     /** The snapshot lacks what the reading counts; the text says what. */
     absent?: boolean
+    /** The text is an instruction to the writer ("Choose a component…"), never printed. */
+    instruction?: boolean
 }
 
 /** What a cell ran on: the provenance a reader needs to trust it. */
 export interface RanOn {
     scanId: string
-    /** "22 Sep 2026, 12:00". */
+    /** The snapshot as the sidebar names it: its label, or when it was scanned. */
     label: string
     commit: string
+    /** When that commit was made, "4 May, 23:57". */
+    committed?: string
     revision: number
     at: string
     lens?: string
@@ -235,11 +248,59 @@ export function shortcutFor(text: string): { kind: TextKind; text: string; lang?
     let m: RegExpExecArray | null
     if ((m = /^(#{1,3}) (.*)$/s.exec(text))) return { kind: (`h${m[1].length}`) as TextKind, text: m[2] }
     if ((m = /^[-*+] (.*)$/s.exec(text))) return { kind: "ul", text: m[1] }
-    if ((m = /^1[.)] (.*)$/s.exec(text))) return { kind: "ol", text: m[1] }
+    // "1." starts a numbered list; "1)" stays prose, as in "1) the first reason".
+    if ((m = /^1\. (.*)$/s.exec(text))) return { kind: "ol", text: m[1] }
     if ((m = /^> (.*)$/s.exec(text))) return { kind: "quote", text: m[1] }
     if ((m = /^```([\w-]*)$/.exec(text))) return { kind: "code", text: "", lang: m[1] || undefined }
     if (/^(---|\*\*\*)$/.test(text)) return { kind: "hr", text: "" }
     return null
+}
+
+// ── A computed paragraph's blocks ─────────────────────────────────────────
+
+/**
+ * A name as prose sets it: a long path keeps its last two parts
+ * ("src/Sylius/Bundle/ApiBundle/Controller" reads "ApiBundle/Controller"),
+ * so a sentence reads as a sentence; the tables beside it keep the whole name.
+ */
+export function proseName(name: string, keep = 2): string {
+    if (name === ".") return "(root)"
+    const parts = name.split(/([./\\]+)/)
+    const segs = parts.filter((_, i) => i % 2 === 0).filter(Boolean)
+    if (name.length <= 28 || segs.length <= keep) return name
+    return parts.slice(-(2 * keep - 1)).join("")
+}
+
+/**
+ * Names that share a sentence, each shortened as far as it stays told apart:
+ * two `…\Doctrine\ORM` packages keep a part more each, until they differ.
+ */
+export function proseNames(names: string[]): string[] {
+    const keep = names.map(() => 2)
+    for (let round = 0; round < 8; round++) {
+        const shown = names.map((n, i) => proseName(n, keep[i]))
+        const clash = shown.map((s, i) => shown.some((t, j) => j !== i && t === s && names[j] !== names[i]))
+        if (!clash.some(Boolean)) return shown
+        clash.forEach((c, i) => { if (c) keep[i]++ })
+    }
+    return names.map(n => proseName(n, 99))
+}
+
+export type ReadingBlock = { kind: "p"; text: string } | { kind: "ul"; items: string[] }
+
+/**
+ * A reading's text as it is set: paragraphs split by a blank line, and a
+ * paragraph whose every line starts "- " as a bulleted list. A reading
+ * with many parts (five roles, each with its count and where it lives)
+ * reads as a lead sentence and a list, not one sentence chained by semicolons.
+ */
+export function readingBlocks(text: string): ReadingBlock[] {
+    return text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean).map(chunk => {
+        const lines = chunk.split("\n").map(l => l.trim()).filter(Boolean)
+        return lines.length && lines.every(l => l.startsWith("- "))
+            ? { kind: "ul" as const, items: lines.map(l => l.slice(2)) }
+            : { kind: "p" as const, text: lines.join(" ") }
+    })
 }
 
 // ── Inline Markdown ───────────────────────────────────────────────────────
@@ -335,7 +396,12 @@ export function safeHref(url: string): string | null {
 
 /** Inline Markdown as HTML, escaped; the only markup is what the runs say. */
 export function inlineHtml(src: string): string {
-    return inlineRuns(src).map(r => {
+    return runsHtml(inlineRuns(src))
+}
+
+/** Styled runs as the editor shows them; the printed page sets the same HTML. */
+export function runsHtml(runs: Run[]): string {
+    return runs.map(r => {
         let h = esc(r.text)
         if (r.code) return `<code>${h}</code>`
         if (r.strike) h = `<s>${h}</s>`

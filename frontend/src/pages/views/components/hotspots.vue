@@ -524,8 +524,19 @@ watch(commitWindow, (value, previous) => {
 
 // When the grain changes the column set changes with it; keep the current
 // pair when it still exists, otherwise fall back to the first perspective.
+// The perspective a link asked for (?preset=churn). It stays in the URL while it
+// is the one shown, so a capture of this view says which perspective it holds.
+const routePreset = computed(() => (typeof route.query.preset === "string" ? route.query.preset : null))
+
 watch(columns, cols => {
   if (cols.length === 0) return
+  // A perspective the link asked for wins once its columns exist, over the one
+  // left from before and over the default.
+  const wanted = routePreset.value ? presets.value.find(p => p.id === routePreset.value) : null
+  if (wanted && cols.includes(wanted.sizeMetric) && cols.includes(wanted.colorMetric)) {
+    if (matchedPreset.value?.id !== wanted.id || customPinned.value) selectPreset(wanted)
+    return
+  }
   const stillValid = cols.includes(sizeMetric.value) && cols.includes(colorMetric.value)
   if (stillValid) return
   // Without commit history every hotspot score is 0 and the chart opens grey;
@@ -544,14 +555,20 @@ watch(columns, cols => {
 
 // A link can open a perspective by id (?preset=churn), once the presets exist.
 watch(presets, list => {
-  const want = typeof route.query.preset === "string" ? route.query.preset : null
-  const p = want ? list.find(x => x.id === want) : null
-  if (!p) return
-  selectPreset(p)
-  const query: Record<string, any> = { ...route.query }
-  delete query.preset
-  void router.replace({ query })
+  const p = routePreset.value ? list.find(x => x.id === routePreset.value) : null
+  if (p && matchedPreset.value?.id !== p.id) selectPreset(p)
 }, { immediate: true })
+
+// The URL follows the perspective shown: a later choice replaces the link's, and
+// a custom pair of metrics drops it.
+watch(activePresetId, id => {
+  const want = id === "custom" ? undefined : id
+  if ((route.query.preset ?? undefined) === want) return
+  const query: Record<string, any> = { ...route.query }
+  if (want) query.preset = want
+  else delete query.preset
+  void router.replace({ query })
+})
 
 // ---------------------------------------------------------------------------
 // Groups legend: component groups at component grain, file groups at file grain.

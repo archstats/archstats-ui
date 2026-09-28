@@ -12,7 +12,7 @@
             <template v-else-if="state === 'rendering'">Laying out {{ cellCount }} {{ cellCount === 1 ? "cell" : "cells" }}…</template>
           </p>
           <span v-if="slots" class="ui-tag shrink-0" :title="`${slots === 1 ? 'A figure or table the template asks for is' : `${slots} figures or tables the template asks for are`} not added yet; the PDF leaves ${slots === 1 ? 'it' : 'them'} out`">{{ slots }} to add, left out</span>
-          <span v-if="stale" class="ui-tag shrink-0" :title="`${stale} cells ran on another snapshot than the report runs on; the PDF shows them as they ran`">{{ stale }} ran elsewhere</span>
+          <span v-if="stale" class="ui-tag shrink-0" :title="`${stale} cells ran on another snapshot than the report runs on; the PDF shows them as they ran`">{{ stale }} not run on this snapshot</span>
 
           <div class="ml-auto flex shrink-0 items-center gap-2">
             <div class="ui-segmented" role="group" aria-label="Page size">

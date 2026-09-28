@@ -9,6 +9,7 @@ import (
 
 	"github.com/archstats/archstats-ui/app/report"
 	"github.com/archstats/archstats-ui/app/store"
+	"github.com/archstats/archstats-ui/app/webprint"
 	"github.com/google/uuid"
 )
 
@@ -118,6 +119,36 @@ func (e *EvidenceService) RenderPDF(doc report.Doc) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(out), nil
+}
+
+// PrintedPDF is a report printed from the web view: the PDF as base64 and its page count.
+type PrintedPDF struct {
+	PDF   string `json:"pdf"`
+	Pages int    `json:"pages"`
+}
+
+// CanPrintPDF reports whether PrintPDF works here (macOS); elsewhere the
+// frontend asks RenderPDF to lay the report out instead.
+func (e *EvidenceService) CanPrintPDF() bool { return webprint.Supported() }
+
+// PrintPDF prints the report the frontend has set out for print media, so the
+// PDF is the editor's own type: A4 or Letter, even 27 mm margins, 22 mm above
+// and 24 mm below the text, the footer stamped on every page.
+func (e *EvidenceService) PrintPDF(title, pageSize string) (*PrintedPDF, error) {
+	w, h := 210.0, 297.0
+	if strings.EqualFold(pageSize, "Letter") {
+		w, h = 215.9, 279.4
+	}
+	mm := webprint.MM
+	data, pages, err := webprint.Print(webprint.Options{
+		Width: w * mm, Height: h * mm,
+		Top: 22 * mm, Right: 27 * mm, Bottom: 24 * mm, Left: 27 * mm,
+		Title: title, FooterFont: report.FooterFont(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &PrintedPDF{PDF: base64.StdEncoding.EncodeToString(data), Pages: pages}, nil
 }
 
 // OpenPDF writes a report's PDF to a temporary file and opens it in the

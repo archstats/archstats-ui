@@ -273,6 +273,7 @@ import Icon from "~/shared/ui/Icon.vue"
 import { useDeployables } from "~/features/deployables/useDeployables"
 import { shipsIn } from "~/features/deployables/deployables"
 import { hopsOf } from "~/features/snapshot/hops"
+import { fileCoChangeSql, sweepingLimit } from "~/features/snapshot/fileCoChange"
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction"
 
 const route = useRoute()
@@ -629,23 +630,14 @@ const { data: loaded } = useAsyncQuery<Loaded>(
       FROM files WHERE component = ${lit}`)
 
     // Co-change that stays inside the component against co-change that leaves
-    // it. The matrix holds some pairs in both directions, so pairs are
-    // normalised before they are summed.
-    const cohesion = store.hasView("file_matrix") && files.length > 1
+    // it, over file pairs with at least one file here (one row per pair).
+    const mine = `SELECT name FROM files WHERE component = ${lit}`
+    const cohesion = store.hasView("git_commits") && files.length > 1
       ? (await store.query<{ internal: number; external: number }>(`
-          WITH mine AS (SELECT name FROM files WHERE component = ${lit}),
-               touching AS (
-                 SELECT CASE WHEN "from" < "to" THEN "from" ELSE "to" END AS a,
-                        CASE WHEN "from" < "to" THEN "to" ELSE "from" END AS b,
-                        MAX(git_co_changes) AS co
-                 FROM file_matrix
-                 WHERE git_co_changes > 0
-                   AND ("from" IN (SELECT name FROM mine) OR "to" IN (SELECT name FROM mine))
-                 GROUP BY a, b
-               )
+          WITH touching AS (${fileCoChangeSql(sweepingLimit(store.snapshotInfo), mine)})
           SELECT
-            COALESCE(SUM(CASE WHEN a IN (SELECT name FROM mine) AND b IN (SELECT name FROM mine) THEN co END), 0) AS internal,
-            COALESCE(SUM(CASE WHEN a IN (SELECT name FROM mine) AND b IN (SELECT name FROM mine) THEN NULL ELSE co END), 0) AS external
+            COALESCE(SUM(CASE WHEN "from" IN (${mine}) AND "to" IN (${mine}) THEN shared END), 0) AS internal,
+            COALESCE(SUM(CASE WHEN "from" IN (${mine}) AND "to" IN (${mine}) THEN NULL ELSE shared END), 0) AS external
           FROM touching`))[0] ?? null
       : null
 

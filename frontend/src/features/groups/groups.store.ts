@@ -688,13 +688,15 @@ export const useGroupsStore = defineStore('groups', {
                 return
             }
             g.query = text
+            // Membership only answers a live query, so ask it live first.
+            g.mode = 'live'
+            const found = this.membership.get(g.id)
             g.mode = mode
             if (mode === 'fixed') {
                 g.foundBy = { query: text, scanId, at: Date.now() }
                 // Freeze what the query answers right now, so the members are
                 // the ones that were actually seen and agreed to.
-                const found = this.membership.get(g.id)
-                if (found && found.length) g.members = found
+                if (found && found.length) g.members = [...found]
             } else {
                 g.foundBy = undefined
             }

@@ -38,6 +38,7 @@ describe("report markdown", () => {
         expect(shortcutFor("## Title")).toEqual({ kind: "h2", text: "Title" })
         expect(shortcutFor("- item")).toEqual({ kind: "ul", text: "item" })
         expect(shortcutFor("1. item")).toEqual({ kind: "ol", text: "item" })
+        expect(shortcutFor("1) the first reason")).toBeNull()
         expect(shortcutFor("> said")).toEqual({ kind: "quote", text: "said" })
         expect(shortcutFor("```sql")).toEqual({ kind: "code", text: "", lang: "sql" })
         expect(shortcutFor("---")).toEqual({ kind: "hr", text: "" })

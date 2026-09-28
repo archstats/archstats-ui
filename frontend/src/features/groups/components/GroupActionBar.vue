@@ -84,7 +84,7 @@
                 <button v-for="g in bucket.groups" :key="g.id" type="button" class="ui-menu-item" role="menuitem" @click="addTo(g.id)">
                   <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
                   <span class="min-w-0 flex-1 truncate">{{ g.name }}</span>
-                  <span class="font-mono text-xs text-neutral-400">{{ g.members.length }}</span>
+                  <span class="font-mono text-xs text-neutral-400">{{ groupsStore.membersOf(g).length }}</span>
                 </button>
               </template>
             </div>
@@ -136,6 +136,9 @@
             </div>
           </div>
         </template>
+        <button v-if="!naming && kind === 'file'" type="button" class="ui-btn ui-btn-sm ui-btn-quiet whitespace-nowrap" title="Make these files a module in the restructure planner" @click="toPlanner">
+          To planner
+        </button>
         <ShowInMenu v-if="!naming" :kind="kind === 'file' ? 'file' : 'component'" :ids="selectedItems" :except="showInExcept" up/>
 
         <span class="ui-toolbar-sep"></span>
@@ -161,6 +164,9 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import ShowInMenu from "~/features/groups/components/ShowInMenu.vue";
 import { adjacency, between, reach, tangleOf } from "~/features/navigation/focus";
 import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
+import { useRouter } from "vue-router";
+import { useRestructureStore } from "~/features/restructure/restructure.store";
+import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 
 // Module-level so every tray on every view shares the last used dimension;
 // the lens wins while it exists, so a quick group lands where you are looking.
@@ -196,6 +202,17 @@ const emit = defineEmits<{
 const groupsStore = useGroupsStore();
 const dataStore = useDataStore();
 const scope = useScopeStore();
+const router = useRouter();
+
+// A selection is also the start of a module: the planner checks it at once.
+function toPlanner() {
+  const planner = useRestructureStore();
+  const ws = useWorkspacesStore().active?.id;
+  if (ws) planner.load(ws);
+  planner.add({ name: `Module ${planner.plan.modules.length + 1}`, files: [...props.selectedItems] });
+  emit("clear");
+  void router.push("/views/restructure");
+}
 const lens = useLensStore();
 const trayEl = ref<HTMLElement | null>(null);
 const startDimension = () => lens.active ?? lastDimension ?? DEFAULT_DIMENSION;
@@ -241,31 +258,9 @@ const inAnyGroup = computed(() => props.selectedItems.some(id => groupsStore.dir
 
 const usePattern = ref(false);
 
-const pattern = computed(() => {
-  if (!naming.value || props.selectedItems.length < 2) return null;
-  const universe = props.kind === "file"
-    ? Array.from(dataStore.fileComponentIndex.keys())
-    : Array.from(dataStore.componentFilesIndex.keys());
-  if (universe.length === 0) return null;
-  const sep = props.kind === "file" ? "/" : detectSeparator(universe);
-  const g = generalise(props.selectedItems, universe, sep);
-  const lines = g.terms.length + g.literals.length + g.exclusions.length;
-  // Only worth offering when it actually says something shorter. A "pattern"
-  // that is the same twelve ids with extra punctuation is a worse list.
-  if (g.terms.length === 0 || lines >= props.selectedItems.length) return null;
-  return { ...g, lines };
-});
-
-const patternGain = computed(() => {
-  if (!pattern.value) return "";
-  const extra = pattern.value.lines - 1;
-  return extra > 0 ? `+${extra} more ${extra === 1 ? "line" : "lines"}` : "1 line";
-});
-
-const patternTitle = computed(() =>
-  pattern.value
-    ? `Save as a query instead of ${props.selectedItems.length} names:\n\n${pattern.value.text}\n\nIt keeps matching as the code moves, and says so when it stops.`
-    : "");
+// The shared offer (usePatternOffer), asked only while naming.
+const offer = usePatternOffer(computed(() => props.selectedItems), computed(() => (props.kind === "file" ? "file" : "component")));
+const pattern = computed(() => (naming.value ? offer.value : null));
 
 function nextName(): string {
   const taken = new Set(groups.value.map(g => g.name));

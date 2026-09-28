@@ -98,11 +98,30 @@ export function ownPrefixes(components: string[]): Map<string, number> {
     const out = new Map<string, number>()
     const bump = (k: string) => out.set(k, (out.get(k) ?? 0) + 1)
     for (const c of components) {
-        const segs = c.split(/[./\\:]+/).filter(Boolean).map(x => x.toLowerCase())
-        if (segs.length >= 1) bump(segs[0])
-        if (segs.length >= 2) bump(`${segs[0]}/${segs[1]}`)
+        const all = c.split(/[./\\:]+/).filter(Boolean).map(x => x.toLowerCase())
+        // A folder component under a source root is also named without it:
+        // src/Sylius/Bundle/CoreBundle is imported as Sylius\Bundle\CoreBundle.
+        let from = 0
+        while (from < all.length - 1 && from < 3 && SOURCE_ROOTS.has(all[from])) from++
+        for (const segs of from ? [all, all.slice(from)] : [all]) {
+            if (segs.length >= 1) bump(segs[0])
+            if (segs.length >= 2) bump(`${segs[0]}/${segs[1]}`)
+        }
     }
     return out
+}
+
+/** Folders that hold source without naming it. */
+const SOURCE_ROOTS = new Set(["src", "lib", "app", "source", "sources", "packages", "main", "java", "php", "kotlin"])
+
+/**
+ * A library as its language writes it: Go module paths keep the dots the
+ * engine turned into slashes (github/com/stretchr/testify is github.com/stretchr/testify).
+ */
+export function displayName(name: string, language: string | null): string {
+    if (language !== "go") return name
+    const segs = name.split("/")
+    return segs.length > 1 && TLDS.has(segs[1]) ? [`${segs[0]}.${segs[1]}`, ...segs.slice(2)].join("/") : name
 }
 
 /**

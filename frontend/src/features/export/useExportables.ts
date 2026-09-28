@@ -18,6 +18,8 @@ export interface TableExportable {
     notes?: () => Array<[string, string]>;
     /** Why there is nothing to export, when there is not. */
     disabledReason?: () => string | null;
+    /** False while columns still load after the rows appear; a take waits for it. */
+    ready?: () => boolean;
 }
 
 export interface FigureExportable {
@@ -61,6 +63,7 @@ export const exportables = computed(() => {
 export function usable(i: Exportable): boolean {
     if (i.kind === "figure") return i.ready();
     if (i.disabledReason?.()) return false;
+    if (i.kind === "table" && i.ready && !i.ready()) return false;
     return i.kind !== "table" || i.rows().length > 0;
 }
 
@@ -69,8 +72,19 @@ export function usable(i: Exportable): boolean {
  * kind registered last, which is the most specific (a grain's own table
  * mounts after the page's), else any usable item.
  */
-export function pickFor(kind: Exportable["kind"] | undefined): Exportable | null {
+export function pickFor(kind: Exportable["kind"] | undefined, take?: string): Exportable | null {
     const ok = [...registry.values()].sort((a, b) => a.order - b.order).map(e => e.item).filter(usable);
+    // A slot that names what it wants gets that or nothing: on the Authors page
+    // the leaderboard (names, emails) is ready before the knowledge table, and
+    // "any table" took it.
+    // Alternatives are separated by "|", first choice first: "Boundary flow|How the layers lean".
+    if (take) {
+        for (const want of take.toLowerCase().split("|").map(w => w.trim()).filter(Boolean)) {
+            const hit = [...ok].reverse().find(i => (!kind || i.kind === kind) && i.title.toLowerCase().startsWith(want));
+            if (hit) return hit;
+        }
+        return null;
+    }
     return [...ok].reverse().find(i => i.kind === kind) ?? ok.find(i => i.kind !== "document") ?? ok[0] ?? null;
 }
 

@@ -1,7 +1,7 @@
 import { acceptHMRUpdate, defineStore } from "pinia"
 import { markRaw } from "vue"
 import { DeleteReport, Figure, RenderPDF, ReorderReports, Reports, SaveFigure, SaveReport } from "wailsjs/go/app/EvidenceService"
-import { Console, QueryIn } from "wailsjs/go/app/QueryService"
+import { Console, QueryIn, ReportConsole } from "wailsjs/go/app/QueryService"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useEvidenceStore } from "./evidence.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
@@ -10,10 +10,17 @@ import { useAuthorsStore } from "~/features/git/authors.store"
 import { useStateStore } from "~/platform/state.store"
 import type { ReadingContext } from "./readings"
 import { exportMarkdown, pdfBlocks, runCell, type KernelScan, type RunContext } from "./reportCells"
+import { canPrint, printReport } from "./reportPrint"
 import { emptyDoc, fromMarkdown, isCell, newId, parseDoc, runnable, toMarkdown, type Block, type Cell, type CellBlock, type ReportDoc, type TableSource } from "./reportDoc"
 import { SAVED_TEMPLATES_KEY, type SavedTemplate } from "./reportTemplates"
 import { newestFirst } from "~/features/workspace/scanOrder"
 import { formatScanTime } from "~/shared/time"
+import { snapshotName } from "~/features/workspace/snapshotName"
+
+/** A scan as the kernel cells run on. */
+function kernelOf(scan: any): KernelScan {
+    return { id: scan.id, label: snapshotName(scan), headCommit: scan.headCommit ?? "", committed: scan.headTime ? formatScanTime(scan.headTime) : "", revision: Number(scan.analysisRevision) || 0 }
+}
 
 // The workspace's reports: notebooks of prose and evidence cells drawn from
 // the pool of pins. One is open at a time; edits save themselves a moment
@@ -45,6 +52,19 @@ export interface SlotFill {
     /** "Figure 2". */
     number: string
     reportTitle: string
+    /** The exportable the slot asks for, by the start of its title; any of its kind when absent. */
+    take?: string
+}
+
+/** What a figure-taking run did, for the summary on the report once it ends. */
+export interface TakeLog {
+    reportId: string
+    asked: string[]
+    filled: string[]
+    skipped: Array<{ id: string; why: string }>
+    /** Stopped before the end: the slots after `at` were not tried. */
+    stopped: boolean
+    done: boolean
 }
 
 export interface ReportRecord {
@@ -81,6 +101,11 @@ export const useReportsStore = defineStore("reports", {
         takeQueue: null as { reportId: string; ids: string[]; at: number } | null,
         /** Where the take in hand is: waiting for its view to draw, or stopped short. */
         taking: "idle" as "idle" | "waiting" | "failed" | "paused",
+        /** Why the take in hand failed, in the view's words when it gave any. */
+        takeWhy: "",
+        /** The full Add to report sheet was asked for during a run. */
+        adjusting: false,
+        takeLog: null as TakeLog | null,
         /** The template gallery is open. */
         choosingTemplate: false,
     }),
@@ -94,8 +119,18 @@ export const useReportsStore = defineStore("reports", {
             const ws = useWorkspacesStore()
             const complete = ws.scans.filter((x: any) => x.status === "complete")
             const scan: any = s.doc.kernel === "newest" ? newestFirst(complete)[0] : complete.find((x: any) => x.id === s.doc.kernel) ?? newestFirst(complete)[0]
-            if (!scan) return null
-            return { id: scan.id, label: formatScanTime(scan.headTime ?? scan.startedAt), headCommit: scan.headCommit ?? "", revision: Number(scan.analysisRevision) || 0 }
+            return scan ? kernelOf(scan) : null
+        },
+        /**
+         * The snapshot open in the sidebar, as a kernel: what a new report runs
+         * on. "Newest" is the newest commit, which is not always the snapshot
+         * open: a revision-3 rescan of an older commit beside a revision-0 scan
+         * of a newer one made reports mix the two.
+         */
+        openKernel(): KernelScan | null {
+            const ws = useWorkspacesStore()
+            const scan: any = ws.scans.find((x: any) => x.id === ws.openScanId && x.status === "complete")
+            return scan ? kernelOf(scan) : this.kernel
         },
         /** Cells that ran on another snapshot than the kernel, or never ran. */
         stale(): CellBlock[] {
@@ -153,7 +188,9 @@ export const useReportsStore = defineStore("reports", {
         },
         async create(title = "Untitled report", blocks?: Block[]): Promise<ReportRecord | null> {
             if (!this.workspace) return null
-            const doc: ReportDoc = { version: 1, blocks: blocks?.length ? blocks : [{ id: newId(), kind: "p", text: "" }], kernel: "newest" }
+            // A new report runs on the snapshot open now, not on whichever commit is newest.
+            const kernel = this.openKernel?.id ?? "newest"
+            const doc: ReportDoc = { version: 1, blocks: blocks?.length ? blocks : [{ id: newId(), kind: "p", text: "" }], kernel }
             const saved = (await SaveReport({ id: "", workspaceId: this.workspace, position: 0, title, body: JSON.stringify(doc), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any)) as any as ReportRecord
             this.list = [...this.list, saved]
             this.open(saved.id)
@@ -305,8 +342,8 @@ export const useReportsStore = defineStore("reports", {
 
         // ── Running ─────────────────────────────────────────────────────────
         /** What readings run with on the kernel; kept per snapshot so it is probed once. */
-        readingContext(): ReadingContext | null {
-            const k = this.kernel
+        readingContext(kernel?: KernelScan | null): ReadingContext | null {
+            const k = kernel === undefined ? this.kernel : kernel
             if (!k) return null
             const aliases = useAuthorsStore().aliases
             const key = `${k.id}:${JSON.stringify(aliases)}`
@@ -316,8 +353,8 @@ export const useReportsStore = defineStore("reports", {
             }
             return readingCache.ctx
         },
-        runContext(): RunContext | null {
-            const k = this.kernel
+        runContext(kernel?: KernelScan | null): RunContext | null {
+            const k = kernel === undefined ? this.kernel : kernel
             if (!k) return null
             const data = useDataStore()
             const evidence = useEvidenceStore()
@@ -326,7 +363,8 @@ export const useReportsStore = defineStore("reports", {
                 scan: k,
                 query: sql => QueryIn(k.id, sql) as Promise<any[]>,
                 console: async sql => {
-                    const r: any = await Console(k.id, sql)
+                    // A report's queries get 30 seconds; an app built before ReportConsole keeps the console's 10.
+                    const r: any = await ((window as any).go?.app?.QueryService?.ReportConsole ? ReportConsole : Console)(k.id, sql)
                     return { columns: r.columns ?? [], rows: r.rows ?? [], truncated: !!r.truncated }
                 },
                 columns: async (t: TableSource) => {
@@ -342,7 +380,7 @@ export const useReportsStore = defineStore("reports", {
                     const p = buildProvenance()
                     return { lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined }
                 },
-                readings: this.readingContext()!,
+                readings: this.readingContext(k)!,
             }
         },
         async run(id: string) {
@@ -404,6 +442,8 @@ export const useReportsStore = defineStore("reports", {
 
         /** Opens the Add to report sheet with what a view handed over. */
         async beginImport(draft: ImportDraft) {
+            // A report is never imported into a report from the report page itself.
+            if (draft.kind === "document" && draft.route.startsWith("/views/evidence")) return
             const ws = useWorkspacesStore()
             if (ws.active) await this.load(ws.active.id)
             this.importing = markRaw(draft) as ImportDraft
@@ -462,19 +502,35 @@ export const useReportsStore = defineStore("reports", {
             if (!b || !isCell(b) || b.cell.spec.type !== "slot" || !this.currentId) return null
             const s = b.cell.spec
             this.flushSave()
-            this.filling = { reportId: this.currentId, cellId, kind: s.kind, view: s.view, route: s.route, hint: s.hint, title: b.cell.title, number, reportTitle: this.current?.title || "Untitled report" }
+            this.filling = { reportId: this.currentId, cellId, kind: s.kind, view: s.view, route: s.route, hint: s.hint, title: b.cell.title, number, reportTitle: this.current?.title || "Untitled report", take: s.take }
             return s.route
         },
         /** Puts what was added where the slot was. */
+        /**
+         * Fills the slot in hand with what its view handed over, as the template
+         * asked: the slot's title, every column, and 25 rows or 10 of a longer table.
+         */
+        async takeDraft(): Promise<boolean> {
+            const s = this.importing, f = this.filling
+            if (!s || !f || s.kind === "document" || (s.kind === "table" && !s.table)) return false
+            const t = s.table
+            const output = s.kind === "figure"
+                ? { figure: await this.keepFigure(s.figure ?? "") }
+                : { table: { columns: t!.columns, rows: t!.rows.slice(0, t!.rows.length <= 25 ? t!.rows.length : 10), total: t!.total, ...(t!.note ? { note: t!.note } : {}) } }
+            const cell: Cell = { spec: { type: "capture", kind: s.kind, route: s.route, view: s.view }, title: f.title || s.title, caption: "", output, ranOn: s.ranOn }
+            await this.fillSlot(f.reportId, f.cellId, [{ id: newId(), kind: "cell", cell }])
+            this.importing = null
+            this.adjusting = false
+            return true
+        },
         async fillSlot(reportId: string, cellId: string, blocks: Block[]) {
             if (reportId !== this.currentId) this.open(reportId)
             const i = this.doc.blocks.findIndex(x => x.id === cellId)
-            if (i < 0) { this.insert(this.doc.blocks[this.doc.blocks.length - 1]?.id ?? null, blocks) }
-            else {
-                this.checkpoint()
-                this.doc.blocks.splice(i, 1, ...blocks)
-                this.changed()
-            }
+            // Filled already (a second click on Fill): nothing lands a second time.
+            if (i < 0) { this.filling = null; return }
+            this.checkpoint()
+            this.doc.blocks.splice(i, 1, ...blocks)
+            this.changed()
             this.filling = null
             this.flushSave()
             void this.loadFigures()
@@ -485,7 +541,7 @@ export const useReportsStore = defineStore("reports", {
             const p = buildProvenance()
             const k = this.kernel
             return [
-                [p.workspace, k ? `snapshot ${k.label}` : "", k?.headCommit ? k.headCommit.slice(0, 7) : "", k ? `analysis r${k.revision}` : ""].filter(Boolean).join(" · "),
+                [p.workspace, k ? `snapshot ${k.label}` : "", k?.headCommit ? `commit ${k.headCommit.slice(0, 7)}${k.committed ? ` of ${k.committed}` : ""}` : "", k ? `analysis r${k.revision}` : ""].filter(Boolean).join(" · "),
                 `Written with Archstats Desktop ${p.appVersion}${p.pseudonymised ? " · authors pseudonymised" : ""} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
             ]
         },
@@ -500,7 +556,11 @@ export const useReportsStore = defineStore("reports", {
             }
             const workspace = buildProvenance().workspace
             const title = this.current?.title || "Report"
-            return RenderPDF({ title, pageSize: opts.pageSize ?? "A4", meta: this.exportMeta(), blocks: pdfBlocks(this.doc.blocks, { workspace, label: id => data.statNiceName(id) || id, figure: id => figs.get(id) ?? null }) } as any)
+            const pageSize = opts.pageSize ?? "A4"
+            const doc = { title, meta: this.exportMeta(), blocks: pdfBlocks(this.doc.blocks, { workspace, label: id => data.statNiceName(id) || id, figure: id => figs.get(id) ?? null }) }
+            // The web view prints the editor's own type where it can (macOS); elsewhere Go lays the page out.
+            if (await canPrint()) return (await printReport(doc, pageSize)).pdf
+            return RenderPDF({ ...doc, pageSize } as any)
         },
         exportMarkdown(figureDir: string | null): string {
             const data = useDataStore()

@@ -69,6 +69,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { type CEdge, type CNode, type Levels, edgeKey, orderNodes } from "~/features/connections/connections";
+import { useExportables } from "~/features/export/useExportables";
 
 // A dependency structure matrix: rows use columns when the source is
 // directed; otherwise the grid is symmetric. Cells shade on the blue data
@@ -162,6 +163,25 @@ const cellIndex = computed(() => {
 function edgeAt(row: string, col: string): CEdge | undefined {
   return cellIndex.value.get(row + KEY + col);
 }
+
+// The grid as a table, the way a DSM is printed: rows numbered in the order
+// shown, columns by those numbers, each cell the imports (or shared commits)
+// from its row into its column. Past 40 nodes a printed grid stops being read.
+const MAX_EXPORT = 40;
+useExportables().register({
+  kind: "table",
+  title: "Dependency matrix",
+  rows: () => orderedRows.value.map((row, i) => ({
+    n: i + 1,
+    name: row.label,
+    ...Object.fromEntries(orderedCols.value.map((col, j) => {
+      const e = edgeAt(row.id, col.id);
+      return [`c${j + 1}`, row.id === col.id ? "·" : e ? (props.directed ? e.references : e.sharedCommits) || "" : ""];
+    })),
+  })),
+  columns: () => [{ id: "n", label: "#" }, { id: "name", label: props.directed ? "Row uses column" : "Changes with column" }, ...orderedCols.value.map((_, j) => ({ id: `c${j + 1}`, label: String(j + 1) }))],
+  disabledReason: () => (orderedCols.value.length > MAX_EXPORT ? `The matrix has ${orderedCols.value.length} columns; group it to ${MAX_EXPORT} or fewer to add it as a table.` : null),
+});
 
 function cellStyle(row: string, col: string) {
   const e = edgeAt(row, col);

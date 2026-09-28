@@ -7,7 +7,7 @@
 export type LaneColor = "blue" | "green" | "amber" | "violet" | "red" | "neutral"
 
 /** The languages that have profiles of their own. */
-export type Language = "java" | "kotlin" | "csharp" | "typescript" | "python" | "go" | "php"
+export type Language = "java" | "kotlin" | "csharp" | "typescript" | "python" | "go" | "php" | "swift" | "objc" | "dart"
 
 /**
  * Which language a codebase is, from the files its units are declared in.
@@ -40,12 +40,17 @@ export function languageOfFile(path: string): Language | null {
     case "py": return "python"
     case "go": return "go"
     case "php": return "php"
+    case "swift": return "swift"
+    case "m": case "mm": return "objc"
+    case "dart": return "dart"
     default: return null
   }
 }
 
 export interface ClassFacts {
   name: string
+  /** The file the unit is declared in, when known. */
+  file?: string
   annotations: ReadonlySet<string>
   supertypes: ReadonlySet<string>
   /** Older engine snippet types, so snapshots scanned before the neutral facts still classify. */
@@ -81,6 +86,8 @@ export interface LaneDef {
   imports?: string[]
   /** A structural rule, after the fact-based signals and before naming. */
   rule?: (facts: ClassFacts, signals: ClassSignals) => boolean
+  /** The rule decides before imports and names: a React component that imports axios is still a component. */
+  ruleFirst?: boolean
   /** Simple-name suffixes, the weakest signal. */
   nameSuffixes?: string[]
   /**
@@ -102,8 +109,10 @@ export interface FrameworkProfile {
    * codebase it was never written for will eventually win one.
    *
    * Absent means any language, which is what the structural profile is.
+   * Several when a platform is written in more than one: an Android app is
+   * Kotlin and Java, often in one module; an iOS app Swift and Objective-C.
    */
-  language?: Language
+  language?: Language | Language[]
   /**
    * Strong signals mean "this is an application on that framework" (its web,
    * boot or runtime packages). Weak signals are APIs many things reuse (CDI,
@@ -112,6 +121,12 @@ export interface FrameworkProfile {
   detect: { annotations?: string[]; supertypes?: string[]; legacy?: string[]; imports?: string[]; weakImports?: string[] }
   /** Votes for this profile count this many times; distinctive imports outrank shared standards. */
   weight?: number
+  /**
+   * A general profile this one is a specific way of using: TCA is written in
+   * SwiftUI, React Native in React. When this one has strong evidence the
+   * general one's votes are its own, as Jakarta EE's are Quarkus's.
+   */
+  refines?: string
   lanes: LaneDef[]
   fallback: string
 }
@@ -139,7 +154,7 @@ export const SPRING: FrameworkProfile = {
   label: "Spring",
   detect: { imports: ["org.springframework.boot", "org.springframework.web", "org.springframework.stereotype", "org.springframework.data", "org.springframework.context"], weakImports: ["org.springframework"], annotations: ["SpringBootApplication"], legacy: ["java__spring__bean"] },
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice"], legacy: ["java__spring__controller"], hint: "Web entry points" },
+    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice", "Path"], legacy: ["java__spring__controller"], hint: "Web entry points, JAX-RS resources among them" },
     { id: "services", label: "Services & Other", color: "green", annotations: ["Service", "Component", "Configuration", "SpringBootApplication"], legacy: ["java__spring__service", "java__spring__component", "java__spring__configuration"], hint: "Beans and everything unclassified" },
     { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository"], hint: "Data access" },
     { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: "Persistent models" },
@@ -225,18 +240,26 @@ export const DROPWIZARD: FrameworkProfile = {
   fallback: "app",
 }
 
+// Android, in Kotlin and Java. Compose screens are functions, so a
+// composable is a unit here like a class is; the manifest says which classes
+// the system starts (the engine marks them activity, service, receiver,
+// provider).
+const isComposable = (f: ClassFacts) => f.annotations.has("Composable")
+export const isComposeScreen = (f: ClassFacts) => isComposable(f) && /(Screen|Route|Page|Dialog|Sheet)$/.test(f.name)
+
 export const ANDROID: FrameworkProfile = {
-  // Written in both, and the signals are identical either way.
-  language: "java",
+  language: ["java", "kotlin"],
   id: "android",
   label: "Android",
-  detect: { imports: ["android.", "androidx."] },
+  detect: { imports: ["android.", "androidx."], annotations: ["activity", "HiltAndroidApp", "AndroidEntryPoint", "Composable"] },
   lanes: [
-    { id: "screens", label: "Activities & Fragments", color: "blue", supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], hint: "What the user sees" },
-    { id: "viewmodels", label: "ViewModels & Other", color: "green", supertypes: ["ViewModel", "AndroidViewModel"], hint: "State holders and everything unclassified" },
-    { id: "background", label: "Services & Receivers", color: "red", supertypes: ["Service", "IntentService", "JobIntentService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: "Work off the screen" },
-    { id: "data", label: "Data", color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "androidx.datastore", "android.database"], hint: "Room, network, storage" },
-    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity"], supertypes: ["Parcelable"], rule: looksLikeModel, hint: "Data shapes" },
+    { id: "screens", label: "Screens", color: "blue", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: "Activities, fragments and composables named for a screen" },
+    { id: "ui", label: "UI components", color: "blue", annotations: ["Composable"], supertypes: ["View", "ViewGroup", "FrameLayout", "LinearLayout", "ConstraintLayout", "RecyclerView", "Adapter", "ViewHolder", "ListAdapter"], hint: "Composables and Views below the screen" },
+    { id: "viewmodels", label: "ViewModels & Other", color: "green", annotations: ["HiltViewModel"], supertypes: ["ViewModel", "AndroidViewModel"], nameSuffixes: ["ViewModel", "Presenter"], hint: "State holders and everything unclassified" },
+    { id: "di", label: "Dependency injection", color: "neutral", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], hint: "Hilt, Dagger and Koin modules, the Application" },
+    { id: "background", label: "Services & Receivers", color: "red", annotations: ["service", "receiver", "provider", "HiltWorker"], supertypes: ["Service", "IntentService", "JobIntentService", "LifecycleService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: "Work off the screen" },
+    { id: "data", label: "Data", color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "io.ktor.client", "androidx.datastore", "android.database", "app.cash.sqldelight", "io.realm"], nameSuffixes: ["Repository", "DataSource", "Dao", "Api", "Service", "Client"], hint: "Room, network, storage" },
+    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Parcelize", "Serializable", "Immutable", "Stable"], supertypes: ["Parcelable"], rule: looksLikeModel, hint: "Data shapes" },
   ],
   fallback: "viewmodels",
 }
@@ -298,13 +321,16 @@ export const ANGULAR: FrameworkProfile = {
   fallback: "services",
 }
 
+/** A React component: a top-level name in Pascal case, not an interface, in a .tsx or .jsx file. The report's tables count the same way (REACT_COMPONENT). */
+export const isReactComponent = (f: ClassFacts) => /^[A-Z]/.test(f.name) && !f.isInterface && (!f.file || /\.[jt]sx$/.test(f.file))
+
 export const REACT: FrameworkProfile = {
   language: "typescript",
   id: "react",
   label: "React",
   detect: { imports: ["react", "react-dom", "next/", "@remix-run/"], weakImports: ["@testing-library/react"] },
   lanes: [
-    { id: "components", label: "Components", color: "blue", rule: (f) => /^[A-Z]/.test(f.name) && !f.isInterface, hint: "Named in Pascal case and rendered" },
+    { id: "components", label: "Components", color: "blue", rule: isReactComponent, ruleFirst: true, hint: "Named in Pascal case, in a .tsx or .jsx file" },
     { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), hint: "Reusable stateful logic" },
     { id: "data", label: "Data & Clients", color: "amber", imports: ["@tanstack/react-query", "swr", "axios", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Store", "Repository"], hint: "What talks to a server" },
     { id: "models", label: "Types & Models", color: "violet", rule: (f) => f.isInterface, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
@@ -455,7 +481,8 @@ export const SYMFONY: FrameworkProfile = {
   weight: 2,
   lanes: [
     { id: "controllers", label: "Controllers", color: "blue", annotations: ["Route", "AsController"], nameSuffixes: ["Controller", "Action"], hint: "What answers a request" },
-    { id: "models", label: "Entities", color: "violet", annotations: ["Entity", "Embeddable", "ORM"], nameSuffixes: ["Entity"], hint: "Persistent state" },
+    // Sylius-style models map to Doctrine in XML, not in attributes: they are known by the resource interface or a Model folder.
+    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Embeddable", "ORM"], supertypes: ["ResourceInterface", "Model", "Authenticatable"], rule: (f) => !f.isInterface && !!f.file && /\/Model\//.test(f.file), nameSuffixes: ["Entity"], hint: "Persistent state" },
     { id: "data", label: "Repositories", color: "amber", nameSuffixes: ["Repository", "Provider", "Loader", "Client"], hint: "Data access" },
     { id: "wiring", label: "Bundles & Subscribers", color: "red", annotations: ["AsEventListener", "AsMessageHandler"], nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Compiler", "Pass"], hint: "Registration and events" },
     { id: "logic", label: "Services & Other", color: "green", nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver"], hint: "Everything unclassified" },
@@ -481,6 +508,107 @@ export const KTOR: FrameworkProfile = {
     { id: "logic", label: "Services & Other", color: "green", hint: "Everything unclassified" },
   ],
   fallback: "logic",
+}
+
+// ---------------------------------------------------------------------------
+// iOS: SwiftUI and UIKit, in Swift and Objective-C
+//
+// A Swift import names a framework, so detection reads SwiftUI and UIKit
+// themselves. A SwiftUI view conforms to View; a screen is one named for
+// being one, since nothing else in the language says so.
+// ---------------------------------------------------------------------------
+
+const SWIFTUI_VIEWS = ["View", "ViewModifier", "UIViewRepresentable", "UIViewControllerRepresentable", "Shape", "ButtonStyle", "PreviewProvider"]
+const UIKIT_VIEWS = ["UIView", "UITableViewCell", "UICollectionViewCell", "UICollectionReusableView", "UIControl", "UIButton", "UILabel", "UIStackView", "UIScrollView"]
+const UIKIT_SCREENS = ["UIViewController", "UITableViewController", "UICollectionViewController", "UINavigationController", "UITabBarController", "UIPageViewController", "UIHostingController", "UISplitViewController"]
+const APPLE_MODELS = ["Codable", "Decodable", "Encodable", "Identifiable", "Hashable", "Equatable", "Sendable"]
+export const isSwiftUIScreen = (f: ClassFacts) =>
+  [...SWIFTUI_VIEWS].some(v => f.supertypes.has(v)) && /(Screen|Page|Tab|Scene)$/.test(f.name)
+const looksLikeAppleModel = (f: ClassFacts, s: ClassSignals) =>
+  (f.annotations.has("struct") || f.annotations.has("enum")) && APPLE_MODELS.some(m => f.supertypes.has(m)) && !SWIFTUI_VIEWS.some(v => f.supertypes.has(v)) && s.outDegree <= 3
+
+export const IOS: FrameworkProfile = {
+  language: ["swift", "objc"],
+  id: "ios",
+  label: "iOS (SwiftUI & UIKit)",
+  detect: { imports: ["SwiftUI", "UIKit", "AppKit", "WidgetKit", "WatchKit"], weakImports: ["Foundation", "Combine", "Observation"], supertypes: ["UIApplicationDelegate", "App"] },
+  lanes: [
+    { id: "app", label: "App & lifecycle", color: "neutral", annotations: ["main", "UIApplicationMain", "NSApplicationMain"], supertypes: ["App", "UIApplicationDelegate", "UIWindowSceneDelegate", "UISceneDelegate", "WidgetBundle", "Widget"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
+    { id: "screens", label: "Screens", color: "blue", supertypes: UIKIT_SCREENS, rule: isSwiftUIScreen, ruleFirst: true, nameSuffixes: ["ViewController"], hint: "View controllers, and SwiftUI views named for a screen" },
+    { id: "views", label: "Views", color: "blue", supertypes: [...SWIFTUI_VIEWS, ...UIKIT_VIEWS], nameSuffixes: ["View", "Cell"], hint: "SwiftUI views and UIKit views below the screen" },
+    { id: "state", label: "State & Logic", color: "green", annotations: ["Observable", "ObservableState", "Published", "MainActor"], supertypes: ["ObservableObject"], nameSuffixes: ["ViewModel", "Store", "Coordinator", "Router", "Presenter", "Interactor", "Manager"], hint: "View models, stores and coordinators" },
+    { id: "data", label: "Data & Networking", color: "amber", annotations: ["Model"], supertypes: ["NSManagedObject", "PersistentModel", "Endpoint", "TargetType"], imports: ["Alamofire", "Moya", "CoreData", "SwiftData", "GRDB", "RealmSwift", "Apollo", "FirebaseFirestore"], nameSuffixes: ["Client", "Service", "API", "Api", "Repository", "Endpoint", "Request", "Cache"], hint: "Network clients, persistence, caches" },
+    { id: "models", label: "Models", color: "violet", rule: looksLikeAppleModel, hint: "Value types that cross boundaries" },
+  ],
+  fallback: "state",
+}
+
+/** The Composable Architecture: reducers, their views, and dependency clients. */
+export const TCA: FrameworkProfile = {
+  language: ["swift"],
+  id: "tca",
+  label: "The Composable Architecture",
+  refines: "ios",
+  weight: 4,
+  detect: { imports: ["ComposableArchitecture"], annotations: ["Reducer", "DependencyClient"], supertypes: ["Reducer"] },
+  lanes: [
+    { id: "features", label: "Reducers", color: "green", annotations: ["Reducer", "ObservableState"], supertypes: ["Reducer"], hint: "Features: state, actions and how one becomes the next" },
+    { id: "views", label: "Views", color: "blue", supertypes: SWIFTUI_VIEWS, nameSuffixes: ["View"], hint: "What renders a store" },
+    { id: "clients", label: "Dependencies", color: "amber", annotations: ["DependencyClient"], supertypes: ["DependencyKey", "TestDependencyKey"], nameSuffixes: ["Client"], hint: "Effects behind an interface: network, storage, clocks" },
+    { id: "models", label: "Models", color: "violet", rule: looksLikeAppleModel, hint: "Value types" },
+    { id: "app", label: "App & lifecycle", color: "neutral", annotations: ["main"], supertypes: ["App", "UIApplicationDelegate"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
+  ],
+  fallback: "features",
+}
+
+// ---------------------------------------------------------------------------
+// Flutter
+//
+// Everything is a widget, so the widget's name and what it holds decide the
+// lane. State management is whichever of Bloc, Riverpod, Provider or GetX
+// the app chose, read from the base types and the riverpod annotation.
+// ---------------------------------------------------------------------------
+
+const FLUTTER_WIDGETS = ["StatelessWidget", "StatefulWidget", "ConsumerWidget", "ConsumerStatefulWidget", "HookWidget", "HookConsumerWidget", "StatelessHookWidget", "GetView", "GetWidget"]
+export const isFlutterScreen = (f: ClassFacts) =>
+  f.annotations.has("RoutePage") || (FLUTTER_WIDGETS.some(w => f.supertypes.has(w)) && /(Screen|Page|Route|View)$/.test(f.name))
+
+export const FLUTTER: FrameworkProfile = {
+  language: ["dart"],
+  id: "flutter",
+  label: "Flutter",
+  detect: { imports: ["flutter/", "flutter_riverpod/", "hooks_riverpod/", "flutter_bloc/", "get/"], supertypes: ["StatelessWidget", "StatefulWidget"] },
+  lanes: [
+    { id: "screens", label: "Screens", color: "blue", annotations: ["RoutePage"], rule: isFlutterScreen, ruleFirst: true, hint: "Widgets named for a screen or page" },
+    { id: "widgets", label: "Widgets", color: "blue", supertypes: [...FLUTTER_WIDGETS, "State", "ConsumerState", "CustomPainter", "CustomClipper", "RenderBox", "SingleChildRenderObjectWidget", "InheritedWidget"], hint: "Everything else that builds UI" },
+    { id: "state", label: "State management", color: "green", annotations: ["riverpod", "Riverpod", "injectable", "singleton", "lazySingleton"], supertypes: ["Bloc", "Cubit", "ChangeNotifier", "StateNotifier", "Notifier", "AsyncNotifier", "ValueNotifier", "GetxController", "StateNotifierProvider"], nameSuffixes: ["Bloc", "Cubit", "Notifier", "Controller", "Provider", "Store", "ViewModel", "Logic"], hint: "Bloc, Riverpod, Provider, GetX" },
+    { id: "data", label: "Data & Services", color: "amber", supertypes: ["Table", "DatabaseAccessor", "GeneratedDatabase"], imports: ["dio/", "http/", "drift/", "sqflite/", "isar/", "hive/", "shared_preferences/", "cloud_firestore/", "supabase_flutter/"], nameSuffixes: ["Repository", "Api", "Client", "Service", "Dao", "DataSource", "Database"], hint: "Network, storage, platform services" },
+    { id: "models", label: "Models", color: "violet", annotations: ["freezed", "Freezed", "JsonSerializable", "collection", "HiveType", "immutable"], supertypes: ["Equatable"], rule: looksLikeModel, hint: "Data shapes" },
+    { id: "other", label: "Utilities & Other", color: "neutral", hint: "Everything unclassified" },
+  ],
+  fallback: "other",
+}
+
+// React Native: React with native modules and screens behind a navigator.
+const isRNComponent = (f: ClassFacts) => /^[A-Z]/.test(f.name) && !f.isInterface && (!f.file || /\.[jt]sx$/.test(f.file))
+
+export const REACT_NATIVE: FrameworkProfile = {
+  language: "typescript",
+  id: "react-native",
+  label: "React Native",
+  refines: "react",
+  weight: 4,
+  detect: { imports: ["react-native", "expo", "expo-", "@react-navigation/", "expo-router"] },
+  lanes: [
+    { id: "screens", label: "Screens", color: "blue", rule: (f) => isRNComponent(f) && /(Screen|Page|Route|Modal)$/.test(f.name), ruleFirst: true, hint: "Components named for a screen" },
+    { id: "components", label: "Components", color: "blue", rule: isRNComponent, ruleFirst: true, hint: "Named in Pascal case, in a .tsx or .jsx file" },
+    { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), hint: "Reusable stateful logic" },
+    { id: "state", label: "State", color: "green", imports: ["@reduxjs/toolkit", "react-redux", "zustand", "jotai", "mobx", "@tanstack/react-query", "recoil"], nameSuffixes: ["Store", "Slice", "Reducer", "Context"], hint: "Stores and server state" },
+    { id: "native", label: "Native bridges", color: "red", imports: ["react-native/Libraries", "expo-modules-core"], nameSuffixes: ["Module", "NativeModule", "Spec"], hint: "Where JavaScript calls native code" },
+    { id: "data", label: "Data & Clients", color: "amber", imports: ["axios", "@apollo/client", "graphql-request", "@atproto/api"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: "What talks to a server" },
+    { id: "other", label: "Types & Other", color: "neutral", hint: "Everything unclassified" },
+  ],
+  fallback: "other",
 }
 
 /** No framework: lanes from what the code does, with naming only as a tiebreaker. */
@@ -531,6 +659,9 @@ export const PROFILES: FrameworkProfile[] = [
   ASPNET,
   LARAVEL, SYMFONY,
   KTOR,
+  IOS, TCA,
+  FLUTTER,
+  REACT_NATIVE,
   STRUCTURE,
 ].map(withUnclassified)
 
@@ -540,7 +671,7 @@ export const PROFILES: FrameworkProfile[] = [
  */
 export function profilesFor(language: Language | null): FrameworkProfile[] {
   if (!language) return PROFILES
-  return PROFILES.filter(p => !p.language || p.language === language)
+  return PROFILES.filter(p => !p.language || (Array.isArray(p.language) ? p.language.includes(language) : p.language === language))
 }
 export const AUTO = "auto"
 const NO_SIGNALS: ClassSignals = { inDegree: 0, outDegree: 0 }
@@ -610,9 +741,14 @@ export function detectFramework(facts: Iterable<ClassFacts>, language: Language 
     .filter(c => c.strong + c.weak > 0)
   // Quarkus, Micronaut and Dropwizard are built on the Jakarta standard, so
   // Jakarta EE votes are theirs when any of them shows strong evidence.
-  const specific = candidates.some(c => (profileById(c.id).weight ?? 1) >= 4 && c.strong > 0)
+  const specific = candidates.some(c => (profileById(c.id).weight ?? 1) >= 4 && c.strong > 0 && !profileById(c.id).refines)
   const demoted = new Set<string>()
   if (specific) for (const c of candidates) if (c.id === JAKARTA.id) { c.score = Math.floor(c.score / 4); demoted.add(c.id) }
+  for (const c of candidates) {
+    const general = profileById(c.id).refines
+    if (!general || c.strong < 3) continue
+    for (const g of candidates) if (g.id === general) { g.score = Math.floor(g.score / 4); demoted.add(g.id) }
+  }
   candidates.sort((a, b) => b.score - a.score || b.strong - a.strong)
   const best = candidates[0]
   const runnerUp = candidates.find(c => c !== best && !demoted.has(c.id))
@@ -635,7 +771,7 @@ export function detectFramework(facts: Iterable<ClassFacts>, language: Language 
 
 /** The lane a class lands in: facts, then imports, then structure, then naming, then the fallback. */
 export function classify(profile: FrameworkProfile, facts: ClassFacts, signals: ClassSignals = NO_SIGNALS): string {
-  for (const lane of profile.lanes) if (hasAny(facts.annotations, lane.annotations) || hasAny(facts.supertypes, lane.supertypes) || hasAny(facts.legacy, lane.legacy)) return lane.id
+  for (const lane of profile.lanes) if (hasAny(facts.annotations, lane.annotations) || hasAny(facts.supertypes, lane.supertypes) || hasAny(facts.legacy, lane.legacy) || (lane.ruleFirst && lane.rule?.(facts, signals))) return lane.id
   for (const lane of profile.lanes) if (importsAny(facts.usedImports ?? facts.imports, lane.imports)) return lane.id
   for (const lane of profile.lanes) if (lane.rule && lane.rule(facts, signals)) return lane.id
   for (const lane of profile.lanes) if (lane.nameSuffixes?.some(suffix => facts.name.endsWith(suffix) && facts.name !== suffix)) return lane.id

@@ -70,6 +70,28 @@
         </path>
       </g>
     </svg>
+
+    <!-- The same picture as one SVG, for a report or an export: rows drawn
+         as text and bars beside the arcs. Off screen, but in the page, so
+         the figure pipeline can read its colours. -->
+    <svg ref="exportSvg" :width="EXPORT_W" :height="rows.length * PITCH"
+         :viewBox="'0 0 ' + EXPORT_W + ' ' + (rows.length * PITCH)"
+         aria-hidden="true" style="position: absolute; left: -10000px; top: 0; pointer-events: none">
+      <g v-for="(lane, i) in rows" :key="'x' + lane.id" :transform="'translate(0,' + i * PITCH + ')'">
+        <circle cx="6" :cy="PITCH / 2" r="4" :fill="colourOf(lane.color)"/>
+        <text x="18" :y="PITCH / 2 + 4" font-size="13" fill="rgb(var(--c-neutral-800))">{{ lane.label }}</text>
+        <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W" height="7" rx="3.5" fill="rgb(var(--c-neutral-100))"/>
+        <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W * share(lane.count) / 100" height="7" rx="3.5" :fill="colourOf(lane.color)" fill-opacity="0.75"/>
+        <text :x="LABEL_W + BAR_W + 44" :y="PITCH / 2 + 4" font-size="11" text-anchor="end" font-family="ui-monospace, monospace" fill="rgb(var(--c-neutral-500))">{{ lane.count }}</text>
+      </g>
+      <g :transform="'translate(' + (EXPORT_W - GUTTER) + ',0)'">
+        <g v-for="link in links" :key="'x' + link.key">
+          <path :d="arc(link)" fill="none" stroke="rgb(var(--c-neutral-400))" :stroke-width="link.weight" :stroke-opacity="0.5 * (1 - link.against)" stroke-linecap="round"/>
+          <path v-if="link.against > 0" :d="arc(link)" fill="none" stroke="rgb(var(--c-red-500))" :stroke-width="link.weight" :stroke-opacity="link.against" stroke-linecap="round"/>
+          <path :d="head(link)" :fill="link.against > 0.5 ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-neutral-400))'" fill-opacity="0.9"/>
+        </g>
+      </g>
+    </svg>
   </div>
 </template>
 
@@ -77,6 +99,7 @@
 import { computed, ref } from "vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "~/features/units/graph"
+import { useSvgFigure } from "~/features/export/useExportables"
 
 const PITCH = 36
 const GUTTER = 124
@@ -90,6 +113,15 @@ const props = defineProps<{
   flows: LaneFlow[]
 }>()
 defineEmits<{ (e: "lane", id: string): void; (e: "flow", a: string, b: string): void }>()
+
+// The export copy's layout: label, bar, count, then the arcs.
+const LABEL_W = 170
+const BAR_W = 200
+const EXPORT_W = LABEL_W + BAR_W + 56 + GUTTER
+const colourOf = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400))" : `rgb(var(--c-${c}-500))`)
+const exportSvg = ref<SVGSVGElement | null>(null)
+// A report slot asks for this when a boundary between two lanes has nothing crossing it.
+useSvgFigure("How the layers lean", () => (rows.value.length ? exportSvg.value : null))
 
 const hoveredLink = ref<string | null>(null)
 const hoveredLane = ref<string | null>(null)

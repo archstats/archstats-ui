@@ -2,7 +2,8 @@
   <!-- Add to report: what a view hands over, shown where it will land in the
        report, with the words around it written before it goes in. -->
   <Teleport to="body">
-    <div v-if="draftSrc" class="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-950/25 p-6" @mousedown.self="close">
+    <!-- In a figure-taking run the strip above the view takes it; this sheet opens only for Adjust. -->
+    <div v-if="draftSrc && (!reports.takeQueue || reports.adjusting)" class="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-950/25 p-6" @mousedown.self="close">
       <div
         class="ui-popover flex h-[min(780px,92vh)] w-[1160px] max-w-[96vw] flex-col overflow-hidden animate-in"
         role="dialog"
@@ -193,6 +194,7 @@
                   <h3 class="ui-label flex-1">Columns</h3>
                   <span class="font-mono text-[11px] text-neutral-500">{{ columns.size }} of {{ src.table.columns.length }}</span>
                 </div>
+                <p v-if="columns.size < src.table.columns.length" class="mb-1.5 text-[11px] leading-4 text-neutral-500">{{ src.table.columns.length - columns.size }} {{ src.table.columns.length - columns.size === 1 ? "column is" : "columns are" }} left out of the report. Tick a column to keep it.</p>
                 <ul class="-mx-1 flex flex-col">
                   <li v-for="(c, i) in src.table.columns" :key="c.id">
                     <label class="flex cursor-default items-center gap-2 rounded px-1 py-1 hover:bg-neutral-200/60">
@@ -396,8 +398,10 @@ watch(draftSrc, (s) => {
   if (s.table) {
     const n = s.table.rows.length;
     rows.value = n <= 25 ? n : 10;
-    // A wide table keeps the name and four more columns; the rest are a click away.
-    columns.value = new Set(s.table.columns.slice(0, 5).map(c => c.id));
+    // Filling a template's slot keeps every column: the template asked for this
+    // table as it is (a matrix cut to five columns read as "no dependency").
+    // Added by hand, a wide table keeps the name and four more; the rest are a click away.
+    columns.value = new Set((f ? s.table.columns : s.table.columns.slice(0, 5)).map(c => c.id));
   }
   draft.value = s.kind === "document"
     ? fromMarkdown(s.markdown ?? "")
@@ -578,7 +582,11 @@ async function add(open: boolean) {
     adding.value = false;
   }
 }
-function close() { if (inQueue.value) taking.pause(); else reports.importing = null; }
+function close() {
+  // Adjusting a take: back to the strip, the take still in hand.
+  if (reports.takeQueue && reports.adjusting) { reports.adjusting = false; return; }
+  if (inQueue.value) taking.pause(); else reports.importing = null;
+}
 function onKey(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); void add(fillMode.value || inQueue.value ? true : e.shiftKey); return; }
   if (e.key === "Escape" && !editingId.value) { e.preventDefault(); close(); }

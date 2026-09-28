@@ -416,7 +416,7 @@ export function useDimensionStudio() {
   );
 
   return {
-    loading, load, input, index, linesOf, style,
+    loading, load, error: suggest.error, input, index, linesOf, style,
     way, wayId, setWay, fitness, fitnessFor, suggestedNameReading,
     allComponents, unplaced, bundles, filesOf, shares, splitOf, question, upNext, closest, guessesFor, groupRefs, colorOf,
     splitHere, canSplit, reshuffled, near, noteTouched, tearsFor, tornCount,

@@ -25,6 +25,15 @@ export const REVISION_REASONS: Record<number, string[]> = {
         "File pairs that change together are recorded with how much of each side they cover.",
         "An ambiguous runtime lookup resolves the same way on every scan.",
     ],
+    6: [
+        "Indentation is measured at the width each project uses (its Prettier config or .editorconfig, else the file's own), so two-space code is no longer read as half as deep.",
+    ],
+    7: [
+        "Swift, Objective-C and Dart are read: iOS and Flutter code has components, edges and classes.",
+        "Swift packages, Xcode targets and Dart packages are modules; Gradle modules are named by project path, and dependencies written as projects.x.y are read.",
+        "Kotlin annotations mark the declaration they are written on, functions included, so composables are marked.",
+        "What an app declares to its platform (activities, permissions, URL schemes, entitlements) is recorded, and mobile apps are deployables with their stack.",
+    ],
 }
 
 /** Every reason between the revision a snapshot was written with and the current one. */

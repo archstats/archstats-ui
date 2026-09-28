@@ -23,6 +23,7 @@ const VIEWS: Record<string, ViewDef> = {
             { key: "level", label: "Level", fallback: "groups", always: true, values: { groups: "By group", components: "Components", files: "Files" } },
             { key: "source", label: "Connections", fallback: "static", values: { static: "Imports", git: "Changed together", combined: "Imports and co-change" } },
             { key: "order", label: "Order", fallback: "", values: { "": "As laid out", levels: "By levels", name: "By name" } },
+            { key: "relation", label: "Pairs", fallback: "all", values: { all: "All", "no-import": "Without an import" } },
             { key: "sel", label: "Selected", fallback: "", values: {} },
         ],
     },
@@ -31,6 +32,7 @@ const VIEWS: Record<string, ViewDef> = {
         settings: [
             { key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } },
             { key: "layout", label: "Layout", fallback: "packed", values: { packed: "Packed", flat: "Flat" } },
+            { key: "preset", label: "Preset", fallback: "hotspots", values: { hotspots: "Hotspots", churn: "Churn against health", instability: "Instability", age: "Code age", nesting: "Nesting depth" } },
         ],
     },
     "/views/components/cycles": { name: "Cycles", settings: [{ key: "component", label: "Around", fallback: "", values: {} }] },
@@ -44,8 +46,15 @@ const VIEWS: Record<string, ViewDef> = {
     },
     "/views/metrics": {
         name: "Metrics",
-        settings: [{ key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } }],
+        settings: [
+            { key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } },
+            { key: "view", label: "Shown as", fallback: "table", values: { table: "Table", plot: "Plot" } },
+            { key: "preset", label: "Preset", fallback: "", values: { dms: "Distance to Main Sequence", "dms-changes": "DMS vs Code Changes", "churn-health": "Churn against health", "churn-complexity": "Churn against complexity", "authors-churn": "Authors vs Churn", "betweenness-churn": "Betweenness vs Churn", "age-churn-dms": "Age vs Churn vs DMS" } },
+        ],
     },
+    "/views/units": { name: "Units", settings: [{ key: "flow", label: "Between", fallback: "", values: {} }] },
+    "/views/changes": { name: "Changes", settings: [] },
+    "/": { name: "Overview", settings: [] },
     "/views/libraries": { name: "Libraries", settings: [] },
     "/views/rules": { name: "Rules", settings: [] },
     "/views/trends": { name: "Trends", settings: [] },
@@ -92,6 +101,9 @@ export function compareSettings(asked: string, got: string | null): SettingRow[]
         if (!d.always && !a.query.has(d.key) && !differs) continue
         rows.push({ label: d.label, asked: show(d, av), got: gv === undefined ? undefined : show(d, gv), ok: !differs })
     }
+    // The Files facet is a setting the run applies, not part of the view's address.
+    const facet = a.query.get("facet")
+    if (facet) rows.push({ label: "Files", asked: facet === "test" ? "Tests" : facet === "production" ? "Production" : "All", ok: true })
     return rows
 }
 

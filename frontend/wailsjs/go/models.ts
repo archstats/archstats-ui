@@ -132,6 +132,20 @@ export namespace app {
 	        this.canExport = source["canExport"];
 	    }
 	}
+	export class PrintedPDF {
+	    pdf: string;
+	    pages: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrintedPDF(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pdf = source["pdf"];
+	        this.pages = source["pages"];
+	    }
+	}
 	export class SaveRequest {
 	    defaultName: string;
 	    title: string;
@@ -645,6 +659,7 @@ export namespace report {
 	    code: string;
 	    table?: Table;
 	    image: string;
+	    tone: string;
 	    title: string;
 	    caption: string;
 	    provenance: string;
@@ -662,6 +677,7 @@ export namespace report {
 	        this.code = source["code"];
 	        this.table = this.convertValues(source["table"], Table);
 	        this.image = source["image"];
+	        this.tone = source["tone"];
 	        this.title = source["title"];
 	        this.caption = source["caption"];
 	        this.provenance = source["provenance"];

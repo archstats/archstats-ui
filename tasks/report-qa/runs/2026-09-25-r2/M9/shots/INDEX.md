@@ -1,0 +1,40 @@
+# Shot index — M9 (npo-data-pipeline), run 2
+
+- `TC-PY-1__G01-gallery-open.png` — Evidence view, "Start a report" gallery dialog just opened, Python codebase review pre-selected.
+- `TC-PY-1__G02-template-selected-band.png` — Python codebase review selected, band + top of preview visible.
+- `TC-PY-1__G03-preview-scrolled.png` — Preview scrolled once (packages table area).
+- `TC-PY-1__C01-take-figure1-dependency-structure.png` — Take flow, Figure 1 "Dependency structure" (Connections graph), 1 of 2.
+- `TC-PY-1__C02-take-table3-libraries.png` — Take flow, Table 3 "Libraries", 2 of 2.
+- `TC-PY-1__L01-landed-after-run.png` — Landing page right after the take run finishes (report open on Evidence).
+- `TC-PY-1__R01-report-top.png` — Report top, before scrolling.
+- `TC-PY-1__R02-findings-outline-jump.png` — After clicking "Findings" in the outline; scrolled to that section.
+- `TC-PY-1__R03-findings-prompt.png` — Findings section showing the grey italic prompt.
+- `TC-PY-1__R04-top-after-outline-click.png` — After clicking "The code" in the outline; report top with intro prompt and Table 1.
+- `TC-PY-1__R05-table1-scrolled.png` — Table 1 expanded to 19 rows, Cell pane closed.
+- `TC-PY-1__R06-cellpane-computed-paragraph.png` — Cell pane for the "Size and languages" computed paragraph.
+- `TC-PY-1__W01-prompt-before.png` — Top prompt before clicking (placeholder text).
+- `TC-PY-1__W02-prompt-clicked.png` — Top prompt just clicked, cursor active.
+- `TC-PY-1__W03-prompt-typing.png` — Top prompt mid-typing.
+- `TC-PY-1__W04-prompt-after-escape.png` — Top prompt after Escape, text committed.
+- `TC-PY-1__W05-findings-prompt-filled.png` — Findings prompt filled and committed.
+- `TC-PY-1__P01-pdf-preview.png` — PDF preview sheet, page 1, A4, 4 pages · 238 KB.
+- `TC-PY-1__P02-saved-pdf-line.png` — "Saved to …" confirmation line after Save PDF.
+- `tmp-check.png` — scratch shot used to locate the "computed" paragraph's click target (same view as R05/R06).
+- `tmp-findings.png` — scratch shot used to locate the Findings prompt's click target (same view as R03).
+- `TC-QW-TEST-1__G01-template-selected-band.png` — Gallery reopened for a new report ("Where tests are missing" selected).
+- `TC-QW-TEST-1__G02-preview-scrolled.png` — Full band + preview for "Where tests are missing": title and two prompts, no evidence sections.
+- `TC-QW-TEST-1__L01-landed-after-create.png` — Landed on the newly created "Test gaps" report, 0 cells.
+- `TC-QW-TEST-1__R01-report-top.png` — Report top before filling prompts.
+- `TC-QW-TEST-1__W01-first-prompt-filled.png` — First prompt ("What prompted this") filled.
+- `TC-QW-TEST-1__W02-both-prompts-filled.png` — Both prompts filled and committed.
+- `TC-QW-TEST-1__P01-pdf-preview.png` — PDF preview sheet, 1 page · A4 · 21 KB.
+- `TC-QW-TEST-1__P02-saved-pdf-line.png` — "Saved to …" confirmation line.
+- `TC-QW-CLEAN-1__G01-template-selected-band.png` — Gallery, "Cleanup candidates" selected, band visible.
+- `TC-QW-CLEAN-1__G02-preview-scrolled.png` — Full band + preview: intro prompt, "Components nothing imports" section, Table 1 slot, "What goes" prompt.
+- `TC-QW-CLEAN-1__L01-landed-after-create.png` — Landed on the newly created report, Table 1 populated (query auto-ran), title already clipped.
+- `TC-QW-CLEAN-1__R01-table1-cellpane.png` — Table 1 selected, Cell pane showing the SQL query and run metadata.
+- `TC-QW-CLEAN-1__W01-first-prompt-filled.png` — Intro prompt filled and committed.
+- `TC-QW-CLEAN-1__W02-both-prompts-filled.png` — "What goes" prompt filled and committed (after redoing the click correctly).
+- `TC-QW-CLEAN-1__P01-pdf-preview.png` — PDF preview sheet, 1 page · A4 · 28 KB; title renders in full here (contrast with in-app clipping).
+- `TC-QW-CLEAN-1__P02-saved-pdf-line.png` — "Saved to …" confirmation line.
+- `tmp-whatgoes.png` / `tmp-whatgoes2.png` — scratch shots while locating/diagnosing the "What goes" prompt click target (see HARNESS (void) note in TC-QW-CLEAN-1).

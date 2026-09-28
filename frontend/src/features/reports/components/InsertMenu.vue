@@ -207,7 +207,7 @@ const rows = computed<Row[]>(() => {
   const q = query.value.trim();
   const list = q
     ? all.value
-      .map(r => ({ r, s: fuzzyScore(q, `${r.label} ${r.hint ?? ""}`, -1) }))
+      .map(r => ({ r, s: fuzzyScore(q, `${r.label} ${r.hint ?? ""} ${r.group}`, -1) }))
       .filter(x => x.s !== null)
       .sort((a, b) => (b.s as number) - (a.s as number))
       .map(x => x.r)
@@ -232,7 +232,7 @@ function choose(r: Row | undefined) {
   if (r.kind === "text") emit("choose", { type: "text", kind: r.textKind!, lang: r.lang });
   else if (r.kind === "reading") emit("choose", { type: "cell", spec: { type: "reading", reading: r.reading! } });
   else if (r.kind === "pin") emit("choose", { type: "cell", spec: { type: "pin", pinId: r.pin!.id } });
-  else if (r.kind === "table") emit("choose", { type: "cell", spec: { type: "table", source: r.preset!.source, columns: r.preset!.columns, sort: r.preset!.sort, desc: r.preset!.desc, limit: limit.value }, title: r.preset!.label });
+  else if (r.kind === "table") emit("choose", { type: "cell", spec: { type: "table", source: r.preset!.source, columns: r.preset!.columns, sort: r.preset!.sort, desc: r.preset!.desc, limit: limit.value, ...(r.preset!.scope ? { scope: r.preset!.scope } : {}) }, title: r.preset!.label });
   else emit("choose", { type: "cell", spec: { type: "sql", sql: r.sql ?? "SELECT name, complexity__lines\nFROM components\nORDER BY complexity__lines DESC", limit: 50 }, title: r.sql ? r.label : "" });
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { changesMarkdown, countChanges, isUnchanged, pickSides, summaryLine, type ChangeSet } from "./changes"
+import { normalizeChangeSet, changesMarkdown, countChanges, isUnchanged, pickSides, summaryLine, type ChangeSet } from "./changes"
 
 const scans = [
     { id: "new", startedAt: "2026-09-22T10:00:00Z", headTime: "2026-09-22T09:00:00Z", status: "complete" },
@@ -8,6 +8,16 @@ const scans = [
 ]
 
 describe("pickSides", () => {
+    it("compares against another commit rather than a rescan of head's own", () => {
+        const scans = [
+            { id: "head", status: "complete", headCommit: "c2", headTime: "2026-09-25T09:09:00Z", startedAt: "2026-09-25T17:30:00Z" },
+            { id: "rescan", status: "complete", headCommit: "c2", headTime: "2026-09-25T09:09:00Z", startedAt: "2026-09-25T17:29:00Z" },
+            { id: "before", status: "complete", headCommit: "c1", headTime: "2026-09-24T19:59:00Z", startedAt: "2026-09-24T20:00:00Z" },
+        ] as any[]
+        expect(pickSides(scans, { head: "head" }).base?.id).toBe("before")
+        expect(pickSides(scans.slice(0, 2), { head: "head" }).base?.id).toBe("rescan")
+    })
+
     it("defaults to the scan of the code just before head", () => {
         expect(pickSides(scans, { head: "new" })).toMatchObject({ base: { id: "old" }, head: { id: "new" }, swapped: false })
     })
@@ -38,5 +48,12 @@ describe("summary", () => {
         const empty = countChanges({ ...cs, componentsAdded: [], edgesAdded: [], tangles: [] })
         expect(isUnchanged(empty)).toBe(true)
         expect(summaryLine(empty)).toBe("No structural changes")
+    })
+
+    it("turns the lists Go sends as null into empty lists", () => {
+        const cs = normalizeChangeSet({ tangles: [{ kind: "formed", before: null, after: ["a", "b"], joined: null, left: null }], edgesAdded: [{ from: "a", to: "b", refs: 1, files: null }] } as any)
+        expect(cs.tangles![0].before).toEqual([])
+        expect((cs.edgesAdded![0] as any).files).toEqual([])
+        expect(changesMarkdown(cs, "a", "b")).toContain("formed")
     })
 })

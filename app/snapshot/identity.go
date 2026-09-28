@@ -70,7 +70,7 @@ func ReadIdentity(path string, scannedAt time.Time) (store.ScanIdentity, error) 
 
 func hasTable(db *sql.DB, name string) bool {
 	var n int
-	return db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, name).Scan(&n) == nil && n > 0
+	return db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`, name).Scan(&n) == nil && n > 0
 }
 
 func parseTime(s string) (time.Time, bool) {

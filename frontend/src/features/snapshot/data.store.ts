@@ -269,7 +269,8 @@ export const useDataStore = defineStore('data', {
 
         async _initializeState() {
             // Populate viewNames
-            const viewResults = await this.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table'");
+            // Views count: git_commits is a view over two tables from revision 4.
+            const viewResults = await this.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')");
             this._viewNames = viewResults.map(x => x.name);
 
             // Which analysis wrote this snapshot, against the one this build runs.

@@ -20,6 +20,7 @@ import { componentLabel } from "~/features/navigation/routes";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { queryFileImportEdges } from "./fileImports";
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
+import { fileCoChangePairs, sweepingLimit } from "~/features/snapshot/fileCoChange";
 import {
   type CEdge, type CNode, type CycleMode, type Level, type RawEdge, type Source,
   buildTreeNodes, cycleEdgeKeys, directedReferenceEdges, levelOf, normalizeEdges, presetOpenIds,
@@ -94,7 +95,7 @@ export function useConnectionsModel(opts: {
     const [files, importEdges, gitRows] = await Promise.all([
       store.query<FileRow>(`select name, component, complexity__lines as lines, codesmells__code_health as health, codesmells__hotspot_score as hotspot from files`),
       queryFileImportEdges(sql => store.query(sql), v => store.hasView(v)),
-      store.hasView("file_matrix") ? store.query<{ from: string; to: string; sharedCommits: number }>(`select "from", "to", git_co_changes as sharedCommits from file_matrix where git_co_changes > 0`) : Promise.resolve([]),
+      store.hasView("git_commits") ? fileCoChangePairs(sql => store.query(sql), sweepingLimit(store.snapshotInfo)).then(rows => rows.map(r => ({ from: r.from, to: r.to, sharedCommits: r.shared }))) : Promise.resolve([]),
     ]);
     return { files, staticEdges: directedReferenceEdges(importEdges), gitEdges: undirectedSharedCommitEdges(gitRows) };
   }, [needFiles], { initial: EMPTY_FILES });

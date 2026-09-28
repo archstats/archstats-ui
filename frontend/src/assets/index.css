@@ -38,6 +38,137 @@
   font-display: block;
 }
 
+/* Source Serif 4 (Adobe, OFL): the reading face of a report's prose, on the page and in the PDF. */
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4-It.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4-Semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4-SemiboldIt.woff2") format("woff2");
+  font-weight: 600;
+  font-style: italic;
+  font-display: block;
+}
+
+/* ── The report page ────────────────────────────────────────────────────── */
+/* A report is set as the PDF prints it: an A4 page (1 CSS mm is 1 mm at
+   100%), white in either appearance, prose in Source Serif 4 at 12 pt on
+   1.5 leading over a 156 mm column between even 27 mm margins (about 75
+   characters), headings, tables and labels in Inter, names and code in
+   JetBrains Mono. The editor's run buttons sit in the left margin; nothing
+   of them prints. */
+.paper {
+  --doc-serif: "Source Serif 4", "Iowan Old Style", Charter, Georgia, serif;
+  --doc-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --doc-mono: "JetBrains Mono", ui-monospace, monospace;
+  --doc-body: 12pt;
+  --doc-lh: 1.5;
+  --doc-ink: rgb(var(--c-neutral-900));
+  --doc-soft: rgb(var(--c-neutral-650));
+  background: rgb(255 255 255);
+  color: var(--doc-ink);
+  font-kerning: normal;
+  /* Not the app's Inter alternates (cv11, ss01, calt): an alternate glyph has
+     no character behind it in a PDF, so an "a", a "4" or the colon in 16:12
+     would not copy, search or read aloud. */
+  font-feature-settings: "calt" 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+.paper-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 22mm 27mm 32mm 27mm;
+  box-shadow: 0 1px 2px rgb(15 18 28 / 0.06), 0 8px 28px -6px rgb(15 18 28 / 0.14), 0 0 0 1px rgb(15 18 28 / 0.05);
+}
+/* Prose in the reading face: paragraphs, list items, quotes and computed paragraphs. */
+.doc-prose { font-family: var(--doc-serif, "Source Serif 4", Georgia, serif); font-size: var(--doc-body, 12pt); line-height: var(--doc-lh, 1.5); color: var(--doc-ink, rgb(var(--c-neutral-900))); font-feature-settings: "kern", "liga"; hanging-punctuation: first; }
+.doc-prose strong, .doc-prose b { font-weight: 600; color: rgb(var(--c-neutral-950)); font-variant-numeric: lining-nums tabular-nums; }
+.doc-prose em, .doc-prose i { font-style: italic; }
+.doc-prose code { font-family: var(--doc-mono); font-size: 0.8em; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-neutral-100) / 0.7); border-radius: 3px; padding: 0.05em 0.3em; overflow-wrap: anywhere; }
+
+/* The report's type: one setting for the editor's page and the printed PDF
+   (features/reports/reportPrint.ts prints these same classes). */
+.doc-title { font-family: var(--doc-sans); font-size: 22pt; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; color: rgb(var(--c-neutral-950)); }
+.doc-rule { margin-top: 3mm; height: 0.7mm; width: 24mm; background: rgb(var(--c-accent-500)); }
+.doc-meta { font-family: var(--doc-sans); font-size: 8pt; line-height: 1.5; color: rgb(var(--c-neutral-500)); }
+.doc-rule + .doc-meta { margin-top: 4mm; }
+.nb-p, .nb-li, .nb-quote { padding: 4pt 0; }
+.nb-explain { color: var(--doc-soft, rgb(var(--c-neutral-650))); }
+.nb-h1, .nb-h2, .nb-h3 { font-family: var(--doc-sans, "Inter", sans-serif); font-weight: 600; color: rgb(var(--c-neutral-950)); }
+.nb-h1 { font-size: 16pt; line-height: 1.25; letter-spacing: -0.012em; padding: 20pt 0 4pt; }
+.nb-h2 { font-size: 13pt; line-height: 1.3; letter-spacing: -0.006em; padding: 16pt 0 3pt; }
+.nb-h3 { font-size: 11pt; line-height: 1.35; padding: 11pt 0 1pt; color: rgb(var(--c-neutral-900)); }
+.nb-li { position: relative; padding-left: 1.4em; padding-top: 1.5pt; padding-bottom: 1.5pt; }
+.nb-li .nb-marker { position: absolute; left: 0.3em; color: rgb(var(--c-neutral-400)); font-variant-numeric: tabular-nums; }
+textarea.nb-li { padding-left: 1.4em; }
+.nb-quote { padding-left: 14pt; box-shadow: inset 2px 0 0 rgb(var(--c-neutral-300)); color: rgb(var(--c-neutral-650)); font-style: italic; }
+.nb-code, .nb-source { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 9pt; line-height: 1.6; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-neutral-50)); border-radius: 4px; padding: 10pt 12pt; margin: 6pt 0; }
+.nb-code pre { margin: 0; white-space: pre-wrap; font: inherit; }
+.nb-table table { border-collapse: collapse; font-family: "Inter", sans-serif; font-size: 9.5pt; margin: 6pt 0; }
+.nb-table th { text-align: left; font-weight: 600; color: rgb(var(--c-neutral-600)); padding: 3pt 12pt 3pt 0; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-300)); }
+.nb-table td { padding: 3pt 12pt 3pt 0; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-200)); }
+.nb-rendered a { color: rgb(var(--c-accent-700)); text-decoration: underline; text-decoration-color: rgb(var(--c-accent-300)); text-underline-offset: 3px; }
+.nb-rendered s { color: rgb(var(--c-neutral-500)); }
+
+/* ── The printed report ─────────────────────────────────────────────────── */
+/* Set out beside the app only while the web view prints (reportPrint.ts):
+   hidden on screen, alone in print media, broken into pages by the engine.
+   The margins and the footer come from the print itself (app/webprint). */
+#report-print { position: fixed; left: -100000px; top: 0; width: var(--print-width, 156mm); visibility: hidden; pointer-events: none; }
+.doc-body { margin-top: 7mm; }
+.doc-list { margin: 0; padding: 0; list-style: none; }
+.doc-hr { margin: 20px 0; border: 0; border-top: 1px solid rgb(var(--c-neutral-200)); }
+.doc-figure { margin: 8pt 0 12pt; }
+.doc-fig-title { font-family: var(--doc-sans); font-size: 9.5pt; font-weight: 600; line-height: 1.35; color: rgb(var(--c-neutral-950)); margin-bottom: 4pt; }
+.doc-img { display: block; max-width: 100%; max-height: 225mm; object-fit: contain; object-position: left top; }
+.doc-caption { margin-top: 4pt; font-family: var(--doc-sans); font-size: 8.5pt; font-style: italic; line-height: 1.4; color: rgb(var(--c-neutral-650)); }
+.doc-provenance { margin-top: 2pt; font-family: var(--doc-mono); font-size: 6.8pt; line-height: 1.45; color: rgb(var(--c-neutral-500)); overflow-wrap: anywhere; }
+.doc-data { width: 100%; border-collapse: collapse; font-family: var(--doc-sans); font-size: 7.8pt; line-height: 1.35; color: rgb(var(--c-neutral-800)); }
+.doc-data-sm { font-size: 6.8pt; }
+.doc-data-xs { font-size: 6.2pt; }
+.doc-data th { text-align: left; vertical-align: bottom; font-weight: 600; color: rgb(var(--c-neutral-500)); padding: 0 1.6mm 1.2mm 0; border-bottom: 0.3mm solid rgb(var(--c-neutral-300)); }
+.doc-data td { vertical-align: top; padding: 0.9mm 1.6mm 0.9mm 0; border-bottom: 0.15mm solid rgb(var(--c-neutral-200)); overflow-wrap: anywhere; }
+.doc-data th:last-child, .doc-data td:last-child { padding-right: 0; }
+/* The name column keeps room for a name; the others wrap before it is squeezed. */
+.doc-data td:first-child { min-width: 18ch; }
+.doc-data .doc-r { text-align: right; }
+.doc-data .doc-num { font-family: var(--doc-mono); font-size: 0.94em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.doc-data .doc-ident { font-family: var(--doc-mono); font-size: 0.94em; }
+.doc-data-all { font-family: var(--doc-mono); font-weight: 400; color: rgb(var(--c-neutral-400)); }
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: white !important; }
+  body > :not(#report-print) { display: none !important; }
+  /* WebKit lays a printed page out 1.25 times wider than the paper and sets
+     a CSS px at 0.8 pt, not 0.75 (printingMinimumShrinkFactor); the zoom
+     takes that back, so 12 pt prints as 12 pt and lines wrap as measured. */
+  #report-print { position: static; width: auto; visibility: visible; zoom: 0.9375; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Figures, list items, code and table rows stay whole. WebKit ignores
+     break-after: avoid, so what keeps a heading with what follows it is a
+     forced break set by reportPrint.ts (keepTogether). */
+  #report-print :is(.doc-figure-image, .nb-code, .nb-li, .nb-quote, tr, .doc-head) { break-inside: avoid; }
+  #report-print .doc-prose { orphans: 2; widows: 2; }
+  #report-print thead { display: table-header-group; }
+}
+
 /* ── Base ───────────────────────────────────────────────────────────────── */
 @layer base {
   :root {

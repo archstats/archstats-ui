@@ -24,7 +24,9 @@ describe("figure contract", () => {
         const at = css.indexOf("@media (prefers-color-scheme: dark)")
         const read = (block: string) => Object.fromEntries([...block.matchAll(/(--c-[\w-]+):\s*(\d+ \d+ \d+);/g)].map(m => [m[1], m[2]]))
         const ambiguous: string[] = []
-        const map = lightPairs(read(css.slice(0, at)), read(css.slice(at)), ambiguous)
+        // The dark block only: the paper after it re-declares the light values for a report page.
+        const end = css.indexOf(".paper", at)
+        const map = lightPairs(read(css.slice(0, at)), read(css.slice(at, end < 0 ? undefined : end)), ambiguous)
         // Two dark tokens sharing a colour with different light ones: add one to REMAP_PREFERRED, or give them different dark values.
         expect(ambiguous).toEqual([])
         expect(map.size).toBeGreaterThan(20)

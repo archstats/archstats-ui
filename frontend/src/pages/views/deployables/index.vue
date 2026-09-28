@@ -318,7 +318,7 @@ import EvidenceLine from "~/features/deployables/components/EvidenceLine.vue"
 import StageStrip from "~/features/deployables/components/StageStrip.vue"
 import { useDeployables } from "~/features/deployables/useDeployables"
 import {
-  BUILT_BY_LABEL, KIND_LABEL, LINK_LABEL, SYSTEM_LABEL, UNRESOLVED_LABEL, calledBy, componentsOf, envDiff, environmentsOf,
+  BUILT_BY_LABEL, KIND_LABEL, LINK_LABEL, PLATFORM_LABEL, SYSTEM_LABEL, UNRESOLVED_LABEL, calledBy, componentsOf, envDiff, environmentsOf,
   list, pinOf, pipelinesOf, proposeLens, spread, talksTo, technology, type Deployable, type Link,
 } from "~/features/deployables/deployables"
 import { componentPath } from "~/features/navigation/routes"
@@ -385,7 +385,8 @@ const builtSentence = computed(() => {
   const how = BUILT_BY_LABEL[d.built_by] ?? d.built_by
   const kind = (KIND_LABEL[d.kind] ?? d.kind).toLowerCase()
   const on = d.base_image ? ` on ${d.base_image.split("@")[0]}` : ""
-  return `An ${kind === "image" ? "image" : kind === "app" ? "app" : kind} built by ${how}${on}, holding ${fmt(d.files)} production files in ${fmt(d.components)} components.`
+  const platform = d.platform ? ` for ${PLATFORM_LABEL[d.platform] ?? d.platform}` : ""
+  return `${/^[aeiou]/.test(kind) ? "An" : "A"} ${kind}${platform} built by ${how}${on}, holding ${fmt(d.files)} production files in ${fmt(d.components)} components.`
 })
 
 const talks = computed(() => picked.value ? talksTo(model.value, picked.value.id) : talksTo(model.value, ""))
@@ -463,7 +464,7 @@ const DeployableHeader = defineComponent({
     return () => h("div", { class: "flex flex-col gap-0.5" }, [
       h("h2", { class: "break-all font-mono text-base font-medium text-neutral-900" }, props.d.id),
       h("p", { class: "text-xs text-neutral-500" }, [
-        `${KIND_LABEL[props.d.kind] ?? props.d.kind}${props.d.runtime ? " · " + props.d.runtime : ""}${props.d.repository ? " · " + props.d.repository : ""}`,
+        `${KIND_LABEL[props.d.kind] ?? props.d.kind}${props.d.platform ? " · " + (PLATFORM_LABEL[props.d.platform] ?? props.d.platform) : ""}${props.d.runtime ? " · " + props.d.runtime : ""}${props.d.repository ? " · " + props.d.repository : ""}`,
       ]),
       h(EvidenceLine, { file: props.d.file, line: props.d.line }),
     ])

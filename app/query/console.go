@@ -21,6 +21,8 @@ const (
 	ConsoleDriver   = "sqlite3_console"
 	ConsoleRows     = 5000
 	ConsoleTimeout  = 10 * time.Second
+	// ReportTimeout gives a report's own queries longer: they run unattended, over the whole snapshot.
+	ReportTimeout   = 30 * time.Second
 	ConsoleCellSize = 4096
 	sqliteRecursive = 33 // SQLITE_RECURSIVE, not exported by the driver
 )
@@ -87,6 +89,15 @@ func inStringsOnly(q string) bool {
 
 // Console runs one read-only statement against a scan's snapshot file.
 func (s *Service) Console(scanID, sqlStr string) (*Limited, error) {
+	return s.consoleWithin(scanID, sqlStr, ConsoleTimeout)
+}
+
+// ReportConsole is Console with the report's longer timeout.
+func (s *Service) ReportConsole(scanID, sqlStr string) (*Limited, error) {
+	return s.consoleWithin(scanID, sqlStr, ReportTimeout)
+}
+
+func (s *Service) consoleWithin(scanID, sqlStr string, timeout time.Duration) (*Limited, error) {
 	registerConsole()
 	stmt, err := singleStatement(sqlStr)
 	if err != nil {
@@ -105,13 +116,13 @@ func (s *Service) Console(scanID, sqlStr string) (*Limited, error) {
 	}
 	defer db.Close()
 	db.SetMaxOpenConns(1)
-	ctx, cancel := context.WithTimeout(context.Background(), ConsoleTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	started := time.Now()
 	rows, err := db.QueryContext(ctx, stmt)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("stopped after %s", ConsoleTimeout)
+			return nil, fmt.Errorf("stopped after %s", timeout)
 		}
 		if strings.Contains(err.Error(), "not authorized") {
 			return nil, fmt.Errorf("the console only reads: %v", err)
@@ -149,7 +160,7 @@ func (s *Service) Console(scanID, sqlStr string) (*Limited, error) {
 	}
 	if err := rows.Err(); err != nil {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("stopped after %s", ConsoleTimeout)
+			return nil, fmt.Errorf("stopped after %s", timeout)
 		}
 		return nil, err
 	}

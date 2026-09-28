@@ -322,7 +322,7 @@ import ModalTrigger from "~/shared/ui/ModalTrigger.vue"
 import SelectComponentModal from "~/features/connections/components/SelectComponentModal.vue"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import CouplingFlow from "~/features/connections/components/CouplingFlow.vue"
-import { hopsOf } from "~/features/snapshot/hops"
+import { hopsOf, walkNextHops } from "~/features/snapshot/hops"
 
 type Relationship = "depends on" | "is depended on by"
 
@@ -374,6 +374,9 @@ interface MatrixRow { from: string; to: string; git_co_changes: number | null }
 interface SharedRow { pair_1: string; pair_2: string; shared_commits: number; percentage_of_all_commits_pair_1: number | null; percentage_of_all_commits_pair_2: number | null }
 
 const hasIndirect = computed(() => store.hasView("component_connections_indirect"))
+// Before analysis revision 4 each pair stored its whole route as text; now
+// it stores the first step and the route is walked (walkNextHops).
+const storedPaths = computed(() => store.hasColumn("component_connections_indirect", "shortest_path"))
 
 const { data: unplaced } = useAsyncQuery<Array<{ file: string; line: number; names: string; reason: string }>>(
   () => store.hasView("unresolved_edges")
@@ -395,8 +398,8 @@ const { data, loading } = useAsyncQuery(
     // path, current ones the steps, and subtracting one here was only right
     // for the first.
     const indirect: IndirectRow[] = hasIndirect.value
-      ? (await store.query<{ from: string; to: string; shortest_path: string | null; shortest_path_length: number }>(`
-          select "from", "to", shortest_path, shortest_path_length
+      ? (await store.query<{ from: string; to: string; shortest_path?: string | null; shortest_path_length: number }>(`
+          select "from", "to", ${storedPaths.value ? "shortest_path, " : ""}shortest_path_length
           from component_connections_indirect
           where "from" = ${lit} or "to" = ${lit}`))
           .map(r => ({ from: r.from, to: r.to, hops: hopsOf(r.shortest_path, r.shortest_path_length) }))
@@ -454,6 +457,12 @@ const neighbours = computed<Neighbour[]>(() => {
     row.sharedCommits = Number(r.shared_commits) || 0
     const pct = r.pair_1 === me ? r.percentage_of_all_commits_pair_1 : r.percentage_of_all_commits_pair_2
     if (pct !== null && pct !== undefined) row.coChangeRate = Number(pct) > 1 ? Number(pct) / 100 : Number(pct)
+  }
+  // component_matrix lists every pair that changed together, so a neighbour
+  // it leaves out shared no commit. (It used to also list pairs within three
+  // hops that never did, so only those read 0 and the rest read unknown.)
+  if (store.hasView("component_matrix") && store.hasView("git_commits")) {
+    for (const row of byName.values()) if (row.sharedCommits === null) row.sharedCommits = 0
   }
 
   for (const row of byName.values()) {
@@ -677,19 +686,28 @@ const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>
       GROUP BY "from", "to", file
       ORDER BY "references" DESC LIMIT 40`)
 
-    const paths = hasIndirect.value
-      ? await store.query<{ from: string; to: string; shortest_path: string | null }>(`
+    const mine = current.value
+    let outPath: string[] = [], inPath: string[] = []
+    if (hasIndirect.value && storedPaths.value) {
+      const paths = await store.query<{ from: string; to: string; shortest_path: string | null }>(`
           SELECT "from", "to", shortest_path
           FROM component_connections_indirect
           WHERE ("from" = ${me} AND "to" = ${them}) OR ("from" = ${them} AND "to" = ${me})`)
-      : []
+      outPath = pathSteps(paths.find(p => p.from === mine)?.shortest_path)
+      inPath = pathSteps(paths.find(p => p.to === mine)?.shortest_path)
+    } else if (hasIndirect.value) {
+      const hops = await store.query<{ from: string; to: string; next_hop: string }>(`
+          SELECT "from", "to", next_hop FROM component_connections_indirect WHERE "to" IN (${me}, ${them})`)
+      const towards = (target: string) => new Map(hops.filter(h => h.to === target).map(h => [h.from, h.next_hop]))
+      outPath = walkNextHops(towards(other), mine, other)
+      inPath = walkNextHops(towards(mine), other, mine)
+    }
 
-    const mine = current.value
     return {
       out: files.filter(f => f.from === mine).map(f => ({ file: f.file, references: Number(f.references) || 0 })),
       in: files.filter(f => f.to === mine).map(f => ({ file: f.file, references: Number(f.references) || 0 })),
-      outPath: pathSteps(paths.find(p => p.from === mine)?.shortest_path),
-      inPath: pathSteps(paths.find(p => p.to === mine)?.shortest_path),
+      outPath,
+      inPath,
     }
   },
   [selectedName, current],

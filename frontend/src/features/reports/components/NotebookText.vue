@@ -24,8 +24,10 @@
       class="nb-rendered cursor-text"
       :class="[kindClass, !block.text.trim() ? 'nb-empty' : '', !block.text.trim() && block.prompt ? 'nb-prompt' : '']"
       :data-placeholder="block.prompt || (isLast ? 'Write, or press / to add evidence' : '')"
+      :title="block.explain ? 'The template\'s explanation of the terms; double-click to edit it' : undefined"
       @mousedown="onRenderedDown"
       @click="onRenderedClick"
+      @dblclick="onRenderedDbl"
       v-html="html"
     ></div>
   </div>
@@ -60,9 +62,10 @@ const area = ref<HTMLTextAreaElement | null>(null);
 const hrEl = ref<HTMLElement | null>(null);
 
 const KIND_CLASS: Record<TextKind, string> = {
-  p: "nb-p", h1: "nb-h1", h2: "nb-h2", h3: "nb-h3", ul: "nb-li nb-ul", ol: "nb-li nb-ol", quote: "nb-quote", code: "nb-code", hr: "", table: "nb-table",
+  p: "nb-p doc-prose", h1: "nb-h1", h2: "nb-h2", h3: "nb-h3", ul: "nb-li nb-ul doc-prose", ol: "nb-li nb-ol doc-prose", quote: "nb-quote doc-prose", code: "nb-code", hr: "", table: "nb-table",
 };
-const kindClass = computed(() => KIND_CLASS[props.block.kind]);
+// A template's explanation of its terms reads a shade softer than the findings around it.
+const kindClass = computed(() => `${KIND_CLASS[props.block.kind]}${props.block.explain ? " nb-explain" : ""}`);
 const placeholder = computed(() => props.block.prompt || ({
   p: "Write, or press / to add evidence", h1: "Heading", h2: "Heading", h3: "Heading", ul: "List item", ol: "List item",
   quote: "Quote", code: "Code", hr: "", table: "| a | b |",
@@ -98,6 +101,13 @@ function onRenderedClick(e: MouseEvent) {
     if (e.metaKey || e.ctrlKey) { window.location.hash = a.getAttribute("href")?.replace(/^#/, "") ?? ""; return; }
   }
   if (window.getSelection()?.toString()) return;
+  // A template's explanation reads as written: one click does not open its Markdown.
+  if (props.block.explain) return;
+  emit("edit", clickOffset ?? "end");
+}
+function onRenderedDbl() {
+  if (!props.block.explain) return;
+  window.getSelection()?.removeAllRanges();
   emit("edit", clickOffset ?? "end");
 }
 /** The source offset under the pointer: the plain-text offset, walked back through the Markdown. */
@@ -161,6 +171,8 @@ function onInput(e: Event) {
   const el = e.target as HTMLTextAreaElement;
   const text = el.value;
   autosize();
+  // "/" alone opens the Insert menu, even when it was typed before the key handler saw an empty line.
+  if (text === "/" && props.block.kind === "p") { emit("text", ""); emit("slash"); return; }
   // Typora's shortcuts: a heading, list or quote marker typed at the start converts the block.
   if (props.block.kind === "p") {
     const s = shortcutFor(text);
@@ -259,27 +271,8 @@ function onPaste(e: ClipboardEvent) {
 </script>
 
 <style scoped>
-/* The report's reading type: larger than the 13px chrome, so the page reads
-   as a document and the panes around it as the tool. */
-.nb-text { --nb-body: 15px; --nb-lh: 1.65; }
-.nb-p, .nb-li, .nb-quote { font-size: var(--nb-body); line-height: var(--nb-lh); color: rgb(var(--c-neutral-800)); padding: 3px 0; }
-.nb-h1 { font-size: 24px; line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; color: rgb(var(--c-neutral-950)); padding: 22px 0 4px; }
-.nb-h2 { font-size: 19px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; color: rgb(var(--c-neutral-950)); padding: 18px 0 2px; }
-.nb-h3 { font-size: 15.5px; line-height: 1.4; font-weight: 600; color: rgb(var(--c-neutral-900)); padding: 12px 0 0; }
-.nb-li { position: relative; padding-left: 26px; }
-.nb-li :deep(.nb-marker) { position: absolute; left: 6px; color: rgb(var(--c-neutral-400)); font-variant-numeric: tabular-nums; }
-textarea.nb-li { padding-left: 26px; }
-.nb-quote { padding-left: 18px; box-shadow: inset 2px 0 0 rgb(var(--c-neutral-300)); color: rgb(var(--c-neutral-600)); font-style: italic; }
-.nb-code, .nb-source { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; line-height: 1.6; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 12px 14px; margin: 6px 0; }
-.nb-code :deep(pre) { margin: 0; white-space: pre-wrap; font: inherit; }
-.nb-table :deep(table) { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
-.nb-table :deep(th) { text-align: left; font-weight: 600; color: rgb(var(--c-neutral-600)); padding: 4px 16px 4px 0; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-300)); }
-.nb-table :deep(td) { padding: 4px 16px 4px 0; box-shadow: inset 0 -1px 0 rgb(var(--c-neutral-200)); }
-.nb-rendered :deep(strong) { font-weight: 600; color: rgb(var(--c-neutral-950)); }
-.nb-rendered :deep(code) { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.86em; background: rgb(var(--c-neutral-100)); border-radius: 4px; padding: 1px 5px; }
-.nb-rendered :deep(a) { color: rgb(var(--c-accent-700)); text-decoration: underline; text-decoration-color: rgb(var(--c-accent-300)); text-underline-offset: 3px; }
-.nb-rendered :deep(s) { color: rgb(var(--c-neutral-500)); }
-.nb-empty { min-height: calc(var(--nb-body) * var(--nb-lh) + 6px); }
+/* The report's type is shared with the printed page: index.css, "The report page". */
+.nb-empty { min-height: calc(12pt * 1.5 + 8pt); }
 .nb-empty::before { content: attr(data-placeholder); color: rgb(var(--c-neutral-400)); pointer-events: none; }
 .nb-input::placeholder { color: rgb(var(--c-neutral-400)); }
 /* A template's prompt: where the writer's own words go. Never printed. */

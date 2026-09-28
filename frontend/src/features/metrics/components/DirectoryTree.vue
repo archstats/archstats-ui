@@ -54,6 +54,7 @@
       <div>
         <h3 class="break-all font-mono text-sm font-medium text-neutral-900">{{ node.path }}</h3>
         <p class="mt-1 text-sm text-neutral-500">{{ formatNumber(node.files.length) }} files · {{ formatNumber(node.lines) }} lines</p>
+        <router-link :to="xrayPath(node.path)" class="ui-btn ui-btn-sm mt-2" title="Read every file in this folder and group them into topics">X-ray this folder</router-link>
       </div>
       <section>
         <h4 class="ui-label mb-1">Hottest files</h4>
@@ -95,7 +96,7 @@ import { NOT_BOT_SQL } from "~/features/git/authors";
 import { buildDirTree, commitsByDir, edgesOut, ROLLUP_RULES, visibleRows, type DirFile, type DirNode } from "~/features/metrics/dirTree";
 import { formatNumber } from "~/shared/format";
 import { HISTORY_PERIODS, anchorLabel, anchorSql, type HistoryPeriodId } from "~/features/git/history";
-import { componentPath, filePath } from "~/features/navigation/routes";
+import { componentPath, filePath, xrayPath } from "~/features/navigation/routes";
 
 // An outline of the codebase by directory: every number rolled up by a rule
 // the header states, chains of single directories as one row, and the
@@ -206,6 +207,8 @@ function keepLive() {
 useExportables().register({
   kind: "table",
   title: "Metrics: directories",
+  // Commits load after the tree; a take before then would fill the column with dashes.
+  ready: () => commits.value !== null,
   rows: () => rows.value.map(n => ({ directory: n.path, files: n.files.length, lines: n.lines, components: n.components.size, commits: commits.value?.get(n.path) ?? null, max_hotspot: n.maxHotspot, lowest_health: n.minHealth, edges_out: edgesOf(n).length })),
   columns: () => [{ id: "directory", label: "Directory" }, ...NUM_COLUMNS.map(c => ({ id: c.id, label: c.label }))],
   notes: () => [

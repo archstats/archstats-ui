@@ -6,8 +6,10 @@
 
 import { knowledgeSql, type AliasMap } from "~/features/git/authors"
 import { languageOfPath } from "~/features/snapshot/languages"
-import { libraries, ownPrefixes, type ImportRow } from "~/features/libraries/libraries"
-import type { ReadingOutput } from "./reportDoc"
+import { displayName, languageOf as importLanguage, libraries, ownPrefixes, type ImportRow } from "~/features/libraries/libraries"
+import { ANATOMY_READINGS } from "./anatomy"
+import { guessRole, NON_PRODUCTION_GLOBS, TEST_GLOBS } from "~/features/snapshot/fileRole"
+import { proseName, proseNames, type ReadingOutput } from "./reportDoc"
 
 export interface ReadingContext {
     query: (sql: string) => Promise<any[]>
@@ -34,7 +36,10 @@ const pct = (part: number, whole: number) => {
     const p = (100 * part) / whole
     return p > 0 && p < 1 ? "under 1%" : `${Math.round(p)}%`
 }
-const code = (s: string) => `\`${s.replace(/`/g, "'")}\``
+/** A name set as code, shortened for prose (proseName); the root folder's component "." reads as "(root)". */
+const code = (s: string) => `\`${proseName(s).replace(/`/g, "'")}\``
+/** Several names in one sentence, each set as code and kept apart when shortened. */
+const codes = (names: string[]) => proseNames(names).map(s => `\`${s.replace(/`/g, "'")}\``)
 const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`
 const b = (s: string) => `**${s}**`
 /** "a, b and c". */
@@ -44,6 +49,28 @@ export function listOf(items: string[]): string {
 }
 const years = (days: number) => (days >= 730 ? `${(days / 365.25).toFixed(1)} years` : days >= 60 ? `${Math.round(days / 30.4)} months` : plural(days, "day"))
 const lit = (s: string) => `'${s.replace(/'/g, "''")}'`
+// Snapshots from before files had a role are sorted by path, the way the
+// Overview and the Production | Tests switch sort them (snapshot/fileRole.ts).
+/** A file's role: the scan's, or for a scan without roles, what its path reads as (the Overview's rule). */
+export function roleOf(name: string, role?: unknown): string {
+    if (role !== undefined) return String(role || "production")
+    return guessRole(name)
+}
+/**
+ * SQL: a build module outside test folders. A test fixture's composer.json
+ * or package.json (Sylius has 30 copies of example/test-application) is not
+ * one of the codebase's modules.
+ */
+export const realModule = (a = "") => `NOT ((coalesce(${a}directory, '') || '/x') GLOB '${TEST_GLOBS.filter(g => g.endsWith("/*")).join(`' OR (coalesce(${a}directory, '') || '/x') GLOB '`)}')`
+/** SQL: the file row (alias a, or files itself) is production code. */
+export function prodFile(f: Pick<SnapshotFacts, "fileColumns">, a = ""): string {
+    const col = (c: string) => (a ? `${a}.${c}` : c)
+    return f.fileColumns.has("role") ? `${col("role")} = 'production'` : `NOT (${[...TEST_GLOBS, ...NON_PRODUCTION_GLOBS].map(g => `${col("name")} GLOB '${g}'`).join(" OR ")})`
+}
+/** SQL: the unit u is a React component, as the React profile counts one (isReactComponent). */
+export const reactComponent = (f: Pick<SnapshotFacts, "tables">) => `(u.name GLOB '[A-Z]*' AND (u.file LIKE '%.tsx' OR u.file LIKE '%.jsx') AND coalesce(u.owner, '') = '' AND u.kind <> 'module'${f.tables.has("unit_markers") ? ` AND u.id NOT IN (SELECT unit FROM unit_markers WHERE source = 'supertype' AND key = 'interface')` : ""})`
+/** SQL: the component holds production code, the root among them. */
+export const prodComponents = (f: Pick<SnapshotFacts, "fileColumns">, col = "name") => `${col} IN (SELECT component FROM files WHERE ${prodFile(f)})`
 /** Per 100, as a reader says it: "under 1", "3", "56". */
 const ratio = (part: number, whole: number) => { const r = (100 * part) / Math.max(1, whole); return r > 0 && r < 1 ? "under 1" : n(r) }
 const absent = (text: string): ReadingOutput => ({ text, values: {}, absent: true })
@@ -51,6 +78,8 @@ const absent = (text: string): ReadingOutput => ({ text, values: {}, absent: tru
 // ── What the snapshot holds ───────────────────────────────────────────────
 
 export interface SnapshotFacts {
+    /** The analysis revision that wrote the snapshot. */
+    revision: number
     tables: Set<string>
     fileColumns: Set<string>
     componentColumns: Set<string>
@@ -69,6 +98,14 @@ export interface SnapshotFacts {
     tangles: number
     /** Files that import react; the engine's component count alone also counts plain functions. */
     reactImporters: number
+    /** The markers the scan put on classes and functions, as "source:key" ("annotation:Entity", "filename:views"). */
+    markers: Set<string>
+    /** Columns of component_connections_indirect; analysis revision 4 keeps the next hop instead of the whole chain. */
+    indirectColumns: Set<string>
+    /** Modules by what they build (android-application, ios-application, flutter-app, kotlin-multiplatform…), from revision 7. */
+    moduleTypes: Record<string, number>
+    /** The mobile apps the scan found as deployables, from revision 7. */
+    mobileApps: Array<{ name: string; platform: string }>
 }
 
 const probes = new WeakMap<ReadingContext, Promise<SnapshotFacts>>()
@@ -86,6 +123,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
     const cols = async (t: string) => (tables.has(t) ? new Set((await q(`SELECT name FROM pragma_table_info('${t}')`)).map(r => String(r.name))) : new Set<string>())
     const fileColumns = await cols("files")
     const componentColumns = await cols("components")
+    const indirectColumns = await cols("component_connections_indirect")
     const summary: Record<string, number> = {}
     for (const r of tables.has("summary") ? await q(`SELECT name, value FROM summary`) : []) {
         const v = Number(r.value)
@@ -99,7 +137,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
     const roles: SnapshotFacts["roles"] = {}
     const langs = new Map<string, { files: number; lines: number }>()
     for (const f of files) {
-        const role = hasRole ? String(f.role || "production") : "production"
+        const role = roleOf(String(f.name), hasRole ? f.role : undefined)
         const lines = Number(f.lines) || 0
         const r = (roles[role] ??= { files: 0, lines: 0 })
         r.files++
@@ -112,13 +150,21 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         langs.set(l, e)
     }
     const moduleKinds: Record<string, number> = {}
-    for (const r of tables.has("modules") ? await q(`SELECT kind, count(*) AS c FROM modules GROUP BY kind`) : []) moduleKinds[String(r.kind)] = Number(r.c) || 0
+    for (const r of tables.has("modules") ? await q(`SELECT kind, count(DISTINCT name) AS c FROM modules WHERE ${realModule()} GROUP BY kind`) : []) moduleKinds[String(r.kind)] = Number(r.c) || 0
     const [rules] = tables.has("rules") ? await q(`SELECT coalesce(sum(status <> 'not_applicable'), 0) AS applicable, coalesce(sum(status = 'violation'), 0) AS violations FROM rules`) : [null]
     const [t] = tables.has("component_strongly_connected_groups") ? await q(`SELECT count(*) AS c FROM (SELECT "group" FROM component_strongly_connected_groups GROUP BY "group" HAVING count(*) > 1)`) : [null]
-    const [c] = tables.has("components") ? await q(`SELECT count(*) AS c FROM components WHERE name <> '.'`) : [null]
+    const [c] = tables.has("components") ? await q(`SELECT count(*) AS c FROM components`) : [null]
+    const markers = new Set((tables.has("unit_markers") ? await q(`SELECT DISTINCT source || ':' || key AS k FROM unit_markers`) : []).map(r => String(r.k)))
+    const moduleTypes: Record<string, number> = {}
+    if (tables.has("modules") && (await cols("modules")).has("type")) {
+        for (const r of await q(`SELECT type, count(*) AS c FROM modules WHERE coalesce(type, '') <> '' GROUP BY type`)) moduleTypes[String(r.type)] = Number(r.c) || 0
+    }
+    const mobileApps = tables.has("deployables") && (await cols("deployables")).has("platform")
+        ? (await q(`SELECT name, platform FROM deployables WHERE kind = 'mobile_app' ORDER BY name`)).map(r => ({ name: String(r.name), platform: String(r.platform) }))
+        : []
     const [react] = tables.has("snippets") ? await q(`SELECT count(DISTINCT file) AS c FROM snippets WHERE snippet_type = 'modularity__component__imports' AND (content = 'react' OR content LIKE 'react/%')`) : [null]
     return {
-        tables, fileColumns, componentColumns, summary, snapshot, roles,
+        revision: ctx.revision, tables, fileColumns, componentColumns, summary, snapshot, roles,
         production: roles.production ?? { files: 0, lines: 0 },
         languages: [...langs].map(([language, v]) => ({ language, ...v })).sort((a, b) => b.lines - a.lines),
         components: Number(c?.c) || 0,
@@ -128,12 +174,21 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         rules: { applicable: Number(rules?.applicable) || 0, violations: Number(rules?.violations) || 0 },
         tangles: Number(t?.c) || 0,
         reactImporters: Number(react?.c) || 0,
+        markers,
+        indirectColumns,
+        moduleTypes,
+        mobileApps,
     }
+}
+
+/** Test folders the scan's ignore patterns left out. */
+export function ignoredTestDirs(f: SnapshotFacts): number {
+    try { return (JSON.parse(f.snapshot.walker_ignored_top || "[]") as string[]).filter(p => /(^|\/)(tests?|spec|__tests__)\//.test(p)).length } catch { return 0 }
 }
 
 // ── Ecosystems ────────────────────────────────────────────────────────────
 
-export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "go" | "dotnet" | "php"
+export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "go" | "dotnet" | "php" | "android" | "ios" | "flutter" | "react-native" | "kmp"
 
 export interface Ecosystem { id: EcosystemId; label: string; why: string }
 
@@ -142,6 +197,7 @@ const MODULE_WORDS: Record<string, [string, string]> = {
     node: ["npm package", "npm packages"], go: ["Go module", "Go modules"],
     composer: ["Composer package", "Composer packages"], dotnet: [".NET project", ".NET projects"],
     django: ["Django app", "Django apps"],
+    swiftpm: ["Swift package target", "Swift package targets"], xcode: ["Xcode target", "Xcode targets"], pub: ["Dart package", "Dart packages"],
 }
 export const modulesPhrase = (kind: string, count: number) => {
     const w = MODULE_WORDS[kind] ?? [`${kind} module`, `${kind} modules`]
@@ -154,6 +210,13 @@ export function languageShare(f: SnapshotFacts, ...names: string[]): number {
     if (!total) return 0
     return f.languages.filter(l => names.some(x => l.language.startsWith(x))).reduce((s, l) => s + l.lines, 0) / total
 }
+
+/**
+ * An app built to show or try the real one: Signal ships fourteen demo:*
+ * apps beside its own, isowords a preview app per feature. Real apps come
+ * first wherever apps are listed.
+ */
+export const isSampleApp = (name: string) => /demo|sample|example|preview|catalog|playground|benchmark|showcase/i.test(name)
 
 /** The ecosystems a snapshot shows, each with the evidence it was read from. */
 export function ecosystems(f: SnapshotFacts): Ecosystem[] {
@@ -175,6 +238,25 @@ export function ecosystems(f: SnapshotFacts): Ecosystem[] {
     if ((mk.go ?? 0) > 0 || share("Go") >= 0.2) out.push({ id: "go", label: "Go module", why: mk.go ? modulesPhrase("go", mk.go) : langWhy("Go", "Go") })
     if ((mk.dotnet ?? 0) > 0 || share("C#") >= 0.2) out.push({ id: "dotnet", label: ".NET solution", why: mk.dotnet ? modulesPhrase("dotnet", mk.dotnet) : langWhy("C#", "C#") })
     if ((mk.composer ?? 0) > 0 || share("PHP") >= 0.2) out.push({ id: "php", label: "PHP application", why: mk.composer ? modulesPhrase("composer", mk.composer) : langWhy("PHP", "PHP") })
+    // Mobile, from the apps the scan found, or failing that the modules that build them.
+    const mt = f.moduleTypes
+    const apps = (platform: string) => f.mobileApps.filter(a => a.platform === platform)
+    const appsWhy = (platform: string, fallback: string) => {
+        const all = apps(platform)
+        if (!all.length) return fallback
+        const real = all.filter(a => !isSampleApp(a.name)), samples = all.length - real.length
+        const main = real.length ? `${real.length === 1 ? "the app" : plural(real.length, "app")} ${listOf(real.map(x => x.name))}` : ""
+        return [main, samples ? plural(samples, real.length ? "sample app" : "sample or preview app") : ""].filter(Boolean).join(" and ")
+    }
+    if (apps("android").length || (!f.mobileApps.length && (mt["android-application"] ?? 0) > 0)) out.push({ id: "android", label: "Android app", why: appsWhy("android", plural(mt["android-application"] ?? 0, "Android application module")) })
+    if (apps("ios").length || (!f.mobileApps.length && (mt["ios-application"] ?? 0) > 0) || share("Swift", "Objective-C") >= 0.3) out.push({ id: "ios", label: "iOS app", why: appsWhy("ios", langWhy("Swift and Objective-C", "Swift", "Objective-C")) })
+    if (apps("flutter").length || (mt["flutter-app"] ?? 0) > 0 || share("Dart") >= 0.3) out.push({ id: "flutter", label: "Flutter app", why: appsWhy("flutter", langWhy("Dart", "Dart")) })
+    if (apps("react-native").length) out.push({ id: "react-native", label: "React Native app", why: appsWhy("react-native", "") })
+    if ((mt["kotlin-multiplatform"] ?? 0) > 0) out.push({ id: "kmp", label: "Kotlin Multiplatform", why: plural(mt["kotlin-multiplatform"], "multiplatform module") })
+    // A Flutter or React Native app's android/ runner is a Gradle build of two
+    // or three projects; that is not a multi-module build worth reviewing.
+    const crossPlatform = out.some(e => e.id === "flutter" || e.id === "react-native")
+    if (crossPlatform && !(mk.maven ?? 0) && (mk.gradle ?? 0) <= 3) return out.filter(e => e.id !== "jvm")
     return out
 }
 
@@ -232,23 +314,30 @@ export const READINGS: ReadingDef[] = [
         id: "size",
         label: "Size and languages",
         describe: "Production files and lines from the files table, grouped by extension; components and modules as the scan found them.",
-        async run(ctx) {
+        async run(ctx, p) {
             const f = await probe(ctx)
-            if (!f.production.files) return absent("The snapshot holds no production files.")
+            if (!f.production.files) return absent("There is no production code in this scan.")
+            // With a language, how many components hold its production code: what a per-language package table lists.
+            let inLanguage = 0
+            if (p.language) {
+                const rows = await ctx.query(`SELECT name, component FROM files WHERE ${prodFile(f)} AND coalesce(component, '') <> ''`)
+                inLanguage = new Set(rows.filter(r => languageOfPath(String(r.name)) === p.language).map(r => String(r.component))).size
+            }
             const kinds = Object.entries(f.moduleKinds).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1])
-            const mods = kinds.length ? `; the scan found ${listOf(kinds.map(([k, c]) => modulesPhrase(k, c)))}` : ""
+            const mods = kinds.length ? ` It builds as ${listOf(kinds.map(([k, c]) => modulesPhrase(k, c)))}.` : ""
             // TSX is TypeScript and JSX is JavaScript, for a sentence about languages.
             const merged = new Map<string, number>()
             for (const l of f.languages) { const k = l.language.replace(/ \((TSX|JSX)\)$/, ""); merged.set(k, (merged.get(k) ?? 0) + l.lines) }
             const top = [...merged].map(([language, lines]) => ({ language, lines })).filter(l => l.lines >= f.production.lines / 100 && !l.language.startsWith(".") && l.language !== "No extension").sort((a, b) => b.lines - a.lines).slice(0, 3)
+            const lead = top[0] ? top[0].lines / f.production.lines : 0
             const langs = top.length
-                ? ` ${top[0].language} carries ${pct(top[0].lines, f.production.lines)} of those lines${top.length > 1 ? `, then ${listOf(top.slice(1).map(l => `${l.language} (${pct(l.lines, f.production.lines)})`))}` : ""}.`
+                ? ` ${lead >= 0.5 ? `Most of it is ${top[0].language}` : `The largest share is ${top[0].language}`} (${pct(top[0].lines, f.production.lines)})${top.length > 1 ? `, then ${listOf(top.slice(1).map(l => `${l.language} (${pct(l.lines, f.production.lines)})`))}` : ""}.`
                 : ""
             const other = Object.entries(f.roles).filter(([r, v]) => r !== "production" && v.files > 0)
             const ROLE: Record<string, [string, string]> = { test: ["test file", "test files"], third_party: ["third-party file", "third-party files"], generated: ["generated file", "generated files"], non_code: ["file that is not code", "files that are not code"] }
-            const rest = other.length ? ` Outside them: ${listOf(other.map(([r, v]) => `${n(v.files)} ${v.files === 1 ? ROLE[r]?.[0] ?? r : ROLE[r]?.[1] ?? r}`))}.` : ""
+            const rest = other.length ? `\n\nTests and other files are counted apart from it: ${listOf(other.map(([r, v]) => `${n(v.files)} ${v.files === 1 ? ROLE[r]?.[0] ?? r : ROLE[r]?.[1] ?? r}`))}.` : ""
             return {
-                text: `The snapshot holds ${b(plural(f.production.files, "production file"))} with ${b(`${n(f.production.lines)} lines`)} of code, grouped into ${b(plural(f.components, "component"))}${mods}.${langs}${rest}`,
+                text: `The production code is ${b(`${n(f.production.lines)} lines`)} in ${b(plural(f.production.files, "file"))}, grouped into ${b(plural(f.components, "component"))}${p.language ? ` (${n(inLanguage)} of them hold ${p.language} code)` : ""}.${langs}${mods}${rest}`,
                 values: { "production files": f.production.files, "production lines": f.production.lines, components: f.components },
             }
         },
@@ -256,15 +345,15 @@ export const READINGS: ReadingDef[] = [
     {
         id: "history",
         label: "History",
-        describe: "The git totals the scan recorded (summary table): commits, authors, age, and the last 90 days.",
+        describe: "The git totals the scan recorded (summary table), over the whole history with bots included: commits, authors, age, and the last 90 days.",
         async run(ctx) {
             const f = await probe(ctx)
             const s = f.summary
-            if (!f.commits) return absent("The snapshot has no git history.")
+            if (!f.commits) return absent("This scan has no git history.")
             const age = s.git__age_in_days ?? 0
             const recent = s.git__commits__last_90_days ?? 0
             return {
-                text: `The history reaches back ${b(years(age))}: ${b(plural(f.commits, "commit"))} by ${b(plural(f.authors, "author"))}. In the last 90 days, ${recent ? `${b(plural(recent, "commit"))} by ${plural(s.git__authors__last_90_days ?? 0, "author")} changed ${plural(s.git__unique_file_changes__last_90_days ?? 0, "file")}` : "no commit landed"}.`,
+                text: `People have worked on this code for ${b(years(age))}: ${b(plural(f.commits, "commit"))} by ${b(plural(f.authors, "author"))}. These totals cover the whole history, bots included. The Overview leaves bots out and counts only commits that touched files still in the code, so its numbers can be lower.\n\n${recent ? `In the last 90 days, ${b(plural(recent, "commit"))} by ${plural(s.git__authors__last_90_days ?? 0, "author")} changed ${plural(s.git__unique_file_changes__last_90_days ?? 0, "file")}.` : "No commit landed in the last 90 days."}`,
                 values: { commits: f.commits, authors: f.authors, "commits, last 90 days": recent },
             }
         },
@@ -275,9 +364,9 @@ export const READINGS: ReadingDef[] = [
         describe: "Strongly connected groups of two or more components (tangles), the longest import chain with tangles collapsed, and MacCormack's propagation cost from component_connections_indirect.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.components || !f.tables.has("component_connections_direct")) return absent("The snapshot has no component dependencies.")
+            if (!f.components || !f.tables.has("component_connections_direct")) return absent("This scan did not record which components import which.")
             const groups = f.tables.has("component_strongly_connected_groups")
-                ? await ctx.query(`SELECT "group" AS g, component FROM component_strongly_connected_groups WHERE "group" IN (SELECT "group" FROM component_strongly_connected_groups GROUP BY "group" HAVING count(*) > 1) AND component <> '.'`)
+                ? await ctx.query(`SELECT "group" AS g, component FROM component_strongly_connected_groups WHERE "group" IN (SELECT "group" FROM component_strongly_connected_groups GROUP BY "group" HAVING count(*) > 1)`)
                 : []
             const groupOf = new Map<string, string>(groups.map(r => [String(r.component), `#${r.g}`]))
             const sizes = new Map<string, number>()
@@ -285,21 +374,21 @@ export const READINGS: ReadingDef[] = [
             const largest = Math.max(0, ...sizes.values())
             const members = groupOf.size
             const [lines] = members
-                ? await ctx.query(`SELECT sum(CASE WHEN name IN (${[...groupOf.keys()].map(lit).join(",")}) THEN coalesce(complexity__lines, 0) ELSE 0 END) AS inside, sum(coalesce(complexity__lines, 0)) AS total FROM components WHERE name <> '.'`)
+                ? await ctx.query(`SELECT sum(CASE WHEN name IN (${[...groupOf.keys()].map(lit).join(",")}) THEN coalesce(complexity__lines, 0) ELSE 0 END) AS inside, sum(coalesce(complexity__lines, 0)) AS total FROM components`)
                 : [{ inside: 0, total: 0 }]
-            const edges = (await ctx.query(`SELECT DISTINCT "from" AS a, "to" AS z FROM component_connections_direct WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.'`)).map(r => [String(r.a), String(r.z)] as [string, string])
+            const edges = (await ctx.query(`SELECT DISTINCT "from" AS a, "to" AS z FROM component_connections_direct WHERE "from" <> "to"`)).map(r => [String(r.a), String(r.z)] as [string, string])
             const levels = dependencyLevels(edges, groupOf)
             let cost: number | null = null
             if (f.tables.has("component_connections_indirect")) {
-                const [r] = await ctx.query(`SELECT count(*) AS c FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to" AND "from" <> '.' AND "to" <> '.')`)
+                const [r] = await ctx.query(`SELECT count(*) AS c FROM (SELECT DISTINCT "from", "to" FROM component_connections_indirect WHERE "from" <> "to")`)
                 cost = (Number(r?.c ?? 0) + f.components) / (f.components * f.components)
             }
             const tangleText = members
-                ? `${b(`${n(members)} of ${n(f.components)} components`)} (${pct(Number(lines?.inside) || 0, Number(lines?.total) || 0)} of the lines) sit in ${b(plural(sizes.size, "tangle"))}${sizes.size > 1 ? `, the largest of ${plural(largest, "component")}` : ""}: each can reach every other in its tangle by following imports.`
-                : `No component sits in a tangle: every import chain runs one way.`
-            const costText = cost === null ? "" : ` Propagation cost is ${b(`${Math.round(cost * 100)}%`)}: of all ordered pairs of components, that share are linked by a chain of imports.`
+                ? `${b(`${n(members)} of the ${n(f.components)} components`)} sit in ${b(plural(sizes.size, "tangle"))}, and hold ${pct(Number(lines?.inside) || 0, Number(lines?.total) || 0)} of the code.${sizes.size > 1 ? ` The largest tangle has ${plural(largest, "component")}.` : ""} Inside a tangle every component can reach every other through imports, so none of them can change on its own.`
+                : `No component sits in a tangle: every chain of imports runs one way.`
+            const costText = cost === null ? "" : `Propagation cost is ${b(`${Math.round(cost * 100)}%`)}: on average, a change to one component can reach ${Math.round(cost * 100)}% of the others through chains of imports. `
             return {
-                text: `${tangleText}${costText} With each tangle taken as one node, the longest import chain is ${b(plural(levels, "level"))} deep.`,
+                text: `${tangleText}\n\n${costText}Counting each tangle as one step, the longest chain of imports is ${b(plural(levels, "level"))} deep.`,
                 values: { "components in tangles": members, tangles: sizes.size, "largest tangle": largest, "propagation cost %": cost === null ? 0 : Math.round(cost * 1000) / 10, "dependency levels": levels },
             }
         },
@@ -313,15 +402,15 @@ export const READINGS: ReadingDef[] = [
             const f = await probe(ctx)
             const grain = p.grain === "files" ? "files" : "components"
             const cols = grain === "files" ? f.fileColumns : f.componentColumns
-            if (!cols.has("codesmells__hotspot_score") || !f.commits) return absent("The snapshot has no hotspot scores; they need git history.")
-            const where = grain === "files" ? (f.fileColumns.has("role") ? `role = 'production'` : "1") : `name <> '.'`
+            if (!cols.has("codesmells__hotspot_score") || !f.commits) return absent("Hotspot scores need git history, and this scan has none.")
+            const where = grain === "files" ? prodFile(f) : prodComponents(f)
             const top = await ctx.query(`SELECT name, codesmells__hotspot_score AS score FROM ${grain} WHERE ${where} AND codesmells__hotspot_score > 0 ORDER BY score DESC, name LIMIT 5`)
-            if (!top.length) return absent("No hotspot scores above zero in this snapshot.")
+            if (!top.length) return absent("No code scores above zero as a hotspot.")
             const names = top.map(r => String(r.name))
             const [t] = await ctx.query(`SELECT sum(CASE WHEN name IN (${names.map(lit).join(",")}) THEN coalesce(complexity__lines, 0) ELSE 0 END) AS l, sum(coalesce(complexity__lines, 0)) AS lt, sum(CASE WHEN name IN (${names.map(lit).join(",")}) THEN coalesce(git__commits__last_180_days, 0) ELSE 0 END) AS c, sum(coalesce(git__commits__last_180_days, 0)) AS ct FROM ${grain} WHERE ${where}`)
             const commits = Number(t?.ct) || 0
             return {
-                text: `The highest hotspot scores are in ${listOf(names.map(code))}. These ${top.length} ${grain} hold ${pct(Number(t?.l) || 0, Number(t?.lt) || 0)} of the lines${commits ? `; in the last 180 days they saw ${pct(Number(t?.c) || 0, commits)} of the commits, counted per ${grain === "files" ? "file" : "component"}` : ""}.`,
+                text: `The highest hotspot scores are in ${listOf(codes(names))}. Together these ${top.length} ${grain} hold ${pct(Number(t?.l) || 0, Number(t?.lt) || 0)} of the code${commits ? `, yet saw ${pct(Number(t?.c) || 0, commits)} of the changes in the last 180 days` : ""}.`,
                 values: Object.fromEntries(top.map(r => [String(r.name), Math.round(Number(r.score) * 100) / 100])),
             }
         },
@@ -332,17 +421,17 @@ export const READINGS: ReadingDef[] = [
         describe: "codesmells__code_health (1 to 10, higher is simpler to change) over production files, weighted by lines; files rated below 4; the lowest-rated components.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.fileColumns.has("codesmells__code_health")) return absent("The snapshot has no code health ratings.")
+            if (!f.fileColumns.has("codesmells__code_health")) return absent("This scan has no code health ratings.")
             const h = healthCol(ctx.revision)
-            const where = f.fileColumns.has("role") ? `role = 'production'` : "1"
+            const where = prodFile(f)
             const [r] = await ctx.query(`SELECT sum(${h} * complexity__lines) / nullif(sum(CASE WHEN ${h} IS NOT NULL THEN complexity__lines END), 0) AS avg, sum(CASE WHEN ${h} < 4 THEN 1 ELSE 0 END) AS low, sum(CASE WHEN ${h} < 4 THEN complexity__lines ELSE 0 END) AS lowLines, sum(CASE WHEN ${h} IS NOT NULL THEN complexity__lines END) AS rated FROM files WHERE ${where}`)
             const worst = f.componentColumns.has("codesmells__code_health")
-                ? await ctx.query(`SELECT name, ${h} AS health FROM components WHERE name <> '.' AND ${h} IS NOT NULL AND complexity__lines >= 200 ORDER BY health ASC, name LIMIT 3`)
+                ? await ctx.query(`SELECT name, ${h} AS health FROM components WHERE ${prodComponents(f)} AND ${h} IS NOT NULL AND complexity__lines >= 200 ORDER BY health ASC, name LIMIT 3`)
                 : []
             if (r?.avg === null || r?.avg === undefined) return absent("No production file has a code health rating.")
             const low = Number(r.low) || 0
             return {
-                text: `Code health, rated from 1 to 10 per file, averages ${b((Number(r.avg)).toFixed(1))} across the production code, weighted by lines. ${low ? `${b(plural(low, "file"))} rate below 4, holding ${pct(Number(r.lowLines) || 0, Number(r.rated) || 0)} of the rated lines.` : "No file rates below 4."}${worst.length ? ` Among components of 200 lines or more, the lowest rated are ${listOf(worst.map(w => `${code(String(w.name))} (${Number(w.health).toFixed(1)})`))}.` : ""}`,
+                text: `Code health averages ${b((Number(r.avg)).toFixed(1))} out of 10 across the production code, weighted by size. ${low ? `${b(plural(low, "file"))} ${low === 1 ? `rates below 4; it holds` : "rate below 4; together they hold"} ${pct(Number(r.lowLines) || 0, Number(r.rated) || 0)} of the code.` : "No file rates below 4."}${worst.length ? `\n\nAmong the larger components (200 lines or more), the lowest rated are ${listOf(codes(worst.map(w => String(w.name))).map((c, i) => `${c} (${Number(worst[i].health).toFixed(1)})`))}.` : ""}`,
                 values: { "average health": Math.round(Number(r.avg) * 10) / 10, "files below 4": low },
             }
         },
@@ -356,8 +445,8 @@ export const READINGS: ReadingDef[] = [
             const f = await probe(ctx)
             const d = ["30", "90", "180"].includes(p.days) ? p.days : "90"
             const add = `git__additions__last_${d}_days`, del = `git__deletions__last_${d}_days`
-            if (!f.commits || !f.componentColumns.has(add)) return absent("The snapshot has no git history per component.")
-            const rows = await ctx.query(`SELECT name, coalesce(${add}, 0) + coalesce(${del}, 0) AS churn FROM components WHERE name <> '.' AND coalesce(${add}, 0) + coalesce(${del}, 0) > 0 ORDER BY churn DESC, name`)
+            if (!f.commits || !f.componentColumns.has(add)) return absent("This scan has no git history per component.")
+            const rows = await ctx.query(`SELECT name, coalesce(${add}, 0) + coalesce(${del}, 0) AS churn FROM components WHERE coalesce(${add}, 0) + coalesce(${del}, 0) > 0 ORDER BY churn DESC, name`)
             const commits = f.summary[`git__commits__last_${d}_days`] ?? 0
             if (!rows.length) return { text: `No lines changed in the last ${d} days.`, values: { "changed lines": 0 } }
             const total = rows.reduce((s, r) => s + Number(r.churn), 0)
@@ -365,7 +454,7 @@ export const READINGS: ReadingDef[] = [
             for (const r of rows) { cum += Number(r.churn); k++; if (cum >= total / 2) break }
             const top = rows.slice(0, Math.min(3, rows.length))
             return {
-                text: `In the last ${d} days, ${b(plural(commits, "commit"))} changed ${b(`${n(total)} lines`)} across ${plural(rows.length, "component")}. Half of those lines went into ${b(plural(k, "component"))}; the most into ${listOf(top.map(r => `${code(String(r.name))} (${pct(Number(r.churn), total)})`))}.`,
+                text: `In the last ${d} days, ${b(plural(commits, "commit"))} changed ${b(`${n(total)} lines`)} across ${plural(rows.length, "component")}. ${k <= Math.max(3, rows.length / 10) ? `The work was concentrated: half of those lines went into just ${b(plural(k, "component"))}.` : `Half of those lines went into ${b(plural(k, "component"))}.`} The most went into ${listOf(codes(top.map(r => String(r.name))).map((c, i) => `${c} (${pct(Number(top[i].churn), total)})`))}.`,
                 values: { commits, "changed lines": total, "components changed": rows.length, "components with half": k },
             }
         },
@@ -376,16 +465,16 @@ export const READINGS: ReadingDef[] = [
         describe: "Per component, how few authors added half and four fifths of the lines (from git_commits, bots left out, aliases merged). No names are written.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.commits || !f.tables.has("git_commits")) return absent("The snapshot has no git history.")
+            if (!f.commits || !f.tables.has("git_commits")) return absent("This scan has no git history.")
             const rows = await ctx.query(knowledgeSql(ctx.aliases))
             const kept = rows.filter(r => Number(r.added) >= 500)
-            if (!kept.length) return absent("No component has 500 or more lines added in its history.")
+            if (!kept.length) return absent("No component has grown by 500 lines or more, so there is little to say about who knows it.")
             const one50 = kept.filter(r => Number(r.cover50) === 1).length
             const one80 = kept.filter(r => Number(r.cover80) === 1).length
             const biggest = [...kept].sort((a, b) => Number(b.added) - Number(a.added)).slice(0, 10)
             const bigOne = biggest.filter(r => Number(r.cover50) === 1).length
             return {
-                text: `Of the ${b(plural(kept.length, "component"))} with 500 or more lines added in their history, ${b(n(one50))} have one author who added half or more of those lines, and in ${b(n(one80))} one author added four fifths or more. Among the ten with the most lines added, ${n(bigOne)} have one author covering half.`,
+                text: `Of the ${b(plural(kept.length, "component"))} that grew by 500 lines or more over their history:\n\n- In ${b(n(one50))} of them, one person wrote half or more of those lines.\n- In ${b(n(one80))}, one person wrote four fifths or more.\n- ${bigOne === 0 ? "None of the ten that grew most has" : bigOne === 1 ? "One of the ten that grew most has" : `${n(bigOne)} of the ten that grew most have`} one person behind half of ${bigOne === 1 ? "its" : "their"} lines.`,
                 values: { components: kept.length, "one author covers half": one50, "one author covers 80%": one80 },
             }
         },
@@ -393,15 +482,17 @@ export const READINGS: ReadingDef[] = [
     {
         id: "coupling",
         label: "Most depended on",
-        describe: "modularity__coupling__dependents and __dependencies: components counted in components, not files.",
-        async run(ctx) {
+        describe: "modularity__coupling__dependents and __dependencies: components counted in components, not files; with ext, only components holding files of that extension.",
+        async run(ctx, p) {
             const f = await probe(ctx)
-            if (!f.componentColumns.has("modularity__coupling__dependents")) return absent("The snapshot has no component coupling.")
-            const top = await ctx.query(`SELECT name, modularity__coupling__dependents AS d FROM components WHERE name <> '.' AND modularity__coupling__dependents > 0 ORDER BY d DESC, name LIMIT 3`)
-            const all = await ctx.query(`SELECT coalesce(modularity__coupling__dependents, 0) AS d, coalesce(modularity__coupling__dependencies, 0) AS e FROM components WHERE name <> '.'`)
+            if (!f.componentColumns.has("modularity__coupling__dependents")) return absent("This scan did not count how components depend on each other.")
+            // ext ("go"): the components of one language, as the language's own tables beside it count them.
+            const ext = /^[a-z0-9]{1,6}$/.test(p.ext ?? "") ? ` AND name IN (SELECT component FROM files WHERE name LIKE '%.${p.ext}')` : ""
+            const top = await ctx.query(`SELECT name, modularity__coupling__dependents AS d FROM components WHERE ${prodComponents(f)}${ext} AND modularity__coupling__dependents > 0 ORDER BY d DESC, name LIMIT 3`)
+            const all = await ctx.query(`SELECT coalesce(modularity__coupling__dependents, 0) AS d, coalesce(modularity__coupling__dependencies, 0) AS e FROM components WHERE ${prodComponents(f)}${ext}`)
             if (!top.length) return absent("No component depends on another.")
             return {
-                text: `The most depended-on components are ${listOf(top.map((r, i) => `${code(String(r.name))} (${i === 0 ? `${plural(Number(r.d), "component")} depend on it` : n(Number(r.d))})`))}. The middle component has ${plural(median(all.map(r => Number(r.d))), "dependent")} and depends on ${plural(median(all.map(r => Number(r.e))), "other")}.`,
+                text: `${code(String(top[0].name))} is the most depended-on component: ${b(n(Number(top[0].d)))} other ${Number(top[0].d) === 1 ? "component imports" : "components import"} it.${top.length > 1 ? ` Next come ${listOf(top.slice(1).map(r => `${code(String(r.name))} (${n(Number(r.d))})`))}.` : ""}\n\nA typical component is imported by ${plural(median(all.map(r => Number(r.d))), "other", "others")} and imports ${median(all.map(r => Number(r.e))) === 0 ? "none" : n(median(all.map(r => Number(r.e))))}. Typical here means the median: half the components have more, half fewer.`,
                 values: Object.fromEntries(top.map(r => [String(r.name), Number(r.d)])),
             }
         },
@@ -412,14 +503,14 @@ export const READINGS: ReadingDef[] = [
         describe: "The rules table: imports a configured rule forbids, by rule.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.rules.applicable) return absent("No dependency rule applies to this snapshot.")
+            if (!f.rules.applicable) return absent("No dependency rule applies to this code.")
             const by = await ctx.query(`SELECT rule, sum(status = 'violation') AS v, count(*) AS c FROM rules WHERE status <> 'not_applicable' GROUP BY rule ORDER BY v DESC, rule`)
             const broken = by.filter(r => Number(r.v) > 0)
             const name = (r: any) => ctx.label(String(r.rule))
             return {
                 text: broken.length
-                    ? `${b(plural(f.rules.violations, "import"))} break ${plural(broken.length, "rule")} of the ${n(by.length)} that apply; the most break ${code(name(broken[0]))} (${n(Number(broken[0].v))}).${by.length > broken.length ? ` The other ${plural(by.length - broken.length, "rule")} hold.` : ""}`
-                    : `All ${plural(by.length, "rule")} that apply hold: no import breaks them.`,
+                    ? `${b(plural(f.rules.violations, "import"))} ${f.rules.violations === 1 ? "breaks" : "break"} ${by.length === 1 ? `the only rule that applies: ${code(name(broken[0]))}.` : `${b(`${n(broken.length)} of the ${n(by.length)} rules`)} that apply. ${broken.length > 1 ? `Most of them break ${code(name(broken[0]))} (${n(Number(broken[0].v))}).` : `All of them break ${code(name(broken[0]))}.`}`}${by.length > broken.length ? ` The other ${by.length - broken.length === 1 ? "rule holds" : `${n(by.length - broken.length)} rules hold`}.` : ""}`
+                    : by.length === 1 ? "The only rule that applies holds: no import breaks it." : `All ${n(by.length)} rules that apply hold: no import breaks them.`,
                 values: { violations: f.rules.violations, "rules broken": broken.length },
             }
         },
@@ -431,7 +522,7 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             const total = Object.values(f.moduleKinds).reduce((s, c) => s + c, 0)
-            if (!total) return absent("The scan found no build modules.")
+            if (!total) return absent("The build defines no modules.")
             const rows = await ctx.query(`SELECT name, coalesce(depends_on, '') AS deps FROM modules`)
             const into = new Map<string, number>()
             let depending = 0
@@ -443,7 +534,7 @@ export const READINGS: ReadingDef[] = [
             const top = [...into].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]
             const kinds = Object.entries(f.moduleKinds).sort((a, b) => b[1] - a[1])
             return {
-                text: `The scan found ${b(listOf(kinds.map(([k, c]) => modulesPhrase(k, c))))}. ${depending ? `${n(depending)} of them depend on another module in the codebase${top ? `; the most depended on is ${code(top[0])}, by ${plural(top[1], "module")}` : ""}, and ${n(total - depending)} on none.` : "None of them declares a dependency on another module in the codebase."}`,
+                text: `The build defines ${b(listOf(kinds.map(([k, c]) => modulesPhrase(k, c))))}. ${depending ? `${n(depending)} of them depend on another module in this codebase; the other ${n(total - depending)} depend on none.${top ? ` The one most depended on is ${code(top[0])}, needed by ${plural(top[1], "module")}.` : ""}` : "None of them declares a dependency on another module in this codebase."}`,
                 values: { modules: total, "depend on another": depending },
             }
         },
@@ -454,13 +545,13 @@ export const READINGS: ReadingDef[] = [
         describe: "git__last_change_age_in_days per file, counted back from the head commit; renames are not changes.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.fileColumns.has("git__last_change_age_in_days")) return absent("Code age needs a snapshot at analysis revision 2 or later.")
-            const where = f.fileColumns.has("role") ? `role = 'production'` : "1"
+            if (!f.fileColumns.has("git__last_change_age_in_days")) return absent("This scan is too old to say when files last changed. Scan again to add it.")
+            const where = prodFile(f)
             const [r] = await ctx.query(`SELECT sum(CASE WHEN git__last_change_age_in_days > 365 THEN complexity__lines ELSE 0 END) AS old, sum(CASE WHEN git__last_change_age_in_days <= 90 THEN complexity__lines ELSE 0 END) AS fresh, sum(CASE WHEN git__last_change_age_in_days IS NOT NULL THEN complexity__lines END) AS total FROM files WHERE ${where}`)
             const total = Number(r?.total) || 0
             if (!total) return absent("No production file has a recorded last change.")
             return {
-                text: `Counted back from the head commit, ${b(pct(Number(r.old) || 0, total))} of the production lines sit in files unchanged for more than a year, and ${b(pct(Number(r.fresh) || 0, total))} in files changed in the last 90 days.`,
+                text: `${b(pct(Number(r.old) || 0, total))} of the production code has not changed for more than a year, and ${b(pct(Number(r.fresh) || 0, total))} changed in the last 90 days. Both are counted back from the newest commit in the scan.`,
                 values: { "% older than a year": Math.round((100 * (Number(r.old) || 0)) / total), "% changed in 90 days": Math.round((100 * (Number(r.fresh) || 0)) / total) },
             }
         },
@@ -468,19 +559,20 @@ export const READINGS: ReadingDef[] = [
     {
         id: "tests",
         label: "Tests",
-        describe: "Files with role 'test', and components no test file imports (component_connections_direct).",
+        describe: "Files with role 'test', and production components no test reaches: no test file imports them (component_connections_direct) and none sits inside them.",
         async run(ctx) {
             const f = await probe(ctx)
-            if (!f.fileColumns.has("role")) return absent("Test files need a snapshot that gives files a role.")
+            if (!f.fileColumns.has("role")) return absent("This scan did not sort files into production and test code. Scan again to add it.")
             const t = f.roles.test ?? { files: 0, lines: 0 }
-            const ignored = (() => { try { return (JSON.parse(f.snapshot.walker_ignored_top || "[]") as string[]).filter(p => /(^|\/)(tests?|spec|__tests__)\//.test(p)).length } catch { return 0 } })()
-            const left = ignored ? ` The scan left out ${plural(ignored, "test directory", "test directories")} by its ignore patterns.` : ""
-            if (!t.files) return { text: `The snapshot has no files marked as tests.${left}`, values: { "test files": 0 } }
-            const [r] = await ctx.query(`SELECT count(*) AS c FROM components WHERE name <> '.' AND name NOT IN (SELECT DISTINCT d."to" FROM component_connections_direct d JOIN files f ON f.name = d.file WHERE f.role = 'test')`)
-            const untested = Number(r?.c) || 0
+            const ignored = ignoredTestDirs(f)
+            const left = ignored ? ` The scan's ignore patterns left out ${plural(ignored, "test folder")}, so this undercounts.` : ""
+            if (!t.files) return { text: `No file in this code is a test.${left}`, values: { "test files": 0 } }
+            // A test reaches a component by importing it, or by sitting inside it as Java and Go tests share their package.
+            const [r] = await ctx.query(`SELECT count(*) AS c, sum(name NOT IN (SELECT component FROM files WHERE role = 'test' AND component IS NOT NULL UNION SELECT d."to" FROM component_connections_direct d JOIN files t ON t.name = d.file WHERE t.role = 'test')) AS u FROM components WHERE name IN (SELECT component FROM files WHERE role = 'production')`)
+            const untested = Number(r?.u) || 0
             return {
-                text: `${b(plural(t.files, "test file"))} ${t.files === 1 ? "holds" : "hold"} ${n(t.lines)} lines, ${ratio(t.lines, f.production.lines)} for every 100 lines of production code. ${b(`${n(untested)} of ${n(f.components)} components`)} ${untested === 1 ? "is" : "are"} imported by no test file.${left}`,
-                values: { "test files": t.files, "components no test imports": untested },
+                text: `The tests are ${b(plural(t.files, "file"))} with ${n(t.lines)} lines: ${ratio(t.lines, f.production.lines)} lines of test for every 100 lines of production code.\n\n${b(`${n(untested)} of the ${plural(Number(r?.c) || 0, "production component")}`)} ${untested === 1 ? "is" : "are"} not reached by any test. No test file imports ${untested === 1 ? "it" : "them"}, and none sits inside ${untested === 1 ? "it" : "them"}.${left}`,
+                values: { "test files": t.files, "components no test reaches": untested },
             }
         },
     },
@@ -488,18 +580,18 @@ export const READINGS: ReadingDef[] = [
         id: "libraries",
         label: "Libraries",
         describe: "Imports that name none of the code's own components (snippets), rolled up to two segments; platform modules tagged by rule.",
-        async run(ctx) {
+        async run(ctx, p) {
             const f = await probe(ctx)
-            if (!f.tables.has("snippets")) return absent("The snapshot keeps no import snippets.")
+            if (!f.tables.has("snippets")) return absent("This scan did not keep the import lines, so libraries cannot be counted.")
             const rows = (await ctx.query(`SELECT content, file, component FROM snippets WHERE snippet_type = 'modularity__component__imports' AND content NOT IN (SELECT name FROM components)`)) as ImportRow[]
             const comps = (await ctx.query(`SELECT name FROM components`)).map(r => String(r.name))
-            const libs = libraries(rows, 2, ownPrefixes(comps)).filter(l => !l.internal)
-            if (!libs.length) return absent("The code imports nothing outside its own components.")
+            const libs = libraries(p.language ? rows.filter(r => importLanguage(r.file) === p.language) : rows, 2, ownPrefixes(comps)).filter(l => !l.internal)
+            if (!libs.length) return absent("The code uses no libraries: every import points to its own code.")
             const outside = libs.filter(l => !l.platform)
             const platform = libs.length - outside.length
             const top = [...outside].sort((a, b) => b.files - a.files || a.name.localeCompare(b.name)).slice(0, 3)
             return {
-                text: `The code imports ${b(plural(outside.length, "library", "libraries"))} from outside its own components, rolled up to two segments${platform ? `, besides ${plural(platform, "platform module")}` : ""}.${top.length ? ` The most widely imported are ${listOf(top.map(l => `${code(l.name)} (in ${plural(l.files, "file")})`))}.` : ""}`,
+                text: `The code uses ${b(plural(outside.length, "library", "libraries"))}${platform ? `, not counting ${plural(platform, "module")} of the language's own platform` : ""}.${top.length ? ` The most widely used ${top.length === 1 ? "is" : "are"} ${listOf(top.map((l, i) => `\`${displayName(l.name, l.language)}\` (${i === 0 ? `in ${plural(l.files, "file")}` : n(l.files)})`))}.` : ""}`,
                 values: { libraries: outside.length, "platform modules": libs.length - outside.length },
             }
         },
@@ -512,21 +604,24 @@ export const READINGS: ReadingDef[] = [
         async run(ctx, p) {
             const f = await probe(ctx)
             const name = p.component
-            if (!name) return absent("Choose a component for this paragraph.")
+            if (!name) return { ...absent("Choose a component for this paragraph."), instruction: true }
             const h = f.componentColumns.has("codesmells__code_health") ? `, ${healthCol(ctx.revision)} AS health` : ""
             const git = f.componentColumns.has("git__commits__last_180_days") ? ", git__commits__last_180_days AS commits, git__authors__last_180_days AS authors" : ""
             const [r] = await ctx.query(`SELECT complexity__files AS files, complexity__lines AS lines, modularity__coupling__dependents AS d, modularity__coupling__dependencies AS e${h}${git} FROM components WHERE name = ${lit(name)}`)
             if (!r) return absent(`${code(name)} is not in this snapshot.`)
             const [t] = f.tables.has("component_strongly_connected_groups") ? await ctx.query(`SELECT count(*) AS c FROM component_strongly_connected_groups WHERE "group" = (SELECT "group" FROM component_strongly_connected_groups WHERE component = ${lit(name)} LIMIT 1)`) : [null]
             const tangle = Number(t?.c) || 0
+            // Counted like the report's dependents table: production components that import it.
+            const [dep] = f.tables.has("component_connections_direct") ? await ctx.query(`SELECT count(DISTINCT "from") AS c FROM component_connections_direct WHERE "to" = ${lit(name)} AND "from" <> ${lit(name)} AND ${prodComponents(f, `"from"`)}`) : [null]
+            const d = dep ? Number(dep.c) || 0 : Number(r.d) || 0
             const parts = [
-                `${code(name)} holds ${plural(Number(r.files) || 0, "file")} and ${n(Number(r.lines) || 0)} lines.`,
-                ` ${plural(Number(r.d) || 0, "component")} depend on it, and it depends on ${plural(Number(r.e) || 0, "other")}.`,
-                tangle > 1 ? ` It sits in a tangle of ${plural(tangle, "component")}.` : "",
-                r.health !== undefined && r.health !== null ? ` Its code health is ${Number(r.health).toFixed(1)}.` : "",
-                r.commits !== undefined ? ` In the last 180 days, ${plural(Number(r.commits) || 0, "commit")} by ${plural(Number(r.authors) || 0, "author")} changed it.` : "",
+                `${code(name)} has ${b(plural(Number(r.files) || 0, "file"))} and ${b(`${n(Number(r.lines) || 0)} lines`)}.`,
+                ` ${b(n(d))} ${dep ? "production " : ""}${d === 1 ? "component imports" : "components import"} it directly, and it imports ${plural(Number(r.e) || 0, "other component")}.`,
+                tangle > 1 ? ` It sits in a tangle of ${plural(tangle, "component")}, so it cannot change on its own.` : "",
+                r.health !== undefined && r.health !== null ? ` Its code health is ${Number(r.health).toFixed(1)} out of 10.` : "",
+                r.commits !== undefined ? ` In the last 180 days, ${plural(Number(r.authors) || 0, "person", "people")} changed it in ${plural(Number(r.commits) || 0, "commit")}.` : "",
             ]
-            return { text: parts.join(""), values: { lines: Number(r.lines) || 0, dependents: Number(r.d) || 0, dependencies: Number(r.e) || 0, "tangle size": tangle } }
+            return { text: parts.join(""), values: { lines: Number(r.lines) || 0, dependents: d, dependencies: Number(r.e) || 0, "tangle size": tangle } }
         },
     },
 
@@ -534,15 +629,19 @@ export const READINGS: ReadingDef[] = [
     {
         id: "spring",
         label: "Spring",
-        describe: "The engine's Spring and JPA counts (java__spring__*, java__jpa__entities) from the summary.",
+        describe: "The engine's Spring and JPA counts (java__spring__*, java__jpa__entities) from the summary, and the JAX-RS resources (@Path classes) in production files.",
         async run(ctx) {
-            const s = (await probe(ctx)).summary
-            if (!s.java__spring__beans) return absent("The snapshot has no Spring beans.")
-            const kinds = [["java__spring__services", "service"], ["java__spring__repositories", "repository", "repositories"], ["java__spring__controllers", "controller"], ["java__spring__configurations", "configuration"], ["java__spring__components", "@Component class", "@Component classes"]] as const
+            const f = await probe(ctx)
+            const s = f.summary
+            if (!s.java__spring__beans) return absent("There are no Spring beans in this code.")
+            // JAX-RS resources answer requests too, but Spring's own counts leave them out.
+            const [jr] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT m.unit) AS c FROM unit_markers m JOIN units u ON u.id = m.unit WHERE m.source = 'annotation' AND m.key = 'Path' AND coalesce(u.owner, '') = '' AND u.file IN (SELECT name FROM files WHERE ${prodFile(f)})`) : [null]
+            const jaxrs = Number(jr?.c) || 0
+            const kinds = [["java__spring__services", "service"], ["java__spring__repositories", "repository", "repositories"], ["java__spring__controllers", "controller"], ["java__spring__configurations", "configuration class", "configuration classes"], ["java__spring__components", "other `@Component` class", "other `@Component` classes"]] as const
             const verbs = [["get", "GET"], ["post", "POST"], ["put", "PUT"], ["patch", "PATCH"], ["delete", "DELETE"]].map(([k, l]) => [s[`java__spring__request_mappings__${k}`] ?? 0, l] as const).filter(([c]) => c > 0)
             return {
-                text: `The code declares ${b(plural(s.java__spring__beans, "Spring bean"))}: ${listOf(kinds.filter(([k]) => s[k]).map(([k, one, many]) => plural(s[k], one, many)))}.${s.java__spring__request_mappings__total ? ` Controllers map ${b(plural(s.java__spring__request_mappings__total, "request"))} (${listOf(verbs.map(([c, l]) => `${n(c)} ${l}`))}).` : ""}${s.java__jpa__entities ? ` ${b(plural(s.java__jpa__entities, "JPA entity", "JPA entities"))} map to tables.` : ""}`,
-                values: { beans: s.java__spring__beans, controllers: s.java__spring__controllers ?? 0, "request mappings": s.java__spring__request_mappings__total ?? 0, "JPA entities": s.java__jpa__entities ?? 0 },
+                text: `Spring creates and wires ${b(plural(s.java__spring__beans, "bean"))} in this code:\n\n${kinds.filter(([k]) => s[k]).map(([k, one, many]) => `- ${plural(s[k], one, many)}${k === "java__spring__controllers" && s.java__spring__request_mappings__total ? `, mapping ${plural(s.java__spring__request_mappings__total, "request")} (${listOf(verbs.map(([c, l]) => `${n(c)} ${l}`))})` : ""}`).join("\n")}${jaxrs || s.java__jpa__entities ? "\n\n" : ""}${jaxrs ? `${b(plural(jaxrs, "JAX-RS resource"))} (classes marked \`@Path\`) also ${jaxrs === 1 ? "answers" : "answer"} requests.` : ""}${jaxrs && s.java__jpa__entities ? " " : ""}${s.java__jpa__entities ? `${b(plural(s.java__jpa__entities, "JPA entity", "JPA entities"))} map to database tables.` : ""}`,
+                values: { beans: s.java__spring__beans, controllers: s.java__spring__controllers ?? 0, "JAX-RS resources": jaxrs, "request mappings": s.java__spring__request_mappings__total ?? 0, "JPA entities": s.java__jpa__entities ?? 0 },
             }
         },
     },
@@ -553,14 +652,14 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             const apps = f.moduleKinds.django ?? 0
-            if (!apps) return absent("The scan found no Django apps.")
+            if (!apps) return absent("There are no Django apps in this code.")
             const marks = f.tables.has("unit_markers") ? await ctx.query(`SELECT kind, key, count(*) AS c FROM unit_markers WHERE source = 'filename' AND key IN ('views', 'models', 'abstract_models', 'forms', 'admin', 'serializers') GROUP BY 1, 2`) : []
             const count = (kind: string, ...keys: string[]) => marks.filter(m => m.kind === kind && keys.includes(String(m.key))).reduce((s, m) => s + Number(m.c), 0)
             const models = count("type", "models", "abstract_models"), views = count("function", "views") + count("type", "views"), forms = count("type", "forms")
-            const found = [models ? plural(models, "class", "classes") + " in model modules" : "", views ? `${n(views)} functions and classes in view modules` : "", forms ? `${plural(forms, "class", "classes")} in form modules` : ""].filter(Boolean)
+            const found = [models ? plural(models, "model class", "model classes") : "", views ? plural(views, "view") : "", forms ? plural(forms, "form") : ""].filter(Boolean)
             const [dash] = await ctx.query(`SELECT count(*) AS c FROM modules WHERE kind = 'django' AND (name LIKE 'tests.%' OR name LIKE '%.tests.%')`)
             return {
-                text: `The project holds ${b(modulesPhrase("django", apps))}${Number(dash?.c) ? `, ${n(Number(dash.c))} of them under tests` : ""}.${found.length ? ` Across them, the scan finds ${listOf(found)}.` : ""}`,
+                text: `The project has ${b(modulesPhrase("django", apps))}${Number(dash?.c) ? ` (${n(Number(dash.c))} of them only for tests)` : ""}.${found.length ? ` Between them they hold ${listOf(found)}, counted from the modules they sit in (\`models.py\`, \`views.py\`, \`forms.py\`).` : ""}`,
                 values: { apps, "model classes": models, views },
             }
         },
@@ -568,17 +667,18 @@ export const READINGS: ReadingDef[] = [
     {
         id: "node",
         label: "JavaScript and TypeScript",
-        describe: "npm packages from the modules table, the TypeScript share of JavaScript and TypeScript lines, and React components the engine counted.",
+        describe: "npm packages from the modules table, the TypeScript share of JavaScript and TypeScript lines, and React components in production files (Pascal-case names in .tsx and .jsx files), counted only when files import react.",
         async run(ctx) {
             const f = await probe(ctx)
             const pkgs = f.moduleKinds.node ?? 0
             const ts = languageShare(f, "TypeScript"), js = languageShare(f, "JavaScript")
-            if (!pkgs && ts + js === 0) return absent("The snapshot has no JavaScript or TypeScript.")
-            const s = f.summary
-            const react = (s.ts__react__components ?? 0) + (s.js__react__components ?? 0)
+            if (!pkgs && ts + js === 0) return absent("There is no JavaScript or TypeScript in this code.")
+            // Counted as the React review's tables and roles count them, and only where react is imported.
+            const [rc] = f.reactImporters && f.tables.has("units") ? await ctx.query(`SELECT count(DISTINCT u.id) AS c FROM units u WHERE ${reactComponent(f)} AND u.file IN (SELECT name FROM files WHERE ${prodFile(f)})`) : [null]
+            const react = Number(rc?.c) || 0
             const names = pkgs ? (await ctx.query(`SELECT name FROM modules WHERE kind = 'node' ORDER BY files DESC LIMIT 3`)).map(r => code(String(r.name))) : []
             return {
-                text: `${pkgs ? `The workspace holds ${b(modulesPhrase("node", pkgs))}, the largest ${listOf(names)}. ` : ""}TypeScript is ${b(`${Math.round(100 * ts / Math.max(1e-9, ts + js))}%`)} of the JavaScript and TypeScript lines.${react ? ` The engine counts ${b(plural(react, "React component"))}.` : ""}`,
+                text: `${pkgs ? `The workspace has ${b(modulesPhrase("node", pkgs))}; the largest ${pkgs === 1 ? "is" : "are"} ${listOf(names)}. ` : ""}${b(`${Math.round(100 * ts / Math.max(1e-9, ts + js))}%`)} of its JavaScript and TypeScript is TypeScript.${react ? ` It has ${b(plural(react, "React component"))}: functions named in Pascal case in \`.tsx\` and \`.jsx\` files.` : ""}`,
                 values: { packages: pkgs, "TypeScript %": Math.round(100 * ts / Math.max(1e-9, ts + js)), "React components": react },
             }
         },
@@ -590,13 +690,21 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             const mods = f.moduleKinds.go ?? 0
-            if (!mods && languageShare(f, "Go") === 0) return absent("The snapshot has no Go.")
-            const [i] = await ctx.query(`SELECT count(*) AS c FROM components WHERE name LIKE '%/internal' OR name LIKE '%/internal/%' OR name = 'internal' OR name LIKE 'internal/%'`)
+            if (!mods && languageShare(f, "Go") === 0) return absent("There is no Go in this code.")
+            // Packages are the components declaring Go production code, as the package table counts them.
+            const goPkgs = f.tables.has("units")
+                ? `SELECT DISTINCT u.component AS c FROM units u WHERE u.file LIKE '%.go' AND u.file IN (SELECT name FROM files WHERE ${prodFile(f)})`
+                : `SELECT DISTINCT component AS c FROM files WHERE name LIKE '%.go' AND ${prodFile(f)}`
+            const [pk] = await ctx.query(`SELECT count(*) AS c FROM (${goPkgs})`)
+            const packages = Number(pk?.c) || f.components
+            const [i] = await ctx.query(`SELECT count(*) AS c FROM (${goPkgs}) WHERE c LIKE '%/internal' OR c LIKE '%/internal/%' OR c = 'internal' OR c LIKE 'internal/%'`)
             const [v] = f.tables.has("rules") ? await ctx.query(`SELECT coalesce(sum(status = 'violation'), 0) AS v, count(*) AS c FROM rules WHERE rule LIKE '%go__internal%' AND status <> 'not_applicable'`) : [null]
             const internal = Number(i?.c) || 0
+            const INTERNAL = `("to" LIKE '%/internal' OR "to" LIKE '%/internal/%' OR "to" = 'internal' OR "to" LIKE 'internal/%')`
+            const reached = internal ? await ctx.query(`SELECT "to" AS p, count(DISTINCT "from") AS c FROM component_connections_direct WHERE ${INTERNAL} AND "from" <> "to" GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 3`) : []
             return {
-                text: `${mods ? `The code builds as ${b(modulesPhrase("go", mods))} with ` : "The code has "}${b(plural(f.components, "package"))}, ${n(internal)} of them internal.${Number(v?.c) ? ` ${Number(v.v) ? `${b(plural(Number(v.v), "import"))} reach an internal package from outside its parent.` : "No import reaches an internal package from outside its parent."}` : ""}`,
-                values: { modules: mods, packages: f.components, internal, "internal imports from outside": Number(v?.v) || 0 },
+                text: `${mods ? `The code builds as ${b(modulesPhrase("go", mods))} with ` : "The code has "}${b(plural(packages, "package"))}, ${n(internal)} of them internal.${reached.length ? ` The internal packages used most are ${listOf(reached.map((r, i) => `${code(String(r.p))} (${i === 0 ? `by ${plural(Number(r.c), "package")}` : n(Number(r.c))})`))}.` : ""}${Number(v?.c) ? ` ${Number(v.v) ? `${b(plural(Number(v.v), "import"))} ${Number(v.v) === 1 ? "breaks" : "break"} Go's rule for internal packages by reaching in from outside the parent folder.` : "Go's rule for internal packages holds: nothing outside their parent folder imports them."}` : ""}`,
+                values: { modules: mods, packages, internal, "internal imports from outside": Number(v?.v) || 0 },
             }
         },
     },
@@ -607,10 +715,10 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             const projects = f.moduleKinds.dotnet ?? 0
-            if (!projects && languageShare(f, "C#") === 0) return absent("The snapshot has no C#.")
+            if (!projects && languageShare(f, "C#") === 0) return absent("There is no C# in this code.")
             const [dep] = projects ? await ctx.query(`SELECT count(*) AS c FROM modules WHERE kind = 'dotnet' AND coalesce(depends_on, '') <> ''`) : [null]
             return {
-                text: `${projects ? `The solution holds ${b(modulesPhrase("dotnet", projects))}, ${n(Number(dep?.c) || 0)} of them referencing another project. ` : ""}C# is ${b(`${Math.round(100 * languageShare(f, "C#"))}%`)} of the production lines, across ${plural(f.components, "namespace")}.`,
+                text: `${projects ? `The solution has ${b(modulesPhrase("dotnet", projects))}; ${n(Number(dep?.c) || 0)} of them reference another project. ` : ""}C# is ${b(`${Math.round(100 * languageShare(f, "C#"))}%`)} of the production code, spread over ${plural(f.components, "namespace")}.`,
                 values: { projects, namespaces: f.components },
             }
         },
@@ -622,18 +730,122 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             const pkgs = f.moduleKinds.composer ?? 0
-            if (!pkgs && languageShare(f, "PHP") === 0) return absent("The snapshot has no PHP.")
+            if (!pkgs && languageShare(f, "PHP") === 0) return absent("There is no PHP in this code.")
             const [bundles] = await ctx.query(`SELECT count(*) AS c FROM components WHERE name LIKE '%Bundle' OR name LIKE '%Bundle/%' OR name LIKE '%Bundle\\%'`)
             const nb = Number(bundles?.c) || 0
             return {
-                text: `${pkgs ? `Composer declares ${b(modulesPhrase("composer", pkgs))}. ` : ""}PHP is ${b(`${Math.round(100 * languageShare(f, "PHP"))}%`)} of the production lines, in ${plural(f.components, "namespace")}${nb ? `, ${n(nb)} of them inside a bundle` : ""}.`,
+                text: `${pkgs ? `The code is split into ${b(modulesPhrase("composer", pkgs))}. ` : ""}PHP is ${b(`${Math.round(100 * languageShare(f, "PHP"))}%`)} of the production code, in ${plural(f.components, "namespace")}${nb ? `; ${n(nb)} of those sit inside a Symfony bundle` : ""}.`,
                 values: { packages: pkgs, namespaces: f.components, "bundle namespaces": nb },
             }
         },
     },
+
+    // ── Mobile ────────────────────────────────────────────────────────────
+    {
+        id: "mobile-apps",
+        label: "Mobile apps",
+        describe: "The mobile apps the scan found (deployables of kind mobile_app), with the frameworks and SDK levels their builds declare (deployable_dependencies).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!f.mobileApps.length) return absent("The scan found no mobile app: no Android application module, iOS app target, Flutter app or React Native app.")
+            const deps = await ctx.query(`SELECT d.name AS app, dd.role, dd.name, dd.version FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role IN ('framework', 'runtime')`)
+            const libs = await ctx.query(`SELECT d.name AS app, count(*) AS c FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role = 'library' GROUP BY 1`)
+            const PLATFORM: Record<string, string> = { android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native" }
+            const real = f.mobileApps.filter(a => !isSampleApp(a.name))
+            const samples = f.mobileApps.filter(a => isSampleApp(a.name))
+            const described = real.length ? real : f.mobileApps.slice(0, 1)
+            const RUNTIME: Record<string, string> = { minSdk: "minimum SDK", targetSdk: "target SDK", compileSdk: "compile SDK", "deployment-target": "deployment target", swift: "Swift", "swift-tools": "Swift tools", dart: "Dart", node: "Node", java: "Java" }
+            const sentences = described.map(a => {
+                const mine = deps.filter(d => d.app === a.name)
+                const fw = mine.filter(d => d.role === "framework").map(d => String(d.name))
+                const rt = mine.filter(d => d.role === "runtime" && d.version).map(d => `${RUNTIME[String(d.name)] ?? d.name} ${d.version}`)
+                const count = Number(libs.find(l => l.app === a.name)?.c) || 0
+                return `${b(a.name)} (${PLATFORM[a.platform] ?? a.platform})${fw.length ? ` is built on ${listOf(fw)}` : ""}${rt.length ? `${fw.length ? "," : ""} ${listOf(rt)}` : ""}${count ? `, with ${plural(count, "library", "libraries")} declared` : ""}.`
+            })
+            const rest = f.mobileApps.filter(a => !described.includes(a))
+            const sampleNote = rest.length ? ` Beside ${described.length === 1 ? "it" : "them"}: ${plural(rest.length, samples.length === rest.length ? "sample, demo or preview app" : "other app")} (${listOf(rest.slice(0, 6).map(a => a.name))}${rest.length > 6 ? ", and more" : ""}).` : ""
+            return {
+                text: `The workspace ships ${plural(real.length || f.mobileApps.length, "mobile app")}. ${sentences.join(" ")}${sampleNote}`,
+                values: { apps: f.mobileApps.length },
+            }
+        },
+    },
+    {
+        id: "android",
+        label: "Android",
+        describe: "Android modules by type (modules), what the manifests declare (app_declarations), and composables against Activities, Fragments and Views (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            const apps = f.moduleTypes["android-application"] ?? 0, libraries = f.moduleTypes["android-library"] ?? 0
+            if (!apps && !libraries) return absent("The scan found no Android modules.")
+            const decl = f.tables.has("app_declarations") ? await ctx.query(`SELECT kind, count(*) AS c, sum(exported IN ('true', 'implied')) AS exported FROM app_declarations WHERE platform = 'android' GROUP BY kind`) : []
+            const d = (k: string) => decl.find(r => r.kind === k)
+            const [ui] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'Composable' THEN unit END) AS composables, count(DISTINCT CASE WHEN source = 'supertype' AND key IN ('Fragment', 'DialogFragment', 'BottomSheetDialogFragment') THEN unit END) AS fragments, count(DISTINCT CASE WHEN source = 'manifest' AND key = 'activity' THEN unit END) AS activities FROM unit_markers`) : [null]
+            const components = ["activity", "service", "receiver", "provider"].map(k => [k, Number(d(k)?.c) || 0, Number(d(k)?.exported) || 0] as const).filter(([, c]) => c)
+            const exported = components.reduce((s, [, , e]) => s + e, 0)
+            return {
+                text: `${plural(apps, "application module")} and ${plural(libraries, "library module")}.${components.length ? ` The manifests declare ${listOf(components.map(([k, c]) => plural(c, k, k === "activity" ? "activities" : `${k}s`)))}, ${b(`${n(exported)} of them exported`)} to other apps` : ""}${d("permission") ? `, and ask for ${b(plural(Number(d("permission").c), "permission"))}` : ""}${components.length ? "." : ""}${ui && Number(ui.composables) ? ` The UI is ${b(plural(Number(ui.composables), "composable"))} against ${plural(Number(ui.fragments) || 0, "Fragment")}.` : ""}`,
+                values: { "application modules": apps, "library modules": libraries, composables: Number(ui?.composables) || 0, fragments: Number(ui?.fragments) || 0, "exported components": exported },
+            }
+        },
+    },
+    {
+        id: "ios",
+        label: "iOS",
+        describe: "Swift package and Xcode targets (modules), SwiftUI views against UIKit view controllers and views (unit_markers), and Objective-C's share of the lines.",
+        async run(ctx) {
+            const f = await probe(ctx)
+            const swift = f.languages.find(l => l.language === "Swift")?.lines ?? 0, objc = f.languages.find(l => l.language === "Objective-C")?.lines ?? 0
+            if (!swift && !objc) return absent("The snapshot holds no Swift or Objective-C.")
+            const [ui] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'View' THEN unit END) AS swiftui, count(DISTINCT CASE WHEN key IN ('UIViewController', 'UITableViewController', 'UICollectionViewController') THEN unit END) AS controllers, count(DISTINCT CASE WHEN key IN ('UIView', 'UITableViewCell', 'UICollectionViewCell') THEN unit END) AS uiviews FROM unit_markers WHERE source = 'supertype'`) : [null]
+            const targets = (f.moduleKinds.swiftpm ?? 0) + (f.moduleKinds.xcode ?? 0)
+            const sw = Number(ui?.swiftui) || 0, uk = (Number(ui?.controllers) || 0) + (Number(ui?.uiviews) || 0)
+            return {
+                text: `${targets ? `The code is built as ${listOf([f.moduleKinds.xcode ? modulesPhrase("xcode", f.moduleKinds.xcode) : "", f.moduleKinds.swiftpm ? modulesPhrase("swiftpm", f.moduleKinds.swiftpm) : ""].filter(Boolean))}. ` : ""}${sw + uk ? `Its UI is ${b(plural(sw, "SwiftUI view"))} and ${b(`${n(uk)} UIKit views and view controllers`)}: ${pct(sw, sw + uk)} of it is SwiftUI.` : ""}${objc ? ` Objective-C is ${b(pct(objc, swift + objc))} of the Swift and Objective-C lines.` : ""}`,
+                values: { "SwiftUI views": sw, "UIKit views and controllers": uk, "Objective-C lines": objc, "Swift lines": swift },
+            }
+        },
+    },
+    {
+        id: "flutter",
+        label: "Flutter",
+        describe: "Dart packages (modules), widgets by base type, and the state management the code is built on (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!(f.moduleKinds.pub ?? 0) && !f.languages.some(l => l.language === "Dart")) return absent("The snapshot holds no Dart.")
+            const rows = f.tables.has("unit_markers") ? await ctx.query(`SELECT key, count(DISTINCT unit) AS c FROM unit_markers WHERE (source = 'supertype' AND key IN ('StatelessWidget', 'StatefulWidget', 'ConsumerWidget', 'ConsumerStatefulWidget', 'HookWidget', 'HookConsumerWidget', 'Bloc', 'Cubit', 'ChangeNotifier', 'StateNotifier', 'Notifier', 'AsyncNotifier', 'GetxController')) OR (source = 'annotation' AND key IN ('riverpod', 'Riverpod', 'freezed')) GROUP BY key`) : []
+            const c = (...keys: string[]) => rows.filter(r => keys.includes(String(r.key))).reduce((s, r) => s + Number(r.c), 0)
+            const widgets = c("StatelessWidget", "StatefulWidget", "ConsumerWidget", "ConsumerStatefulWidget", "HookWidget", "HookConsumerWidget")
+            const state = [["Bloc", c("Bloc", "Cubit")], ["Riverpod", c("ConsumerWidget", "ConsumerStatefulWidget", "HookConsumerWidget", "StateNotifier", "Notifier", "AsyncNotifier", "riverpod", "Riverpod")], ["Provider", c("ChangeNotifier")], ["GetX", c("GetxController")]] as const
+            const used = state.filter(([, k]) => k > 0)
+            return {
+                text: `${f.moduleKinds.pub ? `${modulesPhrase("pub", f.moduleKinds.pub)}. ` : ""}${b(plural(widgets, "widget"))}.${used.length ? ` State is managed with ${listOf(used.map(([name, k]) => `${name} (${n(k)} classes)`))}${used.length > 1 ? `: ${b("more than one approach")}` : ""}.` : ""}${c("freezed") ? ` ${plural(c("freezed"), "class", "classes")} are generated by freezed.` : ""}`,
+                values: { widgets, ...Object.fromEntries(state.map(([k, v]) => [k, v])) },
+            }
+        },
+    },
+    {
+        id: "kmp",
+        label: "Kotlin Multiplatform",
+        describe: "Kotlin lines by source set (the src/<name>Main folders), and expect declarations with the platforms that provide an actual (unit_markers).",
+        async run(ctx) {
+            const f = await probe(ctx)
+            if (!(f.moduleTypes["kotlin-multiplatform"] ?? 0)) return absent("The scan found no Kotlin Multiplatform module.")
+            const sets = await ctx.query(`SELECT substr(name, instr(name, '/src/') + 5, instr(substr(name, instr(name, '/src/') + 5), '/') - 1) AS source_set, sum(coalesce(complexity__lines, 0)) AS lines FROM files WHERE name GLOB '*/src/*Main/*.kt' GROUP BY 1 ORDER BY 2 DESC`)
+            const total = sets.reduce((s, r) => s + Number(r.lines), 0)
+            const common = Number(sets.find(r => r.source_set === "commonMain")?.lines) || 0
+            const [ea] = f.tables.has("unit_markers") ? await ctx.query(`SELECT count(DISTINCT CASE WHEN key = 'expect' THEN unit END) AS expects FROM unit_markers WHERE source = 'keyword'`) : [null]
+            return {
+                text: `${plural(f.moduleTypes["kotlin-multiplatform"], "multiplatform module")}. ${total ? `${b(pct(common, total))} of the Kotlin in source sets is shared (commonMain); the rest is ${listOf(sets.filter(r => r.source_set !== "commonMain").slice(0, 4).map(r => `${r.source_set} (${pct(Number(r.lines), total)})`))}.` : ""}${Number(ea?.expects) ? ` Common code declares ${b(plural(Number(ea.expects), "expect declaration"))} for the platforms to provide.` : ""}`,
+                values: { "shared lines": common, "source-set lines": total, expects: Number(ea?.expects) || 0 },
+            }
+        },
+    },
+    // The framework's roles and layers; "role" takes a role to describe, so only templates write it.
+    ...ANATOMY_READINGS.filter(r => r.id !== "role"),
 ]
 
-const byId = new Map(READINGS.map(r => [r.id, r]))
+const byId = new Map([...READINGS, ...ANATOMY_READINGS].map(r => [r.id, r]))
 export const readingDef = (id: string) => byId.get(id)
 
 /** Runs one reading; a failure comes back as its message, not a thrown error. */
@@ -641,5 +853,13 @@ export async function runReading(id: string, params: Record<string, string> | un
     const def = byId.get(id)
     if (!def) return absent(`No reading called ${id}.`)
     const defaults = Object.fromEntries((def.params ?? []).map(p => [p.id, p.choices?.[0]?.value ?? ""]))
-    return def.run(ctx, { ...defaults, ...(params ?? {}) })
+    const out = await def.run(ctx, { ...defaults, ...(params ?? {}) })
+    // plain: for readers outside engineering, a name reads as its last two parts, not as code.
+    return params?.plain === "1" ? { ...out, text: out.text.replace(/`([^`]+)`/g, (_, name: string) => plainName(name)) } : out
+}
+
+/** `org.apache.fineract.portfolio.loanaccount` reads "portfolio loanaccount"; "(root)" and short names stay. */
+export function plainName(name: string): string {
+    const parts = name.split(/[./\\]+/).filter(Boolean)
+    return parts.length <= 2 ? name : parts.slice(-2).join(" ")
 }

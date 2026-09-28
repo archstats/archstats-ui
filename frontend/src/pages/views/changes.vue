@@ -101,9 +101,9 @@
                 <ul class="mt-2 flex flex-col gap-3">
                   <li v-for="(t, i) in changeSet.tangles" :key="i" class="rounded-lg p-3 hairline">
                     <p class="text-base text-neutral-900"><span class="font-medium capitalize">{{ t.kind }}</span>
-                      <span class="ml-2 font-mono text-sm text-neutral-500">{{ t.before.length }} → {{ t.after.length }} components</span></p>
+                      <span class="ml-2 font-mono text-sm text-neutral-500">{{ t.before?.length ?? 0 }} → {{ t.after?.length ?? 0 }} components</span></p>
                     <div class="mt-2 flex flex-wrap gap-1.5">
-                      <router-link v-for="m in (t.after.length ? t.after : t.before)" :key="m" :to="componentLink(m)" class="ui-chip font-mono"
+                      <router-link v-for="m in (t.after?.length ? t.after : t.before ?? [])" :key="m" :to="componentLink(m)" class="ui-chip font-mono"
                                    :class="{ 'text-green-700': t.kind !== 'formed' && t.joined.includes(m) }" :title="t.joined.includes(m) && t.kind !== 'formed' ? 'Joined the tangle' : m">
                         {{ t.joined.includes(m) && t.kind !== "formed" ? "+ " : "" }}{{ m }}
                       </router-link>
@@ -151,6 +151,40 @@
                 </div>
               </section>
 
+              <!-- 4c. Through a structure: the plan's modules or the lens's groups. -->
+              <section v-if="structure.available.value.length">
+                <div class="flex items-center gap-3">
+                  <h2 class="ui-section-title">Structure</h2>
+                  <div v-if="structure.available.value.length > 1" class="ui-segmented" role="group" aria-label="Read through">
+                    <button v-for="b in structure.available.value" :key="b" type="button" :aria-pressed="structure.by.value === b" @click="structure.chosen.value = b">{{ b === "plan" ? "Restructure plan" : `Lens: ${lens.active}` }}</button>
+                  </div>
+                  <span v-else class="text-sm text-neutral-500">through {{ structure.by.value === "plan" ? "the restructure plan" : `the ${lens.active} lens` }}</span>
+                </div>
+                <p class="mt-1 max-w-[760px] text-sm text-neutral-500">Both snapshots read through the same {{ structure.by.value === "plan" ? "modules" : "groups" }}: what a restructure did to how they depend on each other.</p>
+                <LoadingState v-if="structure.loading.value" text="Reading both snapshots' imports…"/>
+                <p v-else-if="structure.error.value" class="mt-2 text-sm text-red-700">{{ structure.error.value }}</p>
+                <template v-else-if="structure.diff.value">
+                  <div class="mt-2 overflow-hidden rounded-lg hairline">
+                    <table class="ui-table">
+                      <thead><tr><th>Check</th><th class="text-right">Before</th><th class="text-right">After</th></tr></thead>
+                      <tbody>
+                        <tr v-for="r in structure.diff.value.rows" :key="r.label">
+                          <td :title="r.why">{{ r.label }}</td>
+                          <td class="is-num text-right text-neutral-500">{{ r.before.toLocaleString("en-US") }}</td>
+                          <td class="is-num text-right" :class="r.better === 'lower' && r.after !== r.before ? (r.after < r.before ? 'text-green-700' : 'text-red-700') : 'text-neutral-900'">{{ r.after.toLocaleString("en-US") }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <ul class="mt-2 flex flex-col gap-1 text-sm text-neutral-700">
+                    <li v-if="structure.diff.value.mutualGone.length">No longer importing each other: {{ structure.diff.value.mutualGone.map(m => `${structure.name(m.a)} ⇄ ${structure.name(m.b)}`).join(", ") }}.</li>
+                    <li v-if="structure.diff.value.mutualNew.length" class="text-neutral-900">Now importing each other: {{ structure.diff.value.mutualNew.map(m => `${structure.name(m.a)} ⇄ ${structure.name(m.b)}`).join(", ") }}.</li>
+                    <li v-if="structure.diff.value.depsNew.length">New dependencies: {{ structure.diff.value.depsNew.slice(0, 8).map(d => `${structure.name(d.from)} → ${structure.name(d.to)} (${d.imports})`).join(", ") }}{{ structure.diff.value.depsNew.length > 8 ? ` and ${structure.diff.value.depsNew.length - 8} more` : "" }}.</li>
+                    <li v-if="structure.diff.value.depsGone.length">Gone: {{ structure.diff.value.depsGone.slice(0, 8).map(d => `${structure.name(d.from)} → ${structure.name(d.to)} (${d.imports})`).join(", ") }}{{ structure.diff.value.depsGone.length > 8 ? ` and ${structure.diff.value.depsGone.length - 8} more` : "" }}.</li>
+                  </ul>
+                </template>
+              </section>
+
               <!-- 5. Largest moves. -->
               <section v-if="moves.length">
                 <div class="flex items-center gap-3">
@@ -191,6 +225,7 @@ import { checkLens } from "~/features/rules/useLensFindings";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { useLensStore } from "~/features/groups/lens.store";
 import { findingKey } from "~/features/rules/lensRules";
+import { useStructureCompare } from "~/features/trends/useStructureCompare";
 import type { GroupEdge } from "~/features/groups/groupEdges";
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
 import ComparabilityGate from "~/features/trends/components/ComparabilityGate.vue";
@@ -203,7 +238,7 @@ import SingleSelect from "~/shared/ui/SingleSelect.vue";
 import { useExportables } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
-import { changesMarkdown, countChanges, isUnchanged, pickSides, summaryLine, type ChangeSet, type Move } from "~/features/trends/changes";
+import { changesMarkdown, countChanges, isUnchanged, normalizeChangeSet, pickSides, summaryLine, type ChangeSet, type Move } from "~/features/trends/changes";
 import { comparability } from "~/features/trends/comparability";
 import { buildProvenance, provenanceShort } from "~/features/export/provenance";
 import { componentPath, filePath } from "~/features/navigation/routes";
@@ -259,7 +294,7 @@ watch([() => sides.value.base?.id, () => sides.value.head?.id, gated], async ([b
   changeSet.value = null; error.value = "";
   if (!b || !hd || g) return;
   loading.value = true;
-  try { changeSet.value = (await Compare(b, hd)) as any; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
+  try { changeSet.value = normalizeChangeSet((await Compare(b, hd)) as any); } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
 }, { immediate: true });
 
 const counts = computed(() => (changeSet.value ? countChanges(changeSet.value) : null));
@@ -275,8 +310,9 @@ const compRows = computed(() => [
   ...(changeSet.value?.componentsRemoved ?? []).map(name => ({ kind: "removed" as const, name })),
 ]);
 const edgeRows = computed(() => [
-  ...(changeSet.value?.edgesAdded ?? []).map(e => ({ kind: "added" as const, key: `+${e.from}>${e.to}`, ...e, before: 0, after: e.refs })),
-  ...(changeSet.value?.edgesRemoved ?? []).map(e => ({ kind: "removed" as const, key: `-${e.from}>${e.to}`, ...e, before: e.refs, after: 0 })),
+  // Go sends an empty list as null: an edge's files, a tangle's other side.
+  ...(changeSet.value?.edgesAdded ?? []).map(e => ({ kind: "added" as const, key: `+${e.from}>${e.to}`, ...e, files: e.files ?? [], before: 0, after: e.refs })),
+  ...(changeSet.value?.edgesRemoved ?? []).map(e => ({ kind: "removed" as const, key: `-${e.from}>${e.to}`, ...e, files: e.files ?? [], before: e.refs, after: 0 })),
   ...(changeSet.value?.edgesChanged ?? []).map(e => ({ kind: "changed" as const, key: `~${e.from}>${e.to}`, from: e.from, to: e.to, refs: e.after, files: [] as string[], dynamic: false, before: e.before, after: e.after })),
 ]);
 const ruleRows = computed(() => [
@@ -310,6 +346,12 @@ watch([() => changeSet.value, () => lens.active, () => groupsStore.dimensionReco
     gone: base.crossings.flatMap(c => c.edges).filter(e => !headKeys.has(key(e))),
   };
 }, { immediate: true });
+
+// ── Structure: both sides through the plan or the lens ──────────────────
+const structure = useStructureCompare(
+  computed(() => (changeSet.value ? { base: changeSet.value.baseId, head: changeSet.value.headId } : null)),
+  (scanId, sql) => QueryIn(scanId, sql) as Promise<any[]>,
+);
 
 // ── Largest moves: one metric at a time, no composite ───────────────────
 const metric = ref("modularity__instability");

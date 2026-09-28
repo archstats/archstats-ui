@@ -37,7 +37,7 @@
           </thead>
           <tbody>
             <tr v-for="l in visible" :key="l.name" class="cursor-default" :class="{ 'is-selected': picked?.name === l.name }" @click="pick(l)">
-              <td class="max-w-[520px] truncate font-mono text-sm text-neutral-800" :title="l.name">{{ l.name }}</td>
+              <td class="max-w-[520px] truncate font-mono text-sm text-neutral-800" :title="displayName(l.name, l.language)">{{ displayName(l.name, l.language) }}</td>
               <td class="whitespace-nowrap">
                 <span v-if="l.platform" class="ui-tag" :title="PLATFORM_TITLE[l.language ?? ''] ?? 'Shipped with the language'">Platform</span>
                 <span v-if="l.internal" class="ui-tag" title="Starts where the project's own names start: probably one of its modules the scan did not resolve">Looks internal</span>
@@ -55,7 +55,7 @@
 
     <template #tab-users>
       <template v-if="picked">
-        <h2 class="break-all font-mono text-base font-medium text-neutral-900">{{ picked.name }}</h2>
+        <h2 class="break-all font-mono text-base font-medium text-neutral-900">{{ displayName(picked.name, picked.language) }}</h2>
         <p class="text-sm text-neutral-500">{{ fmt(picked.imports) }} imports in {{ fmt(picked.files) }} files of {{ fmt(picked.components.size) }} components</p>
         <div class="flex items-baseline gap-2">
           <h4 class="ui-label">Components that import it</h4>
@@ -86,7 +86,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useStateStore } from "~/platform/state.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
-import { libraries, ownPrefixes, type ImportRow, type Library } from "~/features/libraries/libraries";
+import { displayName, libraries, ownPrefixes, type ImportRow, type Library } from "~/features/libraries/libraries";
 import { componentLabel, componentPath } from "~/features/navigation/routes";
 
 // Which components are welded to which framework: every import that is not
@@ -149,7 +149,7 @@ function selectAllUsers() {
 useExportables().register({
   kind: "table",
   get title() { return `Libraries${depth.value === null ? "" : ` to depth ${depth.value}`}`; },
-  rows: () => shown.value.map(l => ({ library: l.name, platform: l.platform ? "yes" : "", looks_internal: l.internal ? "yes" : "", imports: l.imports, files: l.files, components: l.components.size })),
+  rows: () => shown.value.map(l => ({ library: displayName(l.name, l.language), platform: l.platform ? "yes" : "", looks_internal: l.internal ? "yes" : "", imports: l.imports, files: l.files, components: l.components.size })),
   columns: () => [{ id: "library", label: "Library" }, { id: "platform", label: "Platform" }, { id: "looks_internal", label: "Looks internal" }, { id: "imports", label: "Imports" }, { id: "files", label: "Files" }, { id: "components", label: "Components" }],
   notes: () => [["library", depth.value === null ? "as written in the import" : `the first ${depth.value} segments of the import as written`], ["counted", "imports of anything that is not one of the snapshot's components"]],
   disabledReason: () => (!shown.value.length ? "No libraries in scope." : null),
