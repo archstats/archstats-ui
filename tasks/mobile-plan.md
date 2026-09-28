@@ -23,7 +23,7 @@
 | U2 Profiles: Android (Kotlin + Java, Compose), iOS (SwiftUI + UIKit), TCA, Flutter, React Native | built, tested |
 | U3 Ecosystems: android, ios, flutter, react-native, kmp | built, tested |
 | U4 Reports: Android, iOS, Flutter, React Native, KMP reviews + readings | built; every cell run on 18 real snapshots, 0 errors |
-| U5 Stack: stack section in every mobile report; Deployables view shows mobile apps | built; not yet checked in the running app |
+| U5 Stack: stack section in every mobile report; Deployables view shows mobile apps | built; checked in the running UI on IceCubesApp and nowinandroid (Units auto-reads iOS and Android; the Deployables inspector reads "A mobile app for iOS built by Xcode") |
 
 ### Results, revision 5 → 6
 
