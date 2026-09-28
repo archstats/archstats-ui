@@ -14,7 +14,8 @@ export interface LegendItem {
 
 /** What a chart hands over when asked for its figure. */
 export type FigureOutput =
-    | { kind: "svg"; svg: SVGSVGElement; width: number; height: number; legend?: LegendItem[] }
+    /** `light`: drawn in the light appearance already, so its colours are not remapped. */
+    | { kind: "svg"; svg: SVGSVGElement; width: number; height: number; legend?: LegendItem[]; light?: boolean }
     | { kind: "canvas"; canvas: HTMLCanvasElement; width: number; height: number; scale: number; legend?: LegendItem[] }
 
 export interface FigureOptions {
@@ -206,7 +207,7 @@ export function svgDocument(out: Extract<FigureOutput, { kind: "svg" }>, caption
     if (!chart.getAttribute("viewBox")) chart.setAttribute("viewBox", `0 0 ${out.width} ${out.height}`)
     const f = layoutFooter(out.width, out.legend)
     const colors = footerColors(opts.light)
-    const light = opts.light && isDarkAppearance()
+    const light = opts.light && isDarkAppearance() && !out.light
     const total = out.height + f.height
     const legend = f.legend.map(({ item, x, y }) => {
         const mark = item.line || item.dashed

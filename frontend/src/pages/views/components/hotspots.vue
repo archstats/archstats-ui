@@ -95,6 +95,9 @@
               :size-metric="sizeMetric"
               :color-metric="colorMetric"
               :heat-inverted="heatInverted"
+              :zero-label="zeroLabel"
+              :ranked="ranked.map(u => u.name)"
+              :ranked-note="rankedNote"
               :highlighted-unit="highlightedUnit"
               :label-high="labelHigh"
               :label-low="labelLow"
@@ -142,7 +145,7 @@
                 <span class="min-w-0 flex-1">
                   <span class="block text-base font-medium leading-4 text-neutral-900">{{ preset.label }}</span>
                   <span class="mt-0.5 block text-sm leading-4 text-neutral-500">{{ preset.description }}</span>
-                  <span class="mt-1 block font-mono text-xs leading-4 text-neutral-500">Size: {{ store.statNiceName(preset.sizeMetric) }} · Heat: {{ store.statNiceName(preset.colorMetric) }}</span>
+                  <span v-if="activePresetId === preset.id" class="mt-1 block font-mono text-xs leading-4 text-neutral-500">Size: {{ store.statNiceName(preset.sizeMetric) }} · Heat: {{ store.statNiceName(preset.colorMetric) }}</span>
                 </span>
               </button>
               <div v-if="activePresetId === preset.id && preset.windowed && commitWindows.length > 1" class="mb-2 ml-8 mr-2 mt-1 flex flex-col gap-1.5">
@@ -180,16 +183,34 @@
           </ul>
         </div>
 
-        <div class="flex flex-col gap-2 pt-3 hairline-t">
-          <h3 class="ui-section-title">Reading the chart</h3>
-          <dl class="ui-kv">
-            <dt>Circle size</dt><dd class="font-sans text-neutral-600">{{ sizeMetric ? store.statNiceName(sizeMetric) : '—' }}</dd>
-            <dt>Colour</dt><dd class="font-sans text-neutral-600">{{ colorMetric ? store.statNiceName(colorMetric) : '—' }}{{ heatInverted ? ', low is hot' : '' }}</dd>
-            <dt>Outer rings</dt><dd class="font-sans text-neutral-600">{{ layout === 'packed' ? 'Namespaces and saved groups' : 'Saved groups' }}</dd>
-            <dt>Grey</dt><dd class="font-sans text-neutral-600">No activity</dd>
-          </dl>
-          <p class="text-sm leading-4 text-neutral-500">Click selects, double-click opens. Shift-click or shift-drag selects several. Right-click for group actions.</p>
+        <div v-if="ranked.length > 0" class="flex flex-col gap-1.5 pt-3 hairline-t">
+          <div class="flex flex-col gap-0.5">
+            <h3 class="ui-section-title">{{ labelHigh }}</h3>
+            <p v-if="rankedNote" class="text-sm leading-4 text-neutral-500">{{ rankedNote }}</p>
+          </div>
+          <ol class="-mx-2 flex flex-col">
+            <li v-for="(u, i) in ranked" :key="u.name">
+              <button
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-neutral-100"
+                :class="{ 'bg-accent-50': selected === u.name }"
+                :title="u.name"
+                @mouseenter="highlightedUnit = u.name"
+                @mouseleave="highlightedUnit = null"
+                @click="onSelect(u.name)"
+                @dblclick="openUnit(u.name)"
+              >
+                <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-semibold leading-none text-surface tabular-nums">{{ i + 1 }}</span>
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <span class="truncate font-mono text-sm font-medium leading-4 text-neutral-900">{{ leafName(u.name) }}</span>
+                  <span v-if="parentName(u.name)" class="truncate font-mono text-xs leading-4 text-neutral-500">{{ tailOf(parentName(u.name), 38) }}</span>
+                </span>
+                <span class="shrink-0 font-mono text-sm tabular-nums text-neutral-700">{{ formatNumber(u[colorMetric], 1) }}</span>
+              </button>
+            </li>
+          </ol>
         </div>
+        <p class="pt-3 text-sm leading-4 text-neutral-500 hairline-t">Click a circle to inspect it, double-click to open it, click a ring to zoom into it. Shift-click or shift-drag selects several; right-click adds to a group.</p>
       </template>
 
       <!-- Inspector -->
@@ -236,42 +257,14 @@
           </div>
         </template>
         <p v-else class="text-sm leading-4 text-neutral-500">Click a circle to inspect it. Double-click opens it.</p>
+        <button v-if="ranked.length > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet -ml-2 self-start" @click="activeSidebarTab = 'perspectives'">
+          <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
+          <span>{{ labelHigh }}</span>
+        </button>
 
-        <div v-if="callouts.length > 0" class="flex flex-col gap-1.5 pt-3 hairline-t">
-          <h3 class="ui-section-title">Callouts</h3>
-          <ul class="-mx-2 flex flex-col">
-            <li v-for="c in callouts" :key="c.id">
-              <button
-                type="button"
-                class="flex w-full flex-col gap-0.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-neutral-100"
-                :class="{ 'bg-accent-50': selected === c.unit.name }"
-                @mouseenter="highlightedUnit = c.unit.name"
-                @mouseleave="highlightedUnit = null"
-                @click="onSelect(c.unit.name)"
-                @dblclick="openUnit(c.unit.name)"
-              >
-                <span class="flex items-center gap-1.5 text-sm">
-                  <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(c.level)"></span>
-                  <span class="font-medium text-neutral-800">{{ c.title }}</span>
-                </span>
-                <span class="truncate font-mono text-xs text-neutral-700" :title="c.unit.name">{{ c.unit.name }}</span>
-                <span class="font-mono text-xs tabular-nums text-neutral-500">{{ store.statNiceName(sizeMetric) }} {{ formatNumber(c.unit[sizeMetric]) }} · {{ store.statNiceName(colorMetric) }} {{ formatNumber(c.unit[colorMetric]) }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
       </template>
     </ViewWorkspaceLayout>
 
-    <GroupActionBar
-      v-if="grain !== 'directories'"
-      :selected-items="multiSelection"
-      :kind="grain === 'files' ? 'file' : 'component'"
-      :universe="units.map(u => u.name)"
-      :show-in-except="['hotspots']"
-      @replace="multiSelection = $event"
-      @clear="multiSelection = []"
-    />
   </div>
 </template>
 
@@ -285,7 +278,7 @@ import { useLensStore } from "~/features/groups/lens.store"
 import { useGroupsStore } from "~/features/groups/groups.store"
 import { useScopeStore } from "~/features/groups/scope.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
-import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, levelTextClass, type HealthLevel } from "~/features/metrics/useHealth"
+import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, levelTextClass } from "~/features/metrics/useHealth"
 import { formatNumber } from "~/shared/format"
 import Icon from "~/shared/ui/Icon.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -411,6 +404,10 @@ interface HotspotPreset {
   windowed?: boolean
   labelHigh: string
   labelLow: string
+  /** What a heat of 0 means when it is no value at all; such units are drawn hollow. */
+  zeroLabel?: string
+  /** Rank only the busier half by size, so the flagged units are the big ones the description promises. */
+  rankBusierHalf?: boolean
 }
 
 const COMMIT_WINDOW = /^git__commits__last_(\d+)_days$/
@@ -445,6 +442,8 @@ const presets = computed<HotspotPreset[]>(() => {
       colorMetric: "codesmells__hotspot_score",
       labelHigh: "Hottest",
       labelLow: "Coolest",
+      // The engine scores a file without commits 0.
+      zeroLabel: "No commits",
     })
   }
   if (commitWindows.value.length > 0 && hasColumn("codesmells__code_health")) {
@@ -459,6 +458,9 @@ const presets = computed<HotspotPreset[]>(() => {
       windowed: true,
       labelHigh: "Churning, unhealthy",
       labelLow: "Churning, healthy",
+      // Code health runs 1 to 10; 0 is a unit without a score.
+      zeroLabel: "No health score",
+      rankBusierHalf: true,
     })
   }
   if (hasColumn(lines) && hasColumn("modularity__instability")) {
@@ -510,6 +512,10 @@ const activePreset = computed(() => customPinned.value ? null : matchedPreset.va
 const heatInverted = computed(() => !!activePreset.value?.heatInverted)
 const labelHigh = computed(() => activePreset.value?.labelHigh || "Hottest")
 const labelLow = computed(() => activePreset.value?.labelLow || "Coolest")
+const zeroLabel = computed(() => activePreset.value?.zeroLabel ?? null)
+const rankedNote = computed(() => activePreset.value?.rankBusierHalf
+  ? `Among the half with the most ${store.statNiceName(sizeMetric.value).toLowerCase().replace(/ count$/, "s")}`
+  : null)
 
 function selectPreset(preset: HotspotPreset) {
   customPinned.value = false
@@ -553,10 +559,11 @@ watch(columns, cols => {
   colorMetric.value = cols.includes("git__commits__total") ? "git__commits__total" : (cols[1] || cols[0])
 }, { immediate: true })
 
-// A link can open a perspective by id (?preset=churn), once the presets exist.
-watch(presets, list => {
-  const p = routePreset.value ? list.find(x => x.id === routePreset.value) : null
-  if (p && matchedPreset.value?.id !== p.id) selectPreset(p)
+// A link can open a perspective by id (?preset=churn), once the presets exist,
+// and again while the view is open (a report slot opening the view it is on).
+watch([presets, routePreset], ([list, id]) => {
+  const p = id ? list.find(x => x.id === id) : null
+  if (p && (matchedPreset.value?.id !== p.id || customPinned.value)) selectPreset(p)
 }, { immediate: true })
 
 // The URL follows the perspective shown: a later choice replaces the link's, and
@@ -648,26 +655,43 @@ function openUnit(name: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Callouts: the units the chart flags, listed for the inspector.
+// The units the perspective flags: the five hottest, numbered the same on the
+// chart and in the list. A unit of size 0 (no commits in the churn window)
+// has nothing to flag, and a blank heat is not a value.
 
-const callouts = computed<Array<{ id: string; title: string; unit: HotspotUnit; level: HealthLevel }>>(() => {
-  const rows = units.value
-  if (rows.length === 0 || !sizeMetric.value || !colorMetric.value) return []
+const RANKED = 5
+
+const ranked = computed<HotspotUnit[]>(() => {
   const sizeKey = sizeMetric.value
   const heatKey = colorMetric.value
+  if (!sizeKey || !heatKey) return []
   const sign = heatInverted.value ? -1 : 1
   const heat = (u: HotspotUnit) => sign * (Number(u[heatKey]) || 0)
-  const withHeat = rows.filter(u => (Number(u[heatKey]) || 0) !== 0)
-  const pool = withHeat.length > 0 ? withHeat : rows
-
-  const hottest = pool.reduce((best, u) => heat(u) > heat(best) ? u : best, pool[0])
-  const coolest = pool.reduce((best, u) => heat(u) < heat(best) ? u : best, pool[0])
-  const largest = rows.reduce((best, u) => (Number(u[sizeKey]) || 0) > (Number(best[sizeKey]) || 0) ? u : best, rows[0])
-
-  const out: Array<{ id: string; title: string; unit: HotspotUnit; level: HealthLevel }> = []
-  if (hottest) out.push({ id: "hot", title: labelHigh.value, unit: hottest, level: "bad" })
-  if (coolest && coolest !== hottest) out.push({ id: "cool", title: labelLow.value, unit: coolest, level: "good" })
-  if (largest && largest !== hottest && largest !== coolest) out.push({ id: "large", title: `Largest by ${store.statNiceName(sizeKey).toLowerCase()}`, unit: largest, level: "none" })
-  return out
+  let pool = units.value.filter(u => (Number(u[sizeKey]) || 0) > 0 && (!zeroLabel.value || (Number(u[heatKey]) || 0) !== 0))
+  if (activePreset.value?.rankBusierHalf && pool.length > RANKED) {
+    const middle = median(pool.map(u => Number(u[sizeKey]) || 0))
+    pool = pool.filter(u => (Number(u[sizeKey]) || 0) >= middle)
+  }
+  return pool
+    .sort((a, b) => heat(b) - heat(a) || (Number(b[sizeKey]) || 0) - (Number(a[sizeKey]) || 0))
+    .slice(0, RANKED)
 })
+
+const SEPARATORS = /[\\/.]/
+function leafName(name: string): string {
+  const parts = name.split(SEPARATORS)
+  return parts[parts.length - 1] || name
+}
+function tailOf(text: string, max: number): string {
+  return text.length > max ? "…" + text.slice(text.length - max + 1) : text
+}
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = sorted.length >> 1
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
+function parentName(name: string): string {
+  const leaf = leafName(name)
+  return name.length > leaf.length ? name.slice(0, name.length - leaf.length - 1) : ""
+}
 </script>

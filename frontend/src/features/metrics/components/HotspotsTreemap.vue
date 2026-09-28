@@ -9,16 +9,49 @@
       <span class="break-all font-mono text-xs">{{ hoveredNode.data.fullName }}</span>
       <span class="flex items-center justify-between gap-4 text-xs">
         <span class="opacity-70">{{ store.statNiceName(sizeMetric) }}</span>
-        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.value) }}</span>
+        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.data.sizeValue) }}</span>
       </span>
       <span class="flex items-center justify-between gap-4 text-xs">
         <span class="opacity-70">{{ store.statNiceName(colorMetric) }}</span>
-        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.data.colorValue) }}</span>
+        <span class="font-mono tabular-nums">{{ isBlank(hoveredNode.data.colorValue) ? zeroLabel : formatNumber(hoveredNode.data.colorValue) }}</span>
       </span>
+      <span v-if="rankOf.get(hoveredNode.data.unit?.name)" class="text-xs opacity-70">No. {{ rankOf.get(hoveredNode.data.unit?.name) }} of the {{ labelHigh.toLowerCase() }}</span>
     </div>
 
     <!-- Circle packing canvas -->
     <div ref="chart" class="h-full w-full"></div>
+
+    <!-- Key: what size and colour stand for, the same words the figure prints -->
+    <div
+      v-if="key"
+      class="pointer-events-none absolute bottom-4 left-4 z-10 flex w-[196px] flex-col gap-2 rounded-md bg-surface px-3 py-2.5 hairline"
+      aria-label="Chart key"
+    >
+      <div class="flex flex-col gap-1">
+        <span class="text-sm font-medium leading-4 text-neutral-800">{{ key.heatLabel }}</span>
+        <span class="h-2 w-full rounded-sm" :style="{ background: key.gradient }"></span>
+        <span class="flex justify-between font-mono text-xs tabular-nums leading-4 text-neutral-500">
+          <span>{{ key.cool }}</span><span>{{ key.hot }}</span>
+        </span>
+      </div>
+      <div class="flex flex-col gap-1 text-sm leading-4 text-neutral-600">
+        <span v-if="key.blank" class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ background: key.blankFill, boxShadow: `inset 0 0 0 1px ${key.blankStroke}` }"></span>
+          {{ key.blank }}
+        </span>
+        <span class="flex items-center gap-2">
+          <span class="flex w-2.5 shrink-0 items-end justify-center gap-px">
+            <span class="h-1 w-1 rounded-full bg-neutral-400"></span>
+            <span class="h-2 w-2 rounded-full bg-neutral-400"></span>
+          </span>
+          Area: {{ key.sizeLabel.toLowerCase() }}
+        </span>
+        <span v-if="key.rings" class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="box-shadow: inset 0 0 0 1.5px rgb(var(--c-neutral-300))"></span>
+          {{ key.rings }}
+        </span>
+      </div>
+    </div>
 
     <!-- Context menu -->
     <div v-if="contextMenu.visible && contextMenu.node" class="fixed inset-0 z-40 cursor-default" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu"></div>
@@ -57,13 +90,12 @@
 
 <script lang="ts" setup>
 import Icon from "~/shared/ui/Icon.vue"
-import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme"
-import { levelColor } from "~/features/metrics/useHealth"
+import { chartTheme, readChartTheme, useChartTheme, withAlpha, type ChartTheme } from "~/shared/ui/useChartTheme"
 import { useExportables } from "~/features/export/useExportables"
-import type { LegendItem } from "~/features/export/figure"
+import { isDarkAppearance, withLightTokens, type FigureOutput } from "~/features/export/figure"
 import { formatNumber } from "~/shared/format"
 import * as d3 from "d3"
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { hasMember, units, useGroupsStore, type SavedGroup } from "~/features/groups/groups.store"
 
@@ -93,6 +125,12 @@ const props = defineProps<{
   colorMetric: string
   /** Low heat values are the hot ones (code health). */
   heatInverted?: boolean
+  /** What a heat of 0 means when it means "no value" (drawn hollow); null when 0 is a value like any other. */
+  zeroLabel?: string | null
+  /** The units the page ranks hottest, in order; each gets its number on the chart. */
+  ranked?: string[]
+  /** How the ranking was drawn, when it is not simply the hottest heat. */
+  rankedNote?: string | null
   highlightedUnit: string | null
   labelHigh: string
   labelLow: string
@@ -111,6 +149,10 @@ const emit = defineEmits<{
 }>()
 
 const unitLabel = computed(() => props.grain === "components" ? "Component" : props.grain === "files" ? "File" : "Directory")
+const rankOf = computed(() => new Map((props.ranked ?? []).map((name, i) => [name, i + 1])))
+
+/** A heat that stands for "nothing recorded" rather than a value on the scale. */
+const isBlank = (v: number) => !!props.zeroLabel && !v
 
 // Saved groups only exist for components and files; directories carry none.
 const grainGroups = computed<SavedGroup[]>(() => {
@@ -184,6 +226,12 @@ function removeLeafFromGroups() {
   closeContextMenu()
 }
 
+// ---------------------------------------------------------------------------
+// Zoom. The chart opens fitted and stays fitted through resizes and redraws
+// until the user zooms; from then on their view is kept until Reset.
+
+let userZoomed = false
+
 const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
   .scaleExtent([0.3, 15])
   // d3-zoom resolves its extent inside the transition's tween, and its default
@@ -201,53 +249,405 @@ function svgSel() {
   return svg.empty() ? null : svg
 }
 
+function transformFor(d: any, padding: number): d3.ZoomTransform {
+  const scale = (Math.min(chartWidth, chartHeight) - padding * 2) / (d.r * 2)
+  return d3.zoomIdentity.translate(chartWidth / 2 - scale * d.x, chartHeight / 2 - scale * d.y).scale(scale)
+}
+
 function zoomToNode(d: any) {
   const svg = svgSel()
   if (!svg || !d) return
-  const padding = 40
-  const targetDim = Math.min(chartWidth, chartHeight) - padding * 2
-  const scale = targetDim / (d.r * 2)
-  const tx = chartWidth / 2 - scale * d.x
-  const ty = chartHeight / 2 - scale * d.y
-  svg.transition().duration(750).call(zoomBehavior.transform as any, d3.zoomIdentity.translate(tx, ty).scale(scale))
+  svg.transition().duration(600).ease(d3.easeCubicOut).call(zoomBehavior.transform as any, transformFor(d, d === rootNode ? 24 : 40))
 }
 
 function zoomIn() {
+  userZoomed = true
   svgSel()?.transition().duration(250).call(zoomBehavior.scaleBy as any, 1.35)
 }
 
 function zoomOut() {
+  userZoomed = true
   svgSel()?.transition().duration(250).call(zoomBehavior.scaleBy as any, 0.75)
 }
 
 function resetZoom() {
+  userZoomed = false
   if (rootNode) zoomToNode(rootNode)
 }
+
+defineExpose({ zoomIn, zoomOut, resetZoom })
+
+// ---------------------------------------------------------------------------
+// Heat. Hot is always the red end; an inverted perspective (code health) runs
+// its values the other way along the same ramp. The ramp starts warm, so any
+// measured value reads as colour and only a blank reads as hollow.
+
+interface HeatScale {
+  color: (v: number) => string
+  /** The value at the cool end and at the hot end. */
+  cool: number
+  hot: number
+  ramp: string[]
+}
+
+function heatScaleOf(values: number[], t: ChartTheme): HeatScale {
+  const measured = props.zeroLabel ? values.filter(v => v !== 0) : values
+  const lo = d3.min(measured) ?? 0
+  const hi = d3.max(measured) ?? 1
+  const [cool, hot] = props.heatInverted ? [hi, lo] : [lo, hi]
+  const ramp = t.heat.slice(1)
+  const scale = d3.scaleSequential(d3.interpolateRgbBasis(ramp)).domain(cool === hot ? [cool - 1, hot] : [cool, hot])
+  return { color: v => scale(v) as string, cool, hot, ramp }
+}
+
+/** The darker and the lighter of ink and surface: text on a light fill, and on a dark one. */
+function textOn(fill: string, t: ChartTheme): string {
+  const inkL = d3.lab(t.ink).l, surfL = d3.lab(t.surface).l
+  const [dark, light] = inkL < surfL ? [t.ink, t.surface] : [t.surface, t.ink]
+  return d3.lab(fill).l > 62 ? dark : light
+}
+
+// ---------------------------------------------------------------------------
+// Key, shown over the chart and printed into the figure.
+
+interface KeyInfo {
+  heatLabel: string
+  sizeLabel: string
+  cool: string
+  hot: string
+  gradient: string
+  blank: string | null
+  blankFill: string
+  blankStroke: string
+  rings: string | null
+}
+
+const key = shallowRef<KeyInfo | null>(null)
+
+function keyOf(heat: HeatScale, t: ChartTheme, hasGroupRings: boolean): KeyInfo {
+  const n = heat.ramp.length - 1
+  return {
+    heatLabel: store.statNiceName(props.colorMetric) || props.colorMetric,
+    sizeLabel: store.statNiceName(props.sizeMetric) || props.sizeMetric,
+    cool: formatNumber(heat.cool, 1),
+    hot: formatNumber(heat.hot, 1),
+    gradient: `linear-gradient(to right, ${heat.ramp.map((c, i) => `${c} ${Math.round((i / n) * 100)}%`).join(", ")})`,
+    blank: props.zeroLabel || null,
+    blankFill: t.ground,
+    blankStroke: t.hairlineStrong,
+    rings: props.layout === "packed" ? (hasGroupRings ? "Ring: namespace or group" : "Ring: namespace") : (hasGroupRings ? "Outline: group" : null),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Figure: drawn for the page, not captured from the window. A report prints
+// it at the page's width, so it gets its own size, type that survives the
+// shrink, the whole chart in view and the key and ranking beside it.
+
+const FIG = { width: 720, height: 480, pack: 452, gap: 28 }
+// The page prints the figure a little under its own size; labels are drawn
+// as if zoomed out by this much, so they print at about the size of a caption.
+const FIG_K = 0.85
 
 useExportables().register({
   kind: "figure",
   get title() { return props.grain === "files" ? "Hotspots: files" : props.grain === "directories" ? "Hotspots: directories" : "Hotspots: components" },
   ready: () => !!svgSel(),
-  render: () => {
-    const svg = svgSel()?.node()
-    if (!svg || !chart.value) return null
-    const t = chartTheme()
-    const [lo, hi] = props.heatInverted ? [t.heat[t.heat.length - 1], t.heat[0]] : [t.heat[0], t.heat[t.heat.length - 1]]
-    const legend: LegendItem[] = [
-      { label: `Area: ${store.statNiceName(props.sizeMetric) || props.sizeMetric}`, color: t.hairlineStrong },
-      { label: `${store.statNiceName(props.colorMetric) || props.colorMetric}: low`, color: lo },
-      { label: "high", color: hi },
-    ]
-    return { kind: "svg", svg, width: chart.value.clientWidth, height: chart.value.clientHeight, legend }
-  },
+  render: opts => figure(!!opts?.light),
 })
 
-defineExpose({ zoomIn, zoomOut, resetZoom })
+function figure(light: boolean): FigureOutput | null {
+  if (!props.units.length || !props.sizeMetric || !props.colorMetric) return null
+  const t = light && isDarkAppearance() ? withLightTokens(readChartTheme) : chartTheme()
+  const ns = "http://www.w3.org/2000/svg"
+  const el = document.createElementNS(ns, "svg") as SVGSVGElement
+  const svg = d3.select(el)
+    .attr("xmlns", ns)
+    .attr("width", FIG.width)
+    .attr("height", FIG.height)
+    .attr("viewBox", `0 0 ${FIG.width} ${FIG.height}`)
+    .attr("font-family", t.fontSans)
+
+  const root = packed(FIG.pack, FIG.pack)
+  const heat = heatScaleOf(root.leaves().map((d: any) => d.data.colorValue), t)
+  const g = svg.append("g").attr("transform", `translate(16, ${(FIG.height - FIG.pack) / 2})`)
+  paint(g, root, heat, t, { live: false })
+
+  // Labels are fitted and decluttered against real text boxes, so the drawing
+  // is measured in the document, off screen, then handed over detached.
+  el.setAttribute("style", "position:fixed;left:-100000px;top:0")
+  document.body.appendChild(el)
+  try {
+    settleLabels(g, FIG_K)
+    g.selectAll("[display=none]").remove()
+    drawFigureKey(svg, heat, t, 16 + FIG.pack + FIG.gap)
+  } finally {
+    el.remove()
+    el.removeAttribute("style")
+  }
+  return { kind: "svg", svg: el, width: FIG.width, height: FIG.height, legend: [], light: light && isDarkAppearance() }
+}
+
+function drawFigureKey(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, heat: HeatScale, t: ChartTheme, x: number) {
+  const k = keyOf(heat, t, false)
+  const w = FIG.width - x - 16
+  const col = svg.append("g").attr("transform", `translate(${x}, 40)`)
+  const grad = svg.append("defs").append("linearGradient").attr("id", "hotspot-ramp")
+  heat.ramp.forEach((c, i) => grad.append("stop").attr("offset", `${(i / (heat.ramp.length - 1)) * 100}%`).attr("stop-color", c))
+
+  let y = 0
+  col.append("text").attr("y", y).attr("font-size", 12).attr("font-weight", 600).attr("fill", t.ink).text(k.heatLabel)
+  y += 10
+  col.append("rect").attr("y", y).attr("width", w).attr("height", 8).attr("rx", 2).attr("fill", "url(#hotspot-ramp)")
+  y += 22
+  col.append("text").attr("y", y).attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.inkSecondary).text(k.cool)
+  col.append("text").attr("x", w).attr("y", y).attr("text-anchor", "end").attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.inkSecondary).text(k.hot)
+
+  const swatch = (label: string, fill: string, stroke: string) => {
+    y += 20
+    col.append("circle").attr("cx", 5).attr("cy", y - 4).attr("r", 5).attr("fill", fill).attr("stroke", stroke)
+    col.append("text").attr("x", 18).attr("y", y).attr("font-size", 11).attr("fill", t.inkSecondary).text(label)
+  }
+  y += 6
+  if (k.blank) swatch(k.blank, t.ground, t.hairlineStrong)
+  swatch(`Area: ${k.sizeLabel.toLowerCase()}`, "none", "none")
+  col.append("circle").attr("cx", 2).attr("cy", y - 2).attr("r", 2).attr("fill", t.inkMuted)
+  col.append("circle").attr("cx", 7.5).attr("cy", y - 4).attr("r", 4).attr("fill", t.inkMuted)
+  if (props.layout === "packed") swatch("Ring: namespace", "none", withAlpha(t.inkMuted, 0.5))
+
+  const ranked = rankedRows()
+  if (ranked.length === 0) return
+  y += 36
+  col.append("text").attr("y", y).attr("font-size", 12).attr("font-weight", 600).attr("fill", t.ink).text(props.labelHigh)
+  if (props.rankedNote) {
+    y += 16
+    col.append("text").attr("y", y).attr("font-size", 11).attr("fill", t.inkSecondary).text(props.rankedNote)
+  }
+  y += 6
+  for (const [i, u] of ranked.entries()) {
+    y += 24
+    const row = col.append("g").attr("transform", `translate(0, ${y})`)
+    drawBadge(row.append("g").attr("transform", "translate(8, -4)"), i + 1, t)
+    const value = formatNumber(Number(u[props.colorMetric]) || 0, 1)
+    row.append("text").attr("x", w).attr("text-anchor", "end").attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.inkSecondary).text(value)
+    const room = w - 24 - value.length * 7 - 10
+    row.append("text").attr("x", 24).attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.ink).text(tailFit(u.name, Math.floor(room / 6.6)))
+  }
+}
+
+function rankedRows(): HotspotUnit[] {
+  const byName = new Map(props.units.map(u => [u.name, u]))
+  return (props.ranked ?? []).map(n => byName.get(n)).filter((u): u is HotspotUnit => !!u)
+}
+
+// ---------------------------------------------------------------------------
+// Drawing, shared by the window and the figure.
+
+function packed(width: number, height: number): any {
+  const data = props.layout === "flat"
+    ? buildFlat(props.units, props.sizeMetric, props.colorMetric)
+    : buildHierarchy(props.units, props.sizeMetric, props.colorMetric)
+  const root = d3.hierarchy(data)
+    .sum((d: any) => d.value || 0)
+    .sort((a, b) => (b.value || 0) - (a.value || 0))
+  d3.pack().size([width, height]).padding((d: any) => props.layout === "flat" ? 3 : d.depth === 0 ? 10 : 5)(root as any)
+  return root
+}
+
+const LEAF_FONT = 10
+const nsFont = (d: any) => d.depth === 1 ? 11.5 : 10
+// A badge sits on its circle's upper right; one that would cover a badge
+// already placed tries the other diagonals. Placed per zoom, since the badges
+// keep their screen size while the circles grow.
+const DIAGONALS = [[1, -1], [-1, -1], [1, 1], [-1, 1]]
+let badgeSpots = new Map<any, { x: number; y: number }>()
+
+function placeBadges(nodes: any[], k: number) {
+  badgeSpots = new Map()
+  const placed: Array<{ x: number; y: number }> = []
+  const clear = 18 / k
+  for (const d of nodes) {
+    const off = Math.max(d.r * 0.72, 4 / k)
+    const spots = DIAGONALS.map(([sx, sy]) => ({ x: d.x + sx * off, y: d.y + sy * off }))
+    const spot = spots.find(p => placed.every(q => Math.hypot(p.x - q.x, p.y - q.y) >= clear)) ?? spots[0]
+    placed.push(spot)
+    badgeSpots.set(d, spot)
+  }
+}
+const badgeAt = (d: any) => badgeSpots.get(d) ?? { x: d.x + d.r * 0.72, y: d.y - d.r * 0.72 }
+
+function drawBadge(sel: any, rank: number, t: ChartTheme) {
+  sel.append("circle").attr("r", 8).attr("fill", t.ink).attr("stroke", t.surface).attr("stroke-width", 1.5)
+  sel.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .attr("font-size", 10)
+    .attr("font-weight", 600)
+    .attr("fill", t.surface)
+    .text(rank)
+}
+
+/**
+ * Circles, labels and rank badges. Everything is set as attributes, so the
+ * figure keeps its look outside the app; the window adds its handlers after.
+ */
+function paint(g: any, root: any, heat: HeatScale, t: ChartTheme, opts: { live: boolean }) {
+  const node = g.selectAll("g.node")
+    .data(root.descendants())
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", (d: any) => `translate(${d.x},${d.y})`)
+
+  // Namespace and group rings.
+  node.filter((d: any) => !!d.children && d.depth > 0)
+    .append("circle")
+    .attr("class", "ns-circle")
+    .attr("r", (d: any) => d.r)
+    .attr("fill", (d: any) => d.data.isGroup ? groupFill(d.data.groupColor, 0.05) : withAlpha(t.inkMuted, 0.05))
+    .attr("stroke", (d: any) => d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.3))
+    .attr("stroke-width", (d: any) => d.data.isGroup ? 2 : 1)
+    .attr("vector-effect", "non-scaling-stroke")
+
+  const leaf = node.filter((d: any) => !d.children)
+
+  // Flat layout has no rings, so group membership becomes an outline.
+  if (props.layout === "flat") {
+    leaf.filter((d: any) => !!d.data.groupColor)
+      .append("circle")
+      .attr("r", (d: any) => d.r + 1.5)
+      .attr("fill", "none")
+      .attr("stroke", (d: any) => d.data.groupColor)
+      .attr("stroke-width", 2)
+      .attr("vector-effect", "non-scaling-stroke")
+      .attr("pointer-events", "none")
+  }
+
+  const fillOf = (d: any) => isBlank(d.data.colorValue) ? t.ground : heat.color(d.data.colorValue)
+  leaf.append("circle")
+    .attr("class", "leaf-circle")
+    .attr("r", (d: any) => d.r)
+    .attr("fill", fillOf)
+    .attr("stroke", (d: any) => isBlank(d.data.colorValue) ? t.hairlineStrong : withAlpha(t.ink, 0.1))
+    .attr("stroke-width", 1)
+    .attr("vector-effect", "non-scaling-stroke")
+
+  // Namespace labels sit inside the top of their ring, on a halo of the ground.
+  node.filter((d: any) => !!d.children && d.depth > 0 && d.depth < 3)
+    .append("text")
+    .attr("class", "namespace-label")
+    .attr("text-anchor", "middle")
+    .attr("fill", (d: any) => d.depth === 1 ? t.inkSecondary : t.inkMuted)
+    .attr("font-weight", (d: any) => d.depth === 1 ? 600 : 500)
+    .attr("stroke", t.surface)
+    .attr("stroke-width", 3)
+    .attr("stroke-linejoin", "round")
+    .attr("paint-order", "stroke")
+    .attr("pointer-events", "none")
+
+  leaf.append("text")
+    .attr("class", "leaf-label")
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .attr("fill", (d: any) => textOn(fillOf(d), t))
+    .attr("font-weight", 500)
+    .attr("pointer-events", "none")
+
+  // Rank badges, drawn last so they sit over every circle.
+  const rank = rankOf.value
+  const ranked = root.leaves().filter((d: any) => rank.has(d.data.unit?.name))
+  const badges = g.selectAll("g.rank-badge")
+    .data(ranked)
+    .join("g")
+    .attr("class", "rank-badge")
+    .attr("pointer-events", "none")
+    .attr("transform", (d: any) => `translate(${badgeAt(d).x},${badgeAt(d).y})`)
+  badges.each(function (this: SVGGElement, d: any) { drawBadge(d3.select(this), rank.get(d.data.unit.name)!, t) })
+
+  if (!opts.live) applyZoom(g, FIG_K)
+}
+
+/** Sizes that stay constant on screen whatever the zoom. */
+function applyZoom(g: any, k: number) {
+  g.selectAll(".leaf-label").attr("font-size", LEAF_FONT / k)
+  g.selectAll(".namespace-label")
+    .attr("font-size", (d: any) => nsFont(d) / k)
+    .attr("stroke-width", 3 / k)
+    .attr("y", (d: any) => -d.r + (nsFont(d) + 6) / k)
+  const badges = g.selectAll(".rank-badge")
+  placeBadges(badges.data().sort((a: any, b: any) => rankOf.value.get(a.data.unit.name)! - rankOf.value.get(b.data.unit.name)!), k)
+  badges.attr("transform", (d: any) => `translate(${badgeAt(d).x},${badgeAt(d).y}) scale(${1 / k})`)
+}
+
+/** Text for each label at zoom k: what fits in its circle, or nothing; a search shows only its matches. Then declutter. */
+function settleLabels(g: any, k: number, query = "") {
+  g.selectAll(".leaf-label").each(function (this: SVGTextElement, d: any) {
+    const r = d.r * k
+    const matched = !!query && matches(d, query)
+    const chars = Math.floor((r * 1.7) / (LEAF_FONT * 0.58))
+    const text = r >= 14 || matched ? headFit(d.data.name, Math.max(chars, matched ? 12 : 0)) : ""
+    this.textContent = text
+    if (text && (!query || matched)) this.removeAttribute("display")
+    else this.setAttribute("display", "none")
+  })
+  g.selectAll(".namespace-label").each(function (this: SVGTextElement, d: any) {
+    const r = d.r * k
+    const text = r >= 36 ? tailFit(d.data.name, Math.floor((r * 1.5) / (nsFont(d) * 0.6))) : ""
+    this.textContent = text
+    if (text) this.removeAttribute("display")
+    else this.setAttribute("display", "none")
+  })
+  declutter(g)
+}
+
+/** The start of a name, cut with an ellipsis to `max` characters. */
+function headFit(name: string, max: number): string {
+  if (max < 3) return ""
+  return name.length > max ? name.slice(0, max - 1) + "…" : name
+}
+
+/** The end of a name, where a namespace keeps its meaning, cut to `max` characters. */
+function tailFit(name: string, max: number): string {
+  if (max < 4) return ""
+  return name.length > max ? "…" + name.slice(name.length - max + 1) : name
+}
+
+function matches(d: any, query: string): boolean {
+  const full = d.data.unit?.name || d.data.fullName || ""
+  return full.toLowerCase().includes(query) || (d.data.name || "").toLowerCase().includes(query)
+}
+
+/**
+ * Hide labels that would print over one another. Badges outrank everything,
+ * namespaces outrank leaves, outer namespaces outrank inner ones, bigger
+ * circles outrank smaller: what stays is the most important label at every
+ * spot, never two run together ("Pre[i18n]nta").
+ */
+function declutter(g: any) {
+  const nodes = [...g.selectAll(".namespace-label, .leaf-label").nodes()] as SVGTextElement[]
+  const rank = (el: SVGTextElement) => {
+    const d: any = (el as any).__data__
+    const ns = el.classList.contains("namespace-label")
+    return (ns ? 0 : 10) + (ns ? d.depth : 0) - (d.r || 0) / 1e6
+  }
+  const kept: DOMRect[] = ([...g.selectAll(".rank-badge").nodes()] as SVGGElement[])
+    .map(el => el.getBoundingClientRect())
+    .filter(b => b.width > 0)
+  for (const el of nodes.sort((a, b) => rank(a) - rank(b))) {
+    if (el.getAttribute("display") === "none" || !el.textContent) continue
+    const b = el.getBoundingClientRect()
+    if (b.width === 0) continue
+    const hits = kept.some(k => b.left < k.right + 2 && b.right > k.left - 2 && b.top < k.bottom + 1 && b.bottom > k.top - 1)
+    if (hits) el.setAttribute("display", "none")
+    else kept.push(b)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The window's chart.
 
 // Layout and grain changes reset the zoom; everything else keeps it. Declared
 // before the redraw watcher so it runs first in the same flush.
-let keepTransform = true
-watch(() => [props.grain, props.layout], () => { keepTransform = false })
+watch(() => [props.grain, props.layout], () => { userZoomed = false })
 
 watch(() => [
   props.units,
@@ -256,6 +656,8 @@ watch(() => [
   props.sizeMetric,
   props.colorMetric,
   props.heatInverted,
+  props.zeroLabel,
+  props.ranked,
   props.highlightedUnit,
   props.labelHigh,
   props.labelLow,
@@ -287,90 +689,135 @@ function drawCirclePack() {
   if (!chart.value) return
   const chartEl = d3.select(chart.value)
 
-  let currentTransform: d3.ZoomTransform | null = null
-  const existingSvg = chartEl.select("svg")
-  if (!existingSvg.empty() && keepTransform) {
-    currentTransform = d3.zoomTransform(existingSvg.node() as any)
-  }
-  keepTransform = true
+  const existingSvg = chartEl.select<SVGSVGElement>("svg")
+  const kept = !existingSvg.empty() && userZoomed ? d3.zoomTransform(existingSvg.node()!) : null
 
   chartEl.selectAll("svg").remove()
   hoveredNode.value = null
 
   if (!props.units || props.units.length === 0) {
     rootNode = null
+    key.value = null
     return
   }
 
   const t = chartTheme()
-
-  // 1. Hierarchy from namespaces (packed) or a single ring of leaves (flat).
-  const hierarchyData = props.layout === "flat"
-    ? buildFlat(props.units, props.sizeMetric, props.colorMetric)
-    : buildHierarchy(props.units, props.sizeMetric, props.colorMetric)
-  const root = d3.hierarchy(hierarchyData)
-    .sum(d => d.value || 0)
-    .sort((a, b) => (b.value || 0) - (a.value || 0))
-
   const rect = chart.value.getBoundingClientRect()
   const width = rect.width || 900
   const height = rect.height || 620
-
-  rootNode = root
   chartWidth = width
   chartHeight = height
 
-  // 2. Pack
-  d3.pack()
-    .size([width - 40, height - 40])
-    .padding(props.layout === "flat" ? 3 : 6)(root)
+  const root = packed(width - 40, height - 40)
+  rootNode = root
+  const heat = heatScaleOf(root.leaves().map((d: any) => d.data.colorValue), t)
+  key.value = keyOf(heat, t, root.descendants().some((d: any) => d.data.isGroup || (props.layout === "flat" && d.data.groupColor)))
 
-  // 3. SVG
   const svg = chartEl.append("svg")
     .attr("width", width)
     .attr("height", height)
-    .style("font-family", t.fontSans)
-    .style("overflow", "visible")
+    .attr("font-family", t.fontSans)
+    .style("display", "block")
     .style("cursor", "grab")
     .style("touch-action", "none")
     .on("click", function (event) {
       if (event.defaultPrevented) return
-      if (event.target === this) zoomToNode(root)
+      if (event.target === this) resetZoom()
     })
 
   const g = svg.append("g")
+  paint(g, root, heat, t, { live: true })
 
   const query = props.searchQuery?.trim().toLowerCase()
-  const isMatch = (d: any) => {
-    if (!query) return true
-    const full = d.data.unit?.name || d.data.fullName || ""
-    const nodeName = d.data.name || ""
-    return full.toLowerCase().includes(query) || nodeName.toLowerCase().includes(query)
+  const isHighlighted = (d: any) => !!props.highlightedUnit && d.data.unit?.name === props.highlightedUnit
+  const opacityOf = (d: any) => {
+    const name = d.data.unit?.name
+    if (!name) return 1
+    if (isHighlighted(d)) return 1
+    if (query && !matches(d, query)) return 0.08
+    if (props.hoveredGroupId) return groupsOf(name).some(gr => gr.id === props.hoveredGroupId) ? 1 : 0.08
+    if (props.activeFilters && props.activeFilters.size > 0) return groupsOf(name).some(gr => props.activeFilters!.has(gr.id)) ? 1 : 0.08
+    return 1
   }
+  const restStroke = (d: any) => isHighlighted(d) ? t.ink : (query && matches(d, query)) ? t.blue : isBlank(d.data.colorValue) ? t.hairlineStrong : withAlpha(t.ink, 0.1)
+  const restWidth = (d: any) => isHighlighted(d) ? 2.5 : (query && matches(d, query)) ? 2 : 1
+
+  const nodeSel = g.selectAll<SVGGElement, any>("g.node")
+  nodeSel.select(".ns-circle")
+    .style("cursor", "zoom-in")
+    .on("mouseover", function (this: SVGCircleElement, _e: MouseEvent, d: any) {
+      d3.select(this).attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.inkSecondary, 0.6))
+    })
+    .on("mouseout", function (this: SVGCircleElement, _e: MouseEvent, d: any) {
+      d3.select(this).attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.3))
+    })
+    .on("click", function (event: MouseEvent, d: any) {
+      closeContextMenu()
+      if (event.defaultPrevented) return
+      event.stopPropagation()
+      userZoomed = true
+      zoomToNode(d)
+    })
+    .on("contextmenu", (event: MouseEvent, d: any) => openContextMenu(event, d))
+
+  const leafSel = nodeSel.filter((d: any) => !d.children)
+
+  // Selection rings.
+  leafSel.insert("circle", ".leaf-circle")
+    .attr("r", (d: any) => d.r + 3)
+    .attr("fill", "none")
+    .attr("stroke", t.blue)
+    .attr("stroke-width", 2)
+    .attr("vector-effect", "non-scaling-stroke")
+    .attr("pointer-events", "none")
+    .attr("display", (d: any) => (props.selectedUnits?.includes(d.data.unit?.name) ? null : "none"))
+
+  leafSel.select(".leaf-circle")
+    .attr("fill-opacity", opacityOf)
+    .attr("stroke-opacity", opacityOf)
+    .attr("stroke", restStroke)
+    .attr("stroke-width", restWidth)
+    .style("cursor", "pointer")
+    .style("pointer-events", (d: any) => opacityOf(d) < 0.2 ? "none" : "auto")
+    .on("mouseover", function (this: SVGCircleElement, event: MouseEvent, d: any) {
+      d3.select(this).attr("stroke", t.ink).attr("stroke-width", 2)
+      hoveredNode.value = d
+      placeTooltip(event)
+    })
+    .on("mousemove", (event: MouseEvent) => placeTooltip(event))
+    .on("mouseout", function (this: SVGCircleElement, _e: MouseEvent, d: any) {
+      d3.select(this).attr("stroke", restStroke(d)).attr("stroke-width", restWidth(d))
+      hoveredNode.value = null
+    })
+    .on("click", function (event: MouseEvent, d: any) {
+      closeContextMenu()
+      if (event.defaultPrevented) return
+      event.stopPropagation()
+      if (!d.data.unit) return
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) emit("toggle-selection", d.data.unit.name)
+      else emit("select", d.data.unit.name)
+    })
+    .on("dblclick", function (event: MouseEvent, d: any) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (d.data.unit) emit("open", d.data.unit.name)
+    })
+    .on("contextmenu", (event: MouseEvent, d: any) => openContextMenu(event, d))
+
+  leafSel.select(".leaf-label").attr("fill-opacity", opacityOf)
+  g.selectAll(".rank-badge").attr("opacity", (d: any) => opacityOf(d) < 1 ? 0.15 : 1)
 
   zoomBehavior
     .on("start", () => { svg.style("cursor", "grabbing") })
     .on("zoom", (event) => {
+      if (event.sourceEvent) userZoomed = true
       g.attr("transform", event.transform)
-      const k = event.transform.k
-
-      g.selectAll(".leaf-label")
-        .style("display", (d: any) => {
-          if (query) return isMatch(d) ? "block" : "none"
-          return (d.r * k >= 15) ? "block" : "none"
-        })
-        .style("font-size", `${9.5 / k}px`)
-
-      g.selectAll(".namespace-label")
-        .style("display", (d: any) => (d.r * k >= 35) ? "block" : "none")
-        .style("font-size", (d: any) => `${(d.depth === 1 ? 11 : 8.5) / k}px`)
-        .attr("y", (d: any) => -d.r + (d.depth === 1 ? 14 : 10) / k)
-
-      g.selectAll(".callout-flag")
-        .style("opacity", k > 1.4 ? 0 : 1)
-        .style("display", k > 1.4 ? "none" : "block")
+      applyZoom(g, event.transform.k)
     })
-    .on("end", () => { svg.style("cursor", "grab"); declutter(g) })
+    .on("end", (event) => {
+      svg.style("cursor", "grab")
+      settleLabels(g, event.transform.k, query)
+    })
 
   svg.call(zoomBehavior).on("dblclick.zoom", null)
 
@@ -396,12 +843,12 @@ function drawCirclePack() {
     if (!p) return
     dragStartG = p
     dragSelectionBox = g.append("rect")
-      .attr("class", "drag-select-box")
       .attr("x", p.x).attr("y", p.y).attr("width", 0).attr("height", 0)
       .attr("fill", withAlpha(t.blue, 0.08))
       .attr("stroke", t.blue)
       .attr("stroke-width", 1.5)
       .attr("stroke-dasharray", "4 3")
+      .attr("vector-effect", "non-scaling-stroke")
   })
 
   svg.on("mousemove", function (event) {
@@ -427,9 +874,7 @@ function drawCirclePack() {
     const selectedList: string[] = []
     root.leaves().forEach((d: any) => {
       if (!d.data.unit) return
-      if (d.x >= x && d.x <= x + w && d.y >= y && d.y <= y + h && getNodeOpacity(d) >= 0.2) {
-        selectedList.push(d.data.unit.name)
-      }
+      if (d.x >= x && d.x <= x + w && d.y >= y && d.y <= y + h && opacityOf(d) >= 0.2) selectedList.push(d.data.unit.name)
     })
     if (w > 3 && h > 3 && selectedList.length > 0) emit("replace-selection", selectedList)
 
@@ -438,249 +883,8 @@ function drawCirclePack() {
     dragStartG = null
   })
 
-  // Initial or restored transform.
-  if (currentTransform) {
-    svg.call(zoomBehavior.transform, currentTransform)
-  } else {
-    const initialPadding = 40
-    const targetDim = Math.min(width, height) - initialPadding * 2
-    const scale = targetDim / (root.r * 2)
-    const tx = width / 2 - scale * root.x
-    const ty = height / 2 - scale * root.y
-    svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(scale))
-  }
-
-  // Heat ramp from the theme; inverted perspectives (code health) run it backwards.
-  const colorValues = root.leaves().map(d => d.data.colorValue || 0)
-  const minVal = d3.min(colorValues) || 0
-  const maxVal = d3.max(colorValues) || 1
-  const domain: [number, number] = props.heatInverted ? [maxVal, minVal || 1] : [minVal || 1, maxVal]
-  const colorScale = d3.scaleSequential().domain(domain).interpolator(d3.interpolateRgbBasis(t.heat))
-
-  const node = g.selectAll("g")
-    .data(root.descendants())
-    .join("g")
-    .attr("transform", d => `translate(${d.x},${d.y})`)
-
-  const getNodeOpacity = (d: any) => {
-    if (!d.data.unit) return 1
-    const name = d.data.unit.name
-    if (hoveredNode.value?.data.unit?.name === name) return 1
-    if (query && !isMatch(d)) return 0.05
-    if (props.hoveredGroupId) {
-      return groupsOf(name).some(gr => gr.id === props.hoveredGroupId) ? 1 : 0.05
-    }
-    if (props.activeFilters && props.activeFilters.size > 0) {
-      return groupsOf(name).some(gr => props.activeFilters!.has(gr.id)) ? 1 : 0.05
-    }
-    return 1
-  }
-
-  const isHighlighted = (d: any) => !!props.highlightedUnit && d.data.unit?.name === props.highlightedUnit
-
-  // Namespace circles (zoom targets).
-  node.filter(d => !!d.children && d.depth > 0)
-    .append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => d.data.isGroup ? groupFill(d.data.groupColor, 0.04) : withAlpha(t.inkMuted, 0.03))
-    .attr("stroke", d => d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.14))
-    .attr("stroke-width", d => d.data.isGroup ? 2.5 : Math.max(1, 3.5 - d.depth))
-    .style("vector-effect", "non-scaling-stroke")
-    .style("cursor", "pointer")
-    .on("mouseover", function (event, d) {
-      d3.select(this)
-        .attr("fill", d.data.isGroup ? groupFill(d.data.groupColor, 0.08) : withAlpha(t.blue, 0.04))
-        .attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.blue, 0.25))
-    })
-    .on("mouseout", function (event, d) {
-      d3.select(this)
-        .attr("fill", d.data.isGroup ? groupFill(d.data.groupColor, 0.04) : withAlpha(t.inkMuted, 0.03))
-        .attr("stroke", d.data.isGroup ? d.data.groupColor : withAlpha(t.inkMuted, 0.14))
-    })
-    .on("click", function (event, d) {
-      closeContextMenu()
-      if (event.defaultPrevented) return
-      event.stopPropagation()
-      zoomToNode(d)
-    })
-    .on("contextmenu", (event, d) => openContextMenu(event, d))
-
-  // Leaves.
-  const leaf = node.filter(d => !d.children)
-
-  // Selection rings.
-  leaf.append("circle")
-    .attr("r", d => d.r + 3)
-    .attr("fill", "none")
-    .attr("stroke", t.blue)
-    .attr("stroke-width", 2)
-    .style("pointer-events", "none")
-    .style("display", d => (props.selectedUnits?.includes(d.data.unit?.name) ? "block" : "none"))
-
-  // Flat layout has no namespace circles, so group membership becomes a ring.
-  if (props.layout === "flat") {
-    leaf.filter(d => !!d.data.groupColor)
-      .append("circle")
-      .attr("r", d => d.r + 1.5)
-      .attr("fill", "none")
-      .attr("stroke", d => d.data.groupColor)
-      .attr("stroke-width", 2)
-      .attr("stroke-opacity", d => getNodeOpacity(d))
-      .style("vector-effect", "non-scaling-stroke")
-      .style("pointer-events", "none")
-  }
-
-  const baseStroke = (d: any) => {
-    if (isHighlighted(d)) return t.ink
-    if (query && isMatch(d)) return t.blue
-    return withAlpha(t.ink, 0.08)
-  }
-  const baseStrokeWidth = (d: any) => isHighlighted(d) ? 3 : (query && isMatch(d)) ? 2.5 : 1.2
-  const baseFilter = (d: any) => {
-    if (isHighlighted(d)) return `drop-shadow(0 0 10px ${withAlpha(t.ink, 0.25)})`
-    if (query && isMatch(d)) return `drop-shadow(0 0 6px ${withAlpha(t.blue, 0.35)})`
-    return null
-  }
-
-  leaf.append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => {
-      const val = d.data.colorValue || 0
-      // No activity at all fades into the ground instead of reading as "cool".
-      if (val === 0) return withAlpha(t.hairline, 0.45)
-      return colorScale(val)
-    })
-    .attr("fill-opacity", d => getNodeOpacity(d))
-    .attr("stroke-opacity", d => getNodeOpacity(d) * 0.8)
-    .attr("stroke", d => baseStroke(d))
-    .attr("stroke-width", d => baseStrokeWidth(d))
-    .style("cursor", "pointer")
-    .style("vector-effect", "non-scaling-stroke")
-    .style("transition", "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)")
-    .style("pointer-events", d => getNodeOpacity(d) < 0.2 ? "none" : "auto")
-    .style("filter", d => baseFilter(d))
-    .on("mouseover", function (event, d) {
-      if (getNodeOpacity(d) < 0.2) return
-      d3.select(this)
-        .attr("stroke", t.ink)
-        .attr("stroke-width", 2.2)
-        .style("filter", `drop-shadow(0 0 8px ${withAlpha(t.ink, 0.18)})`)
-      hoveredNode.value = d
-      placeTooltip(event)
-    })
-    .on("mousemove", function (event) { placeTooltip(event) })
-    .on("mouseout", function (event, d) {
-      d3.select(this)
-        .attr("stroke", baseStroke(d))
-        .attr("stroke-width", baseStrokeWidth(d))
-        .style("filter", baseFilter(d))
-      hoveredNode.value = null
-    })
-    .on("click", function (event, d) {
-      closeContextMenu()
-      if (event.defaultPrevented) return
-      event.stopPropagation()
-      if (!d.data.unit) return
-      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-        emit("toggle-selection", d.data.unit.name)
-      } else {
-        emit("select", d.data.unit.name)
-      }
-    })
-    .on("dblclick", function (event, d) {
-      event.preventDefault()
-      event.stopPropagation()
-      if (d.data.unit) emit("open", d.data.unit.name)
-    })
-    .on("contextmenu", (event, d) => openContextMenu(event, d))
-
-  // Namespace labels.
-  node.filter(d => !!d.children && d.depth > 0 && d.depth < 3)
-    .append("text")
-    .attr("class", "namespace-label")
-    .attr("text-anchor", "middle")
-    .attr("fill", withAlpha(t.inkSecondary, 0.65))
-    .style("font-weight", "600")
-    .style("letter-spacing", "0.05em")
-    .style("text-shadow", `0 1px 2px ${withAlpha(t.surface, 0.9)}`)
-    .style("pointer-events", "none")
-    .text(d => d.data.name)
-
-  // Leaf labels.
-  leaf.append("text")
-    .attr("class", "leaf-label")
-    .attr("text-anchor", "middle")
-    .attr("dy", "0.3em")
-    .attr("fill", t.ink)
-    .style("font-weight", "600")
-    .style("font-size", "8.5px")
-    .style("text-shadow", `0 1px 2px ${withAlpha(t.surface, 0.85)}`)
-    .style("pointer-events", "none")
-    .attr("fill-opacity", d => getNodeOpacity(d))
-    .text(d => {
-      const name = d.data.name
-      const maxChars = Math.floor(d.r / 3.5)
-      if (maxChars < 1) return ""
-      return name.length > maxChars ? name.substring(0, maxChars) + ".." : name
-    })
-    .style("display", d => {
-      if (query) return isMatch(d) ? "block" : "none"
-      return d.r < 15 ? "none" : "block"
-    })
-
-  // Callout flags: the hottest and the coolest leaf.
-  const leaves = root.leaves()
-  if (leaves.length > 0) {
-    const heat = (d: any) => (props.heatInverted ? -1 : 1) * (d.data.colorValue || 0)
-    const withHeat = leaves.filter(d => (d.data.colorValue || 0) !== 0)
-    const ranked = [...(withHeat.length ? withHeat : leaves)].sort((a, b) => heat(b) - heat(a))
-    const hottest = ranked[0]
-    const coolest = ranked[ranked.length - 1]
-
-    const showHot = hottest && (hottest.data.colorValue || 0) !== 0 && (!query || isMatch(hottest))
-    const showCool = coolest && coolest !== hottest && (!query || isMatch(coolest))
-    if (showHot) drawCallout(g, hottest, props.labelHigh, levelColor("bad"), -120, -50)
-    if (showCool) {
-      // Two neighbours both flagged above-left and above-right can still
-      // meet in the middle; the coolest drops below its circle when they would.
-      let dy = -50
-      if (showHot) {
-        const hx = hottest.x - 120, hy = hottest.y - 50
-        const cx = coolest.x + 120, cy = coolest.y - 50
-        if (Math.abs(hx - cx) < 150 && Math.abs(hy - cy) < 34) dy = coolest.r + 40
-      }
-      drawCallout(g, coolest, props.labelLow, levelColor("good"), 120, dy)
-    }
-  }
-}
-
-/**
- * Hide labels that would print over one another. Namespaces outrank leaves,
- * outer namespaces outrank inner ones, bigger circles outrank smaller: what
- * stays is the most important label at every spot, never two run together
- * ("Pre[i18n]nta").
- */
-function declutter(g: any) {
-  const nodes = [...g.selectAll(".namespace-label, .leaf-label").nodes()] as SVGTextElement[]
-  const rank = (el: SVGTextElement) => {
-    const d: any = (el as any).__data__
-    const ns = el.classList.contains("namespace-label")
-    return (ns ? 0 : 10) + (ns ? d.depth : 0) - (d.r || 0) / 1e6
-  }
-  // The Hottest and Coolest flags are drawn over everything; a label under
-  // one reads as part of it, so their boxes count as taken first.
-  const kept: DOMRect[] = ([...g.selectAll(".callout-flag rect").nodes()] as SVGRectElement[])
-    .filter(el => (el.closest(".callout-flag") as SVGGElement | null)?.style.display !== "none")
-    .map(el => el.getBoundingClientRect())
-    .filter(b => b.width > 0)
-  for (const el of nodes.sort((a, b) => rank(a) - rank(b))) {
-    if (el.style.display === "none" || !el.textContent) continue
-    const b = el.getBoundingClientRect()
-    if (b.width === 0) continue
-    const hits = kept.some(k => b.left < k.right + 2 && b.right > k.left - 2 && b.top < k.bottom + 1 && b.bottom > k.top - 1)
-    if (hits) el.style.display = "none"
-    else kept.push(b)
-  }
+  // Fitted, or the user's own view; labels are settled once the transform is in place.
+  svg.call(zoomBehavior.transform, kept ?? transformFor(root, 24))
 }
 
 function placeTooltip(event: MouseEvent) {
@@ -690,62 +894,17 @@ function placeTooltip(event: MouseEvent) {
   tooltipY.value = event.clientY - bounds.top + 16
 }
 
-function drawCallout(parentGroup: any, targetNode: any, text: string, color: string, dx: number, dy: number) {
-  const t = chartTheme()
-  const calloutG = parentGroup.append("g")
-    .attr("class", "callout-flag")
-    .style("pointer-events", "none")
-
-  const targetX = targetNode.x
-  const targetY = targetNode.y
-  const flagX = targetX + dx
-  const flagY = targetY + dy
-
-  calloutG.append("path")
-    .attr("d", `M ${targetX} ${targetY} C ${targetX + dx * 0.4} ${targetY}, ${flagX - dx * 0.4} ${flagY}, ${flagX} ${flagY}`)
-    .attr("fill", "none")
-    .attr("stroke", color)
-    .attr("stroke-width", 1.2)
-    .attr("stroke-opacity", 0.45)
-
-  calloutG.append("circle")
-    .attr("cx", targetX)
-    .attr("cy", targetY)
-    .attr("r", targetNode.r + 4)
-    .attr("fill", "none")
-    .attr("stroke", color)
-    .attr("stroke-width", 1.2)
-
-  const rectWidth = 140
-  const rectHeight = 26
-
-  calloutG.append("rect")
-    .attr("x", flagX - rectWidth / 2)
-    .attr("y", flagY - rectHeight / 2)
-    .attr("width", rectWidth)
-    .attr("height", rectHeight)
-    .attr("rx", 4)
-    .attr("fill", withAlpha(t.surface, 0.95))
-    .attr("stroke", color)
-    .attr("stroke-width", 1.2)
-
-  calloutG.append("text")
-    .attr("x", flagX)
-    .attr("y", flagY + 3.5)
-    .attr("text-anchor", "middle")
-    .attr("fill", t.ink)
-    .style("font-weight", "600")
-    .style("font-size", "9px")
-    .style("letter-spacing", "0.02em")
-    .text(text)
-}
+// ---------------------------------------------------------------------------
+// Hierarchies.
 
 function leafOf(unit: HotspotUnit, sizeKey: string, colorKey: string, shortName: string, groupColor?: string) {
+  const size = Number(unit[sizeKey]) || 0
   return {
     name: shortName,
     fullName: unit.name,
     unit,
-    value: Math.max(Number(unit[sizeKey]) || 0, 1),
+    value: Math.max(size, 1),
+    sizeValue: size,
     colorValue: Number(unit[colorKey]) || 0,
     groupColor,
   }
@@ -772,7 +931,7 @@ function buildFlat(units: HotspotUnit[], sizeKey: string, colorKey: string) {
 function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string) {
   const root: any = { name: "root", children: [] }
   const groupNodes = new Map<string, any>()
-  const unassignedNode: any = { name: "Unassigned", children: [] }
+  const unassignedNode: any = { name: "Not in a group", children: [] }
   root.children.push(unassignedNode)
 
   units.forEach(unit => {
@@ -791,8 +950,9 @@ function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string)
     }
 
     let parts = [name]
-    if (name.includes("\\")) parts = name.split("\\").filter(x => x)
-    else if (name.includes("/")) parts = name.split("/").filter(x => x)
+    let sep = "."
+    if (name.includes("\\")) { parts = name.split("\\").filter(x => x); sep = "\\" }
+    else if (name.includes("/")) { parts = name.split("/").filter(x => x); sep = "/" }
     else if (name.includes(".")) parts = name.split(".")
     if (parts.length === 0) parts = [name]
 
@@ -813,12 +973,12 @@ function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string)
       }
 
       if (!existing) {
-        existing = { name: part, fullName: path, children: [] }
+        existing = { name: part, fullName: path, children: [], sep }
         current.children.push(existing)
       } else if (existing.unit && !existing.children) {
         // The reverse order of the case above: the row arrived before its children.
         const self = existing
-        existing = { name: part, fullName: path, children: [self] }
+        existing = { name: part, fullName: path, children: [self], sep }
         current.children[current.children.indexOf(self)] = existing
       }
       current = existing
@@ -834,6 +994,23 @@ function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string)
     }
   }
   prune(root)
+
+  // A namespace holding nothing but one deeper namespace is one ring, not a
+  // stack of them: `org` › `broadleafcommerce` › `core` reads `org.broadleafcommerce.core`.
+  const isNamespace = (n: any) => !!n.children && !n.unit && !n.isGroup
+  function collapse(node: any) {
+    if (!node.children) return
+    for (const child of node.children) {
+      while (isNamespace(child) && child.children.length === 1 && isNamespace(child.children[0])) {
+        const only = child.children[0]
+        child.name = `${child.name}${child.sep ?? "."}${only.name}`
+        child.fullName = only.fullName
+        child.children = only.children
+      }
+      collapse(child)
+    }
+  }
+  collapse(root)
 
   root.children = root.children.filter((c: any) => c.children && c.children.length > 0)
   // A single top-level namespace adds nothing but a ring; unwrap it.
