@@ -165,7 +165,7 @@ const laneColour = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400
 const ordered = computed(() => {
   const outside = new Set(props.notLayers)
   const layers = props.lanes.filter((l) => !outside.has(l.id))
-  const pairs = props.flows.flatMap((f) => [{ from: f.from, to: f.to, count: f.count }, { from: f.to, to: f.from, count: f.reverse }])
+  const pairs = props.flows.map((f) => ({ from: f.from, to: f.to, count: f.count }))
   const byId = new Map(props.lanes.map((l) => [l.id, l]))
   return [...stackOrder(layers.map((l) => l.id), pairs).map((id) => byId.get(id)!), ...props.lanes.filter((l) => outside.has(l.id))]
 })
@@ -180,12 +180,13 @@ const stackFlows = computed<StackFlow[]>(() => {
     key: `${from}>${to}`, from, to, count, bad,
     title: `${label(from)} uses ${label(to)}: ${count.toLocaleString()} reference${count === 1 ? "" : "s"}${bad ? ", against the grain" : ""}`,
   })
-  // Red is what Units has always called wrong: the minority direction of a
-  // pair that leans both ways, between two lanes that are layers.
-  return props.flows.flatMap((f) => [
-    ...(f.count ? [one(f.from, f.to, f.count, false)] : []),
-    ...(f.reverse ? [one(f.to, f.from, f.reverse, !outside.has(f.from) && !outside.has(f.to))] : []),
-  ])
+  // laneFlows lists each direction once, carrying the other direction's
+  // count. Red is what Units has always called wrong: the smaller direction
+  // of a pair that leans both ways, between two lanes that are layers.
+  return props.flows.filter((f) => f.count > 0).map((f) => {
+    const minority = f.reverse > f.count || (f.reverse === f.count && f.from > f.to)
+    return one(f.from, f.to, f.count, minority && !outside.has(f.from) && !outside.has(f.to))
+  })
 })
 const toLit = (s: StackSelection) => {
   if (!s) return null
