@@ -12,15 +12,19 @@
       <section class="mt-8" aria-labelledby="knows-title">
         <div class="flex items-baseline justify-between">
           <h3 id="knows-title" class="ui-section-title">Knows best</h3>
-          <span class="text-sm text-neutral-500">Their share of the lines ever added to each component</span>
+          <span class="text-sm text-neutral-500">How much of each component they wrote, and which other active contributor wrote the most</span>
         </div>
         <LoadingState v-if="knowsLoading" text="Reading components…"/>
         <p v-else-if="knows.length === 0" class="mt-2 text-sm text-neutral-500">No commits to a component in this snapshot.</p>
+        <p v-else-if="alone.length" class="mt-2 text-sm text-neutral-600">
+          {{ alone.length === knows.length ? "In every one of these" : `In ${alone.length} of these` }}, no other active contributor wrote a tenth or more: {{ alone.slice(0, 3).join(", ") }}{{ alone.length > 3 ? ` and ${alone.length - 3} more` : "" }}.
+        </p>
         <table v-else class="ui-table mt-2">
           <thead>
             <tr>
               <th>Component</th>
               <th class="w-[220px]">Share of lines added</th>
+              <th class="w-[220px]" title="The active contributor, other than them, who wrote the most of it">Next active contributor</th>
               <th class="w-[100px] text-right">Commits</th>
             </tr>
           </thead>
@@ -34,6 +38,13 @@
                   <span class="h-1.5 flex-1 rounded-full bg-neutral-100"><span class="block h-1.5 rounded-full bg-blue-500" :style="{ width: Math.round(k.share * 100) + '%' }"></span></span>
                   <span class="w-10 text-right font-mono text-sm text-neutral-700">{{ Math.round(k.share * 100) }}%</span>
                 </span>
+              </td>
+              <td class="max-w-0">
+                <span v-if="nextHere(k.component)" class="flex items-center gap-1.5">
+                  <router-link :to="authorsStore.authorPath(nextHere(k.component)!.author)" class="min-w-0 truncate text-neutral-800 hover:underline">{{ authorsStore.display(nextHere(k.component)!.author) }}</router-link>
+                  <span class="shrink-0 font-mono text-sm text-neutral-500">{{ Math.round(nextHere(k.component)!.share * 100) }}%</span>
+                </span>
+                <span v-else class="text-neutral-500">—</span>
               </td>
               <td class="is-num text-right">{{ formatNumber(k.commits) }}</td>
             </tr>
@@ -104,6 +115,8 @@ import { formatNumber, formatSigned } from "~/shared/format"
 import { formatDate } from "~/shared/time"
 import { AUTHOR_PERIODS, IN_SNAPSHOT, NOT_BOT_SQL, authorNamesSql, authorStatsSql, canonicalAuthorSql, periodStats, type AuthorPeriodStats } from "~/features/git/authors"
 import { useAuthorsStore } from "~/features/git/authors.store"
+import { useKnowledgeLeft } from "~/features/git/useKnowledgeLeft"
+import type { Holder } from "~/features/git/knowledgeLeft"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { componentPath } from "~/features/navigation/routes"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -118,6 +131,15 @@ const workspaces = useWorkspacesStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 /** Every name this person committed under, as SQL. */
 const me = computed(() => authorNamesSql(authorsStore.aliases, name.value))
+
+// Who else could be asked: per component, the person still here, other than
+// this one, who wrote the most of it.
+const knowledge = useKnowledgeLeft()
+const byComponent = computed(() => new Map(knowledge.all.value.map(r => [r.component, r])))
+function nextHere(component: string): Holder | null {
+  return byComponent.value.get(component)?.holders.find(h => h.here && h.author !== name.value) ?? null
+}
+const alone = computed(() => knows.value.filter(k => (nextHere(k.component)?.share ?? 0) < 0.1).map(k => k.component.split(/[./\\]/).pop() || k.component))
 
 interface Profile { row: Record<string, any> | null }
 

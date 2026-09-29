@@ -9,5 +9,5 @@ import { useRouter } from "vue-router"
 import LoadingState from "~/shared/ui/LoadingState.vue"
 
 const router = useRouter()
-onMounted(() => { router.replace("/views/git/activity") })
+onMounted(() => { router.replace("/views/git/activity?tab=commits") })
 </script>

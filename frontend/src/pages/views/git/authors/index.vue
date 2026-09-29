@@ -3,14 +3,21 @@
     :queryable="false"
     title="Authors"
     v-model:search-query="searchQuery"
-    :search-placeholder="grain === 'authors' ? 'Search authors' : 'Search components'"
+    :search-placeholder="grain === 'authors' ? 'Search authors' : 'Search components or people'"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
     :tabs="grain === 'authors' ? tabs : []"
     sidebar-width="300px"
   >
     <template #stats>
-      <span v-if="rows.length" title="Everyone who committed to a file in this snapshot, the same count the Overview and Activity show">
+      <template v-if="grain === 'components'">
+        <span v-if="knowledge.rows.value.length">Components <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.components) }}</span></span>
+        <span v-if="knowledge.rows.value.length" class="text-neutral-400">·</span>
+        <span v-if="knowledge.rows.value.length" title="Components no active contributor wrote much of or changed in the window">No active contributor <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.byState.nobody.components) }}</span></span>
+        <span v-if="knowledge.rows.value.length" class="text-neutral-400">·</span>
+        <span v-if="knowledge.rows.value.length">Active <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.peopleHere) }} of {{ formatNumber(knowledge.summary.value.people) }}</span> people</span>
+      </template>
+      <span v-else-if="rows.length" title="Everyone who committed to a file in this snapshot, the same count the Overview and Activity show">
         Contributors
         <span class="text-neutral-800">
           <template v-if="filtered.length !== rows.length">{{ formatNumber(filtered.length) }} of </template>{{ formatNumber(rows.length) }}
@@ -20,8 +27,8 @@
 
     <template #switches>
       <div class="ui-segmented" role="group" aria-label="Rows">
-        <button type="button" :aria-pressed="grain === 'authors'" @click="setGrain('authors')">Authors</button>
-        <button type="button" :aria-pressed="grain === 'components'" title="Per component: how few people added most of its lines" @click="setGrain('components')">Components</button>
+        <button type="button" :aria-pressed="grain === 'components'" title="Per component: how much active contributors wrote or recently changed" @click="setGrain('components')">Knowledge</button>
+        <button type="button" :aria-pressed="grain === 'authors'" title="Per person: what they changed, when they last committed, and what they keep" @click="setGrain('authors')">People</button>
       </div>
       <div v-if="grain === 'authors'" class="ui-segmented" role="group" aria-label="Period">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days)" @click="period = p.id">{{ p.label }}</button>
@@ -41,7 +48,7 @@
     </template>
 
     <template #visualizer>
-      <KnowledgeTable v-if="grain === 'components'" :search="searchQuery"/>
+      <KnowledgeView v-if="grain === 'components'" v-model:focused="focusedComponent" :k="knowledge" :search="searchQuery"/>
       <LoadingState v-else-if="loading" text="Reading authors…"/>
       <EmptyState v-else-if="error" title="Could not read authors" :text="error" icon="alert"/>
       <EmptyState
@@ -53,66 +60,78 @@
       <EmptyState v-else-if="filtered.length === 0" title="No authors match" :text="`Nothing matches “${searchQuery}”.`" icon="search">
         <button type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
       </EmptyState>
-      <div v-else class="min-h-0 grow overflow-auto">
-        <table class="ui-table">
-          <thead>
-            <tr>
-              <th
-                v-for="col in columns"
-                :key="col.key"
-                :class="[col.align === 'right' ? 'text-right' : '', col.width]"
-                :style="col.key === 'name' ? { minWidth: '11rem' } : undefined"
-                :aria-sort="sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
-              >
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 hover:text-neutral-900"
-                  :class="{ 'text-neutral-900': sortKey === col.key }"
-                  @click="toggleSort(col.key)"
+      <ExhibitFrame v-else :exhibit="authorTable" class="grow" fill header-class="h-9 shrink-0 px-4 hairline-b">
+        <template #aside>{{ filtered.length.toLocaleString("en-US") }} {{ filtered.length === 1 ? "author" : "authors" }}</template>
+        <div class="absolute inset-0 overflow-auto">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th
+                  v-for="col in columns"
+                  :key="col.key"
+                  :class="[col.align === 'right' ? 'text-right' : '', col.width]"
+                  :style="col.key === 'name' ? { minWidth: '11rem' } : undefined"
+                  :aria-sort="sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
                 >
-                  {{ col.label }}
-                  <Icon v-if="sortKey === col.key" :icon="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" :size="12"/>
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="a in sorted"
-              :key="a.name"
-              class="is-clickable"
-              :class="{ 'is-selected': a.name === selectedName }"
-              tabindex="0"
-              @click="selectedName = a.name"
-              @dblclick="open(a.name)"
-              @keydown.enter.prevent="open(a.name)"
-            >
-              <td class="max-w-0">
-                <router-link
-                  :to="detailRoute(a.name)"
-                  class="block truncate text-neutral-900 hover:underline"
-                  :title="a.email ? `${a.shown} · ${a.email}` : a.shown"
-                  @click.stop
-                >{{ a.shown }}</router-link>
-              </td>
-              <td class="is-num text-right">
-                <span class="inline-flex items-center justify-end gap-2">
-                  <span>{{ formatNumber(a.commits) }}</span>
-                  <span class="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-neutral-200" aria-hidden="true">
-                    <span class="block h-full rounded-full bg-neutral-500" :style="{ width: barWidth(a.commits) }"></span>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 hover:text-neutral-900"
+                    :class="{ 'text-neutral-900': sortKey === col.key }"
+                    @click="toggleSort(col.key)"
+                  >
+                    {{ col.label }}
+                    <Icon v-if="sortKey === col.key" :icon="sortDir === 'asc' ? 'chevron-up' : 'chevron-down'" :size="12"/>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="a in sorted"
+                :key="a.name"
+                class="is-clickable"
+                :class="{ 'is-selected': a.name === selectedName }"
+                tabindex="0"
+                @click="selectedName = a.name"
+                @dblclick="open(a.name)"
+                @keydown.enter.prevent="open(a.name)"
+              >
+                <td class="max-w-0">
+                  <router-link
+                    :to="detailRoute(a.name)"
+                    class="block truncate text-neutral-900 hover:underline"
+                    :title="a.email ? `${a.shown} · ${a.email}` : a.shown"
+                    @click.stop
+                  >{{ a.shown }}</router-link>
+                </td>
+                <td class="text-right" :title="`${a.here ? 'Active' : 'Not active'}: last commit ${agoLabel(a.idle)}, counted back from the snapshot`">
+                  <span class="inline-flex items-center justify-end gap-1.5 font-mono text-sm tabular-nums" :class="a.here ? 'text-neutral-800' : 'text-neutral-500'">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="a.here ? 'bg-blue-500' : 'bg-neutral-300'" aria-hidden="true"></span>
+                    {{ agoLabel(a.idle) }}
                   </span>
-                </span>
-              </td>
-              <td class="is-num text-right">
-                <span class="text-green-700">{{ formatSigned(a.additions) }}</span>
-                <span class="ml-1.5 text-red-700">{{ formatSigned(-a.deletions) }}</span>
-              </td>
-              <td class="is-num text-right">{{ formatNumber(a.files) }}</td>
-              <td class="is-num text-right">{{ formatNumber(a.components) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </td>
+                <td class="is-num text-right" :title="a.keeps ? `Most active contributor on ${a.keeps} component${a.keeps === 1 ? '' : 's'}; the sole active contributor on ${a.keepsOnly}` : undefined">
+                  <template v-if="a.keeps">{{ formatNumber(a.keeps) }}</template><span v-else class="text-neutral-400">—</span>
+                </td>
+                <td class="is-num text-right">
+                  <span class="inline-flex items-center justify-end gap-2">
+                    <span>{{ formatNumber(a.commits) }}</span>
+                    <span class="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-neutral-200" aria-hidden="true">
+                      <span class="block h-full rounded-full bg-neutral-500" :style="{ width: barWidth(a.commits) }"></span>
+                    </span>
+                  </span>
+                </td>
+                <td class="is-num text-right">
+                  <span class="text-green-700">{{ formatSigned(a.additions) }}</span>
+                  <span class="ml-1.5 text-red-700">{{ formatSigned(-a.deletions) }}</span>
+                </td>
+                <td class="is-num text-right">{{ formatNumber(a.files) }}</td>
+                <td class="is-num text-right">{{ formatNumber(a.components) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ExhibitFrame>
     </template>
 
     <template #tab-author>
@@ -137,6 +156,19 @@
           <SingleSelect :model-value="null" :options="mergeOptions" placeholder="Same person as…" @update:model-value="mergeSelected"/>
           <p class="text-sm leading-4 text-neutral-500">Merging folds the other name's commits into this one on every screen of this workspace.</p>
         </section>
+        <section class="flex flex-col gap-2">
+          <h3 class="ui-section-title">Most active in</h3>
+          <p v-if="!selected.keeps" class="text-sm leading-4 text-neutral-500">{{ selected.here ? "Not the most active contributor on any component." : `Last committed ${agoLabel(selected.idle)}; no longer counted as active.` }}</p>
+          <template v-else>
+            <p class="text-sm leading-4 text-neutral-600">Most active contributor on {{ formatNumber(selected.keeps) }} component{{ selected.keeps === 1 ? "" : "s" }}<template v-if="selected.keepsOnly">, and the sole active contributor on {{ formatNumber(selected.keepsOnly) }} of them</template>.</p>
+            <ul class="flex flex-col">
+              <li v-for="r in keptBy(selected.name)" :key="r.component" class="flex h-6 items-center gap-2">
+                <router-link :to="componentPath(r.component)" class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-800 hover:underline" :title="r.component">{{ r.component }}</router-link>
+                <span class="font-mono text-xs tabular-nums text-neutral-500" title="Lines of code">{{ formatNumber(r.lines) }}</span>
+              </li>
+            </ul>
+          </template>
+        </section>
         <section v-for="p in periods" :key="p.id" class="flex flex-col gap-2">
           <h3 class="ui-section-title" :class="{ 'text-neutral-900': p.id === period }">{{ p.title }}</h3>
           <dl class="ui-kv">
@@ -160,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import { anchorLabel, anchorSql } from "~/features/git/history"
 import { AUTHOR_PERIODS, authorStatsSql, namesOf, periodStats } from "~/features/git/authors"
@@ -169,10 +202,12 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import { computed, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import KnowledgeTable from "~/features/git/components/KnowledgeTable.vue"
+import KnowledgeView from "~/features/git/components/KnowledgeView.vue"
+import { useKnowledgeLeft } from "~/features/git/useKnowledgeLeft"
+import { componentPath } from "~/features/navigation/routes"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
-import { useExportables } from "~/features/export/useExportables"
+import { useTable } from "~/features/export/useExportables"
 import { formatNumber, formatSigned } from "~/shared/format"
 import Icon from "~/shared/ui/Icon.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -182,11 +217,18 @@ const store = useDataStore()
 const router = useRouter()
 const route = useRoute()
 // Authors, or components by how concentrated their authorship is.
-const grain = computed(() => (route.query.grain === "components" ? "components" : "authors"))
+// Knowledge ("components", the default) reads who is still here per
+// component; People ("authors") is the list of contributors.
+const grain = computed(() => (route.query.grain === "authors" ? "authors" : "components"))
 function setGrain(g: "authors" | "components") {
   const query: Record<string, any> = { ...route.query }
-  if (g === "components") query.grain = "components"; else delete query.grain
+  if (g === "authors") query.grain = "authors"; else delete query.grain
   void router.replace({ query })
+}
+const knowledge = useKnowledgeLeft()
+const focusedComponent = ref<string | null>(null)
+function keptBy(name: string) {
+  return knowledge.rows.value.filter(r => r.ask?.author === name).sort((a, b) => b.lines - a.lines).slice(0, 12)
 }
 const workspaces = useWorkspacesStore()
 const authorsStore = useAuthorsStore()
@@ -203,7 +245,8 @@ function mergeSelected(other: string | null) {
 
 const searchQuery = ref("")
 const isSidebarOpen = ref(true)
-const activeTab = ref("author")
+const activeTab = ref(grain.value === "authors" ? "author" : "component")
+watch(grain, g => { activeTab.value = g === "authors" ? "author" : "component" })
 const tabs = [{ id: "author", label: "Author" }]
 
 const periods = AUTHOR_PERIODS
@@ -213,6 +256,12 @@ const period = ref<PeriodId>("total")
 interface PeriodStats { commits: number; additions: number; deletions: number; files: number; components: number }
 interface AuthorRow extends PeriodStats {
   name: string
+  /** Days before the anchor of their last commit. */
+  idle: number
+  /** Committed within the Knowledge window. */
+  here: boolean
+  keeps: number
+  keepsOnly: number
   /** The name on screen: the name, or its pseudonym. */
   shown: string
   email: string
@@ -236,6 +285,10 @@ const rows = computed<AuthorRow[]>(() => raw.value.map(r => {
     shown: authorsStore.display(String(r.author_name ?? "")),
     email: authorsStore.displayEmail(String(r.author_email ?? "")),
     byPeriod,
+    idle: Number(r.days_since_last) || 0,
+    here: (Number(r.days_since_last) || 0) <= knowledge.windowDays.value,
+    keeps: knowledge.holdings.value.get(String(r.author_name ?? ""))?.keeps ?? 0,
+    keepsOnly: knowledge.holdings.value.get(String(r.author_name ?? ""))?.only ?? 0,
     ...byPeriod[period.value],
   }
 }))
@@ -246,9 +299,11 @@ const filtered = computed(() => {
   return rows.value.filter(a => a.shown.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
 })
 
-type SortKey = "name" | "commits" | "lines" | "files" | "components"
+type SortKey = "name" | "idle" | "keeps" | "commits" | "lines" | "files" | "components"
 const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
   { key: "name", label: "Author" },
+  { key: "idle", label: "Last commit", align: "right", width: "w-[120px]" },
+  { key: "keeps", label: "Most active in", align: "right", width: "w-[112px]" },
   { key: "commits", label: "Commits", align: "right", width: "w-[140px]" },
   { key: "lines", label: "Lines", align: "right", width: "w-[160px]" },
   { key: "files", label: "Files", align: "right", width: "w-[80px]" },
@@ -262,7 +317,7 @@ function toggleSort(key: SortKey) {
     sortDir.value = sortDir.value === "asc" ? "desc" : "asc"
   } else {
     sortKey.value = key
-    sortDir.value = key === "name" ? "asc" : "desc"
+    sortDir.value = key === "name" || key === "idle" ? "asc" : "desc"
   }
 }
 
@@ -289,6 +344,13 @@ function barWidth(commits: number): string {
   return commits > 0 ? `${Math.max(4, (commits / maxCommits.value) * 100)}%` : "0%"
 }
 
+function agoLabel(days: number): string {
+  if (days < 1) return "today"
+  if (days < 60) return `${Math.round(days)} d ago`
+  if (days < 540) return `${Math.round(days / 30)} mo ago`
+  return `${(days / 365).toFixed(1)} y ago`
+}
+
 const selectedName = ref<string | null>(null)
 const selected = computed(() => rows.value.find(a => a.name === selectedName.value) ?? null)
 
@@ -297,13 +359,14 @@ function detailRoute(name: string): string {
 }
 
 // Every author in the period, as sorted; names go out as they are shown.
-useExportables().register({
-  kind: "table",
+const authorTable = useTable({
   get title() { return `Authors (${periods.find(p => p.id === period.value)?.title ?? ""})` },
-  rows: () => sorted.value.map(a => ({ author: a.shown, email: a.email, commits: a.commits, additions: a.additions, deletions: a.deletions, files: a.files, components: a.components })),
+  rows: () => sorted.value.map(a => ({ author: a.shown, email: a.email, days_since_last_commit: Math.round(a.idle), keeps: a.keeps, commits: a.commits, additions: a.additions, deletions: a.deletions, files: a.files, components: a.components })),
   columns: () => [
     { id: "author", label: "Author" },
     ...(authorsStore.pseudonymise ? [] : [{ id: "email", label: "Email" }]),
+    { id: "days_since_last_commit", label: "Days since last commit" },
+    { id: "keeps", label: "Most active in (components)" },
     { id: "commits", label: "Commits" },
     { id: "additions", label: "Lines added" },
     { id: "deletions", label: "Lines deleted" },

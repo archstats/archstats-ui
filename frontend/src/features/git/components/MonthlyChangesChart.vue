@@ -1,10 +1,13 @@
 <template>
-  <div ref="hostRef" class="w-full">
-    <svg ref="svgRef" class="block w-full" :style="{ height: height + 'px' }" role="img" aria-label="Monthly additions and deletions"></svg>
-  </div>
+  <ExhibitFrame :exhibit="figure">
+    <div ref="hostRef" class="w-full">
+      <svg ref="svgRef" class="block w-full" :style="{ height: height + 'px' }" role="img" aria-label="Monthly additions and deletions"></svg>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
@@ -133,5 +136,15 @@ onMounted(() => {
 onBeforeUnmount(() => ro?.disconnect())
 watch([() => props.commits, () => props.height, version], () => draw(), { flush: "post" })
 
-useSvgFigure("Lines added and removed by month", () => svgRef.value)
+const figure = useSvgFigure({
+  title: "Lines added and removed by month",
+  svg: () => svgRef.value,
+  legend: () => {
+    const t = chartTheme()
+    return {
+      items: [{ label: "Lines added", color: t.green }, { label: "Lines removed", color: t.red }],
+      notes: ["One bar per month: added above the line, removed below it."],
+    }
+  },
+})
 </script>

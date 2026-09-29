@@ -9,8 +9,7 @@
     </template>
     <template #switches>
       <div class="ui-segmented" role="group" aria-label="Show">
-        <button type="button" :aria-pressed="tab === 'commits'" @click="setTab('commits')">Commits</button>
-        <button type="button" :aria-pressed="tab === 'effort'" title="Where changed lines went: low health, tangles, fix work" @click="setTab('effort')">Effort</button>
+        <button v-for="t in TABS" :key="t.id" type="button" :aria-pressed="tab === t.id" :title="t.title" @click="setTab(t.id)">{{ t.label }}</button>
       </div>
     </template>
     <template #visualizer>
@@ -20,6 +19,8 @@
         text="Scan a git checkout to see commits by month and by author."
         icon="git-branch"
       />
+      <WorkNow v-else-if="tab === 'now'"/>
+      <ChangeBreadth v-else-if="tab === 'breadth'"/>
       <EffortShare v-else-if="tab === 'effort'"/>
       <CommitHistory v-else :where="where" monthly :empty-text="scoped ? 'No commits touch the files in scope.' : 'No git history in this snapshot.'"/>
     </template>
@@ -36,6 +37,8 @@ import { anchorLabel } from "~/features/git/history"
 import { scopeWhere } from "~/features/groups/scopeSql"
 import CommitHistory from "~/features/git/components/CommitHistory.vue"
 import EffortShare from "~/features/git/components/EffortShare.vue"
+import WorkNow from "~/features/git/components/WorkNow.vue"
+import ChangeBreadth from "~/features/git/components/ChangeBreadth.vue"
 import { useEffort } from "~/features/git/useEffort"
 import { useRoute, useRouter } from "vue-router"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -43,10 +46,20 @@ import EmptyState from "~/shared/ui/EmptyState.vue"
 const store = useDataStore()
 const route = useRoute()
 const router = useRouter()
-const tab = computed(() => (route.query.tab === "effort" ? "effort" : "commits"))
-function setTab(t: "commits" | "effort") {
+// Work now opens: where the changed lines are going, against before. Breadth
+// asks whether changes are getting wider; Effort what kind of code they land
+// on; Commits is the history itself.
+const TABS = [
+  { id: "now", label: "Work now", title: "Where the changed lines went recently, against the two years before" },
+  { id: "breadth", label: "Breadth", title: "How many components a commit touches, and whether that is growing" },
+  { id: "effort", label: "Effort", title: "Where changed lines went: low health, tangles, fix work" },
+  { id: "commits", label: "Commits", title: "Every commit, by month" },
+] as const
+type TabId = (typeof TABS)[number]["id"]
+const tab = computed<TabId>(() => (TABS.some(t => t.id === route.query.tab) ? route.query.tab as TabId : "now"))
+function setTab(t: TabId) {
   const query: Record<string, any> = { ...route.query }
-  if (t === "effort") query.tab = "effort"; else delete query.tab
+  if (t !== "now") query.tab = t; else delete query.tab
   delete query.commit
   void router.replace({ query })
 }

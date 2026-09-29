@@ -1,60 +1,69 @@
 <template>
-  <div ref="root" class="inline-block">
-    <div class="chart-layout">
-      <div class="year-labels">
-        <div v-for="label in yearLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
-          {{ label.name }}
+  <ExhibitFrame :exhibit="figure">
+    <div ref="root" class="inline-block">
+      <div class="chart-layout">
+        <div class="year-labels">
+          <div v-for="label in yearLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
+            {{ label.name }}
+          </div>
         </div>
-      </div>
 
-      <div class="month-labels">
-        <div v-for="label in monthLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
-          {{ label.name }}
+        <div class="month-labels">
+          <div v-for="label in monthLabels" :key="label.name" class="text-xs text-gray-500" :style="label.style">
+            {{ label.name }}
+          </div>
         </div>
-      </div>
 
-      <div class="day-labels">
-        <span class="text-xs text-gray-500">Mon</span>
-        <span class="text-xs text-gray-500">Wed</span>
-        <span class="text-xs text-gray-500">Fri</span>
-      </div>
+        <div class="day-labels">
+          <span class="text-xs text-gray-500">Mon</span>
+          <span class="text-xs text-gray-500">Wed</span>
+          <span class="text-xs text-gray-500">Fri</span>
+        </div>
 
-      <div class="activity-chart">
-        <div
-            v-for="(day, index) in daysInChart"
-            :key="index"
-            class="day-cell group relative"
-            :class="day.colorClass"
-        >
-          <div class="w-full h-full rounded-sm"></div>
+        <div class="activity-chart">
           <div
-              v-if="day.date"
-              class="ui-tooltip absolute bottom-full z-10 mb-1.5 w-max opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none"
+              v-for="(day, index) in daysInChart"
+              :key="index"
+              class="day-cell group relative"
+              :class="day.colorClass"
           >
-            {{ day.commits.length }} commits on {{ formatDate(day.date) }}
+            <div class="w-full h-full rounded-sm"></div>
+            <div
+                v-if="day.date"
+                class="ui-tooltip absolute bottom-full z-10 mb-1.5 w-max opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none"
+            >
+              {{ day.commits.length }} commits on {{ formatDate(day.date) }}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref } from 'vue';
-import { useExportables } from "~/features/export/useExportables";
+import { useFigure } from "~/features/export/useExportables";
 import { svgFromHtml } from "~/features/export/figure";
 
 const root = ref<HTMLElement | null>(null);
 // Built from divs, so the figure is drawn from their laid-out boxes.
-useExportables().register({
-  kind: "figure",
+const figure = useFigure({
   title: "Commit calendar",
   ready: () => !!root.value,
+  svg: true,
   render: () => {
     if (!root.value) return null;
     const { svg, width, height } = svgFromHtml(root.value, ".day-cell", ".year-labels > div, .month-labels > div, .day-labels > span");
     return { kind: "svg", svg, width, height };
   },
+  // The cells take the neutral ramp (tailwind's archstats family maps onto it), fewest commits palest.
+  legend: () => ({
+    items: [{ label: "No commits", color: "rgb(var(--c-neutral-200))" }],
+    ramps: [{ label: "Commits a day", colors: [100, 300, 500, 700, 900].map((n) => `rgb(var(--c-neutral-${n}))`), low: "1", high: String(maxCommitsInDay.value) }],
+    notes: ["One square per day, a column per week."],
+  }),
 });
 
 // Define a type for GitCommit for clarity

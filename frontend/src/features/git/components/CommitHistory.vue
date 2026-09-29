@@ -64,7 +64,6 @@
           <GitActivityChart :start-date="chartStart" :end-date="chartEnd" :commits="commits"/>
         </div>
         <div v-if="(monthly || longRange) && commits.length > 0" class="shrink-0 px-4 pb-3 pt-4 hairline-b">
-          <h3 class="ui-section-title mb-2">Lines added and removed by month</h3>
           <MonthlyChangesChart :commits="commits" :height="140"/>
         </div>
         <EmptyState v-if="commits.length === 0" :title="period === 'custom' ? 'No commits between these dates' : 'No commits in this period'" text="Widen the period to see earlier activity."/>

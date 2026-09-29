@@ -38,68 +38,71 @@
       </p>
 
       <section>
-        <h3 class="ui-section-title mb-2">By window</h3>
-        <table class="ui-table">
-          <thead>
-            <tr>
-              <th>Window</th>
-              <th class="text-right">Changed lines</th>
-              <th class="text-right">Health below {{ effort.threshold.value }}</th>
-              <th class="text-right">Tangle members</th>
-              <th class="text-right" :title="`Subject matching /${effort.fix.value.source}/i`">Fix pattern</th>
-              <th class="text-right">Not in the snapshot</th>
-              <th class="text-right">No health reading</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="w in windows" :key="w.id" :class="{ 'is-selected': w.id === effort.windowId.value }">
-              <td>{{ w.label }}</td>
-              <td class="is-num text-right">{{ formatNumber(w.s.lines) }}</td>
-              <td class="is-num text-right">{{ pct(w.s.low, w.s.lines) }}</td>
-              <td class="is-num text-right">{{ pct(w.s.tangle, w.s.lines) }}</td>
-              <td class="is-num text-right">{{ pct(w.s.fix, w.s.lines) }}</td>
-              <td class="is-num text-right">{{ pct(w.s.gone, w.s.lines) }}</td>
-              <td class="is-num text-right">{{ pct(w.s.noHealth, w.s.lines) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <ExhibitFrame :exhibit="windowTable" title="By window">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th>Window</th>
+                <th class="text-right">Changed lines</th>
+                <th class="text-right">Health below {{ effort.threshold.value }}</th>
+                <th class="text-right">Tangle members</th>
+                <th class="text-right" :title="`Subject matching /${effort.fix.value.source}/i`">Fix pattern</th>
+                <th class="text-right">Not in the snapshot</th>
+                <th class="text-right">No health reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="w in windows" :key="w.id" :class="{ 'is-selected': w.id === effort.windowId.value }">
+                <td>{{ w.label }}</td>
+                <td class="is-num text-right">{{ formatNumber(w.s.lines) }}</td>
+                <td class="is-num text-right">{{ pct(w.s.low, w.s.lines) }}</td>
+                <td class="is-num text-right">{{ pct(w.s.tangle, w.s.lines) }}</td>
+                <td class="is-num text-right">{{ pct(w.s.fix, w.s.lines) }}</td>
+                <td class="is-num text-right">{{ pct(w.s.gone, w.s.lines) }}</td>
+                <td class="is-num text-right">{{ pct(w.s.noHealth, w.s.lines) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </ExhibitFrame>
       </section>
 
       <section v-if="months.length > 1">
-        <h3 class="ui-section-title mb-2">Share into health below {{ effort.threshold.value }}, by month</h3>
-        <div ref="barsHost" class="w-full">
-          <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="`Monthly share of changed lines into files with health below ${effort.threshold.value}`">
-            <line x1="0" :x2="barsWidth" y1="100" y2="100" stroke="currentColor" class="text-neutral-200"/>
-            <g v-for="g in [0.25, 0.5]" :key="g">
-              <line x1="28" :x2="barsWidth" :y1="100 - g * 96" :y2="100 - g * 96" stroke="currentColor" stroke-dasharray="2 3" class="text-neutral-200"/>
-              <text x="0" :y="103 - g * 96" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
-            </g>
-            <g v-for="(m, i) in months" :key="m.month">
-              <rect
-                :x="i * step + 1"
-                :y="100 - m.share * 96"
-                :width="Math.max(1, step - 2)"
-                :height="m.share * 96"
-                :fill="m.lines ? 'rgb(var(--c-accent-500))' : 'none'"
-                :opacity="m.lines ? 0.75 : 0"
-              ><title>{{ m.month }}: {{ m.lines ? `${Math.round(m.share * 100)}% of ${formatNumber(m.lines)} lines` : "no changes" }}</title></rect>
-            </g>
-            <text v-for="t in monthTicks" :key="t.i" :x="t.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ t.label }}</text>
-          </svg>
-        </div>
+        <ExhibitFrame :exhibit="figure" :title="`Share into health below ${effort.threshold.value}, by month`">
+          <div ref="barsHost" class="w-full">
+            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="`Monthly share of changed lines into files with health below ${effort.threshold.value}`">
+              <line x1="0" :x2="barsWidth" y1="100" y2="100" stroke="currentColor" class="text-neutral-200"/>
+              <g v-for="g in [0.25, 0.5]" :key="g">
+                <line x1="28" :x2="barsWidth" :y1="100 - g * 96" :y2="100 - g * 96" stroke="currentColor" stroke-dasharray="2 3" class="text-neutral-200"/>
+                <text x="0" :y="103 - g * 96" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
+              </g>
+              <g v-for="(m, i) in months" :key="m.month">
+                <rect
+                  :x="i * step + 1"
+                  :y="100 - m.share * 96"
+                  :width="Math.max(1, step - 2)"
+                  :height="m.share * 96"
+                  :fill="m.lines ? 'rgb(var(--c-accent-500))' : 'none'"
+                  :opacity="m.lines ? 0.75 : 0"
+                ><title>{{ m.month }}: {{ m.lines ? `${Math.round(m.share * 100)}% of ${formatNumber(m.lines)} lines` : "no changes" }}</title></rect>
+              </g>
+              <text v-for="t in monthTicks" :key="t.i" :x="t.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ t.label }}</text>
+            </svg>
+          </div>
+        </ExhibitFrame>
       </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import StatStrip, { type StatCell } from "~/features/metrics/components/StatStrip.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useEffort } from "~/features/git/useEffort";
-import { useExportables, useSvgFigure } from "~/features/export/useExportables";
+import { useSvgFigure, useTable } from "~/features/export/useExportables";
 import { monthlyLowShare, pctText, share } from "~/features/git/effort";
 import { formatNumber } from "~/shared/format";
 import { HISTORY_PERIODS, anchorLabel, historyAnchor } from "~/features/git/history";
@@ -153,15 +156,21 @@ const monthTicks = computed(() => {
   const every = Math.max(1, Math.ceil(months.value.length / Math.floor(barsWidth.value / 70)));
   return months.value.map((m, i) => ({ i, label: `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.month.slice(5)) - 1]} ’${m.month.slice(2, 4)}` })).filter(t => t.i % every === 0);
 });
-useSvgFigure(() => `Share of changed lines into health below ${effort.threshold.value}, by month`, () => barsSvg.value);
+const figure = useSvgFigure({
+  title: () => `Share of changed lines into health below ${effort.threshold.value}, by month`,
+  svg: () => barsSvg.value,
+  legend: () => ({
+    items: [{ label: `Lines changed in files with health below ${effort.threshold.value}`, color: "rgb(var(--c-accent-500))" }],
+    notes: ["One bar per month: the share of that month's changed lines."],
+  }),
+});
 
 const copied = ref(false);
 async function copy() {
   try { await navigator.clipboard.writeText(effort.lede.value); copied.value = true; setTimeout(() => { copied.value = false; }, 1500); } catch { /* clipboard refused */ }
 }
 
-useExportables().register({
-  kind: "table",
+const windowTable = useTable({
   title: "Where change effort goes",
   rows: () => windows.value.map(w => ({ window: w.label, lines: w.s.lines, low: share(w.s.low, w.s.lines), tangle: share(w.s.tangle, w.s.lines), fix: share(w.s.fix, w.s.lines), gone: share(w.s.gone, w.s.lines), no_health: share(w.s.noHealth, w.s.lines) })),
   columns: () => [
