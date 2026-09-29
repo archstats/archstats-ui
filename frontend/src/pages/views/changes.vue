@@ -45,7 +45,10 @@
 
               <!-- 1. Components. -->
               <section v-if="compRows.length">
-                <h2 class="ui-section-title">Components added and removed</h2>
+                <div class="flex min-h-7 items-center gap-3">
+                  <h2 class="ui-section-title">Components added and removed</h2>
+                  <ExhibitButton :exhibit="compTable" class="ml-auto"/>
+                </div>
                 <div class="mt-2 overflow-hidden rounded-lg hairline">
                   <table class="ui-table">
                     <thead><tr><th class="w-8"></th><th class="w-16"></th><th>Component</th></tr></thead>
@@ -66,7 +69,10 @@
 
               <!-- 2. Dependencies. -->
               <section v-if="edgeRows.length">
-                <h2 class="ui-section-title">Dependencies added and removed</h2>
+                <div class="flex min-h-7 items-center gap-3">
+                  <h2 class="ui-section-title">Dependencies added and removed</h2>
+                  <ExhibitButton :exhibit="edgeTable" class="ml-auto"/>
+                </div>
                 <div class="mt-2 overflow-hidden rounded-lg hairline">
                   <table class="ui-table">
                     <thead><tr><th class="w-8"></th><th class="w-16"></th><th>From</th><th>To</th><th class="w-[120px] text-right">Refs</th><th class="w-[90px] text-right">Files</th></tr></thead>
@@ -115,7 +121,10 @@
 
               <!-- 4. Rule findings. -->
               <section v-if="ruleRows.length || !changeSet.rulesChecked?.base">
-                <h2 class="ui-section-title">Rule findings</h2>
+                <div class="flex min-h-7 items-center gap-3">
+                  <h2 class="ui-section-title">Rule findings</h2>
+                  <ExhibitButton :exhibit="ruleTable" class="ml-auto"/>
+                </div>
                 <p v-if="!changeSet.rulesChecked?.base" class="mt-2 text-sm text-neutral-500">Rules were not checked in the baseline.</p>
                 <div v-if="ruleRows.length" class="mt-2 overflow-hidden rounded-lg hairline">
                   <table class="ui-table">
@@ -151,16 +160,13 @@
                 </div>
               </section>
 
-              <!-- 4c. Through a structure: the plan's modules or the lens's groups. -->
-              <section v-if="structure.available.value.length">
+              <!-- 4c. Through the lens's groups. -->
+              <section v-if="structure.available.value">
                 <div class="flex items-center gap-3">
                   <h2 class="ui-section-title">Structure</h2>
-                  <div v-if="structure.available.value.length > 1" class="ui-segmented" role="group" aria-label="Read through">
-                    <button v-for="b in structure.available.value" :key="b" type="button" :aria-pressed="structure.by.value === b" @click="structure.chosen.value = b">{{ b === "plan" ? "Restructure plan" : `Lens: ${lens.active}` }}</button>
-                  </div>
-                  <span v-else class="text-sm text-neutral-500">through {{ structure.by.value === "plan" ? "the restructure plan" : `the ${lens.active} lens` }}</span>
+                  <span class="text-sm text-neutral-500">through the {{ lens.active }} lens</span>
                 </div>
-                <p class="mt-1 max-w-[760px] text-sm text-neutral-500">Both snapshots read through the same {{ structure.by.value === "plan" ? "modules" : "groups" }}: what a restructure did to how they depend on each other.</p>
+                <p class="mt-1 max-w-[760px] text-sm text-neutral-500">Both snapshots read through the same groups: what the change did to how they depend on each other.</p>
                 <LoadingState v-if="structure.loading.value" text="Reading both snapshots' imports…"/>
                 <p v-else-if="structure.error.value" class="mt-2 text-sm text-red-700">{{ structure.error.value }}</p>
                 <template v-else-if="structure.diff.value">
@@ -187,9 +193,10 @@
 
               <!-- 5. Largest moves. -->
               <section v-if="moves.length">
-                <div class="flex items-center gap-3">
+                <div class="flex min-h-7 items-center gap-3">
                   <h2 class="ui-section-title">Largest moves</h2>
                   <SingleSelect :model-value="metricOption" :options="metricOptions" @update:model-value="(o: any) => (metric = o?.id ?? metric)"/>
+                  <ExhibitButton :exhibit="movesTable" class="ml-auto"/>
                 </div>
                 <div class="mt-2 overflow-hidden rounded-lg hairline">
                   <table class="ui-table">
@@ -216,6 +223,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue";
 import { computed, defineComponent, h, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Compare } from "wailsjs/go/app/ChangesService";
@@ -235,7 +243,7 @@ import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import SingleSelect from "~/shared/ui/SingleSelect.vue";
-import { useExportables } from "~/features/export/useExportables";
+import { useExportables, useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { changesMarkdown, countChanges, isUnchanged, normalizeChangeSet, pickSides, summaryLine, type ChangeSet, type Move } from "~/features/trends/changes";
@@ -347,7 +355,7 @@ watch([() => changeSet.value, () => lens.active, () => groupsStore.dimensionReco
   };
 }, { immediate: true });
 
-// ── Structure: both sides through the plan or the lens ──────────────────
+// ── Structure: both sides through the lens ──────────────────────────────
 const structure = useStructureCompare(
   computed(() => (changeSet.value ? { base: changeSet.value.baseId, head: changeSet.value.headId } : null)),
   (scanId, sql) => QueryIn(scanId, sql) as Promise<any[]>,
@@ -400,23 +408,23 @@ register({
   markdown: () => changesMarkdown(changeSet.value!, labelOf(sides.value.base), labelOf(sides.value.head), provenanceShort(buildProvenance())),
   disabledReason: () => (changeSet.value ? null : "Nothing compared yet."),
 });
-register({
-  kind: "table", title: "Dependencies changed",
+const edgeTable = useTable({
+  title: "Dependencies changed",
   rows: () => edgeRows.value.map(r => ({ change: r.kind, from: r.from, to: r.to, refs_before: r.before, refs_after: r.after, runtime_lookup_only: r.dynamic, files: r.files.join("; ") })),
   columns: () => ["change", "from", "to", "refs_before", "refs_after", "runtime_lookup_only", "files"].map(id => ({ id, label: id.replace(/_/g, " ") })),
 });
-register({
-  kind: "table", title: "Components added and removed",
+const compTable = useTable({
+  title: "Components added and removed",
   rows: () => compRows.value.map(r => ({ change: r.kind, component: r.name })),
   columns: () => [{ id: "change", label: "Change" }, { id: "component", label: "Component" }],
 });
-register({
-  kind: "table", title: "Rule findings, new and gone",
+const ruleTable = useTable({
+  title: "Rule findings, new and gone",
   rows: () => ruleRows.value.map(r => ({ change: r.kind, rule: r.rule, from: r.from, to: r.to, file: r.file, line: r.line })),
   columns: () => ["change", "rule", "from", "to", "file", "line"].map(id => ({ id, label: id })),
 });
-register({
-  kind: "table", get title() { return `Largest moves: ${metricOption.value?.name ?? ""}`; },
+const movesTable = useTable({
+  get title() { return `Largest moves: ${metricOption.value?.name ?? ""}`; },
   rows: () => metricMoves.value.map(m => ({ component: m.component, [`${m.metric}_before`]: m.before, [`${m.metric}_after`]: m.after })),
   columns: () => { const id = metricOption.value?.id ?? metric.value; return [{ id: "component", label: "Component" }, { id: `${id}_before`, label: "Before" }, { id: `${id}_after`, label: "After" }]; },
 });

@@ -25,24 +25,28 @@
           </p>
           <p v-if="failed.length" class="text-sm text-amber-700">{{ failed.length }} snapshot{{ failed.length === 1 ? "" : "s" }} could not be read and {{ failed.length === 1 ? "is" : "are" }} left out.</p>
 
-          <TrendRows v-if="mode === 'chart'" ref="chart" :points="points" :series="series" :breaks="breaks" :basis="basis" :selected="selected" @pick="pick"/>
+          <ExhibitFrame v-if="mode === 'chart'" :exhibit="figure" title="Readings over time">
+            <TrendRows ref="chart" :points="points" :series="series" :breaks="breaks" :basis="basis" :selected="selected" @pick="pick"/>
+          </ExhibitFrame>
 
-          <div v-else class="overflow-x-auto rounded-lg hairline">
-            <table class="ui-table">
-              <thead>
-                <tr>
-                  <th>Snapshot</th>
-                  <th v-for="s in series" :key="s.id" class="text-right">{{ s.label }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(p, i) in points" :key="p.scanId" class="is-clickable" :class="{ 'is-selected': selected.includes(i) }" @click="pick(i, ($event as MouseEvent).shiftKey)">
-                  <td class="whitespace-nowrap font-mono text-sm">{{ pointLabel(p) }}<span v-if="breakAt.has(i)" class="ui-tag ml-2">{{ breakAt.get(i) }}</span></td>
-                  <td v-for="s in series" :key="s.id" class="is-num text-right">{{ fmt(p.readings?.[s.id] ?? null, s) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ExhibitFrame v-else :exhibit="readingsTable" title="Readings over time">
+            <div class="overflow-x-auto rounded-lg hairline">
+              <table class="ui-table">
+                <thead>
+                  <tr>
+                    <th>Snapshot</th>
+                    <th v-for="s in series" :key="s.id" class="text-right">{{ s.label }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(p, i) in points" :key="p.scanId" class="is-clickable" :class="{ 'is-selected': selected.includes(i) }" @click="pick(i, ($event as MouseEvent).shiftKey)">
+                    <td class="whitespace-nowrap font-mono text-sm">{{ pointLabel(p) }}<span v-if="breakAt.has(i)" class="ui-tag ml-2">{{ breakAt.get(i) }}</span></td>
+                    <td v-for="s in series" :key="s.id" class="is-num text-right">{{ fmt(p.readings?.[s.id] ?? null, s) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </ExhibitFrame>
 
           <!-- The picked snapshots: open one, or compare two. -->
           <div v-if="selected.length" class="flex flex-wrap items-center gap-2 rounded-lg px-4 py-3 hairline">
@@ -54,7 +58,7 @@
               <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selected = []">Clear</button>
             </span>
           </div>
-          <p class="text-sm text-neutral-500">Readings are the app's own, computed per snapshot; each is defined, with the SQL that reproduces it, in the <router-link to="/views/reference?m=app__propagation_cost" class="underline-offset-2 hover:underline">Metric reference</router-link>. Lines break where the analysis or the ignore rules changed; hollow dots are snapshots of unknown analysis.</p>
+          <p class="text-sm text-neutral-500">Readings are the app's own, computed per snapshot; each is defined, with the SQL that reproduces it, in the <router-link to="/views/reference?m=app__propagation_cost" class="underline-offset-2 hover:underline">Metric reference</router-link>.</p>
         </div>
       </div>
     </template>
@@ -67,9 +71,11 @@ import { useRouter } from "vue-router";
 import { Readings } from "wailsjs/go/app/ChangesService";
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
 import TrendRows from "~/features/trends/components/TrendRows.vue";
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
+import { chartTheme } from "~/shared/ui/useChartTheme";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
-import { useExportables } from "~/features/export/useExportables";
+import { useFigure, useTable } from "~/features/export/useExportables";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { formatScanTime } from "~/shared/time";
 import { TREND_SERIES, breaksOf, dedupePoints, xBasis, type TrendPoint } from "~/features/trends/trends";
@@ -122,9 +128,7 @@ function compare() {
   void router.push({ path: "/views/changes", query: { base: points.value[a].scanId, head: points.value[b].scanId } });
 }
 
-const { register } = useExportables();
-register({
-  kind: "figure",
+const figure = useFigure({
   title: "Over time",
   ready: () => mode.value === "chart" && !!chart.value?.svg,
   svg: true,
@@ -134,9 +138,20 @@ register({
     const { width, height } = (chart.value as any).size();
     return { kind: "svg", svg, width, height };
   },
+  legend: () => {
+    const t = chartTheme();
+    return {
+      items: [
+        { label: "A snapshot", color: t.inkSecondary, mark: "dot" as const },
+        { label: "A snapshot of unknown analysis", color: t.inkMuted, mark: "ring" as const },
+        ...(selected.value.length ? [{ label: "Picked", color: t.accent, mark: "dot" as const }] : []),
+        ...(breaks.value.length ? [{ label: "The analysis or the ignore rules changed; the lines start again", color: t.hairlineStrong, mark: "dashed" as const }] : []),
+      ],
+      notes: [`One row per reading, snapshots placed ${basis.value === "commit" ? "by commit time" : "by scan time"}.`],
+    };
+  },
 });
-register({
-  kind: "table",
+const readingsTable = useTable({
   title: "Readings over time",
   rows: () => points.value.map(p => ({ snapshot: pointLabel(p), commit: p.headCommit, revision: p.analysisRevision, ...Object.fromEntries(series.value.map(s => [s.id, p.readings?.[s.id] ?? null])) })),
   columns: () => [{ id: "snapshot", label: "Snapshot" }, { id: "commit", label: "Commit" }, { id: "revision", label: "Analysis" }, ...series.value.map(s => ({ id: s.id, label: s.label }))],
