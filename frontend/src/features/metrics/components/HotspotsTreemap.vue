@@ -131,6 +131,8 @@ const props = defineProps<{
   ranked?: string[]
   /** How the ranking was drawn, when it is not simply the hottest heat. */
   rankedNote?: string | null
+  /** Rows the page did not hand over (files that are not code), said in the legend. */
+  leftOutNote?: string | null
   highlightedUnit: string | null
   labelHigh: string
   labelLow: string

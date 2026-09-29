@@ -1,4 +1,4 @@
-import type { FileRole } from "./languages"
+import { isCodePath, type FileRole } from "./languages"
 
 // Which files are tests. Revision 2 snapshots record a role per file (E5);
 // older ones are read by the same path conventions, labelled as such, so the
@@ -103,3 +103,16 @@ export const NON_PRODUCTION_GLOBS: string[] = [
     "*[-.][0-9]*.[0-9]*.js", "*[-.][0-9]*.[0-9]*.css",
     ...NON_CODE.flatMap(x => [`*.${x}`, `*.${x.toUpperCase()}`]),
 ]
+
+/**
+ * Whether a file is source code, for views that rank files by the shape of
+ * their code. A recorded role of non-code, generated or third-party rules a
+ * file out; without one, a path that reads as vendored does. Either way the
+ * file must be written in a programming language: the engine records
+ * LICENSE, Jenkinsfile and .html templates as production.
+ */
+export function isSourceFile(file: { name: string; role?: string | null }): boolean {
+    const role = file.role ? file.role as FileRole : guessRole(file.name) === "third_party" ? "third_party" : null
+    if (role === "non_code" || role === "generated" || role === "third_party") return false
+    return isCodePath(file.name)
+}

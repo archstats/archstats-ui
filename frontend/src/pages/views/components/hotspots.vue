@@ -16,6 +16,10 @@
     >
       <template #stats>
         <span v-if="scoped">of <span class="text-neutral-800">{{ allUnits.length }}</span></span>
+        <template v-if="leftOut > 0">
+          <span class="text-neutral-300">·</span>
+          <span :title="leftOutNote ?? undefined">{{ formatNumber(leftOut, 0) }} not code, left out</span>
+        </template>
       </template>
 
       <template #switches>
@@ -98,6 +102,7 @@
               :zero-label="zeroLabel"
               :ranked="ranked.map(u => u.name)"
               :ranked-note="rankedNote"
+              :left-out-note="leftOutNote"
               :highlighted-unit="highlightedUnit"
               :label-high="labelHigh"
               :label-low="labelLow"
@@ -278,6 +283,7 @@ import { useLensStore } from "~/features/groups/lens.store"
 import { useGroupsStore } from "~/features/groups/groups.store"
 import { useScopeStore } from "~/features/groups/scope.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
+import { isSourceFile } from "~/features/snapshot/fileRole"
 import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, levelTextClass } from "~/features/metrics/useHealth"
 import { formatNumber } from "~/shared/format"
 import Icon from "~/shared/ui/Icon.vue"
@@ -360,9 +366,17 @@ const { data: queried, loading, error } = useAsyncQuery<{ grain: HotspotGrain | 
 // Whether the active grain's columns are all known yet.
 const columnsSettled = computed(() => store.hasData && (grain.value === "components" || (queried.value.grain === grain.value && !loading.value)))
 
+// The file grain ranks source code only: a LICENSE, a plan in Markdown or a
+// vendored library has lines and nesting too, and led every list before.
+const grainRows = computed<HotspotUnit[]>(() => grain.value === "files" ? queried.value.rows.filter(isSourceFile) : queried.value.rows)
+const leftOut = computed(() => grain.value === "files" ? queried.value.rows.length - grainRows.value.length : 0)
+const leftOutNote = computed(() => leftOut.value > 0
+  ? `${formatNumber(leftOut.value, 0)} ${leftOut.value === 1 ? "file that is" : "files that are"} not source code left out: documents, data, templates, generated and third-party files.`
+  : null)
+
 const codeAge = useCodeAge()
 const allUnits = computed<HotspotUnit[]>(() => {
-  const units = grain.value === "components" ? store.allComponents as unknown as HotspotUnit[] : queried.value.rows
+  const units = grain.value === "components" ? store.allComponents as unknown as HotspotUnit[] : grainRows.value
   if (grain.value === "directories" || !codeAge.available.value) return units
   const ages = grain.value === "files" ? codeAge.byFile.value : codeAge.byComponent.value
   if (ages.size === 0) return units
@@ -675,9 +689,10 @@ const ranked = computed<HotspotUnit[]>(() => {
     .slice(0, RANKED)
 })
 
+// A component name is dotted; a file path keeps its extension on the leaf.
 const SEPARATORS = /[\\/.]/
 function leafName(name: string): string {
-  const parts = name.split(SEPARATORS)
+  const parts = name.split(grain.value === "files" ? /[\\/]/ : SEPARATORS)
   return parts[parts.length - 1] || name
 }
 function tailOf(text: string, max: number): string {

@@ -22,6 +22,7 @@ const BY_EXT: Record<string, string> = {
     dart: "Dart", arb: "Flutter translations",
     pbxproj: "Xcode project", plist: "Property list", entitlements: "Property list", xcstrings: "String catalog",
     strings: "String catalog", storyboard: "Interface Builder", xib: "Interface Builder",
+    lua: "Lua", pl: "Perl", pm: "Perl", r: "R", ex: "Elixir", exs: "Elixir", clj: "Clojure", hs: "Haskell", erl: "Erlang",
 }
 
 const BY_NAME: Record<string, string> = {
@@ -37,6 +38,21 @@ export function languageOfPath(path: string): string {
     if (dot <= 0) return "No extension"
     const ext = lower.slice(dot + 1)
     return BY_EXT[ext] ?? `.${ext}`
+}
+
+// Languages a program is written in. Markup and templates (HTML, Twig, Razor,
+// ERB), data, build and container files are left out: their nesting and size
+// are not the shape of code.
+const CODE_LANGUAGES = new Set([
+    "Java", "Kotlin", "Scala", "Groovy", "C#", "Visual Basic", "F#", "PHP", "Python",
+    "Go", "Rust", "Ruby", "Swift", "Objective-C", "C", "C/C++ header", "C++",
+    "JavaScript", "JavaScript (JSX)", "TypeScript", "TypeScript (TSX)", "Vue", "Svelte",
+    "Shell", "PowerShell", "Dart", "Lua", "Perl", "R", "Elixir", "Clojure", "Haskell", "Erlang",
+])
+
+/** Whether a path is written in a programming language, by its extension. */
+export function isCodePath(path: string): boolean {
+    return CODE_LANGUAGES.has(languageOfPath(path))
 }
 
 /** The extension a path carries, for a filter; empty when it has none. */
