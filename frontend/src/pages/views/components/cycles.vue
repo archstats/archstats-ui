@@ -26,7 +26,7 @@
         <p class="mt-2 max-w-[460px] text-sm leading-6 text-neutral-600">Every import chain between the {{ fmt(componentCount) }} components runs one way, so there is no cycle to break. That holds for runtime imports; type-only imports are left out, as the engine leaves them out.</p>
       </div>
       <div v-else-if="!scopedTangles.length" class="flex h-full items-center justify-center">
-        <EmptyState icon="recycle" title="No tangle in scope" :text="`No tangle has a component of ${scope.group?.name ?? 'the active scope'}.`">
+        <EmptyState icon="recycle" title="No tangle in scope" :text="`No tangle has a component of ${scopeLabel() || 'the active scope'}.`">
           <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
         </EmptyState>
       </div>
@@ -404,6 +404,8 @@ import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
 import { formatNumber } from "~/shared/format";
 import { componentPath } from "~/features/navigation/routes";
 import { sqlIn, sqlLiteral } from "~/shared/sql";
+import { passesFacet } from "~/features/snapshot/fileRole";
+import { scopeLabel } from "~/features/groups/scopeSql";
 import { afterCuts, edgeId, foldEdges, layoutTangle, loopThrough, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/features/cycles/untangle";
 
 // Cycles, read as tangles: sets of components that all reach each other.
@@ -426,14 +428,38 @@ const activeTab = ref("guide");
 const tabs = [{ id: "guide", label: "Guide" }, { id: "plan", label: "All cuts" }, { id: "selection", label: "Selection" }, { id: "cycles", label: "Cycles" }];
 
 // ── The graph and its tangles ───────────────────────────────────────────
-const edges = computed<WEdge[]>(() => (store.hasData ? foldEdges(store.componentConnections as any[]) : []));
-const componentNames = computed(() => (store.hasData ? (store.allComponents as any[]).map(c => String(c.name)).filter(n => n !== ".") : []));
+// The Production/Tests switch changes the graph itself, not just which
+// tangles show: an import counts only when a file on the facet's side makes
+// it, so a loop closed by a test disappears under Production.
+const facetRows = computed<any[]>(() => {
+  const rows = store.componentConnections as any[];
+  if (scope.facet === "all") return rows;
+  const roles = store.fileRoleIndex;
+  const keep = scope.facetComponents;
+  return rows.filter(r =>
+    (!r.file || passesFacet(roles.get(String(r.file)) ?? "production", scope.facet)) &&
+    (!keep || (keep.has(String(r.from)) && keep.has(String(r.to)))));
+});
+const edges = computed<WEdge[]>(() => (store.hasData ? foldEdges(facetRows.value) : []));
+const componentNames = computed(() => {
+  if (!store.hasData) return [];
+  const keep = scope.facetComponents;
+  return (store.allComponents as any[]).map(c => String(c.name)).filter(n => n !== "." && (!keep || keep.has(n)));
+});
 const componentCount = computed(() => componentNames.value.length);
 const lineIndex = computed(() => new Map((store.allComponents as any[]).map(c => [String(c.name), Number(c.complexity__lines) || 0])));
 const linesOf = (n: string) => lineIndex.value.get(n) ?? 0;
 
 interface ListedCycle { id: number; nodes: string[]; sharedCommits: number }
-const listedCycles = computed<ListedCycle[]>(() => (store.hasData ? (store.allCyclesExpanded as any[]).map(c => ({ id: c.id, nodes: c.nodes, sharedCommits: Number(c.sharedCommits) || 0 })) : []));
+// The engine lists cycles over every import; under a facet keep only those
+// whose every step is still an import on the facet's side.
+const listedCycles = computed<ListedCycle[]>(() => {
+  if (!store.hasData) return [];
+  const all: ListedCycle[] = (store.allCyclesExpanded as any[]).map(c => ({ id: c.id, nodes: c.nodes, sharedCommits: Number(c.sharedCommits) || 0 }));
+  if (scope.facet === "all") return all;
+  const have = new Set(edges.value.map(e => edgeId(e.from, e.to)));
+  return all.filter(c => c.nodes.every((n, i) => have.has(edgeId(n, c.nodes[(i + 1) % c.nodes.length]))));
+});
 
 interface Tangle { key: string; members: string[]; lines: number; cycles: number; matches: boolean }
 const rawTangles = computed(() => tanglesOf(new Set([...componentNames.value, ...edges.value.flatMap(e => [e.from, e.to])]), edges.value));
@@ -478,7 +504,7 @@ const planImports = computed(() => plan.value.reduce((s, x) => s + x.imports, 0)
 const planFiles = computed(() => {
   const want = new Set(plan.value.map(s => edgeId(s.from, s.to)));
   const files = new Set<string>();
-  for (const r of store.componentConnections as any[]) if (r.file && want.has(edgeId(String(r.from), String(r.to)))) files.add(String(r.file));
+  for (const r of facetRows.value) if (r.file && want.has(edgeId(String(r.from), String(r.to)))) files.add(String(r.file));
   return files.size || plan.value.reduce((s, x) => s + x.files, 0);
 });
 const firstHalf = computed(() => (tangle.value ? plan.value.find(s => s.freed >= tangle.value!.members.length / 2 && s.step < plan.value.length) ?? null : null));
@@ -636,7 +662,7 @@ watch(guideCurrent, async (s) => {
   guideLines.value = [];
   guideMoreLines.value = 0;
   if (!s) return;
-  const files = [...new Set((store.componentConnections as any[]).filter(r => r.from === s.from && r.to === s.to && r.file).map(r => String(r.file)))];
+  const files = [...new Set(facetRows.value.filter(r => r.from === s.from && r.to === s.to && r.file).map(r => String(r.file)))];
   if (!files.length || !store.hasView("snippets")) return;
   guideLinesLoading.value = true;
   try {
@@ -741,7 +767,7 @@ watch(selectedEdge, async (sel) => {
   if (!sel) return;
   const files = new Map<string, number>();
   let imports = 0;
-  for (const r of store.componentConnections as any[]) {
+  for (const r of facetRows.value) {
     if (r.from !== sel.from || r.to !== sel.to) continue;
     const n = Number(r.reference_count ?? r.count) || 1;
     imports += n;
