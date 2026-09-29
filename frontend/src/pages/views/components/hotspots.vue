@@ -289,6 +289,7 @@ import HotspotsTreemap, { type HotspotGrain, type HotspotLayout, type HotspotUni
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import { useIncomingSelection } from "~/features/navigation/useIncomingSelection"
+import { choosePreset, presetForUrl } from "~/features/metrics/hotspotPreset"
 
 const store = useDataStore()
 const router = useRouter()
@@ -343,19 +344,25 @@ const activeSidebarTab = ref("perspectives")
 // Rows of the active grain. Components come from the store; directories and
 // files are read on demand. The table name is one of three fixed literals.
 
-const { data: queried, loading, error } = useAsyncQuery<HotspotUnit[]>(
+// The rows carry the grain they were read for, so the columns of the grain
+// being left are never taken for the new one's.
+const { data: queried, loading, error } = useAsyncQuery<{ grain: HotspotGrain | null; rows: HotspotUnit[] }>(
   async () => {
-    if (grain.value === "components") return []
-    const table = grain.value === "directories" ? "directories" : "files"
-    return store.query<HotspotUnit>(`SELECT * FROM ${table} ORDER BY name`)
+    const g = grain.value
+    if (g === "components") return { grain: g, rows: [] }
+    const table = g === "directories" ? "directories" : "files"
+    return { grain: g, rows: await store.query<HotspotUnit>(`SELECT * FROM ${table} ORDER BY name`) }
   },
   [grain],
-  { initial: [] },
+  { initial: { grain: null, rows: [] } },
 )
+
+// Whether the active grain's columns are all known yet.
+const columnsSettled = computed(() => store.hasData && (grain.value === "components" || (queried.value.grain === grain.value && !loading.value)))
 
 const codeAge = useCodeAge()
 const allUnits = computed<HotspotUnit[]>(() => {
-  const units = grain.value === "components" ? store.allComponents as unknown as HotspotUnit[] : queried.value
+  const units = grain.value === "components" ? store.allComponents as unknown as HotspotUnit[] : queried.value.rows
   if (grain.value === "directories" || !codeAge.available.value) return units
   const ages = grain.value === "files" ? codeAge.byFile.value : codeAge.byComponent.value
   if (ages.size === 0) return units
@@ -373,13 +380,13 @@ const units = computed<HotspotUnit[]>(() => {
 })
 
 // Metric columns of the active grain: the store knows the component columns;
-// for the other tables read them off the rows.
+// for the other tables read them off the rows. None until they are all known.
 const columns = computed<string[]>(() => {
-  if (!store.hasData) return []
+  if (!columnsSettled.value) return []
   const age = codeAge.available.value && grain.value !== "directories" ? [LAST_CHANGED] : []
   if (grain.value === "components") return [...(store.getDistinctComponentColumns as string[]), ...age]
   const seen = new Set<string>(age)
-  for (const row of queried.value.slice(0, 200)) {
+  for (const row of queried.value.rows.slice(0, 200)) {
     for (const [key, value] of Object.entries(row)) {
       if (key === "name" || key === "component") continue
       if (typeof value === "number") seen.add(key)
@@ -528,49 +535,40 @@ watch(commitWindow, (value, previous) => {
   if (sizeMetric.value === previous) sizeMetric.value = value
 })
 
-// When the grain changes the column set changes with it; keep the current
-// pair when it still exists, otherwise fall back to the first perspective.
 // The perspective a link asked for (?preset=churn). It stays in the URL while it
 // is the one shown, so a capture of this view says which perspective it holds.
 const routePreset = computed(() => (typeof route.query.preset === "string" ? route.query.preset : null))
 
-watch(columns, cols => {
-  if (cols.length === 0) return
-  // A perspective the link asked for wins once its columns exist, over the one
-  // left from before and over the default.
-  const wanted = routePreset.value ? presets.value.find(p => p.id === routePreset.value) : null
-  if (wanted && cols.includes(wanted.sizeMetric) && cols.includes(wanted.colorMetric)) {
-    if (matchedPreset.value?.id !== wanted.id || customPinned.value) selectPreset(wanted)
-    return
-  }
-  const stillValid = cols.includes(sizeMetric.value) && cols.includes(colorMetric.value)
-  if (stillValid) return
+// One rule for every way the view gets here: a first load, a grain switch, and
+// a link (report slot, Show in, capture) changing grain and preset together
+// while the view stays open. It waits for the grain's columns, then the
+// perspective the link asked for wins once its columns exist.
+function applyPreset() {
   // Without commit history every hotspot score is 0 and the chart opens grey;
   // open on something the snapshot can colour instead.
-  const first = commitWindows.value.length === 0
-    ? presets.value.find(p => p.id === "nesting") ?? presets.value.find(p => p.id === "instability") ?? presets.value[0]
-    : presets.value[0]
-  if (first) {
-    selectPreset(first)
-    return
+  const fallback = commitWindows.value.length === 0 ? ["nesting", "instability"] : []
+  const choice = choosePreset(columns.value, presets.value, routePreset.value, {
+    sizeMetric: sizeMetric.value,
+    colorMetric: colorMetric.value,
+    customPinned: customPinned.value,
+  }, fallback)
+  if (choice.kind === "preset") {
+    const p = presets.value.find(x => x.id === choice.id)
+    if (p) selectPreset(p)
+  } else if (choice.kind === "custom") {
+    customPinned.value = true
+    sizeMetric.value = choice.sizeMetric
+    colorMetric.value = choice.colorMetric
   }
-  customPinned.value = true
-  sizeMetric.value = cols.includes("complexity__lines") ? "complexity__lines" : cols[0]
-  colorMetric.value = cols.includes("git__commits__total") ? "git__commits__total" : (cols[1] || cols[0])
-}, { immediate: true })
-
-// A link can open a perspective by id (?preset=churn), once the presets exist,
-// and again while the view is open (a report slot opening the view it is on).
-watch([presets, routePreset], ([list, id]) => {
-  const p = id ? list.find(x => x.id === id) : null
-  if (p && (matchedPreset.value?.id !== p.id || customPinned.value)) selectPreset(p)
-}, { immediate: true })
+}
+watch([columns, presets, routePreset], applyPreset, { immediate: true })
 
 // The URL follows the perspective shown: a later choice replaces the link's, and
-// a custom pair of metrics drops it.
-watch(activePresetId, id => {
-  const want = id === "custom" ? undefined : id
-  if ((route.query.preset ?? undefined) === want) return
+// a custom pair of metrics drops it. Never while the columns load, when the
+// pair on screen is the one being left.
+watch([activePresetId, columnsSettled], ([id, settled]) => {
+  const want = presetForUrl(id, settled, routePreset.value)
+  if (want === undefined) return
   const query: Record<string, any> = { ...route.query }
   if (want) query.preset = want
   else delete query.preset
