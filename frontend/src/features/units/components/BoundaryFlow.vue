@@ -27,6 +27,18 @@
         <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(headLane))"/>
         <span>{{ headLabel }}</span>
       </p>
+      <!-- Which way a reference runs, said once where the eye already is,
+           and drawn the way the ribbons draw it. -->
+      <p class="flex items-center gap-4 self-center text-xs text-neutral-600" aria-label="Which way the references run">
+        <span class="flex items-center gap-1.5">
+          <svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="23" y2="4" class="stroke-neutral-500" stroke-width="2"/><path d="M22,0.5 L29,4 L22,7.5 z" class="fill-neutral-500"/></svg>
+          {{ headLabel }} uses {{ tailLabel }}
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg width="30" height="8" aria-hidden="true"><line x1="7" y1="4" x2="30" y2="4" class="stroke-red-500" stroke-width="2"/><path d="M8,0.5 L1,4 L8,7.5 z" class="fill-red-500"/></svg>
+          {{ tailLabel }} uses {{ headLabel }}
+        </span>
+      </p>
       <p class="flex items-center gap-2 text-base text-neutral-900">
         <span>{{ tailLabel }}</span>
         <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(tailLane))"/>
@@ -62,6 +74,18 @@
                 @click="onRibbon(r)">
             <title>{{ describe(r) }}</title>
           </path>
+        </g>
+
+        <!-- Direction on the ribbons themselves: chevrons pointing the way the
+             imports run, and on whatever is traced, dashes that flow that way. -->
+        <g class="pointer-events-none">
+          <path v-for="c in chevrons" :key="c.key" :d="c.d" fill="none"
+                :class="c.back ? 'stroke-red-700' : 'stroke-neutral-500'"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                :stroke-opacity="c.opacity * (1 - 0.95 * motion)"/>
+          <path v-for="f in flowing" :key="'f' + f.id" :d="f.d" fill="none"
+                class="flowing stroke-neutral-900" stroke-width="1.5" stroke-linecap="round"
+                stroke-dasharray="3 9" :stroke-opacity="0.85 * (1 - 0.95 * motion)"/>
         </g>
 
         <!-- Left column. -->
@@ -383,6 +407,52 @@ function traced(r: FlowRibbon): boolean {
  * Painting every ribbon with the accent spent the one loud colour on "all
  * traffic", which is the least informative thing on the screen.
  */
+/**
+ * A ribbon's centre line as a cubic, written from where its imports start to
+ * where they land: left to right for the grain, right to left for what runs
+ * back, so a dash offset animates the way the dependency points.
+ */
+function centre(r: FlowRibbon) {
+  const x0 = LEFT.value + BAR, x1 = RIGHT.value, c = (x0 + x1) / 2
+  const y0 = (r.ly0 + r.ly1) / 2, y1 = (r.ry0 + r.ry1) / 2
+  const pts = r.back
+    ? [[x1, y1], [c, y1], [c, y0], [x0, y0]]
+    : [[x0, y0], [c, y0], [c, y1], [x1, y1]]
+  return pts
+}
+function bezierAt(p: number[][], t: number) {
+  const u = 1 - t
+  const pt = [0, 1].map((i) => u * u * u * p[0][i] + 3 * u * u * t * p[1][i] + 3 * u * t * t * p[2][i] + t * t * t * p[3][i])
+  const d = [0, 1].map((i) => 3 * u * u * (p[1][i] - p[0][i]) + 6 * u * t * (p[2][i] - p[1][i]) + 3 * t * t * (p[3][i] - p[2][i]))
+  const len = Math.hypot(d[0], d[1]) || 1
+  return { x: pt[0], y: pt[1], dx: d[0] / len, dy: d[1] / len }
+}
+/** Chevrons on every ribbon thick enough to carry one, and on whatever is traced. */
+const chevrons = computed(() => {
+  const focused = !!focusKey.value || !!hovered.value
+  return view.value.ribbons.flatMap((r) => {
+    const thick = Math.min(r.ly1 - r.ly0, r.ry1 - r.ry0)
+    const on = traced(r)
+    if (!on && thick < 6) return []
+    const opacity = on ? 0.95 : focused ? (r.back ? 0.4 : 0.12) : (r.back ? 0.85 : 0.6)
+    const s = Math.min(4.5, Math.max(3, thick / 3))
+    const p = centre(r)
+    return (thick >= 16 ? [0.3, 0.5, 0.7] : [0.5]).map((t, i) => {
+      const { x, y, dx, dy } = bezierAt(p, t)
+      const nx = -dy, ny = dx
+      return {
+        key: `${r.id}:${i}`, back: r.back, opacity: opacity * r.alpha,
+        d: `M${x - dx * s + nx * s},${y - dy * s + ny * s} L${x + dx * s},${y + dy * s} L${x - dx * s - nx * s},${y - dy * s - ny * s}`,
+      }
+    })
+  })
+})
+/** What is traced flows: its centre line, dashed, moving the way it points. */
+const flowing = computed(() => view.value.ribbons.filter(traced).slice(0, 60).map((r) => {
+  const p = centre(r)
+  return { id: r.id, d: `M${p[0][0]},${p[0][1]} C${p[1][0]},${p[1][1]} ${p[2][0]},${p[2][1]} ${p[3][0]},${p[3][1]}` }
+}))
+
 function ribbonFill(r: FlowRibbon): string {
   if (r.back) return "rgb(var(--c-red-500))"
   return traced(r) ? "rgb(var(--c-accent-500))" : "rgb(var(--c-neutral-400))"
@@ -589,8 +659,17 @@ useSvgFigure("Boundary flow", () => svg.value)
                 fill-opacity 140ms ease-out;
 }
 
+/* The traced ribbons' dashes travel the way the imports point. */
+.flowing {
+    animation: flowing 900ms linear infinite;
+}
+@keyframes flowing {
+    to { stroke-dashoffset: -12; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .row { transition: none; }
+    .flowing { animation: none; }
 }
 
 /* The browser's own ring on a tabindex'd svg lands on every click, so it is
