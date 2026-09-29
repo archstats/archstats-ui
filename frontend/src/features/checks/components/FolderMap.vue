@@ -47,7 +47,7 @@
         <circle v-for="(l, i) in echoLines" :key="'c' + i" :cx="l.x2" :cy="l.y2" r="3" class="fill-violet-600"/>
         <circle v-if="echoLines[0]" :cx="echoLines[0].x1" :cy="echoLines[0].y1" r="3" class="fill-violet-600"/>
       </g>
-      <!-- The hovered file's references: what it imports in ink, what imports it in blue, red where one runs against the grain. -->
+      <!-- The hovered file's references, or the selected file's when nothing is hovered: what it imports in ink, what imports it in blue, red where one runs against the grain. -->
       <g v-if="refLines.length" class="pointer-events-none">
         <path v-for="l in refLines" :key="l.key" :d="l.d" fill="none" :class="l.cls" stroke-width="1.5" :stroke-dasharray="l.dash" :marker-end="`url(#${uid}-${l.marker})`"/>
       </g>
@@ -84,7 +84,7 @@ const props = withDefaults(defineProps<{
   echo?: string[] | null
   /** The second tooltip line for a file. */
   describe?: (file: string) => string
-  /** A file's references, drawn as lines while it is hovered. */
+  /** A file's references, drawn as lines while it is hovered or selected. */
   linksOf?: (file: string) => { uses: string[]; usedBy: string[] }
   /** Whether a reference runs against the grain, drawn red. */
   badLink?: (from: string, to: string) => boolean
@@ -140,11 +140,12 @@ const lit = (path: string, isFile: boolean) => {
   for (const f of hl) if (f.startsWith(path + "/")) return true
   return false
 }
-// While a file with references is hovered, it and its references are the
-// picture; everything else fades, whatever was highlighted before.
+// While a file with references is hovered -- or selected, with nothing
+// hovered -- it and its references are the picture; everything else fades,
+// whatever was highlighted before.
 const hoverLit = computed<Set<string> | null>(() => {
   const r = hoverRefs.value
-  return r ? new Set([hover.value!, ...r.uses, ...r.usedBy]) : null
+  return r ? new Set([linked.value!, ...r.uses, ...r.usedBy]) : null
 })
 const fading = computed(() => !!(hoverLit.value ?? props.highlight))
 
@@ -182,8 +183,10 @@ const MARKERS = [
   { id: "bad", cls: "fill-red-500" },
 ]
 const MAX_LINES = 80
+/** The file whose references are drawn: the one under the pointer, else the selected one. */
+const linked = computed(() => hover.value ?? (props.selected && rectOf.value.has(props.selected) ? props.selected : null))
 const hoverRefs = computed(() => {
-  const f = hover.value
+  const f = linked.value
   if (!f || !props.linksOf) return null
   const on = (xs: string[]) => [...new Set(xs)].filter(x => x !== f && rectOf.value.has(x))
   const { uses, usedBy } = props.linksOf(f)
@@ -194,7 +197,8 @@ const hoverRefs = computed(() => {
 })
 const refLines = computed(() => {
   const r = hoverRefs.value
-  const at = hover.value ? rectOf.value.get(hover.value) : null
+  const f = linked.value
+  const at = f ? rectOf.value.get(f) : null
   if (!r || !at) return []
   const c = (x: Rect) => [(x.x0 + x.x1) / 2, (x.y0 + x.y1) / 2]
   const [hx, hy] = c(at)
@@ -216,8 +220,8 @@ const refLines = computed(() => {
     }
   }
   return [
-    ...r.uses.slice(0, MAX_LINES).map(t => line(hover.value!, t, "use")),
-    ...r.usedBy.slice(0, MAX_LINES).map(t => line(t, hover.value!, "by")),
+    ...r.uses.slice(0, MAX_LINES).map(t => line(f!, t, "use")),
+    ...r.usedBy.slice(0, MAX_LINES).map(t => line(t, f!, "by")),
   ]
 })
 const mouse = ref({ x: 0, y: 0 })
