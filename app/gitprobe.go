@@ -58,3 +58,66 @@ func (w *WorkspaceService) HeadDrift(workspaceID, scanID string) (*HeadDrift, er
 	out.Status = "ok"
 	return out, nil
 }
+
+// WorkingCopy is what a scan of the workspace would read right now, against
+// the commit a snapshot read: the rail's answer to "is scanning worth it?".
+type WorkingCopy struct {
+	// Status is "ok", "no-git" or "missing-folder".
+	Status  string `json:"status"`
+	Branch  string `json:"branch"`
+	HeadSha string `json:"headSha"`
+	Subject string `json:"subject"`
+	// Dirty counts files with uncommitted changes, untracked ones included:
+	// a scan reads the folder, not the last commit.
+	Dirty int `json:"dirty"`
+	// Ahead counts commits past sinceSha; -1 when that commit is not in
+	// this history (a rebase, a shallow clone) or none was given.
+	Ahead int `json:"ahead"`
+	// Remote is origin's address, when there is one.
+	Remote string `json:"remote"`
+}
+
+// WorkingCopy reads the workspace folder's git state, and how far HEAD is
+// past sinceSha (the newest snapshot's commit) when one is given.
+func (w *WorkspaceService) WorkingCopy(workspaceID, sinceSha string) (*WorkingCopy, error) {
+	ws, err := w.store.GetWorkspace(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(ws.FolderPath); err != nil {
+		return &WorkingCopy{Status: "missing-folder", Ahead: -1}, nil
+	}
+	git := func(args ...string) (string, error) {
+		out, err := exec.Command("git", append([]string{"-C", ws.FolderPath}, args...)...).Output()
+		return strings.TrimSpace(string(out)), err
+	}
+	head, err := git("log", "-1", "--format=%H%x00%s")
+	if err != nil || head == "" {
+		return &WorkingCopy{Status: "no-git", Ahead: -1}, nil
+	}
+	parts := strings.SplitN(head, "\x00", 2)
+	out := &WorkingCopy{Status: "ok", HeadSha: parts[0], Ahead: -1}
+	if len(parts) == 2 {
+		out.Subject = parts[1]
+	}
+	if b, err := git("rev-parse", "--abbrev-ref", "HEAD"); err == nil {
+		out.Branch = b
+		if b == "HEAD" {
+			out.Branch = "detached"
+		}
+	}
+	if st, err := git("status", "--porcelain", "--untracked-files=normal"); err == nil && st != "" {
+		out.Dirty = len(strings.Split(st, "\n"))
+	}
+	if r, err := git("remote", "get-url", "origin"); err == nil {
+		out.Remote = r
+	}
+	if sinceSha != "" {
+		if sinceSha == out.HeadSha {
+			out.Ahead = 0
+		} else if n, err := git("rev-list", "--count", sinceSha+"..HEAD"); err == nil {
+			out.Ahead, _ = strconv.Atoi(n)
+		}
+	}
+	return out, nil
+}

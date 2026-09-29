@@ -131,7 +131,7 @@ func (s *Service) startAt(workspaceID, rev, label string, finished func(ok bool)
 		ref = info.Sha
 	}
 	_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
-	go s.run(ws, scan, dir, func(ok bool) {
+	go s.run(ws, scan, dir, ref, func(ok bool) {
 		// The identity read after saving overwrote the ref; the commit is what this scan is.
 		_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
 		if err := os.RemoveAll(dir); err != nil {

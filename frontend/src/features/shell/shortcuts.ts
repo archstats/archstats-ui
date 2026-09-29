@@ -15,7 +15,8 @@ export const SHORTCUTS: Shortcut[] = [
     { area: "App", keys: ["Mod", "P"], label: "Go to anything", command: "goto" },
     { area: "App", keys: ["Mod", "E"], label: "Export the current view", command: "export" },
     { area: "App", keys: ["Mod", "O"], label: "Import a snapshot file", command: "snapshot:import" },
-    { area: "App", keys: ["Mod", "N"], label: "New workspace", command: "workspace:new" },
+    { area: "App", keys: ["Mod", "N"], label: "Add a folder as a workspace", command: "workspace:new" },
+    { area: "App", keys: ["Mod", "Shift", "N"], label: "Clone a repository", command: "workspace:clone" },
     { area: "App", keys: ["Mod", "["], label: "Back", command: "nav:back" },
     { area: "App", keys: ["Mod", "]"], label: "Forward", command: "nav:forward" },
     { area: "App", keys: ["?"], label: "Show these shortcuts", command: "help:shortcuts" },
@@ -38,14 +39,17 @@ export const SHORTCUTS: Shortcut[] = [
     { area: "Lens builder", keys: ["Mod", "Z"], label: "Undo" },
 ]
 
-/** Whether a keydown matches a shortcut's keys (only single-key or Mod+key combos). */
+/** Whether a keydown matches a shortcut's keys (single keys, Mod+key and Mod+Shift+key). */
 export function matches(event: KeyboardEvent, s: Shortcut): boolean {
     if (s.keys.length === 1) {
         return !event.metaKey && !event.ctrlKey && !event.altKey && event.key === s.keys[0]
     }
+    const mod = event.metaKey || event.ctrlKey
     if (s.keys.length === 2 && s.keys[0] === "Mod") {
-        const mod = event.metaKey || event.ctrlKey
         return mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === s.keys[1].toLowerCase()
+    }
+    if (s.keys.length === 3 && s.keys[0] === "Mod" && s.keys[1] === "Shift") {
+        return mod && !event.altKey && event.shiftKey && event.key.toLowerCase() === s.keys[2].toLowerCase()
     }
     return false
 }

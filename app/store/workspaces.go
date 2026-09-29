@@ -20,6 +20,33 @@ type Workspace struct {
 	// BaselineScanID is the scan this workspace compares against by
 	// default; nil when none is pinned. Cleared when that scan is deleted.
 	BaselineScanID *string `json:"baselineScanId"`
+	// Managed is set when the folder is a clone the app made under ReposRoot:
+	// the app may update it before a scan and removes it with the workspace.
+	// Derived from the path, never stored.
+	Managed bool `json:"managed"`
+	// Slug names a managed clone's repository ("github.com/owner/repo"),
+	// read from where it sits under ReposRoot.
+	Slug string `json:"slug"`
+}
+
+// ReposRoot is where clones made by the app live, one folder per
+// host/owner/repo, so the path itself names the repository.
+func (s *Store) ReposRoot() string { return filepath.Join(s.root, "repos") }
+
+// IsManagedFolder reports whether a folder is a clone under ReposRoot.
+func (s *Store) IsManagedFolder(folder string) bool {
+	rel, err := filepath.Rel(s.ReposRoot(), folder)
+	return err == nil && rel != "." && !strings.HasPrefix(rel, "..")
+}
+
+func (s *Store) mark(w *Workspace) *Workspace {
+	w.Managed = s.IsManagedFolder(w.FolderPath)
+	if w.Managed {
+		if rel, err := filepath.Rel(s.ReposRoot(), w.FolderPath); err == nil {
+			w.Slug = strings.TrimPrefix(filepath.ToSlash(rel), "local/")
+		}
+	}
+	return w
 }
 
 var (
@@ -62,7 +89,7 @@ func (s *Store) CreateWorkspace(name, folderPath string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	return w, nil
+	return s.mark(w), nil
 }
 
 func (s *Store) GetWorkspace(id string) (*Workspace, error) {
@@ -75,7 +102,7 @@ func (s *Store) GetWorkspace(id string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	return w, nil
+	return s.mark(w), nil
 }
 
 // FindWorkspaceByFolder returns the workspace whose folder matches
@@ -94,7 +121,7 @@ func (s *Store) FindWorkspaceByFolder(folderPath string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	return w, nil
+	return s.mark(w), nil
 }
 
 // RenameWorkspace changes a workspace's display name. The folder is immutable.
@@ -130,7 +157,7 @@ func (s *Store) ListWorkspaces() ([]*Workspace, error) {
 		if err := rows.Scan(&w.ID, &w.Name, &w.FolderPath, &w.CreatedAt, &w.BaselineScanID); err != nil {
 			return nil, err
 		}
-		workspaces = append(workspaces, w)
+		workspaces = append(workspaces, s.mark(w))
 	}
 	return workspaces, rows.Err()
 }

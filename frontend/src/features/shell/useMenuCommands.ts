@@ -6,6 +6,7 @@ import { SetState } from "wailsjs/go/app/MenuService";
 import { PickSnapshot, RevealSnapshot, SaveSnapshotCopy } from "wailsjs/go/app/WorkspaceService";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { useCloneStore } from "~/features/workspace/clone.store";
 import { hasCommand, registerCommand, runCommand } from "~/platform/commands";
 import { SHORTCUTS, matches } from "./shortcuts";
 
@@ -20,7 +21,13 @@ export function useMenuCommands() {
     const off: Array<() => void> = [];
 
     off.push(registerCommand("scan:again", () => { void workspaces.startScan(); }));
-    off.push(registerCommand("workspace:new", () => { void workspaces.addWorkspace(); }));
+    const clones = useCloneStore();
+    // A new workspace starts from the overview; the old one's view state stays behind.
+    async function adopted(before: string | null) {
+        if (workspaces.activeWorkspaceId !== before) await router.push("/");
+    }
+    off.push(registerCommand("workspace:new", async () => { const b = workspaces.activeWorkspaceId; if (await workspaces.addWorkspace()) await adopted(b); }));
+    off.push(registerCommand("workspace:clone", () => { clones.open(); }));
     off.push(registerCommand("nav:back", () => router.back()));
     off.push(registerCommand("nav:forward", () => router.forward()));
     off.push(registerCommand("help:shortcuts", () => { shortcutsOpen.value = true; }));
@@ -56,9 +63,14 @@ export function useMenuCommands() {
         try { unlisten = EventsOn("menu", (id: string) => { void runCommand(id); }); } catch { unlisten = null; }
         try { unlistenImport = EventsOn("import:pending", () => { void takePending(); }); } catch { unlistenImport = null; }
         try {
-            OnFileDrop((_x: number, _y: number, paths: string[]) => {
+            // A snapshot file is offered for import; anything else is taken as
+            // a folder to add (the backend says so when it is not one).
+            OnFileDrop(async (_x: number, _y: number, paths: string[]) => {
                 const db = paths.find(p => p.toLowerCase().endsWith(".db"));
-                if (db) workspaces.importPath = db;
+                if (db) { workspaces.importPath = db; return; }
+                if (!paths[0]) return;
+                const b = workspaces.activeWorkspaceId;
+                if (await workspaces.addWorkspaceAt(paths[0])) await adopted(b);
             }, false);
         } catch { /* not in the desktop shell */ }
         // Wait for the workspace list so the sheet can suggest one.

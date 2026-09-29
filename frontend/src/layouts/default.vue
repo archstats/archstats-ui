@@ -39,6 +39,7 @@
     <AddToReportSheet/>
     <RescanCommitSheet/>
     <ImportSnapshotSheet/>
+    <CloneSheet/>
     <main class="flex min-w-0 flex-1 flex-col">
       <!-- A figure-taking run has the view's top to itself: its strip is the one thing to read there. -->
       <template v-if="hasData && !reportsStore.takeQueue">
@@ -74,6 +75,8 @@ import { useReportsStore } from "~/features/reports/reports.store";
 import "~/features/files/codeSearch";
 import RescanCommitSheet from "~/features/workspace/components/RescanCommitSheet.vue";
 import ImportSnapshotSheet from "~/features/workspace/components/ImportSnapshotSheet.vue";
+import CloneSheet from "~/features/workspace/components/CloneSheet.vue";
+import { useCloneStore } from "~/features/workspace/clone.store";
 import { useMenuCommands } from "~/features/shell/useMenuCommands";
 import { useAuthorsStore } from "~/features/git/authors.store";
 import { useDataStore } from "~/features/snapshot/data.store";
@@ -97,9 +100,16 @@ const reportsStore = useReportsStore();
 watch(() => workspaces.active?.id, (id) => { if (id) authors.load(id); }, { immediate: true });
 watch(() => [authors.pseudonymise, dataStore._openScanId, dataStore.hasData, authors.aliases] as const, ([on]) => { if (on) void authors.loadLabels(); }, { immediate: true });
 
+const clones = useCloneStore();
+const router = useRouter();
+// A workspace opened from a clone starts from the overview: every view keeps
+// state in its URL, and none of it belongs to the new workspace.
+watch(() => clones.openRequest, () => { void router.push("/"); });
+
 onMounted(() => {
   panes.load();
   if (!workspaces.loaded) workspaces.init();
+  void clones.init();
 });
 
 // Window title doubles as a status line: the workspace normally, the scan while one runs.
@@ -107,6 +117,7 @@ onMounted(() => {
 useHead({
   title: computed(() => {
     if (workspaces.isScanning) return "Scanning…";
+    if (clones.running.length) return "Cloning…";
     return workspaces.active?.name ?? "";
   }),
   titleTemplate: (chunk) => (chunk ? `${chunk} – Archstats` : "Archstats"),

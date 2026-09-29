@@ -30,6 +30,10 @@ export function ImportSnapshot(arg1, arg2) {
   return window['go']['app']['WorkspaceService']['ImportSnapshot'](arg1, arg2);
 }
 
+export function InspectFolder(arg1) {
+  return window['go']['app']['WorkspaceService']['InspectFolder'](arg1);
+}
+
 export function InspectSnapshot(arg1) {
   return window['go']['app']['WorkspaceService']['InspectSnapshot'](arg1);
 }
@@ -88,4 +92,8 @@ export function SnapshotPath(arg1) {
 
 export function StorageSummary() {
   return window['go']['app']['WorkspaceService']['StorageSummary']();
+}
+
+export function WorkingCopy(arg1, arg2) {
+  return window['go']['app']['WorkspaceService']['WorkingCopy'](arg1, arg2);
 }

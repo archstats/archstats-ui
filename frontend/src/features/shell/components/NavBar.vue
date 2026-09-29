@@ -20,7 +20,7 @@
 
     <WorkspaceSwitcher/>
 
-    <div v-if="hasWorkspace" class="mt-2">
+    <div v-if="hasWorkspace" class="mt-1">
       <ScanPanel/>
     </div>
 

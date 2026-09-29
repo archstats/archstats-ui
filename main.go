@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/archstats/archstats-ui/app"
+	"github.com/archstats/archstats-ui/app/clone"
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/snapshot"
@@ -80,6 +81,7 @@ func main() {
 
 	scan.SweepBackfill(st)
 	scanSvc := scan.NewService(st)
+	cloneSvc := clone.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
 	var appCtx context.Context
@@ -132,10 +134,14 @@ func main() {
 			scanSvc.SetEmitter(func(event string, data ...any) {
 				runtime.EventsEmit(ctx, event, data...)
 			})
+			cloneSvc.SetEmitter(func(event string, data ...any) {
+				runtime.EventsEmit(ctx, event, data...)
+			})
 		},
 		Bind: []interface{}{
 			workspaceSvc,
 			app.NewScanService(scanSvc),
+			app.NewCloneService(cloneSvc, func() context.Context { return appCtx }),
 			app.NewQueryService(querySvc),
 			app.NewStateService(st),
 			menuSvc,

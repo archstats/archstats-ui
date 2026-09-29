@@ -17,6 +17,8 @@ export function HeadDrift(arg1:string,arg2:string):Promise<app.HeadDrift>;
 
 export function ImportSnapshot(arg1:string,arg2:string):Promise<store.Scan>;
 
+export function InspectFolder(arg1:string):Promise<app.FolderPick>;
+
 export function InspectSnapshot(arg1:string):Promise<app.SnapshotInfo>;
 
 export function LabelScan(arg1:string,arg2:string):Promise<void>;
@@ -46,3 +48,5 @@ export function SetBaseline(arg1:string,arg2:string):Promise<void>;
 export function SnapshotPath(arg1:string):Promise<string>;
 
 export function StorageSummary():Promise<Array<app.StorageWorkspace>>;
+
+export function WorkingCopy(arg1:string,arg2:string):Promise<app.WorkingCopy>;

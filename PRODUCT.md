@@ -61,6 +61,7 @@ Four claims the user chose to defend (2026-09-16). Neighbouring tools (CodeScene
 
 **Shipped or in progress (see `tasks/todo.md`):**
 - Workspace registry with create, rename, and folder path (one folder per workspace; multi-repo handled by pointing at a parent folder).
+- Workspaces from a repository address: cloned with the user's own git credentials (full history, the last year, or the latest commit; never a blobless partial clone) into `repos/<host>/<owner>/<repo>` under the app-data folder, fetched up to date before each scan, and deleted with the workspace. A clone into a folder the user chose is theirs and is never updated or deleted. A folder dropped on the window becomes a workspace.
 - Async scan with progress, immutable snapshots, full history, manual delete.
 - Read-only SQL query service over a selected snapshot.
 - All view families ported from the web app (48 routed pages): components (walker, matrix, chord, clustering, comparison, cycles, group coupling, hotspots, plotter, table), per-component drill-down (circle of influence, component matrix, cycles, external/internal file matrix, files, git, java, static coupling), files (table, treemap, dependencies, per-file contents/git/imports/java), git (churn, coupling, timeline, authors with per-author components/files/timeline), groups (per-group explorer), java (class connections, JPA, OOP, Spring).

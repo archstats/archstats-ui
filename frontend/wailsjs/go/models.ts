@@ -342,6 +342,30 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class WorkingCopy {
+	    status: string;
+	    branch: string;
+	    headSha: string;
+	    subject: string;
+	    dirty: number;
+	    ahead: number;
+	    remote: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkingCopy(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.branch = source["branch"];
+	        this.headSha = source["headSha"];
+	        this.subject = source["subject"];
+	        this.dirty = source["dirty"];
+	        this.ahead = source["ahead"];
+	        this.remote = source["remote"];
+	    }
+	}
 
 }
 
@@ -501,6 +525,155 @@ export namespace changes {
 	
 	
 	
+
+}
+
+export namespace clone {
+	
+	export class Progress {
+	    phase: string;
+	    percent: number;
+	    received: string;
+	    rate: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Progress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.phase = source["phase"];
+	        this.percent = source["percent"];
+	        this.received = source["received"];
+	        this.rate = source["rate"];
+	    }
+	}
+	export class Repo {
+	    url: string;
+	    host: string;
+	    owner: string;
+	    name: string;
+	    local: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Repo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.host = source["host"];
+	        this.owner = source["owner"];
+	        this.name = source["name"];
+	        this.local = source["local"];
+	    }
+	}
+	export class Job {
+	    id: string;
+	    repo: Repo;
+	    dest: string;
+	    name: string;
+	    history: string;
+	    state: string;
+	    progress: Progress;
+	    error: string;
+	    workspaceId: string;
+	    startedAt: time.Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new Job(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.repo = this.convertValues(source["repo"], Repo);
+	        this.dest = source["dest"];
+	        this.name = source["name"];
+	        this.history = source["history"];
+	        this.state = source["state"];
+	        this.progress = this.convertValues(source["progress"], Progress);
+	        this.error = source["error"];
+	        this.workspaceId = source["workspaceId"];
+	        this.startedAt = this.convertValues(source["startedAt"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Plan {
+	    repo: Repo;
+	    dest: string;
+	    destExists: boolean;
+	    existing?: store.Workspace;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Plan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.repo = this.convertValues(source["repo"], Repo);
+	        this.dest = source["dest"];
+	        this.destExists = source["destExists"];
+	        this.existing = this.convertValues(source["existing"], store.Workspace);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	export class Request {
+	    input: string;
+	    dest: string;
+	    history: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Request(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.input = source["input"];
+	        this.dest = source["dest"];
+	        this.history = source["history"];
+	        this.name = source["name"];
+	    }
+	}
 
 }
 
@@ -1046,6 +1219,8 @@ export namespace store {
 	    folderPath: string;
 	    createdAt: time.Time;
 	    baselineScanId?: string;
+	    managed: boolean;
+	    slug: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Workspace(source);
@@ -1058,6 +1233,8 @@ export namespace store {
 	        this.folderPath = source["folderPath"];
 	        this.createdAt = this.convertValues(source["createdAt"], time.Time);
 	        this.baselineScanId = source["baselineScanId"];
+	        this.managed = source["managed"];
+	        this.slug = source["slug"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

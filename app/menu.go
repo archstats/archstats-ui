@@ -38,7 +38,8 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	root.Append(menu.AppMenu())
 
 	file := root.AddSubmenu("File")
-	m.add(file, "workspace:new", "New Workspace…", keys.CmdOrCtrl("n"))
+	m.add(file, "workspace:new", "Add Folder…", keys.CmdOrCtrl("n"))
+	m.add(file, "workspace:clone", "Clone Repository…", keys.Combo("n", keys.CmdOrCtrlKey, keys.ShiftKey))
 	file.AddSeparator()
 	m.add(file, "scan:again", "Scan Again", keys.CmdOrCtrl("r"))
 	file.AddSeparator()

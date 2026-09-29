@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+
+	"github.com/archstats/archstats-ui/app/clone"
 	"github.com/archstats/archstats/core/walker"
 	"path/filepath"
 
@@ -85,7 +89,13 @@ func (w *WorkspaceService) List() ([]*store.Workspace, error) {
 	return w.store.ListWorkspaces()
 }
 
+// Delete removes the workspace, its snapshots and, when the app cloned its
+// folder, the clone; a folder the user brought is never touched.
 func (w *WorkspaceService) Delete(id string) error {
+	ws, err := w.store.GetWorkspace(id)
+	if err != nil {
+		return err
+	}
 	if scans, err := w.store.ListScans(id); err == nil {
 		for _, sc := range scans {
 			w.release(sc.ID)
@@ -95,7 +105,26 @@ func (w *WorkspaceService) Delete(id string) error {
 		return err
 	}
 	removeWorkspaceLeftovers(w.store.Root(), id)
+	clone.RemoveManaged(w.store, ws.FolderPath)
 	return nil
+}
+
+// InspectFolder is SelectFolder for a path that arrived another way (a
+// folder dropped on the window): the same pick, or an error when it is not
+// a folder.
+func (w *WorkspaceService) InspectFolder(path string) (*FolderPick, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%s is not a folder", filepath.Base(path))
+	}
+	existing, err := w.store.FindWorkspaceByFolder(path)
+	if err != nil {
+		return nil, err
+	}
+	return &FolderPick{Path: path, SuggestedName: filepath.Base(path), Existing: existing}, nil
 }
 
 func (w *WorkspaceService) ListScans(workspaceID string) ([]*store.Scan, error) {

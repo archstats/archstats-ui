@@ -80,7 +80,7 @@ func (s *Service) StartScan(workspaceID string) (*store.Scan, error) {
 		return nil, err
 	}
 
-	go s.run(ws, scan, ws.FolderPath, nil)
+	go s.run(ws, scan, ws.FolderPath, "", nil)
 	return scan, nil
 }
 
@@ -93,8 +93,9 @@ func (s *Service) IsRunning(workspaceID string) bool {
 
 // run analyses root (the workspace folder, or a clone of it at one commit)
 // and saves the snapshot; done, when set, runs once the scan has finished
-// either way.
-func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done func(ok bool)) {
+// either way. ref names the commit or tag a rescan reads, and is empty for
+// a scan of the working copy; the UI tells the two apart by it.
+func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, done func(ok bool)) {
 	ok := false
 	defer func() {
 		if done != nil {
@@ -112,7 +113,17 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done f
 		}
 	}()
 
-	s.emit(EventScanStarted, payload(ws.ID, scan.ID, nil))
+	s.emit(EventScanStarted, payload(ws.ID, scan.ID, map[string]any{"ref": ref}))
+
+	// A clone the app made is brought up to its upstream first.
+	note := ""
+	if ref == "" && s.store.IsManagedFolder(root) {
+		s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{"phase": "updating"}))
+		note = updateClone(root)
+		if note != "" {
+			log.Warn().Str("workspace", ws.ID).Msg(note)
+		}
+	}
 
 	// The workspace's own exclusions, on top of the tree's ignore files.
 	ignore := s.store.IgnoreGlobs(ws.ID)
@@ -124,6 +135,7 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root string, done f
 	s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{
 		"phase":      "analyzing",
 		"extensions": names,
+		"note":       note,
 	}))
 
 	results, err := core.New(&core.Config{
