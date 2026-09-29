@@ -4,11 +4,11 @@
        with its meaning: tables, metrics, functions, strings, and problems
        underlined where they are. Suggestions follow the clause being
        written; the line under it says what the caret is on. -->
-  <div class="sqle" :class="[{ 'sqle-focus': focused, 'sqle-compact': compact }]" @mousedown.self="focus()">
-    <div class="sqle-body" :style="{ height: `${height}px` }">
+  <div class="sqle" :class="[{ 'sqle-focus': focused, 'sqle-compact': compact, 'sqle-pane': fill }]" @mousedown.self="focus()">
+    <div class="sqle-body" :style="fill ? undefined : { height: `${height}px` }">
       <div v-if="lineNumbers" class="sqle-gutter" aria-hidden="true">
         <div :style="{ transform: `translateY(${-scrollTop}px)` }">
-          <div v-for="n in lineCount" :key="n" class="sqle-ln" :class="{ 'sqle-ln-on': n - 1 === caretLine && focused, 'sqle-ln-bad': badLines.has(n - 1) }">{{ n }}</div>
+          <div v-for="n in lineCount" :key="n" class="sqle-ln" :class="{ 'sqle-ln-on': n - 1 === caretLine && focused, 'sqle-ln-bad': badLines.has(n - 1), 'sqle-ln-stmt': stmtLines && n - 1 >= stmtLines[0] && n - 1 <= stmtLines[1] }">{{ n }}</div>
         </div>
       </div>
       <div class="sqle-main">
@@ -93,6 +93,7 @@
         <aside v-if="activeItem?.doc" class="sqle-doc">
           <p class="sqle-doc-title">{{ activeItem.doc.title }}</p>
           <p v-if="activeItem.doc.body" class="sqle-doc-body">{{ activeItem.doc.body }}</p>
+          <p v-if="activeItem.doc.more" class="sqle-doc-more">{{ activeItem.doc.more }}</p>
           <p v-for="m in activeItem.doc.meta ?? []" :key="m" class="sqle-doc-meta">{{ m }}</p>
           <p class="sqle-doc-keys"><kbd>↵</kbd> or <kbd>Tab</kbd> to insert · <kbd>Esc</kbd> to close</p>
         </aside>
@@ -105,6 +106,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRef, watch } from "vue";
 import { AlertTriangle, Columns, CornerDownLeft, Gauge, Layers, Quote, Sigma, Table2, Type } from "lucide-vue-next";
 import { useSqlSchema } from "~/features/sql/useSqlSchema";
+import { statementAt, statements } from "~/features/sql/sqlFormat";
 import {
   analyze, classify, complete, contextAt, lint, locateError, signatureAt,
   type Completion, type CompletionContext, type SqlDiagnostic,
@@ -121,10 +123,12 @@ const props = withDefaults(defineProps<{
   lineNumbers?: boolean
   /** The notebook's cell: tighter, runs on ⇧↵ as well. */
   compact?: boolean
+  /** The console's editor pane: fills its parent, flush, no ring. */
+  fill?: boolean
   placeholder?: string
   ariaLabel?: string
-}>(), { error: null, minRows: 3, maxRows: 22, lineNumbers: false, compact: false, placeholder: "", ariaLabel: "SQL" });
-const emit = defineEmits<{ (e: "update:modelValue", v: string): void; (e: "run"): void; (e: "blur"): void }>();
+}>(), { error: null, minRows: 3, maxRows: 22, lineNumbers: false, compact: false, fill: false, placeholder: "", ariaLabel: "SQL" });
+const emit = defineEmits<{ (e: "update:modelValue", v: string): void; (e: "run"): void; (e: "blur"): void; (e: "format"): void; (e: "caret", at: number): void }>();
 
 const ICONS = { table: Table2, column: Columns, metric: Gauge, function: Sigma, keyword: Type, value: Quote, source: Layers, snippet: CornerDownLeft } as const;
 const LH = 20;
@@ -147,6 +151,16 @@ const lineCount = computed(() => props.modelValue.split("\n").length);
 const height = computed(() => Math.min(props.maxRows, Math.max(props.minRows, lineCount.value)) * LH + PAD * 2 + (props.compact ? 0 : 2));
 const caretLine = computed(() => props.modelValue.slice(0, caret.value).split("\n").length - 1);
 const caretCol = computed(() => caret.value - props.modelValue.lastIndexOf("\n", caret.value - 1) - 1);
+
+// With more than one statement, the gutter marks the one ⌘↵ runs.
+const stmtLines = computed<[number, number] | null>(() => {
+  if (!props.lineNumbers || statements(props.modelValue).length < 2) return null;
+  const st = statementAt(props.modelValue, caret.value);
+  if (!st) return null;
+  const line = (at: number) => props.modelValue.slice(0, at).split("\n").length - 1;
+  return [line(st.from), line(st.to)];
+});
+watch(caret, at => emit("caret", at));
 
 // Problems: what can be told before running, and where the last run's error points.
 const serverProblem = ref<SqlDiagnostic | null>(null);
@@ -286,6 +300,7 @@ function onKey(e: KeyboardEvent) {
   if (e.key === " " && e.ctrlKey) { e.preventDefault(); void refresh(true, true); return; }
   if (e.key === "Enter" && (mod || (props.compact && e.shiftKey))) { e.preventDefault(); close(); emit("run"); return; }
   if (mod && e.key === "/") { e.preventDefault(); toggleComment(); return; }
+  if (mod && e.altKey && (e.key.toLowerCase() === "l" || e.code === "KeyL")) { e.preventDefault(); close(); emit("format"); return; }
   const s = props.modelValue;
   const a = el.selectionStart ?? 0, b = el.selectionEnd ?? 0;
   if (e.key === "Tab" && !mod) {
@@ -478,7 +493,17 @@ function insert(text: string) {
   const a = el?.selectionStart ?? props.modelValue.length, b = el?.selectionEnd ?? a;
   replaceRange(a, b, text);
 }
-defineExpose({ focus, insert });
+/** The selection, or the caret as an empty one. */
+function selection() {
+  const el = input.value;
+  const a = el?.selectionStart ?? caret.value, b = el?.selectionEnd ?? a;
+  return { from: Math.min(a, b), to: Math.max(a, b), caret: caret.value };
+}
+/** Replaces the whole text as one edit, so ⌘Z brings the old text back. */
+function replaceAll(text: string, caretAt?: number) {
+  replaceRange(0, props.modelValue.length, text, caretAt ?? Math.min(caret.value, text.length));
+}
+defineExpose({ focus, insert, selection, replaceAll, jumpTo });
 
 onMounted(() => {
   measure();
@@ -497,10 +522,16 @@ onBeforeUnmount(() => { window.removeEventListener("resize", onWindow); if (lint
 .sqle-compact { background: rgb(var(--c-neutral-50)); box-shadow: none; border-radius: 6px; }
 .sqle-compact.sqle-focus { box-shadow: 0 0 0 1px rgb(var(--c-accent-400)); }
 .sqle-body { position: relative; display: flex; min-height: 0; }
+.sqle-pane { height: 100%; border-radius: 0; box-shadow: none; }
+.sqle-pane.sqle-focus { box-shadow: none; }
+.sqle-pane .sqle-body { flex: 1; }
+.sqle-pane .sqle-gutter { width: 48px; background: rgb(var(--c-neutral-50)); }
+.sqle-pane .sqle-status { background: rgb(var(--c-neutral-50)); }
 .sqle-gutter { width: 40px; flex-shrink: 0; overflow: hidden; padding-top: 10px; background: rgb(var(--c-neutral-50)); box-shadow: inset -1px 0 0 rgb(var(--c-neutral-200)); }
 .sqle-ln { height: 20px; padding-right: 10px; text-align: right; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; line-height: 20px; color: rgb(var(--c-neutral-400)); font-variant-numeric: tabular-nums; }
 .sqle-ln-on { color: rgb(var(--c-neutral-800)); }
 .sqle-ln-bad { color: rgb(var(--c-red-600)); }
+.sqle-ln-stmt { box-shadow: inset 2px 0 0 rgb(var(--c-neutral-300)); }
 .sqle-main { position: relative; flex: 1; min-width: 0; }
 .sqle-band { position: absolute; left: 0; right: 0; top: 0; height: 20px; background: rgb(var(--c-neutral-100) / 0.7); pointer-events: none; }
 .sqle-layer, .sqle-input { position: absolute; inset: 0; margin: 0; padding: 10px 14px; white-space: pre; overflow-wrap: normal; word-break: normal; border: 0; }
@@ -559,6 +590,7 @@ onBeforeUnmount(() => { window.removeEventListener("resize", onWindow); if (lint
 .sqle-doc { width: 260px; flex-shrink: 0; overflow-y: auto; padding: 10px 12px; background: rgb(var(--c-neutral-50)); box-shadow: inset 1px 0 0 rgb(var(--c-neutral-200)); }
 .sqle-doc-title { font-size: 12.5px; font-weight: 600; color: rgb(var(--c-neutral-950)); line-height: 18px; }
 .sqle-doc-body { margin-top: 4px; font-size: 12px; line-height: 18px; color: rgb(var(--c-neutral-700)); }
+.sqle-doc-more { margin-top: 6px; font-size: 11.5px; line-height: 17px; color: rgb(var(--c-neutral-600)); white-space: pre-line; }
 .sqle-doc-meta { margin-top: 6px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; line-height: 16px; color: rgb(var(--c-neutral-500)); overflow-wrap: anywhere; }
 .sqle-doc-keys { margin-top: 10px; font-size: 10.5px; color: rgb(var(--c-neutral-400)); }
 .sqle-doc-keys kbd { font-family: "JetBrains Mono", ui-monospace, monospace; }

@@ -118,7 +118,7 @@ export interface SqlTable { name: string; columns: SqlColumn[]; view?: boolean }
 export interface SqlSchema {
     tables: SqlTable[]
     /** A metric's name and definition, when the snapshot defines it. */
-    describe?: (column: string) => { name: string; short: string } | null
+    describe?: (column: string) => { name: string; short: string; long?: string; category?: string } | null
 }
 
 /** Columns SQLite's table-valued functions yield. */
@@ -398,7 +398,7 @@ export interface Completion {
     /** A short note beside the label: a type, a metric's name, the table. */
     detail?: string
     /** The documentation pane. */
-    doc?: { title: string; body?: string; meta?: string[] }
+    doc?: { title: string; body?: string; more?: string; meta?: string[] }
     score: number
     /** Label positions the query matched, for emphasis. */
     matches?: number[]
@@ -596,7 +596,7 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
             label: name,
             insert: quoteIdent(name),
             detail: d?.name && d.name !== name ? d.name : type.toLowerCase() || (table ?? ""),
-            doc: { title: d?.name && d.name !== name ? d.name : name, body: d?.short || (!where.length && table ? `A column of ${table}, as this query names it.` : undefined), meta: [name, type ? type.toLowerCase() : "", where.length ? `in ${where.slice(0, 4).join(", ")}${where.length > 4 ? ` and ${where.length - 4} more` : ""}` : ""].filter(Boolean) },
+            doc: { title: d?.name && d.name !== name ? d.name : name, body: d?.short || (!where.length && table ? `A column of ${table}, as this query names it.` : undefined), more: d?.long && d.long !== d.short ? d.long : undefined, meta: [name, d?.category ?? "", type ? type.toLowerCase() : "", where.length ? `in ${where.slice(0, 4).join(", ")}${where.length > 4 ? ` and ${where.length - 4} more` : ""}` : ""].filter(Boolean) },
         }, d?.name ? `${name} ${d.name}` : name)
     }
 

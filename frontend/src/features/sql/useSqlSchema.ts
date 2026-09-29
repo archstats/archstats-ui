@@ -5,7 +5,7 @@
 
 import { ref, watch, type Ref } from "vue"
 import { QueryIn } from "wailsjs/go/app/QueryService"
-import { useDataStore } from "~/features/snapshot/data.store"
+import { useMetricDocs } from "~/features/snapshot/useMetricDocs"
 import type { SqlSchema, SqlTable } from "./sqlLang"
 
 const cache = new Map<string, Promise<SqlTable[]>>()
@@ -33,7 +33,7 @@ function load(scanId: string): Promise<SqlTable[]> {
 export interface ValueHit { value: string; rows: number }
 
 export function useSqlSchema(scanId: Ref<string | null | undefined>) {
-    const data = useDataStore()
+    const { define } = useMetricDocs()
     const tables = ref<SqlTable[]>([])
     watch(scanId, async (id) => {
         tables.value = []
@@ -42,11 +42,8 @@ export function useSqlSchema(scanId: Ref<string | null | undefined>) {
     }, { immediate: true })
 
     const describe = (column: string) => {
-        if (!column.includes("__")) return null
-        const d: any = data.definitions.get(column)
-        const name = data.statNiceName(column)
-        const short = d?.short_description || d?.short || ""
-        return name && name !== column ? { name, short } : short ? { name: column, short } : null
+        const d = define(column)
+        return d ? { name: d.name || column, short: d.short, long: d.long, category: d.category } : null
     }
     const schema = (): SqlSchema => ({ tables: tables.value, describe })
 
