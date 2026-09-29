@@ -134,3 +134,25 @@ export function useSvgFigure(title: string | (() => string), svg: () => SVGSVGEl
         },
     });
 }
+
+/** A canvas drawing as an exportable figure: PNG only, at the canvas's own pixel density. */
+export function useCanvasFigure(title: string | (() => string), canvas: () => HTMLCanvasElement | null | undefined) {
+    const { register } = useExportables();
+    register({
+        kind: "figure",
+        get title() { return typeof title === "function" ? title() : title; },
+        svg: false,
+        ready: () => {
+            const el = canvas();
+            if (!el || !el.isConnected) return false;
+            const box = el.getBoundingClientRect();
+            return box.width > 1 && box.height > 1;
+        },
+        render: () => {
+            const el = canvas();
+            if (!el) return null;
+            const box = el.getBoundingClientRect();
+            return { kind: "canvas", canvas: el, width: Math.round(box.width), height: Math.round(box.height), scale: el.width / Math.max(1, box.width) };
+        },
+    });
+}

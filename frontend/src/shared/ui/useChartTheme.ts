@@ -28,9 +28,11 @@ export interface ChartTheme {
   fontMono: string;
   /** Sequential heat ramp, cool to hot. */
   heat: string[];
+  /** Neutral sequential ramp, less to more, for metrics that carry no verdict. */
+  blues: string[];
 }
 
-const TOKENS: Record<keyof Omit<ChartTheme, "fontSans" | "fontMono" | "heat">, string> = {
+const TOKENS: Record<keyof Omit<ChartTheme, "fontSans" | "fontMono" | "heat" | "blues">, string> = {
   surface: "--c-surface",
   ground: "--c-neutral-50",
   hairline: "--c-neutral-200",
@@ -70,6 +72,7 @@ export function readChartTheme(): ChartTheme {
     fontSans: '"Inter", system-ui, sans-serif',
     fontMono: '"JetBrains Mono", ui-monospace, monospace',
     heat: [step("neutral", 300), step("accent", 200), step("accent", 400), step("red", 400), step("red", 700)],
+    blues: [step("blue", 200), step("blue", 300), step("blue", 400), step("blue", 500), step("blue", 700)],
   };
 }
 

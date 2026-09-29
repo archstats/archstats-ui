@@ -396,6 +396,16 @@ textarea.nb-li { padding-left: 1.4em; }
     box-shadow: 0 0 0 1px rgb(var(--c-neutral-200));
   }
 
+  /* A two-state toggle beside a control ("log" beside an axis): quiet at rest, a pressed well when on. */
+  .ui-log-toggle {
+    @apply px-1.5 font-mono text-xs font-medium text-neutral-500;
+  }
+  .ui-log-toggle[aria-pressed="true"] {
+    color: rgb(var(--c-neutral-900));
+    background: rgb(var(--c-neutral-100));
+    box-shadow: inset 0 0 0 1px rgb(var(--c-neutral-400));
+  }
+
   .ui-chip {
     @apply inline-flex h-6 select-none items-center gap-1.5 rounded px-2 text-sm font-medium leading-none text-neutral-700 transition-colors;
     box-shadow: 0 0 0 1px rgb(var(--c-neutral-300));

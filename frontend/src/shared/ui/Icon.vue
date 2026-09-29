@@ -19,6 +19,7 @@ import {
   ArrowLeftToLine, ArrowRightToLine, ChevronLeft, ArrowRightFromLine, Check, ArrowRight, ArrowLeft, Recycle, Search, SearchCode, Undo2, Redo2, FlaskConical, Heading, List, ListOrdered, TextQuote, Code, RefreshCw as RefreshCwIcon, Terminal as TerminalIcon, GripVertical, FileDown,
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
+  ArrowLeftRight, ArrowDown, ArrowUpDown,
   Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine
 } from 'lucide-vue-next';
 
@@ -54,6 +55,12 @@ const iconComponent = computed(() => {
       return Footprints
     case "pencil":
       return Pencil
+    case "arrow-left-right":
+      return ArrowLeftRight
+    case "arrow-down":
+      return ArrowDown
+    case "arrow-up-down":
+      return ArrowUpDown
     case "arrow-left-to-line":
       return ArrowLeftToLine
     case "arrow-right-to-line":

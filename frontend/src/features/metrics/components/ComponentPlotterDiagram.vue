@@ -1,25 +1,32 @@
 <template>
-  <div class="relative h-full w-full" @mouseleave="hovered = null" @mousemove="mouseMove">
+  <div ref="root" class="relative h-full w-full" @mouseleave="hovered = null" @mousemove="mouseMove">
     <div
         v-if="dragAnchor == null && hovered"
-        class="ui-popover fixed z-50 w-64 p-3"
+        class="ui-popover fixed z-50 w-72 p-3"
         :style="{ top: `${hovered.posY}px`, left: `${hovered.posX}px` }"
         @mouseenter="isHoveringOverTooltip = true"
         @mouseleave="isHoveringOverTooltip = false"
     >
-      <h3 class="mb-2 truncate font-mono text-sm font-semibold text-neutral-900" :title="String(hovered.row.name)">{{ hovered.row.name }}</h3>
-      <dl class="ui-kv">
+      <p class="truncate font-mono text-sm font-semibold text-neutral-900" :title="String(hovered.row.name)">{{ shortOf(hovered.row.name) }}</p>
+      <p v-if="shortOf(hovered.row.name) !== hovered.row.name" class="mb-2 truncate font-mono text-xs text-neutral-500" :title="String(hovered.row.name)">{{ hovered.row.name }}</p>
+      <div v-else class="mb-2"></div>
+      <dl class="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] gap-x-2 gap-y-0.5 text-sm">
         <template v-for="key in tooltipKeys" :key="key">
-          <dt class="truncate" :title="key">{{ niceName(key) }}</dt>
-          <dd>{{ round(hovered.row[key], 3) }}</dd>
+          <dt class="truncate text-neutral-500" :title="niceName(key)">{{ niceName(key) }}</dt>
+          <dd class="text-right font-mono tabular-nums text-neutral-900">{{ Number.isFinite(metricValue(hovered.row, key)) ? formatReading(hovered.row[key]) : "—" }}</dd>
+          <dd class="text-right font-mono text-xs leading-[18px] tabular-nums text-neutral-400" :title="`Rank among ${domainRows.length}`">{{ rankOf(key, hovered.row) }}</dd>
         </template>
       </dl>
+      <p v-if="cellOf(hovered.row.name)" class="mt-2 pt-2 text-xs text-neutral-500 hairline-t">{{ cellOf(hovered.row.name) }}</p>
     </div>
 
     <svg
         ref="svg"
-        class="h-full w-full"
-        :viewBox="`${-margin.left} ${-margin.top} ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`"
+        class="absolute inset-0 h-full w-full select-none"
+        :class="{ 'is-gliding': gliding }"
+        :viewBox="`${-margin.left} ${-margin.top} ${size.w} ${size.h}`"
+        :width="size.w"
+        :height="size.h"
         @mousedown="beginDragSelecting"
         @mousemove="updateMouseCoords"
     >
@@ -30,61 +37,162 @@
         <clipPath :id="clipId">
           <rect :x="0" :y="0" :width="width" :height="height"/>
         </clipPath>
+        <clipPath :id="`${clipId}-x`">
+          <rect :x="0" :y="-margin.top" :width="width" :height="margin.top"/>
+        </clipPath>
+        <clipPath :id="`${clipId}-y`">
+          <rect :x="width" :y="0" :width="margin.right" :height="height"/>
+        </clipPath>
       </defs>
 
-      <g ref="xAxisElement" class="select-none"></g>
-      <g ref="yAxisElement" class="select-none"></g>
+      <g ref="xAxisElement"></g>
+      <g ref="yAxisElement"></g>
 
-      <text :x="-52" :y="height / 2" :transform="`rotate(-90, -52, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
-            class="select-none" :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-        {{ niceName(yAxisProperty) }}
+      <text :x="-margin.left + 12" :y="height / 2" :transform="`rotate(-90, ${-margin.left + 12}, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
+            :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+        {{ niceName(yAxisProperty) }}<tspan v-if="yLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
       </text>
-      <text :x="width / 2" :y="height + 48" text-anchor="middle"
-            class="select-none" :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-        {{ niceName(xAxisProperty) }}
+      <text :x="width / 2" :y="height + 44" text-anchor="middle" dominant-baseline="central"
+            :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+        {{ niceName(xAxisProperty) }}<tspan v-if="xLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
       </text>
+
+      <!-- Where the marks pile up along each axis; the selection overlays in blue. -->
+      <g :clip-path="`url(#${clipId}-x)`">
+        <rect v-for="(bar, i) in marginX.bars" :key="`mx${i}`"
+              :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h"
+              :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
+        <rect v-for="(bar, i) in marginX.sel" :key="`msx${i}`"
+              :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h" :fill="theme.blue"/>
+      </g>
+      <g :clip-path="`url(#${clipId}-y)`">
+        <rect v-for="(bar, i) in marginY.bars" :key="`my${i}`"
+              :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h"
+              :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
+        <rect v-for="(bar, i) in marginY.sel" :key="`msy${i}`"
+              :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h" :fill="theme.blue"/>
+      </g>
 
       <g :clip-path="`url(#${clipId})`">
-        <g v-if="isDistanceMainSequence">
-          <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.hairlineStrong" stroke-width="1" stroke-dasharray="4 3"/>
-          <text :transform="`rotate(45, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
-                font-size="10" class="select-none" :fill="theme.inkMuted" :font-family="theme.fontSans">
-            Main sequence
-          </text>
+        <!-- Guides: medians, or the main sequence and Martin's two zones. -->
+        <g v-if="reading?.kind === 'main-sequence'">
+          <polygon :points="zonePoints([[0, 0], [0.5, 0], [0, 0.5]])" :fill="withAlpha(theme.red, hoveredCell === 'pain' ? 0.16 : 0.07)"/>
+          <polygon :points="zonePoints([[1, 1], [0.5, 1], [1, 0.5]])" :fill="withAlpha(theme.inkMuted, hoveredCell === 'useless' ? 0.2 : 0.09)"/>
+          <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.inkMuted" stroke-width="1" stroke-dasharray="4 3"/>
+          <text :transform="`rotate(${mainSequenceAngle}, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
+                font-size="10" :fill="theme.inkMuted" :font-family="theme.fontSans">Main sequence</text>
+        </g>
+        <g v-else-if="reading?.kind === 'medians'">
+          <line :x1="xz(reading.mx)" :x2="xz(reading.mx)" :y1="0" :y2="height" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
+          <line :y1="yz(reading.my)" :y2="yz(reading.my)" :x1="0" :x2="width" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
         </g>
 
-        <g v-for="mark in marks" :key="mark.row.name">
+        <g
+            v-for="mark in orderedMarks"
+            :key="mark.row.name"
+            class="mark"
+            :style="{ transform: `translate(${mark.x}px, ${mark.y}px)` }"
+        >
           <circle
-              :cx="mark.x"
-              :cy="mark.y"
               :r="mark.r"
-              :fill="fillFor(mark)"
-              :stroke="isHighlighted(mark) ? theme.ink : withAlpha(theme.ink, 0.35)"
-              :stroke-width="isHighlighted(mark) ? 1.5 : 0.75"
-              :opacity="opacityFor(mark.row.name)"
+              :style="{ fill: fillFor(mark), opacity: opacityFor(mark.row.name) }"
+              :stroke="strokeFor(mark)"
+              :stroke-width="isHighlighted(mark) ? 2 : 0.75"
               class="cursor-pointer"
               :class="{ 'pointer-events-none': !isSelectable(mark.row.name) }"
               @mouseenter="hoverOver(mark, $event)"
               @click.stop="markClicked($event, mark.row)"
+              @dblclick.stop="emit('clicked', mark.row)"
           />
+        </g>
+
+        <!-- Crosshair from the hovered mark to both axes. -->
+        <g v-if="hoveredMark" class="pointer-events-none">
+          <line :x1="hoveredMark.x" :x2="hoveredMark.x" :y1="hoveredMark.y + hoveredMark.r" :y2="height" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
+          <line :y1="hoveredMark.y" :y2="hoveredMark.y" :x1="0" :x2="hoveredMark.x - hoveredMark.r" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
+        </g>
+
+        <g class="pointer-events-none">
           <text
-              v-if="showText"
-              :x="mark.x + mark.r + 4"
-              :y="mark.y"
+              v-for="label in labels"
+              :key="label.id"
+              class="mark-label"
+              :x="label.x"
+              :y="label.y"
+              :text-anchor="label.anchor"
               dominant-baseline="central"
-              font-size="9"
-              :fill="theme.inkSecondary"
+              font-size="10"
+              :font-weight="selectedSet.has(label.id) || hovered?.row.name === label.id ? 600 : 400"
+              :fill="selectedSet.has(label.id) || hovered?.row.name === label.id ? theme.ink : theme.inkSecondary"
+              :stroke="theme.surface"
+              stroke-width="3"
+              stroke-linejoin="round"
+              paint-order="stroke"
               :font-family="theme.fontMono"
-              :opacity="opacityFor(mark.row.name)"
-              class="pointer-events-none select-none"
-          >{{ mark.row.name }}</text>
+              :opacity="labelOpacity(label.id)"
+          >{{ label.text }}</text>
         </g>
 
         <rect
             v-if="dragRectangle"
             :x="dragRectangle.x" :y="dragRectangle.y" :width="dragRectangle.width" :height="dragRectangle.height"
-            :fill="withAlpha(theme.blue, 0.12)" :stroke="theme.blue" stroke-width="0.75"
+            :fill="withAlpha(theme.blue, 0.1)" :stroke="theme.blue" stroke-width="0.75"
         />
+      </g>
+
+      <!-- Axis chips for the hovered mark. -->
+      <g v-if="hoveredMark" class="pointer-events-none" :font-family="theme.fontMono" font-size="10">
+        <rect :x="hoveredMark.x - chipWidth(xChip) / 2" :y="height + 1" :width="chipWidth(xChip)" height="16" rx="3" :fill="theme.ink"/>
+        <text :x="hoveredMark.x" :y="height + 9" text-anchor="middle" dominant-baseline="central" :fill="theme.surface">{{ xChip }}</text>
+        <rect :x="-chipWidth(yChip) - 1" :y="hoveredMark.y - 8" :width="chipWidth(yChip)" height="16" rx="3" :fill="theme.ink"/>
+        <text :x="-5" :y="hoveredMark.y" text-anchor="end" dominant-baseline="central" :fill="theme.surface">{{ yChip }}</text>
+      </g>
+
+      <!-- Median values, said once at the end of each line. -->
+      <g v-if="reading?.kind === 'medians'" class="pointer-events-none" :font-family="theme.fontMono" font-size="10" :fill="theme.inkMuted">
+        <text v-if="inRange(xz(reading.mx), width)" :x="xz(reading.mx) + 4" :y="-10 - marginMax" dominant-baseline="auto">median {{ formatReading(reading.mx) }}</text>
+        <text v-if="inRange(yz(reading.my), height)" :x="4" :y="yz(reading.my) - 5" :stroke="theme.surface" stroke-width="3" paint-order="stroke" stroke-linejoin="round">median {{ formatReading(reading.my) }}</text>
+      </g>
+
+      <!-- The reading in each corner: how many marks, and what the corner means. Click selects them. -->
+      <g v-for="cell in cellLabels" :key="cell.id"
+         class="cell-label cursor-pointer outline-none"
+         role="button" tabindex="0"
+         :aria-label="`Select ${cell.count}: ${cell.text}`"
+         @mousedown.stop
+         @click.stop="selectCell(cell.id, $event)"
+         @keydown.enter.prevent="selectCell(cell.id, $event)"
+         @mouseenter="hoveredCell = cell.id"
+         @mouseleave="hoveredCell = null"
+         @focus="hoveredCell = cell.id"
+         @blur="hoveredCell = null">
+        <rect :x="cell.boxX" :y="cell.boxY" :width="cell.boxW" height="20" rx="4"
+              :fill="withAlpha(theme.surface, 0.9)"
+              :stroke="hoveredCell === cell.id ? theme.inkMuted : theme.hairline"/>
+        <text :x="cell.boxX + 8" :y="cell.boxY + 10" dominant-baseline="central" font-size="11" :font-family="theme.fontSans">
+          <tspan :font-family="theme.fontMono" font-weight="600" :fill="theme.ink">{{ cell.count }}</tspan>
+          <tspan v-if="cell.text" dx="6" :fill="hoveredCell === cell.id ? theme.ink : theme.inkSecondary">{{ cell.text }}</tspan>
+        </text>
+      </g>
+
+      <!-- Keys for size and colour, in the bottom margin. -->
+      <g v-if="radiusProperty && sizeKey && width >= 560" :transform="`translate(0, ${height + 44})`" :font-family="theme.fontSans" font-size="10" :fill="theme.inkSecondary">
+        <text x="0" y="0" dominant-baseline="central">Size</text>
+        <circle :cx="30 + sizeKey.r0" cy="0" :r="sizeKey.r0" fill="none" :stroke="theme.inkMuted"/>
+        <text :x="34 + sizeKey.r0 * 2" y="0" dominant-baseline="central" :font-family="theme.fontMono">{{ sizeKey.v0 }}</text>
+        <circle :cx="sizeKey.x1 + sizeKey.r1" cy="0" :r="sizeKey.r1" fill="none" :stroke="theme.inkMuted"/>
+        <text :x="sizeKey.x1 + sizeKey.r1 * 2 + 4" y="0" dominant-baseline="central" :font-family="theme.fontMono">{{ sizeKey.v1 }}</text>
+        <text :x="sizeKey.x1 + sizeKey.r1 * 2 + 10 + sizeKey.v1.length * 6" y="0" dominant-baseline="central" :fill="theme.inkMuted">{{ niceName(radiusProperty) }}</text>
+      </g>
+      <g v-if="colorKey && width >= 560" :transform="`translate(${width}, ${height + 44})`" :font-family="theme.fontSans" font-size="10" :fill="theme.inkSecondary">
+        <text :x="-colorKey.swatches.length * 14 - 8 - colorKey.hi.length * 6 - 6" y="0" text-anchor="end" dominant-baseline="central">
+          <tspan :fill="theme.inkMuted">{{ niceName(colorProperty!) }} in fifths</tspan>
+          <tspan dx="8" :font-family="theme.fontMono" :fill="theme.inkSecondary">{{ colorKey.lo }}</tspan>
+        </text>
+        <rect v-for="(s, i) in colorKey.swatches" :key="i" :x="-colorKey.swatches.length * 14 - colorKey.hi.length * 6 - 6 + i * 14" y="-5" width="12" height="10" rx="2" :fill="s.color">
+          <title>{{ s.range }}</title>
+        </rect>
+        <text x="0" y="0" text-anchor="end" dominant-baseline="central" :font-family="theme.fontMono">{{ colorKey.hi }}</text>
       </g>
     </svg>
   </div>
@@ -97,26 +205,37 @@ import * as d3 from "d3";
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
-import { round } from "~/shared/text";
+import { formatReading } from "~/shared/format";
+import { distinctTails, logTicks, metricValue, placeLabels, type Box, type PlotReading } from "~/features/metrics/plotReading";
 
 // Scatter plot over any rows that carry a `name` and numeric columns:
-// components or files. Axis domains come from `domainRows` so filtering the
-// visible rows never rescales the plot. Wheel zooms, alt-drag (or middle
-// button) pans, plain drag box-selects, shift-click toggles one mark.
+// components or files. It fills its pane, reads itself (medians and named
+// quadrants, or the main sequence and its zones), shows where marks pile up
+// along each axis, and names the marks furthest out. Axis domains come from
+// `domainRows` so filtering never rescales the plot. Wheel zooms, alt-drag
+// (or middle button) pans, plain drag box-selects, shift-click toggles one
+// mark, and changing an axis glides the marks to their new places.
 
 type Row = { name: string; [key: string]: any };
 type Point = { x: number; y: number };
 type Mark = { row: Row; x: number; y: number; r: number };
+type CellId = PlotReading["cells"][number]["id"];
 
 const props = defineProps({
   rows: { type: Array as PropType<Row[]>, required: true },
   domainRows: { type: Array as PropType<Row[]>, required: true },
   selected: { type: Array as PropType<string[]>, default: () => [] },
   grain: { type: String as PropType<"component" | "file">, default: "component" },
-  showText: { type: Boolean, default: false },
+  labelMode: { type: String as PropType<"auto" | "all" | "none">, default: "auto" },
   xAxisProperty: { type: String, required: true },
   yAxisProperty: { type: String, required: true },
+  xLog: { type: Boolean, default: false },
+  yLog: { type: Boolean, default: false },
   radiusProperty: { type: String as PropType<string | null>, default: null },
+  colorProperty: { type: String as PropType<string | null>, default: null },
+  reading: { type: Object as PropType<PlotReading | null>, default: null },
+  /** What each corner or zone means, by cell id. */
+  cellText: { type: Object as PropType<Partial<Record<CellId, string>>>, default: () => ({}) },
   searchQuery: { type: String, default: "" },
   hiddenGroups: { type: Object as PropType<Set<string>>, default: () => new Set<string>() },
   activeFilters: { type: Object as PropType<Set<string>>, default: () => new Set<string>() },
@@ -132,10 +251,14 @@ const store = useDataStore();
 const groupsStore = useGroupsStore();
 const { theme, version: themeVersion } = useChartTheme();
 
-const width = 500;
-const height = 500;
-const margin = { top: 12, right: 24, bottom: 64, left: 70 };
+// ─── Size: the plot fills its pane ───
+const root = ref<HTMLDivElement | null>(null);
+const size = ref({ w: 900, h: 600 });
+const margin = { top: 40, right: 40, bottom: 60, left: 64 };
+const width = computed(() => Math.max(200, size.value.w - margin.left - margin.right));
+const height = computed(() => Math.max(160, size.value.h - margin.top - margin.bottom));
 const clipId = `plot-clip-${Math.random().toString(36).slice(2, 8)}`;
+let observer: ResizeObserver | null = null;
 
 const svg = ref<SVGSVGElement | null>(null);
 const xAxisElement = ref<SVGGElement | null>(null);
@@ -145,29 +268,53 @@ function niceName(column: string): string {
   return store.statNiceName(column) || column;
 }
 
+// ─── Text measurement ───
+let measureCtx: CanvasRenderingContext2D | null = null;
+function measure(text: string, font: string): number {
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return text.length * 6;
+  measureCtx.font = font;
+  return measureCtx.measureText(text).width;
+}
+const monoFont = computed(() => `10px ${theme.value.fontMono}`);
+const sansFont = computed(() => `11px ${theme.value.fontSans}`);
+const monoBoldFont = computed(() => `600 11px ${theme.value.fontMono}`);
+
+// ─── Names ───
+const tails = computed(() => distinctTails(props.domainRows.map((r) => String(r.name))));
+const shortOf = (name: string) => tails.value.get(name) ?? name;
+
 // ─── Scales ───
-function domainOf(rows: Row[], key: string): [number, number] {
-  const values = rows.map((r) => Number(r[key])).filter((v) => Number.isFinite(v));
+const valuesOf = (rows: Row[], key: string) => rows.map((r) => metricValue(r, key)).filter((v) => Number.isFinite(v));
+
+function domainOf(rows: Row[], key: string, log: boolean): [number, number] {
+  const values = valuesOf(rows, key);
   if (values.length === 0) return [0, 1];
   const min = d3.min(values) as number;
   let max = d3.max(values) as number;
   if (max <= min) max = min + 1;
-  const pad = (max - min) * 0.08;
+  if (log) return [Math.min(0, min), max * 1.25];
+  const pad = (max - min) * 0.06;
   // Non-negative metrics start at zero so the origin means what it says.
   return [min >= 0 ? 0 : min - pad, max + pad];
 }
 
-const xScale = computed(() => d3.scaleLinear().domain(domainOf(props.domainRows, props.xAxisProperty)).range([0, width]));
-const yScale = computed(() => d3.scaleLinear().domain(domainOf(props.domainRows, props.yAxisProperty)).range([height, 0]));
+function baseScale(log: boolean) {
+  return log ? d3.scaleSymlog().constant(1) : d3.scaleLinear();
+}
+
+const xScale = computed(() => baseScale(props.xLog).domain(domainOf(props.domainRows, props.xAxisProperty, props.xLog)).range([0, width.value]));
+const yScale = computed(() => baseScale(props.yLog).domain(domainOf(props.domainRows, props.yAxisProperty, props.yLog)).range([height.value, 0]));
 const radiusScale = computed<(v: number) => number>(() => {
   const key = props.radiusProperty;
-  if (!key) return () => 5;
-  const values = props.domainRows.map((r) => Number(r[key])).filter((v) => Number.isFinite(v));
-  if (values.length === 0) return () => 5;
+  const base = props.grain === "file" ? 3 : 4.5;
+  if (!key) return () => base;
+  const values = valuesOf(props.domainRows, key);
+  if (values.length === 0) return () => base;
   const min = Math.max(0, d3.min(values) as number);
   const max = Math.max(min + 1, d3.max(values) as number);
-  const scale = d3.scaleSqrt().domain([min, max]).range([4, 18]).clamp(true);
-  return (v: number) => (Number.isFinite(v) ? scale(v) : 4);
+  const scale = d3.scaleSqrt().domain([min, max]).range([3, 17]).clamp(true);
+  return (v: number) => (Number.isFinite(v) ? scale(v) : 3);
 });
 
 // Zoomed copies of the scales; the zoom transform lives in SVG user space.
@@ -179,43 +326,291 @@ const marks = computed<Mark[]>(() => {
   const out: Mark[] = [];
   const rScale = radiusScale.value;
   for (const row of props.rows) {
-    const xv = Number(row[props.xAxisProperty]);
-    const yv = Number(row[props.yAxisProperty]);
+    const xv = metricValue(row, props.xAxisProperty);
+    const yv = metricValue(row, props.yAxisProperty);
     if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
-    const rv = props.radiusProperty ? Number(row[props.radiusProperty]) : NaN;
+    const rv = props.radiusProperty ? metricValue(row, props.radiusProperty) : NaN;
     out.push({ row, x: xz.value(xv), y: yz.value(yv), r: rScale(rv) });
   }
   return out;
 });
 
-const isDistanceMainSequence = computed(() =>
-    props.xAxisProperty === store.statName("modularity__instability") && props.yAxisProperty === store.statName("modularity__abstractness"),
-);
+// Large marks underneath, selected and hovered on top.
+const orderedMarks = computed(() => {
+  const sel = selectedSet.value;
+  return [...marks.value].sort((a, b) => (sel.has(a.row.name) ? 1 : 0) - (sel.has(b.row.name) ? 1 : 0) || b.r - a.r);
+});
+
+const hoveredMark = computed(() => (hovered.value ? marks.value.find((m) => m.row.name === hovered.value!.row.name) ?? null : null));
+
+const mainSequenceAngle = computed(() => {
+  const dx = xz.value(1) - xz.value(0);
+  const dy = yz.value(0) - yz.value(1);
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+});
+
+function zonePoints(pts: Array<[number, number]>): string {
+  return pts.map(([x, y]) => `${xz.value(x)},${yz.value(y)}`).join(" ");
+}
+
+const inRange = (v: number, max: number) => v >= 0 && v <= max;
 
 const tooltipKeys = computed(() => {
-  const keys = [props.xAxisProperty, props.yAxisProperty, props.radiusProperty].filter((k): k is string => !!k);
+  const keys = [props.xAxisProperty, props.yAxisProperty, props.radiusProperty, props.colorProperty].filter((k): k is string => !!k);
   return Array.from(new Set(keys));
 });
 
+// Rank among every row of the grain, largest first.
+const sortedDesc = computed(() => {
+  const out = new Map<string, number[]>();
+  for (const key of tooltipKeys.value) {
+    out.set(key, valuesOf(props.domainRows, key).sort((a, b) => b - a));
+  }
+  return out;
+});
+
+function rankOf(key: string, row: Row): string {
+  const v = metricValue(row, key);
+  const list = sortedDesc.value.get(key);
+  if (!list || !Number.isFinite(v)) return "";
+  let lo = 0, hi = list.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (list[mid] > v) lo = mid + 1; else hi = mid; }
+  return `#${lo + 1}`;
+}
+
 // ─── Axes ───
+const tickFormat = (v: d3.NumberValue) => {
+  const n = Number(v);
+  return Math.abs(n) >= 10000 ? d3.format("~s")(n) : formatReading(n);
+};
+
 function styleAxis(g: d3.Selection<SVGGElement, unknown, null, undefined>) {
   const t = chartTheme();
-  g.selectAll("path.domain").attr("stroke", t.hairlineStrong);
-  g.selectAll("line").attr("stroke", t.hairline);
-  g.selectAll("text").attr("fill", t.inkSecondary).attr("font-size", 10).attr("font-family", t.fontMono);
+  g.selectAll("path.domain").attr("stroke", "none");
+  g.selectAll(".tick line").attr("stroke", t.hairline);
+  g.selectAll("text").attr("fill", t.inkMuted).attr("font-size", 10).attr("font-family", t.fontMono);
 }
 
 function drawAxes() {
   if (!xAxisElement.value || !yAxisElement.value) return;
-  const xAxis = d3.axisBottom(xz.value).ticks(8).tickSize(-height).tickPadding(8);
-  const yAxis = d3.axisLeft(yz.value).ticks(8).tickSize(-width).tickPadding(8);
-  styleAxis(d3.select(xAxisElement.value).attr("transform", `translate(0,${height})`).call(xAxis));
-  styleAxis(d3.select(yAxisElement.value).call(yAxis));
+  const xa = d3.axisBottom(xz.value).tickSize(-height.value).tickPadding(8).tickFormat(tickFormat);
+  const ya = d3.axisLeft(yz.value).tickSize(-width.value).tickPadding(8).tickFormat(tickFormat);
+  if (props.xLog) xa.tickValues(logTicks(xz.value.domain() as [number, number], Math.max(4, Math.floor(width.value / 70))));
+  else xa.ticks(Math.max(3, Math.floor(width.value / 90)));
+  if (props.yLog) ya.tickValues(logTicks(yz.value.domain() as [number, number], Math.max(4, Math.floor(height.value / 48))));
+  else ya.ticks(Math.max(3, Math.floor(height.value / 60)));
+  styleAxis(d3.select(xAxisElement.value).attr("transform", `translate(0,${height.value})`).call(xa));
+  styleAxis(d3.select(yAxisElement.value).call(ya));
 }
 
 watch([xz, yz, themeVersion], () => {
   drawAxes();
+});
+
+// ─── Glide on an axis change ───
+const gliding = ref(false);
+let glideTimer: ReturnType<typeof setTimeout> | undefined;
+watch(() => [props.xAxisProperty, props.yAxisProperty, props.xLog, props.yLog, props.radiusProperty], () => {
   hovered.value = null;
+  gliding.value = true;
+  clearTimeout(glideTimer);
+  glideTimer = setTimeout(() => { gliding.value = false; }, 650);
+});
+
+// ─── Marginal distributions ───
+const BINS = 48;
+type Bar = { x0: number; x1: number; h: number; hot?: boolean };
+const marginMax = 22;
+
+function margin1d(values: number[], selValues: number[], hotValue: number | null, span: number, apply: (v: number) => number): { bars: Bar[]; sel: Bar[] } {
+  // Bin in the unzoomed pixel space, then carry each bin through the zoom.
+  const counts = new Array(BINS).fill(0);
+  const selCounts = new Array(BINS).fill(0);
+  const binOf = (p: number) => Math.min(BINS - 1, Math.max(0, Math.floor((p / span) * BINS)));
+  for (const p of values) counts[binOf(p)]++;
+  for (const p of selValues) selCounts[binOf(p)]++;
+  const hot = hotValue == null ? -1 : binOf(hotValue);
+  const peak = Math.max(1, ...counts);
+  const h = (c: number) => (c === 0 ? 0 : Math.max(1.5, Math.sqrt(c / peak) * marginMax));
+  const edge = (i: number) => apply((i / BINS) * span);
+  const bars: Bar[] = [];
+  const sel: Bar[] = [];
+  for (let i = 0; i < BINS; i++) {
+    if (counts[i] > 0) bars.push({ x0: edge(i), x1: edge(i + 1), h: h(counts[i]), hot: i === hot });
+    if (selCounts[i] > 0) sel.push({ x0: edge(i), x1: edge(i + 1), h: h(selCounts[i]) });
+  }
+  return { bars, sel };
+}
+
+const basePoints = computed(() => {
+  const xs: number[] = [], ys: number[] = [], sxs: number[] = [], sys: number[] = [];
+  const sel = selectedSet.value.size > 0 ? selectedSet.value : selecting.value;
+  for (const row of props.rows) {
+    const xv = metricValue(row, props.xAxisProperty);
+    const yv = metricValue(row, props.yAxisProperty);
+    if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
+    const px = xScale.value(xv), py = yScale.value(yv);
+    xs.push(px); ys.push(py);
+    if (sel.has(row.name)) { sxs.push(px); sys.push(py); }
+  }
+  return { xs, ys, sxs, sys };
+});
+
+const marginX = computed(() => {
+  const hv = hovered.value ? xScale.value(metricValue(hovered.value.row, props.xAxisProperty)) : null;
+  return margin1d(basePoints.value.xs, basePoints.value.sxs, hv, width.value, (p) => transform.value.applyX(p));
+});
+const marginY = computed(() => {
+  const hv = hovered.value ? yScale.value(metricValue(hovered.value.row, props.yAxisProperty)) : null;
+  return margin1d(basePoints.value.ys, basePoints.value.sys, hv, height.value, (p) => transform.value.applyY(p));
+});
+
+// ─── Labels ───
+const labels = computed(() => {
+  const sel = selectedSet.value;
+  const hoveredName = hovered.value?.row.name ?? null;
+  const within = marks.value.filter((m) => m.x >= 0 && m.x <= width.value && m.y >= 0 && m.y <= height.value && isSelectable(m.row.name));
+  const byName = new Map(within.map((m) => [m.row.name, m]));
+  const cand = (m: Mark) => ({ id: m.row.name, x: m.x, y: m.y, r: m.r, text: shortOf(m.row.name) });
+
+  if (props.labelMode === "all") {
+    return within.map((m) => ({ id: m.row.name, x: m.x + m.r + 4, y: m.y, anchor: "start" as const, text: shortOf(m.row.name) }));
+  }
+  const first: Mark[] = [];
+  if (hoveredName && byName.has(hoveredName)) first.push(byName.get(hoveredName)!);
+  for (const name of sel) if (name !== hoveredName && byName.has(name)) first.push(byName.get(name)!);
+  const rest: Mark[] = [];
+  if (props.labelMode === "auto") {
+    // The furthest-out marks first, then any mark with room around it once zoomed in.
+    const order = props.reading?.outliers ?? [];
+    for (const name of order) {
+      const m = byName.get(name);
+      if (m && !sel.has(name) && name !== hoveredName) rest.push(m);
+    }
+  }
+  const area = width.value * height.value;
+  const budget = Math.max(6, Math.min(36, Math.round(area / 16000))) + first.length;
+  const font = monoFont.value;
+  return placeLabels([...first, ...rest].map(cand), within, { width: width.value, height: height.value }, {
+    limit: budget,
+    measure: (t) => measure(t, font) + 2,
+    obstacles: labelObstacles.value,
+  });
+});
+
+function labelOpacity(name: string): number {
+  if (selectedSet.value.size > 0 && !selectedSet.value.has(name) && hovered.value?.row.name !== name) return 0.45;
+  return Math.min(1, opacityFor(name) + 0.1);
+}
+
+// Corner readings and the median tag are drawn over the marks; labels keep clear of them.
+const labelObstacles = computed<Box[]>(() => {
+  const boxes: Box[] = cellLabels.value.map((c) => ({ x0: c.boxX - 2, y0: c.boxY - 2, x1: c.boxX + c.boxW + 2, y1: c.boxY + 22 }));
+  const r = props.reading;
+  if (r?.kind === "medians") {
+    const y = yz.value(r.my);
+    boxes.push({ x0: 0, y0: y - 16, x1: 4 + measure(`median ${formatReading(r.my)}`, monoFont.value) + 4, y1: y });
+  }
+  return boxes;
+});
+
+// ─── Hover chips ───
+const xChip = computed(() => (hovered.value ? formatReading(hovered.value.row[props.xAxisProperty]) : ""));
+const yChip = computed(() => (hovered.value ? formatReading(hovered.value.row[props.yAxisProperty]) : ""));
+const chipWidth = (s: string) => s.length * 6 + 10;
+
+// ─── The reading in the corners ───
+const hoveredCell = ref<CellId | null>(null);
+const cellMembers = computed(() => {
+  const out = new Map<CellId, Set<string>>();
+  for (const c of props.reading?.cells ?? []) out.set(c.id, new Set(c.names));
+  return out;
+});
+
+function cellOf(name: string): string {
+  for (const [id, set] of cellMembers.value) if (set.has(name)) return props.cellText[id] ?? "";
+  return "";
+}
+
+const cellLabels = computed(() => {
+  const r = props.reading;
+  if (!r) return [];
+  const w = width.value, h = height.value;
+  const labels = r.cells
+    .filter((c) => props.cellText[c.id])
+    .map((c) => {
+      const text = props.cellText[c.id]!;
+      const count = String(c.names.length);
+      const boxW = 8 + measure(count, monoBoldFont.value) + 6 + measure(text, sansFont.value) + 8;
+      const corner = c.id === "pain" ? "bl" : c.id === "useless" ? "tr" : c.id;
+      const left = corner === "tl" || corner === "bl";
+      const top = corner === "tl" || corner === "tr";
+      return {
+        id: c.id,
+        text,
+        count: c.names.length,
+        boxW,
+        boxX: left ? 8 : w - 8 - boxW,
+        boxY: top ? 8 : h - 28,
+        left,
+        top,
+      };
+    });
+  // In a narrow plot the two labels of a row would collide: keep the counts, the words live in Reading.
+  for (const top of [true, false]) {
+    const row = labels.filter((l) => l.top === top);
+    const l = row.find((q) => q.left), rr = row.find((q) => !q.left);
+    if (l && rr && l.boxX + l.boxW + 8 > rr.boxX) {
+      for (const q of [l, rr]) {
+        q.text = "";
+        q.boxW = 8 + measure(String(q.count), monoBoldFont.value) + 8;
+        if (!q.left) q.boxX = w - 8 - q.boxW;
+      }
+    }
+  }
+  return labels;
+});
+
+function selectCell(id: CellId, event: MouseEvent | KeyboardEvent) {
+  const names = props.reading?.cells.find((c) => c.id === id)?.names ?? [];
+  const additive = event.shiftKey || (event as MouseEvent).metaKey || (event as MouseEvent).ctrlKey;
+  emit("update:selected", additive ? Array.from(new Set([...props.selected, ...names])) : names);
+}
+
+// ─── Keys ───
+const sizeKey = computed(() => {
+  const key = props.radiusProperty;
+  if (!key) return null;
+  const values = valuesOf(props.domainRows, key);
+  if (values.length === 0) return null;
+  const lo = Math.max(0, d3.min(values) as number);
+  const hi = d3.max(values) as number;
+  const r0 = radiusScale.value(lo), r1 = radiusScale.value(hi);
+  const v0 = formatReading(lo), v1 = formatReading(hi);
+  const x1 = 34 + r0 * 2 + v0.length * 6 + 10;
+  return { r0, r1, v0, v1, x1 };
+});
+
+const colorScale = computed(() => {
+  const key = props.colorProperty;
+  if (!key) return null;
+  const values = valuesOf(props.domainRows, key);
+  if (values.length === 0) return null;
+  const t = theme.value;
+  // Health reads the other way: the hot end is the low score.
+  const ramp = /hotspot/.test(key) ? t.heat : /code_health/.test(key) ? [...t.heat].reverse() : t.blues;
+  const scale = d3.scaleQuantile<string>().domain(values).range(ramp);
+  return { scale, values };
+});
+
+const colorKey = computed(() => {
+  const c = colorScale.value;
+  if (!c) return null;
+  const q = c.scale.quantiles();
+  const lo = d3.min(c.values) as number, hi = d3.max(c.values) as number;
+  const edges = [lo, ...q, hi];
+  const swatches = c.scale.range().map((color, i) => ({ color, range: `${formatReading(edges[i])} – ${formatReading(edges[i + 1])}` }));
+  return { swatches, lo: formatReading(lo), hi: formatReading(hi) };
 });
 
 // ─── Zoom ───
@@ -232,15 +627,27 @@ function resetZoom() {
 }
 defineExpose({ zoomIn, zoomOut, resetZoom });
 
+watch([width, height], ([w, h]) => {
+  // d3-zoom resolves its extent inside the transition's tween, and its
+  // default reads the svg's own width: state the box instead.
+  zoom?.extent([[0, 0], [w, h]]);
+});
+
 onMounted(() => {
+  if (root.value) {
+    const measure = () => {
+      const box = root.value!.getBoundingClientRect();
+      if (box.width > 0 && box.height > 0) size.value = { w: Math.round(box.width), h: Math.round(box.height) };
+    };
+    measure();
+    observer = new ResizeObserver(measure);
+    observer.observe(root.value);
+  }
   drawAxes();
   if (!svg.value) return;
   zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.5, 60])
-      // d3-zoom resolves its extent inside the transition's tween, and its
-      // default reads the svg's own width: on a CSS-sized element that throws
-      // mid-frame and the transition dies silently. State the box instead.
-      .extent([[0, 0], [width, height]])
+      .extent([[0, 0], [width.value, height.value]])
       .filter((event: any) => {
         if (event.type === "wheel") return true;
         // Plain drag is box-select; pan needs alt or the middle button.
@@ -253,6 +660,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  observer?.disconnect();
+  clearTimeout(glideTimer);
   window.removeEventListener("mouseup", doneDragSelecting);
   if (svg.value) d3.select(svg.value).on(".zoom", null);
 });
@@ -266,14 +675,20 @@ function hoverOver(mark: Mark, event: MouseEvent) {
   if (dragAnchor.value != null) return;
   if (hovered.value?.row.name === mark.row.name) return;
   const rect = (event.currentTarget as SVGCircleElement).getBoundingClientRect();
-  hovered.value = { row: mark.row, posX: 10 + rect.x + rect.width / 2, posY: 10 + rect.y + rect.height / 2 };
+  const posX = rect.x + rect.width / 2 + 14;
+  // Flip the card to the left of the mark near the window's right edge.
+  hovered.value = { row: mark.row, posX: posX + 288 > window.innerWidth ? rect.x - 14 - 288 : posX, posY: Math.min(rect.y + rect.height / 2 + 10, window.innerHeight - 200) };
 }
 
 function mouseMove(event: MouseEvent) {
   if (!hovered.value || isHoveringOverTooltip.value) return;
-  const dx = event.clientX - hovered.value.posX;
-  const dy = event.clientY - hovered.value.posY;
-  if (Math.sqrt(dx * dx + dy * dy) > 120) hovered.value = null;
+  const m = hoveredMark.value;
+  const el = svg.value;
+  if (!m || !el) { hovered.value = null; return; }
+  const box = el.getBoundingClientRect();
+  const dx = event.clientX - (box.x + margin.left + m.x);
+  const dy = event.clientY - (box.y + margin.top + m.y);
+  if (Math.hypot(dx, dy) > m.r + 18) hovered.value = null;
 }
 
 // ─── Box selection ───
@@ -293,6 +708,7 @@ function userPoint(evt: MouseEvent): Point | null {
 }
 
 function updateMouseCoords(evt: MouseEvent) {
+  if (dragAnchor.value == null) return;
   const p = userPoint(evt);
   if (p) mouseCoords.value = p;
 }
@@ -315,7 +731,7 @@ const dragRectangle = computed(() => {
 
 const selecting = computed<Set<string>>(() => {
   const rect = dragRectangle.value;
-  if (!rect) return new Set();
+  if (!rect || (rect.width < 3 && rect.height < 3)) return new Set();
   const out = new Set<string>();
   for (const m of marks.value) {
     if (m.x > rect.x && m.x < rect.x + rect.width && m.y > rect.y && m.y < rect.y + rect.height && isSelectable(m.row.name)) out.add(m.row.name);
@@ -328,13 +744,13 @@ function doneDragSelecting(event: MouseEvent) {
   const rect = dragRectangle.value;
   const isClick = !rect || (rect.width < 3 && rect.height < 3);
   const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+  const picked = Array.from(selecting.value);
   dragAnchor.value = null;
   if (isClick) {
     // A click on empty canvas clears the selection unless a modifier says keep it.
     if (!additive && props.selected.length > 0) emit("update:selected", []);
     return;
   }
-  const picked = Array.from(selecting.value);
   emit("update:selected", additive ? Array.from(new Set([...props.selected, ...picked])) : picked);
 }
 
@@ -349,6 +765,7 @@ function visibleGroupsOf(name: string) {
 }
 
 const multiColorGradients = computed(() => {
+  if (props.colorProperty) return [];
   const seen = new Map<string, { id: string; stops: Array<{ offset: string; color: string }> }>();
   for (const row of props.rows) {
     const groups = visibleGroupsOf(row.name);
@@ -386,13 +803,23 @@ function isHighlighted(mark: Mark): boolean {
 function fillFor(mark: Mark): string {
   const name = mark.row.name;
   const t = theme.value;
-  if (selecting.value.has(name) || selectedSet.value.has(name)) return t.blue;
-  if (hovered.value?.row.name === name) return t.inkMuted;
+  const c = colorScale.value;
+  if (c && props.colorProperty) {
+    const v = metricValue(mark.row, props.colorProperty);
+    return Number.isFinite(v) ? c.scale(v) : withAlpha(t.inkMuted, 0.4);
+  }
   const groups = visibleGroupsOf(name);
-  if (groups.length === 0) return t.hairlineStrong;
+  if (groups.length === 0) return withAlpha(t.inkMuted, 0.55);
   if (groups.length === 1) return groups[0].color;
   const key = groups.map((g) => g.color).join("-");
   return `url(#mg-plot-${key.replace(/[^a-zA-Z0-9]/g, "")})`;
+}
+
+function strokeFor(mark: Mark): string {
+  const t = theme.value;
+  if (selecting.value.has(mark.row.name) || selectedSet.value.has(mark.row.name)) return t.blue;
+  if (hovered.value?.row.name === mark.row.name) return t.ink;
+  return withAlpha(t.surface, 0.9);
 }
 
 function opacityFor(name: string): number {
@@ -403,20 +830,52 @@ function opacityFor(name: string): number {
   const groups = visibleGroupsOf(name);
   if (props.hoveredGroupId) return groups.some((g) => g.id === props.hoveredGroupId) ? 1 : 0.08;
   if (props.activeFilters.size > 0) return groups.some((g) => props.activeFilters.has(g.id)) ? 1 : 0.08;
+  if (hoveredCell.value) return cellMembers.value.get(hoveredCell.value)?.has(name) ? 1 : 0.12;
+  const focus = selecting.value.size > 0 ? selecting.value : selectedSet.value;
+  if (focus.size > 0) return focus.has(name) ? 1 : 0.22;
   return 0.9;
 }
 
 function markClicked(event: MouseEvent, row: Row) {
   if (!isSelectable(row.name)) return;
+  // A click selects; a double-click or the inspector opens.
   if (event.shiftKey || event.ctrlKey || event.metaKey) {
     const next = new Set(props.selected);
     if (next.has(row.name)) next.delete(row.name);
     else next.add(row.name);
     emit("update:selected", Array.from(next));
   } else {
-    emit("clicked", row);
+    emit("update:selected", [row.name]);
   }
 }
 
-useSvgFigure("Component plot", () => svg.value)
+useSvgFigure("Metrics plot", () => svg.value)
 </script>
+
+<style scoped>
+.mark {
+  transition: none;
+}
+.is-gliding .mark {
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mark circle {
+  transition: fill 200ms linear, opacity 160ms linear;
+}
+.mark-label {
+  animation: label-in 200ms ease-out;
+}
+.cell-label:focus-visible rect {
+  stroke: rgb(var(--c-accent-400));
+  stroke-width: 2;
+}
+@keyframes label-in {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-gliding .mark, .mark circle, .mark-label {
+    transition: none;
+    animation: none;
+  }
+}
+</style>

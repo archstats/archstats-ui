@@ -11,6 +11,9 @@
   >
     <template #stats>
       <span v-if="grain !== 'directories'">{{ grainLabel }} <span class="text-neutral-800">{{ countText }}</span></span>
+      <button v-if="isOverview && brushTotal > 0" type="button" class="ui-chip is-active" :title="'Clear every brush'" @click="brushes = {}">
+        <span>{{ brushTotal }} {{ brushTotal === 1 ? 'brush' : 'brushes' }}</span><Icon icon="x" :size="11"/>
+      </button>
     </template>
 
     <template #switches>
@@ -20,8 +23,14 @@
         <button type="button" :aria-pressed="grain === 'directories'" title="An outline by directory, every number rolled up" @click="grain = 'directories'">Directories</button>
       </div>
       <div class="ui-segmented" role="group" aria-label="View">
+        <button type="button" :aria-pressed="view === 'summary' && grain !== 'directories'" :disabled="grain === 'directories'" title="What stands out, and where to look next" @click="view = 'summary'">Summary</button>
         <button type="button" :aria-pressed="view === 'table' || grain === 'directories'" @click="view = 'table'">Table</button>
         <button type="button" :aria-pressed="view === 'plot' && grain !== 'directories'" :disabled="grain === 'directories'" :title="grain === 'directories' ? 'Directories have no plot: their numbers are rollups, not measurements' : undefined" @click="view = 'plot'">Plot</button>
+      </div>
+      <div class="ui-segmented" role="group" aria-label="Overview prototypes">
+        <button type="button" :aria-pressed="view === 'matrix' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every metric pair at once, one opened as the full plot" @click="view = 'matrix'">Matrix</button>
+        <button type="button" :aria-pressed="view === 'strips' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every metric as a strip of dots, brushed together" @click="view = 'strips'">Strips</button>
+        <button type="button" :aria-pressed="view === 'profiles' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every row as one line across every metric" @click="view = 'profiles'">Profiles</button>
       </div>
     </template>
 
@@ -35,22 +44,43 @@
 
     <template #visualizer>
       <!-- Plot controls: a second toolbar row under the frame. -->
-      <div v-if="view === 'plot' && grain !== 'directories'" class="flex h-10 shrink-0 items-center gap-2 overflow-x-auto px-3 hairline-b">
-        <span class="ui-label">X</span>
-        <StatSelectSingle v-model="xAxis" :options="numericColumns"/>
-        <span class="ui-label">Y</span>
-        <StatSelectSingle v-model="yAxis" :options="numericColumns"/>
-        <span class="ui-label">R</span>
-        <StatSelectSingle v-model="radius" :options="numericColumns" placeholder="None"/>
-        <button v-if="radius" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear radius" title="Clear radius" @click="radius = null">
-          <Icon icon="x" :size="12"/>
-        </button>
+      <!-- Plot controls: a second toolbar row under the frame; groups wrap whole rather than clip. -->
+      <div v-if="(view === 'plot' || view === 'matrix') && grain !== 'directories'" class="flex min-h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-1.5 hairline-b">
+        <div class="flex items-center gap-2">
+          <span class="ui-label">Preset</span>
+          <SingleSelect :model-value="activePreset?.name ?? null" :options="presetNames" placeholder="Custom" @update:model-value="selectPresetByName"/>
+        </div>
         <span class="ui-toolbar-sep"></span>
-        <span class="ui-label">Preset</span>
-        <SingleSelect :model-value="activePreset?.name ?? null" :options="presetNames" placeholder="Choose" @update:model-value="selectPresetByName"/>
+        <div class="flex items-center gap-2">
+          <span class="ui-label">X</span>
+          <StatSelectSingle v-model="xAxis" :options="numericColumns"/>
+          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="xLog" title="Log scale on X" @click="xLog = !xLog">log</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Swap axes" title="Swap X and Y" @click="swapAxes">
+            <Icon icon="arrow-left-right" :size="13"/>
+          </button>
+          <span class="ui-label">Y</span>
+          <StatSelectSingle v-model="yAxis" :options="numericColumns"/>
+          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="yLog" title="Log scale on Y" @click="yLog = !yLog">log</button>
+        </div>
         <span class="ui-toolbar-sep"></span>
-        <Checkbox v-model="showNames">Names</Checkbox>
-        <span class="ml-auto hidden min-w-0 truncate text-sm text-neutral-500 2xl:inline" title="Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan">Drag to box-select · shift-click to toggle · wheel to zoom · alt-drag to pan</span>
+        <div class="flex items-center gap-2">
+          <span class="ui-label">Size</span>
+          <StatSelectSingle v-model="radius" :options="numericColumns" placeholder="Even"/>
+          <button v-if="radius" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear size" title="Clear size" @click="radius = null">
+            <Icon icon="x" :size="12"/>
+          </button>
+          <span class="ui-label">Colour</span>
+          <StatSelectSingle v-model="colour" :options="numericColumns" placeholder="Groups"/>
+          <button v-if="colour" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Colour by group" title="Colour by group" @click="colour = null">
+            <Icon icon="x" :size="12"/>
+          </button>
+        </div>
+        <span class="ui-toolbar-sep"></span>
+        <div class="ui-segmented" role="group" aria-label="Labels">
+          <button type="button" :aria-pressed="labelMode === 'auto'" title="Name the marks furthest out, and whatever you select" @click="labelMode = 'auto'">Outliers</button>
+          <button type="button" :aria-pressed="labelMode === 'all'" @click="labelMode = 'all'">All</button>
+          <button type="button" :aria-pressed="labelMode === 'none'" title="Only the selection and the mark under the pointer" @click="labelMode = 'none'">None</button>
+        </div>
       </div>
 
       <DirectoryTree v-if="grain === 'directories'" :search="searchQuery"/>
@@ -70,13 +100,15 @@
         <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
         <button v-if="scope.isActive" type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">Clear scope</button>
       </EmptyState>
+      <MetricsSummary v-else-if="view === 'summary'" :rows="filteredRows" :metrics="overviewKeys" :grain="grain === 'files' ? 'file' : 'component'" @go="go" @open="openName"/>
       <div v-else-if="view === 'table'" class="min-h-0 grow overflow-y-auto px-4 py-3">
         <ElementTable
             :elements="filteredRows"
             :only-show-columns="visibleColumns"
             :clickable-elements="true"
             :selectable-elements="true"
-            :show-groups="true"
+            :show-groups="grainGroups.length > 0"
+            :instrumented="true"
             :max-page-size="25"
             :name-column="grain === 'files' ? 'File' : 'Component'"
             :export-title="grain === 'files' ? 'Metrics: files' : 'Metrics: components'"
@@ -87,8 +119,60 @@
             @clicked-element="openRow"
         />
       </div>
-      <div v-else-if="xAxis && yAxis" class="relative min-h-0 grow p-3">
-        <p v-if="abstractnessCaveat" class="pointer-events-none absolute left-1/2 top-4 z-10 max-w-[60ch] -translate-x-1/2 rounded bg-surface/90 px-2 py-1 text-center text-xs text-neutral-500 backdrop-blur-sm">{{ abstractnessCaveat }}</p>
+      <!-- Prototype: matrix of every pair, the chosen pair as the full plot, the rows in play below. -->
+      <div v-else-if="view === 'matrix'" class="flex min-h-0 grow flex-col">
+        <div class="flex min-h-0 shrink-0 basis-[64%]">
+          <div class="aspect-square h-full max-w-[55%] shrink-0 hairline-r">
+            <MetricMatrix
+                :rows="filteredRows" :domain-rows="allRows" :metrics="matrixMetrics"
+                v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+                :pair="[xAxis, yAxis]" :grain="grain === 'files' ? 'file' : 'component'"
+                @pair="setPair" @open="openName"/>
+          </div>
+          <div class="relative min-w-0 grow px-3 pb-2 pt-3">
+            <ComponentPlotterDiagram v-if="xAxis && yAxis" ref="plot" class="h-full w-full" v-bind="plotProps" :rows="playRows" @update:selected="selectedNames = $event" @clicked="openRow"/>
+          </div>
+        </div>
+        <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
+          <ElementTable :key="`m-${grain}`" :elements="playRows" :only-show-columns="matrixMetrics" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+                        :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
+                        :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
+        </div>
+      </div>
+
+      <!-- Prototype: one strip per metric, the ranked rows in play beside them. -->
+      <div v-else-if="view === 'strips'" class="flex min-h-0 grow">
+        <div class="min-w-0 grow py-2">
+          <MetricStrips
+              :rows="filteredRows" :domain-rows="allRows" :metrics="overviewKeys"
+              v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+              :sort-key="stripSort" :grain="grain === 'files' ? 'file' : 'component'"
+              @sort="stripSort = $event" @open="openName"/>
+        </div>
+        <aside class="w-[340px] shrink-0 bg-ground hairline-l">
+          <RankedRows :rows="playRows" :sort-key="stripSort" :title="brushTotal ? 'In the brushes' : 'All'"
+                      :selected="selectedNames" @update:selected="selectedNames = $event"
+                      v-model:hovered="hoveredName" @open="openName"/>
+        </aside>
+      </div>
+
+      <!-- Prototype: parallel axes, one line per row, the rows in play below. -->
+      <div v-else-if="view === 'profiles'" class="flex min-h-0 grow flex-col">
+        <div class="min-h-0 shrink-0 basis-[62%] px-2 pt-1">
+          <MetricProfiles
+              :rows="filteredRows" :domain-rows="allRows" v-model:metrics="profileAxes"
+              v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+              :grain="grain === 'files' ? 'file' : 'component'" @open="openName"/>
+        </div>
+        <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
+          <ElementTable :key="`p-${grain}`" :elements="playRows" :only-show-columns="profileAxes" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+                        :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
+                        :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
+        </div>
+      </div>
+
+      <div v-else-if="xAxis && yAxis" class="relative min-h-0 grow px-3 pb-2 pt-3">
+        <p v-if="abstractnessCaveat" class="pointer-events-none absolute left-1/2 top-16 z-10 max-w-[60ch] -translate-x-1/2 rounded bg-surface/90 px-2 py-1 text-center text-xs text-neutral-500 backdrop-blur-sm">{{ abstractnessCaveat }}</p>
         <ComponentPlotterDiagram
             ref="plot"
             class="h-full w-full"
@@ -96,10 +180,15 @@
             :domain-rows="allRows"
             :selected="selectedNames"
             :grain="grain === 'files' ? 'file' : 'component'"
-            :show-text="showNames"
+            :label-mode="labelMode"
             :x-axis-property="xAxis"
             :y-axis-property="yAxis"
+            :x-log="xLog"
+            :y-log="yLog"
             :radius-property="radius"
+            :color-property="colour"
+            :reading="reading"
+            :cell-text="cellText"
             :hidden-groups="hiddenForPlot"
             :active-filters="activeFilters"
             :hovered-group-id="hoveredGroupId"
@@ -116,19 +205,68 @@
       <ZoomControls v-if="view === 'plot' && filteredRows.length > 0" @zoom-in="plot?.zoomIn()" @zoom-out="plot?.zoomOut()" @reset="plot?.resetZoom()"/>
     </template>
 
+    <template #tab-reading>
+      <template v-if="reading && xAxis && yAxis">
+        <section class="flex flex-col gap-2">
+          <h3 class="ui-section-title">{{ reading.kind === 'main-sequence' ? 'Zones' : 'Split at the medians' }}</h3>
+          <p v-if="reading.kind === 'medians'" class="text-sm leading-4 text-neutral-500">
+            Half of all {{ grainNoun }} sit either side of each line: {{ niceName(xAxis) }} <span class="font-mono text-neutral-700">{{ formatReading(reading.mx) }}</span>, {{ niceName(yAxis) }} <span class="font-mono text-neutral-700">{{ formatReading(reading.my) }}</span>.
+          </p>
+          <p v-else class="text-sm leading-4 text-neutral-500">Distance from the main sequence above 0.5, on either side of the line.</p>
+          <div class="-mx-2 flex flex-col">
+            <button v-for="cell in readingCells" :key="cell.id" type="button"
+                    class="group flex h-8 items-center gap-2 rounded px-2 text-left hover:bg-neutral-200/60"
+                    :title="`Select these ${cell.names.length}`"
+                    @click="selectedNames = [...cell.names]">
+              <span class="w-8 shrink-0 text-right font-mono text-sm font-semibold tabular-nums text-neutral-900">{{ cell.names.length }}</span>
+              <span class="min-w-0 grow truncate text-sm text-neutral-700 group-hover:text-neutral-900">{{ cellText[cell.id] }}</span>
+              <span class="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-200"><span class="block h-full rounded-full bg-neutral-500" :style="{ width: `${cellShare(cell.names.length)}%` }"></span></span>
+            </button>
+          </div>
+        </section>
+        <section class="flex flex-col gap-2">
+          <h3 class="ui-section-title">Furthest out</h3>
+          <ul class="-mx-2 flex flex-col">
+            <li v-for="name in reading.outliers.slice(0, 10)" :key="name">
+              <button type="button"
+                      class="flex h-7 w-full items-center gap-2 rounded px-2 text-left hover:bg-neutral-200/60"
+                      :class="{ 'bg-accent-50': selectedNames.includes(name) }"
+                      :title="name"
+                      @click="selectedNames = [name]"
+                      @dblclick="router.push(detailRoute(name))">
+                <span class="min-w-0 grow truncate font-mono text-sm text-neutral-900">{{ shortNames.get(name) ?? name }}</span>
+                <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatReading(rowByName.get(name)?.[xAxis]) }} · {{ formatReading(rowByName.get(name)?.[yAxis]) }}</span>
+              </button>
+            </li>
+          </ul>
+          <p class="text-sm leading-4 text-neutral-500">{{ reading.kind === 'main-sequence' ? 'Ranked by distance from the main sequence.' : 'Ranked by how far each sits from both medians, in interquartile ranges.' }}</p>
+        </section>
+        <p v-if="reading.missing > 0" class="text-sm leading-4 text-neutral-500">
+          <span class="font-mono text-neutral-700">{{ reading.missing }}</span> {{ reading.missing === 1 ? grainNoun.slice(0, -1) : grainNoun }} without {{ missingAxes }} {{ reading.missing === 1 ? 'is' : 'are' }} not drawn.
+        </p>
+      </template>
+    </template>
+
     <template #tab-selection>
       <div class="flex items-center justify-between">
         <h3 class="ui-section-title">Selection <span class="ui-tag ml-1">{{ selectedNames.length }}</span></h3>
         <button v-if="selectedNames.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selectedNames = []">Clear</button>
       </div>
-      <p v-if="selectedNames.length === 0" class="text-sm leading-4 text-neutral-500">Nothing selected. Drag a box across the plot or shift-click marks.</p>
-      <ul v-else class="-mx-2 flex flex-col">
-        <li v-for="name in selectedNames" :key="name">
-          <router-link :to="detailRoute(name)" class="flex h-7 items-center rounded px-2 font-mono text-sm text-neutral-800 hover:bg-neutral-100 hover:text-neutral-900" :title="name">
-            <span class="truncate">{{ name }}</span>
-          </router-link>
-        </li>
-      </ul>
+      <p v-if="selectedNames.length === 0" class="text-sm leading-4 text-neutral-500">Nothing selected. Click a mark, drag a box across the plot, or pick a corner.</p>
+      <template v-else>
+        <dl v-if="xAxis && yAxis && selectionMedians" class="ui-kv">
+          <dt class="truncate">Median {{ niceName(xAxis) }}</dt><dd>{{ formatReading(selectionMedians.x) }}</dd>
+          <dt class="truncate">Median {{ niceName(yAxis) }}</dt><dd>{{ formatReading(selectionMedians.y) }}</dd>
+        </dl>
+        <ul class="-mx-2 flex flex-col">
+          <li v-for="name in selectedNames" :key="name">
+            <router-link :to="detailRoute(name)" class="flex h-7 items-center gap-2 rounded px-2 hover:bg-neutral-200/60" :title="`${name} · open`">
+              <span class="min-w-0 grow truncate font-mono text-sm text-neutral-900">{{ shortNames.get(name) ?? name }}</span>
+              <span v-if="xAxis && yAxis" class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatReading(rowByName.get(name)?.[xAxis]) }} · {{ formatReading(rowByName.get(name)?.[yAxis]) }}</span>
+            </router-link>
+          </li>
+        </ul>
+      </template>
     </template>
 
     <template #tab-legend>
@@ -169,7 +307,6 @@ import ElementTable from "~/features/metrics/components/ElementTable.vue";
 import StatSelectMulti from "~/features/metrics/components/StatSelectMulti.vue";
 import StatSelectSingle from "~/features/metrics/components/StatSelectSingle.vue";
 import SingleSelect from "~/shared/ui/SingleSelect.vue";
-import Checkbox from "~/shared/ui/Checkbox.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
@@ -178,12 +315,21 @@ import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
 import { useIncomingSelection } from "~/features/navigation/useIncomingSelection";
 import DirectoryTree from "~/features/metrics/components/DirectoryTree.vue";
 import ComponentPlotterDiagram from "~/features/metrics/components/ComponentPlotterDiagram.vue";
+import MetricMatrix from "~/features/metrics/components/MetricMatrix.vue";
+import MetricStrips from "~/features/metrics/components/MetricStrips.vue";
+import MetricProfiles from "~/features/metrics/components/MetricProfiles.vue";
+import RankedRows from "~/features/metrics/components/RankedRows.vue";
+import MetricsSummary from "~/features/metrics/components/MetricsSummary.vue";
+import type { Go } from "~/features/metrics/summary";
+import { overviewMetrics, passes, type Brushes } from "~/features/metrics/lab";
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useLensStore } from "~/features/groups/lens.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
+import { formatReading } from "~/shared/format";
+import { distinctTails, finiteSorted, metricValue, quantile, readPlot, suggestLog, type PlotReading } from "~/features/metrics/plotReading";
 
 // Metrics: every number for every component or file, as a table or a plot.
 // One grain switch, one filter (scope + search), one column picker, one
@@ -191,23 +337,34 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 
 type Row = { name: string; [key: string]: any };
 type Grain = "components" | "files" | "directories";
-type View = "table" | "plot";
+type View = "summary" | "table" | "plot" | "matrix" | "strips" | "profiles";
+const VIEWS: View[] = ["summary", "table", "plot", "matrix", "strips", "profiles"];
+// A plain visit opens on the summary; a link that carries a search or a
+// selection meant the rows, so it keeps opening on the table.
+const viewOf = (q: Record<string, unknown>): View => {
+  if (VIEWS.includes(q.view as View)) return q.view as View;
+  return q.q || q.hl ? "table" : "summary";
+};
 
 const store = useDataStore();
 const groupsStore = useGroupsStore();
+const lens = useLensStore();
+const grainGroups = computed(() => groupsStore.groups.filter(g => !lens.active || g.dimension === lens.active));
 const scope = useScopeStore();
 const route = useRoute();
 const router = useRouter();
 
 // ─── State from the URL ───
 const grain = ref<Grain>(route.query.grain === "files" || route.query.grain === "directories" ? route.query.grain : "components");
-const view = ref<View>(route.query.view === "plot" ? "plot" : "table");
+const view = ref<View>(viewOf(route.query));
 let pendingPreset: string | null = typeof route.query.preset === "string" ? route.query.preset : null;
 
 const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
 const isSidebarOpen = ref(true);
-const activeTab = ref("selection");
-const inspectorTabs = computed(() => (view.value === "plot" && grain.value !== "directories" ? [{ id: "selection", label: "Selection" }, { id: "legend", label: "Legend" }] : []));
+const activeTab = ref("reading");
+const inspectorTabs = computed(() => ((view.value === "plot" || view.value === "matrix") && grain.value !== "directories"
+  ? [{ id: "reading", label: "Reading" }, { id: "selection", label: selectedNames.value.length ? `Selection ${selectedNames.value.length}` : "Selection" }, { id: "legend", label: "Groups" }]
+  : []));
 
 // ─── Rows ───
 const HIDDEN_COLUMNS = new Set(["report_id", "report_timestamp", "timestamp", "name", "connections"]);
@@ -258,9 +415,10 @@ const filteredRows = computed<Row[]>(() => {
 });
 
 const grainLabel = computed(() => (grain.value === "files" ? "Files" : grain.value === "directories" ? "Files" : "Components"));
-const countText = computed(() =>
-    scope.isActive || searchQuery.value.trim() ? `${filteredRows.value.length} of ${allRows.value.length}` : `${allRows.value.length}`,
-);
+const countText = computed(() => {
+  if (isOverview.value && brushTotal.value) return `${playRows.value.length} of ${allRows.value.length}`;
+  return scope.isActive || searchQuery.value.trim() ? `${filteredRows.value.length} of ${allRows.value.length}` : `${allRows.value.length}`;
+});
 
 // ─── Columns ───
 const columnOptions = computed<string[]>(() => {
@@ -338,32 +496,45 @@ function resetColumns() {
 const xAxis = ref<string | null>(null);
 const yAxis = ref<string | null>(null);
 const radius = ref<string | null>(null);
-const showNames = ref(false);
+const colour = ref<string | null>(null);
+const xLog = ref(false);
+const yLog = ref(false);
+const labelMode = ref<"auto" | "all" | "none">("auto");
 
-interface Preset { id: string; name: string; x: string; y: string; r?: string }
+/** Words for the low and high end of each axis, so a corner reads "Many changes · lower health". */
+type Words = { x?: [string, string]; y?: [string, string] };
+interface Preset { id: string; name: string; x: string; y: string; r?: string; c?: string; words?: Words }
+
+const CHANGES: [string, string] = ["Few changes", "Many changes"];
+const changes: [string, string] = ["few changes", "many changes"];
+const PATHS: [string, string] = ["Off the paths", "On many paths"];
 
 const ALL_PRESETS: Preset[] = [
-  { id: "dms", name: "Distance to Main Sequence (DMS)", x: "modularity__instability", y: "modularity__abstractness", r: "complexity__lines" },
+  { id: "dms", name: "Distance to Main Sequence (DMS)", x: "modularity__instability", y: "modularity__abstractness", r: "complexity__lines", c: "codesmells__hotspot_score" },
   { id: "dms-changes", name: "DMS vs Code Changes", x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
-  { id: "age-churn-dms", name: "Age vs Churn vs DMS", x: "git__age_in_days", y: "git__commits__total", r: "modularity__distance_main_sequence" },
-  { id: "betweenness-churn", name: "Betweenness vs Churn", x: "graph__betweenness", y: "git__commits__total" },
-  { id: "betweenness-avg-indentation", name: "Betweenness vs Avg. Indentation", x: "graph__betweenness", y: "complexity__indentation__avg" },
-  { id: "betweenness-max-indentation", name: "Betweenness vs Max Indentation", x: "graph__betweenness", y: "complexity__indentation__max" },
-  { id: "avg-indentation-lines", name: "Avg. Indentation vs Line Count", x: "complexity__indentation__avg", y: "complexity__lines" },
-  { id: "max-indentation-lines", name: "Max Indentation vs Line Count", x: "complexity__indentation__max", y: "complexity__lines" },
+  { id: "age-churn-dms", name: "Age vs Churn vs DMS", x: "git__age_in_days", y: "git__commits__total", r: "modularity__distance_main_sequence", words: { x: ["Young", "Old"], y: changes } },
+  { id: "betweenness-churn", name: "Betweenness vs Churn", x: "graph__betweenness", y: "git__commits__total", c: "codesmells__hotspot_score", words: { x: PATHS, y: changes } },
+  { id: "betweenness-avg-indentation", name: "Betweenness vs Avg. Indentation", x: "graph__betweenness", y: "complexity__indentation__avg", words: { x: PATHS, y: ["shallow", "deeply nested"] } },
+  { id: "betweenness-max-indentation", name: "Betweenness vs Max Indentation", x: "graph__betweenness", y: "complexity__indentation__max", words: { x: PATHS, y: ["shallow", "deeply nested"] } },
+  { id: "avg-indentation-lines", name: "Avg. Indentation vs Line Count", x: "complexity__indentation__avg", y: "complexity__lines", words: { x: ["Shallow", "Deeply nested"], y: ["small", "large"] } },
+  { id: "max-indentation-lines", name: "Max Indentation vs Line Count", x: "complexity__indentation__max", y: "complexity__lines", words: { x: ["Shallow", "Deeply nested"], y: ["small", "large"] } },
   { id: "dms-betweenness", name: "DMS vs Betweenness", x: "modularity__instability", y: "modularity__abstractness", r: "graph__betweenness" },
   { id: "dms-churn", name: "DMS vs Churn", x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
-  { id: "authors-churn", name: "Authors vs Churn", x: "git__authors__total", y: "git__commits__total" },
-  { id: "churn-health", name: "Churn against health", x: "git__commits__total", y: "codesmells__code_health", r: "complexity__lines" },
-  { id: "churn-complexity", name: "Churn against complexity", x: "git__commits__total", y: "codesmells__static_complexity_score", r: "complexity__lines" },
+  { id: "authors-churn", name: "Authors vs Churn", x: "git__authors__total", y: "git__commits__total", r: "complexity__lines", words: { x: ["Few authors", "Many authors"], y: changes } },
+  { id: "churn-health", name: "Churn against health", x: "git__commits__total", y: "codesmells__code_health", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: ["lower health", "higher health"] } },
+  { id: "churn-complexity", name: "Churn against complexity", x: "git__commits__total", y: "codesmells__static_complexity_score", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: ["simpler", "more complex"] } },
 ];
 
+// A preset needs its axes and size; a colour the snapshot lacks is dropped, not the preset.
 const presets = computed<Preset[]>(() => {
   const have = new Set(numericColumns.value);
-  return ALL_PRESETS.filter((p) => have.has(p.x) && have.has(p.y) && (!p.r || have.has(p.r)));
+  return ALL_PRESETS
+    .filter((p) => have.has(p.x) && have.has(p.y) && (!p.r || have.has(p.r)))
+    .map((p) => (p.c && !have.has(p.c) ? { ...p, c: undefined } : p));
 });
 const presetNames = computed(() => presets.value.map((p) => p.name));
 
+// Colour and log scales are how you look, not what you ask: a preset matches on axes and size.
 const activePreset = computed<Preset | null>(() =>
     presets.value.find((p) => p.x === xAxis.value && p.y === yAxis.value && (p.r ?? null) === (radius.value ?? null)) ?? null,
 );
@@ -372,7 +543,27 @@ function selectPreset(preset: Preset) {
   xAxis.value = preset.x;
   yAxis.value = preset.y;
   radius.value = preset.r ?? null;
+  // Group colours win while the lens has groups for this grain; otherwise the preset's colour.
+  colour.value = grainGroups.value.length > 0 ? null : preset.c ?? null;
 }
+
+function swapAxes() {
+  keepLogs = true;
+  const x = xAxis.value, xl = xLog.value;
+  xAxis.value = yAxis.value;
+  yAxis.value = x;
+  xLog.value = yLog.value;
+  yLog.value = xl;
+}
+
+// A long-tailed axis opens on a log scale; the toggle beside it overrides until the axis changes.
+let keepLogs = false;
+watch([xAxis, yAxis, () => allRows.value.length > 0], ([x, y, loaded], [ox, oy, wasLoaded]) => {
+  if (keepLogs) { keepLogs = false; return; }
+  const fresh = loaded && !wasLoaded;
+  if (x && (x !== ox || fresh)) xLog.value = suggestLog(allRows.value.map((r) => r[x]));
+  if (y && (y !== oy || fresh)) yLog.value = suggestLog(allRows.value.map((r) => r[y]));
+}, { immediate: true });
 
 function selectPresetByName(name: string) {
   const preset = presets.value.find((p) => p.name === name);
@@ -401,7 +592,8 @@ const abstractnessCaveat = computed(() => {
 // Axes that no longer exist at this grain fall back to a preset or the first two metrics.
 watch([grain, numericColumns], () => {
   const have = new Set(numericColumns.value);
-  if (have.size === 0) return;
+  // Before a grain's rows arrive its metrics are unknown: choosing now would stick on a guess.
+  if (have.size === 0 || allRows.value.length === 0) return;
   if (pendingPreset) {
     const preset = presets.value.find((p) => p.id === pendingPreset);
     pendingPreset = null;
@@ -410,21 +602,134 @@ watch([grain, numericColumns], () => {
   const xOk = xAxis.value !== null && have.has(xAxis.value);
   const yOk = yAxis.value !== null && have.has(yAxis.value);
   if (radius.value !== null && !have.has(radius.value)) radius.value = null;
+  if (colour.value !== null && !have.has(colour.value)) colour.value = null;
   if (xOk && yOk) return;
   const opening = grain.value === "components" && !implicitLanguage.value ? "dms" : "churn-health";
   const fallback = presets.value.find((p) => p.id === opening) ?? presets.value.find((p) => !usesAbstractness(p)) ?? presets.value[0];
   if (fallback) { selectPreset(fallback); return; }
   const cols = numericColumns.value;
   xAxis.value = cols[0];
-  yAxis.value = cols[1] ?? cols[0];
+  yAxis.value = cols.find((c) => c !== cols[0]) ?? cols[0];
   radius.value = null;
 }, { immediate: true });
+
+// ─── The plot's reading ───
+const niceName = (key: string) => store.statNiceName(key) || key;
+const grainNoun = computed(() => (grain.value === "files" ? "files" : "components"));
+const rowByName = computed(() => new Map(allRows.value.map((r) => [String(r.name), r])));
+const shortNames = computed(() => distinctTails(allRows.value.map((r) => String(r.name))));
+
+const isMainSequence = computed(() => xAxis.value === "modularity__instability" && yAxis.value === "modularity__abstractness");
+
+const reading = computed<PlotReading | null>(() => {
+  if ((view.value !== "plot" && view.value !== "matrix") || !xAxis.value || !yAxis.value || filteredRows.value.length === 0) return null;
+  return readPlot(filteredRows.value, allRows.value, xAxis.value, yAxis.value, { mainSequence: isMainSequence.value, xLog: xLog.value, yLog: yLog.value });
+});
+
+// Corners first by what they say, the far corner (high X, low Y) last so it reads as the list's end.
+const readingCells = computed(() => {
+  const order = ["tl", "tr", "bl", "br", "pain", "useless"];
+  return [...(reading.value?.cells ?? [])].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+});
+const cellShare = (n: number) => {
+  const total = filteredRows.value.length || 1;
+  return Math.max(n > 0 ? 3 : 0, Math.round((n / total) * 100));
+};
+
+const cellText = computed<Partial<Record<PlotReading["cells"][number]["id"], string>>>(() => {
+  if (!xAxis.value || !yAxis.value) return {};
+  if (isMainSequence.value) return { pain: "Zone of pain · stable, concrete", useless: "Zone of uselessness · abstract, unused" };
+  const words = activePreset.value?.words ?? {};
+  const x = words.x ?? [`Low ${niceName(xAxis.value)}`, `High ${niceName(xAxis.value)}`];
+  const y = words.y ?? [`low ${niceName(yAxis.value)}`, `high ${niceName(yAxis.value)}`];
+  return { tl: `${x[0]} · ${y[1]}`, tr: `${x[1]} · ${y[1]}`, bl: `${x[0]} · ${y[0]}`, br: `${x[1]} · ${y[0]}` };
+});
+
+const missingAxes = computed(() => {
+  const x = xAxis.value, y = yAxis.value;
+  if (!x || !y) return "";
+  const rows = filteredRows.value;
+  const lacks = (k: string) => rows.some((r) => !Number.isFinite(metricValue(r, k)));
+  const names = [lacks(x) && niceName(x), lacks(y) && niceName(y)].filter(Boolean);
+  return names.join(" or ") || "a reading";
+});
+
+const selectionMedians = computed(() => {
+  if (!xAxis.value || !yAxis.value || selectedNames.value.length < 2) return null;
+  const rows = selectedNames.value.map((n) => rowByName.value.get(n)).filter(Boolean) as Row[];
+  return { x: quantile(finiteSorted(rows.map((r) => metricValue(r, xAxis.value!))), 0.5), y: quantile(finiteSorted(rows.map((r) => metricValue(r, yAxis.value!))), 0.5) };
+});
+
+// ─── Overview prototypes: matrix, strips, profiles ───
+// One brush set, one hover and one selection shared by all three, so switching
+// between them compares the same question on the same rows.
+const isOverview = computed(() => ["matrix", "strips", "profiles"].includes(view.value) && grain.value !== "directories");
+const brushes = ref<Brushes>({});
+const brushTotal = computed(() => Object.keys(brushes.value).length);
+const hoveredName = ref<string | null>(null);
+const playRows = computed(() => (brushTotal.value ? filteredRows.value.filter((r) => passes(r, brushes.value)) : filteredRows.value));
+
+const overviewKeys = computed(() => overviewMetrics(numericColumns.value));
+const matrixMetrics = computed(() => overviewMetrics(numericColumns.value, 6));
+const profileOrder = ref<string[] | null>(null);
+const profileAxes = computed<string[]>({
+  get: () => {
+    const have = new Set(overviewKeys.value);
+    const kept = (profileOrder.value ?? []).filter((k) => have.has(k));
+    return kept.length === have.size ? kept : overviewKeys.value;
+  },
+  set: (keys) => { profileOrder.value = keys; },
+});
+const stripSort = ref("codesmells__hotspot_score");
+watch(overviewKeys, (keys) => { if (keys.length && !keys.includes(stripSort.value)) stripSort.value = keys[0]; }, { immediate: true });
+watch(grain, () => { brushes.value = {}; hoveredName.value = null; });
+
+function setPair([x, y]: [string, string]) {
+  xAxis.value = x;
+  yAxis.value = y;
+}
+
+// A finding on the summary opens its view already set up: the pair, the brush, the rows it is about.
+function go(g: Go) {
+  if (g.preset) {
+    const preset = presets.value.find((p) => p.id === g.preset);
+    if (preset) selectPreset(preset);
+  }
+  if (g.pair) setPair(g.pair);
+  brushes.value = g.brushes ?? {};
+  if (g.selected) selectedNames.value = [...g.selected];
+  if (g.sort) stripSort.value = g.sort;
+  view.value = g.view;
+}
+
+function openName(name: string) {
+  router.push(detailRoute(name));
+}
+
+// The focus plot's settings, shared by Plot and the matrix's focus pane.
+const plotProps = computed(() => ({
+  domainRows: allRows.value,
+  selected: selectedNames.value,
+  grain: grain.value === "files" ? "file" : "component",
+  labelMode: labelMode.value,
+  xAxisProperty: xAxis.value!,
+  yAxisProperty: yAxis.value!,
+  xLog: xLog.value,
+  yLog: yLog.value,
+  radiusProperty: radius.value,
+  colorProperty: colour.value,
+  reading: reading.value,
+  cellText: cellText.value,
+  hiddenGroups: hiddenForPlot.value,
+  activeFilters: activeFilters,
+  hoveredGroupId: hoveredGroupId.value,
+}));
 
 // ─── URL sync ───
 watch([grain, view, activePreset], () => {
   const want = {
     grain: grain.value === "components" ? undefined : grain.value,
-    view: view.value === "plot" ? "plot" : undefined,
+    view: view.value === "summary" ? undefined : view.value,
     preset: activePreset.value?.id,
   };
   const cur = route.query;
@@ -436,7 +741,7 @@ watch([grain, view, activePreset], () => {
 watch(() => route.query, (q) => {
   if (typeof q.q === "string" && q.q !== searchQuery.value) searchQuery.value = q.q;
   const g: Grain = q.grain === "files" || q.grain === "directories" ? q.grain : "components";
-  const v: View = q.view === "plot" ? "plot" : "table";
+  const v: View = viewOf(q);
   if (g !== grain.value) grain.value = g;
   if (v !== view.value) view.value = v;
   if (typeof q.preset === "string" && q.preset !== activePreset.value?.id) {
@@ -463,8 +768,6 @@ function openRow(row: Row) {
 const plot = ref<InstanceType<typeof ComponentPlotterDiagram> | null>(null);
 
 // ─── Group legend ───
-const lens = useLensStore();
-const grainGroups = computed(() => groupsStore.groups.filter(g => !lens.active || g.dimension === lens.active));
 // Marks colour by the lens dimension only; other dimensions stay hidden from the plot.
 const hiddenForPlot = computed(() => new Set([...hiddenGroups, ...groupsStore.groups.filter(g => lens.active && g.dimension !== lens.active).map(g => g.id)]));
 const hoveredGroupId = ref<string | null>(null);

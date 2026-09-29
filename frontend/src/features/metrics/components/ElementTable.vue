@@ -13,25 +13,48 @@
             <span class="inline-flex items-center gap-1">{{ nameColumn }}<Icon v-if="sortSettings.column === 'name'" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
           </th>
           <th v-if="showGroups">Groups</th>
-          <th class="cursor-pointer select-none text-right hover:text-neutral-900" v-for="column in columns" :key="column.name" @click="toggleSort(column.name)">
+          <th v-for="column in columns" :key="column.name"
+              class="cursor-pointer select-none text-right hover:text-neutral-900"
+              :class="[instrumented ? 'is-instrumented' : '', sortSettings.column === column.name ? 'text-neutral-900' : '']"
+              :aria-sort="sortSettings.column === column.name ? (sortSettings.ascending ? 'ascending' : 'descending') : undefined"
+              @click="toggleSort(column.name)">
             <span class="inline-flex items-center gap-1"><MetricHint :id="column.name" :focusable="false">{{ niceName(column.name) }}</MetricHint><Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+            <!-- How the column is spread across every row; the hovered row's bin is inked. -->
+            <span v-if="instrumented && stats.get(column.name)" class="mt-1 flex h-3.5 items-end gap-px" :title="spreadTitle(column.name)" aria-hidden="true">
+              <span v-for="(h, i) in stats.get(column.name)!.bins" :key="i"
+                    class="min-w-[2px] flex-1 rounded-[1px]"
+                    :class="hoveredBin(column.name) === i ? 'bg-neutral-900' : sortSettings.column === column.name ? 'bg-neutral-400' : 'bg-neutral-300'"
+                    :style="{ height: h === 0 ? '0' : `${Math.max(12, h * 100)}%` }"></span>
+            </span>
           </th>
         </tr>
         </thead>
         <tbody>
         <tr v-for="element in pageOfElements" :key="element.name"
             :class="{ 'is-clickable': clickableElements, 'is-selected': selectedElements.indexOf(element.name) !== -1 }"
+            @mouseenter="hoveredRow = element"
+            @mouseleave="hoveredRow = null"
             @click="clickableElements ? emit('clicked-element', element) : checkboxToggle(element.name)">
           <td v-if="selectableElements" @click.stop="checkboxToggle(element.name)">
             <Checkbox :model-value="selectedElements.indexOf(element.name) !== -1"/>
           </td>
-          <td class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name === "." ? `${rootLabel} (root)` : element.name || "unknown" }}</td>
+          <td v-if="instrumented && element.name !== '.' && element.name" class="max-w-[420px] truncate font-mono text-sm" :title="String(element.name)"><span class="text-neutral-400">{{ splitName(String(element.name)).head }}</span><span class="font-medium text-neutral-900">{{ splitName(String(element.name)).tail }}</span></td>
+          <td v-else class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name === "." ? `${rootLabel} (root)` : element.name || "unknown" }}</td>
           <td v-if="showGroups">
             <div class="flex flex-wrap gap-1">
               <span v-for="g in getElementGroups(element.name)" :key="g.id" class="ui-tag text-white" :style="{ backgroundColor: g.color }">{{ g.name }}</span>
             </div>
           </td>
-          <td v-for="column in columns" :key="column.name" class="is-num text-right" :title="String(element[column.name] ?? '')">{{ formatReading(element[column.name]) }}</td>
+          <template v-if="instrumented">
+            <td v-for="column in columns" :key="column.name" class="is-num is-bar text-right" :title="String(element[column.name] ?? '')">
+              <span v-if="barWidth(column.name, element) > 0" class="bar" :class="{ 'is-sorted': sortSettings.column === column.name }" :style="{ width: `${barWidth(column.name, element)}%` }" aria-hidden="true"></span>
+              <span class="relative inline-flex items-center gap-1.5">
+                <span v-if="levelOf(column.name, element) !== null" class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(levelOf(column.name, element)!)" aria-hidden="true"></span>
+                <span :class="isMissing(column.name, element) ? 'text-neutral-400' : ''">{{ isMissing(column.name, element) ? "—" : formatReading(element[column.name]) }}</span>
+              </span>
+            </td>
+          </template>
+          <td v-else v-for="column in columns" :key="column.name" class="is-num text-right" :title="String(element[column.name] ?? '')">{{ formatReading(element[column.name]) }}</td>
         </tr>
         <tr v-if="pageOfElements.length === 0">
           <td :colspan="columns.length + 1 + (selectableElements ? 1 : 0) + (showGroups ? 1 : 0)" class="h-20 text-center text-neutral-500">{{ emptyText }}</td>
@@ -60,6 +83,8 @@ import Icon from "~/shared/ui/Icon.vue";
 import {useGroupsStore} from "~/features/groups/groups.store";
 import {useDataStore} from "~/features/snapshot/data.store";
 import {useExportables} from "~/features/export/useExportables";
+import {binOf, histogram, metricValue, splitName} from "~/features/metrics/plotReading";
+import {healthLevel, hotspotLevel, levelDotClass, type HealthLevel} from "~/features/metrics/useHealth";
 
 const dataStore = useDataStore()
 function niceName(column: string): string {
@@ -123,6 +148,15 @@ const props = defineProps({
   exportTitle: {
     type: String,
     default: "",
+  },
+  /**
+   * Reads as an instrument: names dim the path they live under, every number
+   * sits on a bar scaled to its column's largest, health and hotspot scores
+   * carry their level dot, and each header shows how its column is spread.
+   */
+  instrumented: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -284,8 +318,93 @@ if (props.exportTitle) {
   })
 }
 
+// ─── Instrumented readings ───
+const BINS = 16
+const hoveredRow = ref<Element | null>(null)
+
+const stats = computed(() => {
+  const out = new Map<string, { min: number; max: number; bins: number[]; median: number; count: number }>()
+  if (!props.instrumented) return out
+  for (const column of columns.value) {
+    const values = limitedElements.value.map(e => metricValue(e, column.name)).filter(v => Number.isFinite(v))
+    // Text columns (a file's component) carry no spread.
+    if (values.length === 0 || values.length < limitedElements.value.length * 0.5) continue
+    const sorted = [...values].sort((a, b) => a - b)
+    const min = Math.min(0, sorted[0]), max = sorted[sorted.length - 1]
+    const counts = histogram(values, BINS, min, max)
+    const peak = Math.max(1, ...counts)
+    out.set(column.name, { min, max, bins: counts.map(c => Math.sqrt(c / peak)), median: sorted[Math.floor(sorted.length / 2)], count: values.length })
+  }
+  return out
+})
+
+function spreadTitle(column: string): string {
+  const s = stats.value.get(column)
+  if (!s) return ""
+  return `${s.count} values · median ${formatReading(s.median)} · largest ${formatReading(s.max)}`
+}
+
+function hoveredBin(column: string): number | null {
+  const s = stats.value.get(column)
+  const row = hoveredRow.value
+  if (!s || !row) return null
+  const v = metricValue(row, column)
+  return Number.isFinite(v) ? binOf(v, BINS, s.min, s.max) : null
+}
+
+function isMissing(column: string, element: Element): boolean {
+  return stats.value.has(column) && !Number.isFinite(metricValue(element, column))
+}
+
+function barWidth(column: string, element: Element): number {
+  const s = stats.value.get(column)
+  if (!s || s.max <= 0) return 0
+  const v = metricValue(element, column)
+  if (!Number.isFinite(v) || v <= 0) return 0
+  return Math.max(2, Math.min(100, (v / s.max) * 100))
+}
+
+function levelOf(column: string, element: Element): HealthLevel | null {
+  if (column === "codesmells__code_health") return healthLevel(element[column])
+  if (column === "codesmells__hotspot_score") return hotspotLevel(element[column])
+  return null
+}
+
 function goToPage(page: number) {
   currentPage.value = Math.max(Math.min(page, totalPages.value), 1)
 }
 
 </script>
+
+<style scoped>
+/* A header over a spread wraps its label rather than widen the table. */
+.ui-table th.is-instrumented {
+  height: auto;
+  min-width: 72px;
+  max-width: 128px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  vertical-align: bottom;
+  white-space: normal;
+  line-height: 16px;
+}
+.ui-table td.is-bar {
+  position: relative;
+}
+.ui-table td.is-bar .bar {
+  position: absolute;
+  right: 4px;
+  top: 5px;
+  bottom: 5px;
+  max-width: calc(100% - 8px);
+  border-radius: 2px;
+  background: rgb(var(--c-neutral-200) / 0.45);
+  pointer-events: none;
+}
+.ui-table td.is-bar .bar.is-sorted {
+  background: rgb(var(--c-neutral-200));
+}
+.ui-table tbody tr:hover td.is-bar .bar {
+  background: rgb(var(--c-neutral-300) / 0.7);
+}
+</style>
