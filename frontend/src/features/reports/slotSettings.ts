@@ -38,21 +38,27 @@ const VIEWS: Record<string, ViewDef> = {
     "/views/components/cycles": { name: "Cycles", settings: [{ key: "component", label: "Around", fallback: "", values: {} }] },
     "/views/git/authors": {
         name: "Authors",
-        settings: [{ key: "grain", label: "Rows of", fallback: "authors", always: true, values: { authors: "Authors", components: "Components" } }],
+        settings: [{ key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Knowledge", authors: "People" } }],
     },
     "/views/git/activity": {
         name: "Activity",
-        settings: [{ key: "tab", label: "Tab", fallback: "commits", always: true, values: { commits: "Commits", effort: "Effort" } }],
+        settings: [{ key: "tab", label: "Tab", fallback: "now", always: true, values: { now: "Work now", breadth: "Breadth", effort: "Effort", commits: "Commits" } }],
     },
     "/views/metrics": {
         name: "Metrics",
         settings: [
             { key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } },
-            { key: "view", label: "Shown as", fallback: "table", values: { table: "Table", plot: "Plot" } },
+            { key: "view", label: "Shown as", fallback: "summary", values: { summary: "Summary", table: "Table", plot: "Plot", matrix: "Matrix", strips: "Strips", profiles: "Profiles" } },
             { key: "preset", label: "Preset", fallback: "", values: { dms: "Distance to Main Sequence", "dms-changes": "DMS vs Code Changes", "churn-health": "Churn against health", "churn-complexity": "Churn against complexity", "authors-churn": "Authors vs Churn", "betweenness-churn": "Betweenness vs Churn", "age-churn-dms": "Age vs Churn vs DMS" } },
         ],
     },
-    "/views/units": { name: "Units", settings: [{ key: "flow", label: "Between", fallback: "", values: {} }] },
+    "/views/units": {
+        name: "Units",
+        settings: [
+            { key: "flow", label: "Between", fallback: "", values: {} },
+            { key: "colour", label: "Map coloured by", fallback: "lane", values: { lane: "Lane", reach: "Reach", dupes: "Duplicates" } },
+        ],
+    },
     "/views/changes": { name: "Changes", settings: [] },
     "/": { name: "Overview", settings: [] },
     "/views/libraries": { name: "Libraries", settings: [] },

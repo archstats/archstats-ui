@@ -123,7 +123,8 @@ export const VIEWS: Record<string, ViewAsk | ((...a: any[]) => ViewAsk)> & Recor
     structure: (f: SnapshotFacts) => (f.components <= 60
         ? { view: "Connections", route: "/views/connections?level=components", hint: "Graph, components" }
         : { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, by group" }),
-    graph: { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, groups" },
+    // Without a lens its groups are the components, which past a few dozen print as a cloud.
+    graph: { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, by group; set a lens first" },
     focus: (c: string) => ({ view: "Connections", route: `/views/connections?level=components&sel=${encodeURIComponent(c)}`, hint: `Graph, components, ${c} selected` }),
     // facet=production: the same production pairs as the template's own table beside it.
     hidden: { view: "Connections", route: "/views/connections?source=git&rep=list&relation=no-import&facet=production", hint: "Co-change without an import, as a list, production code", take: "Connections list" },
@@ -132,21 +133,30 @@ export const VIEWS: Record<string, ViewAsk | ((...a: any[]) => ViewAsk)> & Recor
     matrix: (f: SnapshotFacts) => (f.components <= 40
         ? { view: "Connections", route: "/views/connections?rep=matrix&level=components&order=levels", hint: "Matrix, components, in levels", take: "Dependency matrix" }
         : { view: "Connections", route: "/views/connections?rep=matrix&level=groups&order=levels", hint: "Matrix, by group, in levels; needs a lens of 40 groups or fewer", take: "Dependency matrix" }),
-    chord: { view: "Connections", route: "/views/connections?rep=chord&level=groups", hint: "Chord, by group" },
-    coChange: { view: "Connections", route: "/views/connections?source=git&level=groups", hint: "Graph of what changes together, by group" },
+    // Arcs by group: legible with a lens of a few dozen groups (for Django, its apps), a ring of clipped names without one.
+    chord: { view: "Connections", route: "/views/connections?rep=chord&level=groups", hint: "Chord, by group; set a lens first" },
     combined: (c: string) => ({ view: "Connections", route: `/views/connections?source=combined&level=components&sel=${encodeURIComponent(c)}`, hint: `Imports and co-change, ${c} selected` }),
     plot: (preset: string, hint: string) => ({ view: "Metrics", route: `/views/metrics?view=plot&preset=${preset}`, hint }),
-    treemap: (preset: string, grain: "components" | "files" | "directories", hint: string) => ({ view: "Hotspots", route: `/views/components/hotspots?preset=${preset}&grain=${grain}`, hint }),
+    // Files: production only, or licences, Markdown and lock files lead every ranking.
+    treemap: (preset: string, grain: "components" | "files" | "directories", hint: string) => ({ view: "Hotspots", route: `/views/components/hotspots?preset=${preset}&grain=${grain}${grain === "files" ? "&facet=production" : ""}`, hint }),
     cyclesAround: (c: string) => ({ view: "Cycles", route: `/views/components/cycles?component=${encodeURIComponent(c)}`, hint: `The tangle ${c} sits in` }),
-    activity: { view: "Activity", route: "/views/git/activity", hint: "Lines added and removed by month" },
+    activity: { view: "Activity", route: "/views/git/activity?tab=commits", hint: "Lines added and removed by month", take: "Lines added and removed by month" },
+    // The Overview's year of commits by day: the grain a month's review reads at.
+    calendar: { view: "Overview", route: "/", hint: "A year of commits, one square a day", take: "Commit calendar" },
+    breadth: { view: "Activity", route: "/views/git/activity?tab=breadth", hint: "The share of commits by how many components they touched", take: "Components touched per commit" },
+    workNow: { view: "Activity", route: "/views/git/activity?tab=now", hint: "Changed lines by component, against the two years before", take: "Where the changed lines went" },
     changes: { view: "Changes", route: "/views/changes", hint: "This snapshot against the one before", take: "Changes summary" },
     outline: { view: "Metrics", route: "/views/metrics?grain=directories", hint: "Directories, every number rolled up", take: "Metrics: directories" },
     // The Units view's boundary between two of the framework's roles; its lane overview when no reference crosses it.
     flow: (a: string, b: string, hint: string) => ({ view: "Units", route: `/views/units?flow=${a},${b}`, hint, take: "Boundary flow|How the layers lean" }),
     hotspots: { view: "Hotspots", route: "/views/components/hotspots", hint: "Components, packed" },
     cycles: { view: "Cycles", route: "/views/components/cycles", hint: "The largest tangle, in levels, with its cut plan" },
-    knowledge: { view: "Authors", route: "/views/git/authors?grain=components", hint: "Components grain: fewest authors covering half", take: "Knowledge by component" },
-    effort: { view: "Activity", route: "/views/git/activity?tab=effort", hint: "Effort: where changed lines went" },
+    knowledge: { view: "Authors", route: "/views/git/authors?grain=components", hint: "Knowledge: how much of each component was written by people still here", take: "Knowledge by component" },
+    knowledgeMap: { view: "Authors", route: "/views/git/authors?grain=components", hint: "Knowledge: the code as tiles, coloured by how well someone still here knows it", take: "Code by active contributors" },
+    // The Units view's pictures of the framework's roles; they need the classes the scan records (has units).
+    layers: { view: "Units", route: "/views/units", hint: "The roles as floors, with the imports between them", take: "How the layers lean" },
+    lanes: { view: "Units", route: "/views/units", hint: "Every folder, its files in their role's colour", take: "Where each lane lives" },
+    reach: { view: "Units", route: "/views/units?colour=reach", hint: "Every file, coloured by whether an entry point reaches it", take: "What the entry points reach" },
     libraries: { view: "Libraries", route: "/views/libraries", hint: "Rolled up to two segments", take: "Libraries" },
     rules: { view: "Rules", route: "/views/rules", hint: "Findings by rule" },
     trends: { view: "Trends", route: "/views/trends", hint: "System shape across snapshots", take: "Over time" },
@@ -190,12 +200,23 @@ export const ABOUT = {
     hotspots: "A *hotspot* is code that is both complicated and changed often. Complicated code that nobody touches costs little, and simple code is cheap to change. Code that is both is where most of the effort, and most of the bugs, tend to go.\n\nThe *hotspot score*, from 0 to 100, combines how complex the code is with how often it changed.",
     health: "*Code health* rates each file from 1 to 10 on how easy it is to read and change: 10 is simple, and below 4 is hard going. Very large files and deeply nested logic (conditions inside loops inside conditions) lower it.\n\nThe average is weighted by size, so a large file counts for more than a small one.",
     churn: "*Churn* is the number of lines added and deleted in a period, counted back from the newest commit in the scan. It shows where the team's effort actually went.\n\nEffort is usually concentrated. When half of all changed lines land in a few components, that is where the work is, and where people most often get in each other's way.",
-    knowledge: "Knowledge of the code is often spread unevenly: some parts were written mostly by one person. The team then depends on that person to change those parts safely, and work slows down when they leave or are busy. This is often called the *bus factor*.\n\nNo names are shown here; the Authors view has them.",
+    knowledge: "Knowledge of the code is often spread unevenly: some parts were written mostly by one person. The team then depends on that person to change those parts safely, and work slows down when they leave or are busy. This is often called the *bus factor*.\n\nThe paragraph names nobody. The figures and tables from the Authors view name people as that view shows them; switch it to *Author 1…N* before taking them when the report should not.",
     age: "*Code age* is how long ago each file last changed, counted back from the newest commit in the scan. Old code that works is not a problem in itself. It is often code nobody on the current team has worked in, though, which makes the first change to it slow.",
     tests: "Files are sorted into production code and test code by their folder and name. Below are the test code and the components no test reaches: no test file imports them, and none sits inside them.\n\nThis measures reach, not coverage. A component that a test reaches can still have paths that no test runs.",
     libraries: "*Libraries* are code the project uses but did not write: frameworks and packages from npm, Maven, PyPI, NuGet and the like. Each one needs keeping up to date, and each can bring security issues.\n\nNames are shortened to their first two parts, so `org.springframework.web` and `org.springframework.data` count as one library, `org.springframework`. Modules of the language's own platform, such as `java.util`, are counted separately.",
     modules: "*Build modules* are the parts the build tool knows about: Maven modules, Gradle projects, npm packages, Go modules, .NET projects and the like. Each one declares which other modules it needs.\n\nThat is the structure the build enforces. How the code actually imports itself can differ from it.",
     trends: "A snapshot is kept each time the code is scanned. The Trends view lines the snapshots up, so you can see whether numbers such as tangles, hotspots and health move the way you want.\n\nEvery computed paragraph in this report also says what moved when you run it again on a newer snapshot.",
+}
+
+// ── How to read the figures several templates share ───────────────────────
+
+export const SHOWS = {
+    layers: "The drawing stacks the code's roles as floors, with the roles that others use lower down. Lines on the left are imports running down the stack, the usual direction. Dotted lines on the right are imports running back up, and a red one breaks the order: a lower floor using a higher one, a pair using each other, or a cycle.\n\nThe wider a line, the more imports it carries. The bar under each floor is its share of the code.",
+    lanes: "The map shows every production file, sized by its lines and nested in the folders that hold it. Each file has the colour of its role, so the map shows where the controllers, the services or the data access actually live, and which folders mix them.",
+    reach: "The map shows every production file, sized by its lines and nested in its folders. The colour says how the running program gets to it:\n\n- *Entry points* are called by the framework or a program's main.\n- *Reached* files are imported, directly or not, from an entry point.\n- *Only tests* reach some files.\n- *Reached by nothing* is the rest.\n\nThe red files are where unused code is most likely. Code a framework loads by name, such as templates or plugins, can show red and still be used.",
+    knowledgeMap: "The map shows every component as a tile, sized by its lines and grouped by folder. The colour says how well people who still commit here know it: dark where they wrote most of it, light where they have only changed it since. Hatched tiles are code nobody active has worked on.",
+    breadth: "Each column is a year of commits, split by how many components a commit touched: one, two or three, four to ten, or more. The line follows the share that touched four or more.\n\nWhen that line climbs, a typical change reaches further across the code each year. That is what coupling feels like in day-to-day work.",
+    workNow: "The table lists the components the changed lines went into, most first, with each one's share of them now and in the two years before. A share that grew a lot marks where the work moved.",
 }
 
 // ── Topics several templates share ────────────────────────────────────────
@@ -226,11 +247,31 @@ export function librariesAbout(eco: EcosystemId | ""): string {
 
 /** Past this many components a drawing of the whole graph is a cloud of dots, whatever the grouping. */
 export const GRAPH_LIMIT = 300
+/** The scan recorded classes and functions, so the Units view can draw the roles. */
+export const hasUnits = (f: SnapshotFacts) => f.tables.has("units")
+/**
+ * The structure, and a drawing of it: the roles as floors when the scan has
+ * classes (legible at any size), else the graph while it stays legible.
+ */
 export function structure(w: Writer, withFigure = true) {
     w.explain(ABOUT.structure).reading("structure")
     if (!withFigure) return
-    if (w.facts.components > GRAPH_LIMIT) w.p(`A drawing of the whole graph is left out: with ${w.facts.components.toLocaleString("en-US")} components it prints as a cloud of dots. The tangles above say more; in the app, Connections with a lens shows the graph by group.`)
+    if (hasUnits(w.facts)) layers(w, "Dependency structure")
+    else if (w.facts.components > GRAPH_LIMIT) w.p(`A drawing of the whole graph is left out: with ${w.facts.components.toLocaleString("en-US")} components it prints as a cloud of dots. The tangles above say more; in the app, Connections with a lens shows the graph by group.`)
     else slotOf(w, "figure", "Dependency structure", VIEWS.structure(w.facts))
+}
+/** The roles as floors, with how to read them; nothing without classes in the scan. */
+export function layers(w: Writer, title = "How the layers lean") {
+    if (!hasUnits(w.facts)) return false
+    w.explainSlot(SHOWS.layers)
+    slotOf(w, "figure", title, VIEWS.layers)
+    return true
+}
+/** The codebase as a map of its roles; nothing without classes in the scan. */
+export function lanes(w: Writer, title = "Where each role lives") {
+    if (!hasUnits(w.facts)) return
+    w.explainSlot(SHOWS.lanes)
+    slotOf(w, "figure", title, VIEWS.lanes)
 }
 export function coupling(w: Writer, rows = 0, ext?: string) {
     w.explain(rows ? `${ABOUT.coupling} ${ABOUT.couplingTable}` : ABOUT.coupling).reading("coupling", ext ? { ext } : undefined)
@@ -245,9 +286,11 @@ export function health(w: Writer, grain: "components" | "files" | null = "files"
     if (grain) w.table(grain === "files" ? "f-health" : "c-health", rows)
 }
 export function churn(w: Writer, days: "30" | "90" | "180") { w.explain(ABOUT.churn).reading("churn", { days }) }
-export function knowledge(w: Writer, withTable = true) {
+/** The knowledge paragraph, then the map of who still knows the code, the table of it, both or neither. */
+export function knowledge(w: Writer, show: { map?: boolean; table?: boolean } = { table: true }) {
     w.explain(ABOUT.knowledge).reading("knowledge")
-    if (withTable) slotOf(w, "table", "Knowledge by component", VIEWS.knowledge)
+    if (show.map) { w.explainSlot(SHOWS.knowledgeMap); slotOf(w, "figure", "Who still knows the code", VIEWS.knowledgeMap) }
+    if (show.table) slotOf(w, "table", "Knowledge by component", VIEWS.knowledge)
 }
 export function age(w: Writer) { if (w.facts.fileColumns.has("git__last_change_age_in_days")) w.explain(ABOUT.age).reading("age") }
 export function tests(w: Writer) { w.explain(ABOUT.tests).reading("tests") }

@@ -244,3 +244,40 @@ describe("mobile", () => {
         expect(e.find(x => x.id === "ios")!.why).toBe("2 apps isowords and appclip and 1 sample app")
     })
 })
+
+describe("figures", () => {
+    const slots = (id: string, f: SnapshotFacts) => buildTemplate(TEMPLATES.find(t => t.id === id)!, { facts: f, ecosystems: ecosystems(f), params: { component: "a" } }).blocks
+        .filter(isCell).map(b => b.cell.spec).filter(s => s.type === "slot") as Array<{ route: string; take?: string; kind: string }>
+
+    it("draws the structure as the roles' floors when the scan has classes, at any size", () => {
+        const withUnits = facts({ tables: new Set([...facts().tables, "units"]), components: 900 })
+        expect(slots("architecture-review", withUnits).some(s => s.take === "How the layers lean")).toBe(true)
+        // Without classes: the graph while it stays legible, nothing past that.
+        expect(slots("architecture-review", facts()).some(s => s.route.startsWith("/views/connections?level="))).toBe(true)
+        expect(slots("architecture-review", facts({ components: 900 })).some(s => s.route.startsWith("/views/connections?level="))).toBe(false)
+    })
+
+    it("names the figure it wants on every view that shows more than one", () => {
+        const f = facts({ tables: new Set([...facts().tables, "units", "git_component_shared_commits"]), summary: { git__commits__last_30_days: 5 }, fileColumns: new Set([...facts().fileColumns, "codesmells__hotspot_score", "git__age_in_days"]) })
+        for (const t of TEMPLATES) {
+            for (const s of slots(t.id, f)) {
+                if (/^\/views\/(units|git\/activity|git\/authors)|^\/$/.test(s.route.split("?")[0])) expect(s.take, `${t.id}: ${s.route}`).toBeTruthy()
+            }
+        }
+    })
+
+    it("plots the main sequence only where some code is abstract", () => {
+        const plot = (f: SnapshotFacts) => slots("load-bearing", f).map(s => s.route).find(r => r.includes("view=plot"))
+        expect(plot(facts({ componentColumns: new Set([...facts().componentColumns, "modularity__coupling__dependents"]), abstractComponents: 12 }))).toContain("preset=dms")
+        expect(plot(facts({ componentColumns: new Set([...facts().componentColumns, "modularity__coupling__dependents"]), abstractComponents: 0 }))).toContain("preset=betweenness-churn")
+    })
+
+    it("leaves out the drawings that print as a cloud", () => {
+        const f = facts({ tables: new Set([...facts().tables, "units", "git_component_shared_commits"]) })
+        for (const t of TEMPLATES) {
+            const routes = slots(t.id, f).map(s => s.route)
+            expect(routes.filter(r => r.includes("source=git&level=")), t.id).toEqual([])
+            expect(routes.filter(r => r.includes("tab=effort")), t.id).toEqual([])
+        }
+    })
+})

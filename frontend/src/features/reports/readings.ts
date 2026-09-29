@@ -106,6 +106,8 @@ export interface SnapshotFacts {
     moduleTypes: Record<string, number>
     /** The mobile apps the scan found as deployables, from revision 7. */
     mobileApps: Array<{ name: string; platform: string }>
+    /** Components with any abstractness (interfaces, abstract classes); undefined when the scan has no such column. */
+    abstractComponents?: number
 }
 
 const probes = new WeakMap<ReadingContext, Promise<SnapshotFacts>>()
@@ -154,6 +156,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
     const [rules] = tables.has("rules") ? await q(`SELECT coalesce(sum(status <> 'not_applicable'), 0) AS applicable, coalesce(sum(status = 'violation'), 0) AS violations FROM rules`) : [null]
     const [t] = tables.has("component_strongly_connected_groups") ? await q(`SELECT count(*) AS c FROM (SELECT "group" FROM component_strongly_connected_groups GROUP BY "group" HAVING count(*) > 1)`) : [null]
     const [c] = tables.has("components") ? await q(`SELECT count(*) AS c FROM components`) : [null]
+    const [abs] = componentColumns.has("modularity__abstractness") ? await q(`SELECT count(*) AS c FROM components WHERE modularity__abstractness > 0`) : [null]
     const markers = new Set((tables.has("unit_markers") ? await q(`SELECT DISTINCT source || ':' || key AS k FROM unit_markers`) : []).map(r => String(r.k)))
     const moduleTypes: Record<string, number> = {}
     if (tables.has("modules") && (await cols("modules")).has("type")) {
@@ -173,6 +176,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         authors: summary.git__authors__total ?? 0,
         rules: { applicable: Number(rules?.applicable) || 0, violations: Number(rules?.violations) || 0 },
         tangles: Number(t?.c) || 0,
+        ...(abs ? { abstractComponents: Number(abs.c) || 0 } : {}),
         reactImporters: Number(react?.c) || 0,
         markers,
         indirectColumns,

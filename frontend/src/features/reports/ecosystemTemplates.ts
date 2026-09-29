@@ -8,7 +8,7 @@
 
 import { prodFile, reactComponent, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, coupling, glance, health, hotspots, libraries, lit, modules, needs, rules, slotOf, SQL, structure, tests, VIEWS,
+    ABOUT, coupling, glance, health, hotspots, lanes, libraries, lit, modules, needs, rules, slotOf, SQL, structure, tests, VIEWS,
     type ReportTemplate, type Writer,
 } from "./templateKit"
 
@@ -208,6 +208,7 @@ function rolesAbout(eco: EcosystemId | ""): string {
 }
 function anatomy(w: Writer, profile: string, language?: string) {
     w.explain(rolesAbout(w.eco)).reading("roles", { profile, ...(language ? { language } : {}) })
+    lanes(w)
 }
 /** What skipping and running back up look like, in the framework's own words. */
 const LAYER_EXAMPLES: Record<string, string> = {

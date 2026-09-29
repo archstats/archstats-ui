@@ -15,8 +15,8 @@ import { MOBILE } from "./mobileTemplates"
 import { isCell, newId, plainText, type Block, type Cell, type CellSpec, type TextBlock } from "./reportDoc"
 import { languageShare, prodFile, type Ecosystem, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, age, churn, coupling, glance, hasModules, health, hotspots, knowledge, libraries, lit, modules, needs, opt, prod, REACHED, rules,
-    slotOf, SQL, structure, tests, VIEWS, Writer, type ReportTemplate, type TemplateContext,
+    ABOUT, age, churn, coupling, glance, hasModules, hasUnits, health, hotspots, knowledge, lanes, layers, libraries, lit, modules, needs, opt, prod, REACHED, rules,
+    SHOWS, slotOf, SQL, structure, tests, VIEWS, Writer, type ReportTemplate, type TemplateContext,
 } from "./templateKit"
 
 export type { ReportTemplate, TemplateContext, TemplateParam } from "./templateKit"
@@ -27,17 +27,27 @@ export { Writer } from "./templateKit"
 const READ = {
     matrix: "In the dependency matrix each row and each column is a group of components, numbered in dependency order. A number in a cell counts the imports from the row's group into the column's.\n\nIn a cleanly layered codebase every number sits on one side of the diagonal. A number on the other side is a dependency running the wrong way.",
     dms: "The main-sequence plot places each component by *instability*, left to right (from depended on by others to depending on others), and *abstractness*, bottom to top (from concrete code to interfaces and abstract classes). Components near the diagonal from top left to bottom right are balanced.\n\nBottom left is the *zone of pain*: concrete code that many others depend on, which is hard to change. Top right is the *zone of uselessness*: abstractions that nothing uses.",
-    churnHealth: "In this treemap each rectangle is a component. Its size is how often it changed, and it runs hot where code health is low. Large and hot means code that keeps changing and is hard to change: that is where improvement pays back first.",
     ageTreemap: "In this treemap each rectangle is a component, sized by its lines. It runs hot where nothing has changed for longest: code nobody on the team has worked in recently.",
     nesting: "In this treemap each rectangle is a file, sized by its lines. It runs hot where the logic is nested deepest (conditions inside loops inside conditions), which is hard to read and to test.",
     plotChurnHealth: "The plot places each component by how often it changed, left to right, and by its code health, bottom to top, sized by its lines. The bottom right holds the code that changes most and is hardest to work in.",
+    plotBetweenness: "The plot places each component by how many import paths between other components run through it (*betweenness*), left to right, and by how often it changed, bottom to top. Top right are components that sit between many others and keep changing: a change there reaches far, and the changes keep coming.",
     plotAuthors: "The plot places each component by how many people have changed it, left to right, and how often it changed, bottom to top. The top left is code that changes a lot but that few people know.",
-    chord: "In the chord diagram each arc on the circle is a group of components. A ribbon between two arcs stands for the imports between them: the wider the ribbon, the more imports.",
     activity: "The chart shows the lines added and removed each month across the history, which shows how the pace of work has changed.",
-    coChange: "This graph links groups of components that change in the same commits, whether or not they import each other. Thick links between groups that should be independent are hidden coupling.",
+    calendar: "The calendar shows the last year of commits, one square a day, darker on busier days. The last few weeks are this report's period.",
     outline: "The outline lists the folders as a tree. Every number is rolled up from the files inside, which makes it a map of the codebase by folder.",
     changes: "The Changes view compares this snapshot with the one before it: components added and removed, dependencies that appeared or went away, and rule findings that are new or gone.",
     combined: "The graph shows the component with its neighbours, linked both by imports and by commits that changed them together.",
+}
+
+/**
+ * The main-sequence plot, where abstractness says something. Code without a
+ * single interface or abstract class (most Python and JavaScript) sits on its
+ * bottom edge; there the plot of what sits between the others says more.
+ */
+function mainSequence(w: Writer) {
+    if (w.facts.abstractComponents === 0) { w.explainSlot(READ.plotBetweenness); slotOf(w, "figure", "What sits between the others", VIEWS.plot("betweenness-churn", "Betweenness vs Churn")); return }
+    w.explainSlot(READ.dms)
+    slotOf(w, "figure", "The main sequence", VIEWS.plot("dms", "Distance to Main Sequence"))
 }
 
 // ── General ───────────────────────────────────────────────────────────────
@@ -62,14 +72,13 @@ const GENERAL: ReportTemplate[] = [
             })
             w.section("Coupling: the most depended-on parts", true, () => {
                 coupling(w, 8)
-                w.explainSlot(READ.dms)
-                slotOf(w, "figure", "The main sequence", VIEWS.plot("dms", "Distance to Main Sequence"))
+                mainSequence(w)
             })
             w.section("Dependency rules", needs.rules(f), () => rules(w))
             w.section("Hotspots: complicated code that changes often", needs.git(f), () => { hotspots(w); slotOf(w, "figure", "Hotspots", VIEWS.hotspots) })
             w.section("Code health", needs.health(f), () => {
                 health(w, "components", 8)
-                if (f.commits) { w.explainSlot(READ.churnHealth); slotOf(w, "figure", "Churn against code health", VIEWS.treemap("churn", "components", "Churn against health, components")) }
+                if (f.commits) { w.explainSlot(READ.plotChurnHealth); slotOf(w, "figure", "Churn against code health", VIEWS.plot("churn-health", "Churn against health")) }
             })
             w.section("Findings", true, () => w.prompt("The two or three things the reader should remember. Tie each one to a figure or table above, so the reader can check it for themselves."))
             w.section("Recommendations", true, () => w.prompt("What you propose, most important first. For each: what the work is, roughly what it costs, and what it makes easier or safer afterwards."))
@@ -96,7 +105,7 @@ const GENERAL: ReportTemplate[] = [
                 if (f.commits) {
                     w.reading("churn", { days: "90", ...plain })
                     w.reading("knowledge", plain)
-                    slotOf(w, "figure", "Where changed lines went", VIEWS.effort)
+                    slotOf(w, "table", "Where changed lines went", VIEWS.workNow)
                 }
             })
             w.section("What it means", true, () => w.prompt("Translate the numbers into business terms: where change is slow, risky or dependent on a few people, and what that costs in delays, incidents or onboarding time. Leave out any term the reader would need explained."))
@@ -117,14 +126,13 @@ const GENERAL: ReportTemplate[] = [
                 w.explain(ABOUT.history).reading("history")
                 w.explainSlot(READ.activity)
                 slotOf(w, "figure", "Work over time", VIEWS.activity)
-                knowledge(w)
+                knowledge(w, { map: true })
             })
             w.section("Structure", true, () => {
                 structure(w, false)
                 if (hasModules(f)) modules(w)
-                slotOf(w, "figure", "The system's parts", VIEWS.graph)
-                w.explainSlot(READ.dms)
-                slotOf(w, "figure", "The main sequence", VIEWS.plot("dms", "Distance to Main Sequence"))
+                if (!layers(w, "The system's parts")) slotOf(w, "figure", "The system's parts", VIEWS.graph)
+                mainSequence(w)
             })
             w.section("Maintainability", needs.health(f), () => {
                 health(w, null)
@@ -151,18 +159,16 @@ const GENERAL: ReportTemplate[] = [
                 w.explain(ABOUT.size).reading("size")
                 if (hasModules(f)) modules(w)
                 w.sql("The largest components", SQL.largest(f), 10)
-                w.explainSlot(READ.outline)
-                slotOf(w, "table", "The codebase by directory", VIEWS.outline)
+                if (hasUnits(f)) lanes(w, "A map of the code")
+                else { w.explainSlot(READ.outline); slotOf(w, "table", "The codebase by directory", VIEWS.outline) }
             })
             w.section("How it hangs together", true, () => {
                 coupling(w)
-                slotOf(w, "figure", "The system's parts", VIEWS.graph)
-                w.explainSlot(READ.chord)
-                slotOf(w, "figure", "Who imports whom", VIEWS.chord)
+                if (!layers(w, "The system's parts")) slotOf(w, "figure", "The system's parts", VIEWS.graph)
                 w.prompt("The areas a newcomer should know by name, and what each one is for, in a sentence each.")
             })
             w.section("Where the work is", needs.git(f), () => { churn(w, "90"); w.table("f-churn", 10) })
-            w.section("Who knows what", needs.git(f), () => { knowledge(w); w.prompt("Who to ask about which area, if the team is happy to have names in writing.") })
+            w.section("Who knows what", needs.git(f), () => { knowledge(w, { map: true }); w.prompt("Who to ask about which area, if the team is happy to have names in writing.") })
             w.section("Handle with care", needs.git(f), () => { w.explain(ABOUT.hotspots).reading("hotspots"); w.prompt("The parts that tend to bite, and why: what makes them hard, and what to check before changing them.") })
         },
     },
@@ -229,11 +235,12 @@ const GENERAL: ReportTemplate[] = [
             w.prompt("Why ownership is being looked at now: a team change, a departure, work that keeps queueing on the same people.")
             w.section("History", needs.git(f), () => { w.explain(ABOUT.history).reading("history"); w.explainSlot(READ.activity); slotOf(w, "figure", "Work over time", VIEWS.activity) })
             w.section("How concentrated knowledge is", needs.git(f), () => {
-                knowledge(w)
+                // The map, not the table: the table's eight columns print a word to a line.
+                knowledge(w, { map: true })
                 w.explainSlot(READ.plotAuthors)
                 slotOf(w, "figure", "Authors against churn", VIEWS.plot("authors-churn", "Authors vs Churn"))
             })
-            w.section("Where change lands", needs.git(f), () => { churn(w, "180"); w.sql("Change by component, last 180 days", SQL.churn("180"), 12); slotOf(w, "figure", "Where changed lines went", VIEWS.effort) })
+            w.section("Where change lands", needs.git(f), () => { churn(w, "180"); w.sql("Change by component, last 180 days", SQL.churn("180"), 12) })
             w.section("Risks and actions", true, () => w.prompt("Where one person leaving would stall work, and for each: what you will do (pairing, reviews, documentation, rotation) and by when."))
         },
     },
@@ -270,7 +277,7 @@ const GENERAL: ReportTemplate[] = [
                 if (f.tangles) w.sql("Tangles", SQL.tangles, 10)
                 w.explainSlot(READ.matrix)
                 slotOf(w, "table", "Dependency matrix, in levels", VIEWS.matrix(f))
-                if (f.commits) { w.explainSlot(READ.coChange); slotOf(w, "figure", "What changes together", VIEWS.coChange) }
+                if (f.commits) { w.explainSlot(SHOWS.breadth); slotOf(w, "figure", "How far a change reaches", VIEWS.breadth) }
             })
             w.section("Candidate modules", true, () => { slotOf(w, "figure", "Candidate modules", VIEWS.graph); w.prompt("The modules you propose, what each one owns, and the imports that would cross between them.") })
             w.section("Sequence", true, () => w.prompt("What to cut first and why, and what each step makes possible. Cutting where few imports cross is usually cheapest."))
@@ -377,8 +384,8 @@ const QUICK: ReportTemplate[] = [
                 w.explain(QABOUT.hidden)
                 w.sql("Changed together, no import between them", QSQL.hidden(f), 20)
                 slotOf(w, "table", "Hidden coupling", VIEWS.hidden)
-                w.explainSlot(READ.coChange)
-                slotOf(w, "figure", "What changes together", VIEWS.coChange)
+                w.explainSlot(SHOWS.breadth)
+                slotOf(w, "figure", "How far a change reaches", VIEWS.breadth)
                 w.prompt("For the top pairs, what ties them together? Look at a few of the commits that changed both and name the link: a table, an API, a shared rule, copied code.")
             })
             w.section("What to do about each", true, () => w.prompt("Per pair, one of three: make the link visible (a shared module, an explicit interface, a contract test), remove it (merge the copied logic), or accept it and write it down where the next person will find it."))
@@ -398,8 +405,7 @@ const QUICK: ReportTemplate[] = [
             w.section("The most depended-on components", needs.column(f, "modularity__coupling__dependents", "the scan did not count dependents per component"), () => {
                 w.explain(QABOUT.loadBearing)
                 w.sql("Components by how many others depend on them", QSQL.loadBearing(f), 15)
-                w.explainSlot(READ.dms)
-                slotOf(w, "figure", "The main sequence", VIEWS.plot("dms", "Distance to Main Sequence"))
+                mainSequence(w)
             })
             w.section("What to protect", true, () => w.prompt("For the top few: which need more tests, a named owner, stricter review, or a smaller and more stable interface, and why."))
         },
@@ -437,6 +443,7 @@ const QUICK: ReportTemplate[] = [
             w.section("Components nothing imports", needs.column(f, "modularity__coupling__dependents", "the scan did not count dependents per component"), () => {
                 w.explain(QABOUT.cleanup)
                 w.sql("Components no other component imports", QSQL.unimported(f), 25)
+                if (hasUnits(f)) { w.explainSlot(SHOWS.reach); slotOf(w, "figure", "What the entry points reach", VIEWS.reach) }
             })
             w.section("Large files nobody has changed in two years", needs.age(f), () => {
                 w.sql("Production files unchanged for over two years, largest first", QSQL.untouched(f), 20)
@@ -483,8 +490,8 @@ const QUICK: ReportTemplate[] = [
                 w.explain(QABOUT.recent)
                 churn(w, "30")
                 w.sql("Files changed most in the last 30 days", QSQL.recentFiles, 15)
-                w.explainSlot(READ.activity)
-                slotOf(w, "figure", "Work over time", VIEWS.activity)
+                w.explainSlot(READ.calendar)
+                slotOf(w, "figure", "Commits by day", VIEWS.calendar)
             })
             w.section("Hotspots touched", needs.all(needs.recent(f), f.fileColumns.has("codesmells__hotspot_score") ? true : "the scan has no hotspot scores"), () => {
                 w.explain("A *hotspot* is code that is both complicated and changed often; its score runs from 0 to 100. Work in a hotspot tends to take longer and break more often, so it is worth knowing how much of the month went there.")
