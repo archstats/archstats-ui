@@ -77,8 +77,10 @@
                         :auto-label="model.detection.value.confident ? model.profile.value.label : 'by folder structure'"
                         :detected="model.detection.value.confident && model.profile.value.id !== 'structure'"
                         :profiles="model.offeredProfiles.value"
-                        :files="landingFiles" :lines="moduleLines" :paint="lanePaint" :describe="describeModule"
-                        :highlight-for="filesLitBy"
+                        :files="landingFiles" :lines="landingLines" :paint="landingPaint" :describe="landingDescribe"
+                        :highlight-for="filesLitBy" :not-layers="notLayers"
+                        :map-mode="mapMode" :legend="landingLegend"
+                        @update:map-mode="setMapMode" @evidence="openMapEvidence"
                         @open="descendToFinding" @lane="descendToLane" @flow="descendToFlow"
                         @place="descendToPlace" @open-file="openModuleFile"
                         @framework="setFramework"/>
@@ -91,7 +93,7 @@
           <EvidenceMap v-else-if="region.map" class="min-h-0"
                        :mode="region.map" :files="prodFiles" :lines="fileGraph.data.value.lines"
                        :reach="reach" :dup-names="dupNames" :dup-files="dupFiles"
-                       :tray="trayPaths" :roots="String(route.query.roots ?? '')"
+                       :tray="trayPaths" :roots="String(route.query.roots ?? '')" :initial-folder="route.query.dir ? String(route.query.dir) : null"
                        @toggle="toggleTray" @tray="trayPaths = $event" @open="openModuleFile" @roots="setRoots"/>
 
           <div v-else class="flex min-h-0 flex-1 overflow-hidden">
@@ -166,7 +168,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import { useScopeStore } from "~/features/groups/scope.store"
 import { useDraftStore } from "~/features/lens-builder/draft.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
-import { AUTO, laneOf } from "~/features/frameworks/frameworkProfiles"
+import { AUTO, laneOf, UNCLASSIFIED } from "~/features/frameworks/frameworkProfiles"
 import { frameworkStorageKey } from "~/features/frameworks/classFacts"
 import { dirTail } from "~/features/units/moduleGraph"
 import { laneFlows, reachOf } from "~/features/units/graph"
@@ -262,9 +264,59 @@ const findings = computed(() => {
 })
 
 // ---- the landing map --------------------------------------------------
+//
+// One map, three colourings: the lanes, what the entry points reach, and what
+// is written twice. Lanes are read off modules; the other two off every
+// production file, so the map draws the files the colouring can speak for.
 
-const landingFiles = computed(() => graph.value.modules.map((m) => m.path).filter(Boolean))
+type MapMode = "lane" | "reach" | "dupes"
+const mapMode = computed<MapMode>(() => (["reach", "dupes"].includes(String(route.query.colour)) ? String(route.query.colour) as MapMode : "lane"))
+function setMapMode(m: MapMode) { router.replace({ query: { ...route.query, colour: m === "lane" ? undefined : m } }) }
+const walkedFiles = computed(() => !fileGraph.loading.value && prodFiles.value.length > 0)
+const landingFiles = computed(() => (mapMode.value !== "lane" && walkedFiles.value
+  ? prodFiles.value
+  : graph.value.modules.map((m) => m.path).filter(Boolean)))
 const moduleLines = computed(() => new Map(graph.value.modules.map((m) => [m.path, m.lines])))
+const landingLines = computed(() => (mapMode.value !== "lane" && walkedFiles.value ? fileGraph.data.value.lines : moduleLines.value))
+/** Lanes that are not layers, so a reference climbing into or out of them breaks nothing. */
+const notLayers = computed(() => [UNCLASSIFIED, ...model.profile.value.lanes.filter((l) => l.byReferences).map((l) => l.id)])
+
+const REACH = {
+  root: { label: "Entry point", color: "rgb(var(--c-blue-500))", words: "an entry point" },
+  reached: { label: "Reached", color: "rgb(var(--c-neutral-300))", words: "reached from an entry point" },
+  tests: { label: "Only tests", color: "rgb(var(--c-amber-400))", words: "reached only by tests" },
+  none: { label: "Reached by nothing", color: "rgb(var(--c-red-500))", words: "reached by nothing" },
+} as const
+const unreachedSet = computed(() => new Set(reach.value.unreachable))
+const testOnlySet = computed(() => new Set(reach.value.testOnly))
+const reachOf = (f: string): keyof typeof REACH => (reach.value.roots.has(f) ? "root" : unreachedSet.value.has(f) ? "none" : testOnlySet.value.has(f) ? "tests" : "reached")
+const dupNameFiles = computed(() => new Set(dupNames.value.flatMap((d) => d.files)))
+const dupFileFiles = computed(() => new Set(dupFiles.value.flatMap((d) => d.files)))
+const DUP_NAME = "rgb(var(--c-violet-500))", DUP_FILE = "rgb(var(--c-violet-200))", PLAIN = "rgb(var(--c-neutral-200))"
+
+function landingPaint(path: string) {
+  if (mapMode.value === "reach") return REACH[reachOf(path)].color
+  if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? DUP_NAME : dupFileFiles.value.has(path) ? DUP_FILE : PLAIN
+  return lanePaint(path)
+}
+function landingDescribe(path: string) {
+  if (mapMode.value === "reach") return REACH[reachOf(path)].words
+  if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? "declares a name another file declares" : dupFileFiles.value.has(path) ? "its file name is used in another folder" : "nothing repeated"
+  return describeModule(path)
+}
+const landingLegend = computed(() => {
+  if (mapMode.value === "reach") {
+    const c = { root: 0, reached: 0, tests: 0, none: 0 }
+    for (const f of prodFiles.value) c[reachOf(f)]++
+    return (Object.keys(REACH) as Array<keyof typeof REACH>).map((k) => ({ label: REACH[k].label, color: REACH[k].color, count: c[k] }))
+  }
+  if (mapMode.value === "dupes") return [
+    { label: "Declares a name another file declares", color: DUP_NAME, count: dupNameFiles.value.size },
+    { label: "Shares its file name", color: DUP_FILE, count: [...dupFileFiles.value].filter((f) => !dupNameFiles.value.has(f)).length },
+  ]
+  return laneBands.value.map((l) => ({ label: l.label, color: lanePaint(graph.value.modules.find((m) => m.lane === l.id)?.path ?? ""), count: l.count }))
+})
+function openMapEvidence() { descend({ finding: mapMode.value === "reach" ? "unreached" : "twice" }) }
 function lanePaint(path: string) {
   const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
   return c === "neutral" ? "rgb(var(--c-neutral-300))" : `rgb(var(--c-${c}-400))`
@@ -453,6 +505,12 @@ function descendToLane(id: string) { descend({ lane: id }) }
 function descendToFlow(a: string, b: string) { descend({ flow: a + "," + b }) }
 /** A folder on the landing map is a region; a file is its folder, with it picked. */
 function descendToPlace(path: string, kind: "file" | "folder") {
+  // Coloured by reach or repetition, a folder opens that evidence, narrowed to it.
+  if (mapMode.value !== "lane") {
+    const dir = kind === "folder" ? path : path.slice(0, path.lastIndexOf("/"))
+    descend({ finding: mapMode.value === "reach" ? "unreached" : "twice", dir })
+    return
+  }
   if (kind === "folder") descend({ dir: path })
   else descend({ dir: path.slice(0, path.lastIndexOf("/")), m: path })
 }

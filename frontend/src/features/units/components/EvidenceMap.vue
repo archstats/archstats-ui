@@ -81,6 +81,8 @@ const props = defineProps<{
   tray: string[]
   /** The extra entry-point globs, one per line. */
   roots: string
+  /** A folder to open on, when the map was entered from one. */
+  initialFolder?: string | null
 }>()
 const emit = defineEmits<{
   (e: "toggle", file: string): void
@@ -94,7 +96,7 @@ const dirOf = (f: string) => (f.includes("/") ? f.slice(0, f.lastIndexOf("/")) :
 const baseOf = (f: string) => f.slice(f.lastIndexOf("/") + 1)
 const traySet = computed(() => new Set(props.tray))
 
-const folder = ref<string | null>(null)
+const folder = ref<string | null>(props.initialFolder ?? null)
 function onMapSelect(path: string | null, kind: "file" | "folder") {
   if (!path) { folder.value = null; return }
   if (kind === "file") { emit("toggle", path); return }

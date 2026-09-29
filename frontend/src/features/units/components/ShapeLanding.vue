@@ -31,9 +31,9 @@
           </p>
           <p class="mb-4 mt-3 max-w-[46ch] text-sm leading-4 text-neutral-500">
             <template v-if="flows.length">
-              Thickness is how many references, the arrow the direction most run, red
-              how much runs the other way. Hover a lane or a link to isolate it; click
-              either to open what it is made of.
+              Stacked so most references run down. Grey follows the grain, red runs back
+              against it; width is references. Hover a lane or a link to find it on the map;
+              click either to open what it is made of.
             </template>
             <template v-else-if="componentEdgeCount > 0">
               References between modules were not resolved in this snapshot, so no lane can be read against another.
@@ -42,20 +42,30 @@
               No references cross a lane boundary in this snapshot.
             </template>
           </p>
-          <LaneFlow :lanes="lanes" :flows="flows"
-                    @lane="$emit('lane', $event)" @flow="(a, b) => $emit('flow', a, b)" @hover="lit = $event"/>
+          <StackDiagram
+            :floors="floors" :flows="stackFlows" up-label="points up"
+            figure="How the layers lean" aria-label="The lanes as floors, with the references between them"
+            @select="onStack" @hover="onStackHover"/>
         </section>
 
-        <section class="flex min-w-0 flex-1 flex-col" aria-label="Where each lane lives">
-          <div class="flex items-baseline gap-3">
-            <h2 class="ui-section-title">Where each lane lives</h2>
-            <span class="truncate text-sm text-neutral-500">Every file, sized by its lines. Pick a folder to go into it.</span>
+        <section class="flex min-w-0 flex-1 flex-col" aria-label="The codebase by folder">
+          <div class="flex h-7 items-center gap-3">
+            <h2 class="ui-section-title shrink-0">{{ MAP_TITLE[mapMode] }}</h2>
+            <div class="ui-segmented ml-auto shrink-0" role="group" aria-label="Colour the map by">
+              <button v-for="m in MAP_MODES" :key="m.id" type="button" :aria-pressed="mapMode === m.id" :title="m.title" @click="$emit('update:mapMode', m.id)">{{ m.label }}</button>
+            </div>
           </div>
-          <div class="mt-3 h-[480px] rounded-md ring-1 ring-neutral-200">
+          <div class="mt-2 flex min-h-[20px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+            <span v-for="k in legend" :key="k.label" class="flex items-center gap-1.5" :title="k.title">
+              <span class="h-2 w-2 rounded-sm" :style="{ background: k.color }"/>{{ k.label }}<span v-if="k.count != null" class="font-mono text-neutral-500">{{ k.count.toLocaleString() }}</span>
+            </span>
+            <button v-if="mapMode !== 'lane'" type="button" class="ml-auto text-neutral-600 underline underline-offset-2 hover:text-neutral-900" @click="$emit('evidence')">Open the list</button>
+          </div>
+          <div class="mt-2 h-[480px] rounded-md ring-1 ring-neutral-200">
             <FolderMap
               :files="files" :lines="lines" :paint="paint" :highlight="lit ? highlightFor(lit) : null"
               :describe="describe"
-              aria-label="Every module by folder, coloured by its lane"
+              :aria-label="`Every file by folder, coloured by ${MAP_MODES.find(m => m.id === mapMode)?.label.toLowerCase()}`"
               @select="(path, kind) => path && $emit('place', path, kind)" @open="$emit('open-file', $event)"
             />
           </div>
@@ -95,8 +105,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
-import LaneFlow from "./LaneFlow.vue"
+import StackDiagram, { type Floor, type Flow as StackFlow, type StackSelection } from "~/features/checks/components/StackDiagram.vue"
 import FolderMap from "~/features/checks/components/FolderMap.vue"
+import { stackOrder } from "~/features/checks/folderTree"
 import { AUTO, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow as Flow } from "~/features/units/graph"
 import type { Finding } from "~/features/units/findings"
@@ -122,9 +133,15 @@ const props = defineProps<{
   describe: (file: string) => string
   /** The files a hovered lane or link stands for. */
   highlightFor: (on: { lane: string } | { a: string; b: string }) => Set<string>
+  /** Lanes that are not layers (what matched no rule, what is defined by being referenced): never red. */
+  notLayers: string[]
+  mapMode: "lane" | "reach" | "dupes"
+  legend: Array<{ label: string; color: string; count?: number; title?: string }>
 }>()
 const lit = ref<{ lane: string } | { a: string; b: string } | null>(null)
-defineEmits<{
+const emit = defineEmits<{
+  (e: "update:mapMode", mode: "lane" | "reach" | "dupes"): void
+  (e: "evidence"): void
   (e: "place", path: string, kind: "file" | "folder"): void
   (e: "open-file", path: string): void
   (e: "open", finding: Finding): void
@@ -132,6 +149,56 @@ defineEmits<{
   (e: "lane", id: string): void
   (e: "flow", a: string, b: string): void
 }>()
+
+const MAP_MODES = [
+  { id: "lane", label: "Lane", title: "Each file in its lane's colour" },
+  { id: "reach", label: "Reach", title: "Whether an entry point reaches each file" },
+  { id: "dupes", label: "Duplicates", title: "Files that declare a name another file declares, or share a file name" },
+] as const
+const MAP_TITLE = { lane: "Where each lane lives", reach: "What the entry points reach", dupes: "What is written twice" }
+
+// The lanes as floors, stacked so that most references run down. A profile
+// lists its lanes in the order a request travels (Django: views, models,
+// forms), which is not the order they depend in: forms use models. Lanes
+// that are not layers sit at the bottom, outside the stack's argument.
+const laneColour = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400))" : `rgb(var(--c-${c}-500))`)
+const ordered = computed(() => {
+  const outside = new Set(props.notLayers)
+  const layers = props.lanes.filter((l) => !outside.has(l.id))
+  const pairs = props.flows.flatMap((f) => [{ from: f.from, to: f.to, count: f.count }, { from: f.to, to: f.from, count: f.reverse }])
+  const byId = new Map(props.lanes.map((l) => [l.id, l]))
+  return [...stackOrder(layers.map((l) => l.id), pairs).map((id) => byId.get(id)!), ...props.lanes.filter((l) => outside.has(l.id))]
+})
+const floors = computed<Floor[]>(() => ordered.value.map((l) => ({
+  id: l.id, label: l.label, weight: l.count, color: laneColour(l.color),
+  sub: `${l.count.toLocaleString()} module${l.count === 1 ? "" : "s"}`,
+})))
+const stackFlows = computed<StackFlow[]>(() => {
+  const outside = new Set(props.notLayers)
+  const label = (id: string) => props.lanes.find((l) => l.id === id)?.label ?? id
+  const one = (from: string, to: string, count: number, bad: boolean): StackFlow => ({
+    key: `${from}>${to}`, from, to, count, bad,
+    title: `${label(from)} uses ${label(to)}: ${count.toLocaleString()} reference${count === 1 ? "" : "s"}${bad ? ", against the grain" : ""}`,
+  })
+  // Red is what Units has always called wrong: the minority direction of a
+  // pair that leans both ways, between two lanes that are layers.
+  return props.flows.flatMap((f) => [
+    ...(f.count ? [one(f.from, f.to, f.count, false)] : []),
+    ...(f.reverse ? [one(f.to, f.from, f.reverse, !outside.has(f.from) && !outside.has(f.to))] : []),
+  ])
+})
+const toLit = (s: StackSelection) => {
+  if (!s) return null
+  if (s.kind === "floor") return { lane: s.id }
+  const [a, b] = s.id.split(">")
+  return { a, b }
+}
+function onStackHover(s: StackSelection) { lit.value = toLit(s) }
+function onStack(s: StackSelection) {
+  if (!s) return
+  if (s.kind === "floor") emit("lane", s.id)
+  else { const [a, b] = s.id.split(">"); emit("flow", a, b) }
+}
 
 /**
  * What this codebase is, as a sentence rather than a row of statistics.

@@ -5,7 +5,7 @@
        rule. Width is imports, on a square-root scale, so one import still
        reads as a line and a thousand do not drown the rest. -->
   <div ref="box" class="relative w-full" :style="{ height: height + 'px' }">
-    <svg v-if="w > 0" :width="w" :height="height" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null)">
+    <svg v-if="w > 0" ref="svgEl" :width="w" :height="height" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null)">
       <defs>
         <marker :id="`${uid}-dn`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-400"/></marker>
         <marker :id="`${uid}-on`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-800"/></marker>
@@ -16,7 +16,7 @@
       <text :x="w - 2" :y="11" text-anchor="end" class="fill-neutral-400 text-[11px]">{{ upLabel }}</text>
 
       <!-- Arcs: a wide invisible stroke to aim at, then the line itself. -->
-      <g v-for="a in arcs" :key="a.key" class="cursor-pointer" :class="{ 'opacity-20': dimmed(a) }" @click.stop="emit('select', { kind: 'flow', id: a.key })" @mouseenter="hoverKey = a.key" @mouseleave="hoverKey = null">
+      <g v-for="a in arcs" :key="a.key" class="cursor-pointer" :class="{ 'opacity-20': dimmed(a) }" @click.stop="emit('select', { kind: 'flow', id: a.key })" @mouseenter="hoverKey = a.key; emit('hover', { kind: 'flow', id: a.key })" @mouseleave="hoverKey = null; emit('hover', null)">
         <path :d="a.d" fill="none" stroke="transparent" stroke-width="12"/>
         <path
           :d="a.d" fill="none" :stroke-width="a.width"
@@ -38,6 +38,7 @@
         class="cursor-pointer" :class="{ 'opacity-40': dimmedFloor(f.id) }"
         role="button" :aria-pressed="selected?.kind === 'floor' && selected.id === f.id" :aria-label="`${f.label}, ${f.sub}`"
         @click.stop="emit('select', { kind: 'floor', id: f.id })"
+        @mouseenter="emit('hover', { kind: 'floor', id: f.id })" @mouseleave="emit('hover', null)"
       >
         <rect :width="floorW" :height="FLOOR" rx="4"
           :class="selected?.kind === 'floor' && selected.id === f.id ? 'fill-accent-50 stroke-accent-500' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"
@@ -63,6 +64,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { useSvgFigure } from "~/features/export/useExportables"
 
 export interface Floor { id: string; label: string; sub: string; weight: number; color?: string }
 export interface Flow { key: string; from: string; to: string; count: number; bad?: boolean; title?: string }
@@ -75,9 +77,18 @@ const props = withDefaults(defineProps<{
   /** What an upward arc means here: against a declared order, or just upward. */
   upLabel?: string
   ariaLabel: string
-}>(), { selected: null, upLabel: "points up" })
+  /** When set, the diagram is offered to reports and exports under this title. */
+  figure?: string
+}>(), { selected: null, upLabel: "points up", figure: "" })
 
-const emit = defineEmits<{ (e: "select", s: StackSelection): void }>()
+const emit = defineEmits<{
+  (e: "select", s: StackSelection): void
+  /** What the pointer is on, so a picture beside this one can light the same files. */
+  (e: "hover", s: StackSelection): void
+}>()
+
+const svgEl = ref<SVGSVGElement | null>(null)
+if (props.figure) useSvgFigure(props.figure, () => (props.floors.length ? svgEl.value : null))
 
 const uid = `sd${Math.random().toString(36).slice(2, 8)}`
 const TOP = 22
