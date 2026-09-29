@@ -35,69 +35,65 @@
     </section>
 
     <section v-if="wiring.nodes.length > 0">
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h3 class="ui-section-title">Wiring</h3>
-        <ul class="flex items-center gap-3 text-xs text-neutral-500" aria-label="Legend">
-          <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
-            <span class="inline-block h-1.5 w-1.5 rounded-full" :class="roleDotClass(item.role)"></span>{{ item.label }}
-          </li>
-          <li class="flex items-center gap-1.5">
-            <span class="inline-block h-1.5 w-1.5 rounded-full border border-dashed border-neutral-400"></span>External
-          </li>
-        </ul>
-        <span v-if="crowded" class="text-xs text-neutral-400">Busiest classes named · hover any node</span>
-        <label class="ml-auto flex items-center gap-1.5 text-sm text-neutral-700">
-          <input v-model="includeExternal" type="checkbox" class="ui-check"/>
-          Include external wiring
-        </label>
-      </div>
-      <!-- The graph takes the full column; what a selected node touches reads
-           underneath it, where there is room for two lists side by side. -->
-      <!-- A force graph with no edges is a constellation, not a reading. -->
-      <EmptyState
-        v-if="wiring.edges.length === 0"
-        class="mt-2 rounded-lg py-10 hairline"
-        title="No imports between these classes"
-        :text="includeExternal
-          ? `The snapshot records no import between these ${wiring.nodes.length} classes, inside the component or out.`
-          : `The snapshot records no import from one of this component's own classes to another. Include external wiring to see what they reach outside it.`"
-        icon="waypoints"
-      />
-      <div v-else class="mt-2 overflow-hidden rounded-lg hairline">
-        <ComponentWiringGraph class="w-full" :nodes="wiring.nodes" :edges="wiring.edges" :selected="selected" @select="selected = $event"/>
-        <div class="bg-ground hairline-t">
-          <EmptyState v-if="!selectedNode" class="py-6" title="No bean selected" text="Click a node to see what it imports and what imports it." icon="focus"/>
-          <template v-else>
-            <div class="flex items-center gap-2 px-4 py-3 hairline-b">
-              <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full" :class="roleDotClass(selectedNode.role)"></span>
-              <router-link :to="`/views/files/${selectedNode.file}`" class="min-w-0 truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="selectedNode.file">{{ selectedNode.label }}</router-link>
-              <span class="ui-tag shrink-0">{{ selectedNode.role ?? "Class" }}</span>
-            </div>
-            <div class="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2">
-              <div v-for="side in sides" :key="side.key" class="min-w-0">
-                <h4 class="ui-label">{{ side.title }} <span class="font-mono normal-case tracking-normal text-neutral-400">{{ side.nodes.length }}</span></h4>
-                <p v-if="side.nodes.length === 0" class="mt-2 text-sm text-neutral-500">{{ side.empty }}</p>
-                <ul v-else class="mt-2 flex max-h-[168px] flex-col gap-1 overflow-y-auto">
-                  <li v-for="n in side.nodes" :key="n.id" class="flex min-w-0 items-center gap-2">
-                    <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full" :class="roleDotClass(n.role)"></span>
-                    <router-link :to="`/views/files/${n.file}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="n.file">{{ n.label }}</router-link>
-                    <span v-if="n.external" class="ui-tag ml-auto shrink-0" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</span>
-                  </li>
-                </ul>
+      <ExhibitFrame title="Wiring">
+        <template #controls>
+          <span v-if="crowded" class="text-xs text-neutral-400">Busiest classes named · hover any node</span>
+        </template>
+        <template #aside>
+          <label class="flex items-center gap-1.5 text-sm text-neutral-700">
+            <input v-model="includeExternal" type="checkbox" class="ui-check"/>
+            Include external wiring
+          </label>
+        </template>
+        <!-- The graph takes the full column; what a selected node touches reads
+             underneath it, where there is room for two lists side by side. -->
+        <!-- A force graph with no edges is a constellation, not a reading. -->
+        <EmptyState
+          v-if="wiring.edges.length === 0"
+          class="rounded-lg py-10 hairline"
+          title="No imports between these classes"
+          :text="includeExternal
+            ? `The snapshot records no import between these ${wiring.nodes.length} classes, inside the component or out.`
+            : `The snapshot records no import from one of this component's own classes to another. Include external wiring to see what they reach outside it.`"
+          icon="waypoints"
+        />
+        <div v-else class="overflow-hidden rounded-lg hairline">
+          <ComponentWiringGraph class="w-full" :nodes="wiring.nodes" :edges="wiring.edges" :selected="selected" @select="selected = $event"/>
+          <div class="bg-ground hairline-t">
+            <EmptyState v-if="!selectedNode" class="py-6" title="No bean selected" text="Click a node to see what it imports and what imports it." icon="focus"/>
+            <template v-else>
+              <div class="flex items-center gap-2 px-4 py-3 hairline-b">
+                <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full" :class="roleDotClass(selectedNode.role)"></span>
+                <router-link :to="`/views/files/${selectedNode.file}`" class="min-w-0 truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="selectedNode.file">{{ selectedNode.label }}</router-link>
+                <span class="ui-tag shrink-0">{{ selectedNode.role ?? "Class" }}</span>
               </div>
-            </div>
-          </template>
+              <div class="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2">
+                <div v-for="side in sides" :key="side.key" class="min-w-0">
+                  <h4 class="ui-label">{{ side.title }} <span class="font-mono normal-case tracking-normal text-neutral-400">{{ side.nodes.length }}</span></h4>
+                  <p v-if="side.nodes.length === 0" class="mt-2 text-sm text-neutral-500">{{ side.empty }}</p>
+                  <ul v-else class="mt-2 flex max-h-[168px] flex-col gap-1 overflow-y-auto">
+                    <li v-for="n in side.nodes" :key="n.id" class="flex min-w-0 items-center gap-2">
+                      <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full" :class="roleDotClass(n.role)"></span>
+                      <router-link :to="`/views/files/${n.file}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="n.file">{{ n.label }}</router-link>
+                      <span v-if="n.external" class="ui-tag ml-auto shrink-0" :title="n.component">{{ store.getComponentName(n.component) || n.component }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
-      </div>
+      </ExhibitFrame>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { computed } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useComponentJava } from "~/features/java/useComponentJava"
-import { roleDotClass, type JavaRole } from "~/features/java/java"
+import { roleDotClass } from "~/features/java/java"
 import { formatNumber } from "~/shared/format"
 import ComponentWiringGraph from "./ComponentWiringGraph.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -115,8 +111,4 @@ const sides = computed(() => [
   { key: "in", title: "Imported by", nodes: selectedIn.value, empty: "Nothing in the graph imports it." },
 ])
 
-const legend: Array<{ role: JavaRole | null; label: string }> = [
-  { role: "Controller", label: "Controller" }, { role: "Service", label: "Service" },
-  { role: "Repository", label: "Repository" }, { role: "Entity", label: "Entity" }, { role: null, label: "Other" },
-]
 </script>

@@ -1,16 +1,19 @@
 <template>
-  <div ref="host" class="relative h-[320px] w-full overflow-hidden bg-surface">
-    <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Classes that import this class and classes it imports"></svg>
-    <ZoomControls position="top-right" @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
-  </div>
+  <ExhibitFrame :exhibit="figure">
+    <div ref="host" class="relative h-[320px] w-full overflow-hidden bg-surface">
+      <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Classes that import this class and classes it imports"></svg>
+      <ZoomControls @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme"
-import { roleColor, type JavaRole } from "~/features/java/java"
+import { roleColor, roleLegend, type JavaRole } from "~/features/java/java"
 import ZoomControls from "~/shared/ui/ZoomControls.vue"
 
 // One class and its direct neighbours in three columns: classes that import
@@ -217,5 +220,19 @@ onBeforeUnmount(() => {
 
 defineExpose({ resetZoom })
 
-useSvgFigure("Class neighbourhood", () => svgRef.value)
+const figure = useSvgFigure({
+  title: "Class neighbourhood",
+  svg: () => svgRef.value,
+  legend: () => {
+    const t = chartTheme()
+    return {
+      items: [
+        ...roleLegend([...props.incoming, ...props.outgoing].map(n => n.role)),
+        { label: `${props.centre.label}, this class`, color: roleColor(props.centre.role), mark: "ring" },
+        { label: "Imports", color: withAlpha(t.inkMuted, 0.6), mark: "line" },
+      ],
+      notes: ["Classes that import this one are on the left, classes it imports on the right. A line is thicker the more references it carries."],
+    }
+  },
+})
 </script>

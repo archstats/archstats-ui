@@ -20,19 +20,13 @@
 
       <!-- Neighbourhood: who imports this class, and what it imports. -->
       <section class="mt-6 pt-5 hairline-t">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h2 class="ui-section-title">Neighbourhood</h2>
-          <ul class="flex items-center gap-3 text-xs text-neutral-500" aria-label="Legend">
-            <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
-              <span class="inline-block h-1.5 w-1.5 rounded-full" :class="roleDotClass(item.role)"></span>{{ item.label }}
-            </li>
-          </ul>
-          <span class="ml-auto text-xs text-neutral-500">Imported by on the left, imports on the right</span>
-        </div>
-        <div class="mt-3 overflow-hidden rounded-lg hairline">
-          <EmptyState v-if="incoming.length === 0 && outgoing.length === 0" class="h-[320px]" title="No recorded connections" :text="connectionsText" icon="waypoints"/>
-          <ClassNeighbourhoodGraph v-else :centre="centre" :incoming="incoming" :outgoing="outgoing" @open="openFile"/>
-        </div>
+        <ExhibitFrame title="Neighbourhood" header-class="pb-3">
+          <template #aside>Imported by on the left, imports on the right</template>
+          <div class="overflow-hidden rounded-lg hairline">
+            <EmptyState v-if="incoming.length === 0 && outgoing.length === 0" class="h-[320px]" title="No recorded connections" :text="connectionsText" icon="waypoints"/>
+            <ClassNeighbourhoodGraph v-else :centre="centre" :incoming="incoming" :outgoing="outgoing" @open="openFile"/>
+          </div>
+        </ExhibitFrame>
       </section>
 
       <!-- Outgoing: classes this file imports. -->
@@ -149,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { componentPath } from "~/features/navigation/routes"
 import { computed } from "vue"
 import { useRouter } from "vue-router"
@@ -344,9 +339,6 @@ const flags = computed(() => {
   return structuralFlags(edges, beans)
 })
 
-const legend: Array<{ role: JavaRole | null; label: string }> = [
-  { role: "Controller", label: "Controller" }, { role: "Service", label: "Service" }, { role: "Repository", label: "Repository" }, { role: "Entity", label: "Entity" }, { role: null, label: "Other" },
-]
 
 function openFile(file: string) {
   if (file) router.push(`/views/files/${file}`)

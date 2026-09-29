@@ -7,6 +7,6 @@ import LoadingState from "~/shared/ui/LoadingState.vue";
 // The components table moved into Metrics; the route stays so old links keep working.
 const router = useRouter();
 onMounted(() => {
-  router.replace({ path: "/views/metrics" });
+  router.replace({ path: "/views/metrics", query: { view: "table" } });
 });
 </script>

@@ -1,67 +1,56 @@
 <template>
-  <div ref="host" class="relative h-full w-full overflow-hidden bg-surface">
-    <canvas
-      ref="canvasEl"
-      class="block h-full w-full select-none"
-      role="img"
-      :aria-label="`Coupling graph of ${nodes.length} nodes and ${edges.length} connections`"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
-      @pointerleave="onPointerLeave"
-      @click="onClick"
-      @dblclick="onDblClick"
-      @contextmenu="onContextMenu"
-    ></canvas>
-    <!-- The tooltip a <title> used to give; the canvas has no elements to carry one. -->
-    <div
-      v-if="tip"
-      class="ui-popover pointer-events-none absolute z-20 w-max max-w-[min(380px,60%)] px-2 py-1 text-xs"
-      :style="tipStyle"
-    >
-      <div class="break-all font-mono text-neutral-900">{{ tip.title }}</div>
-      <div v-if="tip.sub" class="text-neutral-500">{{ tip.sub }}</div>
+  <ExhibitFrame :exhibit="figure" header="overlay" legend-class="px-3 pb-2" fill>
+    <div ref="host" class="relative h-full w-full overflow-hidden bg-surface">
+      <canvas
+        ref="canvasEl"
+        class="block h-full w-full select-none"
+        role="img"
+        :aria-label="`Coupling graph of ${nodes.length} nodes and ${edges.length} connections`"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="onPointerUp"
+        @pointerleave="onPointerLeave"
+        @click="onClick"
+        @dblclick="onDblClick"
+        @contextmenu="onContextMenu"
+      ></canvas>
+      <!-- The tooltip a <title> used to give; the canvas has no elements to carry one. -->
+      <div
+        v-if="tip"
+        class="ui-popover pointer-events-none absolute z-20 w-max max-w-[min(380px,60%)] px-2 py-1 text-xs"
+        :style="tipStyle"
+      >
+        <div class="break-all font-mono text-neutral-900">{{ tip.title }}</div>
+        <div v-if="tip.sub" class="text-neutral-500">{{ tip.sub }}</div>
+      </div>
+      <!-- Suggestion labels ride on top of their dashed hulls; HTML so they can be buttons. -->
+      <div
+        v-for="s in suggestionLabels"
+        :key="s.key"
+        class="ui-popover absolute z-10 flex max-w-[280px] -translate-x-1/2 items-center gap-1.5 px-1.5 py-1"
+        :style="{ left: s.x + 'px', top: s.y + 'px' }"
+        :title="s.reasons.join('\n')"
+        @mouseenter="emit('hover-suggestion', s.key)"
+        @mouseleave="emit('hover-suggestion', null)"
+      >
+        <span class="flex min-w-0 flex-col px-1">
+          <span class="flex items-center gap-1.5 text-xs font-medium text-neutral-700"><Icon v-if="s.locked" icon="bookmark" :size="11" class="shrink-0 text-accent-700" aria-label="Locked"/><span class="truncate">{{ s.name }}</span><span class="font-mono text-neutral-400">{{ s.count }}</span><span v-if="s.split" class="font-mono text-neutral-400" :title="`${s.split} component${s.split === 1 ? '' : 's'} only partly in`">· {{ s.split }} split</span></span>
+          <span v-if="s.reason" class="truncate text-[11px] leading-3.5 text-neutral-500">{{ s.reason }}</span>
+        </span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" title="Save this group now" @click="emit('accept-suggestion', s.key)">Save</button>
+      </div>
     </div>
-    <!-- What the three marks mean, showing only the kinds actually on screen. -->
-    <div v-if="kindsPresent.length > 1 || dynamicPairs" class="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded bg-surface/80 px-2 py-1 backdrop-blur-sm">
-      <span v-for="k in kindsPresent" :key="k" class="flex items-center gap-1.5">
-        <svg width="13" height="13" viewBox="-7 -7 14 14" aria-hidden="true">
-          <path :d="nodePath(k, k === 'group' ? 6 : k === 'component' ? 5 : 4)" :fill="k === 'file' ? 'rgb(var(--c-surface))' : 'rgb(var(--c-neutral-500))'" :fill-opacity="k === 'group' ? 0.25 : 1" :stroke="k === 'component' ? 'rgb(var(--c-surface))' : 'rgb(var(--c-neutral-500))'" :stroke-width="k === 'group' ? 2 : k === 'file' ? 1.6 : 1.2"/>
-        </svg>
-        <span class="text-xs text-neutral-500">{{ KIND_WORD[k] }}</span>
-      </span>
-      <span v-if="dynamicPairs" class="flex items-center gap-1.5" :title="`${dynamicPairs} pair${dynamicPairs === 1 ? '' : 's'} joined only by a string naming a module at runtime; no import names them, so a rename breaks them silently`">
-        <svg width="16" height="6" aria-hidden="true"><line x1="0" y1="3" x2="16" y2="3" stroke="rgb(var(--c-neutral-500))" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
-        <span class="text-xs text-neutral-500">Only by runtime lookup</span>
-      </span>
-    </div>
-
-    <!-- Suggestion labels ride on top of their dashed hulls; HTML so they can be buttons. -->
-    <div
-      v-for="s in suggestionLabels"
-      :key="s.key"
-      class="ui-popover absolute z-10 flex max-w-[280px] -translate-x-1/2 items-center gap-1.5 px-1.5 py-1"
-      :style="{ left: s.x + 'px', top: s.y + 'px' }"
-      :title="s.reasons.join('\n')"
-      @mouseenter="emit('hover-suggestion', s.key)"
-      @mouseleave="emit('hover-suggestion', null)"
-    >
-      <span class="flex min-w-0 flex-col px-1">
-        <span class="flex items-center gap-1.5 text-xs font-medium text-neutral-700"><Icon v-if="s.locked" icon="bookmark" :size="11" class="shrink-0 text-accent-700" aria-label="Locked"/><span class="truncate">{{ s.name }}</span><span class="font-mono text-neutral-400">{{ s.count }}</span><span v-if="s.split" class="font-mono text-neutral-400" :title="`${s.split} component${s.split === 1 ? '' : 's'} only partly in`">· {{ s.split }} split</span></span>
-        <span v-if="s.reason" class="truncate text-[11px] leading-3.5 text-neutral-500">{{ s.reason }}</span>
-      </span>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" title="Save this group now" @click="emit('accept-suggestion', s.key)">Save</button>
-    </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import * as d3 from "d3";
 import { chartTheme, readChartTheme, refreshChartTheme, type ChartTheme } from "~/shared/ui/useChartTheme";
-import { useExportables } from "~/features/export/useExportables";
-import { withLightTokens, type FigureOptions, type FigureOutput, type LegendItem } from "~/features/export/figure";
+import { useFigure } from "~/features/export/useExportables";
+import { withLightTokens, type FigureLegend, type FigureOptions, type FigureOutput, type LegendItem } from "~/features/export/figure";
 import Icon from "~/shared/ui/Icon.vue";
 import { type CEdge, type CNode, type GroupSuggestion, edgeKey, idsInRect, isDynamicOnly, topDegreeIds } from "~/features/connections/connections";
 import type { Hull as ModelHull } from "~/features/connections/useConnectionsModel";
@@ -974,22 +963,29 @@ function exportFigure(opts: FigureOptions): FigureOutput | null {
   if (opts.light) withLightTokens(run); else run();
   refreshChartTheme();
   requestDraw();
-  return { kind: "canvas", canvas: off, width, height, scale, legend: figureLegend(opts) };
+  return { kind: "canvas", canvas: off, width, height, scale };
 }
 
 const dynamicPairs = computed(() => props.edges.filter(isDynamicOnly).length);
 
-function figureLegend(opts: FigureOptions): LegendItem[] {
-  const t = opts.light ? withLightTokens(() => readChartTheme()) : chartTheme();
-  const out: LegendItem[] = [{ label: props.directed ? "Depends on (arrow points at the dependency)" : "Changed together", color: t.inkMuted, line: true }];
-  if (props.edges.some(isDynamicOnly)) out.push({ label: "Only by runtime lookup", color: t.inkMuted, dashed: true });
-  if (props.cycleKeys.size) out.push({ label: "In a cycle", color: t.red, line: true });
-  for (const h of props.hulls) if (h.color) out.push({ label: h.name, color: h.color });
-  if (props.suggestions.length) out.push({ label: "Suggested group", color: t.inkMuted, dashed: true });
-  return out;
+// What the marks mean, only the kinds and lines actually on screen. Written in the window's
+// colours; a light export remaps them the way it remaps the drawing.
+const KIND_MARK = { group: "swatch", component: "dot", file: "ring" } as const;
+function figureLegend(): FigureLegend {
+  const t = chartTheme();
+  const items: LegendItem[] = [];
+  if (kindsPresent.value.length > 1) for (const k of kindsPresent.value) items.push({ label: KIND_WORD[k], color: t.inkSecondary, mark: KIND_MARK[k as keyof typeof KIND_MARK] ?? "dot" });
+  items.push({ label: props.directed ? "Depends on (the arrow points at the dependency)" : "Changed together", color: t.inkMuted, mark: "line" });
+  if (dynamicPairs.value) items.push({ label: "Only by runtime lookup: no import names the pair, so a rename breaks it silently", color: t.inkMuted, mark: "dashed" });
+  if (props.cycleKeys.size) items.push({ label: "In a cycle", color: t.red, mark: "line" });
+  const named = props.hulls.filter(h => h.color);
+  for (const h of named.slice(0, 12)) items.push({ label: h.name, color: h.color! });
+  if (props.suggestions.length) items.push({ label: "Suggested group", color: t.inkMuted, mark: "dashed" });
+  const notes = named.length > 12 ? [`${named.length - 12} more groups are outlined in their own colours.`] : [];
+  return { items, notes };
 }
 
-useExportables().register({ kind: "figure", title: "Connections graph", ready: () => !!ctx && simNodes.length > 0, render: exportFigure, svg: false });
+const figure = useFigure({ title: "Connections graph", ready: () => !!ctx && simNodes.length > 0, render: exportFigure, svg: false, legend: figureLegend });
 
 defineExpose({ zoomIn: () => zoomBy(1.3), zoomOut: () => zoomBy(1 / 1.3), resetZoom: () => fit(), focusNode, exportFigure });
 

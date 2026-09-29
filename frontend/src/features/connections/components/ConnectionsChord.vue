@@ -1,14 +1,17 @@
 <template>
-  <div ref="host" class="relative h-full w-full overflow-hidden bg-surface">
-    <svg ref="svgEl" class="block h-full w-full select-none" @click.self="emit('select', null, { shift: false, meta: false })"></svg>
-  </div>
+  <ExhibitFrame :exhibit="figure" header="overlay" legend-class="px-3 pb-2" fill>
+    <div ref="host" class="relative h-full w-full overflow-hidden bg-surface">
+      <svg ref="svgEl" class="block h-full w-full select-none" @click.self="emit('select', null, { shift: false, meta: false })"></svg>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import * as d3 from "d3";
 import { chartTheme } from "~/shared/ui/useChartTheme";
-import { useExportables } from "~/features/export/useExportables";
+import { useFigure } from "~/features/export/useExportables";
 import type { LegendItem } from "~/features/export/figure";
 import { type CEdge, type CNode, edgeKey, orderNodes, topDegreeIds } from "~/features/connections/connections";
 
@@ -150,16 +153,25 @@ function scheduleRender() {
   resizeTimer = setTimeout(render, 100);
 }
 
-useExportables().register({
-  kind: "figure",
+const figure = useFigure({
   title: "Connections chord",
   ready: () => !!svgEl.value?.firstChild,
+  svg: true,
   render: () => {
     const svg = svgEl.value, el = host.value;
     if (!svg || !el) return null;
+    return { kind: "svg", svg, width: el.clientWidth, height: el.clientHeight };
+  },
+  legend: () => {
     const t = chartTheme();
-    const legend: LegendItem[] = props.cycleKeys.size ? [{ label: "In a cycle", color: t.red, line: true }] : [];
-    return { kind: "svg", svg, width: el.clientWidth, height: el.clientHeight, legend };
+    const groups = new Map<string, string>();
+    for (const n of props.nodes) if (n.group && n.color && !groups.has(n.group)) groups.set(n.group, n.color);
+    const items: LegendItem[] = [...groups].slice(0, 12).map(([label, color]) => ({ label, color }));
+    items.push({ label: props.directed ? "Depends on" : "Changed together", color: t.blue });
+    if (props.cycleKeys?.size) items.push({ label: "In a cycle", color: t.red });
+    const notes = [`An arc is a ${props.nodes[0]?.kind ?? "component"}; a ribbon is thicker the more references it carries${props.directed ? ", and runs from the user to the used" : ""}.`];
+    if (groups.size > 12) notes.push(`${groups.size - 12} more groups colour their arcs.`);
+    return { items, notes };
   },
 });
 

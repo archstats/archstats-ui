@@ -83,10 +83,12 @@ const CHECK = `(async () => {
         try {
           const f = await item.render({ light });
           if (!f) throw new Error("render returned nothing");
-          const png = await fig.pngBase64(f, "figure check", { light });
+          const legend = item.legend();
+          if (!legend || !((legend.items || []).length || (legend.ramps || []).length || (legend.notes || []).length)) throw new Error("the figure declares an empty legend");
+          const png = await fig.pngBase64(f, "figure check", { light, legend });
           const img = new Image(); img.src = "data:image/png;base64," + png; await img.decode();
           row.size = img.width + "x" + img.height;
-          if (f.kind === "svg") fig.svgDocument(f, "figure check", { light });
+          if (f.kind === "svg") fig.svgDocument(f, "figure check", { light, legend });
         } catch (e) { row.error = e && e.message ? e.message : String(e); }
         out.push(row);
       }

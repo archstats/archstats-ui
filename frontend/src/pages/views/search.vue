@@ -63,40 +63,47 @@
         <p v-else-if="!hasSource" class="text-sm text-neutral-500">This snapshot kept no source, so there is nothing to search. Scans keep it by default; scan again.</p>
       </div>
 
-      <div class="min-h-0 grow overflow-y-auto">
+      <!-- Hits are an exhibit: a strip names them and ends in their export button. -->
+      <ExhibitFrame v-if="needle && rows.length && !(loading && !result) && !(grain === 'groups' && !lens.active)"
+                    :exhibit="hitTable" class="grow" fill header-class="h-9 shrink-0 px-4 hairline-b">
+        <template #aside>{{ rows.length.toLocaleString("en-US") }} {{ grain === "files" ? "files" : grain === "groups" ? "groups" : "components" }}</template>
+        <div class="absolute inset-0 overflow-y-auto">
+          <table class="ui-table w-full">
+            <thead>
+              <tr>
+                <th v-if="selectable" class="w-8"><Checkbox :model-value="allSelected" aria-label="Select all" @update:model-value="toggleAll"/></th>
+                <th class="text-left">{{ grain === 'files' ? 'File' : grain === 'groups' ? 'Group' : 'Component' }}</th>
+                <th v-if="grain !== 'files'" class="w-20 text-right">Files</th>
+                <th class="w-20 text-right">Hits</th>
+                <th class="w-40"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="r in shownRows"
+                :key="r.key"
+                class="cursor-default"
+                :class="inspected?.key === r.key ? 'bg-accent-50' : ''"
+                @click="inspect(r)"
+              >
+                <td v-if="selectable" @click.stop><Checkbox :model-value="selected.has(r.key)" :aria-label="`Select ${r.label}`" @update:model-value="toggle(r.key)"/></td>
+                <td class="max-w-0 truncate font-mono text-sm" :title="r.key">
+                  <span v-if="r.color" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="{ background: r.color }" aria-hidden="true"></span>{{ r.label }}
+                </td>
+                <td v-if="grain !== 'files'" class="text-right font-mono text-sm tabular-nums">{{ r.files.length.toLocaleString("en-US") }}</td>
+                <td class="text-right font-mono text-sm tabular-nums">{{ r.hits.toLocaleString("en-US") }}</td>
+                <td><span class="block h-1.5 rounded-sm bg-accent-400/70" :style="{ width: `${Math.max(2, (r.hits / maxHits) * 100)}%` }"></span></td>
+              </tr>
+            </tbody>
+          </table>
+          <button v-if="rows.length > shownRows.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 500">Show {{ Math.min(500, rows.length - shownRows.length) }} more of {{ (rows.length - shownRows.length).toLocaleString("en-US") }}</button>
+        </div>
+      </ExhibitFrame>
+      <div v-else class="min-h-0 grow overflow-y-auto">
         <EmptyState v-if="!needle" class="h-full" title="Find text in the code" text="Where the payment gateway is called, which components write raw SQL, who still reads a retired flag. Rolled up by component, by the groups of the lens, or by file." icon="search"/>
         <LoadingState v-else-if="loading && !result" class="h-full"/>
         <EmptyState v-else-if="result && !rows.length && !error" class="h-full" :title="`No “${needle}” in scope`" :text="outOfScope ? `${outOfScope.toLocaleString('en-US')} files outside the scope hold it.` : 'Not in any file this snapshot kept.'" icon="search"/>
         <EmptyState v-else-if="grain === 'groups' && !lens.active" class="h-full" title="Pick a lens" text="Hits roll up by the groups of the active lens. Choose one in the sidebar." icon="layers"/>
-        <table v-else-if="rows.length" class="ui-table w-full">
-          <thead>
-            <tr>
-              <th v-if="selectable" class="w-8"><Checkbox :model-value="allSelected" aria-label="Select all" @update:model-value="toggleAll"/></th>
-              <th class="text-left">{{ grain === 'files' ? 'File' : grain === 'groups' ? 'Group' : 'Component' }}</th>
-              <th v-if="grain !== 'files'" class="w-20 text-right">Files</th>
-              <th class="w-20 text-right">Hits</th>
-              <th class="w-40"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="r in shownRows"
-              :key="r.key"
-              class="cursor-default"
-              :class="inspected?.key === r.key ? 'bg-accent-50' : ''"
-              @click="inspect(r)"
-            >
-              <td v-if="selectable" @click.stop><Checkbox :model-value="selected.has(r.key)" :aria-label="`Select ${r.label}`" @update:model-value="toggle(r.key)"/></td>
-              <td class="max-w-0 truncate font-mono text-sm" :title="r.key">
-                <span v-if="r.color" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="{ background: r.color }" aria-hidden="true"></span>{{ r.label }}
-              </td>
-              <td v-if="grain !== 'files'" class="text-right font-mono text-sm tabular-nums">{{ r.files.length.toLocaleString("en-US") }}</td>
-              <td class="text-right font-mono text-sm tabular-nums">{{ r.hits.toLocaleString("en-US") }}</td>
-              <td><span class="block h-1.5 rounded-sm bg-accent-400/70" :style="{ width: `${Math.max(2, (r.hits / maxHits) * 100)}%` }"></span></td>
-            </tr>
-          </tbody>
-        </table>
-        <button v-if="rows.length > shownRows.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 500">Show {{ Math.min(500, rows.length - shownRows.length) }} more of {{ (rows.length - shownRows.length).toLocaleString("en-US") }}</button>
       </div>
       <GroupActionBar v-if="selectable && selected.size" :selected-items="[...selected]" :kind="grain === 'files' ? 'file' : 'component'" :show-in-except="['search']" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
@@ -134,6 +141,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
@@ -142,7 +150,7 @@ import Checkbox from "~/shared/ui/Checkbox.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { DEFAULT_DIMENSION, useGroupsStore } from "~/features/groups/groups.store";
 import { useLensStore } from "~/features/groups/lens.store";
@@ -316,8 +324,7 @@ function pieces(l: HitLine): Array<{ text: string; hit: boolean }> {
 const basename = (f: string) => f.slice(f.lastIndexOf("/") + 1);
 
 // ── Export ──────────────────────────────────────────────────────────────
-useExportables().register({
-  kind: "table",
+const hitTable = useTable({
   get title() { return `Find ${needle.value} by ${grain.value}`; },
   rows: () => rows.value.map(r => ({ [grain.value === "files" ? "file" : grain.value === "groups" ? "group" : "component"]: r.label, files: r.files.length, hits: r.hits })),
   columns: () => [

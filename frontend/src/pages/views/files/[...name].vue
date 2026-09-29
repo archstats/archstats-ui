@@ -16,7 +16,7 @@
       </router-link>
     </template>
     <EmptyState v-if="store.hasData && !loading && !file" title="File not in this snapshot" :text="`${filePath} was not found in the open scan.`" icon="file-text">
-      <router-link to="/views/metrics?grain=files" class="ui-btn ui-btn-sm">All files</router-link>
+      <router-link to="/views/metrics?grain=files&view=table" class="ui-btn ui-btn-sm">All files</router-link>
     </EmptyState>
     <NuxtPage v-else/>
   </DetailFrame>
@@ -53,7 +53,7 @@ const { data: file, loading } = useAsyncQuery<FileRow | null>(
 )
 
 const crumbs = computed<DetailCrumb[]>(() => {
-  const list: DetailCrumb[] = [{ label: "Files", to: "/views/metrics?grain=files" }]
+  const list: DetailCrumb[] = [{ label: "Files", to: "/views/metrics?grain=files&view=table" }]
   const component = file.value?.component
   if (component) list.push({ label: String(component), to: componentPath(component) })
   return list

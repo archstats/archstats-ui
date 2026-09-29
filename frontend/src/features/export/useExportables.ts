@@ -1,6 +1,6 @@
 import { computed, getCurrentInstance, onBeforeUnmount, shallowReactive } from "vue";
 import type { ExportColumn, ExportRow } from "./export";
-import type { FigureOptions, FigureOutput } from "./figure";
+import type { FigureLegend, FigureOptions, FigureOutput } from "./figure";
 
 // What the current view can hand over. Views, tables and charts register what
 // they hold while mounted; the Export menu (⌘E) lists whatever is registered.
@@ -20,6 +20,11 @@ export interface TableExportable {
     disabledReason?: () => string | null;
     /** False while columns still load after the rows appear; a take waits for it. */
     ready?: () => boolean;
+    /**
+     * Adds the table to a report its own way (the SQL console adds its query,
+     * which the report runs again), in place of a copy of the rows.
+     */
+    addToReport?: () => void | Promise<void>;
 }
 
 export interface FigureExportable {
@@ -29,7 +34,30 @@ export interface FigureExportable {
     render: (opts: FigureOptions) => FigureOutput | null | Promise<FigureOutput | null>;
     /** A canvas figure has no SVG form. */
     svg?: boolean;
+    /** What the marks mean, in the window's colours. Every export draws it under the figure unless the reader leaves it out. */
+    legend: () => FigureLegend;
+    /** Whether the figure's frame shows the legend in the app, before the reader says otherwise. */
+    legendInUi: () => boolean;
 }
+
+/**
+ * What every figure declares besides its drawing. The legend is required:
+ * a figure pasted into a report has no view around it, so it must say what
+ * its colours, lines and sizes mean. Where the view already says so (labels
+ * on the marks, a legend that is also a set of filters), `legendInUi: false`
+ * keeps the frame from saying it twice; the export still carries it.
+ */
+export interface FigureSpec {
+    title: string | (() => string);
+    legend: () => FigureLegend;
+    /** Default true. */
+    legendInUi?: boolean | (() => boolean);
+}
+
+const specFields = (spec: FigureSpec) => ({
+    legend: spec.legend,
+    legendInUi: typeof spec.legendInUi === "function" ? spec.legendInUi : () => spec.legendInUi !== false,
+});
 
 export interface DocumentExportable {
     kind: "document";
@@ -109,47 +137,77 @@ export function useExportables() {
 }
 
 /**
+ * Registers a table and returns the handle an <ExhibitFrame> takes. The spec
+ * object itself is registered, so getters on it (a title that follows the
+ * view's state) stay live.
+ */
+export function useTable(spec: Omit<TableExportable, "kind">): TableExportable {
+    const item = Object.assign(spec, { kind: "table" as const }) as TableExportable;
+    useExportables().register(item);
+    return item;
+}
+
+/**
+ * Registers a figure with its own ready and render, for charts that are not
+ * one live <svg> or <canvas> (a drawing made for export, a grid of divs).
+ * Returns the handle an <ExhibitFrame> takes.
+ */
+export function useFigure(spec: FigureSpec & { ready: () => boolean; render: FigureExportable["render"]; svg?: boolean }): FigureExportable {
+    const { register } = useExportables();
+    const item: FigureExportable = {
+        kind: "figure",
+        get title() { return typeof spec.title === "function" ? spec.title() : spec.title; },
+        ready: spec.ready,
+        render: spec.render,
+        svg: spec.svg,
+        ...specFields(spec),
+    };
+    register(item);
+    return item;
+}
+
+/**
  * Registers an SVG chart as a figure: the element when it is drawn, at the
  * size it is drawn. Every chart made of one <svg> exports this way.
  */
-export function useSvgFigure(title: string | (() => string), svg: () => SVGSVGElement | null | undefined, legend?: () => import("./figure").LegendItem[]) {
-    const { register } = useExportables();
-    register({
-        kind: "figure",
-        get title() { return typeof title === "function" ? title() : title; },
+export function useSvgFigure(spec: FigureSpec & {
+    svg: () => SVGSVGElement | null | undefined;
+    /** The chart covers its area with data colours (a map of tiles), so its most common colour is not its ground. */
+    filled?: boolean;
+}): FigureExportable {
+    return useFigure({
+        ...spec,
         // Drawn, on screen, and the element this component shows now: a stale reference
         // (an svg swapped out by v-if or a reload) measures nothing and is not ready.
         ready: () => {
-            const el = svg();
+            const el = spec.svg();
             if (!el || !el.isConnected || !el.querySelector("path, rect, circle, line, text, polygon, polyline, ellipse")) return false;
             const box = el.getBoundingClientRect();
             return box.width > 1 && box.height > 1;
         },
         svg: true,
         render: () => {
-            const el = svg();
+            const el = spec.svg();
             if (!el || !el.firstChild) return null;
             const box = el.getBoundingClientRect();
-            return { kind: "svg", svg: el, width: Math.round(box.width), height: Math.round(box.height), legend: legend?.() };
+            return { kind: "svg", svg: el, width: Math.round(box.width), height: Math.round(box.height), ...(spec.filled ? { filled: true } : {}) };
         },
     });
 }
 
 /** A canvas drawing as an exportable figure: PNG only, at the canvas's own pixel density. */
-export function useCanvasFigure(title: string | (() => string), canvas: () => HTMLCanvasElement | null | undefined) {
-    const { register } = useExportables();
-    register({
-        kind: "figure",
-        get title() { return typeof title === "function" ? title() : title; },
+export function useCanvasFigure(spec: FigureSpec & { canvas: () => HTMLCanvasElement | null | undefined }): FigureExportable {
+    return useFigure({
+        ...spec,
         svg: false,
         ready: () => {
-            const el = canvas();
+            const el = spec.canvas();
             if (!el || !el.isConnected) return false;
             const box = el.getBoundingClientRect();
             return box.width > 1 && box.height > 1;
         },
         render: () => {
-            const el = canvas();
+            const el = spec.canvas();
             if (!el) return null;
             const box = el.getBoundingClientRect();
             return { kind: "canvas", canvas: el, width: Math.round(box.width), height: Math.round(box.height), scale: el.width / Math.max(1, box.width) };

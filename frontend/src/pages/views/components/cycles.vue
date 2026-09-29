@@ -53,71 +53,75 @@
           <span class="shrink-0 text-[12px] text-neutral-500">components per tangle</span>
         </div>
 
-        <!-- What this one is, and what the cuts have done to it. -->
-        <div class="flex h-11 shrink-0 items-center gap-3 px-4 hairline-b">
-          <span class="shrink-0 whitespace-nowrap text-[13px] font-semibold text-neutral-900">Tangle {{ tangleNumber }}</span>
-          <span v-if="prefix" class="min-w-0 max-w-[32%] shrink truncate font-mono text-[12px] text-neutral-500" :title="`Names below leave out ${prefix}`">in {{ prefix.replace(/[./]$/, "") }}</span>
-          <span class="ui-toolbar-meta flex min-w-0 shrink items-center gap-1.5 truncate">
-            <span class="whitespace-nowrap">{{ tangle.members.length }} components</span><span class="text-neutral-300">·</span>
-            <span class="whitespace-nowrap">{{ fmt(tangle.lines) }} lines</span><span class="text-neutral-300">·</span>
-            <span class="whitespace-nowrap">{{ layout.layers.length }} levels</span><span class="text-neutral-300">·</span>
-            <span class="whitespace-nowrap">{{ fmt(tangle.cycles) }} listed cycles</span>
-            <template v-if="crossed.length > 1"><span class="text-neutral-300">·</span><span class="whitespace-nowrap" :title="crossed.map(c => `${c.name}: ${c.count}`).join('\n')">{{ crossed.length }} groups</span></template>
-          </span>
-          <div class="ml-auto flex shrink-0 items-center gap-1.5">
-            <PinButton kind="cycle" :entity-key="[...tangle.members].sort().join('\n')" :title="`Tangle of ${tangle.members.length} components`" :values="{ size: tangle.members.length }"/>
-            <button type="button" class="ui-btn ui-btn-sm" title="Its components become a group" @click="saveAsGroup"><Icon icon="bookmark" :size="13" class="text-neutral-500"/><span>Save as group</span></button>
+        <ExhibitFrame header="custom" fill class="min-h-0 grow">
+          <!-- What this one is, and what the cuts have done to it. -->
+          <div class="flex h-11 shrink-0 items-center gap-3 px-4 hairline-b">
+            <span class="shrink-0 whitespace-nowrap text-[13px] font-semibold text-neutral-900">Tangle {{ tangleNumber }}</span>
+            <span v-if="prefix" class="min-w-0 max-w-[32%] shrink truncate font-mono text-[12px] text-neutral-500" :title="`Names below leave out ${prefix}`">in {{ prefix.replace(/[./]$/, "") }}</span>
+            <span class="ui-toolbar-meta flex min-w-0 shrink items-center gap-1.5 truncate">
+              <span class="whitespace-nowrap">{{ tangle.members.length }} components</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ fmt(tangle.lines) }} lines</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ layout.layers.length }} levels</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ fmt(tangle.cycles) }} listed cycles</span>
+              <template v-if="crossed.length > 1"><span class="text-neutral-300">·</span><span class="whitespace-nowrap" :title="crossed.map(c => `${c.name}: ${c.count}`).join('\n')">{{ crossed.length }} groups</span></template>
+            </span>
+            <div class="ml-auto flex shrink-0 items-center gap-1.5">
+              <PinButton kind="cycle" :entity-key="[...tangle.members].sort().join('\n')" :title="`Tangle of ${tangle.members.length} components`" :values="{ size: tangle.members.length }"/>
+              <button type="button" class="ui-btn ui-btn-sm" title="Its components become a group" @click="saveAsGroup"><Icon icon="bookmark" :size="13" class="text-neutral-500"/><span>Save as group</span></button>
+              <!-- The drawing below exports from its own header, beside Pin. -->
+              <ExhibitButton class="ml-1"/>
+            </div>
           </div>
-        </div>
 
-        <!-- The cuts, as they stand: always here, so cutting never moves the drawing. -->
-        <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-[12.5px] hairline-b" role="status">
-          <template v-if="cut.size">
-            <span class="text-neutral-900"><span class="font-semibold tabular-nums">{{ cut.size }}</span> {{ cut.size === 1 ? "cut" : "cuts" }}: <span class="font-semibold tabular-nums">{{ after.freed.size }}</span> of {{ tangle.members.length }} components out of any tangle</span>
-            <span class="text-neutral-500">{{ after.tangles.length ? `${after.tangles.length} ${after.tangles.length === 1 ? "tangle" : "tangles"} left (${after.tangles.map(t => t.length).join(", ")})` : "no cycle left" }}</span>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">Undo cuts</button>
-          </template>
-          <span v-else class="text-neutral-500">Nothing cut yet. The guide on the right takes you through {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this knot, the one that frees most first.</span>
-        </div>
+          <!-- The cuts, as they stand: always here, so cutting never moves the drawing. -->
+          <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-[12.5px] hairline-b" role="status">
+            <template v-if="cut.size">
+              <span class="text-neutral-900"><span class="font-semibold tabular-nums">{{ cut.size }}</span> {{ cut.size === 1 ? "cut" : "cuts" }}: <span class="font-semibold tabular-nums">{{ after.freed.size }}</span> of {{ tangle.members.length }} components out of any tangle</span>
+              <span class="text-neutral-500">{{ after.tangles.length ? `${after.tangles.length} ${after.tangles.length === 1 ? "tangle" : "tangles"} left (${after.tangles.map(t => t.length).join(", ")})` : "no cycle left" }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">Undo cuts</button>
+            </template>
+            <span v-else class="text-neutral-500">Nothing cut yet. The guide on the right takes you through {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this knot, the one that frees most first.</span>
+          </div>
 
-        <div class="relative min-h-0 grow">
-          <TangleGraph
-            v-if="mode === 'graph'"
-            :layout="layout"
-            :cut="cut"
-            :freed="after.freed"
-            :selected-edge="selectedEdge"
-            :selected-node="selectedNode"
-            :matches="matches"
-            :lit="lit"
-            :label="shortName"
-            :color="groupColor"
-            :lines="linesOf"
-            :step="stepOf"
-            :title="figureTitle"
-            :focus="guideFocus"
-            :callout="guideCallout"
-            :flashed="flashed"
-            @select-edge="selectEdge"
-            @select-node="selectNode"
-            @open="n => router.push(componentPath(n))"
-            @clear="clearSelection"
-          />
-          <TangleMatrix
-            v-else
-            :layout="layout"
-            :cut="cut"
-            :freed="after.freed"
-            :selected-edge="selectedEdge"
-            :selected-node="selectedNode"
-            :matches="matches"
-            :label="shortName"
-            :title="figureTitle"
-            @select-edge="selectEdge"
-            @select-node="selectNode"
-            @open="n => router.push(componentPath(n))"
-          />
-        </div>
+          <div class="relative min-h-0 grow">
+            <TangleGraph
+              v-if="mode === 'graph'"
+              :layout="layout"
+              :cut="cut"
+              :freed="after.freed"
+              :selected-edge="selectedEdge"
+              :selected-node="selectedNode"
+              :matches="matches"
+              :lit="lit"
+              :label="shortName"
+              :color="groupColor"
+              :lines="linesOf"
+              :step="stepOf"
+              :title="figureTitle"
+              :focus="guideFocus"
+              :callout="guideCallout"
+              :flashed="flashed"
+              @select-edge="selectEdge"
+              @select-node="selectNode"
+              @open="n => router.push(componentPath(n))"
+              @clear="clearSelection"
+            />
+            <TangleMatrix
+              v-else
+              :layout="layout"
+              :cut="cut"
+              :freed="after.freed"
+              :selected-edge="selectedEdge"
+              :selected-node="selectedNode"
+              :matches="matches"
+              :label="shortName"
+              :title="figureTitle"
+              @select-edge="selectEdge"
+              @select-node="selectNode"
+              @open="n => router.push(componentPath(n))"
+            />
+          </div>
+        </ExhibitFrame>
       </template>
     </template>
 
@@ -204,9 +208,8 @@
             <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ after.freed.size }} of {{ tangle.members.length }} free</h3>
             <p>You skipped some cuts, so {{ after.tangles.reduce((s, t) => s + t.length, 0) }} components are still knotted. Go back to a skipped cut, or apply the rest in All cuts.</p>
           </template>
-          <p>Next: try the cuts in the sandbox to see what they do to coupling, or export the plan for a report (⌘E).</p>
+          <p>Next: export the plan for a report (⌘E).</p>
           <div class="flex flex-wrap gap-2">
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!cut.size" @click="openInSandbox"><Icon icon="flask" :size="13"/>Try in the sandbox</button>
             <button type="button" class="ui-btn ui-btn-sm" @click="goStep(0)">Start over</button>
             <button v-if="nextTangle" type="button" class="ui-btn ui-btn-sm" @click="selectTangle(nextTangle.key)">Next knot ({{ nextTangle.members.length }})<Icon icon="arrow-right" :size="13"/></button>
           </div>
@@ -247,9 +250,10 @@
         </section>
 
         <section>
-          <div class="mb-1 flex items-baseline">
+          <div class="mb-1 flex items-center gap-2">
             <h3 class="ui-label flex-1">Cuts</h3>
             <span class="text-[11px] text-neutral-500">↑↓ to move · Space to cut</span>
+            <ExhibitButton :exhibit="planTable"/>
           </div>
           <ol ref="planList" class="-mx-1 flex flex-col outline-none" tabindex="0" aria-label="Cut plan" @keydown="onPlanKey">
             <li
@@ -277,12 +281,6 @@
           </ol>
         </section>
 
-        <section class="flex flex-col gap-2 pt-3 hairline-t">
-          <button type="button" class="ui-btn ui-btn-sm self-start" :disabled="!cut.size" :title="cut.size ? 'Opens Connections in the sandbox with these imports cut: the coupling and tangles they leave' : 'Cut something first'" @click="openInSandbox">
-            <Icon icon="flask" :size="13" class="text-neutral-500"/><span>Try {{ cut.size || "" }} {{ cut.size === 1 ? "cut" : "cuts" }} in the sandbox</span>
-          </button>
-          <p class="text-[11px] leading-4 text-neutral-500">The sandbox shows what the cuts do to coupling and the rest of the graph; nothing is changed in the snapshot.</p>
-        </section>
       </div>
     </template>
 
@@ -382,6 +380,8 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import TangleGraph from "~/features/cycles/components/TangleGraph.vue";
@@ -394,11 +394,10 @@ import Checkbox from "~/shared/ui/Checkbox.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { useLensStore } from "~/features/groups/lens.store";
-import { useSandboxStore } from "~/features/sandbox/sandbox.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
 import { formatNumber } from "~/shared/format";
@@ -417,7 +416,6 @@ const store = useDataStore();
 const groupsStore = useGroupsStore();
 const lens = useLensStore();
 const scope = useScopeStore();
-const sandbox = useSandboxStore();
 const route = useRoute();
 const router = useRouter();
 const fmt = (n: number) => formatNumber(n);
@@ -875,17 +873,7 @@ async function saveAsGroup() {
   await nextTick();
   trayRef.value?.startCreate(`Tangle ${tangleNumber.value}`);
 }
-async function openInSandbox() {
-  const edits = plan.value.filter(s => cut.value.has(edgeId(s.from, s.to))).map(s => ({ kind: "cut" as const, from: s.from, to: s.to }));
-  if (!edits.length) return;
-  await sandbox.load();
-  const keep = sandbox.edits.filter(e => !(e.kind === "cut" && edits.some(x => x.from === e.from && x.to === e.to)));
-  sandbox.apply([...keep, ...edits]);
-  void router.push("/views/connections?level=components&sandbox=1");
-}
-
-useExportables().register({
-  kind: "table",
+const planTable = useTable({
   get title() { return `Cut plan, tangle ${tangleNumber.value}`; },
   rows: () => plan.value.map(s => ({ step: s.step, from: s.from, to: s.to, imports: s.imports, files: s.files, changed_together: cochange.value.get(edgeId(s.from, s.to)) ?? null, frees: gain(s), still_tangled: s.tangled })),
   columns: () => [

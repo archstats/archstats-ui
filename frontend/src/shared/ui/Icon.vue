@@ -20,7 +20,7 @@ import {
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   ArrowLeftRight, ArrowDown, ArrowUpDown,
-  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine
+  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -195,6 +195,8 @@ const iconComponent = computed(() => {
       return ImageIcon
     case "more-horizontal":
       return MoreHorizontal
+    case "share":
+      return Share
     case "download":
       return Download
   }

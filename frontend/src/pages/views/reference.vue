@@ -77,6 +77,7 @@ import { useExportables } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { definitionMarkdown, glossaryMarkdown, referenceEntries, type ReferenceEntry } from "~/features/snapshot/definition";
 import { copyText } from "~/platform/files";
+import { metricsPath } from "~/features/metrics/link";
 
 // Every metric the open snapshot defines, plus the ones the app computes,
 // grouped by family. Definitions come from the snapshot so they match its
@@ -119,8 +120,9 @@ watch(() => route.query.m, () => nextTick(() => selectedEl?.scrollIntoView({ blo
 const metricsLink = computed(() => {
   const id = selected.value?.id;
   if (!id || selected.value?.derived) return null;
-  if (data.hasColumn("components", id)) return { path: "/views/metrics", query: { grain: "components" } };
-  if (data.hasColumn("files", id)) return { path: "/views/metrics", query: { grain: "files" } };
+  // The table, ranked on this metric, with its column shown.
+  if (data.hasColumn("components", id)) return metricsPath({ view: "table", sort: id });
+  if (data.hasColumn("files", id)) return metricsPath({ grain: "files", view: "table", sort: id });
   return null;
 });
 

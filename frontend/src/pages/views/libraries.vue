@@ -24,32 +24,35 @@
       <LoadingState v-if="loading" text="Reading imports…"/>
       <EmptyState v-else-if="!data.hasView('snippets')" title="No imports recorded" text="This snapshot kept no import snippets." icon="package"/>
       <EmptyState v-else-if="!rows.length" title="Nothing imported from outside" text="Every import in scope resolves to one of the project's own components." icon="package"/>
-      <div v-else class="min-h-0 grow overflow-auto">
-        <table class="ui-table">
-          <thead>
-            <tr>
-              <th>Library <span class="font-normal text-neutral-400">as written in the import</span></th>
-              <th></th>
-              <th class="w-24 text-right" title="Import statements">Imports</th>
-              <th class="w-24 text-right" title="Files with at least one">Files</th>
-              <th class="w-28 text-right" title="Components with at least one">Components</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="l in visible" :key="l.name" class="cursor-default" :class="{ 'is-selected': picked?.name === l.name }" @click="pick(l)">
-              <td class="max-w-[520px] truncate font-mono text-sm text-neutral-800" :title="displayName(l.name, l.language)">{{ displayName(l.name, l.language) }}</td>
-              <td class="whitespace-nowrap">
-                <span v-if="l.platform" class="ui-tag" :title="PLATFORM_TITLE[l.language ?? ''] ?? 'Shipped with the language'">Platform</span>
-                <span v-if="l.internal" class="ui-tag" title="Starts where the project's own names start: probably one of its modules the scan did not resolve">Looks internal</span>
-              </td>
-              <td class="is-num text-right">{{ fmt(l.imports) }}</td>
-              <td class="is-num text-right">{{ fmt(l.files) }}</td>
-              <td class="is-num text-right">{{ fmt(l.components.size) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <button v-if="shown.length > visible.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 300">Show {{ Math.min(300, shown.length - visible.length) }} more</button>
-      </div>
+      <ExhibitFrame v-else :exhibit="libraryTable" class="grow" fill header-class="h-9 shrink-0 px-4 hairline-b">
+        <template #aside>{{ shown.length.toLocaleString("en-US") }} {{ shown.length === 1 ? "library" : "libraries" }}</template>
+        <div class="absolute inset-0 overflow-auto">
+          <table class="ui-table">
+            <thead>
+              <tr>
+                <th>Library <span class="font-normal text-neutral-400">as written in the import</span></th>
+                <th></th>
+                <th class="w-24 text-right" title="Import statements">Imports</th>
+                <th class="w-24 text-right" title="Files with at least one">Files</th>
+                <th class="w-28 text-right" title="Components with at least one">Components</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="l in visible" :key="l.name" class="cursor-default" :class="{ 'is-selected': picked?.name === l.name }" @click="pick(l)">
+                <td class="max-w-[520px] truncate font-mono text-sm text-neutral-800" :title="displayName(l.name, l.language)">{{ displayName(l.name, l.language) }}</td>
+                <td class="whitespace-nowrap">
+                  <span v-if="l.platform" class="ui-tag" :title="PLATFORM_TITLE[l.language ?? ''] ?? 'Shipped with the language'">Platform</span>
+                  <span v-if="l.internal" class="ui-tag" title="Starts where the project's own names start: probably one of its modules the scan did not resolve">Looks internal</span>
+                </td>
+                <td class="is-num text-right">{{ fmt(l.imports) }}</td>
+                <td class="is-num text-right">{{ fmt(l.files) }}</td>
+                <td class="is-num text-right">{{ fmt(l.components.size) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <button v-if="shown.length > visible.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 300">Show {{ Math.min(300, shown.length - visible.length) }} more</button>
+        </div>
+      </ExhibitFrame>
       <GroupActionBar v-if="selected.size" :selected-items="[...selected]" kind="component" :show-in-except="[]" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
 
@@ -74,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref, watch } from "vue";
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue";
@@ -81,7 +85,7 @@ import Checkbox from "~/shared/ui/Checkbox.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useStateStore } from "~/platform/state.store";
@@ -146,8 +150,7 @@ function selectAllUsers() {
   selected.value = s;
 }
 
-useExportables().register({
-  kind: "table",
+const libraryTable = useTable({
   get title() { return `Libraries${depth.value === null ? "" : ` to depth ${depth.value}`}`; },
   rows: () => shown.value.map(l => ({ library: displayName(l.name, l.language), platform: l.platform ? "yes" : "", looks_internal: l.internal ? "yes" : "", imports: l.imports, files: l.files, components: l.components.size })),
   columns: () => [{ id: "library", label: "Library" }, { id: "platform", label: "Platform" }, { id: "looks_internal", label: "Looks internal" }, { id: "imports", label: "Imports" }, { id: "files", label: "Files" }, { id: "components", label: "Components" }],

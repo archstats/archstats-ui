@@ -1,45 +1,50 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col bg-surface">
-    <div class="min-h-0 grow overflow-auto">
-      <table class="ui-table">
-        <thead class="sticky top-0 z-10 bg-surface">
-          <tr>
-            <th v-for="c in columns" :key="c.key" class="cursor-pointer select-none whitespace-nowrap hover:text-neutral-900" :class="c.num ? 'text-right' : ''" :title="c.title" @click="sortBy(c.key)">
-              <span class="inline-flex items-center gap-1">{{ c.label }}<Icon v-if="sort.key === c.key" :icon="sort.asc ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in visible" :key="r.key" class="is-clickable" :class="{ 'is-selected': isSelected(r) }" @click="onRow($event, r)">
-            <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.fromLabel">{{ r.fromLabel }}</td>
-            <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.toLabel">{{ r.toLabel }}</td>
-            <td class="is-num text-right">{{ fmt(r.references) }}<span v-if="r.dynamicRefs" class="ml-1 text-xs text-neutral-400" :title="`${r.dynamicRefs} by runtime lookup`">({{ r.dynamicRefs }})</span></td>
-            <td class="is-num text-right">{{ fmt(r.shared) }}</td>
-            <td class="is-num text-right">{{ r.rate === null ? "—" : `${Math.round(r.rate * 100)}%` }}</td>
-            <td class="is-num text-right">{{ r.hops === null ? (showHops ? "none" : "—") : r.hops }}</td>
-            <td class="is-num text-right">{{ Math.round(r.weight * 100) }}%</td>
-            <td class="text-sm text-neutral-600">{{ r.kinds }}</td>
-            <td><span v-if="r.inTangle" class="ui-tag text-red-700">tangle</span></td>
-          </tr>
-          <tr v-if="rows.length === 0"><td :colspan="columns.length" class="h-20 text-center text-neutral-500">{{ emptyText }}</td></tr>
-        </tbody>
-      </table>
-      <div v-if="rows.length > limit" class="flex justify-center py-3">
-        <button type="button" class="ui-btn ui-btn-sm" @click="limit += 200">Show more <span class="font-mono text-neutral-500">{{ fmt(rows.length - limit) }} left</span></button>
+  <!-- A table that fills its pane: a strip names it and ends in its export button. -->
+  <ExhibitFrame :exhibit="listTable" fill header-class="h-9 shrink-0 px-3 hairline-b">
+    <template #aside>{{ rows.length.toLocaleString("en-US") }} {{ rows.length === 1 ? "pair" : "pairs" }}</template>
+    <div class="flex h-full min-h-0 flex-col bg-surface">
+      <div class="min-h-0 grow overflow-auto">
+        <table class="ui-table">
+          <thead class="sticky top-0 z-10 bg-surface">
+            <tr>
+              <th v-for="c in columns" :key="c.key" class="cursor-pointer select-none whitespace-nowrap hover:text-neutral-900" :class="c.num ? 'text-right' : ''" :title="c.title" @click="sortBy(c.key)">
+                <span class="inline-flex items-center gap-1">{{ c.label }}<Icon v-if="sort.key === c.key" :icon="sort.asc ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in visible" :key="r.key" class="is-clickable" :class="{ 'is-selected': isSelected(r) }" @click="onRow($event, r)">
+              <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.fromLabel">{{ r.fromLabel }}</td>
+              <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.toLabel">{{ r.toLabel }}</td>
+              <td class="is-num text-right">{{ fmt(r.references) }}<span v-if="r.dynamicRefs" class="ml-1 text-xs text-neutral-400" :title="`${r.dynamicRefs} by runtime lookup`">({{ r.dynamicRefs }})</span></td>
+              <td class="is-num text-right">{{ fmt(r.shared) }}</td>
+              <td class="is-num text-right">{{ r.rate === null ? "—" : `${Math.round(r.rate * 100)}%` }}</td>
+              <td class="is-num text-right">{{ r.hops === null ? (showHops ? "none" : "—") : r.hops }}</td>
+              <td class="is-num text-right">{{ Math.round(r.weight * 100) }}%</td>
+              <td class="text-sm text-neutral-600">{{ r.kinds }}</td>
+              <td><span v-if="r.inTangle" class="ui-tag text-red-700">tangle</span></td>
+            </tr>
+            <tr v-if="rows.length === 0"><td :colspan="columns.length" class="h-20 text-center text-neutral-500">{{ emptyText }}</td></tr>
+          </tbody>
+        </table>
+        <div v-if="rows.length > limit" class="flex justify-center py-3">
+          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 200">Show more <span class="font-mono text-neutral-500">{{ fmt(rows.length - limit) }} left</span></button>
+        </div>
+      </div>
+      <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-sm text-neutral-500 hairline-t">
+        <span><span class="font-mono text-neutral-700">{{ fmt(rows.length) }}</span> pairs</span>
+        <span v-if="groupCounted" class="text-neutral-400">Shared commits between groups counted once per commit.</span>
       </div>
     </div>
-    <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-sm text-neutral-500 hairline-t">
-      <span><span class="font-mono text-neutral-700">{{ fmt(rows.length) }}</span> pairs</span>
-      <span v-if="groupCounted" class="text-neutral-400">Shared commits between groups counted once per commit.</span>
-    </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { edgeKey, type CEdge, type CNode } from "~/features/connections/connections";
@@ -201,8 +206,7 @@ function onRow(ev: MouseEvent, r: Row) {
   emit("select-pair", r.from, r.to);
 }
 
-useExportables().register({
-  kind: "table",
+const listTable = useTable({
   title: "Connections list",
   rows: () => rows.value.map(r => ({ from: r.fromLabel, to: r.toLabel, references: r.references, dynamic_references: r.dynamicRefs, shared_commits: r.shared, co_change: r.rate, hops: r.hops, weight: r.weight, kinds: r.kinds, in_tangle: r.inTangle })),
   columns: () => ["from", "to", "references", "dynamic_references", "shared_commits", "co_change", "hops", "weight", "kinds", "in_tangle"].map(id => ({ id, label: id.replace(/_/g, " ") })),

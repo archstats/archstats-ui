@@ -1,8 +1,13 @@
 // Screenshots hash routes of the running app through headless Chrome (CDP, no deps).
 // Usage: node scripts/capture.mjs --out DIR [--routes name=/path,name2=/path2] [--scheme light|dark|both]
-//        [--workspace NAME] [--size 1440x900] [--wait MS]
+//        [--workspace NAME] [--size 1440x900] [--wait MS] [--pin false]
 // Defaults: the 12 primary views, both schemes, workspace eai-3540597-qp-common.
 // Requires `wails dev` to be running (see scripts/dev-check.mjs).
+//
+// The backend's open snapshot is global: opening a scan here would switch the
+// native window, and any other capture, to it, and reads could mix two
+// snapshots. By default the page is pinned instead: Open only remembers the
+// scan and every Query runs through QueryIn on it. --pin false opens for real.
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -12,6 +17,7 @@ const out = args.out ?? ".impeccable/review/captures";
 const [W, H] = (args.size ?? "1440x900").split("x").map(Number);
 const workspace = args.workspace ?? "eai-3540597-qp-common";
 const waitMs = Number(args.wait ?? 2500);
+const pin = args.pin !== "false";
 const schemes = args.scheme === "both" || !args.scheme ? ["light", "dark"] : [args.scheme];
 const DEFAULT_ROUTES = [
   ["dashboard", "/"],
@@ -32,6 +38,22 @@ mkdirSync(out, { recursive: true });
 
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Patches the Wails bindings whenever the page reads window.go.
+const PIN = `(() => {
+  let pinned = null, real;
+  const patch = (go) => {
+    const q = go && go.app && go.app.QueryService;
+    if (!q || q.__pinned) return go;
+    const queryIn = q.QueryIn;
+    q.Open = async (id) => { pinned = id; return null; };
+    q.Query = (sql) => (pinned ? queryIn(pinned, sql) : Promise.reject(new Error("no scan pinned yet")));
+    q.CurrentScan = async () => pinned ?? "";
+    q.__pinned = true;
+    return go;
+  };
+  Object.defineProperty(window, "go", { configurable: true, get() { return patch(real); }, set(v) { real = v; } });
+})()`;
 
 async function session(scheme) {
   const port = 9400 + Math.floor(Math.random() * 100);
@@ -57,6 +79,7 @@ async function session(scheme) {
   await send("Network.setCacheDisabled", { cacheDisabled: true });
   await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
+  if (pin) await send("Page.addScriptToEvaluateOnNewDocument", { source: PIN });
   await send("Page.navigate", { url: "http://localhost:34115/" });
 
   // Wait for the app, select the workspace, wait for its data.

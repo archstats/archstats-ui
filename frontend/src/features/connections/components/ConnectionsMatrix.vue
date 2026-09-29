@@ -1,75 +1,80 @@
 <template>
-  <div ref="scroller" class="h-full w-full overflow-auto bg-surface" @mouseleave="hover(null, null)">
-    <!-- Hover is one delegated listener that toggles classes on the row and
-         column it touches. Bound per cell and kept in reactive state, every
-         mouse-enter re-rendered the whole grid: 40,000 cells at the cap, and
-         the pointer crosses one per 22 pixels. -->
-    <table ref="table" class="matrix border-separate border-spacing-0 font-mono text-xs" :style="{ '--cell': CELL + 'px', '--head': HEAD_H + 'px' }">
-      <thead @mouseover="onOver">
-        <tr>
-          <th class="corner sticky left-0 top-0 z-30 bg-surface hairline-b hairline-r" :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: HEAD_H + 'px' }">
-            <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">{{ directed ? 'row uses column' : 'coupled pairs' }}</span>
-          </th>
-          <th
-            v-for="col in orderedCols"
-            :key="col.id"
-            class="col sticky top-0 z-20 cursor-pointer bg-surface hairline-b"
-            :class="headClass(col.id)"
-            :style="{ width: CELL + 'px', minWidth: CELL + 'px', height: HEAD_H + 'px' }"
-            :title="col.label"
-            @click="select(col.id, $event)"
-            @dblclick="emit('activate', col.id)"
-            @contextmenu.prevent="emit('context', { id: col.id, x: $event.clientX, y: $event.clientY })"
-          >
-            <span class="col-label">{{ short(col.label) }}</span>
-            <span class="stripe" :style="{ backgroundColor: col.color ?? 'transparent' }"></span>
-          </th>
-        </tr>
-      </thead>
-      <tbody @mouseover="onOver">
-        <tr v-for="row in orderedRows" :key="row.id" :data-row="row.id">
-          <th
-            class="row sticky left-0 z-10 cursor-pointer bg-surface hairline-r"
-            :class="headClass(row.id)"
-            :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: CELL + 'px' }"
-            :title="row.label"
-            @click="select(row.id, $event)"
-            @dblclick="emit('activate', row.id)"
-            @contextmenu.prevent="emit('context', { id: row.id, x: $event.clientX, y: $event.clientY })"
-          >
-            <span class="flex h-full items-center gap-1.5 px-2">
-              <span
-                class="shrink-0"
-                :class="row.kind === 'group' ? 'h-2 w-2 rounded-[3px] border' : row.kind === 'file' ? 'h-1.5 w-1.5 rounded-full border' : 'h-1.5 w-1.5 rounded-full'"
-                :style="row.kind === 'component'
-                  ? { backgroundColor: row.color ?? 'rgb(var(--c-neutral-300))' }
-                  : { borderColor: row.color ?? 'rgb(var(--c-neutral-300))', backgroundColor: row.kind === 'group' ? (row.color ?? 'rgb(var(--c-neutral-300))') : 'transparent', opacity: row.kind === 'group' ? 0.85 : 1 }"
-                :title="row.kind"
-              ></span>
-              <span v-if="levels" class="w-5 shrink-0 text-right text-[10px] text-neutral-400" :title="`Dependency level ${(levels.level.get(row.id) ?? 0) + 1} of ${levels.depth}`">{{ (levels.level.get(row.id) ?? 0) + 1 }}</span>
-              <span class="min-w-0 truncate">{{ row.label }}</span>
-              <span v-if="badges?.get(row.id)" class="ml-auto rounded-full bg-red-600 px-1.5 font-mono text-[10px] font-semibold leading-4 text-white" :title="`${badges.get(row.id)} cycles inside`">{{ badges.get(row.id) }}</span>
-            </span>
-          </th>
-          <td
-            v-for="col in orderedCols"
-            :key="col.id"
-            class="cell"
-            :class="{ 'is-self': row.id === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)), 'is-marked': markedKeys?.has(edgeKey(row.id, col.id)) }"
-            :style="[cellStyle(row.id, col.id), boxShadow(row.id, col.id) ? { boxShadow: boxShadow(row.id, col.id) } : {}]"
-            :title="cellTitle(row.id, col.id)"
-            @click="boxOf.get(row.id) !== undefined && boxOf.get(row.id) === boxOf.get(col.id) && !edgeAt(row.id, col.id) ? emit('select-cycle', row.id) : clickCell(row.id, col.id)"
-          ></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <!-- A table that fills its pane: a strip names it and ends in its export button. -->
+  <ExhibitFrame :exhibit="matrixTable" fill header-class="h-9 shrink-0 px-3 hairline-b">
+    <template #aside>{{ directed ? 'Row uses column' : 'Coupled pairs' }}</template>
+    <div ref="scroller" class="h-full w-full overflow-auto bg-surface" @mouseleave="hover(null, null)">
+      <!-- Hover is one delegated listener that toggles classes on the row and
+           column it touches. Bound per cell and kept in reactive state, every
+           mouse-enter re-rendered the whole grid: 40,000 cells at the cap, and
+           the pointer crosses one per 22 pixels. -->
+      <table ref="table" class="matrix border-separate border-spacing-0 font-mono text-xs" :style="{ '--cell': CELL + 'px', '--head': HEAD_H + 'px' }">
+        <thead @mouseover="onOver">
+          <tr>
+            <th class="corner sticky left-0 top-0 z-30 bg-surface hairline-b hairline-r" :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: HEAD_H + 'px' }">
+              <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">{{ directed ? 'row uses column' : 'coupled pairs' }}</span>
+            </th>
+            <th
+              v-for="col in orderedCols"
+              :key="col.id"
+              class="col sticky top-0 z-20 cursor-pointer bg-surface hairline-b"
+              :class="headClass(col.id)"
+              :style="{ width: CELL + 'px', minWidth: CELL + 'px', height: HEAD_H + 'px' }"
+              :title="col.label"
+              @click="select(col.id, $event)"
+              @dblclick="emit('activate', col.id)"
+              @contextmenu.prevent="emit('context', { id: col.id, x: $event.clientX, y: $event.clientY })"
+            >
+              <span class="col-label">{{ short(col.label) }}</span>
+              <span class="stripe" :style="{ backgroundColor: col.color ?? 'transparent' }"></span>
+            </th>
+          </tr>
+        </thead>
+        <tbody @mouseover="onOver">
+          <tr v-for="row in orderedRows" :key="row.id" :data-row="row.id">
+            <th
+              class="row sticky left-0 z-10 cursor-pointer bg-surface hairline-r"
+              :class="headClass(row.id)"
+              :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: CELL + 'px' }"
+              :title="row.label"
+              @click="select(row.id, $event)"
+              @dblclick="emit('activate', row.id)"
+              @contextmenu.prevent="emit('context', { id: row.id, x: $event.clientX, y: $event.clientY })"
+            >
+              <span class="flex h-full items-center gap-1.5 px-2">
+                <span
+                  class="shrink-0"
+                  :class="row.kind === 'group' ? 'h-2 w-2 rounded-[3px] border' : row.kind === 'file' ? 'h-1.5 w-1.5 rounded-full border' : 'h-1.5 w-1.5 rounded-full'"
+                  :style="row.kind === 'component'
+                    ? { backgroundColor: row.color ?? 'rgb(var(--c-neutral-300))' }
+                    : { borderColor: row.color ?? 'rgb(var(--c-neutral-300))', backgroundColor: row.kind === 'group' ? (row.color ?? 'rgb(var(--c-neutral-300))') : 'transparent', opacity: row.kind === 'group' ? 0.85 : 1 }"
+                  :title="row.kind"
+                ></span>
+                <span v-if="levels" class="w-5 shrink-0 text-right text-[10px] text-neutral-400" :title="`Dependency level ${(levels.level.get(row.id) ?? 0) + 1} of ${levels.depth}`">{{ (levels.level.get(row.id) ?? 0) + 1 }}</span>
+                <span class="min-w-0 truncate">{{ row.label }}</span>
+                <span v-if="badges?.get(row.id)" class="ml-auto rounded-full bg-red-600 px-1.5 font-mono text-[10px] font-semibold leading-4 text-white" :title="`${badges.get(row.id)} cycles inside`">{{ badges.get(row.id) }}</span>
+              </span>
+            </th>
+            <td
+              v-for="col in orderedCols"
+              :key="col.id"
+              class="cell"
+              :class="{ 'is-self': row.id === col.id, 'is-pair': isSelectedPair(row.id, col.id), 'is-cycle': cycleKeys?.has(edgeKey(row.id, col.id)), 'is-marked': markedKeys?.has(edgeKey(row.id, col.id)) }"
+              :style="[cellStyle(row.id, col.id), boxShadow(row.id, col.id) ? { boxShadow: boxShadow(row.id, col.id) } : {}]"
+              :title="cellTitle(row.id, col.id)"
+              @click="boxOf.get(row.id) !== undefined && boxOf.get(row.id) === boxOf.get(col.id) && !edgeAt(row.id, col.id) ? emit('select-cycle', row.id) : clickCell(row.id, col.id)"
+            ></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { type CEdge, type CNode, type Levels, edgeKey, orderNodes } from "~/features/connections/connections";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 
 // A dependency structure matrix: rows use columns when the source is
 // directed; otherwise the grid is symmetric. Cells shade on the blue data
@@ -168,8 +173,7 @@ function edgeAt(row: string, col: string): CEdge | undefined {
 // shown, columns by those numbers, each cell the imports (or shared commits)
 // from its row into its column. Past 40 nodes a printed grid stops being read.
 const MAX_EXPORT = 40;
-useExportables().register({
-  kind: "table",
+const matrixTable = useTable({
   title: "Dependency matrix",
   rows: () => orderedRows.value.map((row, i) => ({
     n: i + 1,

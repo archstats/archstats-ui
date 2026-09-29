@@ -3,7 +3,7 @@
     :title="componentLabel(nameInRoute, workspaces.active?.name)"
     mono
     kind="Component"
-    :crumbs="[{ label: 'Components', to: '/views/metrics' }]"
+    :crumbs="[{ label: 'Components', to: '/views/metrics?view=table' }]"
     :stats="stats"
     :tabs="tabs"
     fallback="/views/metrics"
@@ -15,7 +15,7 @@
       </router-link>
     </template>
     <EmptyState v-if="store.hasData && !component" title="Component not in this snapshot" :text="`${nameInRoute} was not found in the open scan.`" icon="boxes">
-      <router-link to="/views/metrics" class="ui-btn ui-btn-sm">All components</router-link>
+      <router-link to="/views/metrics?view=table" class="ui-btn ui-btn-sm">All components</router-link>
     </EmptyState>
     <NuxtPage v-else/>
   </DetailFrame>

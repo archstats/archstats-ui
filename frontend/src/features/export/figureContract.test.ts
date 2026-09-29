@@ -42,10 +42,41 @@ describe("figure contract", () => {
             const template = s.split(/<script[\s>]/)[0]
             const draws = /from ["']d3["']/.test(s) || /<canvas\b/.test(template) || /<svg\b[^>]*\bref=/.test(template)
             if (!draws) continue
-            const registers = /useSvgFigure\(|useCanvasFigure\(|kind:\s*["']figure["']/.test(s)
+            const registers = /useSvgFigure\(|useCanvasFigure\(|useFigure\(/.test(s)
             const optedOut = /figure: none\b/.test(s)
             if (!registers && !optedOut) missing.push(relative(SRC, f))
         }
         expect(missing).toEqual([])
+    })
+
+    it("draws every figure in an ExhibitFrame, with its own export button and legend", () => {
+        // The frame is where a figure is exported from; a figure registered without one
+        // can only be reached through a report slot. Legends are enforced by the types.
+        const unframed: string[] = []
+        for (const f of files(SRC)) {
+            const s = readFileSync(f, "utf8")
+            if (!/useSvgFigure\(|useCanvasFigure\(|useFigure\(/.test(s)) continue
+            if (!/<(Exhibit|Figure)Frame\b/.test(s)) unframed.push(relative(SRC, f))
+        }
+        expect(unframed).toEqual([])
+    })
+
+    it("registers tables through useTable, so each has a handle for its frame's button", () => {
+        const PENDING = new Set<string>()
+        const bare: string[] = []
+        for (const f of files(SRC)) {
+            const rel = relative(SRC, f)
+            if (!PENDING.has(rel) && /register\(\{\s*kind:\s*["']table["']/.test(readFileSync(f, "utf8"))) bare.push(rel)
+        }
+        expect(bare).toEqual([])
+    })
+
+    it("registers figures only through useFigure and its two shorthands", () => {
+        // A bare register({ kind: "figure" }) skips the legend the interface requires.
+        const bare: string[] = []
+        for (const f of files(SRC)) {
+            if (/kind:\s*["']figure["']\s*,\s*title/.test(readFileSync(f, "utf8"))) bare.push(relative(SRC, f))
+        }
+        expect(bare).toEqual([])
     })
 })

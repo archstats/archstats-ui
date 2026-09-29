@@ -1,3 +1,4 @@
+import type { LegendItem } from "~/features/export/figure"
 import { chartTheme } from "~/shared/ui/useChartTheme";
 
 // Shared vocabulary for the Java detail tabs: which snippet types name a
@@ -63,6 +64,14 @@ export function roleColor(role: JavaRole | null | undefined): string {
         case "Entity": return t.violet;
         default: return t.inkMuted;
     }
+}
+
+const ROLE_ORDER: Array<JavaRole | null> = ["Controller", "Service", "Repository", "Entity", null]
+
+/** Legend entries for the roles a drawing actually shows, in layer order. */
+export function roleLegend(roles: Iterable<JavaRole | null | undefined>): LegendItem[] {
+    const present = new Set(Array.from(roles, r => r ?? null))
+    return ROLE_ORDER.filter(r => present.has(r)).map(r => ({ label: r ?? "Other", color: roleColor(r), mark: "dot" as const }))
 }
 
 // Tailwind class for the same hue, for legends and dots in templates.

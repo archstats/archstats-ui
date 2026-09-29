@@ -1,16 +1,19 @@
 <template>
-  <div ref="host" class="relative h-[380px] w-full overflow-hidden bg-surface">
-    <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Bean wiring inside the component"></svg>
-    <ZoomControls position="top-right" @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
-  </div>
+  <ExhibitFrame :exhibit="figure">
+    <div ref="host" class="relative h-[380px] w-full overflow-hidden bg-surface">
+      <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Bean wiring inside the component"></svg>
+      <ZoomControls @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme"
-import { roleColor, type JavaRole, type WiringEdge, type WiringNode } from "~/features/java/java"
+import { roleColor, roleLegend, type JavaRole, type WiringEdge, type WiringNode } from "~/features/java/java"
 import ZoomControls from "~/shared/ui/ZoomControls.vue"
 
 // The force graph of beans and entities inside one component: nodes are
@@ -268,5 +271,14 @@ onBeforeUnmount(() => {
   if (resizeTimer) clearTimeout(resizeTimer)
 })
 
-useSvgFigure("Bean wiring", () => svgRef.value)
+const figure = useSvgFigure({
+  title: "Bean wiring",
+  svg: () => svgRef.value,
+  legend: () => {
+    const t = chartTheme()
+    const items = [...roleLegend(props.nodes.map(n => n.role)), { label: "Imports", color: withAlpha(t.inkMuted, 0.6), mark: "line" as const }]
+    if (props.nodes.some(n => n.external)) items.push({ label: "A class in another component, and the wiring to it", color: t.inkMuted, mark: "dashed" })
+    return { items, notes: ["Columns follow the layers: controllers, services, repositories, entities. A line is thicker the more references it carries."] }
+  },
+})
 </script>

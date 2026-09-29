@@ -10,6 +10,7 @@
 
           <!-- 1. What the code is made of. -->
           <ReadingBand title="Composition" :lede="compositionLede">
+            <template #actions><ExhibitButton :exhibit="compositionTable"/></template>
             <LoadingState v-if="filesLoading" text="Counting files…"/>
             <div v-else class="overflow-hidden rounded-lg hairline">
               <table class="ui-table">
@@ -186,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue";
 import { computed, ref } from "vue";
 import { useImportCoverage } from "~/features/snapshot/useImportCoverage";
 import { gapPhrase } from "~/features/snapshot/coverage";
@@ -198,7 +200,7 @@ import ReadingBand from "~/shared/ui/ReadingBand.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
-import { useExportables } from "~/features/export/useExportables";
+import { useExportables, useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { detectFramework, languageOfFile } from "~/features/frameworks/frameworkProfiles";
@@ -455,8 +457,7 @@ function methodology(): string {
 }
 
 useExportables().register({ kind: "document", title: "About this snapshot", label: "Copy methodology", savable: true, markdown: methodology });
-useExportables().register({
-  kind: "table",
+const compositionTable = useTable({
   title: "Composition by language",
   rows: () => compositionRows.value.map(r => ({ language: r.language, files: r.files, lines: r.lines, ...Object.fromEntries(ROLE_ORDER.map(k => [`lines_${k}`, r.roles[k]])) })),
   columns: () => [{ id: "language", label: "Language" }, { id: "files", label: "Files" }, { id: "lines", label: "Lines" }, ...ROLE_ORDER.map(k => ({ id: `lines_${k}`, label: `${ROLE_LABELS[k]} lines` }))],

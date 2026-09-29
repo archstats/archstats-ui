@@ -136,9 +136,6 @@
             </div>
           </div>
         </template>
-        <button v-if="!naming && kind === 'file'" type="button" class="ui-btn ui-btn-sm ui-btn-quiet whitespace-nowrap" title="Make these files a module in the restructure planner" @click="toPlanner">
-          To planner
-        </button>
         <ShowInMenu v-if="!naming" :kind="kind === 'file' ? 'file' : 'component'" :ids="selectedItems" :except="showInExcept" up/>
 
         <span class="ui-toolbar-sep"></span>
@@ -164,9 +161,6 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import ShowInMenu from "~/features/groups/components/ShowInMenu.vue";
 import { adjacency, between, reach, tangleOf } from "~/features/navigation/focus";
 import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
-import { useRouter } from "vue-router";
-import { useRestructureStore } from "~/features/restructure/restructure.store";
-import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 
 // Module-level so every tray on every view shares the last used dimension;
 // the lens wins while it exists, so a quick group lands where you are looking.
@@ -202,17 +196,7 @@ const emit = defineEmits<{
 const groupsStore = useGroupsStore();
 const dataStore = useDataStore();
 const scope = useScopeStore();
-const router = useRouter();
 
-// A selection is also the start of a module: the planner checks it at once.
-function toPlanner() {
-  const planner = useRestructureStore();
-  const ws = useWorkspacesStore().active?.id;
-  if (ws) planner.load(ws);
-  planner.add({ name: `Module ${planner.plan.modules.length + 1}`, files: [...props.selectedItems] });
-  emit("clear");
-  void router.push("/views/restructure");
-}
 const lens = useLensStore();
 const trayEl = ref<HTMLElement | null>(null);
 const startDimension = () => lens.active ?? lastDimension ?? DEFAULT_DIMENSION;
