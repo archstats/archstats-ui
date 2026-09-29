@@ -1,6 +1,6 @@
-// The folder tree the structure pictures are drawn on. Checks and the
-// restructure planner paint the same map, so the architect learns the shape
-// of the codebase once and every finding lands somewhere they recognise.
+// The folder tree the structure pictures are drawn on. Every Units finding
+// paints the same map, so the architect learns the shape of the codebase
+// once and every finding lands somewhere they recognise.
 
 export interface FolderNode {
     /** The label drawn on the map: one folder, or a chain of single-child folders ("frontend/src"). */

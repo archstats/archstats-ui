@@ -4,9 +4,9 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
 import { isTestPath } from "~/features/snapshot/fileRole"
 import { loadFileGraph, type FileGraph } from "./fileGraph"
 
-// The open snapshot's file import graph, shared by the structure checks and
-// the restructure planner, loaded once per snapshot. Changes and drift load
-// other snapshots' graphs the same way (fileGraph.ts).
+// The open snapshot's file import graph, read by the Units findings and
+// loaded once per snapshot. Changes and drift load other snapshots' graphs
+// the same way (fileGraph.ts).
 
 const EMPTY: FileGraph = {
     data: { files: [], tests: new Set(), production: new Set(), lines: new Map(), edges: [], markers: new Map(), units: [], seen: new Set(), component: new Map() },

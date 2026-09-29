@@ -5,147 +5,150 @@
        -- the one thing nobody can act on -- was painted red and took three
        quarters of the height. Here the default is quiet, the accent belongs
        to whatever is in focus, and red means one thing only. -->
-  <figure class="m-0 flex min-w-0 flex-col">
-    <figcaption class="sr-only">
-      Flow of {{ flow.ribbons.length }} dependencies between {{ headLabel }} and {{ tailLabel }}.
-      Each module is drawn in the column of its own lane, whichever way its
-      dependencies run. Use arrow keys to move between modules.
-    </figcaption>
+  <ExhibitFrame :exhibit="figure">
+    <figure class="m-0 flex min-w-0 flex-col">
+      <figcaption class="sr-only">
+        Flow of {{ flow.ribbons.length }} dependencies between {{ headLabel }} and {{ tailLabel }}.
+        Each module is drawn in the column of its own lane, whichever way its
+        dependencies run. Use arrow keys to move between modules.
+      </figcaption>
 
-    <!-- Which column is which has to survive scrolling: forty-eight named
-         modules is fifteen hundred pixels of drawing, and a reader who has
-         scrolled past the heading can no longer tell sender from receiver. -->
-    <div class="hairline-b sticky top-0 z-10 flex shrink-0 items-baseline
-                justify-between bg-surface px-1 pb-2 pt-0.5">
-      <!-- Lane names only. These headed the columns "sends" and "receives",
-           which is true of where most of the traffic runs and false of any
-           row that runs the other way: a module imported sixty-nine times and
-           importing nothing sat under the word "sends". Which way a reference
-           runs is carried by its colour, named in the key, and never by the
-           column a module's lane puts it in. -->
-      <p class="flex items-center gap-2 text-base text-neutral-900">
-        <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(headLane))"/>
-        <span>{{ headLabel }}</span>
-      </p>
-      <!-- Which way a reference runs, said once where the eye already is,
-           and drawn the way the ribbons draw it. -->
-      <p class="flex items-center gap-4 self-center text-xs text-neutral-600" aria-label="Which way the references run">
-        <span class="flex items-center gap-1.5">
-          <svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="23" y2="4" class="stroke-neutral-500" stroke-width="2"/><path d="M22,0.5 L29,4 L22,7.5 z" class="fill-neutral-500"/></svg>
-          {{ headLabel }} uses {{ tailLabel }}
-        </span>
-        <span class="flex items-center gap-1.5">
-          <svg width="30" height="8" aria-hidden="true"><line x1="7" y1="4" x2="30" y2="4" class="stroke-red-500" stroke-width="2"/><path d="M8,0.5 L1,4 L8,7.5 z" class="fill-red-500"/></svg>
-          {{ tailLabel }} uses {{ headLabel }}
-        </span>
-      </p>
-      <p class="flex items-center gap-2 text-base text-neutral-900">
-        <span>{{ tailLabel }}</span>
-        <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(tailLane))"/>
-      </p>
-    </div>
+      <!-- Which column is which has to survive scrolling: forty-eight named
+           modules is fifteen hundred pixels of drawing, and a reader who has
+           scrolled past the heading can no longer tell sender from receiver. -->
+      <div class="hairline-b sticky top-0 z-10 flex shrink-0 items-baseline
+                  justify-between bg-surface px-1 pb-2 pt-0.5">
+        <!-- Lane names only. These headed the columns "sends" and "receives",
+             which is true of where most of the traffic runs and false of any
+             row that runs the other way: a module imported sixty-nine times and
+             importing nothing sat under the word "sends". Which way a reference
+             runs is carried by its colour, named in the key, and never by the
+             column a module's lane puts it in. -->
+        <p class="flex items-center gap-2 text-base text-neutral-900">
+          <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(headLane))"/>
+          <span>{{ headLabel }}</span>
+        </p>
+        <!-- Which way a reference runs, said once where the eye already is,
+             and drawn the way the ribbons draw it. -->
+        <p class="flex items-center gap-4 self-center text-xs text-neutral-600" aria-label="Which way the references run">
+          <span class="flex items-center gap-1.5">
+            <svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="23" y2="4" class="stroke-neutral-500" stroke-width="2"/><path d="M22,0.5 L29,4 L22,7.5 z" class="fill-neutral-500"/></svg>
+            {{ headLabel }} uses {{ tailLabel }}
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg width="30" height="8" aria-hidden="true"><line x1="7" y1="4" x2="30" y2="4" class="stroke-red-500" stroke-width="2"/><path d="M8,0.5 L1,4 L8,7.5 z" class="fill-red-500"/></svg>
+            {{ tailLabel }} uses {{ headLabel }}
+          </span>
+        </p>
+        <p class="flex items-center gap-2 text-base text-neutral-900">
+          <span>{{ tailLabel }}</span>
+          <span class="h-2.5 w-2.5 rounded-full" :class="laneDotClass(laneColor(tailLane))"/>
+        </p>
+      </div>
 
-    <div ref="frame" class="w-full">
-      <svg ref="svg" class="block w-full" :class="{ 'is-key-focus': keyFocus }"
-           :viewBox="`0 0 ${W} ${view.height}`"
-           role="application" tabindex="0"
-           :aria-label="`${flow.ribbons.length} dependencies. Arrow keys move between modules.`"
-           @keydown="onKey"
-           @pointerdown="viaPointer = true"
-           @focus="keyFocus = !viaPointer; viaPointer = false"
-           @blur="keyFocus = false">
-        <!-- The focused module's row, banded the full width. Recolouring an
-             eleven-pixel bar is not enough to find in a long drawing; the
-             band is what the eye lands on after a click from elsewhere. -->
-        <rect v-for="(row, side) in { left: rowLeft, right: rowRight }" :key="side"
-              class="row pointer-events-none fill-neutral-100"
-              :x="row?.x ?? 0" :width="row?.w ?? 0"
-              :y="row?.y ?? 0" :height="ROW_H"
-              rx="4" :fill-opacity="row ? 1 : 0"/>
+      <div ref="frame" class="w-full">
+        <svg ref="svg" class="block w-full" :class="{ 'is-key-focus': keyFocus }"
+             :viewBox="`0 0 ${W} ${view.height}`"
+             role="application" tabindex="0"
+             :aria-label="`${flow.ribbons.length} dependencies. Arrow keys move between modules.`"
+             @keydown="onKey"
+             @pointerdown="viaPointer = true"
+             @focus="keyFocus = !viaPointer; viaPointer = false"
+             @blur="keyFocus = false">
+          <!-- The focused module's row, banded the full width. Recolouring an
+               eleven-pixel bar is not enough to find in a long drawing; the
+               band is what the eye lands on after a click from elsewhere. -->
+          <rect v-for="(row, side) in { left: rowLeft, right: rowRight }" :key="side"
+                class="row pointer-events-none fill-neutral-100"
+                :x="row?.x ?? 0" :width="row?.w ?? 0"
+                :y="row?.y ?? 0" :height="ROW_H"
+                rx="4" :fill-opacity="row ? 1 : 0"/>
 
-        <!-- Ribbons under the nodes so every node edge stays crisp. -->
-        <g>
-          <path v-for="r in view.ribbons" :key="r.id"
-                :d="ribbon(r)"
-                :fill="ribbonFill(r)"
-                :fill-opacity="ribbonOpacity(r) * r.alpha * (1 - 0.95 * motion)"
-                class="cursor-pointer transition-[fill-opacity] duration-200"
-                @mouseenter="hovered = r.id" @mouseleave="hovered = null"
-                @click="onRibbon(r)">
-            <title>{{ describe(r) }}</title>
-          </path>
-        </g>
+          <!-- Ribbons under the nodes so every node edge stays crisp. -->
+          <g>
+            <path v-for="r in view.ribbons" :key="r.id"
+                  :d="ribbon(r)"
+                  :fill="ribbonFill(r)"
+                  :fill-opacity="ribbonOpacity(r) * r.alpha * (1 - 0.95 * motion)"
+                  class="cursor-pointer transition-[fill-opacity] duration-200"
+                  @mouseenter="hovered = r.id" @mouseleave="hovered = null"
+                  @click="onRibbon(r)">
+              <title>{{ describe(r) }}</title>
+            </path>
+          </g>
 
-        <!-- Direction on the ribbons themselves: chevrons pointing the way the
-             imports run, and on whatever is traced, dashes that flow that way. -->
-        <g class="pointer-events-none">
-          <path v-for="c in chevrons" :key="c.key" :d="c.d" fill="none"
-                :class="c.back ? 'stroke-red-700' : 'stroke-neutral-500'"
-                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                :stroke-opacity="c.opacity * (1 - 0.95 * motion)"/>
-          <path v-for="f in flowing" :key="'f' + f.id" :d="f.d" fill="none"
-                class="flowing stroke-neutral-900" stroke-width="1.5" stroke-linecap="round"
-                stroke-dasharray="3 9" :stroke-opacity="0.85 * (1 - 0.95 * motion)"/>
-        </g>
+          <!-- Direction on the ribbons themselves: chevrons pointing the way the
+               imports run, and on whatever is traced, dashes that flow that way. -->
+          <g class="pointer-events-none">
+            <path v-for="c in chevrons" :key="c.key" :d="c.d" fill="none"
+                  :class="c.back ? 'stroke-red-700' : 'stroke-neutral-500'"
+                  stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                  :stroke-opacity="c.opacity * (1 - 0.95 * motion)"/>
+            <path v-for="f in flowing" :key="'f' + f.id" :d="f.d" fill="none"
+                  class="flowing stroke-neutral-900" stroke-width="1.5" stroke-linecap="round"
+                  stroke-dasharray="3 9" :stroke-opacity="0.85 * (1 - 0.95 * motion)"/>
+          </g>
 
-        <!-- Left column. -->
-        <g v-for="n in view.left" :key="'l' + n.key" :opacity="n.alpha">
-          <rect :x="barX(n, 'left')" :y="n.y0" :width="barW(n)"
-                :height="Math.max(1, n.y1 - n.y0)" rx="2"
-                :class="nodeClass(n)" :fill-opacity="n.path ? 1 : 0.34"
-                @mouseenter="hoveredNode = n.key" @mouseleave="hoveredNode = null"
-                @click="onNode(n)">
-            <title>{{ nodeTitle(n, "left") }}</title>
-          </rect>
-          <!-- The share of this module's traffic that runs against the grain,
-               in proportion. Flagging the whole bar red the moment any of it
-               returned said something is wrong here and nothing about how
-               much: four references in a hundred looked like forty. -->
-          <path v-if="backHeight(n)"
-                :d="capPath(barX(n, 'left'), n.y0, barW(n), backHeight(n))"
-                class="pointer-events-none fill-red-500"/>
-          <!-- Magnitude beside the name, so two modules can be compared
-               without hovering either of them. -->
-          <text :x="LEFT - 8" :y="mid(n)" text-anchor="end" dominant-baseline="middle"
-                class="pointer-events-none select-none font-mono tabular-nums"
-                :style="{ fontSize: `${LABEL_SIZE}px` }" :fill="countFill(n)">{{ n.weight }}</text>
-          <text :x="LEFT - 8 - COUNT_W" :y="mid(n)" text-anchor="end" dominant-baseline="middle"
-                class="pointer-events-none select-none font-mono"
-                :style="{ fontSize: `${LABEL_SIZE}px`, fontWeight: emphasis(n) }"
-                :fill="labelFill(n)">{{ clip(n.label) }}</text>
-          <path v-if="marked(n)" :d="warnMark(LEFT - 12 - COUNT_W - textWidth(n.label), mid(n))"
-                :fill="markFill(n)" class="pointer-events-none"/>
-        </g>
+          <!-- Left column. -->
+          <g v-for="n in view.left" :key="'l' + n.key" :opacity="n.alpha">
+            <rect :x="barX(n, 'left')" :y="n.y0" :width="barW(n)"
+                  :height="Math.max(1, n.y1 - n.y0)" rx="2"
+                  :class="nodeClass(n)" :fill-opacity="n.path ? 1 : 0.34"
+                  @mouseenter="hoveredNode = n.key" @mouseleave="hoveredNode = null"
+                  @click="onNode(n)">
+              <title>{{ nodeTitle(n, "left") }}</title>
+            </rect>
+            <!-- The share of this module's traffic that runs against the grain,
+                 in proportion. Flagging the whole bar red the moment any of it
+                 returned said something is wrong here and nothing about how
+                 much: four references in a hundred looked like forty. -->
+            <path v-if="backHeight(n)"
+                  :d="capPath(barX(n, 'left'), n.y0, barW(n), backHeight(n))"
+                  class="pointer-events-none fill-red-500"/>
+            <!-- Magnitude beside the name, so two modules can be compared
+                 without hovering either of them. -->
+            <text :x="LEFT - 8" :y="mid(n)" text-anchor="end" dominant-baseline="middle"
+                  class="pointer-events-none select-none font-mono tabular-nums"
+                  :style="{ fontSize: `${LABEL_SIZE}px` }" :fill="countFill(n)">{{ n.weight }}</text>
+            <text :x="LEFT - 8 - COUNT_W" :y="mid(n)" text-anchor="end" dominant-baseline="middle"
+                  class="pointer-events-none select-none font-mono"
+                  :style="{ fontSize: `${LABEL_SIZE}px`, fontWeight: emphasis(n) }"
+                  :fill="labelFill(n)">{{ clip(n.label) }}</text>
+            <path v-if="marked(n)" :d="warnMark(LEFT - 12 - COUNT_W - textWidth(n.label), mid(n))"
+                  :fill="markFill(n)" class="pointer-events-none"/>
+          </g>
 
-        <!-- Right column. -->
-        <g v-for="n in view.right" :key="'r' + n.key" :opacity="n.alpha">
-          <rect :x="barX(n, 'right')" :y="n.y0" :width="barW(n)"
-                :height="Math.max(1, n.y1 - n.y0)" rx="2"
-                :class="nodeClass(n)" :fill-opacity="n.path ? 1 : 0.34"
-                @mouseenter="hoveredNode = n.key" @mouseleave="hoveredNode = null"
-                @click="onNode(n)">
-            <title>{{ nodeTitle(n, "right") }}</title>
-          </rect>
-          <path v-if="backHeight(n)"
-                :d="capPath(barX(n, 'right'), n.y0, barW(n), backHeight(n))"
-                class="pointer-events-none fill-red-500"/>
-          <text :x="RIGHT + BAR + 8" :y="mid(n)" text-anchor="start" dominant-baseline="middle"
-                class="pointer-events-none select-none font-mono tabular-nums"
-                :style="{ fontSize: `${LABEL_SIZE}px` }" :fill="countFill(n)">{{ n.weight }}</text>
-          <text :x="RIGHT + BAR + 8 + COUNT_W" :y="mid(n)" text-anchor="start" dominant-baseline="middle"
-                class="pointer-events-none select-none font-mono"
-                :style="{ fontSize: `${LABEL_SIZE}px`, fontWeight: emphasis(n) }"
-                :fill="labelFill(n)">{{ clip(n.label) }}</text>
-          <path v-if="marked(n)"
-                :d="warnMark(RIGHT + BAR + 12 + COUNT_W + textWidth(n.label), mid(n))"
-                :fill="markFill(n)" class="pointer-events-none"/>
-        </g>
-      </svg>
-    </div>
-  </figure>
+          <!-- Right column. -->
+          <g v-for="n in view.right" :key="'r' + n.key" :opacity="n.alpha">
+            <rect :x="barX(n, 'right')" :y="n.y0" :width="barW(n)"
+                  :height="Math.max(1, n.y1 - n.y0)" rx="2"
+                  :class="nodeClass(n)" :fill-opacity="n.path ? 1 : 0.34"
+                  @mouseenter="hoveredNode = n.key" @mouseleave="hoveredNode = null"
+                  @click="onNode(n)">
+              <title>{{ nodeTitle(n, "right") }}</title>
+            </rect>
+            <path v-if="backHeight(n)"
+                  :d="capPath(barX(n, 'right'), n.y0, barW(n), backHeight(n))"
+                  class="pointer-events-none fill-red-500"/>
+            <text :x="RIGHT + BAR + 8" :y="mid(n)" text-anchor="start" dominant-baseline="middle"
+                  class="pointer-events-none select-none font-mono tabular-nums"
+                  :style="{ fontSize: `${LABEL_SIZE}px` }" :fill="countFill(n)">{{ n.weight }}</text>
+            <text :x="RIGHT + BAR + 8 + COUNT_W" :y="mid(n)" text-anchor="start" dominant-baseline="middle"
+                  class="pointer-events-none select-none font-mono"
+                  :style="{ fontSize: `${LABEL_SIZE}px`, fontWeight: emphasis(n) }"
+                  :fill="labelFill(n)">{{ clip(n.label) }}</text>
+            <path v-if="marked(n)"
+                  :d="warnMark(RIGHT + BAR + 12 + COUNT_W + textWidth(n.label), mid(n))"
+                  :fill="markFill(n)" class="pointer-events-none"/>
+          </g>
+        </svg>
+      </div>
+    </figure>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { useSvgFigure } from "~/features/export/useExportables"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
@@ -643,7 +646,20 @@ function onKey(event: KeyboardEvent) {
   if (next?.path) emit("select", next.path)
 }
 
-useSvgFigure("Boundary flow", () => svg.value)
+// The key under the drawing already says all of this, so the frame shows it only in exports.
+const figure = useSvgFigure({
+  title: "Boundary flow",
+  svg: () => svg.value,
+  legendInUi: false,
+  legend: () => ({
+    items: [
+      { label: `${props.headLabel} into ${props.tailLabel}`, color: "rgb(var(--c-neutral-400))" },
+      { label: `${props.tailLabel} back into ${props.headLabel}`, color: "rgb(var(--c-red-500))" },
+      { label: "In focus", color: "rgb(var(--c-accent-500))" },
+    ],
+    notes: [`${props.headLabel} is on the left, ${props.tailLabel} on the right. Thickness is references; a bar is red in proportion to what runs the other way.`],
+  }),
+})
 </script>
 
 <style scoped>

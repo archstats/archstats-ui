@@ -6,102 +6,108 @@
        list makes each one a number to compare by reading.
        The warnings are marks on the diagram rather than a list beside it. -->
   <div class="flex h-full min-w-0 flex-col">
-    <!-- What is wrong, as a row of switches into the picture. It folds,
-         because on a tall boundary four wrapped headlines and a legend take
-         a fifth of the room from the thing they are notes about. -->
-    <div class="flex shrink-0 items-start gap-2 px-5 pb-1 pt-3">
-      <button type="button"
-              class="mt-0.5 shrink-0 rounded p-0.5 text-neutral-500 transition-colors
-                     duration-100 hover:bg-neutral-100 hover:text-neutral-900"
-              :aria-expanded="notesOpen"
-              :title="notesOpen ? 'Hide the notes and give the room to the diagram' : 'Show what is wrong at this boundary'"
-              @click="notesOpen = !notesOpen">
-        <Icon :icon="notesOpen ? 'chevron-down' : 'chevron-right'" :size="14"/>
-      </button>
-
-      <div v-if="notesOpen" class="flex min-w-0 flex-wrap items-center gap-2">
-        <button v-for="a in relationship.anomalies" :key="a.id" type="button"
-                class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm leading-4 transition-colors duration-100"
-                :class="chipClass(a)"
-                :disabled="!a.references.length"
-                :title="a.detail"
-                @click="$emit('openAnomaly', a.id)">
-          <Icon :icon="a.tone === 'warn' ? 'alert' : 'check'" :size="12"/>
-          <span>{{ a.headline }}</span>
+    <ExhibitFrame header="custom" fill>
+      <!-- What is wrong, as a row of switches into the picture. It folds,
+           because on a tall boundary four wrapped headlines and a legend take
+           a fifth of the room from the thing they are notes about. -->
+      <div class="flex shrink-0 items-start gap-2 px-5 pb-1 pt-3">
+        <button type="button"
+                class="mt-0.5 shrink-0 rounded p-0.5 text-neutral-500 transition-colors
+                       duration-100 hover:bg-neutral-100 hover:text-neutral-900"
+                :aria-expanded="notesOpen"
+                :title="notesOpen ? 'Hide the notes and give the room to the diagram' : 'Show what is wrong at this boundary'"
+                @click="notesOpen = !notesOpen">
+          <Icon :icon="notesOpen ? 'chevron-down' : 'chevron-right'" :size="14"/>
         </button>
+
+        <div v-if="notesOpen" class="flex min-w-0 flex-wrap items-center gap-2">
+          <button v-for="a in relationship.anomalies" :key="a.id" type="button"
+                  class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm leading-4 transition-colors duration-100"
+                  :class="chipClass(a)"
+                  :disabled="!a.references.length"
+                  :title="a.detail"
+                  @click="$emit('openAnomaly', a.id)">
+            <Icon :icon="a.tone === 'warn' ? 'alert' : 'check'" :size="12"/>
+            <span>{{ a.headline }}</span>
+          </button>
+        </div>
+        <button v-else type="button"
+                class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm leading-4
+                       transition-colors duration-100"
+                :class="warnCount ? 'bg-neutral-100 text-red-600 hover:bg-neutral-200'
+                                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'"
+                @click="notesOpen = true">
+          <Icon :icon="warnCount ? 'alert' : 'check'" :size="12"/>
+          <span>{{ summary }}</span>
+        </button>
+
+        <p class="ml-auto mt-1 shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">
+          {{ forwardCount.toLocaleString() }} across<template v-if="backwardCount"> ·
+            <span class="text-red-500">{{ backwardCount.toLocaleString() }} back</span></template>
+        </p>
+        <!-- The boundary's export button ends the strip that names what is wrong with it. -->
+        <ExhibitButton/>
       </div>
-      <button v-else type="button"
-              class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm leading-4
-                     transition-colors duration-100"
-              :class="warnCount ? 'bg-neutral-100 text-red-600 hover:bg-neutral-200'
-                                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'"
-              @click="notesOpen = true">
-        <Icon :icon="warnCount ? 'alert' : 'check'" :size="12"/>
-        <span>{{ summary }}</span>
-      </button>
 
-      <p class="ml-auto mt-1 shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">
-        {{ forwardCount.toLocaleString() }} across<template v-if="backwardCount"> ·
-          <span class="text-red-500">{{ backwardCount.toLocaleString() }} back</span></template>
-      </p>
-    </div>
-
-    <!-- The gutter is reserved whether or not it scrolls, so the drawing's
-         own height cannot change the width it is measured against. -->
-    <div ref="stage" class="min-h-0 flex-1 overflow-y-auto px-5 pb-3"
-         style="scrollbar-gutter: stable">
-      <BoundaryFlow
-                    :flow="flow" :head-lane="headLane" :tail-lane="tailLane"
-                    :head-label="headLabel" :tail-label="tailLabel"
-                    :selected-path="selectedPath" :flagged-paths="flaggedPaths"
-                    :can-expand="canExpand"
-                    :lane-color="laneColor"
-                    @select="$emit('select', $event)"
-                    @expand="expand"
-                    @inspect-pair="(f, t) => $emit('inspectPair', f, t)"/>
-    </div>
-
-    <footer class="shrink-0 hairline-t px-5 py-2">
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm leading-4 text-neutral-500">
-        <!-- The key is where direction lives now. A module is drawn in the
-             column of its own lane whichever way its dependencies run, so
-             the columns cannot say which way a given reference goes and the
-             colour has to say it, in the lanes' own names. -->
-        <template v-if="notesOpen">
-          <span class="flex items-center gap-1.5">
-            <span class="h-2 w-5 shrink-0 rounded-sm bg-neutral-400" style="opacity:.5"/>
-            <span>{{ headLabel }} into {{ tailLabel }}</span>
-          </span>
-          <span v-if="backwardCount" class="flex items-center gap-1.5">
-            <span class="h-2 w-5 shrink-0 rounded-sm bg-red-500" style="opacity:.75"/>
-            <span>{{ tailLabel }} back into {{ headLabel }}</span>
-          </span>
-          <span class="flex items-center gap-1.5">
-            <span class="h-2 w-5 shrink-0 rounded-sm bg-accent-500" style="opacity:.85"/>
-            <span>in focus</span>
-          </span>
-          <span class="flex items-center gap-1.5">
-            <span class="shrink-0 text-neutral-400"><Icon icon="info" :size="12"/></span>
-            <span>Thickness is references. A bar is red in proportion to what runs
-              the other way. Hover to trace, click to open, arrow keys to walk.</span>
-          </span>
-        </template>
-
-        <label v-if="flow.leftOmitted || flow.rightOmitted || named > SIZES[0]"
-               class="ml-auto flex shrink-0 items-center gap-2">
-          <span class="ui-label">Name</span>
-          <span class="ui-segmented" role="group" aria-label="Modules named">
-            <button v-for="n in SIZES" :key="n" type="button"
-                    :aria-pressed="named === n" @click="named = n">{{ n }}</button>
-          </span>
-          <span>a side</span>
-        </label>
+      <!-- The gutter is reserved whether or not it scrolls, so the drawing's
+           own height cannot change the width it is measured against. -->
+      <div ref="stage" class="min-h-0 flex-1 overflow-y-auto px-5 pb-3"
+           style="scrollbar-gutter: stable">
+        <BoundaryFlow
+                      :flow="flow" :head-lane="headLane" :tail-lane="tailLane"
+                      :head-label="headLabel" :tail-label="tailLabel"
+                      :selected-path="selectedPath" :flagged-paths="flaggedPaths"
+                      :can-expand="canExpand"
+                      :lane-color="laneColor"
+                      @select="$emit('select', $event)"
+                      @expand="expand"
+                      @inspect-pair="(f, t) => $emit('inspectPair', f, t)"/>
       </div>
-    </footer>
+
+      <footer class="shrink-0 hairline-t px-5 py-2">
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm leading-4 text-neutral-500">
+          <!-- The key is where direction lives now. A module is drawn in the
+               column of its own lane whichever way its dependencies run, so
+               the columns cannot say which way a given reference goes and the
+               colour has to say it, in the lanes' own names. -->
+          <template v-if="notesOpen">
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-5 shrink-0 rounded-sm bg-neutral-400" style="opacity:.5"/>
+              <span>{{ headLabel }} into {{ tailLabel }}</span>
+            </span>
+            <span v-if="backwardCount" class="flex items-center gap-1.5">
+              <span class="h-2 w-5 shrink-0 rounded-sm bg-red-500" style="opacity:.75"/>
+              <span>{{ tailLabel }} back into {{ headLabel }}</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="h-2 w-5 shrink-0 rounded-sm bg-accent-500" style="opacity:.85"/>
+              <span>in focus</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="shrink-0 text-neutral-400"><Icon icon="info" :size="12"/></span>
+              <span>Thickness is references. A bar is red in proportion to what runs
+                the other way. Hover to trace, click to open, arrow keys to walk.</span>
+            </span>
+          </template>
+
+          <label v-if="flow.leftOmitted || flow.rightOmitted || named > SIZES[0]"
+                 class="ml-auto flex shrink-0 items-center gap-2">
+            <span class="ui-label">Name</span>
+            <span class="ui-segmented" role="group" aria-label="Modules named">
+              <button v-for="n in SIZES" :key="n" type="button"
+                      :aria-pressed="named === n" @click="named = n">{{ n }}</button>
+            </span>
+            <span>a side</span>
+          </label>
+        </div>
+      </footer>
+    </ExhibitFrame>
   </div>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import BoundaryFlow from "./BoundaryFlow.vue"

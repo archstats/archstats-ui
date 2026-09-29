@@ -8,13 +8,18 @@ export type RoleFacet = "all" | "production" | "test"
 
 const TEST_PATH = [
     /(^|\/)src\/test\//,
-    /(^|\/)(tests?|__tests__|spec|specs|e2e|cypress|testdata|Behat)\//,
+    // Gradle test source sets: src/androidTest, src/commonTest.
+    /(^|\/)src\/[a-z]+([A-Z][a-z]*)*Test\//,
+    /(^|\/)(tests?|Tests|__tests__|spec|specs|e2e|cypress|testdata|Behat)\//,
+    // Xcode and SwiftPM test targets: AppTests, WondrousUITests.
+    /(^|\/)[A-Za-z0-9_]*[a-z0-9](UI)?Tests\//,
+    /(Tests?|Spec)\.(swift|m|mm)$/,
     /(^|\/)[^/]*\.Tests?\//,
     /Tests?\.(java|kt|cs|php)$/,
     /IT\.java$/,
     /Spec\.php$/,
     /(^|\/)test_[^/]*\.py$/,
-    /_test\.(py|go)$/,
+    /_test\.(py|go|dart)$/,
     /(^|\/)conftest\.py$/,
     /\.(test|spec)\.[cm]?[jt]sx?$/,
     /\.feature$/,
@@ -25,15 +30,18 @@ const TEST_PATH = [
  * roles: a path matching any of them is a test. Kept in step with TEST_PATH
  * by a test over sample paths.
  */
-const TEST_DIRS = ["tests", "test", "__tests__", "spec", "specs", "e2e", "cypress", "testdata", "Behat"]
+const TEST_DIRS = ["tests", "test", "Tests", "__tests__", "spec", "specs", "e2e", "cypress", "testdata", "Behat"]
 const JS_EXT = ["js", "ts", "jsx", "tsx", "mjs", "cjs", "mts", "cts"]
 export const TEST_GLOBS: string[] = [
     "src/test/*", "*/src/test/*",
+    "src/*[a-z]Test/*", "*/src/*[a-z]Test/*",
+    "*[a-z0-9]Tests/*", "*UITests/*",
+    ...["swift", "m", "mm"].flatMap(x => [`*Test.${x}`, `*Tests.${x}`, `*Spec.${x}`]),
     ...TEST_DIRS.flatMap(d => [`${d}/*`, `*/${d}/*`]),
     "*.Test/*", "*.Tests/*",
     ...["java", "kt", "cs", "php"].flatMap(x => [`*Test.${x}`, `*Tests.${x}`]),
     "*IT.java", "*Spec.php",
-    "test_*.py", "*/test_*.py", "*_test.py", "*_test.go",
+    "test_*.py", "*/test_*.py", "*_test.py", "*_test.go", "*_test.dart",
     "conftest.py", "*/conftest.py",
     ...JS_EXT.flatMap(x => [`*.test.${x}`, `*.spec.${x}`]),
     "*.feature",

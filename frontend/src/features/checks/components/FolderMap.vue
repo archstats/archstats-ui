@@ -3,73 +3,78 @@
        lines, nested in the folders that hold it. The checks and the planner
        paint the same map, so a finding always lands in a place the architect
        already knows. A click selects a file or, on its header, a folder. -->
-  <div ref="box" class="relative h-full min-h-0 w-full overflow-hidden" @mouseleave="hover = null">
-    <svg v-if="w > 0 && h > 0" :width="w" :height="h" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null, 'folder')">
-      <defs>
-        <marker v-for="m in MARKERS" :id="`${uid}-${m.id}`" :key="m.id" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L8,4 L0,8 z" :class="m.cls"/>
-        </marker>
-        <pattern :id="`${uid}-hatch`" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="5" height="5" class="fill-neutral-100"/>
-          <line x1="0" y1="0" x2="0" y2="5" class="stroke-neutral-300" stroke-width="1.5"/>
-        </pattern>
-      </defs>
-      <g>
-        <rect
-          v-for="d in folders" :key="'d' + d.path"
-          :x="d.x0" :y="d.y0" :width="d.x1 - d.x0" :height="d.y1 - d.y0" rx="2"
-          class="cursor-pointer fill-neutral-50 stroke-neutral-200"
-          :class="{ 'opacity-40': fading && !d.lit }"
-          @click.stop="emit('select', d.path, 'folder')"
-        />
-        <text
-          v-for="d in labelled" :key="'t' + d.path"
-          :x="d.x0 + 5" :y="d.y0 + 12"
-          class="pointer-events-none fill-neutral-600 text-[11px] font-medium"
-          :class="{ 'opacity-40': fading && !d.lit }"
-        >{{ d.label }}</text>
-      </g>
-      <g>
-        <rect
-          v-for="f in leaves" :key="f.path"
-          :x="f.x0" :y="f.y0" :width="Math.max(0, f.x1 - f.x0)" :height="Math.max(0, f.y1 - f.y0)" rx="1"
-          class="cursor-pointer"
-          :style="{ fill: f.paint === HATCH ? `url(#${uid}-hatch)` : f.paint, opacity: fading && !f.lit ? 0.18 : 1 }"
-          @mouseenter="onHover($event, f.path)"
-          @mousemove="onMove"
-          @click.stop="emit('select', f.path, 'file')"
-          @dblclick.stop="emit('open', f.path)"
-        />
-      </g>
-      <!-- Files that share a name, tied to the first of them. -->
-      <g v-if="echoLines.length" class="pointer-events-none">
-        <line v-for="(l, i) in echoLines" :key="'e' + i" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" class="stroke-violet-600" stroke-width="1.5" stroke-dasharray="3 2"/>
-        <circle v-for="(l, i) in echoLines" :key="'c' + i" :cx="l.x2" :cy="l.y2" r="3" class="fill-violet-600"/>
-        <circle v-if="echoLines[0]" :cx="echoLines[0].x1" :cy="echoLines[0].y1" r="3" class="fill-violet-600"/>
-      </g>
-      <!-- The hovered file's references, or the selected file's when nothing is hovered: what it imports in ink, what imports it in blue, red where one runs against the grain. -->
-      <g v-if="refLines.length" class="pointer-events-none">
-        <path v-for="l in refLines" :key="l.key" :d="l.d" fill="none" :class="l.cls" stroke-width="1.5" :stroke-dasharray="l.dash" :marker-end="`url(#${uid}-${l.marker})`"/>
-      </g>
-      <rect v-if="hoverRect" :x="hoverRect.x0" :y="hoverRect.y0" :width="hoverRect.x1 - hoverRect.x0" :height="hoverRect.y1 - hoverRect.y0" rx="1" class="pointer-events-none fill-none stroke-neutral-900" stroke-width="1.5"/>
-      <rect v-if="selRect" :x="selRect.x0 - 1" :y="selRect.y0 - 1" :width="selRect.x1 - selRect.x0 + 2" :height="selRect.y1 - selRect.y0 + 2" rx="3" class="pointer-events-none fill-none stroke-accent-500" stroke-width="2"/>
-    </svg>
-    <div v-if="hover && tip" class="ui-tooltip pointer-events-none absolute z-20 max-w-[360px]" :style="tipStyle">
-      <div class="break-all font-mono text-[11px]">{{ hover }}</div>
-      <div class="mt-0.5 text-[11px] opacity-80">{{ tip }}</div>
-      <div v-if="hoverRefs" class="mt-1 flex items-center gap-3 text-[11px] opacity-80">
-        <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-current"/>imports {{ hoverRefs.uses.length }}</span>
-        <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-blue-400"/>imported by {{ hoverRefs.usedBy.length }}</span>
-        <span v-if="hoverRefs.bad" class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-red-400"/>{{ hoverRefs.bad }} against the grain</span>
+  <ExhibitFrame :exhibit="figure" fill>
+    <div ref="box" class="relative h-full min-h-0 w-full overflow-hidden" @mouseleave="hover = null">
+      <svg v-if="w > 0 && h > 0" ref="svgEl" :width="w" :height="h" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null, 'folder')">
+        <defs>
+          <marker v-for="m in MARKERS" :id="`${uid}-${m.id}`" :key="m.id" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" :class="m.cls"/>
+          </marker>
+          <pattern :id="`${uid}-hatch`" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="5" height="5" class="fill-neutral-100"/>
+            <line x1="0" y1="0" x2="0" y2="5" class="stroke-neutral-300" stroke-width="1.5"/>
+          </pattern>
+        </defs>
+        <g>
+          <rect
+            v-for="d in folders" :key="'d' + d.path"
+            :x="d.x0" :y="d.y0" :width="d.x1 - d.x0" :height="d.y1 - d.y0" rx="2"
+            class="cursor-pointer fill-neutral-50 stroke-neutral-200"
+            :class="{ 'opacity-40': fading && !d.lit }"
+            @click.stop="emit('select', d.path, 'folder')"
+          />
+          <text
+            v-for="d in labelled" :key="'t' + d.path"
+            :x="d.x0 + 5" :y="d.y0 + 12"
+            class="pointer-events-none fill-neutral-600 text-[11px] font-medium"
+            :class="{ 'opacity-40': fading && !d.lit }"
+          >{{ d.label }}</text>
+        </g>
+        <g>
+          <rect
+            v-for="f in leaves" :key="f.path"
+            :x="f.x0" :y="f.y0" :width="Math.max(0, f.x1 - f.x0)" :height="Math.max(0, f.y1 - f.y0)" rx="1"
+            class="cursor-pointer"
+            :style="{ fill: f.paint === HATCH ? `url(#${uid}-hatch)` : f.paint, opacity: fading && !f.lit ? 0.18 : 1 }"
+            @mouseenter="onHover($event, f.path)"
+            @mousemove="onMove"
+            @click.stop="emit('select', f.path, 'file', $event)"
+            @dblclick.stop="emit('open', f.path)"
+          />
+        </g>
+        <!-- Files that share a name, tied to the first of them. -->
+        <g v-if="echoLines.length" class="pointer-events-none">
+          <line v-for="(l, i) in echoLines" :key="'e' + i" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" class="stroke-violet-600" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <circle v-for="(l, i) in echoLines" :key="'c' + i" :cx="l.x2" :cy="l.y2" r="3" class="fill-violet-600"/>
+          <circle v-if="echoLines[0]" :cx="echoLines[0].x1" :cy="echoLines[0].y1" r="3" class="fill-violet-600"/>
+        </g>
+        <!-- The hovered file's references, or the selected file's when nothing is hovered: what it imports in ink, what imports it in blue, red where one runs against the grain. -->
+        <g v-if="refLines.length" class="pointer-events-none">
+          <path v-for="l in refLines" :key="l.key" :d="l.d" fill="none" :class="l.cls" stroke-width="1.5" :stroke-dasharray="l.dash" :marker-end="`url(#${uid}-${l.marker})`"/>
+        </g>
+        <rect v-if="hoverRect" :x="hoverRect.x0" :y="hoverRect.y0" :width="hoverRect.x1 - hoverRect.x0" :height="hoverRect.y1 - hoverRect.y0" rx="1" class="pointer-events-none fill-none stroke-neutral-900" stroke-width="1.5"/>
+        <rect v-if="selRect" :x="selRect.x0 - 1" :y="selRect.y0 - 1" :width="selRect.x1 - selRect.x0 + 2" :height="selRect.y1 - selRect.y0 + 2" rx="3" class="pointer-events-none fill-none stroke-accent-500" stroke-width="2"/>
+      </svg>
+      <div v-if="hover && tip" class="ui-tooltip pointer-events-none absolute z-20 max-w-[360px]" :style="tipStyle">
+        <div class="break-all font-mono text-[11px]">{{ hover }}</div>
+        <div class="mt-0.5 text-[11px] opacity-80">{{ tip }}</div>
+        <div v-if="hoverRefs" class="mt-1 flex items-center gap-3 text-[11px] opacity-80">
+          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-current"/>imports {{ hoverRefs.uses.length }}</span>
+          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-blue-400"/>imported by {{ hoverRefs.usedBy.length }}</span>
+          <span v-if="hoverRefs.bad" class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-red-400"/>{{ hoverRefs.bad }} against the grain</span>
+        </div>
       </div>
     </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import * as d3 from "d3"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { folderTree, type FolderNode } from "../folderTree"
+import { useSvgFigure } from "~/features/export/useExportables"
+import type { FigureLegend } from "~/features/export/figure"
 
 const props = withDefaults(defineProps<{
   files: string[]
@@ -89,12 +94,32 @@ const props = withDefaults(defineProps<{
   /** Whether a reference runs against the grain, drawn red. */
   badLink?: (from: string, to: string) => boolean
   ariaLabel: string
-}>(), { highlight: null, selected: null, echo: null, describe: undefined, linksOf: undefined, badLink: undefined })
+  /** When set, the map is a figure under this title: exportable from its frame, with `legend`. */
+  figure?: string
+  /** What the paint means; the page that paints the map knows. The frame adds how the map is laid out. */
+  legend?: FigureLegend
+  /** Show the legend under the map; off where the page already keys the colours. */
+  legendInUi?: boolean
+}>(), { highlight: null, selected: null, echo: null, describe: undefined, linksOf: undefined, badLink: undefined, figure: undefined, legend: undefined, legendInUi: true })
 
 const emit = defineEmits<{
-  (e: "select", path: string | null, kind: "file" | "folder"): void
+  (e: "select", path: string | null, kind: "file" | "folder", ev?: MouseEvent): void
   (e: "open", file: string): void
 }>()
+
+const svgEl = ref<SVGSVGElement | null>(null)
+const figure = props.figure
+  ? useSvgFigure({
+      title: () => props.figure!,
+      svg: () => svgEl.value,
+      filled: true,
+      legendInUi: () => props.legendInUi,
+      legend: () => ({
+        ...props.legend,
+        notes: [...(props.legend?.notes ?? []), "A cell is a production file, sized by its lines and nested in the folders that hold it."],
+      }),
+    })
+  : null
 
 const HATCH = "hatch"
 const uid = `fm${Math.random().toString(36).slice(2, 8)}`

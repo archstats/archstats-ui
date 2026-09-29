@@ -109,17 +109,14 @@
                               :name-of="nameOf" :lane-color="laneColor"
                               @select="select" @inspect-pair="inspectPair"
                               @open-anomaly="openAnomaly"/>
-            <ReferenceList v-else-if="references" class="min-w-0 flex-1"
-                           :references="references" :by-path="graph.byPath"
-                           :selected-path="selectedPath" :mutual="region?.id === 'knots'"
-                           :lane-color="laneColor"
-                           @select="select"/>
-            <ModuleList v-else class="min-w-0 flex-1"
-                        :modules="visible" :selected-path="selectedPath" :tray-paths="trayPaths"
-                        :show-holds="model.modulesAreMeaningful.value || region?.id === 'crowded'"
-                        :initial-sort="regionSort"
-                        :lane-color="laneColor" :lane-label="laneLabel"
-                        @select="select" @toggle-tray="toggleTray"/>
+            <!-- Anything else is a set of modules, so it is shown where those
+                 modules live: the landing's map, zoomed onto them. -->
+            <FocusMap v-else class="min-w-0"
+                      :label="region.label" :files="moduleFiles" :lines="moduleLines"
+                      :focus="visiblePaths" :selected-path="selectedPath" :pointed="pointed"
+                      :paint="focusPaint" :describe="describeModule" :links-of="moduleLinks" :bad-link="laneBad"
+                      :legend="laneLegend"
+                      @select="onMapSelect" @open="openModuleFile" @collect="collect"/>
 
             <AnomalyPanel v-if="openedAnomaly" class="w-[340px] shrink-0 hairline-l min-[1500px]:w-[440px]"
                           :anomaly="openedAnomaly" :name-of="nameOf"
@@ -128,6 +125,10 @@
                              :from="inspectedEdge.from" :to="inspectedEdge.to"
                              :via="inspectedEdge.via" :cycle="inspectedEdge.cycle"
                              :lane-color="laneColor" @select="select"/>
+            <!-- Nothing picked on a map, the panel ranks what is lit. -->
+            <FocusList v-else-if="!selected && !relationship" class="w-[340px] shrink-0 hairline-l min-[1500px]:w-[440px]"
+                       :modules="visible" :tray-paths="trayPaths" :initial-sort="regionSort" :lane-color="laneColor"
+                       @select="onMapSelect" @point="pointed = $event"/>
             <!-- Empty, the inspector only says "pick a module"; in a window
                  narrower than about 1200px it took a third of the width from
                  the diagram and cut every name in it to eight characters. -->
@@ -157,28 +158,26 @@ import Icon from "~/shared/ui/Icon.vue"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import DescentBar from "~/features/units/components/DescentBar.vue"
 import RegionClaim from "~/features/units/components/RegionClaim.vue"
-import ReferenceList from "~/features/units/components/ReferenceList.vue"
 import RelationshipView from "~/features/units/components/RelationshipView.vue"
 import AnomalyPanel from "~/features/units/components/AnomalyPanel.vue"
 import ShapeLanding from "~/features/units/components/ShapeLanding.vue"
-import ModuleList from "~/features/units/components/ModuleList.vue"
+import FocusMap from "~/features/units/components/FocusMap.vue"
+import FocusList from "~/features/units/components/FocusList.vue"
 import ModulePanel from "~/features/units/components/ModulePanel.vue"
 import DependencyPanel from "~/features/units/components/DependencyPanel.vue"
-import { useUnitsModel } from "~/features/units/useUnitsModel"
+import { useUnitsReading } from "~/features/units/useUnitsReading"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useScopeStore } from "~/features/groups/scope.store"
 import { useDraftStore } from "~/features/lens-builder/draft.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
-import { AUTO, laneOf, UNCLASSIFIED } from "~/features/frameworks/frameworkProfiles"
+import { AUTO } from "~/features/frameworks/frameworkProfiles"
 import { frameworkStorageKey } from "~/features/frameworks/classFacts"
 import { dirTail } from "~/features/units/moduleGraph"
-import { laneFlows, reachOf } from "~/features/units/graph"
-import { findingsFor, type Finding, type Reference, type Region } from "~/features/units/findings"
+import { reachOf } from "~/features/units/graph"
+import type { Finding, Reference, Region } from "~/features/units/findings"
 import { readRelationship } from "~/features/units/relationship"
 import EvidenceMap from "~/features/units/components/EvidenceMap.vue"
-import { duplicateFinding, reachFinding } from "~/features/units/checkFindings"
-import { useFileGraph } from "~/features/checks/useFileGraph"
-import { duplicateNames, globRegExp, reachability, sameNamedFiles } from "~/features/checks/checks"
+import { globRegExp } from "~/features/checks/checks"
 
 // Units, read at the grain that actually has edges.
 //
@@ -206,63 +205,19 @@ if (typeof window !== "undefined") {
   onBeforeUnmount(() => mq.removeEventListener("change", onChange))
 }
 const router = useRouter()
-const model = useUnitsModel()
+const extraRoots = computed(() => String(route.query.roots ?? "").split("\n").map((x) => x.trim()).filter(Boolean).map(globRegExp))
+const {
+  model, graph, frameworkName, laneColor, laneLabel, laneBands, laneOfModule, flows,
+  referencesUnresolved, componentPairs, notLayers,
+  fileGraph, prodFiles, reach, dupNames, dupFiles, findings,
+} = useUnitsReading(() => extraRoots.value)
 
-const graph = computed(() => model.moduleGraph.value)
 const searchQuery = ref("")
 const trayPaths = ref<string[]>([])
 
-const frameworkName = computed(() =>
-  model.detection.value.confident && model.profile.value.id !== "structure" ? model.profile.value.label : "")
-
 const rootLabel = computed(() => workspaces.active?.name || "This codebase")
 
-function laneColor(lane: string) { return laneOf(model.profile.value, lane).color }
-function laneLabel(lane: string) { return laneOf(model.profile.value, lane).label }
-
-/** Lanes as bands, counted in modules rather than units. */
-const laneBands = computed(() => {
-  const counts = new Map<string, number>()
-  for (const m of graph.value.modules) counts.set(m.lane, (counts.get(m.lane) ?? 0) + 1)
-  return model.profile.value.lanes
-    .filter((l) => counts.has(l.id))
-    .map((l) => ({ id: l.id, label: l.label, color: l.color, count: counts.get(l.id) ?? 0 }))
-})
-
-const laneOfModule = computed(() => new Map(graph.value.modules.map((m) => [m.path, m.lane])))
-const flows = computed(() => laneFlows(laneOfModule.value, graph.value.edges))
-// No reference between modules resolved, while the component graph has
-// thousands: the snapshot could not read unit references for this language,
-// not a codebase in which nothing imports anything. Absence findings built
-// on that would call every module a deletion candidate (nopCommerce: 3,537).
-const referencesUnresolved = computed(() => graph.value.edges.length === 0 && store.componentConnections.length > 0)
-/** Distinct component pairs, the figure Connections shows, not import rows. */
-const componentPairs = computed(() => new Set((store.componentConnections as Array<{ from: string; to: string }>).filter((c) => c.from !== c.to).map((c) => c.from + "\u0000" + c.to)).size)
-// The file import graph -- unit references plus resolved raw imports plus the
-// imports read from files the engine could not parse -- is the one the
-// structure checks walk. The unit graph above is the one lanes are read on.
-const fileGraph = useFileGraph()
-const prodFiles = computed(() => [...fileGraph.production.value])
-const extraRoots = computed(() => String(route.query.roots ?? "").split("\n").map((x) => x.trim()).filter(Boolean).map(globRegExp))
-const reach = computed(() => reachability(fileGraph.codeFiles.value, fileGraph.data.value.tests, fileGraph.edges.value, fileGraph.data.value.markers, { extraRoots: extraRoots.value }))
-const dupNames = computed(() => duplicateNames(fileGraph.data.value.units, fileGraph.production.value))
-const dupFiles = computed(() => sameNamedFiles(prodFiles.value))
 function setRoots(globs: string) { router.replace({ query: { ...route.query, roots: globs || undefined } }) }
-
-const findings = computed(() => {
-  const all = findingsFor({
-    graph: graph.value, laneLabel, generated: model.generated.value,
-    definitional: new Set(model.profile.value.lanes.filter((l) => l.byReferences).map((l) => l.id)),
-  })
-  // "Never imported" is the half of reachability a leaf can show; once the
-  // entry-point walk is in, it says the same thing less well.
-  const walked = !fileGraph.loading.value && fileGraph.edges.value.length > 0
-  const checks = walked
-    ? [reachFinding(reach.value, fileGraph.data.value.lines), duplicateFinding(dupNames.value, dupFiles.value)].filter((f): f is Finding => !!f)
-    : []
-  const kept = all.filter((f) => f.id !== "dark" || (!referencesUnresolved.value && !walked && !fileGraph.loading.value))
-  return [...kept, ...checks]
-})
 
 // ---- the landing map --------------------------------------------------
 //
@@ -276,11 +231,10 @@ function setMapMode(m: MapMode) { router.replace({ query: { ...route.query, colo
 const walkedFiles = computed(() => !fileGraph.loading.value && prodFiles.value.length > 0)
 const landingFiles = computed(() => (mapMode.value !== "lane" && walkedFiles.value
   ? prodFiles.value
-  : graph.value.modules.map((m) => m.path).filter(Boolean)))
+  : moduleFiles.value))
+const moduleFiles = computed(() => graph.value.modules.map((m) => m.path).filter(Boolean))
 const moduleLines = computed(() => new Map(graph.value.modules.map((m) => [m.path, m.lines])))
 const landingLines = computed(() => (mapMode.value !== "lane" && walkedFiles.value ? fileGraph.data.value.lines : moduleLines.value))
-/** Lanes that are not layers, so a reference climbing into or out of them breaks nothing. */
-const notLayers = computed(() => [UNCLASSIFIED, ...model.profile.value.lanes.filter((l) => l.byReferences).map((l) => l.id)])
 
 const REACH = {
   root: { label: "Entry point", color: "rgb(var(--c-blue-500))", words: "an entry point" },
@@ -290,33 +244,34 @@ const REACH = {
 } as const
 const unreachedSet = computed(() => new Set(reach.value.unreachable))
 const testOnlySet = computed(() => new Set(reach.value.testOnly))
-const reachOf = (f: string): keyof typeof REACH => (reach.value.roots.has(f) ? "root" : unreachedSet.value.has(f) ? "none" : testOnlySet.value.has(f) ? "tests" : "reached")
+const reachKind = (f: string): keyof typeof REACH => (reach.value.roots.has(f) ? "root" : unreachedSet.value.has(f) ? "none" : testOnlySet.value.has(f) ? "tests" : "reached")
 const dupNameFiles = computed(() => new Set(dupNames.value.flatMap((d) => d.files)))
 const dupFileFiles = computed(() => new Set(dupFiles.value.flatMap((d) => d.files)))
 const DUP_NAME = "rgb(var(--c-violet-500))", DUP_FILE = "rgb(var(--c-violet-200))", PLAIN = "rgb(var(--c-neutral-200))"
 
 function landingPaint(path: string) {
-  if (mapMode.value === "reach") return REACH[reachOf(path)].color
+  if (mapMode.value === "reach") return REACH[reachKind(path)].color
   if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? DUP_NAME : dupFileFiles.value.has(path) ? DUP_FILE : PLAIN
   return lanePaint(path)
 }
 function landingDescribe(path: string) {
-  if (mapMode.value === "reach") return REACH[reachOf(path)].words
+  if (mapMode.value === "reach") return REACH[reachKind(path)].words
   if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? "declares a name another file declares" : dupFileFiles.value.has(path) ? "its file name is used in another folder" : "nothing repeated"
   return describeModule(path)
 }
 const landingLegend = computed(() => {
   if (mapMode.value === "reach") {
     const c = { root: 0, reached: 0, tests: 0, none: 0 }
-    for (const f of prodFiles.value) c[reachOf(f)]++
+    for (const f of prodFiles.value) c[reachKind(f)]++
     return (Object.keys(REACH) as Array<keyof typeof REACH>).map((k) => ({ label: REACH[k].label, color: REACH[k].color, count: c[k] }))
   }
   if (mapMode.value === "dupes") return [
     { label: "Declares a name another file declares", color: DUP_NAME, count: dupNameFiles.value.size },
     { label: "Shares its file name", color: DUP_FILE, count: [...dupFileFiles.value].filter((f) => !dupNameFiles.value.has(f)).length },
   ]
-  return laneBands.value.map((l) => ({ label: l.label, color: lanePaint(graph.value.modules.find((m) => m.lane === l.id)?.path ?? ""), count: l.count }))
+  return laneLegend.value
 })
+const laneLegend = computed(() => laneBands.value.map((l) => ({ label: l.label, color: lanePaint(graph.value.modules.find((m) => m.lane === l.id)?.path ?? ""), count: l.count })))
 // A file's references, for the lines the map draws on hover. The lane
 // colouring reads the module graph the stack is drawn from; reach and
 // repetition read the file graph their walk used.
@@ -330,14 +285,13 @@ const fileAdj = computed(() => {
   return { out, into }
 })
 function fileLinks(path: string) { return { uses: fileAdj.value.out.get(path) ?? [], usedBy: fileAdj.value.into.get(path) ?? [] } }
-function landingLinks(path: string) {
-  if (mapMode.value !== "lane") return fileLinks(path)
-  return { uses: graph.value.outgoing.get(path) ?? [], usedBy: graph.value.incoming.get(path) ?? [] }
-}
+function moduleLinks(path: string) { return { uses: graph.value.outgoing.get(path) ?? [], usedBy: graph.value.incoming.get(path) ?? [] } }
+function landingLinks(path: string) { return mapMode.value !== "lane" ? fileLinks(path) : moduleLinks(path) }
 /** Lane pair "a>b" → references that way and back, to tell the grain from against it. */
 const laneTraffic = computed(() => new Map(flows.value.map((f) => [f.from + ">" + f.to, f])))
-function landingBad(from: string, to: string) {
-  if (mapMode.value !== "lane") return false
+function landingBad(from: string, to: string) { return mapMode.value === "lane" && laneBad(from, to) }
+/** Whether a module reference runs against the grain of the lanes it joins. */
+function laneBad(from: string, to: string) {
   const a = laneOfModule.value.get(from), b = laneOfModule.value.get(to)
   if (!a || !b || a === b || notLayers.value.includes(a) || notLayers.value.includes(b)) return false
   const f = laneTraffic.value.get(a + ">" + b)
@@ -347,6 +301,13 @@ function openMapEvidence() { descend({ finding: mapMode.value === "reach" ? "unr
 function lanePaint(path: string) {
   const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
   return c === "neutral" ? "rgb(var(--c-neutral-300))" : `rgb(var(--c-${c}-400))`
+}
+/** On a focused map the lit modules take their lane's strong shade: the pale one,
+ *  on a grey lane, read no different from the faded rest. */
+function focusPaint(path: string) {
+  if (!focusSet.value.has(path)) return lanePaint(path)
+  const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
+  return c === "neutral" ? "rgb(var(--c-neutral-500))" : `rgb(var(--c-${c}-500))`
 }
 function describeModule(path: string) {
   const m = graph.value.byPath.get(path)
@@ -595,6 +556,20 @@ const visible = computed(() => {
   })
 })
 
+const visiblePaths = computed(() => visible.value.map((m) => m.path))
+const focusSet = computed(() => new Set(visiblePaths.value))
+/** The module a row in the side list points at, lit alone on the map. */
+const pointed = ref<string | null>(null)
+watch(region, () => { pointed.value = null })
+
+/** A click on the map or the list: inspect, or with ⌘ collect. Empty ground clears. */
+function onMapSelect(path: string | null, additive: boolean) {
+  if (additive && path) { toggleTray(path); return }
+  if (!path) { if (selectedPath.value) select(selectedPath.value); return }
+  select(path)
+}
+function collect(paths: string[]) { trayPaths.value = [...new Set([...trayPaths.value, ...paths])] }
+
 const selected = computed(() =>
   selectedPath.value ? graph.value.byPath.get(selectedPath.value) ?? null : null)
 
@@ -656,15 +631,14 @@ function openAnomaly(id: string) {
   router.replace({ query: next })
 }
 
-const rowCount = computed(() => (region.value?.map ? region.value.paths.length : references.value?.length ?? visible.value.length))
-const rowNoun = computed(() => (region.value?.map ? "file" : references.value ? "reference" : "module"))
+const rowCount = computed(() => (region.value?.map ? region.value.paths.length : relationship.value ? references.value?.length ?? 0 : visible.value.length))
+const rowNoun = computed(() => (region.value?.map ? "file" : relationship.value ? "reference" : "module"))
 
 /** What the rows below do, said once rather than left to be discovered. */
 const hint = computed(() => {
   if (region.value?.map) return "Click a file on the map or in the list to collect it into a group; pick a folder to narrow the list. Double-click opens a file."
   if (relationship.value) return "Open a warning to see the dependencies behind it, or a module to inspect it."
-  if (references.value) return "Click either side of a row to inspect that module."
-  return "Click a module to inspect it. Hold ⌘ to collect modules into a group instead. Red marks a cycle."
+  return "Click a file on the map to inspect it and keep its imports drawn; a folder zooms in. Hover a file to draw its imports."
 })
 
 const neighbours = computed(() => {

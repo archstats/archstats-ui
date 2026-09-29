@@ -43,7 +43,7 @@ export const KIND_FUNCTION = "function"
 export async function loadUnits(query: Query, hasView: (view: string) => boolean): Promise<Map<string, RawClass>> {
     if (!hasView("units")) return loadRawClasses(query, hasView)
 
-    const [units, markers, rawImports, uses] = await Promise.all([
+    const [units, markers, rawImports, usesRows] = await Promise.all([
         query("SELECT id, kind, name, component, owner, file FROM units") as Promise<UnitRow[]>,
         hasView("unit_markers")
             ? query("SELECT unit, source, key, value FROM unit_markers") as Promise<MarkerRow[]>
@@ -54,9 +54,14 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
             : Promise.resolve(null),
     ])
     if (units.length === 0) return loadRawClasses(query, hasView)
+    // A uses table with nothing in it says the packs recorded no references,
+    // not that no unit uses anything: read as the latter, every unit's used
+    // imports were empty and no import-based lane could ever fill.
+    const uses = usesRows && usesRows.length > 0 ? usesRows : null
 
     const annotations = new Map<string, Set<string>>()
     const supertypes = new Map<string, Set<string>>()
+    const records = new Set<string>()
     for (const m of markers) {
         const key = (m.key ?? "").trim()
         if (!key) continue
@@ -67,21 +72,30 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
         let set = into.get(m.unit)
         if (!set) { set = new Set(); into.set(m.unit, set) }
         set.add(key)
+        // A C# or Java record and a Kotlin data class are data by declaration,
+        // which is what the model rules otherwise infer from field counts no
+        // pack records.
+        if (m.source === "keyword" && (key === "record" || key === "data")) records.add(m.unit)
     }
+
+    // An owner the snapshot has no unit for is no owner: Kotlin's `fun
+    // Route.orders()` belongs to a Route declared by a library, and every Ktor
+    // route vanished with it.
+    const ids = new Set(units.map((u) => u.id))
+    const ownerOf = new Map(units.map((u) => [u.id, u.owner && ids.has(u.owner) ? u.owner : null]))
 
     // How many things belong to each unit: a Go method's receiver, a class's
     // methods. The engine records the relationship on the owned unit.
     const memberCount = new Map<string, number>()
     for (const u of units) {
-        if (!u.owner) continue
-        memberCount.set(u.owner, (memberCount.get(u.owner) ?? 0) + 1)
+        if (!ownerOf.get(u.id)) continue
+        memberCount.set(u.owner!, (memberCount.get(u.owner!) ?? 0) + 1)
     }
 
     // The modules each top-level unit uses, its members' included: a Go
     // store's methods are where it calls database/sql.
     const usedModules = new Map<string, Set<string>>()
     if (uses) {
-        const ownerOf = new Map(units.map((u) => [u.id, u.owner]))
         for (const r of uses) {
             if (!r.unit || !r.module) continue
             let top = r.unit
@@ -96,7 +110,7 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
     for (const u of units) {
         // A method is reached through the type it belongs to; listing it
         // beside its owner would double every Go and TypeScript codebase.
-        if (u.owner) continue
+        if (ownerOf.get(u.id)) continue
 
         const marks = annotations.get(u.id) ?? new Set<string>()
         const supers = supertypes.get(u.id) ?? new Set<string>()
@@ -124,7 +138,7 @@ export async function loadUnits(query: Query, hasView: (view: string) => boolean
                 methodCount: memberCount.get(u.id) ?? 0,
                 fields: 0,
                 isInterface: supers.has("interface"),
-                isRecord: false,
+                isRecord: records.has(u.id),
             } satisfies ClassFacts,
         })
     }
@@ -154,9 +168,11 @@ export function importsUsed(imports: ReadonlySet<string> | undefined, modules: R
     return out
 }
 
-/** The last segment of an id, for a unit the engine gave no name. */
+/** The last segment of an id, for a unit the engine gave no name; a module unit (`shop.models#`) is named by its module. */
 function shortId(id: string): string {
-    const afterHash = id.split("#").pop() ?? id
+    const hash = id.lastIndexOf("#")
+    if (hash >= 0 && hash === id.length - 1) return id.slice(0, hash)
+    const afterHash = hash >= 0 ? id.slice(hash + 1) : id
     return afterHash.split(".").pop() || afterHash
 }
 

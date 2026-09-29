@@ -71,3 +71,45 @@ describe("loadUnits", () => {
         expect(classify(profileById("go-http"), facts.get("TestRender")!.facts)).toBe("data")
     })
 })
+
+describe("an owner the snapshot has no unit for", () => {
+    it("leaves a Kotlin extension on a library type standing on its own", async () => {
+        // `fun Route.orders()` is owned by a Route that Ktor declares, not the codebase.
+        const { query, hasView } = snapshot({
+            units: [
+                { id: "shop.routes.Route.orders", kind: "function", name: "orders", component: "shop.routes", owner: "shop.routes.Route", file: "src/routes/Orders.kt" },
+                { id: "shop.Service", kind: "type", name: "OrderService", component: "shop", owner: "", file: "src/OrderService.kt" },
+                { id: "shop.Service.place", kind: "function", name: "place", component: "shop", owner: "shop.Service", file: "src/OrderService.kt" },
+            ],
+            unit_markers: [{ unit: "shop.routes.Route.orders", source: "receiver", key: "Route", value: null }],
+            snippets: [{ file: "src/routes/Orders.kt", content: "io.ktor.server.routing.Route" }],
+        })
+        const out = await loadUnits(query, hasView)
+        expect([...out.keys()].sort()).toEqual(["shop.Service", "shop.routes.Route.orders"])
+        expect(classify(profileById("ktor"), out.get("shop.routes.Route.orders")!.facts)).toBe("routes")
+        expect(out.get("shop.Service")!.facts.methodCount).toBe(1)
+    })
+})
+
+describe("a record", () => {
+    it("is data by declaration, whatever its field count", async () => {
+        const { query, hasView } = snapshot({
+            units: [
+                { id: "Shop.OrderDto", kind: "type", name: "OrderDto", component: "Shop", owner: "", file: "Shop/OrderDto.cs" },
+                { id: "shop.Order", kind: "type", name: "Order", component: "shop", owner: "", file: "shop/Order.kt" },
+                { id: "shop.Cart", kind: "type", name: "Cart", component: "shop", owner: "", file: "shop/Cart.kt" },
+            ],
+            unit_markers: [
+                { unit: "Shop.OrderDto", source: "keyword", key: "record", value: null },
+                { unit: "shop.Order", source: "keyword", key: "data", value: null },
+                // An annotation that happens to be called data is not the keyword.
+                { unit: "shop.Cart", source: "annotation", key: "data", value: null },
+            ],
+        })
+        const out = await loadUnits(query, hasView)
+        expect(out.get("Shop.OrderDto")!.facts.isRecord).toBe(true)
+        expect(out.get("shop.Order")!.facts.isRecord).toBe(true)
+        expect(out.get("shop.Cart")!.facts.isRecord).toBe(false)
+        expect(classify(profileById("structure"), out.get("Shop.OrderDto")!.facts)).toBe("models")
+    })
+})

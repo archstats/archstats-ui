@@ -4,67 +4,72 @@
        climb it arc through the right gutter, and in red when they break the
        rule. Width is imports, on a square-root scale, so one import still
        reads as a line and a thousand do not drown the rest. -->
-  <div ref="box" class="relative w-full" :style="{ height: height + 'px' }">
-    <svg v-if="w > 0" ref="svgEl" :width="w" :height="height" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null)">
-      <defs>
-        <marker :id="`${uid}-dn`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-400"/></marker>
-        <marker :id="`${uid}-on`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-800"/></marker>
-        <marker :id="`${uid}-bad`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-red-500"/></marker>
-      </defs>
+  <ExhibitFrame :exhibit="figure">
+    <div ref="box" class="relative w-full" :style="{ height: height + 'px' }">
+      <svg v-if="w > 0" ref="svgEl" :width="w" :height="height" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null)">
+        <defs>
+          <marker :id="`${uid}-dn`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-400"/></marker>
+          <marker :id="`${uid}-on`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-neutral-800"/></marker>
+          <marker :id="`${uid}-bad`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-red-500"/></marker>
+        </defs>
 
-      <text :x="2" :y="11" class="fill-neutral-400 text-[11px]">uses below</text>
-      <text :x="w - 2" :y="11" text-anchor="end" class="fill-neutral-400 text-[11px]">{{ upLabel }}</text>
+        <text :x="2" :y="11" class="fill-neutral-400 text-[11px]">uses below</text>
+        <text :x="w - 2" :y="11" text-anchor="end" class="fill-neutral-400 text-[11px]">{{ upLabel }}</text>
 
-      <!-- Arcs: a wide invisible stroke to aim at, then the line itself. -->
-      <g v-for="a in arcs" :key="a.key" class="cursor-pointer" :class="{ 'opacity-20': dimmed(a) }" @click.stop="emit('select', { kind: 'flow', id: a.key })" @mouseenter="hoverKey = a.key; emit('hover', { kind: 'flow', id: a.key })" @mouseleave="hoverKey = null; emit('hover', null)">
-        <path :d="a.d" fill="none" stroke="transparent" stroke-width="12"/>
-        <path
-          :d="a.d" fill="none" :stroke-width="a.width"
-          :class="a.bad ? 'stroke-red-500' : isOn(a) ? 'stroke-neutral-800' : a.up ? 'stroke-neutral-400' : 'stroke-neutral-300'"
-          :stroke-dasharray="a.up && !a.bad ? '4 3' : undefined"
-          :marker-end="`url(#${uid}-${a.bad ? 'bad' : isOn(a) ? 'on' : 'dn'})`"
-        >
-          <title>{{ a.title }}</title>
-        </path>
-        <g v-if="a.bad || isOn(a)" :transform="`translate(${a.lx},${a.ly})`" class="pointer-events-none">
-          <rect :x="-pillW(a.count) / 2" y="-8" :width="pillW(a.count)" height="16" rx="3" :class="a.bad ? 'fill-red-50 stroke-red-200' : 'fill-surface stroke-neutral-300'"/>
-          <text y="4" text-anchor="middle" class="font-mono text-[11px] font-medium" :class="a.bad ? 'fill-red-700' : 'fill-neutral-800'">{{ fmt(a.count) }}</text>
+        <!-- Arcs: a wide invisible stroke to aim at, then the line itself. -->
+        <g v-for="a in arcs" :key="a.key" class="cursor-pointer" :class="{ 'opacity-20': dimmed(a) }" @click.stop="emit('select', { kind: 'flow', id: a.key })" @mouseenter="hoverKey = a.key; emit('hover', { kind: 'flow', id: a.key })" @mouseleave="hoverKey = null; emit('hover', null)">
+          <path :d="a.d" fill="none" stroke="transparent" stroke-width="12"/>
+          <path
+            :d="a.d" fill="none" :stroke-width="a.width"
+            :class="a.bad ? 'stroke-red-500' : isOn(a) ? 'stroke-neutral-800' : a.up ? 'stroke-neutral-400' : 'stroke-neutral-300'"
+            :stroke-dasharray="a.up && !a.bad ? '4 3' : undefined"
+            :marker-end="`url(#${uid}-${a.bad ? 'bad' : isOn(a) ? 'on' : 'dn'})`"
+          >
+            <title>{{ a.title }}</title>
+          </path>
+          <g v-if="a.bad || isOn(a)" :transform="`translate(${a.lx},${a.ly})`" class="pointer-events-none">
+            <rect :x="-pillW(a.count) / 2" y="-8" :width="pillW(a.count)" height="16" rx="3" :class="a.bad ? 'fill-red-50 stroke-red-200' : 'fill-surface stroke-neutral-300'"/>
+            <text y="4" text-anchor="middle" class="font-mono text-[11px] font-medium" :class="a.bad ? 'fill-red-700' : 'fill-neutral-800'">{{ fmt(a.count) }}</text>
+          </g>
         </g>
-      </g>
 
-      <!-- Floors -->
-      <g
-        v-for="f in placed" :key="f.id" :transform="`translate(${GL},${f.y})`"
-        class="cursor-pointer" :class="{ 'opacity-40': dimmedFloor(f.id) }"
-        role="button" :aria-pressed="selected?.kind === 'floor' && selected.id === f.id" :aria-label="`${f.label}, ${f.sub}`"
-        @click.stop="emit('select', { kind: 'floor', id: f.id })"
-        @mouseenter="emit('hover', { kind: 'floor', id: f.id })" @mouseleave="emit('hover', null)"
-      >
-        <rect :width="floorW" :height="FLOOR" rx="4"
-          :class="selected?.kind === 'floor' && selected.id === f.id ? 'fill-accent-50 stroke-accent-500' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"
-          :stroke-width="selected?.kind === 'floor' && selected.id === f.id ? 1.5 : 1"/>
-        <template v-if="compact">
-          <circle v-if="f.color" cx="11" :cy="FLOOR / 2" r="3.5" :style="{ fill: f.color }"/>
-          <text :x="f.color ? 20 : 9" :y="FLOOR / 2 + 4" class="fill-neutral-900 text-[12px] font-medium">{{ f.short }}</text>
-          <text :x="floorW - 8" :y="FLOOR / 2 + 4" text-anchor="end" class="fill-neutral-500 font-mono text-[11px]">{{ f.sub }}</text>
-        </template>
-        <template v-else>
-          <circle v-if="f.color" cx="12" :cy="FLOOR / 2 - 5" r="4" :style="{ fill: f.color }"/>
-          <text :x="f.color ? 22 : 10" :y="FLOOR / 2 - 1" class="fill-neutral-900 text-[12px] font-medium">{{ f.short }}</text>
-          <text :x="f.color ? 22 : 10" :y="FLOOR / 2 + 12" class="fill-neutral-500 font-mono text-[11px]">{{ f.sub }}</text>
-        </template>
-        <!-- Its share of the files, the only illustration on the floor. -->
-        <rect :x="8" :y="FLOOR - 4" :width="floorW - 16" height="2" rx="1" class="fill-neutral-100"/>
-        <rect :x="8" :y="FLOOR - 4" :width="Math.max(2, (floorW - 16) * f.share)" height="2" rx="1" :style="{ fill: f.color || 'rgb(var(--c-neutral-400))' }"/>
-        <title>{{ f.label }}</title>
-      </g>
-    </svg>
-  </div>
+        <!-- Floors -->
+        <g
+          v-for="f in placed" :key="f.id" :transform="`translate(${GL},${f.y})`"
+          class="cursor-pointer" :class="{ 'opacity-40': dimmedFloor(f.id) }"
+          role="button" :aria-pressed="selected?.kind === 'floor' && selected.id === f.id" :aria-label="`${f.label}, ${f.sub}`"
+          @click.stop="emit('select', { kind: 'floor', id: f.id })"
+          @mouseenter="emit('hover', { kind: 'floor', id: f.id })" @mouseleave="emit('hover', null)"
+        >
+          <rect :width="floorW" :height="FLOOR" rx="4"
+            :class="selected?.kind === 'floor' && selected.id === f.id ? 'fill-accent-50 stroke-accent-500' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"
+            :stroke-width="selected?.kind === 'floor' && selected.id === f.id ? 1.5 : 1"/>
+          <template v-if="compact">
+            <circle v-if="f.color" cx="11" :cy="FLOOR / 2" r="3.5" :style="{ fill: f.color }"/>
+            <text :x="f.color ? 20 : 9" :y="FLOOR / 2 + 4" class="fill-neutral-900 text-[12px] font-medium">{{ f.short }}</text>
+            <text :x="floorW - 8" :y="FLOOR / 2 + 4" text-anchor="end" class="fill-neutral-500 font-mono text-[11px]">{{ f.sub }}</text>
+          </template>
+          <template v-else>
+            <circle v-if="f.color" cx="12" :cy="FLOOR / 2 - 5" r="4" :style="{ fill: f.color }"/>
+            <text :x="f.color ? 22 : 10" :y="FLOOR / 2 - 1" class="fill-neutral-900 text-[12px] font-medium">{{ f.short }}</text>
+            <text :x="f.color ? 22 : 10" :y="FLOOR / 2 + 12" class="fill-neutral-500 font-mono text-[11px]">{{ f.sub }}</text>
+          </template>
+          <!-- Its share of the files, the only illustration on the floor. -->
+          <rect :x="8" :y="FLOOR - 4" :width="floorW - 16" height="2" rx="1" class="fill-neutral-100"/>
+          <rect :x="8" :y="FLOOR - 4" :width="Math.max(2, (floorW - 16) * f.share)" height="2" rx="1" :style="{ fill: f.color || 'rgb(var(--c-neutral-400))' }"/>
+          <title>{{ f.label }}</title>
+        </g>
+      </svg>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useSvgFigure } from "~/features/export/useExportables"
+import type { LegendItem } from "~/features/export/figure"
+import { chartTheme } from "~/shared/ui/useChartTheme"
 
 export interface Floor { id: string; label: string; sub: string; weight: number; color?: string }
 export interface Flow { key: string; from: string; to: string; count: number; bad?: boolean; title?: string }
@@ -88,7 +93,24 @@ const emit = defineEmits<{
 }>()
 
 const svgEl = ref<SVGSVGElement | null>(null)
-if (props.figure) useSvgFigure(props.figure, () => (props.floors.length ? svgEl.value : null))
+const figure = props.figure
+  ? useSvgFigure({
+      title: props.figure,
+      svg: () => (props.floors.length ? svgEl.value : null),
+      legend: () => {
+        const t = chartTheme()
+        const items: LegendItem[] = [
+          { label: "Imports down the stack", color: t.hairlineStrong, mark: "line" },
+          { label: `Imports up the stack (${props.upLabel})`, color: t.inkMuted, mark: "dashed" },
+        ]
+        if (props.flows.some(f => f.bad)) items.push({ label: "Breaks the rule: an inversion, a mutual pair or a cycle", color: t.red, mark: "line" })
+        return {
+          items,
+          notes: ["Each floor uses the floors below it. Line width is imports, on a square-root scale; the bar under a floor is its share of the files."],
+        }
+      },
+    })
+  : null
 
 const uid = `sd${Math.random().toString(36).slice(2, 8)}`
 const TOP = 22

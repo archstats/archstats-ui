@@ -6,36 +6,41 @@
        in the tray; a folder narrows the list to what sits under it. -->
   <div class="flex min-h-0 min-w-0 flex-1">
     <section class="flex min-w-0 flex-1 flex-col" :aria-label="mode === 'reach' ? 'What the entry points reach' : 'Names written twice'">
-      <div class="flex h-9 shrink-0 items-center gap-1 px-3 hairline-b">
-        <template v-if="mode === 'reach'">
-          <button
-            v-for="st in STATES" :key="st.id" type="button"
-            class="flex h-6 items-center gap-1.5 rounded px-2 text-xs"
-            :class="only === st.id ? 'bg-accent-50 text-neutral-900 ring-1 ring-inset ring-accent-300' : 'text-neutral-600 hover:bg-neutral-100'"
-            :aria-pressed="only === st.id" :title="st.title"
-            @click="only = only === st.id ? null : st.id"
-          >
-            <span class="h-2 w-2 rounded-sm" :style="{ background: st.color }"/>{{ st.label }}
-            <span class="font-mono text-neutral-500">{{ fmt(counts[st.id]) }}</span>
-          </button>
-        </template>
-        <template v-else>
-          <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_NAME }"/>Declares a name another file declares</span>
-          <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_FILE }"/>Shares its file name</span>
-        </template>
-        <span v-if="folder" class="ml-auto flex min-w-0 items-center gap-1.5 text-xs text-neutral-600">
-          <span class="min-w-0 truncate font-mono" :title="folder">{{ folder }}</span>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Show every folder" @click="folder = null"><Icon icon="x" :size="12"/></button>
-        </span>
-      </div>
-      <div class="min-h-0 flex-1 p-2">
-        <FolderMap
-          :files="files" :lines="lines" :paint="paint" :highlight="highlight" :selected="folder" :echo="mode === 'dupes' ? picked?.files ?? null : null"
-          :describe="describe" :links-of="linksOf"
-          :aria-label="mode === 'reach' ? 'Production files by folder, coloured by whether an entry point reaches them' : 'Production files by folder, marking names declared in more than one file'"
-          @select="onMapSelect" @open="f => emit('open', f)"
-        />
-      </div>
+      <ExhibitFrame header="custom" fill>
+        <div class="flex h-9 shrink-0 items-center gap-1 px-3 hairline-b">
+          <template v-if="mode === 'reach'">
+            <button
+              v-for="st in STATES" :key="st.id" type="button"
+              class="flex h-6 items-center gap-1.5 rounded px-2 text-xs"
+              :class="only === st.id ? 'bg-accent-50 text-neutral-900 ring-1 ring-inset ring-accent-300' : 'text-neutral-600 hover:bg-neutral-100'"
+              :aria-pressed="only === st.id" :title="st.title"
+              @click="only = only === st.id ? null : st.id"
+            >
+              <span class="h-2 w-2 rounded-sm" :style="{ background: st.color }"/>{{ st.label }}
+              <span class="font-mono text-neutral-500">{{ fmt(counts[st.id]) }}</span>
+            </button>
+          </template>
+          <template v-else>
+            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_NAME }"/>Declares a name another file declares</span>
+            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_FILE }"/>Shares its file name</span>
+          </template>
+          <span v-if="folder" class="ml-auto flex min-w-0 items-center gap-1.5 text-xs text-neutral-600">
+            <span class="min-w-0 truncate font-mono" :title="folder">{{ folder }}</span>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Show every folder" @click="folder = null"><Icon icon="x" :size="12"/></button>
+          </span>
+          <!-- The strip is the map's header: its export button ends it. -->
+          <ExhibitButton :class="folder ? 'ml-1' : 'ml-auto'"/>
+        </div>
+        <div class="min-h-0 flex-1 p-2">
+          <FolderMap
+            :files="files" :lines="lines" :paint="paint" :highlight="highlight" :selected="folder" :echo="mode === 'dupes' ? picked?.files ?? null : null"
+            :describe="describe" :links-of="linksOf"
+            :figure="mode === 'reach' ? 'What the entry points reach' : 'What is written twice'" :legend="mapLegend" :legend-in-ui="false"
+            :aria-label="mode === 'reach' ? 'Production files by folder, coloured by whether an entry point reaches them' : 'Production files by folder, marking names declared in more than one file'"
+            @select="onMapSelect" @open="f => emit('open', f)"
+          />
+        </div>
+      </ExhibitFrame>
     </section>
 
     <aside class="flex w-[360px] shrink-0 flex-col gap-4 overflow-y-auto bg-ground p-4 hairline-l min-[1500px]:w-[420px]" aria-label="The files it names">
@@ -64,6 +69,9 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue"
+import type { FigureLegend } from "~/features/export/figure"
 import { computed, defineComponent, h, ref, watch, type PropType } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import FolderMap from "~/features/checks/components/FolderMap.vue"
@@ -132,6 +140,10 @@ const only = ref<State | null>(null)
 // ── Repeated names ──
 const DUP_NAME = "rgb(var(--c-violet-500))"
 const DUP_FILE = "rgb(var(--c-violet-200))"
+// The strip above the map keys it on screen; exports carry the same key as the figure's legend.
+const mapLegend = computed<FigureLegend>(() => props.mode === "reach"
+  ? { items: STATES.map(st => ({ label: st.label, color: st.color, count: counts.value[st.id], title: st.title })) }
+  : { items: [{ label: "Declares a name another file declares", color: DUP_NAME }, { label: "Shares its file name", color: DUP_FILE }] })
 const nameFiles = computed(() => new Set(props.dupNames.flatMap(d => d.files)))
 const fileFiles = computed(() => new Set(props.dupFiles.flatMap(d => d.files)))
 const namesByFile = computed(() => {

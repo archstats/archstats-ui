@@ -7,95 +7,98 @@
        the arcs are one SVG pinned beside them. Each row is a grid whose
        middle column is the only flexible one, because laying them out with
        fixed widths let a long label push the count under the arcs. -->
-  <div class="flex items-start">
-    <ul class="min-w-0 flex-1">
-      <li v-for="lane in rows" :key="lane.id">
-        <button type="button"
-                class="grid w-full items-center gap-2.5 rounded-sm pr-2 text-left transition-colors duration-150"
-                :class="active(lane.id) ? 'bg-neutral-100' : 'hover:bg-neutral-50'"
-                :style="{ height: PITCH + 'px', gridTemplateColumns: 'minmax(3.5rem, 9rem) minmax(24px, 1fr) 2.75rem' }"
-                :title="lane.count + ' modules in ' + lane.label"
-                @mouseenter="hoveredLane = lane.id; $emit('hover', { lane: lane.id })" @mouseleave="hoveredLane = null; $emit('hover', null)"
-                @click="$emit('lane', lane.id)">
-          <span class="flex min-w-0 items-center gap-2">
-            <span class="h-2 w-2 shrink-0 rounded-full transition-transform duration-150"
-                  :class="[laneDotClass(lane.color), active(lane.id) ? 'scale-125' : '']"/>
-            <span class="truncate text-base"
-                  :class="active(lane.id) ? 'text-neutral-900' : 'text-neutral-800'">{{ lane.label }}</span>
-          </span>
+  <ExhibitFrame :exhibit="figure">
+    <div class="flex items-start">
+      <ul class="min-w-0 flex-1">
+        <li v-for="lane in rows" :key="lane.id">
+          <button type="button"
+                  class="grid w-full items-center gap-2.5 rounded-sm pr-2 text-left transition-colors duration-150"
+                  :class="active(lane.id) ? 'bg-neutral-100' : 'hover:bg-neutral-50'"
+                  :style="{ height: PITCH + 'px', gridTemplateColumns: 'minmax(3.5rem, 9rem) minmax(24px, 1fr) 2.75rem' }"
+                  :title="lane.count + ' modules in ' + lane.label"
+                  @mouseenter="hoveredLane = lane.id; $emit('hover', { lane: lane.id })" @mouseleave="hoveredLane = null; $emit('hover', null)"
+                  @click="$emit('lane', lane.id)">
+            <span class="flex min-w-0 items-center gap-2">
+              <span class="h-2 w-2 shrink-0 rounded-full transition-transform duration-150"
+                    :class="[laneDotClass(lane.color), active(lane.id) ? 'scale-125' : '']"/>
+              <span class="truncate text-base"
+                    :class="active(lane.id) ? 'text-neutral-900' : 'text-neutral-800'">{{ lane.label }}</span>
+            </span>
 
-          <!-- A track that flexes with a fill inside it, so a long label or a
-               narrow column shortens the bar instead of overflowing the row. -->
-          <span class="block h-[7px] w-full overflow-hidden rounded-full bg-neutral-100">
-            <span class="block h-full rounded-full transition-[width,opacity] duration-500 ease-out"
-                  :class="laneDotClass(lane.color)"
-                  :style="{ width: share(lane.count) + '%', opacity: active(lane.id) ? 0.95 : 0.6 }"/>
-          </span>
+            <!-- A track that flexes with a fill inside it, so a long label or a
+                 narrow column shortens the bar instead of overflowing the row. -->
+            <span class="block h-[7px] w-full overflow-hidden rounded-full bg-neutral-100">
+              <span class="block h-full rounded-full transition-[width,opacity] duration-500 ease-out"
+                    :class="laneDotClass(lane.color)"
+                    :style="{ width: share(lane.count) + '%', opacity: active(lane.id) ? 0.95 : 0.6 }"/>
+            </span>
 
-          <span class="text-right font-mono text-[11px] tabular-nums"
-                :class="active(lane.id) ? 'text-neutral-700' : 'text-neutral-500'">{{ lane.count }}</span>
-        </button>
-      </li>
-    </ul>
+            <span class="text-right font-mono text-[11px] tabular-nums"
+                  :class="active(lane.id) ? 'text-neutral-700' : 'text-neutral-500'">{{ lane.count }}</span>
+          </button>
+        </li>
+      </ul>
 
-    <svg v-if="links.length" :width="GUTTER" :height="rows.length * PITCH"
-         :viewBox="'0 0 ' + GUTTER + ' ' + (rows.length * PITCH)"
-         class="shrink-0" role="img"
-         :aria-label="links.length + ' dependencies between lanes'">
-      <g v-for="link in links" :key="link.key"
-         :opacity="dimmed(link) ? 0.12 : 1"
-         class="transition-opacity duration-200">
-        <path :d="arc(link)" fill="none" stroke="rgb(var(--c-neutral-400))"
-              :stroke-width="link.weight" :stroke-opacity="0.5 * (1 - link.against)"
-              stroke-linecap="round"/>
-        <!-- The traffic running against the dominant direction, laid over the
-             arc at its own share. No threshold decides when a pair becomes a
-             tangle: the reader sees how much of one it is. The grey underneath
-             fades as the red rises so the two never mix into mud. -->
-        <path v-if="link.against > 0" :d="arc(link)" fill="none"
-              stroke="rgb(var(--c-red-500))"
-              :stroke-width="link.weight" :stroke-opacity="link.against"
-              stroke-linecap="round"/>
-        <!-- Which way the traffic mostly runs. Without it the arc says two
-             lanes are related but not which one is the dependency. -->
-        <path :d="head(link)"
-              :fill="link.against > 0.5 ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-neutral-400))'"
-              fill-opacity="0.9"/>
-        <!-- A fat transparent copy so the arc is grabbable at any weight. -->
-        <path :d="arc(link)" fill="none" stroke="transparent" stroke-width="16"
-              class="cursor-pointer"
-              @mouseenter="hoveredLink = link.key; $emit('hover', { a: link.a, b: link.b })" @mouseleave="hoveredLink = null; $emit('hover', null)"
-              @click="$emit('flow', link.a, link.b)">
-          <title>{{ describe(link) }}</title>
-        </path>
-      </g>
-    </svg>
-
-    <!-- The same picture as one SVG, for a report or an export: rows drawn
-         as text and bars beside the arcs. Off screen, but in the page, so
-         the figure pipeline can read its colours. -->
-    <svg ref="exportSvg" :width="EXPORT_W" :height="rows.length * PITCH"
-         :viewBox="'0 0 ' + EXPORT_W + ' ' + (rows.length * PITCH)"
-         aria-hidden="true" style="position: absolute; left: -10000px; top: 0; pointer-events: none">
-      <g v-for="(lane, i) in rows" :key="'x' + lane.id" :transform="'translate(0,' + i * PITCH + ')'">
-        <circle cx="6" :cy="PITCH / 2" r="4" :fill="colourOf(lane.color)"/>
-        <text x="18" :y="PITCH / 2 + 4" font-size="13" fill="rgb(var(--c-neutral-800))">{{ lane.label }}</text>
-        <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W" height="7" rx="3.5" fill="rgb(var(--c-neutral-100))"/>
-        <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W * share(lane.count) / 100" height="7" rx="3.5" :fill="colourOf(lane.color)" fill-opacity="0.75"/>
-        <text :x="LABEL_W + BAR_W + 44" :y="PITCH / 2 + 4" font-size="11" text-anchor="end" font-family="ui-monospace, monospace" fill="rgb(var(--c-neutral-500))">{{ lane.count }}</text>
-      </g>
-      <g :transform="'translate(' + (EXPORT_W - GUTTER) + ',0)'">
-        <g v-for="link in links" :key="'x' + link.key">
-          <path :d="arc(link)" fill="none" stroke="rgb(var(--c-neutral-400))" :stroke-width="link.weight" :stroke-opacity="0.5 * (1 - link.against)" stroke-linecap="round"/>
-          <path v-if="link.against > 0" :d="arc(link)" fill="none" stroke="rgb(var(--c-red-500))" :stroke-width="link.weight" :stroke-opacity="link.against" stroke-linecap="round"/>
-          <path :d="head(link)" :fill="link.against > 0.5 ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-neutral-400))'" fill-opacity="0.9"/>
+      <svg v-if="links.length" :width="GUTTER" :height="rows.length * PITCH"
+           :viewBox="'0 0 ' + GUTTER + ' ' + (rows.length * PITCH)"
+           class="shrink-0" role="img"
+           :aria-label="links.length + ' dependencies between lanes'">
+        <g v-for="link in links" :key="link.key"
+           :opacity="dimmed(link) ? 0.12 : 1"
+           class="transition-opacity duration-200">
+          <path :d="arc(link)" fill="none" stroke="rgb(var(--c-neutral-400))"
+                :stroke-width="link.weight" :stroke-opacity="0.5 * (1 - link.against)"
+                stroke-linecap="round"/>
+          <!-- The traffic running against the dominant direction, laid over the
+               arc at its own share. No threshold decides when a pair becomes a
+               tangle: the reader sees how much of one it is. The grey underneath
+               fades as the red rises so the two never mix into mud. -->
+          <path v-if="link.against > 0" :d="arc(link)" fill="none"
+                stroke="rgb(var(--c-red-500))"
+                :stroke-width="link.weight" :stroke-opacity="link.against"
+                stroke-linecap="round"/>
+          <!-- Which way the traffic mostly runs. Without it the arc says two
+               lanes are related but not which one is the dependency. -->
+          <path :d="head(link)"
+                :fill="link.against > 0.5 ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-neutral-400))'"
+                fill-opacity="0.9"/>
+          <!-- A fat transparent copy so the arc is grabbable at any weight. -->
+          <path :d="arc(link)" fill="none" stroke="transparent" stroke-width="16"
+                class="cursor-pointer"
+                @mouseenter="hoveredLink = link.key; $emit('hover', { a: link.a, b: link.b })" @mouseleave="hoveredLink = null; $emit('hover', null)"
+                @click="$emit('flow', link.a, link.b)">
+            <title>{{ describe(link) }}</title>
+          </path>
         </g>
-      </g>
-    </svg>
-  </div>
+      </svg>
+
+      <!-- The same picture as one SVG, for a report or an export: rows drawn
+           as text and bars beside the arcs. Off screen, but in the page, so
+           the figure pipeline can read its colours. -->
+      <svg ref="exportSvg" :width="EXPORT_W" :height="rows.length * PITCH"
+           :viewBox="'0 0 ' + EXPORT_W + ' ' + (rows.length * PITCH)"
+           aria-hidden="true" style="position: absolute; left: -10000px; top: 0; pointer-events: none">
+        <g v-for="(lane, i) in rows" :key="'x' + lane.id" :transform="'translate(0,' + i * PITCH + ')'">
+          <circle cx="6" :cy="PITCH / 2" r="4" :fill="colourOf(lane.color)"/>
+          <text x="18" :y="PITCH / 2 + 4" font-size="13" fill="rgb(var(--c-neutral-800))">{{ lane.label }}</text>
+          <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W" height="7" rx="3.5" fill="rgb(var(--c-neutral-100))"/>
+          <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W * share(lane.count) / 100" height="7" rx="3.5" :fill="colourOf(lane.color)" fill-opacity="0.75"/>
+          <text :x="LABEL_W + BAR_W + 44" :y="PITCH / 2 + 4" font-size="11" text-anchor="end" font-family="ui-monospace, monospace" fill="rgb(var(--c-neutral-500))">{{ lane.count }}</text>
+        </g>
+        <g :transform="'translate(' + (EXPORT_W - GUTTER) + ',0)'">
+          <g v-for="link in links" :key="'x' + link.key">
+            <path :d="arc(link)" fill="none" stroke="rgb(var(--c-neutral-400))" :stroke-width="link.weight" :stroke-opacity="0.5 * (1 - link.against)" stroke-linecap="round"/>
+            <path v-if="link.against > 0" :d="arc(link)" fill="none" stroke="rgb(var(--c-red-500))" :stroke-width="link.weight" :stroke-opacity="link.against" stroke-linecap="round"/>
+            <path :d="head(link)" :fill="link.against > 0.5 ? 'rgb(var(--c-red-500))' : 'rgb(var(--c-neutral-400))'" fill-opacity="0.9"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { computed, ref } from "vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "~/features/units/graph"
@@ -126,7 +129,18 @@ const EXPORT_W = LABEL_W + BAR_W + 56 + GUTTER
 const colourOf = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400))" : `rgb(var(--c-${c}-500))`)
 const exportSvg = ref<SVGSVGElement | null>(null)
 // A report slot asks for this when a boundary between two lanes has nothing crossing it.
-useSvgFigure("How the layers lean", () => (rows.value.length ? exportSvg.value : null))
+const figure = useSvgFigure({
+  title: "How the layers lean",
+  svg: () => (rows.value.length ? exportSvg.value : null),
+  // The rows name and colour every lane; the arcs are what needs a key.
+  legend: () => ({
+    items: [
+      { label: "Dependencies between lanes", color: "rgb(var(--c-neutral-400))", mark: "line" },
+      { label: "Share running against the main direction", color: "rgb(var(--c-red-500))", mark: "line" },
+    ],
+    notes: ["A bar is the modules in the lane; an arc's width is the dependencies between two lanes."],
+  }),
+})
 
 const hoveredLink = ref<string | null>(null)
 const hoveredLane = ref<string | null>(null)

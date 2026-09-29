@@ -10,13 +10,17 @@ describe("isTestPath", () => {
 
 describe("TEST_GLOBS", () => {
     it("says what isTestPath says, for SQL over snapshots without roles", () => {
-        const glob = (g: string) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`)
+        // GLOB is case-sensitive and keeps [a-z] classes, as SQLite reads it.
+        const glob = (g: string) => new RegExp(`^${g.replace(/[.+^${}()|\\]/g, "\\$&").replace(/\*/g, ".*")}$`)
         const matches = (p: string) => TEST_GLOBS.some(g => glob(g).test(p))
         const paths = [
             "core/src/test/java/a/FooTest.java", "src/Sylius/Behat/Context/X.php", "tests/functional/test_basket.py", "gin_test.go", "client/src/a.spec.tsx",
             "Nop.Tests/Foo.cs", "src/Nop.Tests/Foo.cs", "features/cart.feature", "e2e/login.ts", "a/cypress/x.js", "testdata/protoexample/test.pb.go", "app/FooIT.java",
             "src/FooSpec.php", "conftest.py", "pkg/conftest.py", "a/b.test.mjs",
             "src/main/java/a/Foo.java", "src/oscar/apps/basket/models.py", "context.go", "client/src/App.tsx", "attestation/x.py", "src/Contest.java", "latest/x.go",
+            "app/src/androidTest/java/UiTest.kt", "shared/src/commonTest/kotlin/Repo.kt", "shared/src/commonMain/kotlin/Repo.kt", "src/contest/Winner.java",
+            "Wondrous/WondrousTests/Store.swift", "Wondrous/WondrousUITests/Launch.swift", "Tests/ModelTests/Store.swift", "App/LoginTests.m", "Sources/Model/Store.swift",
+            "test/widget_test.dart", "lib/data/repo.dart", "lib/contests/Contests.swift",
         ]
         for (const p of paths) expect(matches(p), p).toBe(isTestPath(p))
     })

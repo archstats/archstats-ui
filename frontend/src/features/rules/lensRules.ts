@@ -1,6 +1,6 @@
 import type { Declaration } from "~/features/groups/groups.store"
 import type { GroupEdge } from "~/features/groups/groupEdges"
-import { tangles } from "~/features/sandbox/sandbox"
+import { tanglesOf } from "~/features/cycles/untangle"
 
 // Checking a lens's imports against what was declared for it. A layer may
 // use any layer below it; an explicit pair wins over the layers; anything
@@ -65,7 +65,8 @@ export function silentCycles(edges: GroupEdge[], d: Declaration): SilentCycle[] 
     const pairs = new Map<string, number>()
     for (const e of edges) if (e.kind !== "type_only" && e.fromGroup !== e.toGroup) pairs.set(`${e.fromGroup}>${e.toGroup}`, (pairs.get(`${e.fromGroup}>${e.toGroup}`) ?? 0) + 1)
     const out: SilentCycle[] = []
-    for (const t of tangles(pairs)) {
+    const links = [...pairs.keys()].map(k => { const [from, to] = k.split(">"); return { from, to } })
+    for (const t of tanglesOf(links.flatMap(l => [l.from, l.to]), links)) {
         const inside = new Set(t)
         const judged = [...pairs.keys()].some(k => { const [a, b] = k.split(">"); return inside.has(a) && inside.has(b) && verdictOf(a, b, d) === "forbidden" })
         if (!judged) out.push({ groups: t, outOfLayers: t.filter(g => !d.layers.includes(g)) })
