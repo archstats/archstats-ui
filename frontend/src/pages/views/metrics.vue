@@ -121,10 +121,12 @@
       </div>
       <!-- Prototype: matrix of every pair, the chosen pair as the full plot, the rows in play below. -->
       <div v-else-if="view === 'matrix'" class="flex min-h-0 grow flex-col">
+        <MetricSetBar v-model="matrixSet" :options="numericColumns" :defaults="defaultSet('matrix')" :view-name="SET_LIMITS.matrix.name"
+                      :min="SET_LIMITS.matrix.min" :max="SET_LIMITS.matrix.max" @reset="resetSet('matrix')"/>
         <div class="flex min-h-0 shrink-0 basis-[64%]">
           <div class="aspect-square h-full max-w-[55%] shrink-0 hairline-r">
             <MetricMatrix
-                :rows="filteredRows" :domain-rows="allRows" :metrics="matrixMetrics"
+                :rows="filteredRows" :domain-rows="allRows" :metrics="matrixSet"
                 v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
                 :pair="[xAxis, yAxis]" :grain="grain === 'files' ? 'file' : 'component'"
                 @pair="setPair" @open="openName"/>
@@ -134,7 +136,7 @@
           </div>
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
-          <ElementTable :key="`m-${grain}`" :elements="playRows" :only-show-columns="matrixMetrics" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+          <ElementTable :key="`m-${grain}`" :elements="playRows" :only-show-columns="matrixSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
                         :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
@@ -142,12 +144,16 @@
 
       <!-- Prototype: one strip per metric, the ranked rows in play beside them. -->
       <div v-else-if="view === 'strips'" class="flex min-h-0 grow">
-        <div class="min-w-0 grow py-2">
+        <div class="flex min-w-0 grow flex-col">
+        <MetricSetBar v-model="stripSet" :options="numericColumns" :defaults="defaultSet('strips')" :view-name="SET_LIMITS.strips.name"
+                      :min="SET_LIMITS.strips.min" :max="SET_LIMITS.strips.max" @reset="resetSet('strips')"/>
+        <div class="min-h-0 grow py-2">
           <MetricStrips
-              :rows="filteredRows" :domain-rows="allRows" :metrics="overviewKeys"
+              :rows="filteredRows" :domain-rows="allRows" :metrics="stripSet"
               v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
               :sort-key="stripSort" :grain="grain === 'files' ? 'file' : 'component'"
               @sort="stripSort = $event" @open="openName"/>
+        </div>
         </div>
         <aside class="w-[340px] shrink-0 bg-ground hairline-l">
           <RankedRows :rows="playRows" :sort-key="stripSort" :title="brushTotal ? 'In the brushes' : 'All'"
@@ -158,14 +164,16 @@
 
       <!-- Prototype: parallel axes, one line per row, the rows in play below. -->
       <div v-else-if="view === 'profiles'" class="flex min-h-0 grow flex-col">
+        <MetricSetBar v-model="profileSet" :options="numericColumns" :defaults="defaultSet('profiles')" :view-name="SET_LIMITS.profiles.name"
+                      :min="SET_LIMITS.profiles.min" :max="SET_LIMITS.profiles.max" @reset="resetSet('profiles')"/>
         <div class="min-h-0 shrink-0 basis-[62%] px-2 pt-1">
           <MetricProfiles
-              :rows="filteredRows" :domain-rows="allRows" v-model:metrics="profileAxes"
+              :rows="filteredRows" :domain-rows="allRows" v-model:metrics="profileSet"
               v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
               :grain="grain === 'files' ? 'file' : 'component'" @open="openName"/>
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
-          <ElementTable :key="`p-${grain}`" :elements="playRows" :only-show-columns="profileAxes" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+          <ElementTable :key="`p-${grain}`" :elements="playRows" :only-show-columns="profileSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
                         :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
@@ -320,6 +328,7 @@ import MetricStrips from "~/features/metrics/components/MetricStrips.vue";
 import MetricProfiles from "~/features/metrics/components/MetricProfiles.vue";
 import RankedRows from "~/features/metrics/components/RankedRows.vue";
 import MetricsSummary from "~/features/metrics/components/MetricsSummary.vue";
+import MetricSetBar from "~/features/metrics/components/MetricSetBar.vue";
 import type { Go } from "~/features/metrics/summary";
 import { overviewMetrics, passes, type Brushes } from "~/features/metrics/lab";
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction";
@@ -670,18 +679,66 @@ const hoveredName = ref<string | null>(null);
 const playRows = computed(() => (brushTotal.value ? filteredRows.value.filter((r) => passes(r, brushes.value)) : filteredRows.value));
 
 const overviewKeys = computed(() => overviewMetrics(numericColumns.value));
-const matrixMetrics = computed(() => overviewMetrics(numericColumns.value, 6));
-const profileOrder = ref<string[] | null>(null);
-const profileAxes = computed<string[]>({
-  get: () => {
-    const have = new Set(overviewKeys.value);
-    const kept = (profileOrder.value ?? []).filter((k) => have.has(k));
-    return kept.length === have.size ? kept : overviewKeys.value;
-  },
-  set: (keys) => { profileOrder.value = keys; },
-});
+
+// ─── Which metrics each overview draws ───
+// Each view keeps its own set per grain, in drawing order, remembered across
+// launches; null means "never edited" and follows the defaults. The matrix
+// holds fewer, since every added metric adds a row and a column of cells.
+type OverviewView = "matrix" | "strips" | "profiles";
+const OVERVIEW_VIEWS: OverviewView[] = ["matrix", "strips", "profiles"];
+const SET_LIMITS: Record<OverviewView, { min: number; max: number; name: string }> = {
+  matrix: { min: 2, max: 8, name: "Matrix" },
+  strips: { min: 1, max: 16, name: "Strips" },
+  profiles: { min: 2, max: 16, name: "Profiles" },
+};
+const defaultSet = (v: OverviewView) => (v === "matrix" ? overviewMetrics(numericColumns.value, 6) : overviewKeys.value);
+const setStorageKey = (g: Grain, v: OverviewView) => `archstats-metrics-set-${g}-${v}`;
+const chosenSets = reactive<Record<string, string[] | null>>({});
+
+watch(grain, (g) => {
+  for (const v of OVERVIEW_VIEWS) {
+    const k = `${g}:${v}`;
+    if (k in chosenSets) continue;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(setStorageKey(g, v)) ?? "null");
+      chosenSets[k] = Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : null;
+    } catch {
+      chosenSets[k] = null;
+    }
+  }
+}, { immediate: true });
+
+function metricSet(v: OverviewView) {
+  return computed<string[]>({
+    get() {
+      const have = new Set(numericColumns.value);
+      const chosen = chosenSets[`${grain.value}:${v}`];
+      const kept = (chosen ?? []).filter((c) => have.has(c)).slice(0, SET_LIMITS[v].max);
+      // A saved set this snapshot cannot draw (another language, older engine) falls back to the defaults.
+      return chosen && kept.length >= SET_LIMITS[v].min ? kept : defaultSet(v);
+    },
+    set(keys) {
+      chosenSets[`${grain.value}:${v}`] = keys;
+      try {
+        localStorage.setItem(setStorageKey(grain.value, v), JSON.stringify(keys));
+      } catch { /* storage unavailable; the set lives for the session */ }
+    },
+  });
+}
+
+function resetSet(v: OverviewView) {
+  chosenSets[`${grain.value}:${v}`] = null;
+  try {
+    localStorage.removeItem(setStorageKey(grain.value, v));
+  } catch { /* nothing stored */ }
+}
+
+const matrixSet = metricSet("matrix");
+const stripSet = metricSet("strips");
+const profileSet = metricSet("profiles");
+
 const stripSort = ref("codesmells__hotspot_score");
-watch(overviewKeys, (keys) => { if (keys.length && !keys.includes(stripSort.value)) stripSort.value = keys[0]; }, { immediate: true });
+watch(stripSet, (keys) => { if (keys.length && !keys.includes(stripSort.value)) stripSort.value = keys[0]; }, { immediate: true });
 watch(grain, () => { brushes.value = {}; hoveredName.value = null; });
 
 function setPair([x, y]: [string, string]) {

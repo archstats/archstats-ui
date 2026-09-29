@@ -1,10 +1,13 @@
 
 <template>
   <div ref="containerRef" class="relative inline-block text-left">
-    <button type="button" @click="toggleDropdown" class="ui-btn min-w-[132px] max-w-[220px] justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen">
-      <span class="truncate" :class="{ 'text-neutral-400': !modelValue }">{{ modelValue ? store.statNiceName(modelValue) : placeholder }}</span>
-      <Icon icon="chevron-down" class="shrink-0 text-neutral-400 transition-transform" :class="{ 'rotate-180': isDropdownOpen }" :size="14"/>
-    </button>
+    <!-- The trigger can be replaced (an "Add metric" button); the picker stays the same. -->
+    <slot name="trigger" :toggle="toggleDropdown" :open="isDropdownOpen">
+      <button type="button" @click="toggleDropdown" class="ui-btn min-w-[132px] max-w-[220px] justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen">
+        <span class="truncate" :class="{ 'text-neutral-400': !modelValue }">{{ modelValue ? store.statNiceName(modelValue) : placeholder }}</span>
+        <Icon icon="chevron-down" class="shrink-0 text-neutral-400 transition-transform" :class="{ 'rotate-180': isDropdownOpen }" :size="14"/>
+      </button>
+    </slot>
 
     <!-- Out of the layout entirely: see useAnchoredPanel. -->
     <Teleport to="body">
