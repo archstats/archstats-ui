@@ -6,6 +6,9 @@
   <div ref="box" class="relative h-full min-h-0 w-full overflow-hidden" @mouseleave="hover = null">
     <svg v-if="w > 0 && h > 0" :width="w" :height="h" class="block select-none" role="img" :aria-label="ariaLabel" @click.self="emit('select', null, 'folder')">
       <defs>
+        <marker v-for="m in MARKERS" :id="`${uid}-${m.id}`" :key="m.id" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L8,4 L0,8 z" :class="m.cls"/>
+        </marker>
         <pattern :id="`${uid}-hatch`" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="5" height="5" class="fill-neutral-100"/>
           <line x1="0" y1="0" x2="0" y2="5" class="stroke-neutral-300" stroke-width="1.5"/>
@@ -44,12 +47,21 @@
         <circle v-for="(l, i) in echoLines" :key="'c' + i" :cx="l.x2" :cy="l.y2" r="3" class="fill-violet-600"/>
         <circle v-if="echoLines[0]" :cx="echoLines[0].x1" :cy="echoLines[0].y1" r="3" class="fill-violet-600"/>
       </g>
+      <!-- The hovered file's references: what it imports in ink, what imports it in blue, red where one runs against the grain. -->
+      <g v-if="refLines.length" class="pointer-events-none">
+        <path v-for="l in refLines" :key="l.key" :d="l.d" fill="none" :class="l.cls" stroke-width="1.5" :stroke-dasharray="l.dash" :marker-end="`url(#${uid}-${l.marker})`"/>
+      </g>
       <rect v-if="hoverRect" :x="hoverRect.x0" :y="hoverRect.y0" :width="hoverRect.x1 - hoverRect.x0" :height="hoverRect.y1 - hoverRect.y0" rx="1" class="pointer-events-none fill-none stroke-neutral-900" stroke-width="1.5"/>
       <rect v-if="selRect" :x="selRect.x0 - 1" :y="selRect.y0 - 1" :width="selRect.x1 - selRect.x0 + 2" :height="selRect.y1 - selRect.y0 + 2" rx="3" class="pointer-events-none fill-none stroke-accent-500" stroke-width="2"/>
     </svg>
     <div v-if="hover && tip" class="ui-tooltip pointer-events-none absolute z-20 max-w-[360px]" :style="tipStyle">
       <div class="break-all font-mono text-[11px]">{{ hover }}</div>
       <div class="mt-0.5 text-[11px] opacity-80">{{ tip }}</div>
+      <div v-if="hoverRefs" class="mt-1 flex items-center gap-3 text-[11px] opacity-80">
+        <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-current"/>imports {{ hoverRefs.uses.length }}</span>
+        <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-blue-400"/>imported by {{ hoverRefs.usedBy.length }}</span>
+        <span v-if="hoverRefs.bad" class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-red-400"/>{{ hoverRefs.bad }} against the grain</span>
+      </div>
     </div>
   </div>
 </template>
@@ -72,8 +84,12 @@ const props = withDefaults(defineProps<{
   echo?: string[] | null
   /** The second tooltip line for a file. */
   describe?: (file: string) => string
+  /** A file's references, drawn as lines while it is hovered. */
+  linksOf?: (file: string) => { uses: string[]; usedBy: string[] }
+  /** Whether a reference runs against the grain, drawn red. */
+  badLink?: (from: string, to: string) => boolean
   ariaLabel: string
-}>(), { highlight: null, selected: null, echo: null, describe: undefined })
+}>(), { highlight: null, selected: null, echo: null, describe: undefined, linksOf: undefined, badLink: undefined })
 
 const emit = defineEmits<{
   (e: "select", path: string | null, kind: "file" | "folder"): void
@@ -118,13 +134,19 @@ const all = computed(() => layout.value?.descendants() ?? [])
 const rectOf = computed(() => new Map(all.value.map(n => [n.data.path, n as Rect])))
 
 const lit = (path: string, isFile: boolean) => {
-  const hl = props.highlight
+  const hl = hoverLit.value ?? props.highlight
   if (!hl) return true
   if (isFile) return hl.has(path)
   for (const f of hl) if (f.startsWith(path + "/")) return true
   return false
 }
-const fading = computed(() => !!props.highlight)
+// While a file with references is hovered, it and its references are the
+// picture; everything else fades, whatever was highlighted before.
+const hoverLit = computed<Set<string> | null>(() => {
+  const r = hoverRefs.value
+  return r ? new Set([hover.value!, ...r.uses, ...r.usedBy]) : null
+})
+const fading = computed(() => !!(hoverLit.value ?? props.highlight))
 
 const folders = computed(() => all.value
   .filter(n => n.depth > 0 && !n.data.file)
@@ -152,8 +174,52 @@ const echoLines = computed(() => {
   return fs.slice(1).map(r => { const [x2, y2] = c(r); return { x1, y1, x2, y2 } })
 })
 
-// Hover: the file under the pointer and its tooltip.
+// Hover: the file under the pointer, its tooltip and its references.
 const hover = ref<string | null>(null)
+const MARKERS = [
+  { id: "use", cls: "fill-neutral-900" },
+  { id: "by", cls: "fill-blue-500" },
+  { id: "bad", cls: "fill-red-500" },
+]
+const MAX_LINES = 80
+const hoverRefs = computed(() => {
+  const f = hover.value
+  if (!f || !props.linksOf) return null
+  const on = (xs: string[]) => [...new Set(xs)].filter(x => x !== f && rectOf.value.has(x))
+  const { uses, usedBy } = props.linksOf(f)
+  const u = on(uses), b = on(usedBy)
+  if (!u.length && !b.length) return null
+  const bad = props.badLink ? u.filter(t => props.badLink!(f, t)).length + b.filter(t => props.badLink!(t, f)).length : 0
+  return { uses: u, usedBy: b, bad }
+})
+const refLines = computed(() => {
+  const r = hoverRefs.value
+  const at = hover.value ? rectOf.value.get(hover.value) : null
+  if (!r || !at) return []
+  const c = (x: Rect) => [(x.x0 + x.x1) / 2, (x.y0 + x.y1) / 2]
+  const [hx, hy] = c(at)
+  // A gentle bow, so lines that share a direction do not lie on one another.
+  const bow = (x1: number, y1: number, x2: number, y2: number) => {
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dx = x2 - x1, dy = y2 - y1
+    return `M${x1},${y1} Q${mx - dy * 0.15},${my + dx * 0.15} ${x2},${y2}`
+  }
+  const line = (from: string, to: string, kind: "use" | "by") => {
+    const other = rectOf.value.get(kind === "use" ? to : from)!
+    const [ox, oy] = c(other)
+    const bad = !!props.badLink?.(from, to)
+    return {
+      key: `${kind}:${from}>${to}`,
+      d: kind === "use" ? bow(hx, hy, ox, oy) : bow(ox, oy, hx, hy),
+      cls: bad ? "stroke-red-500" : kind === "use" ? "stroke-neutral-900" : "stroke-blue-500",
+      dash: kind === "by" && !bad ? "4 2" : undefined,
+      marker: bad ? "bad" : kind,
+    }
+  }
+  return [
+    ...r.uses.slice(0, MAX_LINES).map(t => line(hover.value!, t, "use")),
+    ...r.usedBy.slice(0, MAX_LINES).map(t => line(t, hover.value!, "by")),
+  ]
+})
 const mouse = ref({ x: 0, y: 0 })
 const hoverRect = computed(() => (hover.value ? rectOf.value.get(hover.value) ?? null : null))
 const tip = computed(() => {

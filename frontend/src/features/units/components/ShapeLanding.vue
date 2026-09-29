@@ -64,7 +64,7 @@
           <div class="mt-2 h-[480px] rounded-md ring-1 ring-neutral-200">
             <FolderMap
               :files="files" :lines="lines" :paint="paint" :highlight="lit ? highlightFor(lit) : null"
-              :describe="describe"
+              :describe="describe" :links-of="linksOf" :bad-link="badLink"
               :aria-label="`Every file by folder, coloured by ${MAP_MODES.find(m => m.id === mapMode)?.label.toLowerCase()}`"
               @select="(path, kind) => path && $emit('place', path, kind)" @open="$emit('open-file', $event)"
             />
@@ -136,6 +136,9 @@ const props = defineProps<{
   /** Lanes that are not layers (what matched no rule, what is defined by being referenced): never red. */
   notLayers: string[]
   mapMode: "lane" | "reach" | "dupes"
+  /** A file's references, drawn when it is hovered on the map. */
+  linksOf: (file: string) => { uses: string[]; usedBy: string[] }
+  badLink: (from: string, to: string) => boolean
   legend: Array<{ label: string; color: string; count?: number; title?: string }>
 }>()
 const lit = ref<{ lane: string } | { a: string; b: string } | null>(null)

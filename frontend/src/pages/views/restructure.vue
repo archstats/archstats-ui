@@ -185,6 +185,8 @@
                 <FolderMap
                   :files="prodList" :lines="data.lines" :paint="modulePaint" :highlight="mapHighlight" :selected="mapSel?.path ?? null"
                   :describe="f => { const m = placement.of.get(f); return m ? `in ${restructure.name(m)}` : 'not placed yet' }"
+                  :links-of="f => ({ uses: (adj.out.get(f) ?? []).map(e => e.to), usedBy: (adj.into.get(f) ?? []).map(e => e.from) })"
+                  :bad-link="(a, b) => { const x = placement.of.get(a), y = placement.of.get(b); return !!x && !!y && x !== y && badPairs.has(`${x}>${y}`) }"
                   aria-label="Production files by today's folders, coloured by the module the plan puts them in"
                   @select="onMapSelect" @open="f => router.push(filePath(f))"
                 />
@@ -397,6 +399,7 @@ const flows = computed<Flow[]>(() => [...ev.value.pairs].map(([key, es]) => {
   const upward = !!order.value && order.value.indexOf(b) < order.value.indexOf(a);
   return { key, from: a, to: b, count: es.length, bad: mutualKeys.value.has(key) || inCycle || upward, title: `${restructure.name(a)} uses ${restructure.name(b)}: ${plural(es.length, "import")}` };
 }));
+const badPairs = computed(() => new Set(flows.value.filter(f => f.bad).map(f => f.key)));
 const floorOrder = computed(() => (plan.value.ordered ? plan.value.modules.map(m => m.id) : stackOrder(plan.value.modules.map(m => m.id), flows.value)));
 const floors = computed<Floor[]>(() => floorOrder.value.map(id => ({
   id, label: restructure.name(id), weight: mod(id).files, color: colorOf(id),

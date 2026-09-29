@@ -31,7 +31,7 @@
       <div class="min-h-0 flex-1 p-2">
         <FolderMap
           :files="files" :lines="lines" :paint="paint" :highlight="highlight" :selected="folder" :echo="mode === 'dupes' ? picked?.files ?? null : null"
-          :describe="describe"
+          :describe="describe" :links-of="linksOf"
           :aria-label="mode === 'reach' ? 'Production files by folder, coloured by whether an entry point reaches them' : 'Production files by folder, marking names declared in more than one file'"
           @select="onMapSelect" @open="f => emit('open', f)"
         />
@@ -83,6 +83,8 @@ const props = defineProps<{
   roots: string
   /** A folder to open on, when the map was entered from one. */
   initialFolder?: string | null
+  /** A file's imports and importers, drawn when it is hovered. */
+  linksOf?: (file: string) => { uses: string[]; usedBy: string[] }
 }>()
 const emit = defineEmits<{
   (e: "toggle", file: string): void

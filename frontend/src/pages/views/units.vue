@@ -80,6 +80,7 @@
                         :files="landingFiles" :lines="landingLines" :paint="landingPaint" :describe="landingDescribe"
                         :highlight-for="filesLitBy" :not-layers="notLayers"
                         :map-mode="mapMode" :legend="landingLegend"
+                        :links-of="landingLinks" :bad-link="landingBad"
                         @update:map-mode="setMapMode" @evidence="openMapEvidence"
                         @open="descendToFinding" @lane="descendToLane" @flow="descendToFlow"
                         @place="descendToPlace" @open-file="openModuleFile"
@@ -93,7 +94,7 @@
           <EvidenceMap v-else-if="region.map" class="min-h-0"
                        :mode="region.map" :files="prodFiles" :lines="fileGraph.data.value.lines"
                        :reach="reach" :dup-names="dupNames" :dup-files="dupFiles"
-                       :tray="trayPaths" :roots="String(route.query.roots ?? '')" :initial-folder="route.query.dir ? String(route.query.dir) : null"
+                       :tray="trayPaths" :roots="String(route.query.roots ?? '')" :initial-folder="route.query.dir ? String(route.query.dir) : null" :links-of="fileLinks"
                        @toggle="toggleTray" @tray="trayPaths = $event" @open="openModuleFile" @roots="setRoots"/>
 
           <div v-else class="flex min-h-0 flex-1 overflow-hidden">
@@ -316,6 +317,32 @@ const landingLegend = computed(() => {
   ]
   return laneBands.value.map((l) => ({ label: l.label, color: lanePaint(graph.value.modules.find((m) => m.lane === l.id)?.path ?? ""), count: l.count }))
 })
+// A file's references, for the lines the map draws on hover. The lane
+// colouring reads the module graph the stack is drawn from; reach and
+// repetition read the file graph their walk used.
+const fileAdj = computed(() => {
+  const out = new Map<string, string[]>(), into = new Map<string, string[]>()
+  for (const e of fileGraph.edges.value) {
+    if (e.from === e.to) continue
+    out.set(e.from, [...(out.get(e.from) ?? []), e.to])
+    into.set(e.to, [...(into.get(e.to) ?? []), e.from])
+  }
+  return { out, into }
+})
+function fileLinks(path: string) { return { uses: fileAdj.value.out.get(path) ?? [], usedBy: fileAdj.value.into.get(path) ?? [] } }
+function landingLinks(path: string) {
+  if (mapMode.value !== "lane") return fileLinks(path)
+  return { uses: graph.value.outgoing.get(path) ?? [], usedBy: graph.value.incoming.get(path) ?? [] }
+}
+/** Lane pair "a>b" → references that way and back, to tell the grain from against it. */
+const laneTraffic = computed(() => new Map(flows.value.map((f) => [f.from + ">" + f.to, f])))
+function landingBad(from: string, to: string) {
+  if (mapMode.value !== "lane") return false
+  const a = laneOfModule.value.get(from), b = laneOfModule.value.get(to)
+  if (!a || !b || a === b || notLayers.value.includes(a) || notLayers.value.includes(b)) return false
+  const f = laneTraffic.value.get(a + ">" + b)
+  return !!f && (f.reverse > f.count || (f.reverse === f.count && a > b))
+}
 function openMapEvidence() { descend({ finding: mapMode.value === "reach" ? "unreached" : "twice" }) }
 function lanePaint(path: string) {
   const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
