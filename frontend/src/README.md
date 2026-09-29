@@ -27,7 +27,6 @@ src/
 | `lens-builder` | Proposing and building a lens: the studio, suggestions, subjects, cut quality, build modules, the lens draft |
 | `metrics` | Readings of components and files: health, main sequence, roles, the directory tree, hotspots, the plotter, stat pickers |
 | `connections` | Coupling between components, files and groups: the Connections view, neighbours, cross-cuts, file imports |
-| `sandbox` | What-if edits projected onto a snapshot |
 | `cycles` | Tangles, cut plans and the cycle map |
 | `units` | Declared units, the module graph and its boundaries (the Units view) |
 | `frameworks` | Framework profiles for every language, and the class facts they read |
