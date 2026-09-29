@@ -1,7 +1,7 @@
 // How much of the code the import graph actually covers.
 //
 // Every view that reasons from imports (dependencies, cycles, rules, dead
-// code, a restructure plan) is only as good as the files the engine parsed.
+// code) is only as good as the files the engine parsed.
 // A language it does not read, or a file it skipped, leaves no trace in the
 // graph; the views then answer confidently about half a codebase. This says
 // how much is missing, per extension, so a view can say so too.

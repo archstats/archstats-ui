@@ -1,205 +1,190 @@
 <template>
-  <div ref="root" class="relative h-full w-full" @mouseleave="hovered = null" @mousemove="mouseMove">
-    <div
-        v-if="dragAnchor == null && hovered"
-        class="ui-popover fixed z-50 w-72 p-3"
-        :style="{ top: `${hovered.posY}px`, left: `${hovered.posX}px` }"
-        @mouseenter="isHoveringOverTooltip = true"
-        @mouseleave="isHoveringOverTooltip = false"
-    >
-      <p class="truncate font-mono text-sm font-semibold text-neutral-900" :title="String(hovered.row.name)">{{ shortOf(hovered.row.name) }}</p>
-      <p v-if="shortOf(hovered.row.name) !== hovered.row.name" class="mb-2 truncate font-mono text-xs text-neutral-500" :title="String(hovered.row.name)">{{ hovered.row.name }}</p>
-      <div v-else class="mb-2"></div>
-      <dl class="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] gap-x-2 gap-y-0.5 text-sm">
-        <template v-for="key in tooltipKeys" :key="key">
-          <dt class="truncate text-neutral-500" :title="niceName(key)">{{ niceName(key) }}</dt>
-          <dd class="text-right font-mono tabular-nums text-neutral-900">{{ Number.isFinite(metricValue(hovered.row, key)) ? formatReading(hovered.row[key]) : "—" }}</dd>
-          <dd class="text-right font-mono text-xs leading-[18px] tabular-nums text-neutral-400" :title="`Rank among ${domainRows.length}`">{{ rankOf(key, hovered.row) }}</dd>
-        </template>
-      </dl>
-      <p v-if="cellOf(hovered.row.name)" class="mt-2 pt-2 text-xs text-neutral-500 hairline-t">{{ cellOf(hovered.row.name) }}</p>
-    </div>
+  <ExhibitFrame :exhibit="figure" fill>
+    <div ref="root" class="relative h-full w-full" @mouseleave="hovered = null" @mousemove="mouseMove">
+      <div
+          v-if="dragAnchor == null && hovered"
+          class="ui-popover fixed z-50 w-72 p-3"
+          :style="{ top: `${hovered.posY}px`, left: `${hovered.posX}px` }"
+          @mouseenter="isHoveringOverTooltip = true"
+          @mouseleave="isHoveringOverTooltip = false"
+      >
+        <p class="truncate font-mono text-sm font-semibold text-neutral-900" :title="String(hovered.row.name)">{{ shortOf(hovered.row.name) }}</p>
+        <p v-if="shortOf(hovered.row.name) !== hovered.row.name" class="mb-2 truncate font-mono text-xs text-neutral-500" :title="String(hovered.row.name)">{{ hovered.row.name }}</p>
+        <div v-else class="mb-2"></div>
+        <dl class="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] gap-x-2 gap-y-0.5 text-sm">
+          <template v-for="key in tooltipKeys" :key="key">
+            <dt class="truncate text-neutral-500" :title="niceName(key)">{{ niceName(key) }}</dt>
+            <dd class="text-right font-mono tabular-nums text-neutral-900">{{ Number.isFinite(metricValue(hovered.row, key)) ? formatReading(hovered.row[key]) : "—" }}</dd>
+            <dd class="text-right font-mono text-xs leading-[18px] tabular-nums text-neutral-400" :title="`Rank among ${domainRows.length}`">{{ rankOf(key, hovered.row) }}</dd>
+          </template>
+        </dl>
+        <p v-if="cellOf(hovered.row.name)" class="mt-2 pt-2 text-xs text-neutral-500 hairline-t">{{ cellOf(hovered.row.name) }}</p>
+      </div>
 
-    <svg
-        ref="svg"
-        class="absolute inset-0 h-full w-full select-none"
-        :class="{ 'is-gliding': gliding }"
-        :viewBox="`${-margin.left} ${-margin.top} ${size.w} ${size.h}`"
-        :width="size.w"
-        :height="size.h"
-        @mousedown="beginDragSelecting"
-        @mousemove="updateMouseCoords"
-    >
-      <defs>
-        <linearGradient v-for="grad in multiColorGradients" :key="grad.id" :id="grad.id">
-          <stop v-for="(stop, idx) in grad.stops" :key="idx" :offset="stop.offset" :stop-color="stop.color"/>
-        </linearGradient>
-        <clipPath :id="clipId">
-          <rect :x="0" :y="0" :width="width" :height="height"/>
-        </clipPath>
-        <clipPath :id="`${clipId}-x`">
-          <rect :x="0" :y="-margin.top" :width="width" :height="margin.top"/>
-        </clipPath>
-        <clipPath :id="`${clipId}-y`">
-          <rect :x="width" :y="0" :width="margin.right" :height="height"/>
-        </clipPath>
-      </defs>
+      <svg
+          ref="svg"
+          class="absolute inset-0 h-full w-full select-none"
+          :class="{ 'is-gliding': gliding }"
+          :viewBox="`${-margin.left} ${-margin.top} ${size.w} ${size.h}`"
+          :width="size.w"
+          :height="size.h"
+          @mousedown="beginDragSelecting"
+          @mousemove="updateMouseCoords"
+      >
+        <defs>
+          <linearGradient v-for="grad in multiColorGradients" :key="grad.id" :id="grad.id">
+            <stop v-for="(stop, idx) in grad.stops" :key="idx" :offset="stop.offset" :stop-color="stop.color"/>
+          </linearGradient>
+          <clipPath :id="clipId">
+            <rect :x="0" :y="0" :width="width" :height="height"/>
+          </clipPath>
+          <clipPath :id="`${clipId}-x`">
+            <rect :x="0" :y="-margin.top" :width="width" :height="margin.top"/>
+          </clipPath>
+          <clipPath :id="`${clipId}-y`">
+            <rect :x="width" :y="0" :width="margin.right" :height="height"/>
+          </clipPath>
+        </defs>
 
-      <g ref="xAxisElement"></g>
-      <g ref="yAxisElement"></g>
+        <g ref="xAxisElement"></g>
+        <g ref="yAxisElement"></g>
 
-      <text :x="-margin.left + 12" :y="height / 2" :transform="`rotate(-90, ${-margin.left + 12}, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
-            :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-        {{ niceName(yAxisProperty) }}<tspan v-if="yLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
-      </text>
-      <text :x="width / 2" :y="height + 44" text-anchor="middle" dominant-baseline="central"
-            :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-        {{ niceName(xAxisProperty) }}<tspan v-if="xLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
-      </text>
+        <text :x="-margin.left + 12" :y="height / 2" :transform="`rotate(-90, ${-margin.left + 12}, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
+              :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+          {{ niceName(yAxisProperty) }}<tspan v-if="yLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
+        </text>
+        <text :x="width / 2" :y="height + 44" text-anchor="middle" dominant-baseline="central"
+              :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
+          {{ niceName(xAxisProperty) }}<tspan v-if="xLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
+        </text>
 
-      <!-- Where the marks pile up along each axis; the selection overlays in blue. -->
-      <g :clip-path="`url(#${clipId}-x)`">
-        <rect v-for="(bar, i) in marginX.bars" :key="`mx${i}`"
-              :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h"
-              :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
-        <rect v-for="(bar, i) in marginX.sel" :key="`msx${i}`"
-              :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h" :fill="theme.blue"/>
-      </g>
-      <g :clip-path="`url(#${clipId}-y)`">
-        <rect v-for="(bar, i) in marginY.bars" :key="`my${i}`"
-              :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h"
-              :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
-        <rect v-for="(bar, i) in marginY.sel" :key="`msy${i}`"
-              :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h" :fill="theme.blue"/>
-      </g>
-
-      <g :clip-path="`url(#${clipId})`">
-        <!-- Guides: medians, or the main sequence and Martin's two zones. -->
-        <g v-if="reading?.kind === 'main-sequence'">
-          <polygon :points="zonePoints([[0, 0], [0.5, 0], [0, 0.5]])" :fill="withAlpha(theme.red, hoveredCell === 'pain' ? 0.16 : 0.07)"/>
-          <polygon :points="zonePoints([[1, 1], [0.5, 1], [1, 0.5]])" :fill="withAlpha(theme.inkMuted, hoveredCell === 'useless' ? 0.2 : 0.09)"/>
-          <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.inkMuted" stroke-width="1" stroke-dasharray="4 3"/>
-          <text :transform="`rotate(${mainSequenceAngle}, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
-                font-size="10" :fill="theme.inkMuted" :font-family="theme.fontSans">Main sequence</text>
+        <!-- Where the marks pile up along each axis; the selection overlays in blue. -->
+        <g :clip-path="`url(#${clipId}-x)`">
+          <rect v-for="(bar, i) in marginX.bars" :key="`mx${i}`"
+                :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h"
+                :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
+          <rect v-for="(bar, i) in marginX.sel" :key="`msx${i}`"
+                :x="bar.x0 + 0.5" :width="Math.max(0.5, bar.x1 - bar.x0 - 1)" :y="-6 - bar.h" :height="bar.h" :fill="theme.blue"/>
         </g>
-        <g v-else-if="reading?.kind === 'medians'">
-          <line :x1="xz(reading.mx)" :x2="xz(reading.mx)" :y1="0" :y2="height" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
-          <line :y1="yz(reading.my)" :y2="yz(reading.my)" :x1="0" :x2="width" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
+        <g :clip-path="`url(#${clipId}-y)`">
+          <rect v-for="(bar, i) in marginY.bars" :key="`my${i}`"
+                :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h"
+                :fill="bar.hot ? theme.ink : theme.hairlineStrong"/>
+          <rect v-for="(bar, i) in marginY.sel" :key="`msy${i}`"
+                :y="bar.x0 + 0.5" :height="Math.max(0.5, bar.x1 - bar.x0 - 1)" :x="width + 6" :width="bar.h" :fill="theme.blue"/>
         </g>
 
-        <g
-            v-for="mark in orderedMarks"
-            :key="mark.row.name"
-            class="mark"
-            :style="{ transform: `translate(${mark.x}px, ${mark.y}px)` }"
-        >
-          <circle
-              :r="mark.r"
-              :style="{ fill: fillFor(mark), opacity: opacityFor(mark.row.name) }"
-              :stroke="strokeFor(mark)"
-              :stroke-width="isHighlighted(mark) ? 2 : 0.75"
-              class="cursor-pointer"
-              :class="{ 'pointer-events-none': !isSelectable(mark.row.name) }"
-              @mouseenter="hoverOver(mark, $event)"
-              @click.stop="markClicked($event, mark.row)"
-              @dblclick.stop="emit('clicked', mark.row)"
+        <g :clip-path="`url(#${clipId})`">
+          <!-- Guides: medians, or the main sequence and Martin's two zones. -->
+          <g v-if="reading?.kind === 'main-sequence'">
+            <polygon :points="zonePoints([[0, 0], [0.5, 0], [0, 0.5]])" :fill="withAlpha(theme.red, hoveredCell === 'pain' ? 0.16 : 0.07)"/>
+            <polygon :points="zonePoints([[1, 1], [0.5, 1], [1, 0.5]])" :fill="withAlpha(theme.inkMuted, hoveredCell === 'useless' ? 0.2 : 0.09)"/>
+            <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.inkMuted" stroke-width="1" stroke-dasharray="4 3"/>
+            <text :transform="`rotate(${mainSequenceAngle}, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
+                  font-size="10" :fill="theme.inkMuted" :font-family="theme.fontSans">Main sequence</text>
+          </g>
+          <g v-else-if="reading?.kind === 'medians'">
+            <line :x1="xz(reading.mx)" :x2="xz(reading.mx)" :y1="0" :y2="height" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
+            <line :y1="yz(reading.my)" :y2="yz(reading.my)" :x1="0" :x2="width" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
+          </g>
+
+          <g
+              v-for="mark in orderedMarks"
+              :key="mark.row.name"
+              class="mark"
+              :style="{ transform: `translate(${mark.x}px, ${mark.y}px)` }"
+          >
+            <circle
+                :r="mark.r"
+                :style="{ fill: fillFor(mark), opacity: opacityFor(mark.row.name) }"
+                :stroke="strokeFor(mark)"
+                :stroke-width="isHighlighted(mark) ? 2 : 0.75"
+                class="cursor-pointer"
+                :class="{ 'pointer-events-none': !isSelectable(mark.row.name) }"
+                @mouseenter="hoverOver(mark, $event)"
+                @click.stop="markClicked($event, mark.row)"
+                @dblclick.stop="emit('clicked', mark.row)"
+            />
+          </g>
+
+          <!-- Crosshair from the hovered mark to both axes. -->
+          <g v-if="hoveredMark" class="pointer-events-none">
+            <line :x1="hoveredMark.x" :x2="hoveredMark.x" :y1="hoveredMark.y + hoveredMark.r" :y2="height" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
+            <line :y1="hoveredMark.y" :y2="hoveredMark.y" :x1="0" :x2="hoveredMark.x - hoveredMark.r" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
+          </g>
+
+          <g class="pointer-events-none">
+            <text
+                v-for="label in labels"
+                :key="label.id"
+                class="mark-label"
+                :x="label.x"
+                :y="label.y"
+                :text-anchor="label.anchor"
+                dominant-baseline="central"
+                font-size="10"
+                :font-weight="selectedSet.has(label.id) || hovered?.row.name === label.id ? 600 : 400"
+                :fill="selectedSet.has(label.id) || hovered?.row.name === label.id ? theme.ink : theme.inkSecondary"
+                :stroke="theme.surface"
+                stroke-width="3"
+                stroke-linejoin="round"
+                paint-order="stroke"
+                :font-family="theme.fontMono"
+                :opacity="labelOpacity(label.id)"
+            >{{ label.text }}</text>
+          </g>
+
+          <rect
+              v-if="dragRectangle"
+              :x="dragRectangle.x" :y="dragRectangle.y" :width="dragRectangle.width" :height="dragRectangle.height"
+              :fill="withAlpha(theme.blue, 0.1)" :stroke="theme.blue" stroke-width="0.75"
           />
         </g>
 
-        <!-- Crosshair from the hovered mark to both axes. -->
-        <g v-if="hoveredMark" class="pointer-events-none">
-          <line :x1="hoveredMark.x" :x2="hoveredMark.x" :y1="hoveredMark.y + hoveredMark.r" :y2="height" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
-          <line :y1="hoveredMark.y" :y2="hoveredMark.y" :x1="0" :x2="hoveredMark.x - hoveredMark.r" :stroke="theme.inkMuted" stroke-dasharray="2 2"/>
+        <!-- Axis chips for the hovered mark. -->
+        <g v-if="hoveredMark" class="pointer-events-none" :font-family="theme.fontMono" font-size="10">
+          <rect :x="hoveredMark.x - chipWidth(xChip) / 2" :y="height + 1" :width="chipWidth(xChip)" height="16" rx="3" :fill="theme.ink"/>
+          <text :x="hoveredMark.x" :y="height + 9" text-anchor="middle" dominant-baseline="central" :fill="theme.surface">{{ xChip }}</text>
+          <rect :x="-chipWidth(yChip) - 1" :y="hoveredMark.y - 8" :width="chipWidth(yChip)" height="16" rx="3" :fill="theme.ink"/>
+          <text :x="-5" :y="hoveredMark.y" text-anchor="end" dominant-baseline="central" :fill="theme.surface">{{ yChip }}</text>
         </g>
 
-        <g class="pointer-events-none">
-          <text
-              v-for="label in labels"
-              :key="label.id"
-              class="mark-label"
-              :x="label.x"
-              :y="label.y"
-              :text-anchor="label.anchor"
-              dominant-baseline="central"
-              font-size="10"
-              :font-weight="selectedSet.has(label.id) || hovered?.row.name === label.id ? 600 : 400"
-              :fill="selectedSet.has(label.id) || hovered?.row.name === label.id ? theme.ink : theme.inkSecondary"
-              :stroke="theme.surface"
-              stroke-width="3"
-              stroke-linejoin="round"
-              paint-order="stroke"
-              :font-family="theme.fontMono"
-              :opacity="labelOpacity(label.id)"
-          >{{ label.text }}</text>
+        <!-- Median values, said once at the end of each line. -->
+        <g v-if="reading?.kind === 'medians'" class="pointer-events-none" :font-family="theme.fontMono" font-size="10" :fill="theme.inkMuted">
+          <text v-if="inRange(xz(reading.mx), width)" :x="xz(reading.mx) + 4" :y="-10 - marginMax" dominant-baseline="auto">median {{ formatReading(reading.mx) }}</text>
+          <text v-if="inRange(yz(reading.my), height)" :x="4" :y="yz(reading.my) - 5" :stroke="theme.surface" stroke-width="3" paint-order="stroke" stroke-linejoin="round">median {{ formatReading(reading.my) }}</text>
         </g>
 
-        <rect
-            v-if="dragRectangle"
-            :x="dragRectangle.x" :y="dragRectangle.y" :width="dragRectangle.width" :height="dragRectangle.height"
-            :fill="withAlpha(theme.blue, 0.1)" :stroke="theme.blue" stroke-width="0.75"
-        />
-      </g>
+        <!-- The reading in each corner: how many marks, and what the corner means. Click selects them. -->
+        <g v-for="cell in cellLabels" :key="cell.id"
+           class="cell-label cursor-pointer outline-none"
+           role="button" tabindex="0"
+           :aria-label="`Select ${cell.count}: ${cell.text}`"
+           @mousedown.stop
+           @click.stop="selectCell(cell.id, $event)"
+           @keydown.enter.prevent="selectCell(cell.id, $event)"
+           @mouseenter="hoveredCell = cell.id"
+           @mouseleave="hoveredCell = null"
+           @focus="hoveredCell = cell.id"
+           @blur="hoveredCell = null">
+          <rect :x="cell.boxX" :y="cell.boxY" :width="cell.boxW" height="20" rx="4"
+                :fill="withAlpha(theme.surface, 0.9)"
+                :stroke="hoveredCell === cell.id ? theme.inkMuted : theme.hairline"/>
+          <text :x="cell.boxX + 8" :y="cell.boxY + 10" dominant-baseline="central" font-size="11" :font-family="theme.fontSans">
+            <tspan :font-family="theme.fontMono" font-weight="600" :fill="theme.ink">{{ cell.count }}</tspan>
+            <tspan v-if="cell.text" dx="6" :fill="hoveredCell === cell.id ? theme.ink : theme.inkSecondary">{{ cell.text }}</tspan>
+          </text>
+        </g>
 
-      <!-- Axis chips for the hovered mark. -->
-      <g v-if="hoveredMark" class="pointer-events-none" :font-family="theme.fontMono" font-size="10">
-        <rect :x="hoveredMark.x - chipWidth(xChip) / 2" :y="height + 1" :width="chipWidth(xChip)" height="16" rx="3" :fill="theme.ink"/>
-        <text :x="hoveredMark.x" :y="height + 9" text-anchor="middle" dominant-baseline="central" :fill="theme.surface">{{ xChip }}</text>
-        <rect :x="-chipWidth(yChip) - 1" :y="hoveredMark.y - 8" :width="chipWidth(yChip)" height="16" rx="3" :fill="theme.ink"/>
-        <text :x="-5" :y="hoveredMark.y" text-anchor="end" dominant-baseline="central" :fill="theme.surface">{{ yChip }}</text>
-      </g>
-
-      <!-- Median values, said once at the end of each line. -->
-      <g v-if="reading?.kind === 'medians'" class="pointer-events-none" :font-family="theme.fontMono" font-size="10" :fill="theme.inkMuted">
-        <text v-if="inRange(xz(reading.mx), width)" :x="xz(reading.mx) + 4" :y="-10 - marginMax" dominant-baseline="auto">median {{ formatReading(reading.mx) }}</text>
-        <text v-if="inRange(yz(reading.my), height)" :x="4" :y="yz(reading.my) - 5" :stroke="theme.surface" stroke-width="3" paint-order="stroke" stroke-linejoin="round">median {{ formatReading(reading.my) }}</text>
-      </g>
-
-      <!-- The reading in each corner: how many marks, and what the corner means. Click selects them. -->
-      <g v-for="cell in cellLabels" :key="cell.id"
-         class="cell-label cursor-pointer outline-none"
-         role="button" tabindex="0"
-         :aria-label="`Select ${cell.count}: ${cell.text}`"
-         @mousedown.stop
-         @click.stop="selectCell(cell.id, $event)"
-         @keydown.enter.prevent="selectCell(cell.id, $event)"
-         @mouseenter="hoveredCell = cell.id"
-         @mouseleave="hoveredCell = null"
-         @focus="hoveredCell = cell.id"
-         @blur="hoveredCell = null">
-        <rect :x="cell.boxX" :y="cell.boxY" :width="cell.boxW" height="20" rx="4"
-              :fill="withAlpha(theme.surface, 0.9)"
-              :stroke="hoveredCell === cell.id ? theme.inkMuted : theme.hairline"/>
-        <text :x="cell.boxX + 8" :y="cell.boxY + 10" dominant-baseline="central" font-size="11" :font-family="theme.fontSans">
-          <tspan :font-family="theme.fontMono" font-weight="600" :fill="theme.ink">{{ cell.count }}</tspan>
-          <tspan v-if="cell.text" dx="6" :fill="hoveredCell === cell.id ? theme.ink : theme.inkSecondary">{{ cell.text }}</tspan>
-        </text>
-      </g>
-
-      <!-- Keys for size and colour, in the bottom margin. -->
-      <g v-if="radiusProperty && sizeKey && width >= 560" :transform="`translate(0, ${height + 44})`" :font-family="theme.fontSans" font-size="10" :fill="theme.inkSecondary">
-        <text x="0" y="0" dominant-baseline="central">Size</text>
-        <circle :cx="30 + sizeKey.r0" cy="0" :r="sizeKey.r0" fill="none" :stroke="theme.inkMuted"/>
-        <text :x="34 + sizeKey.r0 * 2" y="0" dominant-baseline="central" :font-family="theme.fontMono">{{ sizeKey.v0 }}</text>
-        <circle :cx="sizeKey.x1 + sizeKey.r1" cy="0" :r="sizeKey.r1" fill="none" :stroke="theme.inkMuted"/>
-        <text :x="sizeKey.x1 + sizeKey.r1 * 2 + 4" y="0" dominant-baseline="central" :font-family="theme.fontMono">{{ sizeKey.v1 }}</text>
-        <text :x="sizeKey.x1 + sizeKey.r1 * 2 + 10 + sizeKey.v1.length * 6" y="0" dominant-baseline="central" :fill="theme.inkMuted">{{ niceName(radiusProperty) }}</text>
-      </g>
-      <g v-if="colorKey && width >= 560" :transform="`translate(${width}, ${height + 44})`" :font-family="theme.fontSans" font-size="10" :fill="theme.inkSecondary">
-        <text :x="-colorKey.swatches.length * 14 - 8 - colorKey.hi.length * 6 - 6" y="0" text-anchor="end" dominant-baseline="central">
-          <tspan :fill="theme.inkMuted">{{ niceName(colorProperty!) }} in fifths</tspan>
-          <tspan dx="8" :font-family="theme.fontMono" :fill="theme.inkSecondary">{{ colorKey.lo }}</tspan>
-        </text>
-        <rect v-for="(s, i) in colorKey.swatches" :key="i" :x="-colorKey.swatches.length * 14 - colorKey.hi.length * 6 - 6 + i * 14" y="-5" width="12" height="10" rx="2" :fill="s.color">
-          <title>{{ s.range }}</title>
-        </rect>
-        <text x="0" y="0" text-anchor="end" dominant-baseline="central" :font-family="theme.fontMono">{{ colorKey.hi }}</text>
-      </g>
-    </svg>
-  </div>
+      </svg>
+    </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { useSvgFigure } from "~/features/export/useExportables"
+import type { LegendItem, LegendRamp } from "~/features/export/figure"
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type PropType } from "vue";
 import * as d3 from "d3";
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme";
@@ -628,7 +613,7 @@ function zoomOut() {
 function resetZoom() {
   if (svg.value && zoom) d3.select(svg.value).transition().duration(180).call(zoom.transform, d3.zoomIdentity);
 }
-defineExpose({ zoomIn, zoomOut, resetZoom });
+defineExpose({ zoomIn, zoomOut, resetZoom, get figure() { return figure } });
 
 watch([width, height], ([w, h]) => {
   // d3-zoom resolves its extent inside the transition's tween, and its
@@ -855,7 +840,52 @@ function markClicked(event: MouseEvent, row: Row) {
   }
 }
 
-useSvgFigure("Metrics plot", () => svg.value)
+// ─── Legend: what colour, size and the guides mean ───
+const figure = useSvgFigure({
+  title: "Metrics plot",
+  svg: () => svg.value,
+  legend: () => {
+    const t = theme.value;
+    const items: LegendItem[] = [];
+    const ramps: LegendRamp[] = [];
+    const notes: string[] = [];
+    const ck = colorKey.value;
+    if (ck && props.colorProperty) {
+      for (const sw of ck.swatches) items.push({ label: sw.range, color: sw.color, mark: "dot" });
+      notes.push(`Colour is ${niceName(props.colorProperty)}, in fifths of the marks.`);
+    } else {
+      const counts = new Map<string, { name: string; color: string; n: number }>();
+      let none = 0;
+      for (const row of props.rows) {
+        const groups = visibleGroupsOf(row.name);
+        if (!groups.length) none++;
+        for (const g of groups) {
+          const c = counts.get(g.id) ?? { name: g.name, color: g.color, n: 0 };
+          c.n++;
+          counts.set(g.id, c);
+        }
+      }
+      const ranked = [...counts.values()].sort((a, b) => b.n - a.n);
+      for (const g of ranked.slice(0, 12)) items.push({ label: g.name, color: g.color, mark: "dot", count: g.n });
+      if (ranked.length > 12) notes.push(`${ranked.length - 12} more groups are drawn in their own colours.`);
+      if (none && ranked.length) items.push({ label: "In no group", color: withAlpha(t.inkMuted, 0.55), mark: "dot", count: none });
+      if (ranked.length && props.rows.some(r => visibleGroupsOf(r.name).length > 1)) notes.push("A mark in several groups is split between their colours.");
+    }
+    if (props.reading?.kind === "main-sequence") {
+      items.push(
+        { label: "Main sequence", color: t.inkMuted, mark: "dashed" },
+        { label: "Zone of pain", color: withAlpha(t.red, 0.35) },
+        { label: "Zone of uselessness", color: withAlpha(t.inkMuted, 0.35) },
+      );
+    } else if (props.reading?.kind === "medians") {
+      items.push({ label: "Medians", color: t.hairlineStrong, mark: "dashed" });
+    }
+    const sk = sizeKey.value;
+    if (props.radiusProperty && sk) notes.push(`Size is ${niceName(props.radiusProperty)}, from ${sk.v0} to ${sk.v1}.`);
+    notes.push(`Across: ${niceName(props.xAxisProperty)}${props.xLog ? " (log)" : ""}. Up: ${niceName(props.yAxisProperty)}${props.yLog ? " (log)" : ""}. One mark per ${props.grain}.`);
+    return { items, ramps, notes };
+  },
+})
 </script>
 
 <style scoped>

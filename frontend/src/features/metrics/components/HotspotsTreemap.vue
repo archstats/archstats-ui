@@ -1,98 +1,69 @@
 <template>
-  <div ref="host" class="relative h-full min-h-0 w-full overflow-hidden">
-    <!-- Hover tooltip -->
-    <div
-      v-if="hoveredNode"
-      :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
-      class="ui-tooltip pointer-events-none absolute z-50 flex max-w-xs flex-col gap-1"
-    >
-      <span class="break-all font-mono text-xs">{{ hoveredNode.data.fullName }}</span>
-      <span class="flex items-center justify-between gap-4 text-xs">
-        <span class="opacity-70">{{ store.statNiceName(sizeMetric) }}</span>
-        <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.data.sizeValue) }}</span>
-      </span>
-      <span class="flex items-center justify-between gap-4 text-xs">
-        <span class="opacity-70">{{ store.statNiceName(colorMetric) }}</span>
-        <span class="font-mono tabular-nums">{{ isBlank(hoveredNode.data.colorValue) ? zeroLabel : formatNumber(hoveredNode.data.colorValue) }}</span>
-      </span>
-      <span v-if="rankOf.get(hoveredNode.data.unit?.name)" class="text-xs opacity-70">No. {{ rankOf.get(hoveredNode.data.unit?.name) }} of the {{ labelHigh.toLowerCase() }}</span>
-    </div>
-
-    <!-- Circle packing canvas -->
-    <div ref="chart" class="h-full w-full"></div>
-
-    <!-- Key: what size and colour stand for, the same words the figure prints -->
-    <div
-      v-if="key"
-      class="pointer-events-none absolute bottom-4 left-4 z-10 flex w-[196px] flex-col gap-2 rounded-md bg-surface px-3 py-2.5 hairline"
-      aria-label="Chart key"
-    >
-      <div class="flex flex-col gap-1">
-        <span class="text-sm font-medium leading-4 text-neutral-800">{{ key.heatLabel }}</span>
-        <span class="h-2 w-full rounded-sm" :style="{ background: key.gradient }"></span>
-        <span class="flex justify-between font-mono text-xs tabular-nums leading-4 text-neutral-500">
-          <span>{{ key.cool }}</span><span>{{ key.hot }}</span>
+  <ExhibitFrame :exhibit="figureHandle" header="overlay" legend-class="px-3 pb-2" fill>
+    <div ref="host" class="relative h-full min-h-0 w-full overflow-hidden">
+      <!-- Hover tooltip -->
+      <div
+        v-if="hoveredNode"
+        :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
+        class="ui-tooltip pointer-events-none absolute z-50 flex max-w-xs flex-col gap-1"
+      >
+        <span class="break-all font-mono text-xs">{{ hoveredNode.data.fullName }}</span>
+        <span class="flex items-center justify-between gap-4 text-xs">
+          <span class="opacity-70">{{ store.statNiceName(sizeMetric) }}</span>
+          <span class="font-mono tabular-nums">{{ formatNumber(hoveredNode.data.sizeValue) }}</span>
         </span>
+        <span class="flex items-center justify-between gap-4 text-xs">
+          <span class="opacity-70">{{ store.statNiceName(colorMetric) }}</span>
+          <span class="font-mono tabular-nums">{{ isBlank(hoveredNode.data.colorValue) ? zeroLabel : formatNumber(hoveredNode.data.colorValue) }}</span>
+        </span>
+        <span v-if="rankOf.get(hoveredNode.data.unit?.name)" class="text-xs opacity-70">No. {{ rankOf.get(hoveredNode.data.unit?.name) }} of the {{ labelHigh.toLowerCase() }}</span>
       </div>
-      <div class="flex flex-col gap-1 text-sm leading-4 text-neutral-600">
-        <span v-if="key.blank" class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ background: key.blankFill, boxShadow: `inset 0 0 0 1px ${key.blankStroke}` }"></span>
-          {{ key.blank }}
-        </span>
-        <span class="flex items-center gap-2">
-          <span class="flex w-2.5 shrink-0 items-end justify-center gap-px">
-            <span class="h-1 w-1 rounded-full bg-neutral-400"></span>
-            <span class="h-2 w-2 rounded-full bg-neutral-400"></span>
-          </span>
-          Area: {{ key.sizeLabel.toLowerCase() }}
-        </span>
-        <span v-if="key.rings" class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="box-shadow: inset 0 0 0 1.5px rgb(var(--c-neutral-300))"></span>
-          {{ key.rings }}
-        </span>
-      </div>
-    </div>
 
-    <!-- Context menu -->
-    <div v-if="contextMenu.visible && contextMenu.node" class="fixed inset-0 z-40 cursor-default" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu"></div>
-    <div
-      v-if="contextMenu.visible && contextMenu.node"
-      class="ui-menu ui-popover absolute z-50 min-w-[200px] animate-in"
-      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-    >
-      <div class="ui-menu-title">{{ contextMenu.node.data.unit ? unitLabel : 'Namespace' }}</div>
+      <!-- Circle packing canvas -->
+      <div ref="chart" class="h-full w-full"></div>
 
-      <template v-if="!contextMenu.node.data.unit">
-        <button type="button" class="ui-menu-item" @click="promoteNamespaceToGroup">
-          <Icon icon="folder" :size="13" class="text-neutral-500"/>
-          <span>Promote to group</span>
-        </button>
-      </template>
+      <!-- Context menu -->
+      <div v-if="contextMenu.visible && contextMenu.node" class="fixed inset-0 z-40 cursor-default" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu"></div>
+      <div
+        v-if="contextMenu.visible && contextMenu.node"
+        class="ui-menu ui-popover absolute z-50 min-w-[200px] animate-in"
+        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      >
+        <div class="ui-menu-title">{{ contextMenu.node.data.unit ? unitLabel : 'Namespace' }}</div>
 
-      <template v-else>
-        <div class="ui-menu-title">Add to group</div>
-        <div class="max-h-48 overflow-y-auto">
-          <button v-for="g in grainGroups" :key="g.id" type="button" class="ui-menu-item" @click="addLeafToGroup(g.id)">
-            <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
-            <span class="truncate">{{ g.name }}</span>
+        <template v-if="!contextMenu.node.data.unit">
+          <button type="button" class="ui-menu-item" @click="promoteNamespaceToGroup">
+            <Icon icon="folder" :size="13" class="text-neutral-500"/>
+            <span>Promote to group</span>
           </button>
-          <div v-if="grainGroups.length === 0" class="px-2 py-1.5 text-sm text-neutral-400">No groups yet</div>
-        </div>
-        <div class="my-1 hairline-t"></div>
-        <button type="button" class="ui-menu-item text-red-700" @click="removeLeafFromGroups">
-          <Icon icon="minus" :size="13"/>
-          <span>Remove from groups</span>
-        </button>
-      </template>
+        </template>
+
+        <template v-else>
+          <div class="ui-menu-title">Add to group</div>
+          <div class="max-h-48 overflow-y-auto">
+            <button v-for="g in grainGroups" :key="g.id" type="button" class="ui-menu-item" @click="addLeafToGroup(g.id)">
+              <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
+              <span class="truncate">{{ g.name }}</span>
+            </button>
+            <div v-if="grainGroups.length === 0" class="px-2 py-1.5 text-sm text-neutral-400">No groups yet</div>
+          </div>
+          <div class="my-1 hairline-t"></div>
+          <button type="button" class="ui-menu-item text-red-700" @click="removeLeafFromGroups">
+            <Icon icon="minus" :size="13"/>
+            <span>Remove from groups</span>
+          </button>
+        </template>
+      </div>
     </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script lang="ts" setup>
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import Icon from "~/shared/ui/Icon.vue"
 import { chartTheme, readChartTheme, useChartTheme, withAlpha, type ChartTheme } from "~/shared/ui/useChartTheme"
-import { useExportables } from "~/features/export/useExportables"
-import { isDarkAppearance, withLightTokens, type FigureOutput } from "~/features/export/figure"
+import { useFigure } from "~/features/export/useExportables"
+import { isDarkAppearance, withLightTokens, type FigureOutput, type LegendItem } from "~/features/export/figure"
 import { formatNumber } from "~/shared/format"
 import * as d3 from "d3"
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue"
@@ -318,6 +289,7 @@ interface KeyInfo {
   cool: string
   hot: string
   gradient: string
+  ramp: string[]
   blank: string | null
   blankFill: string
   blankStroke: string
@@ -334,6 +306,7 @@ function keyOf(heat: HeatScale, t: ChartTheme, hasGroupRings: boolean): KeyInfo 
     cool: formatNumber(heat.cool, 1),
     hot: formatNumber(heat.hot, 1),
     gradient: `linear-gradient(to right, ${heat.ramp.map((c, i) => `${c} ${Math.round((i / n) * 100)}%`).join(", ")})`,
+    ramp: heat.ramp,
     blank: props.zeroLabel || null,
     blankFill: t.ground,
     blankStroke: t.hairlineStrong,
@@ -351,11 +324,27 @@ const FIG = { width: 720, height: 480, pack: 452, gap: 28 }
 // as if zoomed out by this much, so they print at about the size of a caption.
 const FIG_K = 0.85
 
-useExportables().register({
-  kind: "figure",
-  get title() { return props.grain === "files" ? "Hotspots: files" : props.grain === "directories" ? "Hotspots: directories" : "Hotspots: components" },
+// What size and colour stand for, in the same words under the chart and under an export.
+const figureHandle = useFigure({
+  title: () => (props.grain === "files" ? "Hotspots: files" : props.grain === "directories" ? "Hotspots: directories" : "Hotspots: components"),
   ready: () => !!svgSel(),
+  svg: true,
   render: opts => figure(!!opts?.light),
+  legend: () => {
+    const k = key.value
+    if (!k) return {}
+    const items: LegendItem[] = []
+    if (k.blank) items.push({ label: k.blank, color: k.blankStroke, mark: "ring" })
+    if (k.rings) items.push({ label: k.rings.replace(/^(Ring|Outline): /, "").replace(/^./, c => c.toUpperCase()), color: k.blankStroke, mark: "ring" })
+    return {
+      ramps: [{ label: k.heatLabel, colors: k.ramp, low: k.cool, high: k.hot }],
+      items,
+      notes: [
+        `Area is ${k.sizeLabel.toLowerCase()}.${k.rings ? ` ${k.rings.startsWith("Ring") ? "A ring" : "An outline"} marks a ${k.rings.replace(/^(Ring|Outline): /, "")}.` : ""}`,
+        ...(props.leftOutNote ? [props.leftOutNote] : []),
+      ],
+    }
+  },
 })
 
 function figure(light: boolean): FigureOutput | null {
@@ -382,44 +371,21 @@ function figure(light: boolean): FigureOutput | null {
   try {
     settleLabels(g, FIG_K)
     g.selectAll("[display=none]").remove()
-    drawFigureKey(svg, heat, t, 16 + FIG.pack + FIG.gap)
+    drawFigureRanking(svg, t, 16 + FIG.pack + FIG.gap)
   } finally {
     el.remove()
     el.removeAttribute("style")
   }
-  return { kind: "svg", svg: el, width: FIG.width, height: FIG.height, legend: [], light: light && isDarkAppearance() }
+  return { kind: "svg", svg: el, width: FIG.width, height: FIG.height, light: light && isDarkAppearance() }
 }
 
-function drawFigureKey(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, heat: HeatScale, t: ChartTheme, x: number) {
-  const k = keyOf(heat, t, false)
+/** The ranking beside the exported chart; what size and colour mean is the figure's legend. */
+function drawFigureRanking(svg: d3.Selection<SVGSVGElement, unknown, null, undefined>, t: ChartTheme, x: number) {
   const w = FIG.width - x - 16
   const col = svg.append("g").attr("transform", `translate(${x}, 40)`)
-  const grad = svg.append("defs").append("linearGradient").attr("id", "hotspot-ramp")
-  heat.ramp.forEach((c, i) => grad.append("stop").attr("offset", `${(i / (heat.ramp.length - 1)) * 100}%`).attr("stop-color", c))
-
   let y = 0
-  col.append("text").attr("y", y).attr("font-size", 12).attr("font-weight", 600).attr("fill", t.ink).text(k.heatLabel)
-  y += 10
-  col.append("rect").attr("y", y).attr("width", w).attr("height", 8).attr("rx", 2).attr("fill", "url(#hotspot-ramp)")
-  y += 22
-  col.append("text").attr("y", y).attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.inkSecondary).text(k.cool)
-  col.append("text").attr("x", w).attr("y", y).attr("text-anchor", "end").attr("font-size", 11).attr("font-family", t.fontMono).attr("fill", t.inkSecondary).text(k.hot)
-
-  const swatch = (label: string, fill: string, stroke: string) => {
-    y += 20
-    col.append("circle").attr("cx", 5).attr("cy", y - 4).attr("r", 5).attr("fill", fill).attr("stroke", stroke)
-    col.append("text").attr("x", 18).attr("y", y).attr("font-size", 11).attr("fill", t.inkSecondary).text(label)
-  }
-  y += 6
-  if (k.blank) swatch(k.blank, t.ground, t.hairlineStrong)
-  swatch(`Area: ${k.sizeLabel.toLowerCase()}`, "none", "none")
-  col.append("circle").attr("cx", 2).attr("cy", y - 2).attr("r", 2).attr("fill", t.inkMuted)
-  col.append("circle").attr("cx", 7.5).attr("cy", y - 4).attr("r", 4).attr("fill", t.inkMuted)
-  if (props.layout === "packed") swatch("Ring: namespace", "none", withAlpha(t.inkMuted, 0.5))
-
   const ranked = rankedRows()
   if (ranked.length === 0) return
-  y += 36
   col.append("text").attr("y", y).attr("font-size", 12).attr("font-weight", 600).attr("fill", t.ink).text(props.labelHigh)
   if (props.rankedNote) {
     y += 16

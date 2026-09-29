@@ -8,6 +8,8 @@
         </div>
         <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="expandAll">Expand {{ expandDepth === 0 ? "one level" : "another level" }}</button>
         <button v-if="expanded.size" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="expanded = new Set(); expandDepth = 0">Collapse all</button>
+        <!-- The strip is the tree's header: it exports from its end. -->
+        <ExhibitButton :exhibit="dirTable" class="ml-auto"/>
       </div>
       <LoadingState v-if="loading" text="Reading files…"/>
       <EmptyState v-else-if="!root.children.length" title="No files" text="Nothing in scope." icon="folder"/>
@@ -80,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue";
 import { computed, ref, watch } from "vue";
 import Checkbox from "~/shared/ui/Checkbox.vue";
 import EmptyState from "~/shared/ui/EmptyState.vue";
@@ -87,7 +90,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { fileHealthSql } from "~/features/metrics/useHealth";
-import { useExportables } from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { DEFAULT_DIMENSION, useGroupsStore } from "~/features/groups/groups.store";
 import { useLensStore } from "~/features/groups/lens.store";
@@ -204,8 +207,7 @@ function keepLive() {
   selected.value = new Set();
 }
 
-useExportables().register({
-  kind: "table",
+const dirTable = useTable({
   title: "Metrics: directories",
   // Commits load after the tree; a take before then would fill the column with dashes.
   ready: () => commits.value !== null,

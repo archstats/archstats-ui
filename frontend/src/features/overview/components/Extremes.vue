@@ -9,7 +9,7 @@
       <li v-for="row in rows" :key="row.id" class="flex flex-col gap-1.5 px-4 py-3 hairline-b last:border-0 md:flex-row md:items-baseline md:gap-6">
         <div class="md:w-[300px] md:shrink-0">
           <p class="text-sm font-medium text-neutral-900">
-            <template v-if="row.id === 'ca'">Highest Ca among components with I &gt;
+            <template v-if="row.id === 'ca'">Most depended on among components with I &gt;
               <input v-model.number="caThreshold" type="number" min="0" max="1" step="0.05" class="ui-input ui-input-sm inline-block w-16 px-1 py-0 font-mono" aria-label="Instability threshold">
             </template>
             <template v-else-if="row.id === 'knowledge'">Fewest authors covering 80% of lines, among components with ≥
@@ -41,6 +41,9 @@ import { knowledgeSql } from "~/features/git/authors";
 import { looksLikeProductionCode } from "~/features/snapshot/fileRole";
 import { componentPath, filePath } from "~/features/navigation/routes";
 import { scopeLabel } from "~/features/groups/scopeSql";
+import { metricsPath } from "~/features/metrics/link";
+
+const DEPENDENTS = "modularity__coupling__dependents";
 
 // Where to look in the first hour: a handful of fixed sorts over this
 // snapshot, each named for what it sorts by and filters on. No row ranks
@@ -108,17 +111,27 @@ const rows = computed<Row[]>(() => {
     open: { label: "Cycles", to: "/views/components/cycles" },
   });
 
+  // Afferent coupling counts the files that import a component, not the
+  // components: the dependents count is the one that reads "used by N
+  // components". Older snapshots have only the file count, and say so.
+  const byComponents = data.hasColumn("components", DEPENDENTS);
+  const ca = byComponents ? DEPENDENTS : "modularity__coupling__afferent";
   const unstable = (data.allComponents as any[])
-    .filter(c => c.name !== "." && scope.componentInScope(c.name) && Number(c.modularity__instability) > caThreshold.value && Number.isFinite(Number(c.modularity__coupling__afferent)))
-    .sort((a, b) => Number(b.modularity__coupling__afferent) - Number(a.modularity__coupling__afferent))
+    .filter(c => c.name !== "." && scope.componentInScope(c.name) && Number(c.modularity__instability) > caThreshold.value && Number(c[ca]) > 0)
+    .sort((a, b) => Number(b[ca]) - Number(a[ca]))
     .slice(0, 3);
+  const usedBy = (c: any) => byComponents
+    ? `is used by ${fmt(Number(c[ca]))} other component${Number(c[ca]) === 1 ? "" : "s"}`
+    : `is imported from ${fmt(Number(c[ca]))} file${Number(c[ca]) === 1 ? "" : "s"}`;
   out.push({
     id: "ca",
     title: "",
-    filter: "Depended on (Ca) while depending more than it is depended on",
-    sentence: unstable.length ? `${unstable[0].name} is used by ${fmt(Number(unstable[0].modularity__coupling__afferent))} components at instability ${Number(unstable[0].modularity__instability).toFixed(2)}.` : `No component above instability ${caThreshold.value} is depended on.`,
-    evidence: unstable.map(c => ({ label: c.name, to: componentPath(c.name), title: `Ca ${c.modularity__coupling__afferent} · I ${Number(c.modularity__instability).toFixed(2)}` })),
-    open: { label: "Metrics", to: "/views/metrics?grain=components" },
+    filter: byComponents ? "Depended on by the most components while depending more than it is depended on" : "Imported from the most files while depending more than it is depended on",
+    sentence: unstable.length ? `${unstable[0].name} ${usedBy(unstable[0])} at instability ${Number(unstable[0].modularity__instability).toFixed(2)}.` : `No component above instability ${caThreshold.value} is depended on.`,
+    evidence: unstable.map(c => ({ label: c.name, to: componentPath(c.name), title: `${byComponents ? "Dependents" : "Ca"} ${c[ca]} · I ${Number(c.modularity__instability).toFixed(2)}` })),
+    // The same question, asked in Strips: instability brushed above the
+    // threshold, ranked by what depends on it, these three picked out.
+    open: { label: "Metrics", to: metricsPath({ view: "strips", sort: ca, brushes: { modularity__instability: [caThreshold.value, 1] }, selected: unstable.map(c => c.name) }) },
   });
 
   const rc = ruleCounts.value.filter(r => scope.componentInScope(r.component)).slice(0, 3);

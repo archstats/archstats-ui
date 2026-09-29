@@ -1,79 +1,83 @@
-
 <template>
-  <div class="flex flex-col">
-    <div class="w-full overflow-x-auto">
-      <table class="ui-table">
-        <thead>
-        <tr>
-          <th class="w-8" v-if="selectableElements">
-            <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
-                      @update:model-value="toggleSelectAll" aria-label="Select all"/>
-          </th>
-          <th class="cursor-pointer select-none hover:text-neutral-900" @click="toggleSort('name')">
-            <span class="inline-flex items-center gap-1">{{ nameColumn }}<Icon v-if="sortSettings.column === 'name'" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
-          </th>
-          <th v-if="showGroups">Groups</th>
-          <th v-for="column in columns" :key="column.name"
-              class="cursor-pointer select-none text-right hover:text-neutral-900"
-              :class="[instrumented ? 'is-instrumented' : '', sortSettings.column === column.name ? 'text-neutral-900' : '']"
-              :aria-sort="sortSettings.column === column.name ? (sortSettings.ascending ? 'ascending' : 'descending') : undefined"
-              @click="toggleSort(column.name)">
-            <span class="inline-flex items-center gap-1"><MetricHint :id="column.name" :focusable="false">{{ niceName(column.name) }}</MetricHint><Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
-            <!-- How the column is spread across every row; the hovered row's bin is inked. -->
-            <span v-if="instrumented && stats.get(column.name)" class="mt-1 flex h-3.5 items-end gap-px" :title="spreadTitle(column.name)" aria-hidden="true">
-              <span v-for="(h, i) in stats.get(column.name)!.bins" :key="i"
-                    class="min-w-[2px] flex-1 rounded-[1px]"
-                    :class="hoveredBin(column.name) === i ? 'bg-neutral-900' : sortSettings.column === column.name ? 'bg-neutral-400' : 'bg-neutral-300'"
-                    :style="{ height: h === 0 ? '0' : `${Math.max(12, h * 100)}%` }"></span>
-            </span>
-          </th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="element in pageOfElements" :key="element.name"
-            :class="{ 'is-clickable': clickableElements, 'is-selected': selectedElements.indexOf(element.name) !== -1 }"
-            @mouseenter="hoveredRow = element"
-            @mouseleave="hoveredRow = null"
-            @click="clickableElements ? emit('clicked-element', element) : checkboxToggle(element.name)">
-          <td v-if="selectableElements" @click.stop="checkboxToggle(element.name)">
-            <Checkbox :model-value="selectedElements.indexOf(element.name) !== -1"/>
-          </td>
-          <td v-if="instrumented && element.name !== '.' && element.name" class="max-w-[420px] truncate font-mono text-sm" :title="String(element.name)"><span class="text-neutral-400">{{ splitName(String(element.name)).head }}</span><span class="font-medium text-neutral-900">{{ splitName(String(element.name)).tail }}</span></td>
-          <td v-else class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name === "." ? `${rootLabel} (root)` : element.name || "unknown" }}</td>
-          <td v-if="showGroups">
-            <div class="flex flex-wrap gap-1">
-              <span v-for="g in getElementGroups(element.name)" :key="g.id" class="ui-tag text-white" :style="{ backgroundColor: g.color }">{{ g.name }}</span>
-            </div>
-          </td>
-          <template v-if="instrumented">
-            <td v-for="column in columns" :key="column.name" class="is-num is-bar text-right" :title="String(element[column.name] ?? '')">
-              <span v-if="barWidth(column.name, element) > 0" class="bar" :class="{ 'is-sorted': sortSettings.column === column.name }" :style="{ width: `${barWidth(column.name, element)}%` }" aria-hidden="true"></span>
-              <span class="relative inline-flex items-center gap-1.5">
-                <span v-if="levelOf(column.name, element) !== null" class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(levelOf(column.name, element)!)" aria-hidden="true"></span>
-                <span :class="isMissing(column.name, element) ? 'text-neutral-400' : ''">{{ isMissing(column.name, element) ? "—" : formatReading(element[column.name]) }}</span>
+  <!-- A table with an export title is an exhibit: its caption row names it and ends in its export button. -->
+  <ExhibitFrame :exhibit="table">
+    <template #aside>{{ elements.length.toLocaleString("en-US") }} {{ nameColumn.toLowerCase() }}{{ elements.length === 1 ? "" : "s" }}</template>
+    <div class="flex flex-col">
+      <div class="w-full overflow-x-auto">
+        <table class="ui-table">
+          <thead>
+          <tr>
+            <th class="w-8" v-if="selectableElements">
+              <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
+                        @update:model-value="toggleSelectAll" aria-label="Select all"/>
+            </th>
+            <th class="cursor-pointer select-none hover:text-neutral-900" @click="toggleSort('name')">
+              <span class="inline-flex items-center gap-1">{{ nameColumn }}<Icon v-if="sortSettings.column === 'name'" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+            </th>
+            <th v-if="showGroups">Groups</th>
+            <th v-for="column in columns" :key="column.name"
+                class="cursor-pointer select-none text-right hover:text-neutral-900"
+                :class="[instrumented ? 'is-instrumented' : '', sortSettings.column === column.name ? 'text-neutral-900' : '']"
+                :aria-sort="sortSettings.column === column.name ? (sortSettings.ascending ? 'ascending' : 'descending') : undefined"
+                @click="toggleSort(column.name)">
+              <span class="inline-flex items-center gap-1"><MetricHint :id="column.name" :focusable="false">{{ niceName(column.name) }}</MetricHint><Icon v-if="sortSettings.column === column.name" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
+              <!-- How the column is spread across every row; the hovered row's bin is inked. -->
+              <span v-if="instrumented && stats.get(column.name)" class="mt-1 flex h-3.5 items-end gap-px" :title="spreadTitle(column.name)" aria-hidden="true">
+                <span v-for="(h, i) in stats.get(column.name)!.bins" :key="i"
+                      class="min-w-[2px] flex-1 rounded-[1px]"
+                      :class="hoveredBin(column.name) === i ? 'bg-neutral-900' : sortSettings.column === column.name ? 'bg-neutral-400' : 'bg-neutral-300'"
+                      :style="{ height: h === 0 ? '0' : `${Math.max(12, h * 100)}%` }"></span>
               </span>
+            </th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="element in pageOfElements" :key="element.name"
+              :class="{ 'is-clickable': clickableElements, 'is-selected': selectedElements.indexOf(element.name) !== -1 }"
+              @mouseenter="hoveredRow = element"
+              @mouseleave="hoveredRow = null"
+              @click="clickableElements ? emit('clicked-element', element) : checkboxToggle(element.name)">
+            <td v-if="selectableElements" @click.stop="checkboxToggle(element.name)">
+              <Checkbox :model-value="selectedElements.indexOf(element.name) !== -1"/>
             </td>
-          </template>
-          <td v-else v-for="column in columns" :key="column.name" class="is-num text-right" :title="String(element[column.name] ?? '')">{{ formatReading(element[column.name]) }}</td>
-        </tr>
-        <tr v-if="pageOfElements.length === 0">
-          <td :colspan="columns.length + 1 + (selectableElements ? 1 : 0) + (showGroups ? 1 : 0)" class="h-20 text-center text-neutral-500">{{ emptyText }}</td>
-        </tr>
-        </tbody>
-      </table>
+            <td v-if="instrumented && element.name !== '.' && element.name" class="max-w-[420px] truncate font-mono text-sm" :title="String(element.name)"><span class="text-neutral-400">{{ splitName(String(element.name)).head }}</span><span class="font-medium text-neutral-900">{{ splitName(String(element.name)).tail }}</span></td>
+            <td v-else class="max-w-[420px] truncate font-mono text-sm font-medium text-neutral-900" :title="String(element.name)">{{ element.name === "." ? `${rootLabel} (root)` : element.name || "unknown" }}</td>
+            <td v-if="showGroups">
+              <div class="flex flex-wrap gap-1">
+                <span v-for="g in getElementGroups(element.name)" :key="g.id" class="ui-tag text-white" :style="{ backgroundColor: g.color }">{{ g.name }}</span>
+              </div>
+            </td>
+            <template v-if="instrumented">
+              <td v-for="column in columns" :key="column.name" class="is-num is-bar text-right" :title="String(element[column.name] ?? '')">
+                <span v-if="barWidth(column.name, element) > 0" class="bar" :class="{ 'is-sorted': sortSettings.column === column.name }" :style="{ width: `${barWidth(column.name, element)}%` }" aria-hidden="true"></span>
+                <span class="relative inline-flex items-center gap-1.5">
+                  <span v-if="levelOf(column.name, element) !== null" class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(levelOf(column.name, element)!)" aria-hidden="true"></span>
+                  <span :class="isMissing(column.name, element) ? 'text-neutral-400' : ''">{{ isMissing(column.name, element) ? "—" : formatReading(element[column.name]) }}</span>
+                </span>
+              </td>
+            </template>
+            <td v-else v-for="column in columns" :key="column.name" class="is-num text-right" :title="String(element[column.name] ?? '')">{{ formatReading(element[column.name]) }}</td>
+          </tr>
+          <tr v-if="pageOfElements.length === 0">
+            <td :colspan="columns.length + 1 + (selectableElements ? 1 : 0) + (showGroups ? 1 : 0)" class="h-20 text-center text-neutral-500">{{ emptyText }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="totalPages > 1" class="mt-3 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage <= 1" aria-label="Previous page" @click="goToPage(currentPage - 1)">
+          <Icon :size="14" icon="chevron-left"/>
+        </button>
+        <span class="font-mono tabular-nums">{{ currentPage }} / {{ totalPages }}</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage >= totalPages" aria-label="Next page" @click="goToPage(currentPage + 1)">
+          <Icon :size="14" icon="chevron-right"/>
+        </button>
+      </div>
     </div>
-    <div v-if="totalPages > 1" class="mt-3 flex items-center justify-end gap-2 text-sm text-neutral-500">
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage <= 1" aria-label="Previous page" @click="goToPage(currentPage - 1)">
-        <Icon :size="14" icon="chevron-left"/>
-      </button>
-      <span class="font-mono tabular-nums">{{ currentPage }} / {{ totalPages }}</span>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage >= totalPages" aria-label="Next page" @click="goToPage(currentPage + 1)">
-        <Icon :size="14" icon="chevron-right"/>
-      </button>
-    </div>
-  </div>
+  </ExhibitFrame>
 </template>
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import {formatReading} from "~/shared/format";
 import {useWorkspacesStore} from "~/features/workspace/workspaces.store";
 import {Component, computed, ComputedRef, defineProps, Ref, ref, watch} from "vue";
@@ -82,7 +86,7 @@ import MetricHint from "~/features/snapshot/components/MetricHint.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import {useGroupsStore} from "~/features/groups/groups.store";
 import {useDataStore} from "~/features/snapshot/data.store";
-import {useExportables} from "~/features/export/useExportables";
+import { useTable } from "~/features/export/useExportables";
 import {binOf, histogram, metricValue, splitName} from "~/features/metrics/plotReading";
 import {healthLevel, hotspotLevel, levelDotClass, type HealthLevel} from "~/features/metrics/useHealth";
 
@@ -301,22 +305,21 @@ function toggleSelectAll() {
   }
 }
 
-if (props.exportTitle) {
-  useExportables().register({
-    kind: "table",
-    get title() { return props.exportTitle },
-    rows: () => limitedElements.value.map(e => {
-      const row: Record<string, unknown> = { name: e.name, ...Object.fromEntries(columns.value.map(c => [c.name, e[c.name]])) }
-      if (props.showGroups) row.groups = getElementGroups(String(e.name)).map(g => g.name).join("; ")
-      return row
-    }),
-    columns: () => [
-      { id: "name", label: props.nameColumn },
-      ...(props.showGroups ? [{ id: "groups", label: "Groups" }] : []),
-      ...columns.value.map(c => ({ id: c.name, label: niceName(c.name) })),
-    ],
-  })
-}
+const table = props.exportTitle
+  ? useTable({
+      get title() { return props.exportTitle },
+      rows: () => limitedElements.value.map(e => {
+        const row: Record<string, unknown> = { name: e.name, ...Object.fromEntries(columns.value.map(c => [c.name, e[c.name]])) }
+        if (props.showGroups) row.groups = getElementGroups(String(e.name)).map(g => g.name).join("; ")
+        return row
+      }),
+      columns: () => [
+        { id: "name", label: props.nameColumn },
+        ...(props.showGroups ? [{ id: "groups", label: "Groups" }] : []),
+        ...columns.value.map(c => ({ id: c.name, label: niceName(c.name) })),
+      ],
+    })
+  : null
 
 // ─── Instrumented readings ───
 const BINS = 16

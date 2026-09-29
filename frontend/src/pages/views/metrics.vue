@@ -81,6 +81,8 @@
           <button type="button" :aria-pressed="labelMode === 'all'" @click="labelMode = 'all'">All</button>
           <button type="button" :aria-pressed="labelMode === 'none'" title="Only the selection and the mark under the pointer" @click="labelMode = 'none'">None</button>
         </div>
+        <!-- These are the plot's controls, so the plot exports from their end. -->
+        <ExhibitButton :exhibit="plotFigure" class="ml-auto"/>
       </div>
 
       <DirectoryTree v-if="grain === 'directories'" :search="searchQuery"/>
@@ -104,7 +106,7 @@
       <div v-else-if="view === 'table'" class="min-h-0 grow overflow-y-auto px-4 py-3">
         <ElementTable
             :elements="filteredRows"
-            :only-show-columns="visibleColumns"
+            :only-show-columns="tableColumns"
             :clickable-elements="true"
             :selectable-elements="true"
             :show-groups="grainGroups.length > 0"
@@ -112,8 +114,8 @@
             :max-page-size="25"
             :name-column="grain === 'files' ? 'File' : 'Component'"
             :export-title="grain === 'files' ? 'Metrics: files' : 'Metrics: components'"
-            :initial-sort="visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name'"
-            :key="grain"
+            :initial-sort="tableSort ?? (visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name')"
+            :key="`${grain}:${tableSort ?? ''}`"
             :selected-elements="selectedNames"
             @update:selected-elements="selectedNames = $event"
             @clicked-element="openRow"
@@ -122,21 +124,29 @@
       <!-- Prototype: matrix of every pair, the chosen pair as the full plot, the rows in play below. -->
       <div v-else-if="view === 'matrix'" class="flex min-h-0 grow flex-col">
         <MetricSetBar v-model="matrixSet" :options="numericColumns" :defaults="defaultSet('matrix')" :view-name="SET_LIMITS.matrix.name"
-                      :min="SET_LIMITS.matrix.min" :max="SET_LIMITS.matrix.max" @reset="resetSet('matrix')"/>
+                      :min="SET_LIMITS.matrix.min" :max="SET_LIMITS.matrix.max" @reset="resetSet('matrix')">
+          <template #end><ExhibitButton :exhibit="matrixRef?.figure ?? null"/></template>
+        </MetricSetBar>
         <div class="flex min-h-0 shrink-0 basis-[64%]">
           <div class="aspect-square h-full max-w-[55%] shrink-0 hairline-r">
-            <MetricMatrix
-                :rows="filteredRows" :domain-rows="allRows" :metrics="matrixSet"
-                v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
-                :pair="[xAxis, yAxis]" :grain="grain === 'files' ? 'file' : 'component'"
-                @pair="setPair" @open="openName"/>
+            <ExhibitFrame header="custom" fill>
+              <MetricMatrix
+                  ref="matrixRef"
+                  :rows="filteredRows" :domain-rows="allRows" :metrics="matrixSet"
+                  v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+                  :pair="[xAxis, yAxis]" :grain="grain === 'files' ? 'file' : 'component'"
+                  @pair="setPair" @open="openName"/>
+            </ExhibitFrame>
           </div>
           <div class="relative min-w-0 grow px-3 pb-2 pt-3">
-            <ComponentPlotterDiagram v-if="xAxis && yAxis" ref="plot" class="h-full w-full" v-bind="plotProps" :rows="playRows" @update:selected="selectedNames = $event" @clicked="openRow"/>
+            <ExhibitFrame v-if="xAxis && yAxis" header="custom" fill>
+              <ComponentPlotterDiagram ref="plot" class="h-full w-full" v-bind="plotProps" :rows="playRows" @update:selected="selectedNames = $event" @clicked="openRow"/>
+            </ExhibitFrame>
           </div>
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
           <ElementTable :key="`m-${grain}`" :elements="playRows" :only-show-columns="matrixSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+                        :export-title="brushTotal ? 'In the brushes' : 'Metrics in play'"
                         :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
@@ -146,13 +156,18 @@
       <div v-else-if="view === 'strips'" class="flex min-h-0 grow">
         <div class="flex min-w-0 grow flex-col">
         <MetricSetBar v-model="stripSet" :options="numericColumns" :defaults="defaultSet('strips')" :view-name="SET_LIMITS.strips.name"
-                      :min="SET_LIMITS.strips.min" :max="SET_LIMITS.strips.max" @reset="resetSet('strips')"/>
+                      :min="SET_LIMITS.strips.min" :max="SET_LIMITS.strips.max" @reset="resetSet('strips')">
+          <template #end><ExhibitButton :exhibit="stripsRef?.figure ?? null"/></template>
+        </MetricSetBar>
         <div class="min-h-0 grow py-2">
-          <MetricStrips
-              :rows="filteredRows" :domain-rows="allRows" :metrics="stripSet"
-              v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
-              :sort-key="stripSort" :grain="grain === 'files' ? 'file' : 'component'"
-              @sort="stripSort = $event" @open="openName"/>
+          <ExhibitFrame header="custom" fill>
+            <MetricStrips
+                ref="stripsRef"
+                :rows="filteredRows" :domain-rows="allRows" :metrics="stripSet"
+                v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+                :sort-key="stripSort" :grain="grain === 'files' ? 'file' : 'component'"
+                @sort="stripSort = $event" @open="openName"/>
+          </ExhibitFrame>
         </div>
         </div>
         <aside class="w-[340px] shrink-0 bg-ground hairline-l">
@@ -165,15 +180,21 @@
       <!-- Prototype: parallel axes, one line per row, the rows in play below. -->
       <div v-else-if="view === 'profiles'" class="flex min-h-0 grow flex-col">
         <MetricSetBar v-model="profileSet" :options="numericColumns" :defaults="defaultSet('profiles')" :view-name="SET_LIMITS.profiles.name"
-                      :min="SET_LIMITS.profiles.min" :max="SET_LIMITS.profiles.max" @reset="resetSet('profiles')"/>
+                      :min="SET_LIMITS.profiles.min" :max="SET_LIMITS.profiles.max" @reset="resetSet('profiles')">
+          <template #end><ExhibitButton :exhibit="profilesRef?.figure ?? null"/></template>
+        </MetricSetBar>
         <div class="min-h-0 shrink-0 basis-[62%] px-2 pt-1">
-          <MetricProfiles
-              :rows="filteredRows" :domain-rows="allRows" v-model:metrics="profileSet"
-              v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
-              :grain="grain === 'files' ? 'file' : 'component'" @open="openName"/>
+          <ExhibitFrame header="custom" fill>
+            <MetricProfiles
+                ref="profilesRef"
+                :rows="filteredRows" :domain-rows="allRows" v-model:metrics="profileSet"
+                v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
+                :grain="grain === 'files' ? 'file' : 'component'" @open="openName"/>
+          </ExhibitFrame>
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
           <ElementTable :key="`p-${grain}`" :elements="playRows" :only-show-columns="profileSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
+                        :export-title="brushTotal ? 'In the brushes' : 'Metrics in play'"
                         :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
@@ -181,28 +202,30 @@
 
       <div v-else-if="xAxis && yAxis" class="relative min-h-0 grow px-3 pb-2 pt-3">
         <p v-if="abstractnessCaveat" class="pointer-events-none absolute left-1/2 top-16 z-10 max-w-[60ch] -translate-x-1/2 rounded bg-surface/90 px-2 py-1 text-center text-xs text-neutral-500 backdrop-blur-sm">{{ abstractnessCaveat }}</p>
-        <ComponentPlotterDiagram
-            ref="plot"
-            class="h-full w-full"
-            :rows="filteredRows"
-            :domain-rows="allRows"
-            :selected="selectedNames"
-            :grain="grain === 'files' ? 'file' : 'component'"
-            :label-mode="labelMode"
-            :x-axis-property="xAxis"
-            :y-axis-property="yAxis"
-            :x-log="xLog"
-            :y-log="yLog"
-            :radius-property="radius"
-            :color-property="colour"
-            :reading="reading"
-            :cell-text="cellText"
-            :hidden-groups="hiddenForPlot"
-            :active-filters="activeFilters"
-            :hovered-group-id="hoveredGroupId"
-            @update:selected="selectedNames = $event"
-            @clicked="openRow"
-        />
+        <ExhibitFrame header="custom" fill>
+          <ComponentPlotterDiagram
+              ref="plot"
+              class="h-full w-full"
+              :rows="filteredRows"
+              :domain-rows="allRows"
+              :selected="selectedNames"
+              :grain="grain === 'files' ? 'file' : 'component'"
+              :label-mode="labelMode"
+              :x-axis-property="xAxis"
+              :y-axis-property="yAxis"
+              :x-log="xLog"
+              :y-log="yLog"
+              :radius-property="radius"
+              :color-property="colour"
+              :reading="reading"
+              :cell-text="cellText"
+              :hidden-groups="hiddenForPlot"
+              :active-filters="activeFilters"
+              :hovered-group-id="hoveredGroupId"
+              @update:selected="selectedNames = $event"
+              @clicked="openRow"
+          />
+        </ExhibitFrame>
       </div>
       <EmptyState v-else title="Pick two metrics to plot." text="Choose an X and a Y metric above, or a preset." icon="settings"/>
 
@@ -307,9 +330,12 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue";
 import { LAST_CHANGED, useCodeAge } from "~/features/git/useCodeAge";
 import { componentPath } from "~/features/navigation/routes";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
+import { ARRIVAL_KEYS, arrivalFrom } from "~/features/metrics/link";
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue";
 import ElementTable from "~/features/metrics/components/ElementTable.vue";
 import StatSelectMulti from "~/features/metrics/components/StatSelectMulti.vue";
@@ -487,6 +513,15 @@ const visibleColumns = computed<string[]>({
     } catch { /* storage unavailable; the choice lives for the session */ }
   },
 });
+
+// A link can ask for the table sorted on one metric; that metric joins the
+// columns until the grain changes, even when the chosen columns leave it out.
+const tableSort = ref<string | null>(null);
+const tableColumns = computed<string[]>(() => {
+  const s = tableSort.value;
+  return s && !visibleColumns.value.includes(s) && columnOptions.value.includes(s) ? [...visibleColumns.value, s] : visibleColumns.value;
+});
+watch(grain, () => { tableSort.value = null; });
 
 const pickerReset = ref(0);
 // StatSelectMulti reads its model once, so re-key it when the grain, the
@@ -794,8 +829,24 @@ watch([grain, view, activePreset], () => {
   if (!same) router.replace({ query: { ...cur, ...want } });
 });
 
+// A link that set the view up (a pair, a sort, brushes) is applied once and
+// then dropped from the URL, so switching views later does not re-apply it.
+function arrive(q: typeof route.query) {
+  const a = arrivalFrom(q);
+  if (!a) return;
+  if (a.pair) { pendingPreset = null; setPair(a.pair); }
+  if (a.sort) { stripSort.value = a.sort; if (view.value === "table") tableSort.value = a.sort; }
+  if (a.brushes) brushes.value = a.brushes;
+  const rest = { ...q };
+  for (const k of ARRIVAL_KEYS) delete rest[k];
+  router.replace({ query: rest });
+}
+arrive(route.query);
+
 // Sidebar or history changes to the query re-enter the view without a remount.
 watch(() => route.query, (q) => {
+  // After the grain switch below has cleared its brushes and sort, not before.
+  if (arrivalFrom(q)) void nextTick(() => arrive(q));
   if (typeof q.q === "string" && q.q !== searchQuery.value) searchQuery.value = q.q;
   const g: Grain = q.grain === "files" || q.grain === "directories" ? q.grain : "components";
   const v: View = viewOf(q);
@@ -823,6 +874,11 @@ function openRow(row: Row) {
 }
 
 const plot = ref<InstanceType<typeof ComponentPlotterDiagram> | null>(null);
+// Each chart's figure, for the export button at the end of the row that controls it.
+const plotFigure = computed(() => plot.value?.figure ?? null);
+const matrixRef = ref<InstanceType<typeof MetricMatrix> | null>(null);
+const stripsRef = ref<InstanceType<typeof MetricStrips> | null>(null);
+const profilesRef = ref<InstanceType<typeof MetricProfiles> | null>(null);
 
 // ─── Group legend ───
 // Marks colour by the lens dimension only; other dimensions stay hidden from the plot.

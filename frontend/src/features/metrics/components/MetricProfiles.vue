@@ -1,44 +1,47 @@
 <template>
-  <div ref="box" class="relative h-full min-h-0 w-full select-none">
-    <canvas
-        ref="canvas"
-        class="absolute inset-0"
-        :class="nearAxis ? 'cursor-ns-resize' : hoverName ? 'cursor-pointer' : 'cursor-default'"
-        @mousemove="onMove"
-        @mouseleave="onLeave"
-        @mousedown="onDown"
-        @dblclick="onDouble"
-    ></canvas>
+  <ExhibitFrame :exhibit="figure" legend-class="px-3 pb-2" fill>
+    <div ref="box" class="relative h-full min-h-0 w-full select-none">
+      <canvas
+          ref="canvas"
+          class="absolute inset-0"
+          :class="nearAxis ? 'cursor-ns-resize' : hoverName ? 'cursor-pointer' : 'cursor-default'"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
+          @mousedown="onDown"
+          @dblclick="onDouble"
+      ></canvas>
 
-    <!-- Axis titles: drag sideways to reorder, the arrows flip the axis. -->
-    <div
-        v-for="(axis, i) in axes"
-        :key="axis.key"
-        class="group absolute flex -translate-x-1/2 flex-col items-center text-center"
-        :class="moving?.key === axis.key ? 'z-10 cursor-grabbing' : 'cursor-grab'"
-        :style="{ left: `${axis.x + (moving?.key === axis.key ? moving.dx : 0)}px`, top: '6px', width: `${titleWidth}px` }"
-        @pointerdown="startMove($event, axis.key)"
-    >
-      <span class="line-clamp-2 text-xs font-medium leading-4" :class="brushes[axis.key] ? 'text-blue-700' : 'text-neutral-800'" :title="`${niceName(axis.key)} · drag to reorder`">{{ niceName(axis.key) }}</span>
-      <span class="flex items-center gap-1 font-mono text-[11px] leading-4 text-neutral-500">
-        <template v-if="axis.scale.log">log</template>
-        <button type="button" class="rounded px-0.5 text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-800 focus-visible:opacity-100 group-hover:opacity-100"
-                :class="{ 'opacity-100 text-neutral-700': flipped.has(axis.key) }"
-                :aria-label="`Flip ${niceName(axis.key)}`" :title="flipped.has(axis.key) ? 'Unflip: largest at the top' : 'Flip: largest at the bottom'"
-                @pointerdown.stop @click.stop="flip(axis.key)">
-          <Icon icon="arrow-up-down" :size="11"/>
-        </button>
-        <button v-if="brushes[axis.key]" type="button" class="rounded px-0.5 text-blue-700 hover:bg-neutral-100" :aria-label="`Clear the ${niceName(axis.key)} brush`" title="Clear this brush" @pointerdown.stop @click.stop="clearBrush(axis.key)">
-          <Icon icon="x" :size="11"/>
-        </button>
-      </span>
+      <!-- Axis titles: drag sideways to reorder, the arrows flip the axis. -->
+      <div
+          v-for="(axis, i) in axes"
+          :key="axis.key"
+          class="group absolute flex -translate-x-1/2 flex-col items-center text-center"
+          :class="moving?.key === axis.key ? 'z-10 cursor-grabbing' : 'cursor-grab'"
+          :style="{ left: `${axis.x + (moving?.key === axis.key ? moving.dx : 0)}px`, top: '6px', width: `${titleWidth}px` }"
+          @pointerdown="startMove($event, axis.key)"
+      >
+        <span class="line-clamp-2 text-xs font-medium leading-4" :class="brushes[axis.key] ? 'text-blue-700' : 'text-neutral-800'" :title="`${niceName(axis.key)} · drag to reorder`">{{ niceName(axis.key) }}</span>
+        <span class="flex items-center gap-1 font-mono text-[11px] leading-4 text-neutral-500">
+          <template v-if="axis.scale.log">log</template>
+          <button type="button" class="rounded px-0.5 text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-800 focus-visible:opacity-100 group-hover:opacity-100"
+                  :class="{ 'opacity-100 text-neutral-700': flipped.has(axis.key) }"
+                  :aria-label="`Flip ${niceName(axis.key)}`" :title="flipped.has(axis.key) ? 'Unflip: largest at the top' : 'Flip: largest at the bottom'"
+                  @pointerdown.stop @click.stop="flip(axis.key)">
+            <Icon icon="arrow-up-down" :size="11"/>
+          </button>
+          <button v-if="brushes[axis.key]" type="button" class="rounded px-0.5 text-blue-700 hover:bg-neutral-100" :aria-label="`Clear the ${niceName(axis.key)} brush`" title="Clear this brush" @pointerdown.stop @click.stop="clearBrush(axis.key)">
+            <Icon icon="x" :size="11"/>
+          </button>
+        </span>
+      </div>
+
+      <div v-if="hoverName && hoverPoint" class="ui-tooltip pointer-events-none fixed z-50 max-w-[420px] truncate font-mono" :style="{ left: `${hoverPoint.x + 14}px`, top: `${hoverPoint.y + 14}px` }">{{ hoverName }}</div>
     </div>
-
-    <div v-if="hoverName && hoverPoint" class="ui-tooltip pointer-events-none fixed z-50 max-w-[420px] truncate font-mono" :style="{ left: `${hoverPoint.x + 14}px`, top: `${hoverPoint.y + 14}px` }">{{ hoverName }}</div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, reactive, ref, watchEffect, type PropType } from "vue";
 import * as d3 from "d3";
 import Icon from "~/shared/ui/Icon.vue";
@@ -48,7 +51,10 @@ import { formatReading } from "~/shared/format";
 import { median, metricValue } from "~/features/metrics/plotReading";
 import { metricScale, passes, type Brushes } from "~/features/metrics/lab";
 import { useCanvas } from "~/features/metrics/useCanvas";
-import { useCanvasFigure } from "~/features/export/useExportables";
+import { useFigure } from "~/features/export/useExportables";
+import type { FigureOutput } from "~/features/export/figure";
+import { PRINT_W, printCanvas, printTheme, wrapText } from "~/features/metrics/printCanvas";
+import type { LegendItem, LegendRamp } from "~/features/export/figure";
 
 // Every row as one line across a vertical axis per metric: its shape is its
 // profile. Lines take the heat of their hotspot score. Drag along an axis to
@@ -83,7 +89,32 @@ const { theme, version } = useChartTheme();
 const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { size, context, local } = useCanvas(box, canvas);
-useCanvasFigure("Metrics profiles", () => canvas.value);
+const figure = useFigure({
+  title: "Metrics profiles",
+  // Drawn for the page, not captured from the window: see printProfiles.
+  ready: () => !!canvas.value && props.rows.length > 0 && props.metrics.length > 1,
+  render: (opts) => printProfiles(opts.light),
+  svg: false,
+  legend: () => {
+    const t = theme.value;
+    const key = props.colorKey;
+    const values = key ? props.domainRows.map((r) => metricValue(r, key)).filter(Number.isFinite) : [];
+    const ramps: LegendRamp[] = key && values.length
+      ? [{ label: niceName(key), colors: /code_health/.test(key) ? [...t.heat].reverse() : t.heat, low: formatReading(Math.min(...values)), high: formatReading(Math.max(...values)) }]
+      : [];
+    const items: LegendItem[] = props.selected.length ? [{ label: "Selected", color: t.blue, mark: "line" }] : [];
+    if (Object.keys(props.brushes).length) items.push({ label: "Outside a brushed range", color: withAlpha(t.inkMuted, 0.3), mark: "line" });
+    return {
+      items,
+      ramps,
+      notes: [
+        `One line per ${props.grain}, crossing each metric's axis at its reading. Each axis runs from its lowest reading at the bottom to its highest at the top, unless marked flipped; a tick marks its median.`,
+        ...(props.selected.length ? [`The selected ${props.grain === "file" ? "files" : "components"} are drawn over the rest, which recede.`] : []),
+      ],
+    };
+  },
+});
+defineExpose({ figure });
 
 const TOP = 72, BOTTOM = 26, SIDE = 64;
 const flipped = reactive(new Set<string>());
@@ -194,7 +225,8 @@ function draw() {
     for (const l of lines.value) if (!surv.has(l.row.name)) stroke(ctx, l.ys);
   }
   ctx.lineWidth = 1;
-  ctx.globalAlpha = files ? (surv ? 0.35 : 0.14) : surv ? 0.85 : 0.45;
+  // A selection leads; everything else recedes to a wash so the selected lines read.
+  ctx.globalAlpha = sel.size ? (files ? 0.05 : 0.12) : files ? (surv ? 0.35 : 0.14) : surv ? 0.85 : 0.45;
   for (const l of lines.value) {
     if (surv && !surv.has(l.row.name)) continue;
     if (sel.has(l.row.name)) continue;
@@ -238,6 +270,129 @@ function draw() {
   }
 }
 
+
+// ─── The figure for the page ───
+// The window's canvas has its axis titles in HTML over it and takes the
+// window's size, so a report got unlabelled axes. This draws the same
+// reading at a fixed width with the titles, ends and medians painted in, and
+// the same rule as the window: a selection leads, the rest recedes.
+function printProfiles(light: boolean): FigureOutput | null {
+  const as = axes.value;
+  if (as.length < 2 || !props.rows.length) return null;
+  const t = printTheme(light);
+  const W = PRINT_W, H = 480, SIDE_P = 60, TOP_P = 80, BOTTOM_P = 26;
+  const { canvas: cv, g, scale } = printCanvas(W, H);
+  g.fillStyle = t.surface;
+  g.fillRect(0, 0, W, H);
+  const step = (W - SIDE_P * 2) / (as.length - 1);
+  const xs = as.map((_, i) => SIDE_P + i * step);
+  const yP = (key: string, t01: number) => TOP_P + (1 - (flipped.has(key) ? 1 - t01 : t01)) * (H - TOP_P - BOTTOM_P);
+  const files = props.grain === "file";
+  const surv = survivors.value;
+  const sel = selectedSet.value;
+  const lead = new Set(sel);
+  const focus = props.hovered;
+  if (focus) lead.add(focus);
+
+  // Titles, axes, ends, medians, brushes.
+  const titleW = Math.max(64, Math.min(132, step - 10));
+  as.forEach((a, i) => {
+    const x = xs[i];
+    g.textAlign = "center";
+    g.textBaseline = "alphabetic";
+    g.font = `600 11px ${t.fontSans}`;
+    g.fillStyle = props.brushes[a.key] ? t.blue : t.ink;
+    const title = wrapText(g, niceName(a.key), titleW, 3);
+    title.forEach((ln, k) => g.fillText(ln, x, 14 + k * 13));
+    const marks = [a.scale.log ? "log" : "", flipped.has(a.key) ? "flipped" : ""].filter(Boolean).join(" · ");
+    g.font = `10px ${t.fontMono}`;
+    g.fillStyle = t.inkMuted;
+    if (marks) g.fillText(marks, x, 14 + title.length * 13);
+    g.fillStyle = t.hairlineStrong;
+    g.fillRect(Math.round(x) - 0.5, TOP_P, 1, H - TOP_P - BOTTOM_P);
+    const hi = formatReading(a.scale.domain[1]), lo = formatReading(a.scale.domain[0]);
+    const flip = flipped.has(a.key);
+    g.fillStyle = t.inkSecondary;
+    g.fillText(flip ? lo : hi, x, TOP_P - 5);
+    g.textBaseline = "top";
+    g.fillText(flip ? hi : lo, x, H - BOTTOM_P + 5);
+    const b = props.brushes[a.key];
+    if (b) {
+      const y0 = yP(a.key, a.scale.at(b[0])), y1 = yP(a.key, a.scale.at(b[1]));
+      g.fillStyle = withAlpha(t.blue, 0.16);
+      g.fillRect(x - 7, Math.min(y0, y1), 14, Math.max(2, Math.abs(y1 - y0)));
+    }
+    const my = yP(a.key, a.scale.at(a.median));
+    if (Number.isFinite(my)) { g.fillStyle = t.inkMuted; g.fillRect(x - 5, Math.round(my) - 0.5, 10, 1); }
+  });
+
+  const ysOf = (row: Row) => as.map((a) => yP(a.key, a.scale.at(metricValue(row, a.key))));
+  const line = (ys: number[]) => {
+    g.beginPath();
+    let pen = false;
+    ys.forEach((y, i) => {
+      if (!Number.isFinite(y)) { pen = false; return; }
+      if (pen) g.lineTo(xs[i], y); else g.moveTo(xs[i], y);
+      pen = true;
+    });
+    g.stroke();
+  };
+  g.lineJoin = "round";
+  const ordered = [...lines.value];
+
+  // Out of a brush: barely there. The rest: by heat, or a wash under a selection.
+  if (surv) {
+    g.strokeStyle = withAlpha(t.inkMuted, files ? 0.04 : 0.07);
+    g.lineWidth = 0.75;
+    for (const l of ordered) if (!surv.has(l.row.name) && !lead.has(l.row.name)) line(ysOf(l.row));
+  }
+  g.lineWidth = lead.size ? 0.75 : 1;
+  g.globalAlpha = lead.size ? (files ? 0.04 : 0.09) : files ? (surv ? 0.35 : 0.14) : surv ? 0.85 : 0.5;
+  for (const l of ordered) {
+    if ((surv && !surv.has(l.row.name)) || lead.has(l.row.name)) continue;
+    g.strokeStyle = heat.value(l.row);
+    line(ysOf(l.row));
+  }
+  g.globalAlpha = 1;
+
+  // What leads: the selection in blue, the focused row in ink, each over a white halo.
+  const leadRows = [...lead].map((n) => props.domainRows.find((r) => r.name === n)).filter((r): r is Row => !!r);
+  for (const row of leadRows) {
+    const ys = ysOf(row);
+    g.strokeStyle = t.surface; g.lineWidth = 4; line(ys);
+    g.strokeStyle = row.name === focus && !sel.has(row.name) ? t.ink : t.blue; g.lineWidth = 1.75; line(ys);
+  }
+  // A few leading rows carry their readings at every axis.
+  // A reading sits above its point, or below when that would run into the axis's
+  // top value or into a reading already placed on the same axis.
+  if (leadRows.length && leadRows.length <= 3) {
+    g.font = `600 10px ${t.fontMono}`;
+    g.textBaseline = "middle";
+    const placed = as.map(() => [] as number[]);
+    for (const row of leadRows) {
+      const ys = ysOf(row);
+      as.forEach((a, i) => {
+        const y = ys[i];
+        if (!Number.isFinite(y)) return;
+        const clash = (ly: number) => ly < TOP_P + 4 || placed[i].some((q) => Math.abs(q - ly) < 12);
+        let ly = y - 8;
+        if (clash(ly)) ly = y + 9;
+        if (clash(ly)) ly = y - 20;
+        placed[i].push(ly);
+        g.fillStyle = row.name === focus && !sel.has(row.name) ? t.ink : t.blue;
+        g.beginPath(); g.arc(xs[i], y, 2.75, 0, Math.PI * 2); g.fill();
+        const last = i === as.length - 1;
+        g.textAlign = last ? "right" : "left";
+        const lx = last ? xs[i] - 6 : xs[i] + 6;
+        g.lineWidth = 3; g.strokeStyle = t.surface;
+        g.strokeText(formatReading(row[a.key]), lx, ly);
+        g.fillStyle = t.ink;
+        g.fillText(formatReading(row[a.key]), lx, ly);
+      });
+    }
+  }
+  return { kind: "canvas", canvas: cv, width: W, height: H, scale };
+}
 
 // ─── Pointer: hover, select, brush ───
 const hoverName = ref<string | null>(null);

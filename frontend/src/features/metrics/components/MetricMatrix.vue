@@ -1,22 +1,25 @@
 <template>
-  <div ref="box" class="relative h-full min-h-0 w-full select-none">
-    <canvas
-        ref="canvas"
-        class="absolute inset-0"
-        :class="hover?.kind === 'point' || hover?.kind === 'rho' ? 'cursor-pointer' : 'cursor-crosshair'"
-        @mousemove="onMove"
-        @mouseleave="onLeave"
-        @mousedown="onDown"
-        @dblclick="onDouble"
-    ></canvas>
-    <div v-if="tip" class="ui-tooltip pointer-events-none fixed z-50 max-w-[340px]" :style="{ left: `${tip.x + 14}px`, top: `${tip.y + 14}px` }">
-      <span v-if="tip.mono" class="font-mono">{{ tip.text }}</span>
-      <span v-else>{{ tip.text }}</span>
+  <ExhibitFrame :exhibit="figure" legend-class="px-3 pb-2" fill>
+    <div ref="box" class="relative h-full min-h-0 w-full select-none">
+      <canvas
+          ref="canvas"
+          class="absolute inset-0"
+          :class="hover?.kind === 'point' || hover?.kind === 'rho' ? 'cursor-pointer' : 'cursor-crosshair'"
+          @mousemove="onMove"
+          @mouseleave="onLeave"
+          @mousedown="onDown"
+          @dblclick="onDouble"
+      ></canvas>
+      <div v-if="tip" class="ui-tooltip pointer-events-none fixed z-50 max-w-[340px]" :style="{ left: `${tip.x + 14}px`, top: `${tip.y + 14}px` }">
+        <span v-if="tip.mono" class="font-mono">{{ tip.text }}</span>
+        <span v-else>{{ tip.text }}</span>
+      </div>
     </div>
-  </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref, watchEffect, type PropType } from "vue";
 import { useChartTheme, withAlpha } from "~/shared/ui/useChartTheme";
 import { useDataStore } from "~/features/snapshot/data.store";
@@ -25,6 +28,7 @@ import { metricValue } from "~/features/metrics/plotReading";
 import { metricScale, passes, spearman, strengthWord, type Brushes, type MetricScale } from "~/features/metrics/lab";
 import { useCanvas } from "~/features/metrics/useCanvas";
 import { useCanvasFigure } from "~/features/export/useExportables";
+import type { LegendItem } from "~/features/export/figure";
 
 // Every pair of the overview's metrics at once. Below the diagonal, a small
 // scatter per pair; on it, each metric's spread; above it, the rank
@@ -66,7 +70,24 @@ const { theme, version } = useChartTheme();
 const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { size, context, local } = useCanvas(box, canvas);
-useCanvasFigure("Metrics matrix", () => canvas.value);
+const figure = useCanvasFigure({
+  title: "Metrics matrix",
+  canvas: () => canvas.value,
+  legend: () => {
+    const t = theme.value;
+    const items: LegendItem[] = [{ label: `A ${props.grain}`, color: withAlpha(t.inkSecondary, 0.8), mark: "dot" }];
+    if (props.selected.length) items.push({ label: "Selected", color: t.blue, mark: "dot" });
+    items.push({ label: "Rise together (positive ρ)", color: withAlpha(t.blue, 0.5) }, { label: "One rises as the other falls (negative ρ)", color: withAlpha(t.violet, 0.5) });
+    return {
+      items,
+      notes: [
+        "Below the diagonal: one metric against another. On the diagonal: how each metric spreads.",
+        "Above the diagonal: Spearman's rank correlation, deeper the stronger it is.",
+      ],
+    };
+  },
+});
+defineExpose({ figure });
 
 const GAP = 6;
 const PAD = 12;

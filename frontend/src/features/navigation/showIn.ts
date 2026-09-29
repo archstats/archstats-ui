@@ -32,16 +32,16 @@ export function showInTargets(kind: ShowInKind, ids: string[]): ShowInTarget[] {
     out.push({ id: "matrix", label: "Dependency matrix", icon: "table", to: `/views/connections?rep=matrix&level=components&${hl(ids)}` })
     if (one) out.push({ id: "cochange", label: "Changes with it (co-change)", icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${encodeURIComponent(one)}` })
     if (one) out.push({ id: "cycles", label: "Its cycles", icon: "refresh", to: `/views/components/cycles?component=${encodeURIComponent(one)}` })
-    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?${hl(ids)}` })
+    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?view=table&${hl(ids)}` })
     out.push({ id: "hotspots", label: "Hotspots", icon: "flame", to: `/views/components/hotspots?${hl(ids)}` })
     out.push({
-      id: "files", label: one ? "Its files" : "Their files", icon: "file-code", to: "/views/metrics?grain=files",
+      id: "files", label: one ? "Its files" : "Their files", icon: "file-code", to: "/views/metrics?grain=files&view=table",
       focus: focusText({ op: "only", anchors: ids, depth: null }),
     })
     if (one) out.push({ id: "search", label: "Find it in code", icon: "search-code", to: searchPath(one) })
   } else {
     if (one) out.push({ id: "detail", label: "File page", icon: "external-link", to: filePath(one) })
-    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?grain=files&${hl(ids)}` })
+    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?grain=files&view=table&${hl(ids)}` })
     out.push({ id: "hotspots", label: "Hotspots", icon: "flame", to: `/views/components/hotspots?grain=files&${hl(ids)}` })
   }
   return out
@@ -55,7 +55,7 @@ export function showPairTargets(from: string, to: string): ShowInTarget[] {
     { id: "cochange", label: "Their co-change", icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${sel}` },
     { id: "matrix", label: "Dependency matrix", icon: "table", to: `/views/connections?rep=matrix&level=components&${hl([from, to])}` },
     {
-      id: "files", label: "Files of both", icon: "file-code", to: "/views/metrics?grain=files",
+      id: "files", label: "Files of both", icon: "file-code", to: "/views/metrics?grain=files&view=table",
       focus: focusText({ op: "only", anchors: [from, to], depth: null }),
     },
   ]

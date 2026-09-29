@@ -3,14 +3,24 @@
     <SummarySection>
       <template #activity>
         <template v-if="gitCommits.length">
-          <GitActivityChart :end-date="calendarEnd" :start-date="calendarStart" :commits="gitCommits"/>
-          <MonthlyChangesChart :commits="gitCommits" :height="96" class="mt-3"/>
+          <!-- Small figures in a card: no rows of their own, the export appears over each on hover. -->
+          <ExhibitFrame header="overlay">
+            <GitActivityChart :end-date="calendarEnd" :start-date="calendarStart" :commits="gitCommits"/>
+          </ExhibitFrame>
+          <ExhibitFrame header="overlay" class="mt-3">
+            <MonthlyChangesChart :commits="gitCommits" :height="96"/>
+          </ExhibitFrame>
         </template>
         <p v-else class="py-6 text-sm text-neutral-500">No git history in this snapshot.</p>
       </template>
     </SummarySection>
 
     <Extremes/>
+
+    <MetricsGlance/>
+
+    <!-- Every language declares units now; older snapshots only for Java. -->
+    <UnitsGlance v-if="store.hasView('units') || isJavaProject"/>
 
     <section class="mt-8" aria-labelledby="views-title">
       <h2 id="views-title" class="text-lg font-semibold text-neutral-900">Views</h2>
@@ -27,7 +37,10 @@
 </template>
 
 <script setup lang="ts">
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import Extremes from "~/features/overview/components/Extremes.vue";
+import MetricsGlance from "~/features/overview/components/MetricsGlance.vue";
+import UnitsGlance from "~/features/overview/components/UnitsGlance.vue";
 import { historyAnchor } from "~/features/git/history";
 import ViewCard from "~/features/overview/components/ViewCard.vue";
 import SummarySection from "~/features/overview/components/SummarySection.vue";
@@ -85,8 +98,8 @@ const families = computed(() => [
   {
     title: "Git",
     views: [
-      { name: "Activity", path: "/views/git/activity", image: "/img/views/git-timeline.png", description: "Every commit in the snapshot, by month and by author." },
-      { name: "Authors", path: "/views/git/authors", image: "/img/views/git-authors.png", description: "Contributors, their hotspots and timelines." },
+      { name: "Activity", path: "/views/git/activity", image: "/img/views/git-timeline.png", description: "Where the work is going now, whether changes are getting wider, and every commit." },
+      { name: "Authors", path: "/views/git/authors", image: "/img/views/git-authors.png", description: "Where knowledge has left: code written by people no longer here, and who could take it over." },
     ],
   },
   // Every language declares units now, not only Java.

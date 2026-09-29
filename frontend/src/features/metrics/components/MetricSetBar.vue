@@ -47,6 +47,8 @@
     <span v-if="max < Infinity" class="font-mono text-xs text-neutral-500">{{ modelValue.length }} / {{ max }}</span>
 
     <button v-if="changed" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('reset')">Reset to defaults</button>
+    <!-- What the bar draws exports from its end: the bar is that exhibit's header. -->
+    <div v-if="$slots.end" class="flex items-center" :class="changed ? 'ml-1' : 'ml-auto'"><slot name="end"/></div>
   </div>
 </template>
 
