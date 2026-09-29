@@ -169,7 +169,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container, FolderTree,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container,
 } from "lucide-vue-next";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
 import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel";
@@ -216,12 +216,10 @@ const codeViews = computed(() => [
   ...(hasUnits.value ? [{ label: "Units", to: "/views/units", icon: Braces }] : []),
   ...(dataStore.hasView("snippets") ? [{ label: "Libraries", to: "/views/libraries", icon: Package }] : []),
 ]);
-// What the workspace builds and ships (engine revision 5 and later), the
-// restructure planner, and the Rules that need declared rules. The structure
-// checks are findings in Units.
+// What the workspace builds and ships (engine revision 5 and later), and the
+// Rules that need declared rules. The structure checks are findings in Units.
 const architectureViews = computed(() => [
   ...(dataStore.hasView("deployables") ? [{ label: "Deployables", to: "/views/deployables", icon: Container }] : []),
-  { label: "Restructure", to: "/views/restructure", icon: FolderTree },
   ...(hasRules.value ? [{ label: "Rules", to: "/views/rules", icon: Scale }] : []),
 ]);
 // The engagement's own working files: what was pinned, and the tools to look further.
@@ -345,7 +343,7 @@ const groups = computed(() => {
     { title: "Git", items: gitViews, muted: !hasGitHistory.value, mutedWhy: "No git history in this snapshot: scan a git checkout to see authors and activity" },
   ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
   if (codeViews.value.length) list.push({ title: "Code", items: codeViews.value });
-  list.push({ title: "Architecture", items: architectureViews.value });
+  if (architectureViews.value.length) list.push({ title: "Architecture", items: architectureViews.value });
   list.push({ title: "Tools", items: toolViews.value as any });
   return list;
 });
