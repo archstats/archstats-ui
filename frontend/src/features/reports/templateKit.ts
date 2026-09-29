@@ -234,6 +234,7 @@ const LIBRARY_EXAMPLES: Partial<Record<EcosystemId, { from: string; two: string;
     python: { from: "PyPI", two: "`requests.adapters` belongs to `requests`, and `pydantic.fields` to `pydantic`", platform: "`os` or `json`" },
     node: { from: "npm", two: "`@mui/material/Button` and `@mui/material/styles` count as one library, `@mui/material`", platform: "`fs` or `node:path`" },
     react: { from: "npm", two: "`@tanstack/react-query` counts as one library however deep it is imported, and so does `react-router-dom`", platform: "`fs` or `node:path`" },
+    vue: { from: "npm", two: "`@vueuse/core` counts as one library however deep it is imported, and so does `vue-router`", platform: "`fs` or `node:path`" },
     go: { from: "Go modules", two: "`github.com/stretchr/testify/assert` and `github.com/stretchr/testify/require` count as one library, `github.com/stretchr/testify`", platform: "`net/http` or `fmt`" },
     dotnet: { from: "NuGet", two: "`Microsoft.EntityFrameworkCore.Design` and `Microsoft.EntityFrameworkCore.SqlServer` count as one library, `Microsoft.EntityFrameworkCore`", platform: "" },
     php: { from: "Composer", two: "`Symfony\\Component\\Form` and `Symfony\\Component\\Validator` count as one library, `Symfony\\Component`", platform: "" },

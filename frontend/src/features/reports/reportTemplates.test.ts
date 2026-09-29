@@ -13,7 +13,7 @@ const facts = (over: Partial<SnapshotFacts> = {}): SnapshotFacts => ({
     production: { files: 10, lines: 1000 },
     languages: [{ language: "Java", files: 10, lines: 1000 }],
     components: 5, moduleKinds: {}, commits: 100, authors: 4,
-    revision: 4, rules: { applicable: 0, violations: 0 }, tangles: 0, reactImporters: 0, markers: new Set(), indirectColumns: new Set(),
+    revision: 4, rules: { applicable: 0, violations: 0 }, tangles: 0, reactImporters: 0, vueComponents: 0, markers: new Set(), indirectColumns: new Set(),
     moduleTypes: {}, mobileApps: [],
     ...over,
 })

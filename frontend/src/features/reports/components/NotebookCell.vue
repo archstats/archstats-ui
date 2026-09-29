@@ -39,6 +39,15 @@
       >
       <span v-if="stale && runnable" class="ui-tag shrink-0" :title="`Ran on ${cell.ranOn?.label ?? 'nothing yet'}; the report runs on ${kernelLabel}`">{{ cell.ranOn ? "older snapshot" : "not run" }}</span>
       <span v-else-if="changeText" class="ui-tag shrink-0" :title="changeText">changed</span>
+      <button
+        v-if="cell.spec.type === 'sql' && gutter"
+        type="button"
+        class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 self-center opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"
+        :class="{ 'opacity-100': selected }"
+        title="Open this query in the SQL console, with the schema, a full result grid and its plan; Update cell there writes it back"
+        @mousedown.stop
+        @click.stop="$emit('console')"
+      ><TerminalSquare :size="13" class="text-neutral-500"/> Open in console</button>
       <span class="ui-tag shrink-0">{{ kindLabel }}</span>
     </div>
 
@@ -103,7 +112,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import SqlEditor from "~/features/sql/components/SqlEditor.vue";
-import { Loader2, Play } from "lucide-vue-next";
+import { Loader2, Play, TerminalSquare } from "lucide-vue-next";
 import { EMPTY_TABLE, describeChange, displayTable, provenanceLine } from "~/features/reports/reportCells";
 import type { Cell, CellSpec } from "~/features/reports/reportDoc";
 
@@ -129,6 +138,7 @@ const emit = defineEmits<{
   (e: "run"): void
   (e: "patch", patch: Partial<Cell>): void
   (e: "spec", spec: CellSpec): void
+  (e: "console"): void
 }>();
 
 const ROWS = 12;

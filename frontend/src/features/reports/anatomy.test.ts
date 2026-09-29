@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 import { runReading } from "./readings"
 
 // A tiny Spring snapshot: a controller that reaches past its service into a
-// repository, and an entity that reaches back up into the service.
+// repository, a service that loads an entity itself, and an entity that
+// reaches back up into the service.
 const UNITS = [
     { id: "a.web.OrderController", kind: "type", name: "OrderController", component: "a.web", owner: "", file: "src/a/web/OrderController.java" },
     { id: "a.svc.OrderService", kind: "type", name: "OrderService", component: "a.svc", owner: "", file: "src/a/svc/OrderService.java" },
@@ -18,7 +19,7 @@ const MARKERS = [
 const EDGES = [
     ["a.web.OrderController", "a.svc.OrderService"], ["a.svc.OrderService", "a.repo.OrderRepository"],
     ["a.repo.OrderRepository", "a.model.Order"], ["a.web.OrderController", "a.repo.OrderRepository"],
-    ["a.model.Order", "a.svc.OrderService"],
+    ["a.model.Order", "a.svc.OrderService"], ["a.svc.OrderService", "a.model.Order"],
 ].map(([from, to]) => ({ from, to }))
 
 function query(sql: string): any[] {
@@ -44,7 +45,9 @@ describe("framework anatomy", () => {
 
     it("names the references that skip a layer or run back up", async () => {
         const out = await runReading("layers", { profile: "spring" }, ctx())
-        expect(out.values).toEqual({ "one step down": 3, "skip a layer": 1, "back up": 1 })
+        // The service reaching the entity past the repository is ordinary: every layer uses the entities.
+        expect(out.values).toEqual({ "one step down": 4, "skip a layer": 1, "back up": 1 })
+        expect(out.text).toContain("one step down or into the entities, as expected")
         expect(out.text).toContain("Most go from controllers into repositories")
         expect(out.text).not.toContain("makes the most (1)")
         expect(out.text).toContain("from entities into services")
@@ -53,6 +56,7 @@ describe("framework anatomy", () => {
     it("describes one role by what it uses and what uses it", async () => {
         const out = await runReading("role", { profile: "spring", lane: "repositories" }, ctx())
         expect(out.text).toContain("They use entities (1 time)")
+        expect((await runReading("role", { profile: "spring", lane: "entities" }, ctx())).text).toContain("They are used by repositories (1) and services (1)")
         expect(out.text).toContain("They are used by controllers (1) and services (1)")
         expect((await runReading("role", { profile: "spring", lane: "nope" }, ctx())).absent).toBe(true)
     })

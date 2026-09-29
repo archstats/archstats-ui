@@ -526,13 +526,15 @@ export function buildTemplate(t: ReportTemplate, ctx: TemplateContext): BuiltTem
 /** The languages each ecosystem's code is written in, for how much of the codebase it covers. */
 const ECO_LANGUAGES: Record<EcosystemId, string[]> = {
     spring: ["Java", "Kotlin"], jvm: ["Java", "Kotlin"], django: ["Python"], python: ["Python"],
-    node: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"], react: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"],
+    node: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)", "Vue", "Svelte"], react: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"],
+    // As wide as node's, so a Vue app wins the tie with the workspace review.
+    vue: ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)", "Vue", "Svelte"],
     go: ["Go"], dotnet: ["C#"], php: ["PHP"],
     android: ["Kotlin", "Java"], ios: ["Swift", "Objective-C"], flutter: ["Dart"], kmp: ["Kotlin"],
     "react-native": ["TypeScript", "JavaScript", "TypeScript (TSX)", "JavaScript (JSX)"],
 }
 /** A framework's review says more than its language's: it wins a tie. */
-const SPECIFIC: EcosystemId[] = ["android", "ios", "flutter", "react-native", "spring", "django", "react", "kmp", "dotnet", "php", "go", "python", "jvm", "node"]
+const SPECIFIC: EcosystemId[] = ["android", "ios", "flutter", "react-native", "spring", "django", "react", "vue", "kmp", "dotnet", "php", "go", "python", "jvm", "node"]
 
 /**
  * The template the gallery opens on: the detected ecosystem whose code is the

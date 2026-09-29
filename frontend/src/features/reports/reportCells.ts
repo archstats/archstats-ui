@@ -106,6 +106,8 @@ export interface RunContext {
     columns: (table: TableSource) => Promise<Set<string>>
     pin: (id: string) => { title: string; kind: string; entityKey: string; note: string; values: PinValues; route: string; figurePath: string } | null
     label: (metric: string) => string
+    /** A metric's name and short definition, for the note under a table. */
+    define?: (metric: string) => { name: string; short: string } | null
     /** Lens, scope and role facet at the time of the run. */
     context: () => { lens?: string; scope?: string; role?: string }
     /** What readings run with; one per snapshot, so the snapshot is probed once. */
@@ -125,6 +127,24 @@ const isNumeric = (rows: Array<Record<string, unknown>>, id: string) => {
 
 function tableOf(rows: Array<Record<string, unknown>>, ids: string[], label: (id: string) => string, total: number): TableOutput {
     return { columns: ids.map(id => ({ id, label: id === "name" ? "Name" : label(id), numeric: isNumeric(rows, id) })), rows, total }
+}
+
+/**
+ * What the metric columns of a table mean, in the snapshot's own words:
+ * "Code Health: A rating from 1.0 to 10.0 of structural maintainability."
+ * A report's reader has no explorer to hover; the note under the table
+ * is where a metric is explained.
+ */
+export function metricsNote(columns: string[], define?: (id: string) => { name: string; short: string } | null): string {
+    if (!define) return ""
+    const parts: string[] = []
+    for (const c of new Set(columns)) {
+        const d = define(c)
+        const s = d?.short?.trim()
+        if (!d || !s) continue
+        parts.push(`${d.name}: ${s}${/[.!?]$/.test(s) ? "" : "."}`)
+    }
+    return parts.join(" ")
 }
 
 /** A query's column as a header, capitalised like the presets' ("entry points" reads "Entry points"). */
@@ -154,12 +174,15 @@ export async function runCell(cell: Cell, ctx: RunContext): Promise<Cell> {
             const roles = (spec.source === "files" ? has : await ctx.columns("files")).has("role")
             const rows = await ctx.query(tableSql(spec, c => has.has(c), ctx.scan.revision, roles))
             const [count] = await ctx.query(`SELECT count(*) AS n FROM ${spec.source}${tableWhere(spec, c => has.has(c), ctx.scan.revision, roles)}`)
-            const note = scopeNote(spec, roles)
-            output = { table: { ...tableOf(rows, ["name", ...spec.columns.filter(c => has.has(c))], ctx.label, Number(count?.n) || rows.length), ...(note ? { note } : {}) } }
+            const shown = spec.columns.filter(c => has.has(c))
+            const note = [scopeNote(spec, roles), metricsNote(shown, ctx.define)].filter(Boolean).join(" ")
+            output = { table: { ...tableOf(rows, ["name", ...shown], ctx.label, Number(count?.n) || rows.length), ...(note ? { note } : {}) } }
         } else if (spec.type === "sql") {
             const r = await ctx.console(spec.sql)
             const rows = r.rows.slice(0, Math.max(1, spec.limit)).map(row => Object.fromEntries(r.columns.map((c, i) => [c, row[i]])))
-            output = { table: tableOf(rows, r.columns, headerCase, r.truncated ? -1 : r.rows.length) }
+            // A metric column reads by its name, and the note under the table defines it.
+            const note = metricsNote(r.columns, ctx.define)
+            output = { table: { ...tableOf(rows, r.columns, c => ctx.define?.(c)?.name || headerCase(c), r.truncated ? -1 : r.rows.length), ...(note ? { note } : {}) } }
         } else {
             const pin = ctx.pin(spec.pinId)
             if (!pin) {

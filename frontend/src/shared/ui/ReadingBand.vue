@@ -9,6 +9,8 @@
         <span>{{ linkLabel }}</span>
         <Icon icon="arrow-right" :size="12"/>
       </router-link>
+      <!-- An exhibit in the band exports from here, at the end of the row that names it. -->
+      <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2 self-center" :class="to ? '' : 'ml-auto'"><slot name="actions"/></div>
     </div>
     <p v-if="lede" class="mt-1.5 max-w-[68ch] text-base text-neutral-700">{{ lede }}</p>
     <div class="mt-4">

@@ -130,3 +130,13 @@ describe("pseudonym guard", () => {
         expect(namesIn("Ask Jeff Fischer about this", ["Jeff Fischer", "Al"])).toEqual(["Jeff Fischer"])
     })
 })
+
+describe("metric definitions under a table", () => {
+    it("defines each metric column once, in the snapshot's words, and skips the rest", async () => {
+        const { metricsNote } = await import("./reportCells")
+        const define = (id: string) => (id === "codesmells__code_health" ? { name: "Code Health", short: "A rating from 1.0 to 10.0 of structural maintainability" } : id === "complexity__lines" ? { name: "Lines", short: "Lines of code." } : null)
+        expect(metricsNote(["name", "complexity__lines", "codesmells__code_health", "complexity__lines"], define)).toBe("Lines: Lines of code. Code Health: A rating from 1.0 to 10.0 of structural maintainability.")
+        expect(metricsNote(["name"], define)).toBe("")
+        expect(metricsNote(["complexity__lines"])).toBe("")
+    })
+})

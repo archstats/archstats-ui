@@ -107,6 +107,27 @@ const JS_SQL = {
     packages: `SELECT name AS package, directory, files, internal_dependencies AS "depends on (internal)", depends_on AS "internal dependencies" FROM modules WHERE kind = 'node' ORDER BY files DESC`,
 }
 
+// Vue. Each .vue file is one unit, marked by the engine, named for its file.
+const VUE = marked("filename", ["vue_component"])
+/** Where Vue Router's file-based routing and Nuxt keep pages and layouts, and the root component. LIKE ignores case, so App.vue is app.vue. */
+const VUE_PAGE = `(u.file LIKE '%/pages/%' OR u.file LIKE '%/layouts/%' OR u.file LIKE '%/views/%' OR u.file LIKE '%/app.vue' OR u.file LIKE '%/error.vue' OR u.file IN ('app.vue', 'App.vue', 'error.vue'))`
+/** A file's name without its folder or last extension: `frontend/src/a/groups.store.ts` is `groups.store`. */
+const stem = (col: string) => {
+    const base = `substr(${col}, length(rtrim(${col}, replace(${col}, '/', ''))) + 1)`
+    return `substr(${base}, 1, length(${base}) - length(replace(${base}, rtrim(${base}, replace(${base}, '.', '')), '')) - 1)`
+}
+/** A Vue review reads the front end: TypeScript, JavaScript and .vue files, not a Go or Java back end beside it. */
+const FRONT_END = "typescript"
+const VUE_SQL = {
+    folders: (f: SnapshotFacts) => `SELECT u.component AS folder, count(DISTINCT CASE WHEN u.id IN ${VUE} AND ${VUE_PAGE} THEN u.id END) AS "pages and layouts", count(DISTINCT CASE WHEN u.id IN ${VUE} AND NOT ${VUE_PAGE} THEN u.id END) AS components, count(DISTINCT CASE WHEN ${HOOK} AND u.kind <> 'module' THEN u.id END) AS composables, count(DISTINCT CASE WHEN u.id NOT IN ${VUE} AND NOT ${HOOK} AND u.kind <> 'module' THEN u.id END) AS "other functions and types" FROM units u WHERE coalesce(u.owner, '') = '' AND u.file IN ${PROD(f)} GROUP BY 1 HAVING "pages and layouts" + components + composables > 0 ORDER BY "pages and layouts" + components DESC, composables DESC, 1`,
+    largest: (f: SnapshotFacts) => `SELECT u.name AS component, u.component AS folder, CASE WHEN ${VUE_PAGE} THEN 'page or layout' ELSE 'component' END AS kind, ${usedByCount("u.id")} AS "used by", ${usesCount("u.id")} AS uses, fi.complexity__lines AS lines${f.fileColumns.has("codesmells__code_health") ? `, round(fi.codesmells__code_health, 1) AS "code health"` : ""} FROM units u JOIN files fi ON fi.name = u.file WHERE u.id IN ${VUE} AND u.file IN ${PROD(f)} ORDER BY lines DESC, 1`,
+    shared: `SELECT u.name AS component, u.component AS "declared in", count(DISTINCT uc.from_component) AS "folders using it", count(DISTINCT uc."from") AS "components and functions using it" FROM units u JOIN unit_connections uc ON uc."to" = u.id WHERE u.id IN ${VUE} AND uc.from_component <> u.component GROUP BY u.id ORDER BY 3 DESC, 4 DESC, 1`,
+    sharedComposables: `SELECT u.name AS composable, u.component AS "declared in", count(DISTINCT uc.from_component) AS "folders using it", count(DISTINCT uc."from") AS "components and functions using it" FROM units u JOIN unit_connections uc ON uc."to" = u.id WHERE ${HOOK} AND u.kind <> 'module' AND uc.from_component <> u.component GROUP BY u.id ORDER BY 3 DESC, 4 DESC, 1`,
+    unused: (f: SnapshotFacts) => `SELECT u.name AS component, u.component AS folder, fi.complexity__lines AS lines FROM units u JOIN files fi ON fi.name = u.file WHERE u.id IN ${VUE} AND NOT ${VUE_PAGE} AND u.file IN ${PROD(f)} AND NOT EXISTS (SELECT 1 FROM unit_connections uc WHERE uc."to" = u.id AND uc."from" <> u.id) ORDER BY lines DESC, 1`,
+    // A Pinia store is a constant (`export const useCartStore = defineStore(...)`), not a function, so it is found by its file: production script that imports pinia or vuex. Who uses it is read from import lines naming the file.
+    stores: (f: SnapshotFacts) => `WITH st AS (SELECT DISTINCT file FROM snippets WHERE snippet_type = 'modularity__import__raw' AND (content IN ('pinia', 'vuex') OR content LIKE '@pinia/%') AND file NOT LIKE '%.vue' AND file IN ${PROD(f)}), named AS (SELECT file, ${stem("file")} AS stem FROM st) SELECT n.file AS "store file", fi.component AS folder, fi.complexity__lines AS lines, (SELECT count(DISTINCT s.file) FROM snippets s WHERE s.snippet_type = 'modularity__import__raw' AND s.file <> n.file AND s.file IN ${PROD(f)} AND (s.content LIKE '%/' || n.stem OR s.content LIKE '%/' || n.stem || '.ts' OR s.content LIKE '%/' || n.stem || '.js')) AS "files importing it" FROM named n JOIN files fi ON fi.name = n.file ORDER BY 4 DESC, 1`,
+}
+
 // Go.
 const GO_FILE = `u.file LIKE '%.go'`
 const GO_SQL = {
@@ -176,6 +197,11 @@ const EXPLAIN = {
     node: "A JavaScript or TypeScript workspace is often split into *packages*, each with its own `package.json` that lists what it depends on. Here a component is a folder, so the imports between components are the imports between folders.",
     react: "In a React codebase the word *component* means two things. A *React component* is a function that draws part of the page, named in capitals like `UserMenu`. A component in this report is a folder, which can hold many React components.\n\n*Hooks* (functions named `useSomething`) hold reusable state and behaviour, and *data clients* fetch from a server. A healthy front end keeps drawing, state and data fetching apart, so that each can change without the others.",
     reactHooks: "A hook used from many folders is shared infrastructure: a change to it changes every screen that uses it. The table lists the hooks used outside the folder they are declared in, the most widely shared first.",
+    vue: "In a Vue codebase the word *component* means two things. A *Vue component* is one `.vue` file: a template that draws part of the page, with the script behind it. A component in this report is a folder, which can hold many Vue components.\n\n*Pages* and *layouts* are the components the router shows, one per screen. *Composables* (functions named `useSomething`) hold reusable state and behaviour, *stores* (Pinia or Vuex) hold state that many screens share, and *data clients* fetch from a server. A healthy front end keeps drawing, state and data fetching apart, so that each can change without the others.",
+    vueShared: "A component used from many folders is shared UI: a button, a table, a panel frame. A change to it changes every screen that uses it, so it should be stable and small. The table lists the components used outside the folder they are declared in, the most widely shared first.",
+    vueUnused: "These components are not pages or layouts, and no other component or script uses them. Most are left over from a change and can be deleted.\n\nThere is one exception. A component that Nuxt imports automatically, or that is registered globally with `app.component()`, is used without an import line, so it shows up here even though it is in use. Check before deleting.",
+    vueComposables: "A *composable* is a function named `useSomething` that packages state and behaviour for components to share: `useFetch`, `useSelection`. One used from many folders is shared infrastructure, and a change to it changes every screen that calls it. The table lists the composables used outside the folder they are declared in, the most widely shared first.",
+    vueStores: "A *store* holds state that outlives one screen: the signed-in user, a cart, the open document. Every component that reads a store depends on its shape, so a store used from many files is hard to change.\n\nA store file is a script that imports Pinia or Vuex. The files importing it are counted by the file name they import, so two stores with the same file name in different folders are counted together.",
     reactData: "These folders import a data-fetching library directly. When fetching is spread over many folders, every screen talks to the server its own way; when it sits in a few, the server contract has one home.",
 
     go: "In Go a component is a *package*: one folder. A name that starts with a capital letter is *exported*, meaning other packages can use it; lower-case names are private to the package.\n\nPackages under a folder named `internal` may only be imported by code inside the folder that holds `internal`, and the Go tool enforces this. Go also refuses import cycles between packages, so a tangle between packages cannot happen.",
@@ -197,6 +223,7 @@ const ROLE_EXAMPLES: Partial<Record<EcosystemId, string>> = {
     django: "a class extending `models.Model` is a model, and a function in `views.py` is a view",
     python: "a class extending Pydantic's `BaseModel` is a schema, and a function decorated with `@app.get` answers a request",
     react: "a function named in Pascal case in a `.tsx` file, such as `UserMenu`, is a component, and one named like `useCart` is a hook",
+    vue: "every `.vue` file is a component, one under `pages/` or `layouts/` is a page, and a function named like `useCart` is a composable",
     node: "a class decorated with `@Controller` answers requests, and code that imports `axios` talks to a server",
     go: "a struct with `json:` tags is a model, and a type that imports `database/sql` is a store",
     dotnet: "a class extending `ControllerBase` is a controller, and one using a `DbContext` is data access",
@@ -215,15 +242,16 @@ const LAYER_EXAMPLES: Record<string, string> = {
     spring: "In Spring: a controller calling a repository directly skips the services; an entity calling a service runs back up.",
     django: "In Django: a view reading a model directly is the normal path, but a model importing a view or a form runs back up.",
     react: "In React: a component calling a data client directly skips the hooks that should hold that state; a data client importing a component runs back up.",
+    vue: "In Vue: a page calling a data client directly skips the composables and stores that should hold that state; a store importing a component runs back up.",
     aspnet: "In ASP.NET: a controller using a DbContext directly skips the services; an entity or DTO calling a service runs back up.",
     symfony: "In Symfony: a controller using a repository directly skips the services; an entity calling a service runs back up.",
     "": "For example, an entry point calling data access directly skips the logic, and data access calling an entry point runs back up.",
 }
-function layering(w: Writer, profile: string, flow?: [string, string, string]) {
-    w.explain(`${EXPLAIN.layers} ${LAYER_EXAMPLES[profile] ?? LAYER_EXAMPLES[""]}`).reading("layers", { profile })
+function layering(w: Writer, profile: string, flow?: [string, string, string], language?: string) {
+    w.explain(`${EXPLAIN.layers} ${LAYER_EXAMPLES[profile] ?? LAYER_EXAMPLES[""]}`).reading("layers", { profile, ...(language ? { language } : {}) })
     if (flow) slotOf(w, "figure", `How ${flow[2]} relate`, VIEWS.flow(flow[0], flow[1], `Boundary between ${flow[2]}`))
 }
-const role = (w: Writer, lane: string, profile: string) => w.reading("role", { lane, profile })
+const role = (w: Writer, lane: string, profile: string, language?: string) => w.reading("role", { lane, profile, ...(language ? { language } : {}) })
 
 // ── Spring and the JVM ────────────────────────────────────────────────────
 
@@ -498,6 +526,37 @@ const WEBAPPS: ReportTemplate[] = [
             w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", "Hotspots by directory", VIEWS.treemap("hotspots", "directories", "Hotspots, directories")) })
             w.section("Code health", needs.health(f), () => health(w, "files", 10))
             w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: folders to reorganise, hooks to stabilise, and data fetching to bring together."))
+        },
+    },
+    {
+        id: "vue-review",
+        name: "Vue front end review",
+        audience: "A front-end team",
+        summary: "A tour of a Vue or Nuxt front end: its pages, components, composables and stores and where each lives, the components shared across features and the ones nothing uses, the largest components, where data is fetched from the server, whether drawing, state and data access stay apart, which files change most, and how easy the code is to work in.",
+        when: "Use it when a Vue front end has grown and features, shared UI and state have started to mix, or to explain the front end to new developers.",
+        ecosystem: "vue",
+        title: ws => `Front end review: ${ws}`,
+        build(w) {
+            const f = w.facts
+            const components = has.marker(f, "the scan found no .vue components (a snapshot from before Vue was read needs a rescan)", "filename:vue_component")
+            w.prompt("What the front end does, and what this review should settle.")
+            w.section("The front end", true, () => { w.explain(EXPLAIN.vue).reading("node") })
+            w.section("Roles in the code", has.units(f), () => anatomy(w, "vue", FRONT_END))
+            w.section("Pages, components and composables by folder", components, () => {
+                w.sql("Folders by pages, components and composables", VUE_SQL.folders(f), 25)
+                role(w, "pages", "vue", FRONT_END)
+                w.prompt("Are the folders organised by feature (checkout, profile) or by kind (components, composables)? Which folders are shared UI, and which belong to one feature?")
+            })
+            w.section("Shared components", components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueShared); role(w, "components", "vue", FRONT_END); w.sql("Components used outside their own folder", VUE_SQL.shared, 20) })
+            w.section("The largest components", components, () => w.sql("Components, the largest first", VUE_SQL.largest(f), 20))
+            w.section("Components nothing uses", components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueUnused); w.sql("Components no other code uses", VUE_SQL.unused(f), 20) })
+            w.section("Shared composables", has.links(f), () => { w.explain(EXPLAIN.vueComposables); role(w, "composables", "vue", FRONT_END); w.sql("Composables used outside their own folder", VUE_SQL.sharedComposables, 20) })
+            w.section("Stores", needs.snippets(f), () => { w.explain(EXPLAIN.vueStores); w.sql("Store files, the most imported first", VUE_SQL.stores(f), 20) })
+            w.section("Where data is fetched", needs.snippets(f), () => { w.explain(EXPLAIN.reactData); role(w, "data", "vue", FRONT_END); w.sql("Folders that import a data-fetching library", JS_SQL.dataLibraries, 20) })
+            w.section("Do drawing, state and data stay apart?", has.links(f), () => layering(w, "vue", ["components", "composables", "Components and Composables"], FRONT_END))
+            w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", "Hotspots by directory", VIEWS.treemap("hotspots", "directories", "Hotspots, directories")) })
+            w.section("Code health", needs.health(f), () => health(w, "files", 10))
+            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: folders to reorganise, shared components and stores to stabilise, unused components to delete, and data fetching to bring together."))
         },
     },
 ]

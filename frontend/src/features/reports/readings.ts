@@ -98,6 +98,8 @@ export interface SnapshotFacts {
     tangles: number
     /** Files that import react; the engine's component count alone also counts plain functions. */
     reactImporters: number
+    /** Vue single-file components in production files: the engine marks each .vue file's unit. */
+    vueComponents: number
     /** The markers the scan put on classes and functions, as "source:key" ("annotation:Entity", "filename:views"). */
     markers: Set<string>
     /** Columns of component_connections_indirect; analysis revision 4 keeps the next hop instead of the whole chain. */
@@ -166,6 +168,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         ? (await q(`SELECT name, platform FROM deployables WHERE kind = 'mobile_app' ORDER BY name`)).map(r => ({ name: String(r.name), platform: String(r.platform) }))
         : []
     const [react] = tables.has("snippets") ? await q(`SELECT count(DISTINCT file) AS c FROM snippets WHERE snippet_type = 'modularity__component__imports' AND (content = 'react' OR content LIKE 'react/%')`) : [null]
+    const [vue] = tables.has("unit_markers") && tables.has("units") ? await q(`SELECT count(DISTINCT u.id) AS c FROM units u JOIN unit_markers m ON m.unit = u.id WHERE m.source = 'filename' AND m.key = 'vue_component' AND u.file IN (SELECT name FROM files WHERE ${prodFile({ fileColumns })})`) : [null]
     return {
         revision: ctx.revision, tables, fileColumns, componentColumns, summary, snapshot, roles,
         production: roles.production ?? { files: 0, lines: 0 },
@@ -178,6 +181,7 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
         tangles: Number(t?.c) || 0,
         ...(abs ? { abstractComponents: Number(abs.c) || 0 } : {}),
         reactImporters: Number(react?.c) || 0,
+        vueComponents: Number(vue?.c) || 0,
         markers,
         indirectColumns,
         moduleTypes,
@@ -192,7 +196,7 @@ export function ignoredTestDirs(f: SnapshotFacts): number {
 
 // ── Ecosystems ────────────────────────────────────────────────────────────
 
-export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "go" | "dotnet" | "php" | "android" | "ios" | "flutter" | "react-native" | "kmp"
+export type EcosystemId = "spring" | "jvm" | "django" | "python" | "node" | "react" | "vue" | "go" | "dotnet" | "php" | "android" | "ios" | "flutter" | "react-native" | "kmp"
 
 export interface Ecosystem { id: EcosystemId; label: string; why: string }
 
@@ -236,9 +240,11 @@ export function ecosystems(f: SnapshotFacts): Ecosystem[] {
     else if (share("Python") >= 0.2) out.push({ id: "python", label: "Python codebase", why: langWhy("Python", "Python") })
     const react = (s.ts__react__components ?? 0) + (s.js__react__components ?? 0)
     // Bundled JavaScript beside a Java or Python back end is not a JavaScript workspace: it needs a package or most of the lines.
-    const node = (mk.node ?? 0) > 0 || share("TypeScript", "JavaScript") >= 0.5
-    if (node) out.push({ id: "node", label: "JavaScript/TypeScript workspace", why: mk.node ? modulesPhrase("node", mk.node) : langWhy("JavaScript and TypeScript", "TypeScript", "JavaScript") })
+    // A .vue or .svelte file is a script block in markup: its lines are the front end's too.
+    const node = (mk.node ?? 0) > 0 || share("TypeScript", "JavaScript", "Vue", "Svelte") >= 0.5
+    if (node) out.push({ id: "node", label: "JavaScript/TypeScript workspace", why: mk.node ? modulesPhrase("node", mk.node) : langWhy("JavaScript and TypeScript", "TypeScript", "JavaScript", "Vue", "Svelte") })
     if (node && react >= 20 && f.reactImporters >= 10) out.push({ id: "react", label: "React front end", why: `${plural(react, "React component")}, react imported in ${plural(f.reactImporters, "file")}` })
+    if (f.vueComponents >= 10) out.push({ id: "vue", label: "Vue front end", why: plural(f.vueComponents, "Vue component") })
     if ((mk.go ?? 0) > 0 || share("Go") >= 0.2) out.push({ id: "go", label: "Go module", why: mk.go ? modulesPhrase("go", mk.go) : langWhy("Go", "Go") })
     if ((mk.dotnet ?? 0) > 0 || share("C#") >= 0.2) out.push({ id: "dotnet", label: ".NET solution", why: mk.dotnet ? modulesPhrase("dotnet", mk.dotnet) : langWhy("C#", "C#") })
     if ((mk.composer ?? 0) > 0 || share("PHP") >= 0.2) out.push({ id: "php", label: "PHP application", why: mk.composer ? modulesPhrase("composer", mk.composer) : langWhy("PHP", "PHP") })
@@ -671,7 +677,7 @@ export const READINGS: ReadingDef[] = [
     {
         id: "node",
         label: "JavaScript and TypeScript",
-        describe: "npm packages from the modules table, the TypeScript share of JavaScript and TypeScript lines, and React components in production files (Pascal-case names in .tsx and .jsx files), counted only when files import react.",
+        describe: "npm packages from the modules table, the TypeScript share of JavaScript and TypeScript lines, React components in production files (Pascal-case names in .tsx and .jsx files), counted only when files import react, and Vue components (one per .vue file).",
         async run(ctx) {
             const f = await probe(ctx)
             const pkgs = f.moduleKinds.node ?? 0
@@ -682,8 +688,8 @@ export const READINGS: ReadingDef[] = [
             const react = Number(rc?.c) || 0
             const names = pkgs ? (await ctx.query(`SELECT name FROM modules WHERE kind = 'node' ORDER BY files DESC LIMIT 3`)).map(r => code(String(r.name))) : []
             return {
-                text: `${pkgs ? `The workspace has ${b(modulesPhrase("node", pkgs))}; the largest ${pkgs === 1 ? "is" : "are"} ${listOf(names)}. ` : ""}${b(`${Math.round(100 * ts / Math.max(1e-9, ts + js))}%`)} of its JavaScript and TypeScript is TypeScript.${react ? ` It has ${b(plural(react, "React component"))}: functions named in Pascal case in \`.tsx\` and \`.jsx\` files.` : ""}`,
-                values: { packages: pkgs, "TypeScript %": Math.round(100 * ts / Math.max(1e-9, ts + js)), "React components": react },
+                text: `${pkgs ? `The workspace has ${b(modulesPhrase("node", pkgs))}; the largest ${pkgs === 1 ? "is" : "are"} ${listOf(names)}. ` : ""}${b(`${Math.round(100 * ts / Math.max(1e-9, ts + js))}%`)} of its JavaScript and TypeScript is TypeScript.${react ? ` It has ${b(plural(react, "React component"))}: functions named in Pascal case in \`.tsx\` and \`.jsx\` files.` : ""}${f.vueComponents ? ` It has ${b(plural(f.vueComponents, "Vue component"))}, one per \`.vue\` file.` : ""}`,
+                values: { packages: pkgs, "TypeScript %": Math.round(100 * ts / Math.max(1e-9, ts + js)), "React components": react, "Vue components": f.vueComponents },
             }
         },
     },

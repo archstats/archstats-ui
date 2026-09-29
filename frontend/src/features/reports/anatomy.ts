@@ -42,11 +42,29 @@ const LAYERS: Record<string, string[]> = {
     jakarta: ["endpoints", "beans", "repositories", "entities"],
     quarkus: ["resources", "beans", "data", "entities"],
     micronaut: ["controllers", "beans", "repositories", "entities"],
-    dropwizard: ["resources", "app", "data", "models"],
+    vertx: ["verticles", "handlers", "clients", "models"],
+    // The Application wires every resource and DAO; that is its job, not a
+    // reference back up the stack, so it sits beside the layers.
+    dropwizard: ["resources", "data", "models"],
+    // A pipeline composes transforms, a transform its DoFns. IO and coders
+    // are reached from every step and sit beside them.
+    beam: ["pipelines", "transforms", "fns"],
     android: ["screens", "viewmodels", "data", "models"],
+    // On every mobile platform the small views and widgets sit beside the
+    // layers, as Android's do: a screen composes them and so does a row, and
+    // the state they read is the screen's. The App and its delegates are
+    // wiring. TCA is the exception, being its own stack: a view renders a
+    // store, a reducer runs effects through its dependency clients.
+    ios: ["screens", "state", "data", "models"],
+    tca: ["views", "features", "clients", "models"],
+    flutter: ["screens", "state", "data", "models"],
+    "react-native": ["screens", "hooks", "state", "data", "models"],
     nestjs: ["controllers", "providers", "data", "models"],
     angular: ["components", "services", "data", "models"],
-    react: ["components", "hooks", "data", "models"],
+    // Next.js routes to pages, which compose components; a hook is what a
+    // component calls, a client what a hook calls.
+    react: ["pages", "components", "hooks", "data", "models"],
+    vue: ["pages", "components", "composables", "stores", "data", "models"],
     express: ["routes", "services", "data", "models"],
     django: ["views", "forms", "models"],
     fastapi: ["routes", "data", "models"],
@@ -59,6 +77,9 @@ const LAYERS: Record<string, string[]> = {
     structure: ["entry", "logic", "data", "models"],
 }
 
+/** Bottom layers that hold data shapes rather than behaviour. */
+const SHAPES = new Set(["models", "entities"])
+
 /** The profile's layers, top first, as far as the profile has them. */
 export function layersOf(profile: FrameworkProfile): string[] {
     const have = new Set(profile.lanes.map(l => l.id))
@@ -68,6 +89,9 @@ export function layersOf(profile: FrameworkProfile): string[] {
 const NOUN: Record<Language, string> = {
     java: "classes", kotlin: "classes", csharp: "classes", php: "classes",
     python: "classes and functions", go: "types and functions", typescript: "functions, classes and types",
+    // Swift's structs, enums and actors are types; Dart's screens are classes
+    // and its providers may be functions.
+    swift: "types", objc: "classes", dart: "classes and functions",
 }
 
 const cache = new WeakMap<ReadingContext, Map<string, Promise<Anatomy | null>>>()
@@ -96,7 +120,8 @@ async function readAnatomy(ctx: ReadingContext, profileId: string, only: string)
     if (!facts.size) return null
 
     const fileRows = tables.has("files") ? await q(`SELECT name, ${(await q(`SELECT name FROM pragma_table_info('files') WHERE name = 'role'`)).length ? "role" : "'production' AS role"} FROM files`) : []
-    const test = new Set(fileRows.filter(r => r.role === "test").map(r => String(r.name)))
+    // Tests, and code nobody here wrote: generated protobuf stubs and vendored libraries have no role in the design.
+    const test = new Set(fileRows.filter(r => r.role === "test" || r.role === "generated" || r.role === "third_party").map(r => String(r.name)))
     const language = only ? (only as Language) : languageOf(fileRows.filter(r => (r.role || "production") === "production").map(r => String(r.name)))
     const detection = detectFramework([...facts.values()].map(f => f.facts), language)
     const profile = profileById(profileId || detection.id)
@@ -106,7 +131,8 @@ async function readAnatomy(ctx: ReadingContext, profileId: string, only: string)
     const ownerOf = new Map<string, string>()
     const kindOf = new Map<string, string>()
     for (const r of unitRows) { kindOf.set(String(r.id), String(r.kind ?? "")); if (r.owner) ownerOf.set(String(r.id), String(r.owner)) }
-    const top = (id: string) => { let x = id; for (let i = 0; ownerOf.has(x) && i < 8; i++) x = ownerOf.get(x)!; return x }
+    // Only an owner that is a unit: a Kotlin extension on a library type stands on its own.
+    const top = (id: string) => { let x = id; for (let i = 0; ownerOf.has(x) && kindOf.has(ownerOf.get(x)!) && i < 8; i++) x = ownerOf.get(x)!; return x }
 
     const kept = new Map<string, AnatomyUnit>()
     for (const f of facts.values()) {
@@ -230,10 +256,16 @@ export const ANATOMY_READINGS: ReadingDef[] = [
             const rank = new Map(order.map((id, i) => [id, i]))
             const byId = new Map(a.units.map(u => [u.id, u]))
             const down: Array<[string, string]> = [], skip: Array<[string, string]> = [], back: Array<[string, string]> = []
+            // Models and entities are the shapes every layer passes around: a
+            // controller takes a request DTO, a service loads an entity. Every
+            // agent auditing a framework found those read as skipped layers,
+            // the most ordinary code there is. Reaching them is expected; only
+            // leaving them, back up, is not.
+            const shapes = SHAPES.has(order[order.length - 1]) ? order.length - 1 : -1
             for (const e of a.edges) {
                 const f = rank.get(byId.get(e[0])!.lane), t = rank.get(byId.get(e[1])!.lane)
                 if (f === undefined || t === undefined || f === t) continue
-                if (t === f + 1) down.push(e); else if (t > f + 1) skip.push(e); else back.push(e)
+                if (t === f + 1 || (t === shapes && f < t)) down.push(e); else if (t > f + 1) skip.push(e); else back.push(e)
             }
             if (!a.linked) return absent("This scan does not record which classes use which, so the references between roles cannot be counted. A newer scan records them.")
             if (!down.length && !skip.length && !back.length) return absent(`No reference runs between two ${a.profile.label} roles.`)
@@ -249,7 +281,7 @@ export const ANATOMY_READINGS: ReadingDef[] = [
             const parts = [
                 `${a.profile.label} code is meant to run one way: ${chain}. Between classes in those roles:`,
                 "",
-                `- ${b(n(down.length))} ${down.length === 1 ? "reference goes" : "references go"} one step down, as expected.`,
+                `- ${b(n(down.length))} ${down.length === 1 ? "reference goes" : "references go"} one step down${shapes >= 0 ? ` or into the ${inProse(labelOf(a.profile, order[shapes]))}` : ""}, as expected.`,
                 skip.length ? `- ${b(n(skip.length))} skip a layer. ${pairText(skip)}` : "- None skip a layer.",
                 back.length ? `- ${b(n(back.length))} run back up, against the order. ${pairText(back)}` : "- None run back up.",
             ]

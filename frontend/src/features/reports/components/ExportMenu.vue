@@ -1,14 +1,13 @@
 <template>
   <div class="relative" :class="headless ? 'fixed right-4 top-12 z-50 h-0 w-0' : 'shrink-0'">
     <button
-      v-if="!headless"
+      v-if="!headless && items.length"
       ref="buttonEl"
       type="button"
       class="ui-btn ui-btn-sm"
-      :disabled="items.length === 0"
       :aria-expanded="open"
       aria-haspopup="menu"
-      :title="items.length ? 'Export (⌘E)' : 'Nothing on this view to export'"
+      title="Export (⌘E)"
       @click="toggle"
     >
       <Icon :icon="status ? 'check' : 'download'" :size="13" :class="status ? 'text-green-600' : 'text-neutral-500'"/>
@@ -24,38 +23,12 @@
         aria-label="Export"
         @keydown.esc.stop="close"
       >
-        <p v-if="items.length === 0" class="px-2 py-2 text-sm text-neutral-500">Nothing on this view to export.</p>
+        <p v-if="items.length === 0" class="px-2 py-2 text-sm text-neutral-500">Figures and tables export from the button beside each one.</p>
         <template v-for="(item, i) in items" :key="i">
           <div v-if="i > 0" class="my-1 h-px bg-neutral-100" role="separator"></div>
           <p class="ui-menu-title truncate normal-case tracking-normal" :title="item.title">{{ item.title }}</p>
 
-          <template v-if="item.kind === 'table'">
-            <p v-if="tableReason(item)" class="px-2 pb-1 text-sm text-neutral-500">{{ tableReason(item) }}</p>
-            <template v-else>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="copyMarkdown(item, i)">
-                <Icon icon="copy" :size="12" class="text-neutral-500"/>
-                <span class="min-w-0 flex-1 truncate">{{ confirmKey === `md${i}` ? `Copy ${rowCount(item).toLocaleString("en-US")} rows? Click again` : "Copy as Markdown" }}</span>
-              </button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="copyCsv(item)">
-                <Icon icon="copy" :size="12" class="text-neutral-500"/><span>Copy as CSV</span>
-              </button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="saveCsv(item)">
-                <Icon icon="table" :size="12" class="text-neutral-500"/><span class="flex-1">Save CSV…</span>
-                <span class="font-mono text-xs text-neutral-400">{{ rowCount(item).toLocaleString("en-US") }} rows</span>
-              </button>
-            </template>
-          </template>
-
-          <template v-else-if="item.kind === 'figure'">
-            <button type="button" class="ui-menu-item" role="menuitem" :disabled="!item.ready()" :class="{ 'opacity-50': !item.ready() }" :title="item.ready() ? '' : 'Still drawing'" @click="savePng(item)">
-              <Icon icon="image" :size="12" class="text-neutral-500"/><span>Save PNG (2×)…</span>
-            </button>
-            <button v-if="item.svg !== false" type="button" class="ui-menu-item" role="menuitem" :disabled="!item.ready()" :class="{ 'opacity-50': !item.ready() }" @click="saveSvg(item)">
-              <Icon icon="image" :size="12" class="text-neutral-500"/><span>Save SVG…</span>
-            </button>
-          </template>
-
-          <template v-else>
+          <template v-if="item.kind === 'document'">
             <p v-if="item.disabledReason?.()" class="px-2 pb-1 text-sm text-neutral-500">{{ item.disabledReason?.() }}</p>
             <template v-else>
               <button type="button" class="ui-menu-item" role="menuitem" @click="copyDocument(item)">
@@ -68,11 +41,10 @@
           </template>
 
           <button
-            v-if="!isReportView && (item.kind !== 'table' || !tableReason(item)) && (item.kind !== 'document' || !item.disabledReason?.())"
+            v-if="!isReportView && item.kind === 'document' && !item.disabledReason?.()"
             type="button"
             class="ui-menu-item"
             role="menuitem"
-            :disabled="item.kind === 'figure' && !item.ready()"
             title="Preview it in a report, write around it, then add it"
             @click="addToReport(item)"
           >
@@ -80,13 +52,6 @@
           </button>
         </template>
 
-        <template v-if="dark && hasFigures">
-          <div class="my-1 h-px bg-neutral-100" role="separator"></div>
-          <button type="button" class="ui-menu-item" role="menuitemcheckbox" :aria-checked="asShown" @click="asShown = !asShown">
-            <Icon :icon="asShown ? 'check' : 'minus'" :size="12" :class="asShown ? 'text-neutral-700' : 'text-transparent'"/>
-            <span>Figures as shown (dark)</span>
-          </button>
-        </template>
         <div class="my-1 h-px bg-neutral-100" role="separator"></div>
         <button type="button" class="ui-menu-item" role="menuitem" title="Keep this view, with a figure of it, on the evidence board" @click="pinView">
           <Icon icon="bookmark" :size="12" class="text-neutral-500"/><span>Pin this view</span>
@@ -112,11 +77,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { exportables, pickFor, type DocumentExportable, type Exportable, type FigureExportable, type TableExportable } from "~/features/export/useExportables";
 import { registerCommand } from "~/platform/commands";
-import { MARKDOWN_ROW_WARNING, exportFileName } from "~/features/export/export";
-import { copyTableCsv, copyTableMarkdown, saveTableCsv } from "~/features/export/exportActions";
-import { FILTERS, copyText, lastExport, reveal, saveBase64, saveText } from "~/platform/files";
-import { isDarkAppearance, pngBase64, svgDocument } from "~/features/export/figure";
-import { buildProvenance, provenanceShort } from "~/features/export/provenance";
+import { exportFileName } from "~/features/export/export";
+import { FILTERS, copyText, lastExport, reveal, saveText } from "~/platform/files";
+import { figurePng, provideExhibitHandoff, type FigureChoice } from "~/features/export/figureActions";
+import { buildProvenance } from "~/features/export/provenance";
 import { useEvidenceStore } from "~/features/reports/evidence.store";
 import { useReportsStore } from "~/features/reports/reports.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
@@ -124,25 +88,26 @@ import type { RanOn } from "~/features/reports/reportDoc";
 import { formatScanTime } from "~/shared/time";
 import { snapshotName } from "~/features/workspace/snapshotName";
 
-// The one Export menu. In a view's toolbar it is a button; the shell mounts a
-// headless one so ⌘E works on views without a toolbar. Every action ends the
-// same way: "Saved" or "Copied" on the button for a moment, nothing when the
-// dialog is cancelled, and the failure itself when one fails.
+// The Export menu for a view's documents (a methodology, a report's
+// Markdown), and Pin this view. In a view's toolbar it is a button, shown
+// when the view has a document; the shell mounts a headless one so ⌘E works
+// everywhere. Figures and tables are not listed: each exports from the button
+// on its own frame (ExhibitFrame), and the headless menu hands those buttons
+// the report's two actions, Add to report and Pin. Every action ends the same way:
+// "Saved" or "Copied" on the button for a moment, nothing when the dialog is
+// cancelled, and the failure itself when one fails.
 
 const props = withDefaults(defineProps<{ headless?: boolean }>(), { headless: false });
 
-const items = computed<Exportable[]>(() => exportables.value);
-const hasFigures = computed(() => items.value.some(i => i.kind === "figure"));
+// Documents only: a figure or a table exports from the button on its own frame (ExhibitFrame).
+const items = computed<Exportable[]>(() => exportables.value.filter(i => i.kind === "document"));
 const open = ref(false);
 const status = ref("");
 const error = ref("");
-const confirmKey = ref("");
-const asShown = ref(false);
-const dark = ref(isDarkAppearance());
 let statusTimer: ReturnType<typeof setTimeout> | null = null;
 
-function toggle() { dark.value = isDarkAppearance(); open.value = !open.value; }
-function close() { open.value = false; confirmKey.value = ""; }
+function toggle() { open.value = !open.value; }
+function close() { open.value = false; }
 
 function done(word: string) {
   close();
@@ -155,53 +120,6 @@ function done(word: string) {
 function fail(what: string, e: unknown) {
   close();
   error.value = `${what} failed: ${e instanceof Error ? e.message : String(e)}`;
-}
-
-const caption = () => provenanceShort(buildProvenance());
-const rowCount = (t: TableExportable) => t.rows().length;
-function tableReason(t: TableExportable): string {
-  const r = t.disabledReason?.();
-  if (r) return r;
-  return rowCount(t) === 0 ? "No rows in scope." : "";
-}
-
-async function copyMarkdown(t: TableExportable, i: number) {
-  const n = rowCount(t);
-  if (n > MARKDOWN_ROW_WARNING && confirmKey.value !== `md${i}`) { confirmKey.value = `md${i}`; return; }
-  try { done(await copyTableMarkdown(t)); } catch (e) { fail("Copy", e); }
-}
-async function copyCsv(t: TableExportable) {
-  try { done(await copyTableCsv(t)); } catch (e) { fail("Copy", e); }
-}
-async function saveCsv(t: TableExportable) {
-  close();
-  try { const word = await saveTableCsv(t); if (word) done(word); } catch (e) { fail("Save", e); }
-}
-
-async function renderFigure(f: FigureExportable) {
-  const out = await f.render({ light: !asShown.value });
-  if (!out) throw new Error("the chart has nothing drawn yet");
-  return out;
-}
-async function savePng(f: FigureExportable) {
-  if (!f.ready()) return;
-  close();
-  try {
-    const out = await renderFigure(f);
-    const b64 = await pngBase64(out, caption(), { light: !asShown.value });
-    const path = await saveBase64(exportFileName(f.title, "png"), b64, [FILTERS.png], "Save PNG");
-    if (path) done("Saved");
-  } catch (e) { fail("Save PNG", e); }
-}
-async function saveSvg(f: FigureExportable) {
-  if (!f.ready()) return;
-  close();
-  try {
-    const out = await renderFigure(f);
-    if (out.kind !== "svg") throw new Error("this chart is drawn on a canvas; save it as PNG");
-    const path = await saveText(exportFileName(f.title, "svg"), svgDocument(out, caption(), { light: !asShown.value }), [FILTERS.svg], "Save SVG");
-    if (path) done("Saved");
-  } catch (e) { fail("Save SVG", e); }
 }
 
 async function copyDocument(d: DocumentExportable) {
@@ -219,14 +137,15 @@ async function saveDocument(d: DocumentExportable) {
 async function pinView() {
   close();
   try {
-    const evidence = useEvidenceStore();
-    const f = items.value.find(i => i.kind === "figure" && i.ready());
-    let figure: string | null = null;
-    if (f && f.kind === "figure") { const out = await f.render({ light: true }); if (out) figure = await pngBase64(out, caption(), { light: true }); }
+    const f = exportables.value.find((i): i is FigureExportable => i.kind === "figure" && i.ready());
     const title = (typeof document !== "undefined" ? document.querySelector(".ui-toolbar-title")?.textContent?.trim() : "") || "View";
-    await evidence.pin({ kind: "view", entityKey: location.hash.replace(/^#/, ""), title, figure });
+    await pinWith(title, f ? await figurePng(f, { light: true, legend: true }) : null);
     done("Pinned");
   } catch (e) { fail("Pin", e); }
+}
+
+function pinWith(title: string, figure: string | null) {
+  return useEvidenceStore().pin({ kind: "view", entityKey: location.hash.replace(/^#/, ""), title, figure });
 }
 
 // ── Add to report: what the view shows, previewed in the report first ───
@@ -241,19 +160,18 @@ function ranOnNow(): RanOn {
     at: new Date().toISOString(), lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined,
   };
 }
-async function addToReport(item: Exportable) {
+async function addToReport(item: Exportable, choice: FigureChoice = { light: true, legend: true }) {
   close();
   try {
     const route = location.hash.replace(/^#/, "");
     const view = document.querySelector(".ui-toolbar-title")?.textContent?.trim() || item.title;
     const base = { title: item.title, view, route, ranOn: ranOnNow() };
     if (item.kind === "figure") {
-      const renderFigure = async (light: boolean) => {
-        const out = await item.render({ light });
-        if (!out) throw new Error("the chart has nothing drawn yet");
-        return pngBase64(out, "", { light });
-      };
-      await reportsStore.beginImport({ ...base, kind: "figure", figure: await renderFigure(!asShown.value), renderFigure });
+      // The report prints provenance under every cell, so the figure carries only its legend.
+      const renderFigure = (light: boolean) => figurePng(item, { ...choice, light }, false);
+      await reportsStore.beginImport({ ...base, kind: "figure", figure: await renderFigure(choice.light), renderFigure });
+    } else if (item.kind === "table" && item.addToReport) {
+      await item.addToReport();
     } else if (item.kind === "table") {
       const cols = item.columns();
       const all = item.rows();
@@ -273,8 +191,17 @@ async function revealLast() {
 
 let off: (() => void) | null = null;
 let offAdd: (() => void) | null = null;
+let offHandoff: (() => void) | null = null;
 onMounted(() => {
-  off = registerCommand("export", () => { dark.value = isDarkAppearance(); if (items.value.length || props.headless) open.value = !open.value; });
+  off = registerCommand("export", () => { if (items.value.length || props.headless) open.value = !open.value; });
+  // A figure's own button adds to a report and pins through the one menu the shell always mounts.
+  if (props.headless) offHandoff = provideExhibitHandoff({
+    addToReport: (f, choice) => addToReport(f, choice),
+    pin: async (f, choice) => {
+      const view = document.querySelector(".ui-toolbar-title")?.textContent?.trim();
+      await pinWith(view && view !== f.title ? `${view}: ${f.title}` : f.title, await figurePng(f, choice));
+    },
+  });
   // Filling a report's slot: what this view shows of the slot's kind, straight into Add to report.
   if (props.headless) offAdd = registerCommand("add-to-report", async () => {
     // Never the report into itself: a late take landing on the report page would pick
@@ -285,5 +212,5 @@ onMounted(() => {
     await addToReport(item);
   });
 });
-onBeforeUnmount(() => { off?.(); offAdd?.(); if (statusTimer) clearTimeout(statusTimer); });
+onBeforeUnmount(() => { off?.(); offAdd?.(); offHandoff?.(); if (statusTimer) clearTimeout(statusTimer); });
 </script>

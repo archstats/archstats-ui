@@ -3,6 +3,7 @@ import { markRaw } from "vue"
 import { DeleteReport, Figure, RenderPDF, ReorderReports, Reports, SaveFigure, SaveReport } from "wailsjs/go/app/EvidenceService"
 import { Console, QueryIn, ReportConsole } from "wailsjs/go/app/QueryService"
 import { useDataStore } from "~/features/snapshot/data.store"
+import { useMetricDocs } from "~/features/snapshot/useMetricDocs"
 import { useEvidenceStore } from "./evidence.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { buildProvenance } from "~/features/export/provenance"
@@ -11,7 +12,7 @@ import { useStateStore } from "~/platform/state.store"
 import type { ReadingContext } from "./readings"
 import { exportMarkdown, pdfBlocks, runCell, type KernelScan, type RunContext } from "./reportCells"
 import { canPrint, printReport } from "./reportPrint"
-import { emptyDoc, fromMarkdown, isCell, newId, parseDoc, runnable, toMarkdown, type Block, type Cell, type CellBlock, type ReportDoc, type TableSource } from "./reportDoc"
+import { cellNumbers, emptyDoc, fromMarkdown, isCell, newId, parseDoc, runnable, toMarkdown, type Block, type Cell, type CellBlock, type ReportDoc, type TableSource } from "./reportDoc"
 import { SAVED_TEMPLATES_KEY, type SavedTemplate } from "./reportTemplates"
 import { newestFirst } from "~/features/workspace/scanOrder"
 import { formatScanTime } from "~/shared/time"
@@ -38,7 +39,12 @@ export interface ImportDraft {
     renderFigure?: (light: boolean) => Promise<string>
     table?: import("./reportDoc").TableOutput
     markdown?: string
+    /** SQL a person wrote: the cell it becomes runs it again on the report's snapshot, rather than keeping a copy. */
+    sql?: string
 }
+
+/** A report's SQL cell, as the console lists it. */
+export interface SqlCellRef { cellId: string; label: string; title: string; sql: string }
 
 /** A template's slot being filled: the view it opened, waiting for Add to report. */
 export interface SlotFill {
@@ -84,6 +90,8 @@ export const useReportsStore = defineStore("reports", {
         workspace: "" as string,
         list: [] as ReportRecord[],
         currentId: null as string | null,
+        /** A block just added from a view, for the report page to scroll to and select once it has drawn. */
+        landOn: null as string | null,
         doc: emptyDoc() as ReportDoc,
         undoStack: [] as string[],
         redoStack: [] as string[],
@@ -151,6 +159,15 @@ export const useReportsStore = defineStore("reports", {
                 }
             }
             return out
+        },
+        /** Every report's SQL cells, in reading order, for the console to open. */
+        sqlCells(s): Array<{ reportId: string; report: string; cells: SqlCellRef[] }> {
+            return s.list.map(r => {
+                const doc = r.id === s.currentId ? s.doc : parseDoc(r.body)
+                const nums = cellNumbers(doc.blocks)
+                const cells = doc.blocks.filter(isCell).flatMap(b => (b.cell.spec.type === "sql" ? [{ cellId: b.id, label: nums.get(b.id) ?? "Table", title: b.cell.title, sql: b.cell.spec.sql }] : []))
+                return { reportId: r.id, report: r.title || "Untitled report", cells }
+            }).filter(r => r.cells.length)
         },
         canUndo: (s) => s.undoStack.length > 0,
         canRedo: (s) => s.redoStack.length > 0,
@@ -376,6 +393,7 @@ export const useReportsStore = defineStore("reports", {
                     return p ? { title: p.title, kind: p.kind, entityKey: p.entityKey, note: p.note, values: evidence.valuesOf(p), route: p.route, figurePath: p.figurePath } : null
                 },
                 label: id => data.statNiceName(id) || id,
+                define: useMetricDocs().define,
                 context: () => {
                     const p = buildProvenance()
                     return { lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined }
@@ -438,6 +456,21 @@ export const useReportsStore = defineStore("reports", {
             const after = last && !isCell(last) && last.kind === "p" && !last.text.trim() ? this.doc.blocks[this.doc.blocks.length - 2]?.id ?? null : last?.id ?? null
             this.insert(after, blocks)
             this.flushSave()
+        },
+
+        /**
+         * Writes SQL from the console into a report's SQL cell and runs it on
+         * the report's snapshot. The report opens, so the edit is one undo step there.
+         */
+        async updateSqlCell(reportId: string, cellId: string, sql: string): Promise<boolean> {
+            if (!this.list.some(r => r.id === reportId)) return false
+            if (this.currentId !== reportId) this.open(reportId)
+            const b = this.doc.blocks.find(x => x.id === cellId)
+            if (!b || !isCell(b) || b.cell.spec.type !== "sql") return false
+            this.setCell(cellId, { spec: { ...b.cell.spec, sql } })
+            this.flushSave()
+            await this.run(cellId)
+            return true
         },
 
         /** Opens the Add to report sheet with what a view handed over. */

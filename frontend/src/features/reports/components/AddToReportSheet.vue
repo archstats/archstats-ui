@@ -85,8 +85,8 @@
           </aside>
 
           <!-- What it will read like, in place. -->
-          <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-surface">
-            <div class="mx-auto max-w-[620px] px-10 pb-16 pt-8">
+          <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-surface" @wheel.passive="holdUntil = 0" @keydown="holdUntil = 0">
+            <div ref="column" class="mx-auto max-w-[620px] px-10 pb-16 pt-8">
               <p v-if="target === NEW" class="text-[24px] font-semibold tracking-[-0.015em] text-neutral-950">{{ newTitle || "Untitled report" }}</p>
               <p v-else-if="!before.length" class="text-[24px] font-semibold tracking-[-0.015em] text-neutral-400">{{ targetTitle }}</p>
 
@@ -102,7 +102,7 @@
               </div>
 
               <!-- What is being added: editable, marked as new. -->
-              <section class="relative my-4 -ml-5 rounded-md pb-1 pl-5 pr-1 pt-3 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]" aria-label="What is added">
+              <section ref="addingEl" class="relative my-4 -ml-5 rounded-md pb-1 pl-5 pr-1 pt-3 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]" aria-label="What is added">
                 <span class="absolute -top-2 left-3 bg-surface px-1.5 text-[10.5px] font-medium text-accent-700">Adding</span>
                 <button v-if="!hasProseAbove" type="button" class="nb-ghost" @click="writeAbove"><Icon icon="plus" :size="12"/> Write above</button>
                 <template v-for="(b, i) in draft" :key="b.id">
@@ -187,9 +187,14 @@
                 <div class="ui-segmented" role="group" aria-label="Rows">
                   <button v-for="n in rowOptions" :key="n" type="button" :aria-pressed="rows === n" @click="rows = n">{{ n === src.table.rows.length ? "All" : n }}</button>
                 </div>
-                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ rows.toLocaleString("en-US") }} of {{ src.table.total.toLocaleString("en-US") }} in the view's order<template v-if="src.table.total > src.table.rows.length">; the first {{ src.table.rows.length }} can be kept</template>.</p>
+                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ rows.toLocaleString("en-US") }} of {{ src.table.total.toLocaleString("en-US") }} in the {{ src.sql ? "query's" : "view's" }} order<template v-if="src.table.total > src.table.rows.length">; the first {{ src.table.rows.length }} can be kept</template>.</p>
               </section>
-              <section>
+              <section v-if="src.sql">
+                <h3 class="ui-label mb-1.5">Live query</h3>
+                <p class="text-[11px] leading-4 text-neutral-500">The report keeps the SQL, not a copy of the rows: it runs again on the report's snapshot, and a newer scan says what moved. Edit it in the report, or open it in the console from there.</p>
+                <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-surface px-2 py-1.5 font-mono text-[11px] leading-4 text-neutral-700 hairline">{{ src.sql }}</pre>
+              </section>
+              <section v-else>
                 <div class="mb-1.5 flex items-baseline">
                   <h3 class="ui-label flex-1">Columns</h3>
                   <span class="font-mono text-[11px] text-neutral-500">{{ columns.size }} of {{ src.table.columns.length }}</span>
@@ -258,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { Figure } from "wailsjs/go/app/EvidenceService";
 import NotebookCell from "./NotebookCell.vue";
@@ -384,8 +389,39 @@ const rowOptions = computed(() => {
   return [...new Set([5, 10, 25, 50].filter(x => x < n).concat(n))];
 });
 
+// ── Landing on what is added ───────────────────────────────────────────
+// The sheet opens on the incoming block, not the top of the report: the
+// report above it can run to pages, and the point of the preview is how the
+// new block reads where it lands. Figures above it arrive after the sheet
+// opens and push it down, so for a moment the view keeps it centred, until
+// the reader scrolls themselves.
+const scroller = ref<HTMLElement | null>(null);
+const column = ref<HTMLElement | null>(null);
+const addingEl = ref<HTMLElement | null>(null);
+const holdUntil = ref(0);
+const HOLD_MS = 1500;
+function revealAdding(smooth: boolean) {
+  const box = scroller.value, el = addingEl.value;
+  if (!box || !el) return;
+  const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+  // Centred when it fits; a block taller than the pane shows its start, just under the pane's top.
+  const want = el.offsetHeight < box.clientHeight - 48 ? top - (box.clientHeight - el.offsetHeight) / 2 : top - 24;
+  const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  box.scrollTo({ top: Math.max(0, want), behavior: smooth && !reduce ? "smooth" : "auto" });
+}
+function landOnAdding(smooth: boolean) {
+  holdUntil.value = Date.now() + HOLD_MS;
+  void nextTick(() => revealAdding(smooth));
+}
+const settle = typeof ResizeObserver !== "undefined"
+  ? new ResizeObserver(() => { if (Date.now() < holdUntil.value) revealAdding(false); })
+  : null;
+watch(column, (el, was) => { if (was) settle?.unobserve(was); if (el) settle?.observe(el); });
+onBeforeUnmount(() => settle?.disconnect());
+
 watch(draftSrc, (s) => {
   if (!s) return;
+  landOnAdding(false);
   error.value = "";
   adding.value = false;
   editingId.value = null;
@@ -401,7 +437,8 @@ watch(draftSrc, (s) => {
     // Filling a template's slot keeps every column: the template asked for this
     // table as it is (a matrix cut to five columns read as "no dependency").
     // Added by hand, a wide table keeps the name and four more; the rest are a click away.
-    columns.value = new Set((f ? s.table.columns : s.table.columns.slice(0, 5)).map(c => c.id));
+    // A live query keeps what its SQL selects; the SQL is where a column is left out.
+    columns.value = new Set((f || s.sql ? s.table.columns : s.table.columns.slice(0, 5)).map(c => c.id));
   }
   draft.value = s.kind === "document"
     ? fromMarkdown(s.markdown ?? "")
@@ -413,6 +450,7 @@ watch(draftSrc, (s) => {
 }, { immediate: true });
 
 function buildCell(s: ImportDraft): Cell {
+  if (s.sql) return { spec: { type: "sql", sql: s.sql, limit: rows.value }, title: s.title, caption: "", output: { table: trimmed(s) }, ranOn: s.ranOn };
   return {
     spec: { type: "capture", kind: s.kind === "figure" ? "figure" : "table", route: s.route, view: s.view },
     title: s.title,
@@ -441,7 +479,11 @@ watch(slotBlock, (slot, was) => {
 watch([rows, columns], () => {
   const s = src.value;
   if (!s?.table) return;
-  for (const b of draft.value) if (isCell(b)) b.cell = { ...b.cell, output: { table: trimmed(s) } };
+  for (const b of draft.value) {
+    if (!isCell(b)) continue;
+    const spec = b.cell.spec.type === "sql" ? { ...b.cell.spec, limit: rows.value } : b.cell.spec;
+    b.cell = { ...b.cell, spec, output: { table: trimmed(s) } };
+  }
 });
 function toggleColumn(id: string) {
   const next = new Set(columns.value);
@@ -470,6 +512,7 @@ async function loadContextFigures() {
   }
 }
 watch(target, () => void loadContextFigures());
+watch([target, place], () => { if (draftSrc.value) landOnAdding(true); });
 const figureOf = (b: CellBlock) => { const p = b.cell.output?.figure; return p ? reports.figures[p] ?? ctxFigures.value[p] ?? null : null; };
 
 // Numbered as they will be once added.
@@ -575,7 +618,8 @@ async function add(open: boolean) {
       await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || "Untitled report");
     }
     reports.importing = null;
-    if (open) void router.push("/views/evidence");
+    // Opened, the report lands on what was just added, as the sheet did.
+    if (open) { reports.landOn = (blocks.find(isCell) ?? blocks[0]).id; void router.push("/views/evidence"); }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {

@@ -200,6 +200,7 @@
                     @run="reports.run(b.id)"
                     @patch="p => reports.setCell(b.id, p)"
                     @spec="s => setSpec(b.id, s)"
+                    @console="openInConsole(b)"
                   />
                 </div>
               </div>
@@ -290,6 +291,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useEvidenceStore } from "~/features/reports/evidence.store";
 import { useReportsStore, type ReportRecord } from "~/features/reports/reports.store";
 import { useSlotTaking } from "~/features/reports/useSlotTaking";
+import { useConsoleStore } from "~/features/sql/console.store";
 import { useRouter } from "vue-router";
 import { useAuthorsStore } from "~/features/git/authors.store";
 import { namesIn } from "~/features/reports/reportCells";
@@ -536,6 +538,19 @@ function jump(id: string) {
 const insertAt = ref<{ id: string | null; mode: "below" | "above" | "replace"; anchor: { left: number; top: number } } | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 
+// Arriving from Add and open: land on the block just added once it has drawn
+// (the report may still be opening, and its figures load after it).
+function landOnAdded() {
+  const id = reports.landOn;
+  if (!id || !reports.doc.blocks.some(b => b.id === id)) return;
+  void nextTick(() => {
+    if (!scroller.value?.querySelector(`[data-id="${id}"]`)) return;
+    reports.landOn = null;
+    jump(id);
+  });
+}
+watch(() => [reports.landOn, reports.doc.blocks.length, scroller.value], landOnAdded, { immediate: true });
+
 function openInsert(id: string | null, mode: "below" | "above" | "replace") {
   const row = id ? scroller.value?.querySelector(`[data-id="${id}"]`) as HTMLElement | null : null;
   const col = scroller.value?.querySelector("article") as HTMLElement | null;
@@ -672,6 +687,14 @@ const savingTemplate = ref<ReportRecord | null>(null);
 
 // ── Slots and computed paragraphs ───────────────────────────────────────
 const router = useRouter();
+
+// A SQL cell opened in the console stays linked to it: Update cell there writes the SQL back here.
+const sqlConsole = useConsoleStore();
+function openInConsole(b: CellBlock) {
+  if (b.cell.spec.type !== "sql" || !reports.currentId) return;
+  sqlConsole.openCell({ reportId: reports.currentId, cellId: b.id, report: reports.current?.title || "Untitled report", label: numbers.value.get(b.id) ?? "Table", sql: b.cell.spec.sql }, b.cell.title);
+  void router.push("/views/query");
+}
 const taking = useSlotTaking();
 /** A run paused on this report picks up where it stopped; otherwise every slot, in reading order. */
 const pausedHere = computed(() => !!reports.takeQueue && reports.takeQueue.reportId === reports.currentId);
