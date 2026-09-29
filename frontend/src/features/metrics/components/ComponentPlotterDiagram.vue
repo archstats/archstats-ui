@@ -410,8 +410,11 @@ watch([xz, yz, themeVersion], () => {
 // ─── Glide on an axis change ───
 const gliding = ref(false);
 let glideTimer: ReturnType<typeof setTimeout> | undefined;
-watch(() => [props.xAxisProperty, props.yAxisProperty, props.xLog, props.yLog, props.radiusProperty], () => {
+watch(() => [props.xAxisProperty, props.yAxisProperty, props.xLog, props.yLog, props.radiusProperty], (now, before) => {
   hovered.value = null;
+  // A zoom window belongs to the axes it was taken on: new axes open on the whole plot.
+  const axesChanged = !before || now.slice(0, 4).some((v, i) => v !== before[i]);
+  if (axesChanged && svg.value && zoom) d3.select(svg.value).call(zoom.transform, d3.zoomIdentity);
   gliding.value = true;
   clearTimeout(glideTimer);
   glideTimer = setTimeout(() => { gliding.value = false; }, 650);
@@ -630,7 +633,7 @@ defineExpose({ zoomIn, zoomOut, resetZoom });
 watch([width, height], ([w, h]) => {
   // d3-zoom resolves its extent inside the transition's tween, and its
   // default reads the svg's own width: state the box instead.
-  zoom?.extent([[0, 0], [w, h]]);
+  zoom?.extent([[0, 0], [w, h]]).translateExtent([[0, 0], [w, h]]);
 });
 
 onMounted(() => {
@@ -646,7 +649,10 @@ onMounted(() => {
   drawAxes();
   if (!svg.value) return;
   zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 60])
+      // An axis chart has nothing outside its data: never smaller than the whole
+      // plot, never panned past its edges.
+      .scaleExtent([1, 60])
+      .translateExtent([[0, 0], [width.value, height.value]])
       .extent([[0, 0], [width.value, height.value]])
       .filter((event: any) => {
         if (event.type === "wheel") return true;
