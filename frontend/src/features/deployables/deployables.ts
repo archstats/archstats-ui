@@ -28,11 +28,21 @@ export interface Pipeline {
   id: string; name: string; system: string; file: string; repository: string; parsed: string
   triggers: string; paths: string; stages: string; tools: string
   delegates_to: string; delegates_ref: string; environments: string; deployables: number
+  /**
+   * Revision 9: workflow, reusable_workflow, composite_action, docker_action,
+   * javascript_action for GitHub Actions; pipeline for every other system.
+   */
+  kind?: string
+  /** Revision 9: the local workflows and actions it uses, by id. */
+  calls?: string
 }
 export interface PipelineLink { pipeline: string; deployable: string; action: string; file: string; line: number; resolution: string }
 export interface Environment { deployable: string; environment: string; kind: string; source: string; file: string; line: number }
 export interface EnvValue { deployable: string; environment: string; source: string; key: string; value: string; secret: number; file: string; line: number }
 export interface Dependency { deployable: string; ecosystem: string; name: string; version: string; role: string; source: string; file: string; line: number }
+
+/** A production file, for the code map: which component it is in and how long it is. */
+export interface CodeFile { file: string; component: string; lines: number }
 
 export interface DeployableModel {
   deployables: Deployable[]
@@ -45,11 +55,12 @@ export interface DeployableModel {
   environments: Environment[]
   values: EnvValue[]
   dependencies: Dependency[]
+  files: CodeFile[]
 }
 
 export const EMPTY_MODEL: DeployableModel = {
   deployables: [], contents: [], components: [], links: [], unresolved: [], pipelines: [],
-  pipelineLinks: [], environments: [], values: [], dependencies: [],
+  pipelineLinks: [], environments: [], values: [], dependencies: [], files: [],
 }
 
 type Query = <T>(sql: string) => Promise<T[]>
@@ -57,33 +68,38 @@ type Query = <T>(sql: string) => Promise<T[]>
 /** Reads every deployable table the snapshot has; a table it lacks reads as empty. */
 export async function loadModel(query: Query, hasView: (v: string) => boolean): Promise<DeployableModel> {
   const read = <T>(view: string, sql: string) => (hasView(view) ? query<T>(sql) : Promise.resolve([] as T[]))
-  const [deployables, contents, components, links, unresolved, pipelines, pipelineLinks, environments, values, dependencies] = await Promise.all([
+  const [deployables, contents, components, links, unresolved, pipelines, pipelineLinks, environments, values, dependencies, files] = await Promise.all([
     read<Deployable>("deployables", "SELECT * FROM deployables ORDER BY id"),
     read<Content>("deployable_contents", "SELECT deployable, path, pattern, module, file, line, resolution FROM deployable_contents"),
     read<DeployableComponent>("deployable_components", "SELECT deployable, component, files FROM deployable_components"),
     read<Link>("deployable_links", "SELECT `from`, `to`, to_kind, kind, mode, via, file, line, resolution FROM deployable_links"),
     read<Unresolved>("deployable_unresolved", "SELECT `from`, ref, file, line, reason FROM deployable_unresolved"),
-    read<Pipeline>("pipelines", "SELECT id, name, system, file, repository, parsed, triggers, paths, stages, tools, delegates_to, delegates_ref, environments, deployables FROM pipelines ORDER BY id"),
+    // Every column: kind and calls arrived in revision 9.
+    read<Pipeline>("pipelines", "SELECT * FROM pipelines ORDER BY id"),
     read<PipelineLink>("pipeline_deployables", "SELECT pipeline, deployable, action, file, line, resolution FROM pipeline_deployables"),
     read<Environment>("deployable_environments", "SELECT deployable, environment, kind, source, file, line FROM deployable_environments"),
     read<EnvValue>("deployable_environment_values", "SELECT deployable, environment, source, key, value, secret, file, line FROM deployable_environment_values"),
     read<Dependency>("deployable_dependencies", "SELECT deployable, ecosystem, name, version, role, source, file, line FROM deployable_dependencies"),
+    read<CodeFile>("files", "SELECT name AS file, component, complexity__lines AS lines FROM files WHERE role = 'production'"),
   ])
-  return { deployables, contents, components, links, unresolved, pipelines, pipelineLinks, environments, values, dependencies }
+  return { deployables, contents, components, links, unresolved, pipelines, pipelineLinks, environments, values, dependencies, files }
 }
 
 // ---------------------------------------------------------------------------
 // Words
 // ---------------------------------------------------------------------------
 
-export const KIND_LABEL: Record<string, string> = { image: "Image", app: "App", function: "Function", mobile_app: "Mobile app" }
-export const PLATFORM_LABEL: Record<string, string> = { android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native" }
+export const KIND_LABEL: Record<string, string> = { image: "Image", app: "App", function: "Function", mobile_app: "Mobile app", desktop_app: "Desktop app" }
+export const PLATFORM_LABEL: Record<string, string> = {
+  android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native", wails: "Wails", tauri: "Tauri", electron: "Electron",
+}
 
 export const BUILT_BY_LABEL: Record<string, string> = {
   skaffold: "Skaffold", jib: "Jib", buildpacks: "Buildpacks", ko: "ko", bazel: "Bazel", pipeline: "a pipeline",
   compose: "Compose", "maven-docker": "a Maven plugin", "spring-boot": "Spring Boot", "dotnet-publish": "dotnet publish",
   dockerfile: "a Dockerfile only", maven: "Maven", gradle: "Gradle", dotnet: ".NET", aspire: "the Aspire app host",
   xcode: "Xcode", flutter: "Flutter", "react-native": "React Native", expo: "Expo",
+  wails: "Wails", tauri: "Tauri", electron: "Electron",
   sam: "SAM", serverless: "Serverless", delegated: "a template outside this workspace",
 }
 
@@ -534,4 +550,163 @@ export function pipelineRoster(m: DeployableModel): { acting: Array<{ pipeline: 
   const acting = m.pipelines.filter(p => by.has(p.id)).map(p => ({ pipeline: p, actions: by.get(p.id)! }))
     .sort((a, b) => size(b.actions) - size(a.actions) || a.pipeline.name.localeCompare(b.pipeline.name))
   return { acting, idle: m.pipelines.filter(p => !by.has(p.id)) }
+}
+
+// ---------------------------------------------------------------------------
+// Code: what ships each production file
+// ---------------------------------------------------------------------------
+
+export interface CodeSlice {
+  /** A deployable's id, or "several" or "none". */
+  id: string
+  kind: "deployable" | "several" | "none"
+  lines: number
+  files: number
+}
+
+export interface CodeShare {
+  /** The deployables that ship each production file: none, one or several. */
+  ownerOf: Map<string, string[]>
+  /** Lines by what ships them, each deployable's own first (biggest first), then several, then nothing. */
+  slices: CodeSlice[]
+  lines: number
+}
+
+/**
+ * Which deployable ships each production file, through the component it is
+ * in: a component a deployable carries ships every file of it. A component
+ * in several deployables is code they share at deploy time; one in none is
+ * code nothing here packages.
+ */
+export function codeShare(m: DeployableModel): CodeShare {
+  const shippedBy = new Map<string, string[]>()
+  for (const c of m.components) shippedBy.set(c.component, [...(shippedBy.get(c.component) ?? []), c.deployable])
+  const ownerOf = new Map<string, string[]>()
+  const tally = new Map<string, CodeSlice>()
+  const add = (id: string, kind: CodeSlice["kind"], lines: number) => {
+    const s = tally.get(id) ?? { id, kind, lines: 0, files: 0 }
+    s.lines += lines
+    s.files++
+    tally.set(id, s)
+  }
+  let lines = 0
+  for (const f of m.files) {
+    const ids = [...new Set(shippedBy.get(f.component) ?? [])].sort()
+    const n = Math.max(0, Number(f.lines) || 0)
+    ownerOf.set(f.file, ids)
+    lines += n
+    if (ids.length === 1) add(ids[0], "deployable", n)
+    else add(ids.length ? "several" : "none", ids.length ? "several" : "none", n)
+  }
+  const rank = { deployable: 0, several: 1, none: 2 }
+  const slices = [...tally.values()].sort((a, b) => rank[a.kind] - rank[b.kind] || b.lines - a.lines || a.id.localeCompare(b.id))
+  return { ownerOf, slices, lines }
+}
+
+// ---------------------------------------------------------------------------
+// Ship: pipelines by what they do
+// ---------------------------------------------------------------------------
+
+/** GitHub Actions files that do not start on their own: they run inside the workflows that use them. */
+export const BLOCK_KINDS = new Set(["reusable_workflow", "composite_action", "docker_action", "javascript_action", "action"])
+
+export const PIPELINE_KIND_LABEL: Record<string, string> = {
+  workflow: "Workflow", reusable_workflow: "Reusable workflow", composite_action: "Composite action",
+  docker_action: "Docker action", javascript_action: "JavaScript action", action: "Action", pipeline: "Pipeline",
+}
+
+export const TRIGGER_LABEL: Record<string, string> = {
+  push: "push", pull_request: "pull request", pull_request_target: "pull request", schedule: "schedule",
+  workflow_dispatch: "by hand", workflow_call: "called", release: "release", merge_group: "merge queue",
+  workflow_run: "after a workflow", repository_dispatch: "API call", issue_comment: "comment", issues: "issue",
+}
+
+/** A pipeline's kind; snapshots before revision 9 say only what the triggers show. */
+export function pipelineKind(p: Pipeline): string {
+  if (p.kind) return p.kind
+  if (list(p.triggers).includes("workflow_call")) return "reusable_workflow"
+  return p.system === "github_actions" ? "workflow" : "pipeline"
+}
+
+/** Starts on its own: anything but an action, or a reusable workflow that has a trigger besides being called. */
+export function startsOnItsOwn(p: Pipeline): boolean {
+  const kind = pipelineKind(p)
+  if (kind !== "reusable_workflow") return !BLOCK_KINDS.has(kind)
+  return list(p.triggers).some(t => t !== "workflow_call")
+}
+
+export interface ShipRow {
+  key: string
+  /** One pipeline, or several that do the same thing on the same triggers. */
+  pipelines: Pipeline[]
+  name: string
+  system: string
+  stages: Set<string>
+  triggers: string[]
+  /** Templates outside the workspace the work is handed to. */
+  delegates: string[]
+  /** Deployables by what the pipelines do to them: builds, deploys. */
+  actions: Map<string, string[]>
+  environments: string[]
+  /** Building blocks it uses, by pipeline id. */
+  uses: string[]
+}
+
+/**
+ * The pipelines that start on their own, one row per kind of work: two
+ * pipelines with the same stages, triggers and hand-off are one row with a
+ * count (22 repositories that each build, test, scan and deploy the same way
+ * read as one line, not 22). Rows that ship something come first.
+ */
+export function shipRows(m: DeployableModel): ShipRow[] {
+  const acts = new Map<string, Map<string, Set<string>>>()
+  for (const pl of m.pipelineLinks) {
+    const a = acts.get(pl.pipeline) ?? new Map<string, Set<string>>()
+    a.set(pl.action, (a.get(pl.action) ?? new Set()).add(pl.deployable))
+    acts.set(pl.pipeline, a)
+  }
+  const rows = new Map<string, ShipRow>()
+  for (const p of m.pipelines.filter(startsOnItsOwn)) {
+    const triggers = [...new Set(list(p.triggers).filter(t => t !== "workflow_call"))]
+    const delegates = [...new Set(list(p.delegates_to))].sort()
+    const key = [p.system, pipelineKind(p), list(p.stages).sort().join("+"), [...triggers].sort().join("+"), delegates.join("+")].join("|")
+    const row = rows.get(key) ?? { key, pipelines: [], name: "", system: p.system, stages: new Set(list(p.stages)), triggers, delegates, actions: new Map(), environments: [], uses: [] }
+    row.pipelines.push(p)
+    for (const [action, ds] of acts.get(p.id) ?? []) row.actions.set(action, [...new Set([...(row.actions.get(action) ?? []), ...ds])].sort())
+    row.environments = [...new Set([...row.environments, ...list(p.environments)])]
+    row.uses = [...new Set([...row.uses, ...list(p.calls)])].sort()
+    rows.set(key, row)
+  }
+  const ships = (r: ShipRow) => new Set([...r.actions.values()].flat()).size
+  return [...rows.values()]
+    .map(r => {
+      const names = [...new Set(r.pipelines.map(p => p.name))]
+      r.name = names.length === 1 ? names[0] : `${r.pipelines.length} pipelines`
+      r.pipelines.sort((a, b) => a.id.localeCompare(b.id))
+      r.environments.sort((a, b) => envOrder(a) - envOrder(b) || a.localeCompare(b))
+      return r
+    })
+    .sort((a, b) => ships(b) - ships(a) || b.stages.size - a.stages.size || b.pipelines.length - a.pipelines.length || a.name.localeCompare(b.name))
+}
+
+export interface Block {
+  pipeline: Pipeline
+  kind: string
+  /** Pipelines that use it directly, by id. */
+  usedBy: string[]
+}
+
+/** Reusable workflows and actions defined here, most used first. */
+export function buildingBlocks(m: DeployableModel): Block[] {
+  const usedBy = new Map<string, string[]>()
+  for (const p of m.pipelines) for (const c of list(p.calls)) usedBy.set(c, [...(usedBy.get(c) ?? []), p.id])
+  return m.pipelines
+    .filter(p => BLOCK_KINDS.has(pipelineKind(p)))
+    .map(p => ({ pipeline: p, kind: pipelineKind(p), usedBy: (usedBy.get(p.id) ?? []).sort() }))
+    .sort((a, b) => b.usedBy.length - a.usedBy.length || a.pipeline.name.localeCompare(b.pipeline.name))
+}
+
+/** The deployables a set of pipelines builds or deploys. */
+export function shippedBy(m: DeployableModel, pipelines: ReadonlySet<string>): Set<string> {
+  return new Set(m.pipelineLinks.filter(l => pipelines.has(l.pipeline)).map(l => l.deployable))
 }

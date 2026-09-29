@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   EMPTY_MODEL, arrangeMap, environmentRoster, pipelineRoster, envDiff, environmentsOf, envOrder, layoutMap, loadModel, pinOf, proposeLens, sharedModules, shipsIn,
   spread, stageStrip, talksTo, technology, type DeployableModel, type EnvValue, type Link,
+  buildingBlocks, codeShare, pipelineKind, shipRows, startsOnItsOwn, type Pipeline,
 } from "./deployables"
 
 const link = (from: string, to: string, kind: string, extra: Partial<Link> = {}): Link => ({
@@ -234,5 +235,63 @@ describe("rosters", () => {
     const r = pipelineRoster(m)
     expect(r.acting[0].actions.get("builds")).toEqual(["a", "b"])
     expect(r.idle.map(p => p.id)).toEqual(["p2"])
+  })
+})
+
+const pipe = (id: string, extra: Partial<Pipeline> = {}): Pipeline => ({
+  id, name: id, system: "github_actions", file: id, repository: "", parsed: "full", triggers: "push", paths: "", stages: "build,test",
+  tools: "", delegates_to: "", delegates_ref: "", environments: "", deployables: 0, ...extra,
+})
+
+describe("codeShare", () => {
+  it("credits each production file to what ships its component", () => {
+    const m = { ...shop, files: [
+      { file: "web/a.go", component: "web", lines: 100 },
+      { file: "common/x.java", component: "common", lines: 30 },
+      { file: "tools/gen.py", component: "tools", lines: 5 },
+      { file: "cart/c.java", component: "cart", lines: 40 },
+    ] }
+    const s = codeShare(m)
+    expect(s.ownerOf.get("common/x.java")).toEqual(["checkout", "payment"])
+    expect(s.ownerOf.get("tools/gen.py")).toEqual([])
+    expect(s.slices.map(x => [x.id, x.lines])).toEqual([["frontend", 100], ["cart", 40], ["several", 30], ["none", 5]])
+    expect(s.lines).toBe(175)
+  })
+})
+
+describe("shipRows and buildingBlocks", () => {
+  const m = model({
+    pipelines: [
+      pipe("a/ci.yml", { name: "CI", calls: ".github/actions/setup/action.yml" }),
+      pipe("b/ci.yml", { name: "CI" }),
+      pipe("release.yml", { name: "Release", stages: "build,package,publish", triggers: "push, workflow_dispatch" }),
+      pipe("build.yml", { kind: "reusable_workflow", triggers: "workflow_call" }),
+      pipe("both.yml", { kind: "reusable_workflow", triggers: "workflow_call, schedule" }),
+      pipe(".github/actions/setup/action.yml", { name: "Set up", kind: "composite_action", triggers: "", stages: "build" }),
+      pipe("Jenkinsfile", { system: "jenkins", kind: "pipeline", triggers: "" }),
+    ],
+    pipelineLinks: [{ pipeline: "release.yml", deployable: "app", action: "builds", file: "release.yml", line: 3, resolution: "repository" }],
+  })
+  it("groups pipelines that do the same thing, and puts what ships first", () => {
+    const rows = shipRows(m)
+    expect(rows[0].name).toBe("Release")
+    expect(rows[0].actions.get("builds")).toEqual(["app"])
+    const ci = rows.find(r => r.name === "CI")!
+    expect(ci.pipelines.map(p => p.id)).toEqual(["a/ci.yml", "b/ci.yml"])
+    expect(ci.uses).toEqual([".github/actions/setup/action.yml"])
+    // Called only: a building block, not a row; called and scheduled: both.
+    expect(rows.some(r => r.pipelines.some(p => p.id === "build.yml"))).toBe(false)
+    expect(rows.find(r => r.pipelines.some(p => p.id === "both.yml"))!.triggers).toEqual(["schedule"])
+    expect(rows.some(r => r.system === "jenkins")).toBe(true)
+  })
+  it("lists actions and reusable workflows with what uses them", () => {
+    const blocks = buildingBlocks(m)
+    expect(blocks[0]).toMatchObject({ kind: "composite_action", usedBy: ["a/ci.yml"] })
+    expect(blocks.map(b => b.pipeline.id).sort()).toEqual([".github/actions/setup/action.yml", "both.yml", "build.yml"])
+  })
+  it("reads kinds from triggers on snapshots before revision 9", () => {
+    expect(pipelineKind(pipe("x", { triggers: "workflow_call" }))).toBe("reusable_workflow")
+    expect(startsOnItsOwn(pipe("x", { triggers: "workflow_call" }))).toBe(false)
+    expect(pipelineKind(pipe("x", { system: "gitlab" }))).toBe("pipeline")
   })
 })

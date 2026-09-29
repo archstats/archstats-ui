@@ -6,18 +6,11 @@
        solid ink, messages dashed violet, data dotted blue, and a join made
        on a name alone is drawn faint, so weak evidence looks weak. A click
        selects and never navigates. -->
-  <div class="relative flex min-h-0 grow flex-col">
-    <!-- Key: every mark on the map, named, in its own row so it never sits on a node. -->
-    <div class="flex h-8 shrink-0 items-center gap-4 px-4 text-[11px] text-neutral-600 hairline-b" aria-label="Key">
-      <span v-for="k in KEY" :key="k.label" class="flex items-center gap-1.5">
-        <svg width="22" height="6" class="shrink-0" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" :class="k.cls" stroke-width="1.5" :stroke-dasharray="k.dash"/></svg>{{ k.label }}
-      </span>
-      <span class="flex items-center gap-1.5"><svg width="22" height="6" class="shrink-0" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" class="stroke-neutral-400" stroke-width="1.25" stroke-opacity="0.45"/></svg>Joined by name only</span>
-      <span class="flex items-center gap-1.5"><svg width="16" height="10" class="shrink-0" aria-hidden="true"><rect x="0.5" y="0.5" width="15" height="9" rx="2" class="fill-none stroke-neutral-400" stroke-dasharray="3 2"/></svg>Not built here</span>
-    </div>
-  <div class="min-h-0 grow overflow-auto" @click.self="emit('select', null)">
-    <div class="flex min-h-full min-w-full" @click.self="emit('select', null)">
-      <svg :width="width" :height="height" class="mx-auto block shrink-0 select-none" role="img" :aria-label="`Map of ${nodes.length} deployables and what they talk to`" @click.self="emit('select', null)">
+  <ExhibitFrame :exhibit="figure">
+  <div class="relative flex flex-col">
+  <div class="overflow-x-auto" @click.self="emit('select', null)">
+    <div class="flex min-w-full" @click.self="emit('select', null)">
+      <svg ref="svgEl" :width="width" :height="height" class="mx-auto block shrink-0 select-none" role="img" :aria-label="`Map of ${nodes.length} deployables and what they talk to`" @click.self="emit('select', null)">
         <defs>
           <marker v-for="k in MARKERS" :id="`${uid}-${k.id}`" :key="k.id" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L8,4 L0,8 z" :class="k.cls"/>
@@ -42,12 +35,13 @@
         >
           <rect
             :width="NODE_W" :height="NODE_H" rx="5"
-            :class="n.external ? 'fill-transparent stroke-neutral-300' : selected === n.id ? 'fill-accent-50 stroke-accent-500' : n.empty ? 'fill-neutral-50 stroke-neutral-300' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"
+            :class="n.external ? 'fill-transparent stroke-neutral-300' : selected === n.id ? 'fill-accent-50 stroke-accent-500' : n.tint ? 'hover:stroke-neutral-500' : n.empty ? 'fill-neutral-50 stroke-neutral-300' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"
+            :style="n.tint && selected !== n.id ? { fill: n.tint.fill, stroke: n.tint.stroke } : undefined"
             :stroke-width="selected === n.id ? 1.75 : 1" :stroke-dasharray="n.external ? '4 3' : undefined"
           />
           <component :is="n.glyph" :x="10" :y="9" :size="14" :stroke-width="1.75" :class="n.external ? 'text-neutral-400' : 'text-neutral-500'"/>
           <text :x="30" :y="20" class="font-mono text-[12px] font-medium" :class="n.external ? 'fill-neutral-600' : 'fill-neutral-900'">{{ n.label }}</text>
-          <text :x="30" :y="35" class="text-[11px]" :class="n.external ? 'fill-neutral-400' : 'fill-neutral-500'">{{ n.sub }}</text>
+          <text :x="30" :y="35" class="text-[11px]" :class="n.external ? 'fill-neutral-400' : n.drift ? 'fill-neutral-900 font-medium' : 'fill-neutral-500'">{{ n.sub }}</text>
           <rect v-if="!n.external" :x="10" :y="NODE_H - 5" :width="NODE_W - 20" height="2" rx="1" class="fill-neutral-100"/>
           <rect v-if="!n.external && n.share" :x="10" :y="NODE_H - 5" :width="Math.max(2, (NODE_W - 20) * n.share)" height="2" rx="1" class="fill-neutral-500"/>
           <title>{{ n.aria }}</title>
@@ -56,10 +50,14 @@
     </div>
   </div>
   </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, type Component } from "vue"
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import { useSvgFigure } from "~/features/export/useExportables"
+import type { LegendItem } from "~/features/export/figure"
 import { AppWindow, Box, Database, FunctionSquare, Globe, MessagesSquare, Smartphone } from "lucide-vue-next"
 import { arrangeMap, LINK_LABEL, RESOLUTION_LABEL, KIND_LABEL, type DeployableModel } from "../deployables"
 
@@ -68,7 +66,9 @@ const props = withDefaults(defineProps<{
   selected: string | null
   /** Deployables a pipeline or an environment picked in the lane; the rest fade. */
   highlight?: ReadonlySet<string> | null
-}>(), { highlight: null })
+  /** What the node fill says: nothing but selection, or the runtime family (versions of one family apart). */
+  mark?: "kind" | "runtime"
+}>(), { highlight: null, mark: "kind" })
 const emit = defineEmits<{ (e: "select", id: string | null): void }>()
 
 const uid = `sm${Math.random().toString(36).slice(2, 8)}`
@@ -84,13 +84,45 @@ const MARKERS = [
   { id: "msg", cls: "fill-violet-500" }, { id: "data", cls: "fill-blue-500" },
 ]
 const KEY = [
-  { label: "Calls", cls: "stroke-neutral-500" },
-  { label: "Messages", cls: "stroke-violet-500", dash: "6 4" },
-  { label: "Uses a datastore", cls: "stroke-blue-500", dash: "1.5 3" },
+  { label: "Calls", token: "neutral-500" },
+  { label: "Messages", token: "violet-500", dash: "6 4" },
+  { label: "Uses a datastore", token: "blue-500", dash: "1.5 3" },
 ]
 const GLYPH: Record<string, Component> = { image: Box, app: AppWindow, function: FunctionSquare, mobile_app: Smartphone }
 const EXTERNAL_GLYPH: Record<string, Component> = { data: Database, broker: MessagesSquare, service: Globe }
 const EXTERNAL_WORDS: Record<string, string> = { data: "datastore, not built here", broker: "broker, not built here", service: "not built here" }
+
+const svgEl = ref<SVGSVGElement | null>(null)
+
+// Runtime families, most used first; four get a hue, the rest stay neutral.
+const RUNTIME_HUES = ["blue", "green", "violet", "amber"]
+const family = (r: string) => r.split(/[\s@:]/)[0].toLowerCase()
+const runtimes = computed(() => {
+  const by = new Map<string, Set<string>>()
+  const count = new Map<string, number>()
+  for (const d of props.model.deployables) {
+    if (!d.runtime) continue
+    const f = family(d.runtime)
+    by.set(f, (by.get(f) ?? new Set()).add(d.runtime))
+    count.set(f, (count.get(f) ?? 0) + 1)
+  }
+  const ranked = [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  return ranked.map(([f, n], i) => ({ family: f, count: n, versions: [...by.get(f)!].sort(), hue: RUNTIME_HUES[i] ?? "neutral" }))
+})
+const runtimeOf = computed(() => new Map(runtimes.value.map(r => [r.family, r])))
+
+const legend = computed(() => {
+  const items: LegendItem[] = [
+    ...KEY.map(k => ({ label: k.label, color: `rgb(var(--c-${k.token}))`, mark: (k.dash ? "dashed" : "line") as LegendItem["mark"] })),
+    { label: "Joined by name only", color: "rgb(var(--c-neutral-300))", mark: "line", title: "The join rests on a name alone, so it is drawn faint" },
+    { label: "Not built here", color: "rgb(var(--c-neutral-400))", mark: "ring" },
+  ]
+  if (props.mark === "runtime") {
+    for (const r of runtimes.value) items.push({ label: r.versions.length > 1 ? `${r.family}: ${r.versions.length} versions` : r.versions[0], color: `rgb(var(--c-${r.hue}-${r.hue === "neutral" ? 300 : 400}))`, count: r.count, title: r.versions.join(", ") })
+  }
+  return { items, notes: ["Columns count call steps from what nothing calls; a bar under a name is the production code it carries, on a square-root scale. Links are what configuration names, not observed traffic."] }
+})
+const figure = useSvgFigure({ title: "What it is configured to call", svg: () => svgEl.value, legend: () => legend.value })
 
 const arranged = computed(() => arrangeMap(props.model, KINDS))
 const byId = computed(() => new Map(props.model.deployables.map(d => [d.id, d])))
@@ -124,9 +156,12 @@ const placed = computed(() => arranged.value.columns.flatMap((col, c) => {
     const ext = arranged.value.external.get(id)
     const kind = d ? KIND_LABEL[d.kind] ?? d.kind : ""
     const sub = ext ? EXTERNAL_WORDS[ext] : d!.files ? `${d!.runtime || kind} · ${d!.files.toLocaleString("en-US")} files` : `${d!.runtime || kind} · no code of its own`
+    const rt = props.mark === "runtime" && d?.runtime ? runtimeOf.value.get(family(d.runtime)) : undefined
     return {
       id, x: xOf(c), y: TOP + offset + r * ROW,
       external: !!ext, empty: !!d && !d.files,
+      tint: rt ? { fill: `rgb(var(--c-${rt.hue}-${rt.hue === "neutral" ? 100 : 50}))`, stroke: `rgb(var(--c-${rt.hue}-${rt.hue === "neutral" ? 300 : 400}))` } : null,
+      drift: !!rt && rt.versions.length > 1,
       glyph: ext ? EXTERNAL_GLYPH[ext] : GLYPH[d!.kind] ?? Box,
       label: id.length > 22 ? id.slice(0, 21) + "…" : id,
       sub, share: d ? Math.sqrt(d.files / maxFiles.value) : 0,
