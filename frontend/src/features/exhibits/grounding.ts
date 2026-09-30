@@ -60,6 +60,8 @@ function blocksOf(text: string): string[][] {
 
 function numbersIn(sentence: string): Array<{ value: number; text: string; percent: boolean }> {
     const text = sentence
+        // A scale is not a claim: "9.09 out of 10", "6/10", "from 1.0 to 10.0".
+        .replace(/\b(?:out of|of a possible)\s+\d+(?:\.\d+)?/gi, " ").replace(/\/\s*10(?:\.0)?\b/g, " ").replace(/\bfrom \d+(?:\.\d+)? to \d+(?:\.\d+)?/gi, " ")
         .replace(/`[^`]*`/g, " ")
         .replace(/\[[^\]]*\bE\d+[^\]]*\]/g, " ")
         .replace(/\bE\d+(?:\.\d+)?\b/g, " ")
@@ -115,7 +117,9 @@ function namesIn(sentence: string, entities: string[]): string[] {
  * The verdict for every sentence of a text, against the facts of the
  * exhibits it can cite. `E3` cites all of exhibit E3's facts; `E3.4` one.
  */
-export function checkGrounding(text: string, facts: Fact[]): Grounding {
+export function checkGrounding(text: string, facts: Fact[], opts: { given?: string } = {}): Grounding {
+    // Numbers the question itself states ("more than 5 dependents") need no fact.
+    const given = opts.given ? numbersIn(opts.given).map(x => x.value) : []
     const byId = new Map(facts.map(f => [f.id, f]))
     const allEntities = [...new Set(facts.flatMap(f => f.entities))]
     const claims: Claim[] = []
@@ -139,7 +143,7 @@ export function checkGrounding(text: string, facts: Fact[]): Grounding {
             let verdict: Verdict
             if (!cites.length) {
                 // A sentence with no number and no citation is interpretation or connective prose: nothing to check.
-                if (!nums.length) continue
+                if (!nums.length || nums.every(x => given.includes(x.value))) continue
                 // A number the answer already cited elsewhere is a restatement, not a new claim.
                 const restated = valuesOf(answerCited)
                 if (nums.every(x => matches(x.value, x.percent, restated))) { claims.push({ sentence, cites: [], verdict: "cited", reasons: ["restates a number cited earlier in the answer"] }); continue }
@@ -147,7 +151,7 @@ export function checkGrounding(text: string, facts: Fact[]): Grounding {
                 reasons.push(`states ${nums.map(x => x.text).join(", ")} without citing a fact`)
             } else {
                 const known = valuesOf(cited)
-                const loose = nums.filter(x => !matches(x.value, x.percent, known))
+                const loose = nums.filter(x => !given.includes(x.value) && !matches(x.value, x.percent, known))
                 const about = [...cited, ...context]
                 const citedEntities = new Set(about.flatMap(f => f.entities).map(e => e.toLowerCase()))
                 const citedText = about.map(f => f.text.toLowerCase()).join(" ")
@@ -164,4 +168,38 @@ export function checkGrounding(text: string, facts: Fact[]): Grounding {
     const counts: Record<Verdict, number> = { verified: 0, cited: 0, partial: 0, unsupported: 0, uncited: 0 }
     for (const c of claims) counts[c.verdict]++
     return { claims, counts }
+}
+
+/**
+ * Citations put right without a model. A sentence whose numbers are all in
+ * exactly one fact, and whose names that fact is about, cites that fact: a
+ * wrong citation (off by one, another figure) is replaced, a missing one
+ * added. Anything less certain is left for the check to flag.
+ */
+export function recite(text: string, facts: Fact[], opts: { given?: string } = {}): { text: string; fixed: number } {
+    const g = checkGrounding(text, facts, opts)
+    const entities = [...new Set(facts.flatMap(f => f.entities))]
+    let out = text
+    let fixed = 0
+    for (const c of g.claims) {
+        if (c.verdict !== "unsupported" && c.verdict !== "partial" && c.verdict !== "uncited") continue
+        const nums = numbersIn(c.sentence)
+        if (!nums.length) continue
+        const names = namesIn(c.sentence, entities).map(n => n.toLowerCase())
+        const holds = facts.filter(f => {
+            const known = valuesOf([f])
+            const about = new Set(f.entities.map(e => e.toLowerCase()))
+            return nums.every(x => known.some(k => Math.abs(k - x.value) < 1e-9 || Math.round(k) === x.value || Math.abs(Math.round(k * 100) / 100 - x.value) < 1e-9))
+                && names.every(n => about.has(n) || f.text.toLowerCase().includes(n))
+        })
+        if (holds.length !== 1) continue
+        const id = holds[0].id
+        const groups = c.sentence.match(/\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g) ?? []
+        let next: string
+        if (groups.length === 1) next = c.sentence.replace(groups[0], `[${id}]`)
+        else if (!groups.length) next = c.sentence.replace(/([.!?:;]?)\s*$/, ` [${id}]$1`)
+        else continue
+        if (next !== c.sentence && out.includes(c.sentence)) { out = out.replace(c.sentence, next); fixed++ }
+    }
+    return { text: out, fixed }
 }

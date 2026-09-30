@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { checkGrounding, sentencesOf } from "./grounding"
+import { checkGrounding, recite, sentencesOf } from "./grounding"
 import type { Fact } from "./types"
 
 const facts: Fact[] = [
@@ -49,5 +49,36 @@ describe("checking prose against the facts it cites", () => {
     it("accepts names an exhibit states as a whole (a tangle's members)", () => {
         const withMembers: Fact[] = [...facts, { id: "E3.1", kind: "total", text: "A tangle of 3 components.", entities: [], values: { components: 3 } }, { id: "E3.2", kind: "note", text: "Members: com.acme.a, com.acme.b.", entities: ["com.acme.a", "com.acme.b"], values: {} }]
         expect(checkGrounding("The tangle holds com.acme.a and com.acme.b [E3.1].", withMembers).claims[0].verdict).toBe("verified")
+    })
+})
+
+describe("recite", () => {
+    const rows: Fact[] = [
+        { id: "E3.1", kind: "row", text: "AssignmentAction.java: 18 commits.", entities: ["AssignmentAction.java"], values: { commits: 18 } },
+        { id: "E3.2", kind: "row", text: "AssignmentServiceImpl.java: 14 commits.", entities: ["AssignmentServiceImpl.java"], values: { commits: 14 } },
+        { id: "E4.1", kind: "total", text: "3,441 files.", entities: [], values: { files: 3441 } },
+    ]
+
+    it("moves a citation to the one fact that holds the sentence", () => {
+        const r = recite("AssignmentServiceImpl.java has 14 commits [E3.1].", rows)
+        expect(r.text).toBe("AssignmentServiceImpl.java has 14 commits [E3.2].")
+        expect(r.fixed).toBe(1)
+        expect(checkGrounding(r.text, rows).counts.verified).toBe(1)
+    })
+
+    it("adds a citation a sentence left out", () => {
+        expect(recite("The codebase has 3,441 files.", rows).text).toBe("The codebase has 3,441 files [E4.1].")
+    })
+
+    it("leaves a sentence alone when no single fact holds it", () => {
+        expect(recite("It has 99 commits [E3.1].", rows).fixed).toBe(0)
+    })
+})
+
+describe("what needs no fact", () => {
+    const f: Fact[] = [{ id: "E7.2", kind: "row", text: "com.x.cql: 9.09.", entities: ["com.x.cql"], values: { value: 9.09 } }]
+    it("takes the question's own numbers and a scale as given", () => {
+        const g = checkGrounding("com.x.cql has the lowest code health (9.09 out of 10.0) among components with more than 5 dependents [E7.2].", f, { given: "Which component with more than 5 dependents has the lowest code health?" })
+        expect(g.counts.verified).toBe(1)
     })
 })

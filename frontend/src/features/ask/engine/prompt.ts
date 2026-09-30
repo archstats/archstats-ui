@@ -14,7 +14,7 @@ export const TRAPS = [
     "Recent-period metrics (last 30/90 days) are measured from the scanned commit; an old checkout shows zeros. Prefer all-time when recent is all zero.",
 ]
 
-export function systemPrompt(opts: { card: string; here: string; onScreen?: ViewContext | null; plan?: Array<{ claim: string; test: string }> }): string {
+export function systemPrompt(opts: { card: string; here: string; onScreen?: ViewContext | null; plan?: Array<{ claim: string; test: string }>; strict?: boolean }): string {
     const screen = opts.onScreen ? describeScreen(opts.onScreen) : ""
     return `You are the architect's analyst inside Archstats, a desktop app that measures the architecture of a codebase from a scan: components, files, imports, cycles, metrics, code, and git history. You answer about the open snapshot only, and every fact comes from a tool.
 

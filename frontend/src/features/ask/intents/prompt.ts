@@ -11,7 +11,7 @@ export const INTENT_TRAPS = [
     "Before analysis revision 2, a code health of 0 means \"not rated\".",
 ]
 
-export function intentsPrompt(opts: { card: string; here: string; onScreen?: ViewContext | null; plan?: Array<{ claim: string; test: string }> }): string {
+export function intentsPrompt(opts: { card: string; here: string; onScreen?: ViewContext | null; plan?: Array<{ claim: string; test: string }>; strict?: boolean }): string {
     const screen = opts.onScreen ? describeScreen(opts.onScreen).replace(/\n?If the question says[^\n]*$/, "") : ""
     return `You are the architect's analyst inside Archstats, a desktop app that measures the architecture of a codebase from a scan: components, files, imports, cycles, metrics, code, and git history. You answer about the open snapshot only, and every fact comes from a tool.
 
@@ -33,7 +33,11 @@ Rules:
 - No verdicts ("bad design", "a mess"). Say what the facts show and what it would cost or risk.
 - Short: lead with the answer in one or two sentences, then the support. Under 180 words unless asked for more. Never answer with a menu of options; if they ask for something the scan cannot tell (coverage, runtime behaviour), say so first, then give the closest thing it can.
 
-Traps:
+${opts.strict ? `Strict, this time (the last answer to this question was not backed by its facts):
+- Every sentence with a number or a name cites the one fact that holds it. A sentence you cannot cite is left out.
+- Answer only this question, from the figures you make for it now.
+
+` : ""}Traps:
 ${INTENT_TRAPS.map(t => `- ${t}`).join("\n")}
 
 The snapshot:

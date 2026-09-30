@@ -77,6 +77,36 @@ export interface Turn {
     followUps: string[]
     tokens: { prompt: number; output: number; ms: number }
     trace: TraceCall[]
+    /** Other answers to the same question (a retry keeps the one it replaces), one click away. */
+    versions?: TurnVersion[]
+    /** A retry checked out worse, so the earlier answer stayed on screen. */
+    keptEarlier?: boolean
+}
+
+/** What an answer is, apart from its question: kept when a retry replaces it. */
+export type TurnVersion = Pick<Turn, "answer" | "exhibits" | "grounding" | "checks" | "evidence" | "steps" | "model" | "tokens" | "followUps" | "repairs" | "plan" | "claims" | "askedAt" | "aliases">
+
+const VERSION_KEYS = ["answer", "exhibits", "grounding", "checks", "evidence", "steps", "model", "tokens", "followUps", "repairs", "plan", "claims", "askedAt", "aliases"] as const
+
+function versionOf(t: Turn): TurnVersion {
+    return Object.fromEntries(VERSION_KEYS.map(k => [k, t[k]])) as TurnVersion
+}
+
+/** The model's memory of a turn follows the answer on screen: a follow-up builds on what the person sees. */
+function syncHistory(thread: Thread, turn: Turn) {
+    if (thread.turns[thread.turns.length - 1] !== turn) return
+    for (let i = thread.history.length - 1; i >= (turn.historyFrom ?? 0); i--) {
+        const m = thread.history[i]
+        if (m.role === "assistant" && !m.tool_calls?.length) { thread.history[i] = { ...m, content: turn.answer }; return }
+    }
+}
+
+/** How well an answer checks out: the share of its claims its facts bear out, less what failed. */
+export function answerScore(v: Pick<Turn, "grounding" | "checks">): number {
+    const c = v.grounding?.counts
+    const claims = c ? c.verified + c.cited + c.partial + c.unsupported + c.uncited : 0
+    const share = claims ? (c!.verified + c!.cited + 0.5 * c!.partial) / claims : 0.5
+    return share - 0.25 * v.checks.filter(x => !x.ok).length
 }
 
 export interface Thread {
@@ -144,6 +174,8 @@ export const useAskStore = defineStore("ask", {
         loadingModels: false,
         /** What the view the person came from showed; attached to the next question. */
         pendingContext: null as ViewContext | null,
+        /** The next question is asked strictly: cite everything, or leave it out. */
+        strictNext: false,
         /** The view the person was on before coming to Ask by any route: offered, and taken when a question says "this". */
         lastView: null as ViewContext | null,
         running: false,
@@ -266,6 +298,8 @@ export const useAskStore = defineStore("ask", {
 
             let context = this.pendingContext
             this.pendingContext = null
+            const strict = this.strictNext
+            this.strictNext = false
             // "Is this risky?" with nothing attached, just back from a view: that view is what "this" means,
             // in a new conversation or a running one. The offer lasts one question.
             if (!context && this.lastView && pointsAtView(q, true)) context = this.lastView
@@ -308,6 +342,7 @@ export const useAskStore = defineStore("ask", {
                     tools: useIntents() ? INTENTS : TOOLS,
                     intents: useIntents(),
                     facts: earlier.flatMap(t => (t.exhibits ?? []).flatMap(x => x.facts)),
+                    strict: strict,
                     world,
                     card: card.text,
                     here,
@@ -476,11 +511,40 @@ export const useAskStore = defineStore("ask", {
             this.save()
             return { question: turn.question, context: turn.context }
         },
-        async retry(turnId: string) {
+        /** Asks the last question again. The answer it replaces is kept; a new one that checks out worse does not take its place. */
+        async retry(turnId: string, opts: { strict?: boolean } = {}) {
+            const was = this.current?.turns.find(x => x.id === turnId)
+            const earlier = was && was.status === "done" ? versionOf(was) : null
+            const older = was?.versions ?? []
             const back = this.takeBack(turnId)
             if (!back) return
             this.pendingContext = back.context
+            this.strictNext = !!opts.strict
             await this.send(back.question)
+            const turn = this.current?.turns[this.current.turns.length - 1]
+            if (!turn || !earlier || turn.question !== back.question) return
+            if (turn.status === "done" && answerScore(turn) < answerScore(earlier)) {
+                const fresh = versionOf(turn)
+                Object.assign(turn, earlier)
+                turn.versions = [...older, fresh]
+                turn.keptEarlier = true
+                syncHistory(this.current!, turn)
+            } else {
+                turn.versions = [...older, earlier]
+            }
+            this.save()
+        },
+        /** Shows another answer to the same question in place of this one, which is kept in its place. */
+        swapVersion(turnId: string, index = 0) {
+            const turn = this.current?.turns.find(x => x.id === turnId)
+            const other = turn?.versions?.[index]
+            if (!turn || !other) return
+            const now = versionOf(turn)
+            Object.assign(turn, other)
+            turn.versions = turn.versions!.map((v, i) => (i === index ? now : v))
+            turn.keptEarlier = false
+            syncHistory(this.current!, turn)
+            this.save()
         },
         rate(turnId: string, value: "up" | "down") {
             const turn = this.current?.turns.find(x => x.id === turnId)
@@ -518,17 +582,19 @@ export const useAskStore = defineStore("ask", {
             } catch (e: any) { this.writeup.error = String(e?.message ?? e) } finally { this.writeup.loading = false }
         },
         /** Writes the report: the chosen template (or a free outline), every section written from its evidence. */
-        async runWriteUp(templateId: string | null): Promise<string | null> {
+        async runWriteUp(templateId: string | null, params?: Record<string, string>): Promise<string | null> {
             const thread = this.current
             const model = this.model
-            if (!thread || !model) return null
+            // Never a silent no-op: what stops it is said in the sheet.
+            if (!thread) { this.writeup.error = "There is no conversation to write up."; return null }
+            if (!model) { this.writeup.error = "No model is selected: choose one in the toolbar, then write the report."; return null }
             if (this.running) { this.writeup.error = "An answer is still being written. Write up can start when it is done."; return null }
             writeController = new AbortController()
             this.writeup.error = ""
             this.writeup.progress = { phase: "planning", sections: [], message: "Laying out the report" }
             this.running = true
             try {
-                const r = await writeReport({ thread, templateId, model: ollamaClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
+                const r = await writeReport({ thread, templateId, params, model: ollamaClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
                 this.writeup.reportId = r.reportId
                 this.writeup.title = r.title
                 thread.reportId = r.reportId

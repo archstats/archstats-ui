@@ -36,6 +36,12 @@
             </span>
           </button>
         </div>
+        <!-- What the chosen template needs, asked before it writes: nothing waits in the report for a choice. -->
+        <label v-if="needs" class="ask-need">
+          <span class="text-neutral-600">{{ needs.label }}</span>
+          <input v-model="component" class="ui-input ui-input-sm min-w-0 flex-1 font-mono" list="ask-writeup-components" :placeholder="'The biggest hotspot, if left empty'">
+          <datalist id="ask-writeup-components"><option v-for="n in componentNames" :key="n" :value="n"/></datalist>
+        </label>
         <p v-if="unbacked" class="ask-unbacked"><AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/><span>{{ unbacked }} {{ unbacked === 1 ? "statement" : "statements" }} in this conversation {{ unbacked === 1 ? "is" : "are" }} not backed by the facts {{ unbacked === 1 ? "it cites" : "they cite" }}. The report is written without {{ unbacked === 1 ? "it" : "them" }}.</span></p>
         <p v-if="ask.writeup.error" class="mt-3 text-[12px] text-red-700">{{ ask.writeup.error }}</p>
         <div class="mt-4 flex items-center justify-end gap-2">
@@ -82,6 +88,8 @@ import { AlertCircle, AlertTriangle, Check, Circle, FileText, ListTree, Loader2,
 import { useReportsStore } from "~/features/reports/reports.store"
 import { useAskStore } from "../app/ask.store"
 import { untrusted } from "../render/verdict"
+import { mostDiscussedComponent, templateComponentParam } from "../app/writer"
+import { useDataStore } from "~/features/snapshot/data.store"
 
 const ask = useAskStore()
 const router = useRouter()
@@ -100,8 +108,13 @@ watch(busy, b => {
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 const elapsed = computed(() => Math.max(0, Math.round((now.value - started.value) / 1000)))
 
+const needs = computed(() => (ask.writeup.chosen ? templateComponentParam(ask.writeup.chosen) : null))
+const component = ref("")
+watch(() => ask.writeup.chosen, () => { component.value = ask.current ? mostDiscussedComponent(ask.current) ?? "" : "" }, { immediate: true })
+const componentNames = computed(() => (useDataStore().allRawComponents as Array<{ name: string }>).map(c => String(c.name)).filter(n => n !== ".").slice(0, 2000))
+
 async function start() {
-  const id = await ask.runWriteUp(ask.writeup.chosen)
+  const id = await ask.runWriteUp(ask.writeup.chosen, needs.value && component.value.trim() ? { [needs.value.id]: component.value.trim() } : undefined)
   if (id) await openReport()
 }
 async function openReport() {
@@ -124,5 +137,6 @@ function close() {
 .ask-opt:hover { border-color: rgb(var(--c-neutral-300)); background: rgb(var(--c-neutral-50)); }
 .ask-opt-on, .ask-opt-on:hover { border-color: rgb(var(--c-accent-400)); background: rgb(var(--c-accent-50)); }
 .ask-rec { font-size: 10px; font-weight: 500; color: rgb(var(--c-accent-800)); background: rgb(var(--c-accent-100)); border-radius: 999px; padding: 1px 7px; }
+.ask-need { margin-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .ask-unbacked { margin-top: 12px; display: flex; gap: 8px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); border-radius: 6px; padding: 8px 10px; }
 </style>

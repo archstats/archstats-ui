@@ -16,6 +16,15 @@ export interface AnswerVerdict {
     flagged: Array<{ sentence: string; verdict: string; reasons: string[] }>
 }
 
+/** The verdict words, explained where they appear. */
+export const VERDICT_WORDS: Record<string, string> = {
+    verified: "Verified: its numbers and names are in the facts it cites.",
+    cited: "Cited: it cites facts, and states nothing those facts could contradict.",
+    partial: "Partly supported: its numbers are in the cited facts, but it names something they are not about.",
+    unsupported: "Unsupported: it states a number the facts it cites do not hold.",
+    uncited: "Uncited: it states a number without citing any fact.",
+}
+
 const CITES = /\[((?:E\d+(?:\.\d+)?)(?:\s*,\s*E\d+(?:\.\d+)?)*)\]/g
 
 /** Citations the answer writes that point at nothing in the conversation. */
@@ -34,7 +43,18 @@ export function untrusted(g: Grounding | null | undefined): Array<{ sentence: st
 export function trustedText(answer: string, g: Grounding | null | undefined): string {
     let out = answer
     for (const c of untrusted(g)) out = out.replace(c.sentence, "")
-    return out.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim()
+    // A list item left empty by it goes too.
+    return out.replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]*$/gm, "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim()
+}
+
+/**
+ * Whether an answer is shown without its unbacked sentences: when some of it
+ * checks out and some does not. An answer none of whose claims check out is
+ * shown whole, marked, so nothing reads as if it were all there was.
+ */
+export function foldsUnbacked(g: Grounding | null | undefined): boolean {
+    const c = g?.counts
+    return !!c && c.unsupported + c.uncited > 0 && c.verified + c.cited > 0
 }
 
 /** A failed check in the reader's words, not the checker's. */
@@ -49,7 +69,7 @@ export function checkWords(c: { id: string; detail: string }): string {
     }
 }
 
-export function answerVerdict(g: Grounding | null | undefined, opts: { broken?: string[]; failedChecks?: string[]; wrongTopic?: string } = {}): AnswerVerdict {
+export function answerVerdict(g: Grounding | null | undefined, opts: { broken?: string[]; failedChecks?: string[]; wrongTopic?: string; folded?: boolean } = {}): AnswerVerdict {
     const claims = g?.claims ?? []
     const c = g?.counts ?? { verified: 0, cited: 0, partial: 0, unsupported: 0, uncited: 0 }
     const broken = opts.broken ?? []
@@ -68,6 +88,18 @@ export function answerVerdict(g: Grounding | null | undefined, opts: { broken?: 
         .sort((a, b) => rank(b.verdict) - rank(a.verdict))
         .map(x => ({ sentence: x.sentence, verdict: x.verdict, reasons: x.reasons }))
     if (!claims.length && !problems.length) return { level: "none", headline: "", problems, flagged }
+    // Shown without what its facts did not back: the answer on screen is checked; what was left out is listed.
+    if (opts.folded) {
+        const left = c.unsupported + c.uncited
+        const shown = claims.length - left
+        const rest = [opts.wrongTopic, broken.length && `${plural(broken.length, "citation")} to nothing (${broken.join(", ")})`, c.partial && `${c.partial} partly supported`, ...failedChecks].filter((x): x is string => !!x)
+        return {
+            level: opts.wrongTopic || broken.length ? "bad" : "warn",
+            headline: opts.wrongTopic ? "The numbers are right, but they answer a different question" : shown === ok ? `All ${ok} claims shown check out against their facts` : `${ok} of ${plural(shown, "claim")} shown check out against their facts`,
+            problems: [`${plural(left, "statement")} left out: not backed by ${left === 1 ? "its" : "their"} facts`, ...rest],
+            flagged,
+        }
+    }
     const level: VerdictLevel = c.unsupported || broken.length || opts.wrongTopic ? "bad" : c.uncited || c.partial || failedChecks.length ? "warn" : "good"
     const headline = !claims.length
         ? "No number or name here rests on a fact Ask looked up"

@@ -60,13 +60,18 @@
       <div v-if="!running && verdict.level !== 'none'" class="ask-vline" :class="`is-${verdict.level}`">
         <button type="button" :aria-expanded="groundOpen" :disabled="!verdict.flagged.length" @click="groundOpen = !groundOpen">
           <span class="ask-vdot" aria-hidden="true"/>
-          <span class="ask-vhead">{{ verdict.headline }}</span>
+          <span class="ask-vhead" title="Each sentence with a number or a name is checked against the facts it cites: the numbers must be in them, the things named must be what they are about.">{{ verdict.headline }}</span>
           <span v-if="verdict.problems.length" class="ask-vprob">{{ verdict.problems.join(" · ") }}</span>
-          <span v-if="verdict.flagged.length" class="ask-vshow">{{ groundOpen ? "Hide" : "Show which" }}</span>
+          <span v-if="verdict.flagged.length" class="ask-vshow">{{ groundOpen ? "Hide" : folded ? "Show them" : "Show which" }}</span>
         </button>
         <ul v-if="groundOpen && verdict.flagged.length">
-          <li v-for="(c, i) in verdict.flagged" :key="i" :class="`ask-ground-${c.verdict}`"><span class="ask-ground-v">{{ c.verdict }}</span> {{ c.sentence.replace(/\s*\[E[^\]]*\]/g, "") }} <span class="text-neutral-500">— {{ c.reasons.join("; ") }}</span></li>
+          <li v-for="(c, i) in verdict.flagged" :key="i" :class="`ask-ground-${c.verdict}`"><span class="ask-ground-v" :title="VERDICT_WORDS[c.verdict]">{{ c.verdict }}</span> {{ c.sentence.replace(/\s*\[E[^\]]*\]/g, "") }} <span class="text-neutral-500">— {{ c.reasons.join("; ") }}</span></li>
         </ul>
+        <!-- A way out of every doubt: the facts themselves, or the question asked again with every claim cited. -->
+        <div v-if="verdict.level !== 'good'" class="ask-vacts">
+          <button v-if="turn.exhibits?.length" type="button" @click="$emit('inspect', turn.exhibits![0].id)">Show the facts</button>
+          <button v-if="last" type="button" title="Ask the same question again: every number and name must cite the fact that holds it, or be left out. This answer is kept." @click="ask.retry(turn.id, { strict: true })">Ask again, strictly</button>
+        </div>
       </div>
 
       <!-- The answer: prose, and the exhibits it shows where it shows them. -->
@@ -136,6 +141,13 @@
         <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="confirmReport = false; toReport()">Add anyway</button>
       </div>
 
+      <!-- Other answers to this question: a retry never loses the one it replaced. -->
+      <p v-if="!running && turn.versions?.length" class="ask-versions">
+        <History :size="12" :stroke-width="1.75"/>
+        <span>{{ turn.keptEarlier ? "The retry checked out worse, so this earlier answer stays." : `${turn.versions.length + 1} answers to this question.` }}</span>
+        <button type="button" @click="ask.swapVersion(turn.id, turn.versions.length - 1)">{{ turn.keptEarlier ? "Show the retry" : "Show the other" }}</button>
+      </p>
+
       <!-- What can be done with the answer, and what made it: one row. -->
       <div v-if="!running && (turn.answer.trim() || turn.status !== 'error')" class="ask-foot">
         <div v-if="turn.answer.trim()" class="ask-actions">
@@ -161,7 +173,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue"
-import { Check, ChevronRight, AlertCircle, Copy, CornerDownRight, FilePlus2, ListChecks, Loader2, PanelTop, Pencil, RotateCw, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-vue-next"
+import { Check, ChevronRight, AlertCircle, Copy, CornerDownRight, FilePlus2, ListChecks, Loader2, PanelTop, Pencil, RotateCw, ThumbsDown, ThumbsUp, AlertTriangle, History } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
 import type { Turn } from "../app/ask.store"
 import type { ExhibitPart } from "~/features/exhibits/types"
@@ -174,7 +186,7 @@ import ExhibitView from "~/features/exhibits/components/ExhibitView.vue"
 import "~/features/exhibit-catalog/app"
 import { highlightFor } from "~/features/exhibits/engine"
 import { layoutAnswer } from "../render/blocks"
-import { answerVerdict, brokenCitations, checkWords, untrusted } from "../render/verdict"
+import { answerVerdict, brokenCitations, checkWords, foldsUnbacked, trustedText, untrusted, VERDICT_WORDS } from "../render/verdict"
 
 const props = defineProps<{
   turn: Turn; last: boolean; ids: Set<string>; titles?: Map<string, string>; sources: string; selectedId: string | null; flashId: string | null
@@ -220,10 +232,22 @@ const turn_phase = () => props.turn.phase ?? "Working"
 const stepsOpen = computed(() => stepsToggled.value ?? running.value)
 const own = computed(() => new Set((props.turn.exhibits ?? []).map(x => x.id)))
 const exhibitById = computed(() => new Map([...(props.earlier ?? new Map()), ...(props.turn.exhibits ?? []).map(x => [x.id, x] as const)]))
+/** The answer as shown: without the sentences its facts did not back, when the rest checks out (the verdict line lists them). */
+const folded = computed(() => !running.value && foldsUnbacked(props.turn.grounding))
+const shownAnswer = computed(() => (folded.value ? trustedText(props.turn.answer, props.turn.grounding) : props.turn.answer))
 const layout = computed(() => {
-  const l = layoutAnswer(props.turn.answer, new Set(exhibitById.value.keys()), { streaming: running.value })
+  const l = layoutAnswer(shownAnswer.value, new Set(exhibitById.value.keys()), { streaming: running.value })
   // Only this turn's own figures are offered below it; an earlier turn's are drawn only where cited.
-  return { ...l, unplaced: l.unplaced.filter(id => own.value.has(id)) }
+  const unplaced = l.unplaced.filter(id => own.value.has(id))
+  // An answer that places no figure still rests on one: the first this turn made (the view's own, when asked
+  // from a view) goes after its opening paragraph, so no answer is prose alone.
+  if (!running.value && unplaced.length && !l.blocks.some(b => b.type === "exhibit")) {
+    const first = unplaced[0]
+    const at = l.blocks.findIndex(b => b.type === "prose") + 1
+    const blocks = [...l.blocks.slice(0, at), { type: "exhibit" as const, id: first, caption: "", cites: [] }, ...l.blocks.slice(at)]
+    return { ...l, blocks, unplaced: unplaced.slice(1) }
+  }
+  return { ...l, unplaced }
 })
 /** What this turn draws inline, so a citation to anything else of it opens it below. */
 const placed = computed(() => new Set(layout.value.blocks.flatMap(b => (b.type === "exhibit" ? [b.id] : []))))
@@ -237,7 +261,7 @@ const planSummary = computed(() => {
   const n = (v: string) => vs.filter(x => x === v).length
   return [`Tested ${props.turn.plan.length} claim${props.turn.plan.length === 1 ? "" : "s"}`, n("supported") && `${n("supported")} held`, n("refuted") && `${n("refuted")} did not`, n("can't tell") && `${n("can't tell")} could not be told`].filter(Boolean).join(" · ")
 })
-const verdict = computed(() => answerVerdict(props.turn.grounding, { broken: brokenCitations(props.turn.answer, props.ids), failedChecks: failed.value.filter(c => c.id !== "topic").map(checkWords), wrongTopic: failed.value.find(c => c.id === "topic")?.detail.replace(/\s*\[E\d+\]$/, "") }))
+const verdict = computed(() => answerVerdict(props.turn.grounding, { broken: brokenCitations(props.turn.answer, props.ids), failedChecks: failed.value.filter(c => c.id !== "topic").map(checkWords), wrongTopic: failed.value.find(c => c.id === "topic")?.detail.replace(/\s*\[E\d+\]$/, ""), folded: folded.value }))
 /** Each citation's worst verdict among the sentences that use it. */
 const verdicts = computed(() => {
   const rank: Record<string, number> = { verified: 0, cited: 1, partial: 2, uncited: 3, unsupported: 4 }
@@ -297,6 +321,9 @@ const stepsSummary = computed(() => {
 .ask-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes ask-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 .ask-error { margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: rgb(var(--c-red-800, 153 27 27)); background: rgb(var(--c-red-50, 254 242 242)); border-radius: 8px; padding: 8px 10px; }
+.ask-versions { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--c-neutral-600)); }
+.ask-versions button { color: rgb(var(--c-neutral-800)); text-decoration: underline dotted; text-underline-offset: 2px; }
+.ask-versions button:hover { color: rgb(var(--c-neutral-900)); }
 .ask-foot { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .ask-actions { display: flex; align-items: center; gap: 2px; }
 .ask-actions button { display: inline-flex; padding: 4px 5px; border-radius: 5px; color: rgb(var(--c-neutral-500)); }
@@ -320,6 +347,9 @@ const stepsSummary = computed(() => {
 .ask-vline.is-bad .ask-vdot { background: rgb(var(--c-red-600, 220 38 38)); }
 .ask-vline.is-bad .ask-vprob { color: rgb(var(--c-red-800, 153 27 27)); }
 .ask-vline ul { margin: 0; padding: 2px 10px 8px 28px; display: grid; gap: 4px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); }
+.ask-vacts { display: flex; gap: 12px; padding: 0 10px 7px 28px; font-size: 12px; }
+.ask-vacts button { color: rgb(var(--c-neutral-700)); text-decoration: underline dotted; text-underline-offset: 2px; }
+.ask-vacts button:hover { color: rgb(var(--c-neutral-900)); }
 .ask-confirm { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); border-radius: 6px; padding: 8px 10px; }
 .ask-ground-v { display: inline-block; min-width: 72px; font-weight: 500; }
 .ask-ground-partial .ask-ground-v, .ask-ground-uncited .ask-ground-v { color: rgb(var(--c-amber-800)); }

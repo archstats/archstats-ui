@@ -8,7 +8,9 @@ import { systemPrompt } from "./prompt"
 import { intentsPrompt } from "../intents/prompt"
 import { figureHints, isBroad, route } from "./route"
 import type { ExhibitPart, Fact } from "~/features/exhibits/types"
-import { checkGrounding, type Grounding } from "~/features/exhibits/grounding"
+import { checkGrounding, recite, type Grounding } from "~/features/exhibits/grounding"
+import { misjudged } from "./judgement"
+import { viewCall } from "../intents/fromView"
 import type { Check, Evidence, ModelClient, ModelMessage, ModelReply, Namespace, RanOn, Tool, ToolContext, ToolResult, TurnEvent, ViewContext, World } from "./types"
 
 export interface TurnInput {
@@ -44,6 +46,8 @@ export interface TurnInput {
     intents?: boolean
     /** Facts of earlier turns' exhibits: this answer may cite them too. */
     facts?: Fact[]
+    /** Asked again strictly, after an answer its facts did not bear out: cite everything, or leave it out. */
+    strict?: boolean
 }
 
 export interface TurnOutput {
@@ -139,7 +143,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         } catch { plan = undefined }
     }
 
-    const system: ModelMessage = { role: "system", content: (input.intents ? intentsPrompt : systemPrompt)({ card: input.card, here: input.here, onScreen: input.onScreen, plan }) }
+    const system: ModelMessage = { role: "system", content: (input.intents ? intentsPrompt : systemPrompt)({ card: input.card, here: input.here, onScreen: input.onScreen, plan, strict: input.strict }) }
     emit({ type: "system", content: system.content, tools: offered().map(t => t.name) })
     // They asked to see something: name the tools that draw it, so the answer is figures, not a list.
     // With intents the engine draws what answers the question; the model is never told which tool draws.
@@ -241,6 +245,19 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         added.push({ role: "assistant", content: "", tool_calls: [{ function: { name: "compare", arguments: {} } }] })
         added.push(await runCall({ name: "compare", args: {} }, "pre"))
     }
+    // Asked about a view: its own figure first, so "this" rests on what the person was looking at, with facts to cite.
+    const fromView = input.intents ? viewCall(input.onScreen) : null
+    if (fromView && input.tools.some(t => t.name === fromView.name)) {
+        added.push({ role: "assistant", content: "", tool_calls: [{ function: { name: fromView.name, arguments: fromView.args } }] })
+        added.push(await runCall({ name: fromView.name, args: fromView.args as Record<string, any> }, "view"))
+    }
+    const allFacts = () => [...(input.facts ?? []), ...exhibits.flatMap(x => x.facts)]
+    /** The answer's checks, and whether it calls a value good or bad against where it ranks. */
+    const judged = (ans: string, base: Check[]): Check[] => {
+        if (!input.intents) return base
+        const m = misjudged(ans, input.world)
+        return [...base, { id: "judgement", ok: !m.length, detail: m.length ? m.map(x => x.detail).join("; ") : "Judgements agree with rank" }]
+    }
 
     const maxSteps = input.maxSteps ?? 10
     let repairs = 0
@@ -308,9 +325,29 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             answer = `${answer}\n\n*Sources: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}*`
             outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits })
         }
+        // Citations put right without a model: a wrong or missing one moved to the one fact that holds the sentence.
+        if (input.intents && allFacts().length) {
+            const r = recite(answer, allFacts(), { given: input.question })
+            if (r.fixed) { answer = r.text; outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }) }
+        }
+        outcome = { ...outcome, checks: judged(answer, outcome.checks) }
+        if (!outcome.repair && input.intents) {
+            const wrong = misjudged(answer, input.world)
+            if (wrong.length) outcome.repair = `Revise: ${wrong.map(x => x.fix).join(" ")} Keep everything else.`
+        }
+        // An answer about the code that looked nothing up: the card orients, the tools answer. Once.
+        // It comes first: any other repair of an answer that looked nothing up only polishes a guess.
+        if (input.intents && toolCalls === 0 && /\d/.test(answer)) {
+            outcome.repair = "Ask the codebase with a tool before answering: the snapshot card only orients you. Call the tool for this question (structure, about, rank…), then answer from its facts, citing them."
+        }
+        // What the facts still do not bear out: one repair that names each sentence and why, before anything is shown.
+        if (!outcome.repair && input.intents && allFacts().length) {
+            const bad = checkGrounding(answer, allFacts(), { given: input.question }).claims.filter(c => c.verdict === "unsupported" || c.verdict === "uncited")
+            if (bad.length) outcome.repair = `Revise: these sentences are not backed by the facts they cite. ${bad.slice(0, 6).map(c => `"${c.sentence.replace(/\s*\[E[^\]]*\]/g, "").slice(0, 160)}": ${c.reasons.join("; ")}.`).join(" ")} For each, cite the fact that holds its number, or leave the sentence out. Keep everything else.`
+        }
         checks = outcome.checks
         emit({ type: "checks", checks })
-        if (outcome.repair && repairs < 1 && !finalCall && step < maxSteps - 1) {
+        if (outcome.repair && repairs < (input.intents ? 2 : 1) && !finalCall && step < maxSteps - 1) {
             repairs++
             if (outcome.checks.find(c => c.id === "gave-up" && !c.ok)) {
                 for (const s of outcome.suggestions) for (const name of s.tools) {
@@ -336,7 +373,8 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             const kept = list.split(/\s*,\s*/).filter(id => evidenceIds.has(id))
             return kept.length ? `[${kept.join(", ")}]` : ""
         })
-        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks
+        if (input.intents && allFacts().length) answer = recite(answer, allFacts(), { given: input.question }).text
+        checks = judged(answer, checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks)
         emit({ type: "checks", checks })
         added.push({ role: "assistant", content: answer })
         break
@@ -350,11 +388,12 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         } catch { /* fall through to the plain statement */ }
         if (!answer.trim()) answer = `I looked at ${toolCalls} thing${toolCalls === 1 ? "" : "s"} but could not put an answer together. The evidence is below: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}.`
         added.push({ role: "assistant", content: answer })
-        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks
+        if (input.intents && allFacts().length) answer = recite(answer, allFacts(), { given: input.question }).text
+        checks = judged(answer, checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks)
         emit({ type: "checks", checks })
     }
     if (!stopped) emit({ type: "done", answer })
-    const grounding = exhibits.length || input.facts?.length ? checkGrounding(answer, [...(input.facts ?? []), ...exhibits.flatMap(x => x.facts)]) : null
+    const grounding = exhibits.length || input.facts?.length ? checkGrounding(answer, [...(input.facts ?? []), ...exhibits.flatMap(x => x.facts)], { given: input.question }) : null
     return { messages: added, answer, evidence, exhibits, grounding, sources, checks, tokens, toolCalls, stopped }
 }
 

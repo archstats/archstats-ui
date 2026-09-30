@@ -52,7 +52,7 @@ export const INTENTS: Tool[] = [
             const out: Shown[] = []
             for (const x of [a.of, a.vs].filter(Boolean) as string[]) {
                 const r = resolveName(ctx.world, x)
-                const why = unresolved(x, r)
+                const why = unresolved(x, r, ctx.world)
                 out.push(why ? { absent: why } : await show("profile", { of: (r as any).name }, ctx))
             }
             return answered(out)
@@ -79,7 +79,7 @@ export const INTENTS: Tool[] = [
         label: a => (a.on ? `Traced ${a.of} to ${a.on}` : `Looked at what ${a.direction === "uses" ? `${a.of} uses` : a.direction === "used by" ? `uses ${a.of}` : `is around ${a.of}`}`),
         async run(a, ctx) {
             for (const x of [a.of, a.on].filter(Boolean) as string[]) {
-                const why = unresolved(x, resolveName(ctx.world, x, "component"))
+                const why = unresolved(x, resolveName(ctx.world, x, "component"), ctx.world)
                 if (why) return { text: why }
             }
             const r = resolveName(ctx.world, a.of, "component") as { name: string }
@@ -98,7 +98,7 @@ export const INTENTS: Tool[] = [
         }, { aliases: { component: "of", period: "since" } }),
         label: a => `Looked at ${a.kind ?? "activity"}${a.of ? ` of ${a.of}` : ""}${a.since ? ` over ${a.since}` : ""}`,
         async run(a, ctx) {
-            if (a.of) { const why = unresolved(a.of, resolveName(ctx.world, a.of, "component")); if (why) return { text: why } }
+            if (a.of) { const why = unresolved(a.of, resolveName(ctx.world, a.of, "component"), ctx.world); if (why) return { text: why } }
             switch (a.kind) {
                 case "together": return answered([await show("cochange", { of: a.of }, ctx)])
                 case "hidden coupling": return answered([await show("cochange", { of: a.of, hidden: true }, ctx)])
@@ -114,7 +114,7 @@ export const INTENTS: Tool[] = [
         label: a => `Looked at who knows ${a.of ?? "the code"}`,
         async run(a, ctx) {
             if (a.of) {
-                const why = unresolved(a.of, resolveName(ctx.world, a.of, "component"))
+                const why = unresolved(a.of, resolveName(ctx.world, a.of, "component"), ctx.world)
                 if (why) return { text: why }
                 return answered([await show("authors", { of: a.of, since: a.since }, ctx)])
             }
@@ -171,7 +171,7 @@ export const INTENTS: Tool[] = [
                 return answered([await show("matches", { find: a.find }, ctx)])
             }
             const r = resolveName(ctx.world, a.of)
-            const why = unresolved(a.of, r)
+            const why = unresolved(a.of, r, ctx.world)
             if (why) return { text: why }
             const it = r as { kind: "component" | "file"; name: string }
             if (it.kind === "file") return answered(a.find ? [await show("excerpt", { file: it.name, find: a.find }, ctx)] : [await show("profile", { of: it.name }, ctx), await show("excerpt", { file: it.name }, ctx)])

@@ -226,10 +226,32 @@ async function cellEvidence(blocks: Block[], ctx: ReadingContext): Promise<Map<s
     return out
 }
 
-function mostDiscussedComponent(thread: Thread): string | null {
+/** The component the conversation was most about: named in its figures' subjects (and older evidence cards). */
+export function mostDiscussedComponent(thread: Thread): string | null {
     const counts = new Map<string, number>()
-    for (const t of thread.turns) for (const e of t.evidence) if (e.kind === "component") counts.set(e.name, (counts.get(e.name) ?? 0) + 1)
+    const add = (name: unknown, n = 1) => { if (typeof name === "string" && name) counts.set(name, (counts.get(name) ?? 0) + n) }
+    for (const t of thread.turns) {
+        for (const e of t.evidence) if (e.kind === "component") add(e.name)
+        for (const x of t.exhibits ?? []) if (["profile", "neighbours", "authors", "activity", "files"].includes(x.spec.kind)) add(x.spec.params.of, 2)
+    }
     return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+}
+
+/** The component a template asks for, if it asks for one: chosen in the sheet before writing. */
+export function templateComponentParam(templateId: string): { id: string; label: string } | null {
+    const t = ALL().find(x => x.id === templateId) as ReportTemplate | undefined
+    const p = t?.params?.find(x => x.kind === "component")
+    return p ? { id: p.id, label: p.label } : null
+}
+
+/** The biggest hotspot, which a template about one component starts on when the conversation named none. */
+async function biggestHotspot(): Promise<string | null> {
+    const reports = useReportsStore()
+    const ctx = reports.readingContext(reports.openKernel)
+    try {
+        const [r] = await ctx.query("SELECT name FROM components WHERE name <> '.' AND codesmells__hotspot_score IS NOT NULL ORDER BY codesmells__hotspot_score DESC LIMIT 1")
+        return r?.name ? String(r.name) : null
+    } catch { return null }
 }
 
 interface Section { heading: string; blocks: Block[] }
@@ -256,6 +278,8 @@ export async function writeReport(opts: {
     embed?: Embed
     signal: AbortSignal
     progress: (p: WriteProgress) => void
+    /** What the template asks for, chosen before writing (the component a refactoring case is about). */
+    params?: Record<string, string>
 }): Promise<{ reportId: string; title: string }> {
     const { thread, model, embed, signal } = opts
     const reports = useReportsStore()
@@ -280,7 +304,7 @@ export async function writeReport(opts: {
         const t = ALL().find(x => x.id === opts.templateId) as ReportTemplate | undefined
         if (!t) throw new Error(`No template ${opts.templateId}.`)
         const params: Record<string, string> = {}
-        for (const p of t.params ?? []) if (p.kind === "component") params[p.id] = mostDiscussedComponent(thread) ?? ""
+        for (const p of t.params ?? []) if (p.kind === "component") params[p.id] = opts.params?.[p.id] || mostDiscussedComponent(thread) || (await biggestHotspot()) || ""
         blocks = buildTemplate(t, { facts: snap.facts, ecosystems: snap.ecos, params, explain: true }).blocks
         title = t.title(ws.active.name, params)
     } else {

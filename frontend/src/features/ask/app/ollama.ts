@@ -39,7 +39,7 @@ export function ollamaClient(model: LocalModel): ModelClient {
                     model: model.name,
                     messages: req.messages,
                     keep_alive: "30m",
-                    options: { num_ctx: 32768, temperature: 0.2, num_predict: 2048 },
+                    options: { num_ctx: 32768, temperature: 0.2, num_predict: 2048, seed: 7 },
                 }
                 if (req.tools?.length) body.tools = req.tools
                 if (req.format) body.format = req.format

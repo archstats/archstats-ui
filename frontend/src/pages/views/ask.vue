@@ -56,6 +56,13 @@
                   Answers come from the open snapshot, through the code the views use. Every number cites its evidence; every piece of evidence opens in its view, pins, or goes into a report.
                   <span class="text-neutral-400">{{ ask.model ? `${ask.model.name}, on this machine.` : "" }}</span>
                 </p>
+                <!-- How to read an answer, said once, where it is needed. -->
+                <ul class="ask-howto">
+                  <li><span class="ask-howto-k">Checked</span> Each answer opens with how many of its claims check out against the facts they cite, and which to doubt.</li>
+                  <li><span class="ask-howto-k mono">E3.4</span> A badge after a sentence is the fact it rests on: click it to see that fact lit in its figure.</li>
+                  <li><span class="ask-howto-k">This view</span> Come here from any view and "this" means that view.</li>
+                </ul>
+                <button type="button" class="ask-howto-more" @click="ask.inspector.open = true; ask.inspector.tab = 'context'">What can Ask answer, and what not?</button>
                 <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">Try again</button></p>
                 <div class="ask-starters">
                   <button v-for="s in starters" :key="s.q" type="button" class="ask-starter" @click="send(s.q)">
@@ -340,6 +347,12 @@ watch(() => ask.currentId, () => void nextTick(() => scrollToEnd(true)))
 }
 .ask-welcome h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: rgb(var(--c-neutral-900)); }
 .ask-sub { margin-top: 6px; max-width: 620px; font-size: 13px; line-height: 1.6; color: rgb(var(--c-neutral-600)); }
+.ask-howto { margin-top: 14px; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.5; color: rgb(var(--c-neutral-600)); }
+.ask-howto li { display: flex; gap: 10px; }
+.ask-howto-k { flex-shrink: 0; width: 72px; font-weight: 500; color: rgb(var(--c-neutral-800)); }
+.ask-howto-k.mono { font: 500 11px/19px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ask-howto-more { margin-top: 8px; font-size: 12px; color: rgb(var(--c-neutral-700)); text-decoration: underline dotted; text-underline-offset: 2px; }
+.ask-howto-more:hover { color: rgb(var(--c-neutral-900)); }
 /* Starters: a hairline list, one question per row. */
 .ask-starters { margin-top: 20px; display: grid; border: 1px solid rgb(var(--c-neutral-200)); border-radius: 6px; background: rgb(var(--c-surface)); overflow: hidden; }
 .ask-starter { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px; text-align: left; transition: background 0.12s; }

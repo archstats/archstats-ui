@@ -37,6 +37,13 @@ describe("answerVerdict", () => {
         expect(v.problems[0]).toMatch(/^Asked about instability/)
     })
 
+    it("says what was left out when the unbacked sentences are folded away", () => {
+        const v = answerVerdict(g([["a", "verified"], ["b", "verified"], ["c", "uncited"]]), { folded: true })
+        expect(v.level).toBe("warn")
+        expect(v.headline).toBe("All 2 claims shown check out against their facts")
+        expect(v.problems[0]).toBe("1 statement left out: not backed by its facts")
+    })
+
     it("stays out of the way when there is nothing to check", () => {
         expect(answerVerdict(g([])).level).toBe("none")
         expect(answerVerdict(null).level).toBe("none")

@@ -52,8 +52,14 @@ export function areaNote(snap: Snapshot, name: string): string | null {
 }
 
 /** What an intent says when a name does not resolve to one thing. */
-export function unresolved(asked: string, r: Resolved): string | null {
+export function unresolved(asked: string, r: Resolved, snap?: Snapshot): string | null {
     if ("ambiguous" in r) return `"${asked}" could be any of: ${r.ambiguous.join(", ")}. Ask the person which one they mean (ask_user), or use the full name.`
-    if ("none" in r) return `Nothing is named "${asked}": no component or file matches. Try search with part of the name.`
+    if ("none" in r) {
+        // The snapshot's age, said: a name newer than the scan is missing for that reason, not because it does not exist.
+        const at = String(snap?.info?.scanned_at ?? snap?.info?.git_based_on ?? "").slice(0, 10)
+        const commit = String(snap?.info?.git_head_commit ?? "").slice(0, 7)
+        const age = at || commit ? ` This snapshot was scanned${at ? ` on ${at}` : ""}${commit ? ` at commit ${commit}` : ""}: code added since is not in it, and scanning again adds it. Say that too.` : ""
+        return `Nothing is named "${asked}" in this snapshot: no component or file matches.${age} Try search with part of the name.`
+    }
     return null
 }

@@ -1,7 +1,7 @@
 <template>
   <!-- A view, previewed: its real figure drawn out of sight, and the button that opens it. -->
   <div class="ev-view" :class="{ 'ev-view-compact': compact }">
-    <button type="button" class="ev-view-frame" :title="`Open ${label}`" @click="$emit('open')">
+    <button type="button" class="ev-view-frame" :class="{ 'ev-view-plain': plain }" :title="`Open ${label}`" @click="$emit('open')">
       <template v-if="figure">
         <img :src="figure.src" :alt="figure.title" class="ev-view-img" :style="imgStyle" draggable="false">
       </template>
@@ -15,7 +15,8 @@
         <span class="ev-view-shimmer"/>
         <span class="ev-view-hint"><Loader2 :size="12" class="animate-spin"/> Drawing {{ label }}…</span>
       </div>
-      <div v-else class="ev-view-skeleton"><span class="ev-view-hint">{{ state === "error" ? `No preview: ${error}` : "Nothing drawn on this view for this snapshot" }}</span></div>
+      <!-- Nothing to preview (a view like Changes that draws on demand): a plain way in, not an empty frame. -->
+      <span v-else class="ev-view-plain-text">{{ state === "error" ? `No preview (${error}).` : `${label} opens with this snapshot.` }}</span>
       <span class="ev-view-open"><ArrowUpRight :size="12" :stroke-width="2"/> Open {{ label }}</span>
     </button>
     <div v-if="figure && figure.legend" class="ev-view-legend" :title="figure.legend">{{ figure.legend }}</div>
@@ -49,6 +50,8 @@ const pick = ref(0)
 const figures = computed(() => got.value?.figures ?? [])
 const figure = computed(() => figures.value[pick.value] ?? null)
 const table = computed(() => (!figure.value ? got.value?.tables[0] ?? null : null))
+/** Nothing to show once taken: the preview becomes a plain row that opens the view. */
+const plain = computed(() => !figure.value && !table.value && state.value !== "loading")
 const imgStyle = computed(() => (figure.value && figure.value.width && figure.value.height ? { aspectRatio: `${figure.value.width} / ${figure.value.height}` } : {}))
 
 onMounted(async () => {
@@ -71,6 +74,9 @@ onMounted(async () => {
 .ev-view-compact .ev-view-img { max-height: 220px; }
 .ev-view-open { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 500; padding: 3px 8px; border-radius: 6px; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-surface) / 0.92); border: 1px solid rgb(var(--c-neutral-200)); opacity: 0; transition: opacity 0.15s; }
 .ev-view-frame:hover .ev-view-open, .ev-view-frame:focus-visible .ev-view-open { opacity: 1; }
+.ev-view-plain { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.ev-view-plain .ev-view-open { position: static; opacity: 1; margin-left: auto; }
+.ev-view-plain-text { font-size: 12px; color: rgb(var(--c-neutral-600)); }
 .ev-view-skeleton { position: relative; height: 150px; display: grid; place-items: center; overflow: hidden; }
 .ev-view-shimmer { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgb(var(--c-neutral-100)) 50%, transparent 80%); background-size: 200% 100%; animation: ev-shimmer 1.4s infinite linear; }
 @keyframes ev-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
