@@ -97,11 +97,13 @@ export function exhibitBlock(x: ExhibitPart, highlight: string[] = [], caption =
  * exhibit it shows as a cell where it shows it. Exhibits it neither placed nor
  * cited stay out: the answer did not rest on them.
  */
-export function answerBlocks(answer: string, exhibits: ExhibitPart[], fromMarkdown: (md: string) => Block[]): Block[] {
+export function answerBlocks(answer: string, exhibits: ExhibitPart[], fromMarkdown: (md: string) => Block[], flagged: string[] = []): Block[] {
     const byId = new Map(exhibits.map(x => [x.id, x]))
     const strip = (t: string) => t.replace(/\s*\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g, "").trim()
+    // A sentence its facts did not bear out keeps a mark in the report's own text, where a reader meets it.
+    const mark = (t: string) => flagged.reduce((out, s) => out.replace(s, `${s} *(check: not backed by the facts it cited)*`), t)
     return layoutAnswer(answer, new Set(byId.keys())).blocks.flatMap(b => {
-        if (b.type === "prose") return fromMarkdown(strip(b.text))
+        if (b.type === "prose") return fromMarkdown(strip(mark(b.text)))
         const x = byId.get(b.id)!
         return [exhibitBlock(x, highlightFor(x, b.cites), b.caption)]
     })

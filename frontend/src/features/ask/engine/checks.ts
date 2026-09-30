@@ -4,7 +4,7 @@
 
 import type { Check } from "./types"
 import { searchCapabilities, type Capability } from "../knowledge/capabilities"
-import { topicMismatch, type TopicExhibit } from "./topic"
+import { subjectMismatch, topicMismatch, type TopicExhibit } from "./topic"
 
 const NUMBER = /(?<![\w.#&])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?%?(?![\w])/g
 
@@ -156,7 +156,8 @@ export function checkAnswer(i: CheckInput): CheckOutcome {
 
     // Right numbers, wrong question: the answer rests on a ranking of another measure than the one asked about.
     const topic = topicMismatch(i.question, i.answer, i.exhibits ?? [])
-    checks.push({ id: "topic", ok: !topic, detail: topic ? `Asked about ${topic.asked}; the answer rests on a ranking by ${topic.ranked} [${topic.cites}]` : "Answers the measure asked about" })
+    const subject = topic ? null : subjectMismatch(i.question, i.answer, i.exhibits ?? [])
+    checks.push({ id: "topic", ok: !topic && !subject, detail: topic ? `Asked about ${topic.asked}; the answer rests on a ranking by ${topic.ranked} [${topic.cites}]` : subject ? `Asked about ${subject.asked}; the answer does not use the figure that shows it [${subject.cites}]` : "Answers what was asked" })
 
     const verdict = i.answer.match(VERDICT)
     checks.push({ id: "verdict", ok: !verdict, detail: verdict ? `Verdict word "${verdict[0]}"` : "No verdicts" })
@@ -165,6 +166,8 @@ export function checkAnswer(i: CheckInput): CheckOutcome {
     const invented = checks.find(c => c.id === "invented" && !c.ok)
     if (checks.find(c => c.id === "menu" && !c.ok)) {
         repair = "Answer the question first, in one or two sentences, from the tools (or say plainly that the scan cannot tell, and why). Offer at most one next step after that, as a sentence, not a menu."
+    } else if (subject) {
+        repair = `The question asks about ${subject.asked}. Answer it from [${subject.cites}], the figure you drew for it: confirm, push back, or say what it cannot tell, with its facts cited. Do not repeat an earlier answer.`
     } else if (topic) {
         repair = `The question asks about ${topic.asked}, but the ranking you cite [${topic.cites}] is by ${topic.ranked}: a different measure. ${i.intents ? `Call rank with measure "${topic.asked.replace(/ \(.*\)$/, "")}"` : "Rank by what was asked"}, then answer from that ranking, and do not describe one measure in the words of the other.`
     } else if (invented) {

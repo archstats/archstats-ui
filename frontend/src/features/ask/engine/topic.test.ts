@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { askedMeasures, topicMismatch } from "./topic"
+import { askedMeasures, subjectMismatch, topicMismatch } from "./topic"
 
 const ranking = (id: string, measure: string) => ({ id, spec: { kind: "ranking", params: { measure } } })
 
@@ -22,5 +22,14 @@ describe("topicMismatch", () => {
         expect(askedMeasures("What is the least healthy file?")).toEqual(["codesmells__code_health"])
         expect(askedMeasures("which package is most depended on")).toEqual(["modularity__coupling__dependents"])
         expect(askedMeasures("Which files carry the first cut?")).toEqual([])
+    })
+})
+
+describe("subjectMismatch", () => {
+    const stack = { id: "E4", spec: { kind: "stack", params: {} } }
+    it("catches a layering question answered without the layering figure it drew", () => {
+        expect(subjectMismatch("Confirm that the code is cleanly layered.", "The most unstable are x [E1.2].", [stack])).toEqual({ asked: "layering", cites: "E4" })
+        expect(subjectMismatch("Confirm that the code is cleanly layered.", "7 links point back up [E4.13].", [stack])).toBeNull()
+        expect(subjectMismatch("Which are the most unstable?", "x [E1.2]", [stack])).toBeNull()
     })
 })

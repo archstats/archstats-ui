@@ -14,7 +14,9 @@ function tiers(names: string[], asked: string): string[][] {
     const exact = names.filter(x => x === q)
     const anyCase = names.filter(x => x.toLowerCase() === lower)
     const tail = names.filter(x => { const l = x.toLowerCase(); return [".", "/", "::", "\\"].some(sep => l.endsWith(`${sep}${lower}`)) })
-    const part = names.filter(x => x.toLowerCase().includes(lower)).sort((a, b) => a.length - b.length)
+    // A part of a name, where a part starts: "ask" finds features/ask and ask.store, never tasks/acceptance.
+    const esc = lower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const part = names.filter(x => new RegExp(`(?:^|[./\\\\:_-])${esc}`).test(x.toLowerCase())).sort((a, b) => a.length - b.length)
     return [exact, anyCase, tail, part]
 }
 
@@ -34,6 +36,19 @@ export function resolveName(snap: Snapshot, asked: string, prefer: "component" |
         }
     }
     return { none: true }
+}
+
+/**
+ * A component whose name also heads others ("common" and common.util,
+ * common.web…) is two things: the one component, and the area of all of
+ * them. Said to the model, so an answer about the area never rests on the
+ * one component's figures.
+ */
+export function areaNote(snap: Snapshot, name: string): string | null {
+    const lower = name.toLowerCase()
+    const under = snap.components().map(c => String(c.name)).filter(x => { const l = x.toLowerCase(); return l !== lower && [".", "/", "::", "\\"].some(sep => l.startsWith(lower + sep)) })
+    if (under.length < 2) return null
+    return `Note: ${name} is one component, and also the start of ${under.length} others (${under.slice(0, 3).join(", ")}…), an area. These figures are about the one component. If the person means the area (a floor of the stack), answer from structure with of: "${name}", and say which one you mean.`
 }
 
 /** What an intent says when a name does not resolve to one thing. */

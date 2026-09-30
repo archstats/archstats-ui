@@ -101,7 +101,7 @@
 
       <!-- Views to open, then the evidence. -->
       <div v-if="links.length" class="mt-3 grid gap-2" :class="links.length > 1 ? 'grid-cols-2' : ''">
-        <AskEvidence v-for="e in links" :key="e.id" :e="e" @open="actions.open"/>
+        <AskEvidence v-for="e in links" :key="e.id" :e="e" :flash="flashId === e.id" @open="actions.open"/>
       </div>
       <div v-if="cards.length" class="mt-3 grid gap-2.5">
         <AskEvidence

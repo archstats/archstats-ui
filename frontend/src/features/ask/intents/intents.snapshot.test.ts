@@ -8,7 +8,7 @@ import { existsSync } from "node:fs"
 import { sqliteWorld } from "../testing/sqliteWorld"
 import type { ToolContext, World } from "../engine/types"
 import { INTENTS } from "./index"
-import { resolveName } from "./resolve"
+import { areaNote, resolveName } from "./resolve"
 
 const snaps = (process.env.ASK_SNAPS ?? "").split(":").filter(p => p && existsSync(p))
 const MAX_TOOL_TEXT = 6000
@@ -72,4 +72,12 @@ describe.skipIf(!snaps.length)("intents on real snapshots", () => {
             })
         })
     }
+})
+
+describe("areaNote", () => {
+    const snap = { components: () => ["org.x.common", "org.x.common.util", "org.x.common.web", "org.x.core"].map(name => ({ name })) } as any
+    it("says when a component's name also heads an area", () => {
+        expect(areaNote(snap, "org.x.common")).toMatch(/also the start of 2 others/)
+        expect(areaNote(snap, "org.x.core")).toBeNull()
+    })
 })

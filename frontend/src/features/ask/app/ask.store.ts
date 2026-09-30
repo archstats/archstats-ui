@@ -16,7 +16,7 @@ import { INTENTS, TOOLS, useIntents } from "../tools"
 import { appWorld } from "./world"
 import { listModels, ollamaClient, type LocalModel } from "./ollama"
 import { answerBlocks, checkBlocks, draftPrompt, evidenceBlocks, exhibitBlock, reportable } from "./toReport"
-import { brokenCitations, trustedText } from "../render/verdict"
+import { brokenCitations, trustedText, untrusted } from "../render/verdict"
 import { suggestTemplates, writeReport, type TemplateSuggestion, type WriteProgress } from "./writer"
 import { Embed } from "wailsjs/go/app/AskService"
 import { pointsAtView } from "./deixis"
@@ -266,9 +266,10 @@ export const useAskStore = defineStore("ask", {
 
             let context = this.pendingContext
             this.pendingContext = null
-            // "Is this risky?" with nothing attached: the view they came from is what "this" means.
-            if (!context && this.lastView && pointsAtView(q, !thread.turns.length)) context = this.lastView
-            if (context) this.lastView = null
+            // "Is this risky?" with nothing attached, just back from a view: that view is what "this" means,
+            // in a new conversation or a running one. The offer lasts one question.
+            if (!context && this.lastView && pointsAtView(q, true)) context = this.lastView
+            this.lastView = null
             thread.turns.push({
                 historyFrom: thread.history.length,
                 id: newId(), question: q, context, askedAt: new Date().toISOString(), model: model.name, status: "running",
@@ -497,7 +498,7 @@ export const useAskStore = defineStore("ask", {
             const reports = useReportsStore()
             const { fromMarkdown } = await import("~/features/reports/reportDoc")
             const ids = new Set(thread.turns.flatMap(t => [...(t.exhibits ?? []).flatMap(x => [x.id, ...x.facts.map(f => f.id)]), ...t.evidence.map(e => e.id)]))
-            const blocks: Block[] = [{ id: newId(), kind: "h2", text: turn.question.replace(/\?+$/, "").slice(0, 90) }, ...answerBlocks(turn.answer, turn.exhibits ?? [], fromMarkdown), ...checkBlocks(turn.grounding, brokenCitations(turn.answer, ids)), ...turn.evidence.filter(reportable).flatMap(evidenceBlocks)]
+            const blocks: Block[] = [{ id: newId(), kind: "h2", text: turn.question.replace(/\?+$/, "").slice(0, 90) }, ...answerBlocks(turn.answer, turn.exhibits ?? [], fromMarkdown, untrusted(turn.grounding).map(c => c.sentence)), ...checkBlocks(turn.grounding, brokenCitations(turn.answer, ids)), ...turn.evidence.filter(reportable).flatMap(evidenceBlocks)]
             const last = reports.doc.blocks[reports.doc.blocks.length - 1]
             reports.insert(last?.id ?? null, blocks)
             void reports.runAll()

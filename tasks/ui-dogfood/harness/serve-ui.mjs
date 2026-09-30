@@ -25,7 +25,9 @@ const STUB = `<script>(() => {
     if (q) {
       if (q.Open && !q.Open.__stub) q.Open = tag(async () => {});
       if (q.CurrentScan && !q.CurrentScan.__stub) q.CurrentScan = tag(async () => SCAN);
-      if (q.Query && q.QueryIn && !q.Query.__stub) { const rin = q.QueryIn; q.Query = tag((sql) => rin(SCAN, sql)); }
+      // Reads by id go to the pinned scan too: after Changes or a scan switch the app may ask for another scan by id,
+      // and an older one (another analysis revision) mixes its tables into the run.
+      if (q.Query && q.QueryIn && !q.Query.__stub) { const rin = q.QueryIn; q.Query = tag((sql) => rin(SCAN, sql)); q.QueryIn = tag((_id, sql) => rin(SCAN, sql)); }
       if (!${SQL_ON}) {
         if (q.Console && !q.Console.__stub) q.Console = off("The SQL console");
         if (q.QueryLimited && !q.QueryLimited.__stub) q.QueryLimited = off("The SQL console");

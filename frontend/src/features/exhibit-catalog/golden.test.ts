@@ -26,8 +26,13 @@ describe.skipIf(!snaps.length)("exhibits against the legacy tools", () => {
                     const old = c.evidence[0]
                     const d = await ranking.resolve({ measure: c.args.metric, among: c.args.grain === "files" ? "files" : "components" }, { snap })
                     if (!old) continue
-                    // The legacy tool showed 10 by default; the exhibit keeps 15. The first ten agree.
-                    expect((d as RankingData).items.slice(0, old.items.length).map(x => [x.key, x.value]), c.args.metric).toEqual(old.items.map((x: any) => [x.key, x.value]))
+                    // The legacy tool showed 10 by default; the exhibit keeps 15. The first ten agree in value;
+                    // ties are ordered by size now (larger first), so only rows above the last tied value must match by name.
+                    const mine = (d as RankingData).items.slice(0, old.items.length)
+                    expect(mine.map(x => x.value), c.args.metric).toEqual(old.items.map((x: any) => x.value))
+                    const edge = old.items[old.items.length - 1]?.value
+                    const names = new Set(mine.map(x => x.key))
+                    for (const x of old.items) if (x.value !== edge) expect(names.has(x.key), `${c.args.metric}: ${x.key}`).toBe(true)
                 }
             })
 

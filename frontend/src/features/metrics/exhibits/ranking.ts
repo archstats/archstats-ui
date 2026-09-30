@@ -84,7 +84,7 @@ export const ranking = exhibit<RankingData>()({
             }
             const role = among === "files" && (snap.columns.files ?? []).includes("role") ? "coalesce(role, 'production') = 'production'" : among === "components" ? "name != '.'" : ""
             const where = [`${m.id} IS NOT NULL`, m.id === "codesmells__code_health" ? `${m.id} > 0` : "", role, of ? `name LIKE ${sq(`%${of.replace(/[%_]/g, "")}%`)}` : "", ...conds].filter(Boolean).join(" AND ")
-            items = (await snap.query(`SELECT name, ${m.id} AS value FROM ${among} WHERE ${where} ORDER BY ${m.id} ${ascending ? "ASC" : "DESC"} LIMIT 15`))
+            items = (await snap.query(`SELECT name, ${m.id} AS value FROM ${among} WHERE ${where} ORDER BY ${m.id} ${ascending ? "ASC" : "DESC"}${among === "components" && (snap.columns.components ?? []).includes("complexity__lines") && m.id !== "complexity__lines" ? ", complexity__lines DESC" : ""} LIMIT 15`))
                 .map((r: any) => ({ key: String(r.name), label: shortName(String(r.name)), value: Number(r.value) || 0 }))
         }
         if (!items.length) return { absent: `No ${among} ${of ? `in "${of}" ` : ""}${p.where ? `meet "${p.where}"` : "have this measure"}.` }

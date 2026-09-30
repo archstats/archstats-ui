@@ -46,6 +46,31 @@ export function measureWords(id: string): string {
 
 export interface TopicExhibit { id: string; spec: { kind: string; params: Record<string, unknown> } }
 
+/** Subjects a question can name, and the exhibits that answer them. */
+const SUBJECTS: Array<[RegExp, string, string[]]> = [
+    [/\blayer(?:s|ed|ing)?\b|\bfloors?\b/i, "layering", ["stack"]],
+    [/\btangle[sd]?\b|\bcycles?\b|\bcircular\b/i, "tangles and cycles", ["tangle", "cycles"]],
+    [/\bwho (?:knows|owns|wrote|maintains)\b|\bbus factor\b|\bknowledge\b/i, "who knows the code", ["authors", "knowledge"]],
+    [/\bdeploy(?:s|ed|ment|ables?)?\b|\bpipelines?\b/i, "what ships", ["deployables"]],
+    [/\brules?\b|\bviolations?\b/i, "the declared rules", ["rules"]],
+]
+
+/**
+ * A mismatch, or null: the question names a subject, this turn drew the
+ * exhibit that answers it, and the answer cites none of it (an earlier
+ * answer's figures instead, or others).
+ */
+export function subjectMismatch(question: string, answer: string, exhibits: TopicExhibit[]): { asked: string; cites: string } | null {
+    const cites = (id: string) => new RegExp(`\\b${id}(?:\\.\\d+)?\\b`).test(answer)
+    for (const [re, label, kinds] of SUBJECTS) {
+        if (!re.test(question)) continue
+        const made = exhibits.filter(x => kinds.includes(x.spec.kind))
+        if (!made.length || made.some(x => cites(x.id))) continue
+        return { asked: label, cites: made[0].id }
+    }
+    return null
+}
+
 /**
  * A mismatch, or null: the question names a measure, the answer cites
  * rankings, and none of them ranks by what was asked.

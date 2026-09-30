@@ -11,6 +11,7 @@ describe("pointsAtView", () => {
     it("takes a bare this only as the first question", () => {
         expect(pointsAtView("Why are these tangled together?", true)).toBe(true)
         expect(pointsAtView("Is this bad?", false)).toBe(false)
+        expect(pointsAtView("Who is the key person here?", true)).toBe(true)
         expect(pointsAtView("Where are the tangles?", true)).toBe(false)
     })
 })

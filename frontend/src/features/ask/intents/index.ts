@@ -12,7 +12,7 @@ import { CAPABILITIES, describeCapability } from "../knowledge/capabilities"
 import { hybridSearch } from "../knowledge/semantic"
 import { coreTools } from "../tools/core"
 import { gather, show, type Shown } from "./show"
-import { resolveName, unresolved } from "./resolve"
+import { areaNote, resolveName, unresolved } from "./resolve"
 
 function intent<O extends ObjectSchema<any>>(def: {
     name: string
@@ -82,7 +82,10 @@ export const INTENTS: Tool[] = [
                 const why = unresolved(x, resolveName(ctx.world, x, "component"))
                 if (why) return { text: why }
             }
-            return answered([await show("neighbours", { of: a.of, direction: a.direction, on: a.on }, ctx)])
+            const r = resolveName(ctx.world, a.of, "component") as { name: string }
+            const out = answered([await show("neighbours", { of: a.of, direction: a.direction, on: a.on }, ctx)])
+            const note = areaNote(ctx.world, r.name)
+            return note ? { ...out, text: `${out.text}\n\n${note}` } : out
         },
     }),
     intent({
@@ -193,8 +196,8 @@ export const INTENTS: Tool[] = [
             const when = (at: string) => { const d = new Date(at); return Number.isNaN(d.getTime()) ? at : d.toISOString().slice(0, 10) }
             const list = (scans ?? []).slice(0, 6).map((x, i) => `${i === 0 ? "newest" : `${i + 1}.`} ${when(x.at)}${x.commit ? `, commit ${x.commit}` : ""}${x.id === world.scanId ? " (the one Ask reads)" : ""}`)
             const text = scans && scans.length < 2
-                ? `[${id}] This workspace has ${scans.length === 1 ? "one scan" : "no completed scan"}, so there is nothing to compare yet: scanning again later gives Changes two to compare. Say so, then answer what this snapshot shows about recent change (the change tool).`
-                : `[${id}] Ask reads one snapshot and cannot compare scans. The Changes view compares two (what was added, removed, and which measures moved), and Over time follows a measure across all of them; an offer to open Changes is shown in the answer.${list.length ? ` Scans: ${list.join("; ")}.` : ""} Say this plainly, without guessing what changed, then answer what this snapshot shows about recent change (the change tool).`
+                ? `This workspace has ${scans.length === 1 ? "one scan" : "no completed scan"}, so there is nothing to compare yet: scanning again later gives Changes two to compare. Say so, then answer what this snapshot shows about recent change (the change tool).`
+                : `Ask reads one snapshot and cannot compare scans. The Changes view compares two (what was added, removed, and which measures moved), and Over time follows a measure across all of them; an offer to open Changes is shown in the answer (it is not evidence: cite nothing for it).${list.length ? ` Scans: ${list.join("; ")}.` : ""} Say this plainly, without guessing what changed, then answer what this snapshot shows about recent change (the change tool).`
             return { text, evidence: [{ id, kind: "link" as const, title: "Compare scans in Changes", ranOn, open: { route: "/views/changes", label: "Open Changes" } }], followUps: ["What changed in the last 30 days?"] }
         },
     }),
