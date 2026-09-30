@@ -15,6 +15,7 @@ import {
 import type {Definition} from "./definition";
 import {StatNameResolver, getNiceStatName} from "./statNames";
 import {WailsDb} from "~/platform/db";
+import { STAGE_SCAN } from "~/platform/stage";
 import {AnalysisRevision} from "wailsjs/go/app/QueryService";
 
 // Module-level, non-reactive handle. Historically this avoided Vue wrapping
@@ -246,7 +247,7 @@ export const useDataStore = defineStore('data', {
         async openScan(scanId: string) {
             this._initialized = false;
             await _db.open(scanId);
-            this._openScanId = scanId;
+            this._openScanId = STAGE_SCAN ?? scanId;
             await this._initializeState();
         },
 

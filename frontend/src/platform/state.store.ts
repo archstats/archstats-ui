@@ -1,3 +1,4 @@
+import { STAGE_SCAN } from "./stage";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { PutMany, PutSetting, Settings, Workspace } from "wailsjs/go/app/StateService";
 
@@ -56,6 +57,8 @@ export const useStateStore = defineStore("state", {
             if (value === undefined || value === null) delete next[key];
             else next[key] = value;
             this.values = next;
+            // The stage keeps state in memory only: what it does must not be seen outside it.
+            if (STAGE_SCAN) return;
             pending.set(key, value === undefined || value === null ? "" : JSON.stringify(value));
             pendingWorkspace = this.workspace;
             schedule(() => this.flush());
@@ -64,6 +67,7 @@ export const useStateStore = defineStore("state", {
             return (key in this.settings ? (this.settings[key] as T) : fallback);
         },
         async setSetting(key: string, value: Json) {
+            if (STAGE_SCAN) return;
             const next = { ...this.settings };
             if (value === undefined || value === null) delete next[key];
             else next[key] = value;

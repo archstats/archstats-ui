@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/archstats/archstats-ui/app"
+	"github.com/archstats/archstats-ui/app/ask"
 	"github.com/archstats/archstats-ui/app/clone"
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
@@ -91,6 +92,7 @@ func main() {
 	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
 	scanSvc.SetOnDone(func(scanID string) { go changesSvc.ComputeReadings(scanID) })
 
+	askSvc := ask.NewService()
 	appSvc := app.NewAppService(version)
 	if wd, err := os.Getwd(); err == nil {
 		appSvc.QueueSnapshots(os.Args[1:], wd)
@@ -137,6 +139,9 @@ func main() {
 			cloneSvc.SetEmitter(func(event string, data ...any) {
 				runtime.EventsEmit(ctx, event, data...)
 			})
+			askSvc.SetEmitter(func(event string, data ...any) {
+				runtime.EventsEmit(ctx, event, data...)
+			})
 		},
 		Bind: []interface{}{
 			workspaceSvc,
@@ -149,6 +154,7 @@ func main() {
 			app.NewFilesService(func() context.Context { return appCtx }),
 			changesSvc,
 			app.NewEvidenceService(st),
+			app.NewAskService(askSvc),
 		},
 	})
 	if err != nil {

@@ -3,6 +3,7 @@ package app
 import (
 	"time"
 
+	"github.com/archstats/archstats-ui/app/ask"
 	"github.com/archstats/archstats-ui/app/query"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/store"
@@ -127,4 +128,35 @@ func (q *QueryService) CurrentScan() string {
 // scanned before fixes the engine now has, and the UI says so.
 func (q *QueryService) AnalysisRevision() int {
 	return core.AnalysisRevision
+}
+
+// AskService is the Wails-bound facade over ask.Service: the Ask pane's
+// line to a local Ollama server.
+type AskService struct {
+	svc *ask.Service
+}
+
+func NewAskService(svc *ask.Service) *AskService {
+	return &AskService{svc: svc}
+}
+
+// Models lists the models the local Ollama server holds.
+func (a *AskService) Models() ([]ask.Model, error) {
+	return a.svc.Models()
+}
+
+// Chat runs one model turn and streams it as "ask:delta" events; the
+// request and the reply are Ollama's JSON.
+func (a *AskService) Chat(id, requestJSON string) (string, error) {
+	return a.svc.Chat(id, requestJSON)
+}
+
+// Embed turns texts into vectors with a local embedding model.
+func (a *AskService) Embed(model string, texts []string) ([][]float64, error) {
+	return a.svc.Embed(model, texts)
+}
+
+// Cancel stops a running turn.
+func (a *AskService) Cancel(id string) {
+	a.svc.Cancel(id)
 }

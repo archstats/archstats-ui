@@ -1,3 +1,4 @@
+import { STAGE_SCAN } from "~/platform/stage";
 import { newestFirst } from "./scanOrder";
 import { useStateStore } from "~/platform/state.store";
 import { acceptHMRUpdate, defineStore } from "pinia";
@@ -66,6 +67,8 @@ const LAST_WORKSPACE_KEY = "archstats.shell.activeWorkspace";
 const openScanKey = (workspaceId: string) => `archstats.shell.openScan.${workspaceId}`;
 
 function remember(key: string, value: string | null) {
+    // The stage (Ask's hidden copy of the app) shares this storage; it must not change what the person's window remembers.
+    if (STAGE_SCAN) return;
     try {
         if (value === null) localStorage.removeItem(key);
         else localStorage.setItem(key, value);

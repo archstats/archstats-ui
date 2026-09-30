@@ -32,6 +32,8 @@ export type CellSpec =
     | { type: "reading"; reading: string; params?: Record<string, string> }
     /** A figure or table a template asks for: which view, set how; filled by adding from that view. */
     | { type: "slot"; kind: "table" | "figure"; route: string; view: string; hint: string; take?: string }
+    /** An exhibit by spec (features/exhibits): computed on the snapshot like a table, its figure drawn from it. */
+    | { type: "exhibit"; kind: string; v: number; params: Record<string, unknown>; highlight?: string[] }
 
 export interface TableOutput {
     columns: Array<{ id: string; label: string; numeric: boolean }>
@@ -440,6 +442,7 @@ export function cellNumbers(blocks: Block[]): Map<string, string> {
 
 export function cellKind(c: Cell): "figure" | "table" | "pin" | "reading" {
     if (c.spec.type === "reading") return "reading"
+    if (c.spec.type === "exhibit") return c.output?.figure ? "figure" : "table"
     if ((c.spec.type === "capture" || c.spec.type === "slot") && c.spec.kind === "figure") return "figure"
     if (c.spec.type === "pin") return c.output?.pin && c.output.figure ? "figure" : "pin"
     return "table"

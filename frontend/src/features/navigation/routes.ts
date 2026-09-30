@@ -53,6 +53,7 @@ export interface ViewEntry { label: string; to: string; also?: string }
  */
 export const VIEWS: ViewEntry[] = [
   { label: "Overview", to: "/" },
+  { label: "Ask", to: "/views/ask", also: "chat assistant question ai" },
   { label: "Metrics", to: "/views/metrics", also: "table components" },
   { label: "Hotspots", to: "/views/components/hotspots", also: "treemap churn" },
   { label: "Connections", to: "/views/connections", also: "graph dependencies" },
@@ -72,6 +73,8 @@ export const VIEWS: ViewEntry[] = [
   { label: "Hidden coupling", to: "/views/git/coupling", also: "co-change changes together" },
   { label: "Folder X-ray", to: "/views/xray", also: "folder directory utils helpers topics grab-bag" },
   { label: "Units", to: "/views/units", also: "classes functions modules layers lanes inversions unreachable dead code duplicates entry points structure checks" },
+  { label: "Deployables", to: "/views/deployables", also: "pipelines services apps containers ship run deploy" },
+  { label: "Checks", to: "/views/checks", also: "findings structure checks" },
   { label: "Libraries", to: "/views/libraries", also: "imports frameworks external dependencies" },
   { label: "Rules", to: "/views/rules", also: "violations lens rules" },
   { label: "Changes", to: "/views/changes", also: "compare diff" },

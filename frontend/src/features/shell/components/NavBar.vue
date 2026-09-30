@@ -52,6 +52,17 @@
           <span class="truncate">Changes</span>
           <span v-if="scanCount > 1" class="ml-auto font-mono text-xs text-neutral-400" :title="`${scanCount} snapshots to compare`">{{ scanCount }}</span>
         </router-link>
+        <router-link
+            to="/views/ask"
+            :tabindex="hasData ? undefined : -1"
+            class="-mt-3 flex h-[26px] items-center gap-2 rounded px-2 text-base text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+            active-class="is-active bg-accent-50 font-medium text-neutral-900 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]"
+            title="Ask questions about this codebase (⌘J takes the view you are on along)"
+        >
+          <Sparkles :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
+          <span class="truncate">Ask</span>
+          <span class="ml-auto font-mono text-xs text-neutral-400">⌘J</span>
+        </router-link>
         <section v-for="group in groups" :key="group.title">
           <h3 class="ui-section-title mb-1 px-2">{{ group.title }}</h3>
           <ul class="flex flex-col">
@@ -170,6 +181,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
   Activity, Users, Braces, LayoutDashboard, Scale, Package, Container,
+  Sparkles,
 } from "lucide-vue-next";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
 import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel";

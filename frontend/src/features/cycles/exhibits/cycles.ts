@@ -1,0 +1,65 @@
+// The individual cycles: distinct shortest cycles as paths, how many of each
+// length, the smallest first (a length of 2 is a mutual pair). Through one
+// component when named.
+
+import { candidates, shortName } from "~/features/snapshot/names"
+import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
+import { s } from "~/features/exhibits/schema"
+import { n, plural } from "~/features/exhibits/words"
+
+export interface CyclesData {
+    through: string | null
+    count: number
+    byLength: Array<{ length: number; count: number }>
+    smallest: string[][]
+}
+
+export const cycles = exhibit<CyclesData>()({
+    kind: "cycles", v: 1,
+    summary: "The distinct shortest cycles, how many of each length, and the smallest as paths.",
+    params: s.object({
+        of: s.string().optional().describe("Only cycles through this component."),
+    }, { aliases: { component: "of", involving: "of" } }),
+
+    title: (p, d) => `The smallest cycles${(d?.through ?? p.of) ? ` through ${d?.through ?? p.of}` : ""}`,
+
+    async resolve(p, { snap }): Promise<CyclesData | Absent> {
+        let list = snap.cycles()
+        let through: string | null = null
+        if (p.of) {
+            through = candidates(snap.components().map(c => String(c.name)), p.of)[0] ?? null
+            if (!through) return { absent: `No component matches "${p.of}".` }
+            list = list.filter(c => c.nodes.includes(through!))
+        }
+        if (!list.length) return { absent: through ? `${through} is in no cycle.` : "There are no cycles: the import graph has none." }
+        const sizes = new Map<number, number>()
+        for (const c of list) sizes.set(c.nodes.length, (sizes.get(c.nodes.length) ?? 0) + 1)
+        return {
+            through, count: list.length,
+            byLength: [...sizes].sort((a, b) => a[0] - b[0]).map(([length, count]) => ({ length, count })),
+            smallest: [...list].sort((a, b) => a.nodes.length - b.nodes.length).slice(0, 12).map(c => c.nodes),
+        }
+    },
+
+    facts(d) {
+        const out: FactDraft[] = [
+            { kind: "total", text: `${plural(d.count, "distinct shortest cycle")}${d.through ? ` run through ${d.through}` : ""}. By length: ${d.byLength.map(x => `${n(x.count)} of length ${x.length}`).join(", ")}.`, entities: d.through ? [d.through] : [], values: { cycles: d.count, ...Object.fromEntries(d.byLength.map(x => [`length_${x.length}`, x.count])) } },
+            { kind: "rank", text: `The smallest has ${plural(d.smallest[0].length, "component")}${d.smallest[0].length === 2 ? " (a mutual pair: each imports the other)" : ""}; smallest first below.`, entities: d.smallest[0], values: { smallest: d.smallest[0].length } },
+        ]
+        d.smallest.slice(0, 8).forEach((c, i) => out.push({ kind: "row", text: `${i + 1}. (${c.length}) ${[...c, c[0]].join(" → ")}.`, entities: c, values: { length: c.length } }))
+        return out
+    },
+
+    table: d => ({
+        columns: [{ id: "length", label: "Length", numeric: true }, { id: "cycle", label: "Cycle" }],
+        rows: d.smallest.map(c => ({ length: c.length, cycle: [...c, c[0]].map(shortName).join(" → ") })),
+        total: d.count,
+    }),
+
+    open: (_p, d) => ({ route: d?.through ? `/views/components/cycles?component=${encodeURIComponent(d.through)}` : "/views/components/cycles", label: "Open Cycles" }),
+
+    samples: snap => {
+        const c = snap.cycles()[0]?.nodes[0]
+        return c ? [{ of: c }] : []
+    },
+})

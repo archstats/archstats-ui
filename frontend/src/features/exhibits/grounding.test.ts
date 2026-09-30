@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest"
+import { checkGrounding, sentencesOf } from "./grounding"
+import type { Fact } from "./types"
+
+const facts: Fact[] = [
+    { id: "E1.1", kind: "total", text: "12 floors, top to bottom.", entities: [], values: { floors: 12 } },
+    { id: "E1.9", kind: "row", text: "com.acme.core → com.acme.web points back up: 31 import references.", entities: ["com.acme.core", "com.acme.web"], values: { references: 31 } },
+    { id: "E2.3", kind: "row", text: "com.acme.cart ↔ com.acme.checkout: 212 shared commits (38% of com.acme.cart's).", entities: ["com.acme.cart", "com.acme.checkout"], values: { shared: 212, percent: 38 } },
+    { id: "E2.4", kind: "row", text: "com.acme.cart ↔ com.acme.search: 40 shared commits.", entities: ["com.acme.cart", "com.acme.search"], values: { shared: 40 } },
+]
+
+describe("checking prose against the facts it cites", () => {
+    it("verifies a sentence whose numbers and names are in its cited fact", () => {
+        const g = checkGrounding("The largest upward link is core → web, with 31 import references [E1.9].", facts)
+        expect(g.claims[0].verdict).toBe("verified")
+    })
+    it("catches the right source with the wrong number", () => {
+        const g = checkGrounding("core → web carries 42 import references [E1.9].", facts)
+        expect(g.claims[0].verdict).toBe("unsupported")
+        expect(g.claims[0].reasons[0]).toMatch(/42 is in none/)
+    })
+    it("catches a number cited to the wrong fact", () => {
+        const g = checkGrounding("Cart and checkout share 212 commits [E2.4].", facts)
+        expect(g.claims[0].verdict).toBe("unsupported")
+    })
+    it("catches a fact about something else", () => {
+        const g = checkGrounding("checkout changes with search in 40 commits [E2.4].", facts)
+        expect(g.claims[0].verdict).toBe("partial")
+        expect(g.claims[0].reasons.join()).toMatch(/not about com.acme.checkout/)
+    })
+    it("allows shares and differences of cited numbers", () => {
+        expect(checkGrounding("That is 19% of what cart shares with checkout [E2.3, E2.4].", facts).claims[0].verdict).toBe("verified")
+        expect(checkGrounding("Checkout shares 172 more commits with cart than search does [E2.3, E2.4].", facts).claims[0].verdict).toBe("verified")
+    })
+    it("lets a whole-exhibit citation cover its facts", () => {
+        expect(checkGrounding("There are 12 floors [E1].", facts).claims[0].verdict).toBe("verified")
+    })
+    it("flags numbers stated without a citation, and leaves plain prose alone", () => {
+        const g = checkGrounding("So the stack is not the whole story. There are 57 tangled components.", facts)
+        expect(g.claims.map(c => c.verdict)).toEqual(["uncited"])
+    })
+    it("reads list items and sentences, and skips embeds and code", () => {
+        expect(sentencesOf("First point [E1.1]. Second point.\n\n- An item [E1.9]\n![Stack](exhibit:E1)\n```\nx = 99\n```")).toEqual(["First point [E1.1].", "Second point.", "An item [E1.9]"])
+    })
+    it("checks list items against the citation of the sentence that introduces them", () => {
+        const g = checkGrounding("The pairs that change together most [E2]:\n- cart ↔ checkout: 212 shared commits\n- cart ↔ search: 41 shared commits", facts)
+        expect(g.claims.map(c => c.verdict)).toEqual(["cited", "verified", "unsupported"])
+    })
+    it("accepts names an exhibit states as a whole (a tangle's members)", () => {
+        const withMembers: Fact[] = [...facts, { id: "E3.1", kind: "total", text: "A tangle of 3 components.", entities: [], values: { components: 3 } }, { id: "E3.2", kind: "note", text: "Members: com.acme.a, com.acme.b.", entities: ["com.acme.a", "com.acme.b"], values: {} }]
+        expect(checkGrounding("The tangle holds com.acme.a and com.acme.b [E3.1].", withMembers).claims[0].verdict).toBe("verified")
+    })
+})

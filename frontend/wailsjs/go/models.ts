@@ -369,6 +369,33 @@ export namespace app {
 
 }
 
+export namespace ask {
+	
+	export class Model {
+	    name: string;
+	    size: number;
+	    tools: boolean;
+	    vision: boolean;
+	    think: boolean;
+	    remote: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Model(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.tools = source["tools"];
+	        this.vision = source["vision"];
+	        this.think = source["think"];
+	        this.remote = source["remote"];
+	    }
+	}
+
+}
+
 export namespace changes {
 	
 	export class Move {

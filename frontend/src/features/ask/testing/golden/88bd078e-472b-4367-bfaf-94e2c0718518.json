@@ -1,0 +1,5991 @@
+{
+ "snapshot": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+ "workspace": "elepy",
+ "calls": [
+  {
+   "tool": "layers",
+   "args": {},
+   "text": "[E1] 12 floors, top to bottom, ordered so imports run downward (areas cut from each naming style separately (packages and folders), split until no area holds most of the code):\n1. elepy.mongo — 2 components · 985 lines\n2. elepy.oauth — 6 components · 622 lines\n3. elepy — 1 component · 826 lines\n4. elepy.uploads — 1 component · 685 lines\n5. elepy.auth — 7 components · 1,278 lines\n6. elepy.handlers — 1 component · 700 lines\n7. elepy.schemas — 2 components · 1,700 lines\n8. (19 other areas) — 20 components · 5,439 lines\n9. elepy.annotations — 2 components · 846 lines\n10. elepy.http — 1 component · 1,205 lines\n11. elepy.query — 3 components · 686 lines\n12. frontend — 3 components · 1,248 lines\n17 import links between floors point back up, 101 import references: (19 other areas) → elepy.schemas (26), elepy.http → (19 other areas) (19), elepy.annotations → elepy.handlers (10), elepy.http → elepy.auth (7), (19 other areas) → elepy.auth (6), elepy.annotations → (19 other areas) (5)\nWhat the floors hide: 112 of 447 import references stay inside a floor; a tangle of 29 components crosses 9 floors (elepy, elepy.annotations, elepy.auth, (19 other areas)).\nSo the layering between floors does not mean the code is layered: read the tangles before calling it clean.",
+   "evidence": [
+    {
+     "id": "E1",
+     "kind": "layers",
+     "title": "The layers of the codebase",
+     "floors": [
+      {
+       "id": "elepy.mongo",
+       "label": "elepy.mongo",
+       "sub": "2 components · 985 lines",
+       "weight": 985
+      },
+      {
+       "id": "elepy.oauth",
+       "label": "elepy.oauth",
+       "sub": "6 components · 622 lines",
+       "weight": 622
+      },
+      {
+       "id": "elepy",
+       "label": "elepy",
+       "sub": "1 component · 826 lines",
+       "weight": 826
+      },
+      {
+       "id": "elepy.uploads",
+       "label": "elepy.uploads",
+       "sub": "1 component · 685 lines",
+       "weight": 685
+      },
+      {
+       "id": "elepy.auth",
+       "label": "elepy.auth",
+       "sub": "7 components · 1,278 lines",
+       "weight": 1278
+      },
+      {
+       "id": "elepy.handlers",
+       "label": "elepy.handlers",
+       "sub": "1 component · 700 lines",
+       "weight": 700
+      },
+      {
+       "id": "elepy.schemas",
+       "label": "elepy.schemas",
+       "sub": "2 components · 1,700 lines",
+       "weight": 1700
+      },
+      {
+       "id": "(19 other areas)",
+       "label": "(19 other areas)",
+       "sub": "20 components · 5,439 lines",
+       "weight": 5439
+      },
+      {
+       "id": "elepy.annotations",
+       "label": "elepy.annotations",
+       "sub": "2 components · 846 lines",
+       "weight": 846
+      },
+      {
+       "id": "elepy.http",
+       "label": "elepy.http",
+       "sub": "1 component · 1,205 lines",
+       "weight": 1205
+      },
+      {
+       "id": "elepy.query",
+       "label": "elepy.query",
+       "sub": "3 components · 686 lines",
+       "weight": 686
+      },
+      {
+       "id": "frontend",
+       "label": "frontend",
+       "sub": "3 components · 1,248 lines",
+       "weight": 1248
+      }
+     ],
+     "flows": [
+      {
+       "key": "elepy.schemas→elepy.annotations",
+       "from": "elepy.schemas",
+       "to": "elepy.annotations",
+       "count": 24,
+       "bad": false
+      },
+      {
+       "key": "elepy→(19 other areas)",
+       "from": "elepy",
+       "to": "(19 other areas)",
+       "count": 26,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→elepy.annotations",
+       "from": "elepy.mongo",
+       "to": "elepy.annotations",
+       "count": 4,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→elepy.schemas",
+       "from": "elepy.mongo",
+       "to": "elepy.schemas",
+       "count": 6,
+       "bad": false
+      },
+      {
+       "key": "elepy.query→(19 other areas)",
+       "from": "elepy.query",
+       "to": "(19 other areas)",
+       "count": 4,
+       "bad": true
+      },
+      {
+       "key": "elepy.http→(19 other areas)",
+       "from": "elepy.http",
+       "to": "(19 other areas)",
+       "count": 19,
+       "bad": true
+      },
+      {
+       "key": "(19 other areas)→elepy.schemas",
+       "from": "(19 other areas)",
+       "to": "elepy.schemas",
+       "count": 26,
+       "bad": true
+      },
+      {
+       "key": "(19 other areas)→elepy.auth",
+       "from": "(19 other areas)",
+       "to": "elepy.auth",
+       "count": 6,
+       "bad": true
+      },
+      {
+       "key": "(19 other areas)→elepy.query",
+       "from": "(19 other areas)",
+       "to": "elepy.query",
+       "count": 25,
+       "bad": false
+      },
+      {
+       "key": "elepy.auth→(19 other areas)",
+       "from": "elepy.auth",
+       "to": "(19 other areas)",
+       "count": 34,
+       "bad": false
+      },
+      {
+       "key": "elepy.schemas→(19 other areas)",
+       "from": "elepy.schemas",
+       "to": "(19 other areas)",
+       "count": 27,
+       "bad": false
+      },
+      {
+       "key": "elepy.handlers→elepy.annotations",
+       "from": "elepy.handlers",
+       "to": "elepy.annotations",
+       "count": 1,
+       "bad": false
+      },
+      {
+       "key": "elepy.schemas→elepy.query",
+       "from": "elepy.schemas",
+       "to": "elepy.query",
+       "count": 5,
+       "bad": false
+      },
+      {
+       "key": "elepy.oauth→(19 other areas)",
+       "from": "elepy.oauth",
+       "to": "(19 other areas)",
+       "count": 10,
+       "bad": false
+      },
+      {
+       "key": "elepy.handlers→(19 other areas)",
+       "from": "elepy.handlers",
+       "to": "(19 other areas)",
+       "count": 37,
+       "bad": false
+      },
+      {
+       "key": "elepy.auth→elepy.annotations",
+       "from": "elepy.auth",
+       "to": "elepy.annotations",
+       "count": 3,
+       "bad": false
+      },
+      {
+       "key": "elepy.handlers→elepy.http",
+       "from": "elepy.handlers",
+       "to": "elepy.http",
+       "count": 14,
+       "bad": false
+      },
+      {
+       "key": "elepy.schemas→elepy.http",
+       "from": "elepy.schemas",
+       "to": "elepy.http",
+       "count": 4,
+       "bad": false
+      },
+      {
+       "key": "elepy.uploads→(19 other areas)",
+       "from": "elepy.uploads",
+       "to": "(19 other areas)",
+       "count": 14,
+       "bad": false
+      },
+      {
+       "key": "elepy.uploads→elepy.http",
+       "from": "elepy.uploads",
+       "to": "elepy.http",
+       "count": 9,
+       "bad": false
+      },
+      {
+       "key": "elepy.http→elepy.auth",
+       "from": "elepy.http",
+       "to": "elepy.auth",
+       "count": 7,
+       "bad": true
+      },
+      {
+       "key": "(19 other areas)→elepy.http",
+       "from": "(19 other areas)",
+       "to": "elepy.http",
+       "count": 26,
+       "bad": false
+      },
+      {
+       "key": "elepy→elepy.auth",
+       "from": "elepy",
+       "to": "elepy.auth",
+       "count": 10,
+       "bad": false
+      },
+      {
+       "key": "elepy.annotations→(19 other areas)",
+       "from": "elepy.annotations",
+       "to": "(19 other areas)",
+       "count": 5,
+       "bad": true
+      },
+      {
+       "key": "elepy.annotations→elepy.handlers",
+       "from": "elepy.annotations",
+       "to": "elepy.handlers",
+       "count": 10,
+       "bad": true
+      },
+      {
+       "key": "elepy.auth→elepy.handlers",
+       "from": "elepy.auth",
+       "to": "elepy.handlers",
+       "count": 7,
+       "bad": false
+      },
+      {
+       "key": "elepy.auth→elepy.http",
+       "from": "elepy.auth",
+       "to": "elepy.http",
+       "count": 8,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→(19 other areas)",
+       "from": "elepy.mongo",
+       "to": "(19 other areas)",
+       "count": 12,
+       "bad": false
+      },
+      {
+       "key": "elepy.auth→elepy.query",
+       "from": "elepy.auth",
+       "to": "elepy.query",
+       "count": 8,
+       "bad": false
+      },
+      {
+       "key": "elepy.annotations→elepy.schemas",
+       "from": "elepy.annotations",
+       "to": "elepy.schemas",
+       "count": 2,
+       "bad": true
+      },
+      {
+       "key": "(19 other areas)→elepy.annotations",
+       "from": "(19 other areas)",
+       "to": "elepy.annotations",
+       "count": 22,
+       "bad": false
+      },
+      {
+       "key": "elepy.uploads→elepy.query",
+       "from": "elepy.uploads",
+       "to": "elepy.query",
+       "count": 2,
+       "bad": false
+      },
+      {
+       "key": "elepy→elepy.http",
+       "from": "elepy",
+       "to": "elepy.http",
+       "count": 5,
+       "bad": false
+      },
+      {
+       "key": "elepy.http→elepy",
+       "from": "elepy.http",
+       "to": "elepy",
+       "count": 2,
+       "bad": true
+      },
+      {
+       "key": "elepy.uploads→elepy.annotations",
+       "from": "elepy.uploads",
+       "to": "elepy.annotations",
+       "count": 3,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→elepy.uploads",
+       "from": "elepy.mongo",
+       "to": "elepy.uploads",
+       "count": 1,
+       "bad": false
+      },
+      {
+       "key": "(19 other areas)→elepy",
+       "from": "(19 other areas)",
+       "to": "elepy",
+       "count": 3,
+       "bad": true
+      },
+      {
+       "key": "elepy.oauth→elepy.auth",
+       "from": "elepy.oauth",
+       "to": "elepy.auth",
+       "count": 4,
+       "bad": false
+      },
+      {
+       "key": "elepy.handlers→elepy.schemas",
+       "from": "elepy.handlers",
+       "to": "elepy.schemas",
+       "count": 3,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→elepy.query",
+       "from": "elepy.mongo",
+       "to": "elepy.query",
+       "count": 7,
+       "bad": false
+      },
+      {
+       "key": "elepy.oauth→elepy.http",
+       "from": "elepy.oauth",
+       "to": "elepy.http",
+       "count": 2,
+       "bad": false
+      },
+      {
+       "key": "elepy→elepy.schemas",
+       "from": "elepy",
+       "to": "elepy.schemas",
+       "count": 6,
+       "bad": false
+      },
+      {
+       "key": "elepy.uploads→elepy.handlers",
+       "from": "elepy.uploads",
+       "to": "elepy.handlers",
+       "count": 2,
+       "bad": false
+      },
+      {
+       "key": "(19 other areas)→elepy.uploads",
+       "from": "(19 other areas)",
+       "to": "elepy.uploads",
+       "count": 3,
+       "bad": true
+      },
+      {
+       "key": "elepy.http→elepy.schemas",
+       "from": "elepy.http",
+       "to": "elepy.schemas",
+       "count": 1,
+       "bad": true
+      },
+      {
+       "key": "elepy→elepy.uploads",
+       "from": "elepy",
+       "to": "elepy.uploads",
+       "count": 4,
+       "bad": false
+      },
+      {
+       "key": "(19 other areas)→elepy.handlers",
+       "from": "(19 other areas)",
+       "to": "elepy.handlers",
+       "count": 5,
+       "bad": true
+      },
+      {
+       "key": "elepy→elepy.annotations",
+       "from": "elepy",
+       "to": "elepy.annotations",
+       "count": 1,
+       "bad": false
+      },
+      {
+       "key": "elepy.schemas→elepy.uploads",
+       "from": "elepy.schemas",
+       "to": "elepy.uploads",
+       "count": 1,
+       "bad": true
+      },
+      {
+       "key": "elepy.query→elepy",
+       "from": "elepy.query",
+       "to": "elepy",
+       "count": 4,
+       "bad": true
+      },
+      {
+       "key": "elepy.annotations→elepy.uploads",
+       "from": "elepy.annotations",
+       "to": "elepy.uploads",
+       "count": 1,
+       "bad": true
+      },
+      {
+       "key": "elepy.schemas→elepy.auth",
+       "from": "elepy.schemas",
+       "to": "elepy.auth",
+       "count": 2,
+       "bad": true
+      },
+      {
+       "key": "elepy.handlers→elepy.query",
+       "from": "elepy.handlers",
+       "to": "elepy.query",
+       "count": 3,
+       "bad": false
+      },
+      {
+       "key": "elepy.mongo→elepy.http",
+       "from": "elepy.mongo",
+       "to": "elepy.http",
+       "count": 1,
+       "bad": false
+      },
+      {
+       "key": "elepy.annotations→elepy.query",
+       "from": "elepy.annotations",
+       "to": "elepy.query",
+       "count": 1,
+       "bad": false
+      },
+      {
+       "key": "elepy.annotations→elepy.http",
+       "from": "elepy.annotations",
+       "to": "elepy.http",
+       "count": 1,
+       "bad": false
+      }
+     ],
+     "grouping": "areas cut from each naming style separately (packages and folders), split until no area holds most of the code",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/units",
+      "label": "Open Units"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "layers",
+   "args": {
+    "within": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E2] 2 floors inside admin/src/main/resources/frontend/src, top to bottom, ordered so imports run downward (areas cut by name, split until no area holds most of the code):\n1. src/components — 1 component · 4 lines\n2. src — 1 component · 1,236 lines\nNo import between floors points back up.\nWhat the floors hide: 0 of 0 import references stay inside a floor; no tangles.",
+   "evidence": [
+    {
+     "id": "E2",
+     "kind": "layers",
+     "title": "Layers inside frontend/src",
+     "floors": [
+      {
+       "id": "src/components",
+       "label": "src/components",
+       "sub": "1 component · 4 lines",
+       "weight": 4
+      },
+      {
+       "id": "src",
+       "label": "src",
+       "sub": "1 component · 1,236 lines",
+       "weight": 1236
+      }
+     ],
+     "flows": [],
+     "grouping": "areas cut by name, split until no area holds most of the code",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/units",
+      "label": "Open Units"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "mass",
+   "args": {
+    "color": "role"
+   },
+   "text": "[E3] 423 files, 56,353 lines. Largest folders: admin/src (37,965 lines, 67%), core/src (11,136 lines, 20%), mongo/src (985 lines, 2%), oauth/src (622 lines, 1%), sparkjava/src (515 lines, 1%), hibernate/src (508 lines, 1%), gcp/firestore (446 lines, 1%), docs/annotations (392 lines, 1%).\nLines by role: non_code 34,160 (61%), production 22,193 (39%).",
+   "evidence": [
+    {
+     "id": "E3",
+     "kind": "folders",
+     "title": "Where the code lives · by role",
+     "files": [
+      "admin/src/main/resources/frontend/package-lock.json",
+      "admin/src/main/resources/frontend/src/behave.js",
+      "core/src/main/java/com/elepy/Elepy.java",
+      "admin/src/main/resources/frontend/src/prism.js",
+      "admin/src/main/resources/frontend/src/components/ElepySingle.vue",
+      "./pom.xml",
+      "admin/src/main/resources/frontend/src/components/fields/GenericField.vue",
+      "admin/src/main/resources/frontend/scss/main.scss",
+      "mongo/src/main/java/com/elepy/mongo/ElepyCodec.java",
+      "admin/src/main/resources/frontend/src/components/fields/MarkdownEditor.vue",
+      "core/src/main/java/com/elepy/utils/ReflectionUtils.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoCrud.java",
+      "core/src/main/java/com/elepy/http/Request.java",
+      "core/src/main/java/com/elepy/revisions/RevisionCrud.java",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateDao.java",
+      "admin/src/main/resources/frontend/src/components/fields/ReferenceField.vue",
+      "admin/src/main/resources/frontend/src/store.js",
+      "admin/src/main/resources/frontend/src/components/ElepyDefault.vue",
+      "admin/src/main/resources/frontend/src/components/fields/ArrayField.vue",
+      "admin/src/main/resources/frontend/src/components/settings/QueryBar.vue",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkRequest.java",
+      "core/src/main/java/com/elepy/http/HttpContext.java",
+      "./LICENSE",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreCrud.java",
+      "core/src/main/java/com/elepy/schemas/options/ObjectOptions.java",
+      "admin/src/main/resources/frontend/src/components/tables/Table.vue",
+      "admin/src/main/resources/frontend/src/search/Expression.vue",
+      "admin/src/main/resources/frontend/src/components/fields/FileField.vue",
+      "core/src/main/java/com/elepy/schemas/Property.java",
+      "core/pom.xml",
+      "core/src/main/java/com/elepy/http/HttpServiceInterceptor.java",
+      "core/src/main/java/com/elepy/configuration/ElepyPreConfiguration.java",
+      "core/src/main/java/com/elepy/uploads/FileReference.java",
+      "admin/src/main/resources/frontend/src/router.js",
+      "core/src/main/java/com/elepy/crud/Crud.java",
+      "core/src/main/java/com/elepy/query/parser/QueryListener.java",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateQueryFactory.java",
+      "core/src/main/java/com/elepy/schemas/Schema.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkService.java",
+      "javalin/src/main/java/com/elepy/javalin/JavalinRequest.java",
+      "core/src/main/java/com/elepy/schemas/FieldType.java",
+      "core/src/main/java/com/elepy/auth/authorization/AuthorizationService.java",
+      "admin/src/main/resources/frontend/src/components/base/ActionsButton.vue",
+      "admin/src/main/java/com/elepy/admin/FrontendLoader.java",
+      "hibernate/pom.xml",
+      "core/src/main/java/com/elepy/auth/users/UserService.java",
+      "core/src/main/java/com/elepy/di/WeldContext.java",
+      "mongo/src/main/java/com/elepy/mongo/QueryBuilder.java",
+      "admin/src/main/resources/frontend/src/components/fields/custom/EditorJsField.vue",
+      "core/src/main/java/com/elepy/configuration/ElepyPostConfiguration.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkResponse.java",
+      "aws/s3/src/main/java/com/elepy/aws/s3/S3FileService.java",
+      "basic/pom.xml",
+      ".idea/uiDesigner.xml",
+      "core/src/main/java/com/elepy/handlers/DefaultUpdate.java",
+      "core/src/main/java/com/elepy/schemas/PropertyFactory.java",
+      "admin/src/main/resources/frontend/src/components/SideBar.vue",
+      "core/src/main/java/com/elepy/igniters/DefaultActionFactory.java",
+      "core/src/main/java/com/elepy/uploads/FileUploadExtension.java",
+      "core/src/main/java/com/elepy/auth/users/User.java",
+      "core/src/main/java/com/elepy/http/HttpAction.java",
+      "core/src/main/antlr4/com/elepy/data/query/parser/EleQuery.g4",
+      "docs/core-functionality/elepy-query-language.md",
+      "core/src/main/java/com/elepy/handlers/DefaultFindMany.java",
+      "file-uploads/src/main/java/com/elepy/uploads/DirectoryFileService.java",
+      "core/src/main/java/com/elepy/revisions/Revision.java",
+      "admin/src/main/resources/frontend/src/components/OAuthButtons.vue",
+      "admin/src/main/resources/frontend/src/components/settings/Pagination.vue",
+      "admin/src/main/resources/frontend/src/views/LoginView.vue",
+      "core/src/main/java/com/elepy/schemas/FieldMapper.java",
+      "admin/src/main/resources/frontend/src/components/tables/TableRow.vue",
+      "core/src/main/java/com/elepy/igniters/SchemaRouter.java",
+      "admin/src/main/resources/frontend/src/views/InitialUserView.vue",
+      "core/src/main/java/com/elepy/exceptions/ElepyException.java",
+      "admin/src/main/resources/frontend/src/main.js",
+      "admin/src/main/resources/frontend/src/components/base/BaseLayout.vue",
+      "docs/main/getting-started.md",
+      "javalin/src/main/java/com/elepy/javalin/JavalinResponse.java",
+      "core/src/main/java/com/elepy/http/HttpService.java",
+      "admin/src/main/resources/frontend/src/search/Search.vue",
+      "admin/src/main/resources/frontend/src/components/fields/arrays/ArrayGenericField.vue",
+      "docs/annotations/custom-functionality.md",
+      "admin/src/main/resources/frontend/src/components/modals/ActionModal.vue",
+      "docs/guides/custom-functionality.md",
+      "core/src/main/java/com/elepy/schemas/SchemaFactory.java",
+      "core/src/main/java/com/elepy/schemas/DefaultActions.java",
+      "core/src/main/java/com/elepy/id/SlugIdentityProvider.java",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/Tokens.java",
+      "admin/src/main/resources/frontend/package.json",
+      "oauth/src/main/java/com/elepy/oauth/OAuthAuthenticationMethod.java",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreFilterFactory.java",
+      "admin/pom.xml",
+      "core/src/main/java/com/elepy/exceptions/Message.java",
+      "core/src/main/java/com/elepy/query/Filters.java",
+      "admin/src/main/resources/frontend/src/search/SuggestionsBox.vue",
+      "docs/index.html",
+      "core/src/main/java/com/elepy/http/Response.java",
+      "core/src/main/java/com/elepy/di/WeldExtension.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoConfiguration.java",
+      "gcp/firestore/pom.xml",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDApi.java",
+      "core/src/main/java/com/elepy/handlers/DefaultCreate.java",
+      "core/src/main/java/com/elepy/json/TranslatableSerializer.java",
+      "core/src/main/java/com/elepy/schemas/options/ArrayOptions.java",
+      "core/src/main/java/com/elepy/query/parser/cql/CQLParser.java",
+      "admin/src/main/resources/frontend/src/utils.mjs",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateConfiguration.java",
+      "admin/src/main/resources/frontend/src/components/tables/TableColumnData.vue",
+      "core/src/main/java/com/elepy/query/Query.java",
+      "admin/src/main/resources/frontend/src/components/base/LoadingSpinner.vue",
+      "core/src/main/java/com/elepy/schemas/SchemaRegistry.java",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/Token.java",
+      "core/src/main/java/com/elepy/auth/authentication/AuthenticationService.java",
+      "core/src/main/java/com/elepy/uploads/ImageProcessor.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoFileService.java",
+      "core/src/main/java/com/elepy/evaluators/AtomicIntegrityEvaluator.java",
+      "admin/src/main/resources/frontend/src/components/fields/arrays/ArrayInputField.vue",
+      "gcp/pom.xml",
+      "core/src/main/java/com/elepy/http/RawFile.java",
+      "core/src/main/java/com/elepy/id/HexIdentityProvider.java",
+      "core/src/main/java/com/elepy/utils/DateUtils.java",
+      "core/src/main/java/com/elepy/http/Route.java",
+      "admin/src/main/resources/frontend/src/components/fields/DatePicker.vue",
+      "core/src/main/java/com/elepy/revisions/RevisionFind.java",
+      "core/src/main/java/com/elepy/schemas/options/CustomOptions.java",
+      "admin/src/main/resources/frontend/src/elepyClient.js",
+      "core/src/main/java/com/elepy/auth/users/UserUpdate.java",
+      "mongo/pom.xml",
+      "core/src/main/java/com/elepy/auth/extension/UserAuthenticationExtension.java",
+      "core/src/main/java/com/elepy/handlers/SimpleUpdate.java",
+      "jwt/pom.xml",
+      "javalin/src/main/java/com/elepy/javalin/JavalinService.java",
+      "core/src/main/java/com/elepy/utils/StringUtils.java",
+      "core/src/main/java/com/elepy/auth/authorization/PolicyBinding.java",
+      "admin/src/main/resources/frontend/src/components/modals/RevisionHistory.vue",
+      "admin/src/main/resources/frontend/src/components/fields/CustomField.vue",
+      "mongo/src/main/java/com/elepy/mongo/CustomAnnotationIntrospector.java",
+      "core/src/main/java/com/elepy/handlers/SimpleCreate.java",
+      "admin/src/main/resources/frontend/src/components/fields/HtmlEditor.vue",
+      "core/src/main/java/com/elepy/BasicHttpExtension.java",
+      "gcp/cloudstorage/src/main/java/com/elepy/gcp/CloudStorageFileService.java",
+      "core/src/main/java/com/elepy/evaluators/DefaultIntegrityEvaluator.java",
+      "aws/s3/pom.xml",
+      "core/src/main/java/com/elepy/auth/authentication/methods/basic/BasicAuthenticationMethod.java",
+      "jwt/src/main/java/com/elepy/jwt/JWTConfiguration.java",
+      "core/src/main/java/com/elepy/id/NumberIdentityProvider.java",
+      "core/src/main/java/com/elepy/crud/CrudRegistry.java",
+      "file-uploads/pom.xml",
+      "core/src/main/java/com/elepy/auth/users/UserCreate.java",
+      "core/src/main/java/com/elepy/uploads/FileUploadEvaluator.java",
+      "core/src/main/java/com/elepy/igniters/ModelDetails.java",
+      "core/src/main/java/com/elepy/schemas/options/DateOptions.java",
+      "swagger/pom.xml",
+      "core/src/main/java/com/elepy/query/FilterType.java",
+      "core/src/main/java/com/elepy/query/Filter.java",
+      "jwt/src/main/java/com/elepy/jwt/JWTGenerator.java",
+      "core/src/main/java/com/elepy/ExtensionRegistry.java",
+      "admin/src/main/resources/frontend/scss/components/_login.scss",
+      "docs/core-functionality/handlers.md",
+      "admin/src/main/resources/frontend/src/components/LanguageSelect.vue",
+      "core/src/main/java/com/elepy/query/Queries.java",
+      "core/src/main/java/com/elepy/handlers/MappedFind.java",
+      "oauth/src/main/java/com/elepy/oauth/AuthScheme.java",
+      "docs/guides/custom-views.md",
+      "admin/src/main/resources/frontend/src/components/fields/DynamicField.vue",
+      "admin/src/main/resources/frontend/src/views/MainView.vue",
+      "core/src/main/java/com/elepy/http/RouteBuilder.java",
+      "core/src/main/java/com/elepy/igniters/ModelDetailsFactory.java",
+      "core/src/main/java/com/elepy/http/DefaultHttpContext.java",
+      "admin/src/main/java/com/elepy/admin/AdminPanelBuilder.java",
+      "admin/src/main/resources/frontend/scss/components/_main-content.scss",
+      "./output.txt",
+      "docs/annotations/integrity.md",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubEmailExtractor.java",
+      "admin/src/main/resources/frontend/src/i18nSetup.js",
+      "core/src/main/java/com/elepy/utils/Annotations.java",
+      "./CODE_OF_CONDUCT.md",
+      "core/src/main/java/com/elepy/query/BooleanGroup.java",
+      "aws/pom.xml",
+      "core/src/main/java/com/elepy/annotations/Action.java",
+      "core/src/main/java/com/elepy/annotations/Model.java",
+      "core/src/main/java/com/elepy/schemas/ActionFactory.java",
+      "admin/src/main/resources/frontend/src/App.vue",
+      "admin/src/main/resources/frontend/src/components/fields/BooleanPicker.vue",
+      "admin/src/main/java/com/elepy/admin/AdminPanelConfiguration.java",
+      "core/src/main/java/com/elepy/di/ElepyContext.java",
+      "docs/guides/modeling-tips.md",
+      "aws/s3/src/main/java/com/elepy/aws/s3/S3Configuration.java",
+      "docs/modules/mongo.md",
+      "oauth/src/main/java/com/elepy/oauth/OAuthExtension.java",
+      "core/src/main/java/com/elepy/uploads/DefaultFileService.java",
+      "core/src/main/java/com/elepy/annotations/Find.java",
+      "core/src/main/java/com/elepy/i18n/extension/TranslationsExtension.java",
+      "core/src/main/java/com/elepy/handlers/DefaultFindOne.java",
+      "admin/src/main/resources/frontend/src/views/HomeView.vue",
+      "core/src/main/java/com/elepy/auth/authentication/methods/tokens/TokenAuthority.java",
+      "admin/src/main/resources/frontend/src/components/base/ActionButton.vue",
+      "oauth/src/main/java/com/elepy/oauth/AuthSchemeFactory.java",
+      "oauth/pom.xml",
+      "core/src/main/java/com/elepy/auth/authorization/AuthorizationResult.java",
+      "core/src/main/java/com/elepy/exceptions/Translated.java",
+      "admin/src/main/resources/frontend/src/components/fields/ObjectField.vue",
+      "core/src/main/java/com/elepy/uploads/ImageKey.java",
+      "core/src/main/java/com/elepy/schemas/options/BooleanOptions.java",
+      "mongo/README.md",
+      "core/src/main/resources/elepy-ui_nl.properties",
+      "javalin/pom.xml",
+      "core/src/main/resources/elepy-ui.properties",
+      "mongo/src/main/java/com/elepy/mongo/ElepyCodecRegistry.java",
+      "gcp/cloudstorage/src/main/java/com/elepy/gcp/CloudStorageConfiguration.java",
+      "core/src/main/java/com/elepy/handlers/DefaultDelete.java",
+      "admin/src/main/resources/frontend/src/components/fields/TextArea.vue",
+      "sparkjava/pom.xml",
+      "docs/_sidebar.md",
+      "docs/modules/hibernate.md",
+      "core/src/main/java/com/elepy/schemas/InputModel.java",
+      "core/src/main/java/com/elepy/configuration/LocaleSettings.java",
+      "admin/src/main/resources/frontend/scss/components/_sprites.scss",
+      "core/src/main/java/com/elepy/schemas/NumberType.java",
+      "admin/src/main/resources/frontend/src/components/fields/InputField.vue",
+      "oauth/src/main/java/com/elepy/oauth/OAuthConfiguration.java",
+      "core/src/main/java/com/elepy/i18n/FormattedViolation.java",
+      ".idea/dataSources.xml",
+      "core/src/main/java/com/elepy/annotations/Update.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/EmbedServices.java",
+      "oauth/src/main/java/com/elepy/oauth/facebook/FacebookEmailExtractor.java",
+      "core/src/main/java/com/elepy/handlers/HandlerContext.java",
+      "file-uploads/src/main/java/com/elepy/uploads/FileUploadConfiguration.java",
+      "core/src/main/java/com/elepy/evaluators/JsonNodeNameProvider.java",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDEmailExtractor.java",
+      "hibernate/README.md",
+      "core/src/main/java/com/elepy/annotations/Delete.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoCrudFactory.java",
+      "core/src/main/java/com/elepy/schemas/options/FileReferenceOptions.java",
+      "admin/src/main/resources/frontend/src/index.js",
+      "core/src/main/java/com/elepy/annotations/DateTime.java",
+      "core/src/main/java/com/elepy/annotations/Create.java",
+      "core/src/main/java/com/elepy/uploads/FileReferenceDelete.java",
+      "core/src/main/java/com/elepy/handlers/SimpleDelete.java",
+      "core/src/main/java/com/elepy/auth/authentication/Credentials.java",
+      "core/src/main/java/com/elepy/schemas/options/EnumOptions.java",
+      "admin/src/main/resources/frontend/src/views/ModelView.vue",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateCrudFactory.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkContext.java",
+      "docs/main/core-concepts.md",
+      "core/src/main/java/com/elepy/id/DefaultIdentityProvider.java",
+      "core/src/main/java/com/elepy/i18n/ElepyInterpolator.java",
+      "admin/src/main/resources/frontend/src/components/fields/PasswordField.vue",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreConfiguration.java",
+      "core/src/main/java/com/elepy/configuration/Configuration.java",
+      "core/src/main/java/com/elepy/schemas/options/InputOptions.java",
+      "./develop_frontend.sh",
+      "core/src/main/java/com/elepy/auth/users/UserDelete.java",
+      "core/src/main/java/com/elepy/ObjectMapperProducer.java",
+      "core/src/main/java/com/elepy/i18n/Resources.java",
+      "docs/core-functionality/users-permissions.md",
+      "docs/annotations/field/array.md",
+      "mongo/src/main/java/com/elepy/mongo/InMemoryClientFactory.java",
+      "core/src/main/java/com/elepy/exceptions/ErrorMessageBuilder.java",
+      "gcp/firestore/README.md",
+      "core/src/main/java/com/elepy/query/SearchQuery.java",
+      ".idea/compiler.xml",
+      "core/src/main/java/com/elepy/handlers/MappedFindOne.java",
+      "core/src/main/java/com/elepy/schemas/options/ReferenceOptions.java",
+      "admin/src/main/resources/frontend/public/index.html",
+      ".github/workflows/deploy.yaml",
+      "core/src/main/java/com/elepy/handlers/MappedFindMany.java",
+      "core/src/main/java/com/elepy/schemas/options/NumberOptions.java",
+      "core/src/main/java/com/elepy/utils/LogUtils.java",
+      "admin/src/main/resources/frontend/src/components/fields/EnumPicker.vue",
+      "admin/src/main/java/com/elepy/admin/Resource.java",
+      "admin/src/main/resources/frontend/src/components/fields/NumberField.vue",
+      "javalin/src/main/java/com/elepy/javalin/JavalinContext.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java",
+      "core/src/main/java/com/elepy/schemas/options/OptionFactory.java",
+      "admin/src/main/resources/frontend/src/views/EditRecordView.vue",
+      "docs/annotations/cms.md",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/PersistedTokenGenerator.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultRoleLookup.java",
+      "docs/annotations/field/inner-object.md",
+      "core/src/main/java/com/elepy/annotations/EditorJs.java",
+      "core/src/main/java/com/elepy/igniters/ModelAction.java",
+      "core/src/main/java/com/elepy/annotations/PredefinedRole.java",
+      "admin/src/main/resources/frontend/src/views/AddRecordView.vue",
+      "mongo/src/main/java/com/elepy/mongo/annotations/MongoIndex.java",
+      "core/src/main/java/com/elepy/annotations/Custom.java",
+      "core/src/main/java/com/elepy/annotations/TrueFalse.java",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubAuthSchemeBuilder.java",
+      "docs/modules/vertx.md",
+      "admin/src/main/resources/frontend/src/views/ModelCard.vue",
+      "core/src/main/java/com/elepy/json/RawJsonSerializer.java",
+      "core/src/main/java/com/elepy/auth/authorization/CachedRoleLookup.java",
+      "core/src/main/java/com/elepy/SchemaExtension.java",
+      "core/src/main/java/com/elepy/ValidatorFactoryProducer.java",
+      ".github/workflows/main.yaml",
+      "docs/annotations/field/java-bean-validation.md",
+      "core/src/main/java/com/elepy/auth/users/UserPasswordValidator.java",
+      "admin/src/main/resources/frontend/src/intlFormatter.js",
+      "core/src/main/java/com/elepy/query/SortOption.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultPolicyLookup.java",
+      "oauth/src/main/java/com/elepy/oauth/AuthSchemes.java",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreCrudFactory.java",
+      "gcp/cloudstorage/pom.xml",
+      "core/src/main/java/com/elepy/query/SortingSpecification.java",
+      "core/src/main/java/com/elepy/annotations/IdProvider.java",
+      "core/src/main/java/com/elepy/evaluators/DefaultObjectUpdateEvaluator.java",
+      "core/src/main/java/com/elepy/annotations/Tag.java",
+      ".idea/jarRepositories.xml",
+      "core/src/main/java/com/elepy/annotations/Identifier.java",
+      "oauth/src/main/java/com/elepy/oauth/google/GoogleAuthScheme.java",
+      "docs/annotations/field/hidden.md",
+      "hibernate/src/main/java/com/elepy/hibernate/SessionFactoryProvider.java",
+      "core/src/main/java/com/elepy/annotations/Importance.java",
+      "docs/modules/file-uploads.md",
+      "core/src/main/java/com/elepy/http/HttpContextHandler.java",
+      "file-uploads/README.md",
+      "docs/main/downloads.md",
+      "oauth/src/main/java/com/elepy/oauth/facebook/FacebookAuthScheme.java",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubAuthScheme.java",
+      "core/src/main/java/com/elepy/annotations/Dao.java",
+      "core/src/main/resources/elepy-users_nl.properties",
+      "admin/src/main/resources/frontend/scss/components/_nav.scss",
+      "core/src/main/resources/elepy-users.properties",
+      "oauth/src/main/java/com/elepy/oauth/OAuthParamNamingStrategy.java",
+      "core/src/main/java/com/elepy/annotations/CrudFactory.java",
+      "core/src/main/java/com/elepy/annotations/View.java",
+      "core/src/main/java/com/elepy/json/RawJsonDeserializer.java",
+      "mongo/src/main/java/com/elepy/mongo/CustomJacksonModule.java",
+      "core/src/main/java/com/elepy/annotations/Localized.java",
+      "core/src/main/java/com/elepy/configuration/ElepyExtension.java",
+      "core/src/main/java/com/elepy/annotations/Number.java",
+      "oauth/src/main/java/com/elepy/oauth/microsoft/MicrosoftApi.java",
+      "core/src/main/java/com/elepy/auth/users/UserPasswordConstraintValidator.java",
+      "core/src/main/java/com/elepy/uploads/FileService.java",
+      "core/src/main/java/com/elepy/json/TranslatableDeserializer.java",
+      "oauth/src/main/java/com/elepy/oauth/microsoft/MicrosoftADAuthScheme.java",
+      "docs/annotations/important.md",
+      "core/src/main/java/com/elepy/query/Expression.java",
+      "core/src/main/java/com/elepy/annotations/Uneditable.java",
+      "core/src/main/java/com/elepy/annotations/Property.java",
+      "core/src/main/java/com/elepy/annotations/FileReference.java",
+      "docs/README.md",
+      "core/src/main/java/com/elepy/annotations/Label.java",
+      "core/src/main/resources/elepy-exceptions.properties",
+      "core/src/main/java/com/elepy/annotations/Unique.java",
+      "core/src/main/java/com/elepy/id/NoIdentityProvider.java",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDScheme.java",
+      "docs/annotations/field/featured.md",
+      "core/src/main/java/com/elepy/auth/users/UserFind.java",
+      "core/src/main/java/com/elepy/annotations/InnerObject.java",
+      "core/src/main/java/com/elepy/annotations/Searchable.java",
+      "core/src/main/java/com/elepy/annotations/Generated.java",
+      "admin/src/main/resources/frontend/src/components/modals/ImageLightBox.vue",
+      "docs/annotations/field/date-time.md",
+      "docs/annotations/field/identifier.md",
+      "./deploy.sh",
+      "core/src/main/java/com/elepy/annotations/Reference.java",
+      "core/src/main/java/com/elepy/annotations/Input.java",
+      "core/src/main/java/com/elepy/annotations/Description.java",
+      "./users.http",
+      "core/src/main/java/com/elepy/annotations/Hidden.java",
+      "core/src/main/java/com/elepy/annotations/Array.java",
+      "core/src/main/java/com/elepy/annotations/ShowIf.java",
+      "docs/annotations/field/file-reference.md",
+      "core/src/main/java/com/elepy/annotations/ElepyAnnotationsInside.java",
+      "core/src/main/java/com/elepy/annotations/Markdown.java",
+      ".idea/misc.xml",
+      "core/src/main/java/com/elepy/annotations/ElepyConstructor.java",
+      "core/src/main/java/com/elepy/exceptions/ElepyConfigException.java",
+      "core/src/main/java/com/elepy/exceptions/HaltException.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/Embed.java",
+      ".idea/encodings.xml",
+      "core/src/main/java/com/elepy/annotations/TextArea.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultPermissions.java",
+      "core/src/main/java/com/elepy/auth/authentication/AuthenticationMethod.java",
+      "core/src/main/java/com/elepy/annotations/HTML.java",
+      "core/src/main/java/com/elepy/annotations/Featured.java",
+      "core/src/main/java/com/elepy/crud/CrudFactory.java",
+      "docs/annotations/field/searchable.md",
+      "oauth/src/main/java/com/elepy/oauth/EmailExtractor.java",
+      "docs/annotations/field/importance.md",
+      "docs/annotations/field/true-false.md",
+      "docs/annotations/field/number.md",
+      "core/src/main/java/com/elepy/http/HttpConfiguration.java",
+      "core/src/main/java/com/elepy/schemas/options/EmptyOptions.java",
+      "core/src/main/java/com/elepy/auth/authorization/PolicyLookup.java",
+      "./README.md",
+      "core/src/main/java/com/elepy/evaluators/IntegrityEvaluator.java",
+      "admin/src/main/resources/frontend/vue.config.js",
+      ".idea/modules.xml",
+      "core/src/main/java/com/elepy/auth/authorization/RoleLookup.java",
+      "core/src/main/java/com/elepy/id/IdentityProvider.java",
+      "docs/annotations/field/unique.md",
+      "docs/annotations/field/uneditable.md",
+      "core/src/main/java/com/elepy/query/FilterTypeDescription.java",
+      "core/src/main/java/com/elepy/handlers/ActionHandler.java",
+      "core/src/main/java/com/elepy/exceptions/MessageType.java",
+      ".idea/terraform.xml",
+      ".idea/vcs.xml",
+      "core/src/main/java/com/elepy/http/HttpExtension.java",
+      "docs/annotations/field/jackson.md",
+      "core/src/main/java/com/elepy/http/ExceptionHandler.java",
+      "core/src/main/java/com/elepy/configuration/EventHandler.java",
+      "core/src/main/java/com/elepy/http/Filter.java",
+      ".idea/inspectionProfiles/Project_Default.xml",
+      "core/src/main/java/com/elepy/http/StaticFileLocation.java",
+      "./http-client.env.json",
+      "core/src/main/java/com/elepy/evaluators/ObjectUpdateEvaluator.java",
+      "core/src/main/java/com/elepy/evaluators/EvaluationType.java",
+      "core/src/main/java/com/elepy/revisions/RevisionType.java",
+      "core/src/main/java/com/elepy/igniters/ModelChange.java",
+      "core/src/main/java/com/elepy/schemas/TextType.java",
+      "core/src/main/java/com/elepy/http/HttpMethod.java",
+      "admin/src/main/resources/frontend/babel.config.js",
+      "core/src/main/java/com/elepy/auth/users/PasswordCheck.java",
+      "admin/src/main/resources/frontend/src/components/fields/eventBus.js",
+      "core/src/main/java/com/elepy/schemas/options/Options.java",
+      "admin/src/main/resources/frontend/src/event-bus.js",
+      "docs/core-functionality/extensions.md",
+      "core/src/main/resources/elepy-messages_nl.properties",
+      "docs/CNAME",
+      "core/src/main/resources/elepy-messages.properties",
+      "admin/src/main/resources/admin.properties"
+     ],
+     "lines": [
+      30431,
+      675,
+      637,
+      496,
+      319,
+      311,
+      294,
+      274,
+      269,
+      244,
+      240,
+      232,
+      230,
+      228,
+      228,
+      227,
+      224,
+      223,
+      220,
+      214,
+      210,
+      208,
+      201,
+      197,
+      183,
+      181,
+      180,
+      180,
+      178,
+      176,
+      172,
+      166,
+      166,
+      161,
+      155,
+      154,
+      154,
+      154,
+      150,
+      150,
+      148,
+      141,
+      138,
+      135,
+      135,
+      135,
+      132,
+      127,
+      127,
+      126,
+      125,
+      125,
+      124,
+      124,
+      123,
+      122,
+      122,
+      120,
+      120,
+      119,
+      116,
+      116,
+      116,
+      114,
+      113,
+      113,
+      113,
+      112,
+      111,
+      110,
+      108,
+      108,
+      108,
+      107,
+      104,
+      103,
+      103,
+      100,
+      99,
+      99,
+      99,
+      98,
+      98,
+      97,
+      96,
+      96,
+      95,
+      91,
+      91,
+      90,
+      90,
+      87,
+      85,
+      84,
+      84,
+      83,
+      83,
+      83,
+      82,
+      82,
+      81,
+      80,
+      80,
+      80,
+      79,
+      79,
+      77,
+      77,
+      77,
+      76,
+      75,
+      75,
+      75,
+      75,
+      74,
+      74,
+      73,
+      72,
+      72,
+      72,
+      72,
+      72,
+      71,
+      70,
+      70,
+      69,
+      69,
+      69,
+      69,
+      69,
+      68,
+      68,
+      66,
+      66,
+      65,
+      65,
+      64,
+      64,
+      64,
+      64,
+      63,
+      63,
+      61,
+      59,
+      57,
+      56,
+      54,
+      54,
+      53,
+      53,
+      53,
+      53,
+      53,
+      52,
+      52,
+      51,
+      51,
+      51,
+      51,
+      50,
+      50,
+      50,
+      50,
+      49,
+      49,
+      49,
+      49,
+      48,
+      48,
+      48,
+      48,
+      47,
+      47,
+      47,
+      46,
+      46,
+      46,
+      45,
+      45,
+      44,
+      44,
+      43,
+      43,
+      42,
+      41,
+      41,
+      41,
+      41,
+      41,
+      40,
+      40,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      38,
+      38,
+      38,
+      38,
+      38,
+      38,
+      37,
+      37,
+      37,
+      37,
+      37,
+      37,
+      36,
+      36,
+      35,
+      35,
+      35,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      33,
+      33,
+      33,
+      33,
+      33,
+      32,
+      32,
+      32,
+      32,
+      32,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      30,
+      30,
+      30,
+      30,
+      30,
+      29,
+      29,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      25,
+      25,
+      25,
+      25,
+      25,
+      24,
+      24,
+      24,
+      24,
+      23,
+      23,
+      23,
+      23,
+      23,
+      23,
+      22,
+      22,
+      22,
+      22,
+      21,
+      21,
+      21,
+      21,
+      21,
+      20,
+      20,
+      20,
+      20,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      16,
+      16,
+      16,
+      16,
+      16,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      14,
+      14,
+      14,
+      14,
+      13,
+      13,
+      13,
+      13,
+      13,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      10,
+      10,
+      10,
+      10,
+      9,
+      9,
+      9,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      4,
+      4,
+      4,
+      4,
+      2,
+      1,
+      1,
+      1,
+      1
+     ],
+     "values": [
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "production",
+      "non_code",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "production",
+      "non_code",
+      "non_code",
+      "production",
+      "non_code",
+      "non_code"
+     ],
+     "colorBy": "role",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/metrics?grain=files",
+      "label": "Open Metrics"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "mass",
+   "args": {
+    "color": "health"
+   },
+   "text": "[E4] 423 files, 56,353 lines. Largest folders: admin/src (37,965 lines, 67%), core/src (11,136 lines, 20%), mongo/src (985 lines, 2%), oauth/src (622 lines, 1%), sparkjava/src (515 lines, 1%), hibernate/src (508 lines, 1%), gcp/firestore (446 lines, 1%), docs/annotations (392 lines, 1%).\nLines in files with health below 5: 2,665.",
+   "evidence": [
+    {
+     "id": "E4",
+     "kind": "folders",
+     "title": "Where the code lives · by health",
+     "files": [
+      "admin/src/main/resources/frontend/package-lock.json",
+      "admin/src/main/resources/frontend/src/behave.js",
+      "core/src/main/java/com/elepy/Elepy.java",
+      "admin/src/main/resources/frontend/src/prism.js",
+      "admin/src/main/resources/frontend/src/components/ElepySingle.vue",
+      "./pom.xml",
+      "admin/src/main/resources/frontend/src/components/fields/GenericField.vue",
+      "admin/src/main/resources/frontend/scss/main.scss",
+      "mongo/src/main/java/com/elepy/mongo/ElepyCodec.java",
+      "admin/src/main/resources/frontend/src/components/fields/MarkdownEditor.vue",
+      "core/src/main/java/com/elepy/utils/ReflectionUtils.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoCrud.java",
+      "core/src/main/java/com/elepy/http/Request.java",
+      "core/src/main/java/com/elepy/revisions/RevisionCrud.java",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateDao.java",
+      "admin/src/main/resources/frontend/src/components/fields/ReferenceField.vue",
+      "admin/src/main/resources/frontend/src/store.js",
+      "admin/src/main/resources/frontend/src/components/ElepyDefault.vue",
+      "admin/src/main/resources/frontend/src/components/fields/ArrayField.vue",
+      "admin/src/main/resources/frontend/src/components/settings/QueryBar.vue",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkRequest.java",
+      "core/src/main/java/com/elepy/http/HttpContext.java",
+      "./LICENSE",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreCrud.java",
+      "core/src/main/java/com/elepy/schemas/options/ObjectOptions.java",
+      "admin/src/main/resources/frontend/src/components/tables/Table.vue",
+      "admin/src/main/resources/frontend/src/search/Expression.vue",
+      "admin/src/main/resources/frontend/src/components/fields/FileField.vue",
+      "core/src/main/java/com/elepy/schemas/Property.java",
+      "core/pom.xml",
+      "core/src/main/java/com/elepy/http/HttpServiceInterceptor.java",
+      "core/src/main/java/com/elepy/configuration/ElepyPreConfiguration.java",
+      "core/src/main/java/com/elepy/uploads/FileReference.java",
+      "admin/src/main/resources/frontend/src/router.js",
+      "core/src/main/java/com/elepy/crud/Crud.java",
+      "core/src/main/java/com/elepy/query/parser/QueryListener.java",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateQueryFactory.java",
+      "core/src/main/java/com/elepy/schemas/Schema.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkService.java",
+      "javalin/src/main/java/com/elepy/javalin/JavalinRequest.java",
+      "core/src/main/java/com/elepy/schemas/FieldType.java",
+      "core/src/main/java/com/elepy/auth/authorization/AuthorizationService.java",
+      "admin/src/main/resources/frontend/src/components/base/ActionsButton.vue",
+      "admin/src/main/java/com/elepy/admin/FrontendLoader.java",
+      "hibernate/pom.xml",
+      "core/src/main/java/com/elepy/auth/users/UserService.java",
+      "core/src/main/java/com/elepy/di/WeldContext.java",
+      "mongo/src/main/java/com/elepy/mongo/QueryBuilder.java",
+      "admin/src/main/resources/frontend/src/components/fields/custom/EditorJsField.vue",
+      "core/src/main/java/com/elepy/configuration/ElepyPostConfiguration.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkResponse.java",
+      "aws/s3/src/main/java/com/elepy/aws/s3/S3FileService.java",
+      "basic/pom.xml",
+      ".idea/uiDesigner.xml",
+      "core/src/main/java/com/elepy/handlers/DefaultUpdate.java",
+      "core/src/main/java/com/elepy/schemas/PropertyFactory.java",
+      "admin/src/main/resources/frontend/src/components/SideBar.vue",
+      "core/src/main/java/com/elepy/igniters/DefaultActionFactory.java",
+      "core/src/main/java/com/elepy/uploads/FileUploadExtension.java",
+      "core/src/main/java/com/elepy/auth/users/User.java",
+      "core/src/main/java/com/elepy/http/HttpAction.java",
+      "core/src/main/antlr4/com/elepy/data/query/parser/EleQuery.g4",
+      "docs/core-functionality/elepy-query-language.md",
+      "core/src/main/java/com/elepy/handlers/DefaultFindMany.java",
+      "file-uploads/src/main/java/com/elepy/uploads/DirectoryFileService.java",
+      "core/src/main/java/com/elepy/revisions/Revision.java",
+      "admin/src/main/resources/frontend/src/components/OAuthButtons.vue",
+      "admin/src/main/resources/frontend/src/components/settings/Pagination.vue",
+      "admin/src/main/resources/frontend/src/views/LoginView.vue",
+      "core/src/main/java/com/elepy/schemas/FieldMapper.java",
+      "admin/src/main/resources/frontend/src/components/tables/TableRow.vue",
+      "core/src/main/java/com/elepy/igniters/SchemaRouter.java",
+      "admin/src/main/resources/frontend/src/views/InitialUserView.vue",
+      "core/src/main/java/com/elepy/exceptions/ElepyException.java",
+      "admin/src/main/resources/frontend/src/main.js",
+      "admin/src/main/resources/frontend/src/components/base/BaseLayout.vue",
+      "docs/main/getting-started.md",
+      "javalin/src/main/java/com/elepy/javalin/JavalinResponse.java",
+      "core/src/main/java/com/elepy/http/HttpService.java",
+      "admin/src/main/resources/frontend/src/search/Search.vue",
+      "admin/src/main/resources/frontend/src/components/fields/arrays/ArrayGenericField.vue",
+      "docs/annotations/custom-functionality.md",
+      "admin/src/main/resources/frontend/src/components/modals/ActionModal.vue",
+      "docs/guides/custom-functionality.md",
+      "core/src/main/java/com/elepy/schemas/SchemaFactory.java",
+      "core/src/main/java/com/elepy/schemas/DefaultActions.java",
+      "core/src/main/java/com/elepy/id/SlugIdentityProvider.java",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/Tokens.java",
+      "admin/src/main/resources/frontend/package.json",
+      "oauth/src/main/java/com/elepy/oauth/OAuthAuthenticationMethod.java",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreFilterFactory.java",
+      "admin/pom.xml",
+      "core/src/main/java/com/elepy/exceptions/Message.java",
+      "core/src/main/java/com/elepy/query/Filters.java",
+      "admin/src/main/resources/frontend/src/search/SuggestionsBox.vue",
+      "docs/index.html",
+      "core/src/main/java/com/elepy/http/Response.java",
+      "core/src/main/java/com/elepy/di/WeldExtension.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoConfiguration.java",
+      "gcp/firestore/pom.xml",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDApi.java",
+      "core/src/main/java/com/elepy/handlers/DefaultCreate.java",
+      "core/src/main/java/com/elepy/json/TranslatableSerializer.java",
+      "core/src/main/java/com/elepy/schemas/options/ArrayOptions.java",
+      "core/src/main/java/com/elepy/query/parser/cql/CQLParser.java",
+      "admin/src/main/resources/frontend/src/utils.mjs",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateConfiguration.java",
+      "admin/src/main/resources/frontend/src/components/tables/TableColumnData.vue",
+      "core/src/main/java/com/elepy/query/Query.java",
+      "admin/src/main/resources/frontend/src/components/base/LoadingSpinner.vue",
+      "core/src/main/java/com/elepy/schemas/SchemaRegistry.java",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/Token.java",
+      "core/src/main/java/com/elepy/auth/authentication/AuthenticationService.java",
+      "core/src/main/java/com/elepy/uploads/ImageProcessor.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoFileService.java",
+      "core/src/main/java/com/elepy/evaluators/AtomicIntegrityEvaluator.java",
+      "admin/src/main/resources/frontend/src/components/fields/arrays/ArrayInputField.vue",
+      "gcp/pom.xml",
+      "core/src/main/java/com/elepy/http/RawFile.java",
+      "core/src/main/java/com/elepy/id/HexIdentityProvider.java",
+      "core/src/main/java/com/elepy/utils/DateUtils.java",
+      "core/src/main/java/com/elepy/http/Route.java",
+      "admin/src/main/resources/frontend/src/components/fields/DatePicker.vue",
+      "core/src/main/java/com/elepy/revisions/RevisionFind.java",
+      "core/src/main/java/com/elepy/schemas/options/CustomOptions.java",
+      "admin/src/main/resources/frontend/src/elepyClient.js",
+      "core/src/main/java/com/elepy/auth/users/UserUpdate.java",
+      "mongo/pom.xml",
+      "core/src/main/java/com/elepy/auth/extension/UserAuthenticationExtension.java",
+      "core/src/main/java/com/elepy/handlers/SimpleUpdate.java",
+      "jwt/pom.xml",
+      "javalin/src/main/java/com/elepy/javalin/JavalinService.java",
+      "core/src/main/java/com/elepy/utils/StringUtils.java",
+      "core/src/main/java/com/elepy/auth/authorization/PolicyBinding.java",
+      "admin/src/main/resources/frontend/src/components/modals/RevisionHistory.vue",
+      "admin/src/main/resources/frontend/src/components/fields/CustomField.vue",
+      "mongo/src/main/java/com/elepy/mongo/CustomAnnotationIntrospector.java",
+      "core/src/main/java/com/elepy/handlers/SimpleCreate.java",
+      "admin/src/main/resources/frontend/src/components/fields/HtmlEditor.vue",
+      "core/src/main/java/com/elepy/BasicHttpExtension.java",
+      "gcp/cloudstorage/src/main/java/com/elepy/gcp/CloudStorageFileService.java",
+      "core/src/main/java/com/elepy/evaluators/DefaultIntegrityEvaluator.java",
+      "aws/s3/pom.xml",
+      "core/src/main/java/com/elepy/auth/authentication/methods/basic/BasicAuthenticationMethod.java",
+      "jwt/src/main/java/com/elepy/jwt/JWTConfiguration.java",
+      "core/src/main/java/com/elepy/id/NumberIdentityProvider.java",
+      "core/src/main/java/com/elepy/crud/CrudRegistry.java",
+      "file-uploads/pom.xml",
+      "core/src/main/java/com/elepy/auth/users/UserCreate.java",
+      "core/src/main/java/com/elepy/uploads/FileUploadEvaluator.java",
+      "core/src/main/java/com/elepy/igniters/ModelDetails.java",
+      "core/src/main/java/com/elepy/schemas/options/DateOptions.java",
+      "swagger/pom.xml",
+      "core/src/main/java/com/elepy/query/FilterType.java",
+      "core/src/main/java/com/elepy/query/Filter.java",
+      "jwt/src/main/java/com/elepy/jwt/JWTGenerator.java",
+      "core/src/main/java/com/elepy/ExtensionRegistry.java",
+      "admin/src/main/resources/frontend/scss/components/_login.scss",
+      "docs/core-functionality/handlers.md",
+      "admin/src/main/resources/frontend/src/components/LanguageSelect.vue",
+      "core/src/main/java/com/elepy/query/Queries.java",
+      "core/src/main/java/com/elepy/handlers/MappedFind.java",
+      "oauth/src/main/java/com/elepy/oauth/AuthScheme.java",
+      "docs/guides/custom-views.md",
+      "admin/src/main/resources/frontend/src/components/fields/DynamicField.vue",
+      "admin/src/main/resources/frontend/src/views/MainView.vue",
+      "core/src/main/java/com/elepy/http/RouteBuilder.java",
+      "core/src/main/java/com/elepy/igniters/ModelDetailsFactory.java",
+      "core/src/main/java/com/elepy/http/DefaultHttpContext.java",
+      "admin/src/main/java/com/elepy/admin/AdminPanelBuilder.java",
+      "admin/src/main/resources/frontend/scss/components/_main-content.scss",
+      "./output.txt",
+      "docs/annotations/integrity.md",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubEmailExtractor.java",
+      "admin/src/main/resources/frontend/src/i18nSetup.js",
+      "core/src/main/java/com/elepy/utils/Annotations.java",
+      "./CODE_OF_CONDUCT.md",
+      "core/src/main/java/com/elepy/query/BooleanGroup.java",
+      "aws/pom.xml",
+      "core/src/main/java/com/elepy/annotations/Action.java",
+      "core/src/main/java/com/elepy/annotations/Model.java",
+      "core/src/main/java/com/elepy/schemas/ActionFactory.java",
+      "admin/src/main/resources/frontend/src/App.vue",
+      "admin/src/main/resources/frontend/src/components/fields/BooleanPicker.vue",
+      "admin/src/main/java/com/elepy/admin/AdminPanelConfiguration.java",
+      "core/src/main/java/com/elepy/di/ElepyContext.java",
+      "docs/guides/modeling-tips.md",
+      "aws/s3/src/main/java/com/elepy/aws/s3/S3Configuration.java",
+      "docs/modules/mongo.md",
+      "oauth/src/main/java/com/elepy/oauth/OAuthExtension.java",
+      "core/src/main/java/com/elepy/uploads/DefaultFileService.java",
+      "core/src/main/java/com/elepy/annotations/Find.java",
+      "core/src/main/java/com/elepy/i18n/extension/TranslationsExtension.java",
+      "core/src/main/java/com/elepy/handlers/DefaultFindOne.java",
+      "admin/src/main/resources/frontend/src/views/HomeView.vue",
+      "core/src/main/java/com/elepy/auth/authentication/methods/tokens/TokenAuthority.java",
+      "admin/src/main/resources/frontend/src/components/base/ActionButton.vue",
+      "oauth/src/main/java/com/elepy/oauth/AuthSchemeFactory.java",
+      "oauth/pom.xml",
+      "core/src/main/java/com/elepy/auth/authorization/AuthorizationResult.java",
+      "core/src/main/java/com/elepy/exceptions/Translated.java",
+      "admin/src/main/resources/frontend/src/components/fields/ObjectField.vue",
+      "core/src/main/java/com/elepy/uploads/ImageKey.java",
+      "core/src/main/java/com/elepy/schemas/options/BooleanOptions.java",
+      "mongo/README.md",
+      "core/src/main/resources/elepy-ui_nl.properties",
+      "javalin/pom.xml",
+      "core/src/main/resources/elepy-ui.properties",
+      "mongo/src/main/java/com/elepy/mongo/ElepyCodecRegistry.java",
+      "gcp/cloudstorage/src/main/java/com/elepy/gcp/CloudStorageConfiguration.java",
+      "core/src/main/java/com/elepy/handlers/DefaultDelete.java",
+      "admin/src/main/resources/frontend/src/components/fields/TextArea.vue",
+      "sparkjava/pom.xml",
+      "docs/_sidebar.md",
+      "docs/modules/hibernate.md",
+      "core/src/main/java/com/elepy/schemas/InputModel.java",
+      "core/src/main/java/com/elepy/configuration/LocaleSettings.java",
+      "admin/src/main/resources/frontend/scss/components/_sprites.scss",
+      "core/src/main/java/com/elepy/schemas/NumberType.java",
+      "admin/src/main/resources/frontend/src/components/fields/InputField.vue",
+      "oauth/src/main/java/com/elepy/oauth/OAuthConfiguration.java",
+      "core/src/main/java/com/elepy/i18n/FormattedViolation.java",
+      ".idea/dataSources.xml",
+      "core/src/main/java/com/elepy/annotations/Update.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/EmbedServices.java",
+      "oauth/src/main/java/com/elepy/oauth/facebook/FacebookEmailExtractor.java",
+      "core/src/main/java/com/elepy/handlers/HandlerContext.java",
+      "file-uploads/src/main/java/com/elepy/uploads/FileUploadConfiguration.java",
+      "core/src/main/java/com/elepy/evaluators/JsonNodeNameProvider.java",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDEmailExtractor.java",
+      "hibernate/README.md",
+      "core/src/main/java/com/elepy/annotations/Delete.java",
+      "mongo/src/main/java/com/elepy/mongo/MongoCrudFactory.java",
+      "core/src/main/java/com/elepy/schemas/options/FileReferenceOptions.java",
+      "admin/src/main/resources/frontend/src/index.js",
+      "core/src/main/java/com/elepy/annotations/DateTime.java",
+      "core/src/main/java/com/elepy/annotations/Create.java",
+      "core/src/main/java/com/elepy/uploads/FileReferenceDelete.java",
+      "core/src/main/java/com/elepy/handlers/SimpleDelete.java",
+      "core/src/main/java/com/elepy/auth/authentication/Credentials.java",
+      "core/src/main/java/com/elepy/schemas/options/EnumOptions.java",
+      "admin/src/main/resources/frontend/src/views/ModelView.vue",
+      "hibernate/src/main/java/com/elepy/hibernate/HibernateCrudFactory.java",
+      "sparkjava/src/main/java/com/elepy/sparkjava/SparkContext.java",
+      "docs/main/core-concepts.md",
+      "core/src/main/java/com/elepy/id/DefaultIdentityProvider.java",
+      "core/src/main/java/com/elepy/i18n/ElepyInterpolator.java",
+      "admin/src/main/resources/frontend/src/components/fields/PasswordField.vue",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreConfiguration.java",
+      "core/src/main/java/com/elepy/configuration/Configuration.java",
+      "core/src/main/java/com/elepy/schemas/options/InputOptions.java",
+      "./develop_frontend.sh",
+      "core/src/main/java/com/elepy/auth/users/UserDelete.java",
+      "core/src/main/java/com/elepy/ObjectMapperProducer.java",
+      "core/src/main/java/com/elepy/i18n/Resources.java",
+      "docs/core-functionality/users-permissions.md",
+      "docs/annotations/field/array.md",
+      "mongo/src/main/java/com/elepy/mongo/InMemoryClientFactory.java",
+      "core/src/main/java/com/elepy/exceptions/ErrorMessageBuilder.java",
+      "gcp/firestore/README.md",
+      "core/src/main/java/com/elepy/query/SearchQuery.java",
+      ".idea/compiler.xml",
+      "core/src/main/java/com/elepy/handlers/MappedFindOne.java",
+      "core/src/main/java/com/elepy/schemas/options/ReferenceOptions.java",
+      "admin/src/main/resources/frontend/public/index.html",
+      ".github/workflows/deploy.yaml",
+      "core/src/main/java/com/elepy/handlers/MappedFindMany.java",
+      "core/src/main/java/com/elepy/schemas/options/NumberOptions.java",
+      "core/src/main/java/com/elepy/utils/LogUtils.java",
+      "admin/src/main/resources/frontend/src/components/fields/EnumPicker.vue",
+      "admin/src/main/java/com/elepy/admin/Resource.java",
+      "admin/src/main/resources/frontend/src/components/fields/NumberField.vue",
+      "javalin/src/main/java/com/elepy/javalin/JavalinContext.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java",
+      "core/src/main/java/com/elepy/schemas/options/OptionFactory.java",
+      "admin/src/main/resources/frontend/src/views/EditRecordView.vue",
+      "docs/annotations/cms.md",
+      "core/src/main/java/com/elepy/auth/authentication/methods/persistedtokens/PersistedTokenGenerator.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultRoleLookup.java",
+      "docs/annotations/field/inner-object.md",
+      "core/src/main/java/com/elepy/annotations/EditorJs.java",
+      "core/src/main/java/com/elepy/igniters/ModelAction.java",
+      "core/src/main/java/com/elepy/annotations/PredefinedRole.java",
+      "admin/src/main/resources/frontend/src/views/AddRecordView.vue",
+      "mongo/src/main/java/com/elepy/mongo/annotations/MongoIndex.java",
+      "core/src/main/java/com/elepy/annotations/Custom.java",
+      "core/src/main/java/com/elepy/annotations/TrueFalse.java",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubAuthSchemeBuilder.java",
+      "docs/modules/vertx.md",
+      "admin/src/main/resources/frontend/src/views/ModelCard.vue",
+      "core/src/main/java/com/elepy/json/RawJsonSerializer.java",
+      "core/src/main/java/com/elepy/auth/authorization/CachedRoleLookup.java",
+      "core/src/main/java/com/elepy/SchemaExtension.java",
+      "core/src/main/java/com/elepy/ValidatorFactoryProducer.java",
+      ".github/workflows/main.yaml",
+      "docs/annotations/field/java-bean-validation.md",
+      "core/src/main/java/com/elepy/auth/users/UserPasswordValidator.java",
+      "admin/src/main/resources/frontend/src/intlFormatter.js",
+      "core/src/main/java/com/elepy/query/SortOption.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultPolicyLookup.java",
+      "oauth/src/main/java/com/elepy/oauth/AuthSchemes.java",
+      "gcp/firestore/src/main/java/com/elepy/firebase/FirestoreCrudFactory.java",
+      "gcp/cloudstorage/pom.xml",
+      "core/src/main/java/com/elepy/query/SortingSpecification.java",
+      "core/src/main/java/com/elepy/annotations/IdProvider.java",
+      "core/src/main/java/com/elepy/evaluators/DefaultObjectUpdateEvaluator.java",
+      "core/src/main/java/com/elepy/annotations/Tag.java",
+      ".idea/jarRepositories.xml",
+      "core/src/main/java/com/elepy/annotations/Identifier.java",
+      "oauth/src/main/java/com/elepy/oauth/google/GoogleAuthScheme.java",
+      "docs/annotations/field/hidden.md",
+      "hibernate/src/main/java/com/elepy/hibernate/SessionFactoryProvider.java",
+      "core/src/main/java/com/elepy/annotations/Importance.java",
+      "docs/modules/file-uploads.md",
+      "core/src/main/java/com/elepy/http/HttpContextHandler.java",
+      "file-uploads/README.md",
+      "docs/main/downloads.md",
+      "oauth/src/main/java/com/elepy/oauth/facebook/FacebookAuthScheme.java",
+      "oauth/src/main/java/com/elepy/oauth/github/GitHubAuthScheme.java",
+      "core/src/main/java/com/elepy/annotations/Dao.java",
+      "core/src/main/resources/elepy-users_nl.properties",
+      "admin/src/main/resources/frontend/scss/components/_nav.scss",
+      "core/src/main/resources/elepy-users.properties",
+      "oauth/src/main/java/com/elepy/oauth/OAuthParamNamingStrategy.java",
+      "core/src/main/java/com/elepy/annotations/CrudFactory.java",
+      "core/src/main/java/com/elepy/annotations/View.java",
+      "core/src/main/java/com/elepy/json/RawJsonDeserializer.java",
+      "mongo/src/main/java/com/elepy/mongo/CustomJacksonModule.java",
+      "core/src/main/java/com/elepy/annotations/Localized.java",
+      "core/src/main/java/com/elepy/configuration/ElepyExtension.java",
+      "core/src/main/java/com/elepy/annotations/Number.java",
+      "oauth/src/main/java/com/elepy/oauth/microsoft/MicrosoftApi.java",
+      "core/src/main/java/com/elepy/auth/users/UserPasswordConstraintValidator.java",
+      "core/src/main/java/com/elepy/uploads/FileService.java",
+      "core/src/main/java/com/elepy/json/TranslatableDeserializer.java",
+      "oauth/src/main/java/com/elepy/oauth/microsoft/MicrosoftADAuthScheme.java",
+      "docs/annotations/important.md",
+      "core/src/main/java/com/elepy/query/Expression.java",
+      "core/src/main/java/com/elepy/annotations/Uneditable.java",
+      "core/src/main/java/com/elepy/annotations/Property.java",
+      "core/src/main/java/com/elepy/annotations/FileReference.java",
+      "docs/README.md",
+      "core/src/main/java/com/elepy/annotations/Label.java",
+      "core/src/main/resources/elepy-exceptions.properties",
+      "core/src/main/java/com/elepy/annotations/Unique.java",
+      "core/src/main/java/com/elepy/id/NoIdentityProvider.java",
+      "oauth/src/main/java/com/elepy/oauth/openid/OpenIDScheme.java",
+      "docs/annotations/field/featured.md",
+      "core/src/main/java/com/elepy/auth/users/UserFind.java",
+      "core/src/main/java/com/elepy/annotations/InnerObject.java",
+      "core/src/main/java/com/elepy/annotations/Searchable.java",
+      "core/src/main/java/com/elepy/annotations/Generated.java",
+      "admin/src/main/resources/frontend/src/components/modals/ImageLightBox.vue",
+      "docs/annotations/field/date-time.md",
+      "docs/annotations/field/identifier.md",
+      "./deploy.sh",
+      "core/src/main/java/com/elepy/annotations/Reference.java",
+      "core/src/main/java/com/elepy/annotations/Input.java",
+      "core/src/main/java/com/elepy/annotations/Description.java",
+      "./users.http",
+      "core/src/main/java/com/elepy/annotations/Hidden.java",
+      "core/src/main/java/com/elepy/annotations/Array.java",
+      "core/src/main/java/com/elepy/annotations/ShowIf.java",
+      "docs/annotations/field/file-reference.md",
+      "core/src/main/java/com/elepy/annotations/ElepyAnnotationsInside.java",
+      "core/src/main/java/com/elepy/annotations/Markdown.java",
+      ".idea/misc.xml",
+      "core/src/main/java/com/elepy/annotations/ElepyConstructor.java",
+      "core/src/main/java/com/elepy/exceptions/ElepyConfigException.java",
+      "core/src/main/java/com/elepy/exceptions/HaltException.java",
+      "core/src/main/java/com/elepy/annotations/editorjs/Embed.java",
+      ".idea/encodings.xml",
+      "core/src/main/java/com/elepy/annotations/TextArea.java",
+      "core/src/main/java/com/elepy/auth/authorization/DefaultPermissions.java",
+      "core/src/main/java/com/elepy/auth/authentication/AuthenticationMethod.java",
+      "core/src/main/java/com/elepy/annotations/HTML.java",
+      "core/src/main/java/com/elepy/annotations/Featured.java",
+      "core/src/main/java/com/elepy/crud/CrudFactory.java",
+      "docs/annotations/field/searchable.md",
+      "oauth/src/main/java/com/elepy/oauth/EmailExtractor.java",
+      "docs/annotations/field/importance.md",
+      "docs/annotations/field/true-false.md",
+      "docs/annotations/field/number.md",
+      "core/src/main/java/com/elepy/http/HttpConfiguration.java",
+      "core/src/main/java/com/elepy/schemas/options/EmptyOptions.java",
+      "core/src/main/java/com/elepy/auth/authorization/PolicyLookup.java",
+      "./README.md",
+      "core/src/main/java/com/elepy/evaluators/IntegrityEvaluator.java",
+      "admin/src/main/resources/frontend/vue.config.js",
+      ".idea/modules.xml",
+      "core/src/main/java/com/elepy/auth/authorization/RoleLookup.java",
+      "core/src/main/java/com/elepy/id/IdentityProvider.java",
+      "docs/annotations/field/unique.md",
+      "docs/annotations/field/uneditable.md",
+      "core/src/main/java/com/elepy/query/FilterTypeDescription.java",
+      "core/src/main/java/com/elepy/handlers/ActionHandler.java",
+      "core/src/main/java/com/elepy/exceptions/MessageType.java",
+      ".idea/terraform.xml",
+      ".idea/vcs.xml",
+      "core/src/main/java/com/elepy/http/HttpExtension.java",
+      "docs/annotations/field/jackson.md",
+      "core/src/main/java/com/elepy/http/ExceptionHandler.java",
+      "core/src/main/java/com/elepy/configuration/EventHandler.java",
+      "core/src/main/java/com/elepy/http/Filter.java",
+      ".idea/inspectionProfiles/Project_Default.xml",
+      "core/src/main/java/com/elepy/http/StaticFileLocation.java",
+      "./http-client.env.json",
+      "core/src/main/java/com/elepy/evaluators/ObjectUpdateEvaluator.java",
+      "core/src/main/java/com/elepy/evaluators/EvaluationType.java",
+      "core/src/main/java/com/elepy/revisions/RevisionType.java",
+      "core/src/main/java/com/elepy/igniters/ModelChange.java",
+      "core/src/main/java/com/elepy/schemas/TextType.java",
+      "core/src/main/java/com/elepy/http/HttpMethod.java",
+      "admin/src/main/resources/frontend/babel.config.js",
+      "core/src/main/java/com/elepy/auth/users/PasswordCheck.java",
+      "admin/src/main/resources/frontend/src/components/fields/eventBus.js",
+      "core/src/main/java/com/elepy/schemas/options/Options.java",
+      "admin/src/main/resources/frontend/src/event-bus.js",
+      "docs/core-functionality/extensions.md",
+      "core/src/main/resources/elepy-messages_nl.properties",
+      "docs/CNAME",
+      "core/src/main/resources/elepy-messages.properties",
+      "admin/src/main/resources/admin.properties"
+     ],
+     "lines": [
+      30431,
+      675,
+      637,
+      496,
+      319,
+      311,
+      294,
+      274,
+      269,
+      244,
+      240,
+      232,
+      230,
+      228,
+      228,
+      227,
+      224,
+      223,
+      220,
+      214,
+      210,
+      208,
+      201,
+      197,
+      183,
+      181,
+      180,
+      180,
+      178,
+      176,
+      172,
+      166,
+      166,
+      161,
+      155,
+      154,
+      154,
+      154,
+      150,
+      150,
+      148,
+      141,
+      138,
+      135,
+      135,
+      135,
+      132,
+      127,
+      127,
+      126,
+      125,
+      125,
+      124,
+      124,
+      123,
+      122,
+      122,
+      120,
+      120,
+      119,
+      116,
+      116,
+      116,
+      114,
+      113,
+      113,
+      113,
+      112,
+      111,
+      110,
+      108,
+      108,
+      108,
+      107,
+      104,
+      103,
+      103,
+      100,
+      99,
+      99,
+      99,
+      98,
+      98,
+      97,
+      96,
+      96,
+      95,
+      91,
+      91,
+      90,
+      90,
+      87,
+      85,
+      84,
+      84,
+      83,
+      83,
+      83,
+      82,
+      82,
+      81,
+      80,
+      80,
+      80,
+      79,
+      79,
+      77,
+      77,
+      77,
+      76,
+      75,
+      75,
+      75,
+      75,
+      74,
+      74,
+      73,
+      72,
+      72,
+      72,
+      72,
+      72,
+      71,
+      70,
+      70,
+      69,
+      69,
+      69,
+      69,
+      69,
+      68,
+      68,
+      66,
+      66,
+      65,
+      65,
+      64,
+      64,
+      64,
+      64,
+      63,
+      63,
+      61,
+      59,
+      57,
+      56,
+      54,
+      54,
+      53,
+      53,
+      53,
+      53,
+      53,
+      52,
+      52,
+      51,
+      51,
+      51,
+      51,
+      50,
+      50,
+      50,
+      50,
+      49,
+      49,
+      49,
+      49,
+      48,
+      48,
+      48,
+      48,
+      47,
+      47,
+      47,
+      46,
+      46,
+      46,
+      45,
+      45,
+      44,
+      44,
+      43,
+      43,
+      42,
+      41,
+      41,
+      41,
+      41,
+      41,
+      40,
+      40,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      38,
+      38,
+      38,
+      38,
+      38,
+      38,
+      37,
+      37,
+      37,
+      37,
+      37,
+      37,
+      36,
+      36,
+      35,
+      35,
+      35,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      34,
+      33,
+      33,
+      33,
+      33,
+      33,
+      32,
+      32,
+      32,
+      32,
+      32,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      31,
+      30,
+      30,
+      30,
+      30,
+      30,
+      29,
+      29,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      28,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      26,
+      25,
+      25,
+      25,
+      25,
+      25,
+      24,
+      24,
+      24,
+      24,
+      23,
+      23,
+      23,
+      23,
+      23,
+      23,
+      22,
+      22,
+      22,
+      22,
+      21,
+      21,
+      21,
+      21,
+      21,
+      20,
+      20,
+      20,
+      20,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      17,
+      16,
+      16,
+      16,
+      16,
+      16,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      14,
+      14,
+      14,
+      14,
+      13,
+      13,
+      13,
+      13,
+      13,
+      12,
+      12,
+      12,
+      12,
+      12,
+      12,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      10,
+      10,
+      10,
+      10,
+      9,
+      9,
+      9,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      4,
+      4,
+      4,
+      4,
+      2,
+      1,
+      1,
+      1,
+      1
+     ],
+     "values": [
+      null,
+      2.75,
+      6.129999999999999,
+      4.795918367346939,
+      4,
+      null,
+      5.0813953488372094,
+      null,
+      6.356122448979592,
+      9.014285714285714,
+      9.470812182741117,
+      8.804347826086957,
+      9.133928571428571,
+      6.679319371727749,
+      8.76764705882353,
+      5.520491803278689,
+      9.734375,
+      4,
+      4,
+      5.6807228915662655,
+      7.949386503067485,
+      10,
+      6.054733727810651,
+      9.601851851851851,
+      7.71875,
+      5.085365853658536,
+      5.3076923076923075,
+      4,
+      10,
+      null,
+      8.49087591240876,
+      10,
+      10,
+      10,
+      10,
+      9.236842105263158,
+      8.3046875,
+      10,
+      9.83974358974359,
+      10,
+      9.073275862068966,
+      9.402777777777779,
+      6.456896551724138,
+      6.108974358974359,
+      null,
+      10,
+      9.096153846153847,
+      8.462264150943396,
+      4.928571428571429,
+      10,
+      9.5,
+      8.25,
+      null,
+      null,
+      9.946969696969697,
+      8.59020618556701,
+      7.755154639175258,
+      9.57258064516129,
+      8.527173913043478,
+      10,
+      9.356741573033709,
+      8,
+      null,
+      6.84375,
+      6.534210526315789,
+      10,
+      8.25,
+      5.060344827586206,
+      4,
+      9.282967032967033,
+      4.5,
+      7.1875,
+      4,
+      10,
+      10,
+      8.33,
+      null,
+      9.5,
+      8.203846153846154,
+      6.107142857142858,
+      6.6,
+      null,
+      4.732142857142857,
+      null,
+      9.445652173913043,
+      8.481707317073171,
+      9.980263157894736,
+      10,
+      null,
+      9.496268656716419,
+      9.496575342465754,
+      null,
+      10,
+      10,
+      8.993243243243244,
+      9.764285714285714,
+      10,
+      8.171052631578947,
+      9.9296875,
+      null,
+      10,
+      10,
+      9.290983606557377,
+      10,
+      9.0859375,
+      5.5,
+      10,
+      5.967391304347826,
+      10,
+      8.035714285714286,
+      10,
+      10,
+      8.682203389830509,
+      9.722222222222221,
+      10,
+      8.527777777777777,
+      5.888461538461539,
+      null,
+      10,
+      9.985294117647058,
+      9.564516129032258,
+      10,
+      8.113636363636363,
+      10,
+      9.911016949152541,
+      10,
+      10,
+      null,
+      9.779411764705882,
+      10,
+      null,
+      10,
+      9.816037735849056,
+      10,
+      8.476415094339622,
+      8.85,
+      10,
+      10,
+      6.907894736842105,
+      9.35909090909091,
+      10,
+      8.71938775510204,
+      null,
+      10,
+      9.5,
+      10,
+      10,
+      null,
+      10,
+      9.159090909090908,
+      9,
+      10,
+      null,
+      10,
+      10,
+      9.723684210526315,
+      10,
+      null,
+      null,
+      9.5,
+      10,
+      10,
+      10,
+      null,
+      9.652439024390244,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      null,
+      null,
+      9.925,
+      10,
+      9.5,
+      null,
+      10,
+      null,
+      10,
+      10,
+      9.068181818181818,
+      8.382352941176471,
+      8.673076923076923,
+      10,
+      10,
+      null,
+      10,
+      null,
+      10,
+      10,
+      10,
+      7.426470588235294,
+      10,
+      10,
+      10,
+      8.846774193548388,
+      8.55,
+      null,
+      10,
+      10,
+      8.441176470588236,
+      9.879032258064516,
+      10,
+      null,
+      null,
+      null,
+      null,
+      10,
+      10,
+      10,
+      9.8125,
+      null,
+      null,
+      null,
+      10,
+      10,
+      null,
+      9.5,
+      9.491935483870968,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      8.972222222222221,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      null,
+      10,
+      10,
+      null,
+      10,
+      null,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      8.467391304347826,
+      9.129999999999999,
+      10,
+      9.1875,
+      10,
+      10,
+      9.25,
+      10,
+      null,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      9.55,
+      10,
+      10,
+      10,
+      10,
+      null,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      8.55,
+      null,
+      10,
+      10,
+      null,
+      10,
+      null,
+      null,
+      8.15,
+      8.15,
+      10,
+      null,
+      null,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      8.357142857142858,
+      null,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      null,
+      10,
+      10,
+      8.522727272727273,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      10,
+      null,
+      null,
+      null,
+      10,
+      10,
+      10,
+      null,
+      10,
+      10,
+      null,
+      10,
+      10,
+      null,
+      null,
+      10,
+      10,
+      10,
+      null,
+      null,
+      10,
+      null,
+      10,
+      10,
+      10,
+      null,
+      10,
+      null,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      null,
+      null,
+      10,
+      null,
+      null
+     ],
+     "colorBy": "health",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/metrics?grain=files",
+      "label": "Open Metrics"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "tangles",
+   "args": {},
+   "text": "[E5] 1 tangles holding 29 components. Largest first:\nTangle 1: 29 components, 27 imports against the layering — com.elepy, com.elepy.annotations, com.elepy.annotations.editorjs, com.elepy.auth.authentication, com.elepy.auth.authentication.methods.basic, com.elepy.auth.authentication.methods.persistedtokens, com.elepy.auth.authentication.methods.tokens, com.elepy.auth.authorization …",
+   "evidence": [
+    {
+     "id": "E5",
+     "kind": "table",
+     "title": "Tangles, largest first",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "columns": [
+      "Tangle",
+      "Components",
+      "Imports against the layering",
+      "Members"
+     ],
+     "rows": [
+      [
+       1,
+       29,
+       27,
+       "com.elepy, elepy.annotations, annotations.editorjs, auth.authentication, methods.basic, methods.persistedtokens …"
+      ]
+     ],
+     "total": 1,
+     "note": "A tangle has no layers until the imports against the order are cut.",
+     "open": {
+      "route": "/views/components/cycles",
+      "label": "Open Cycles"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "cycles",
+   "args": {
+    "sort": "asc",
+    "limit": 5
+   },
+   "text": "[E6] 123 distinct shortest cycles. By length: 19 of length 2, 59 of length 3, 42 of length 4, 3 of length 5.\nSmallest first:\n1. (2) com.elepy.annotations → com.elepy.schemas.options → com.elepy.annotations\n2. (2) com.elepy.configuration → com.elepy.uploads → com.elepy.configuration\n3. (2) com.elepy.auth.authentication → com.elepy.http → com.elepy.auth.authentication\n4. (2) com.elepy.auth.authentication → com.elepy.auth.authentication.methods.tokens → com.elepy.auth.authentication\n5. (2) com.elepy.query → com.elepy.query.parser.cql → com.elepy.query",
+   "evidence": [
+    {
+     "id": "E6",
+     "kind": "table",
+     "title": "Smallest cycles",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "columns": [
+      "Length",
+      "Cycle",
+      "Shared commits"
+     ],
+     "rows": [
+      [
+       2,
+       "elepy.annotations → schemas.options → elepy.annotations",
+       0
+      ],
+      [
+       2,
+       "elepy.configuration → elepy.uploads → elepy.configuration",
+       0
+      ],
+      [
+       2,
+       "auth.authentication → elepy.http → auth.authentication",
+       0
+      ],
+      [
+       2,
+       "auth.authentication → methods.tokens → auth.authentication",
+       0
+      ],
+      [
+       2,
+       "elepy.query → parser.cql → elepy.query",
+       0
+      ]
+     ],
+     "total": 123,
+     "open": {
+      "route": "/views/components/cycles",
+      "label": "Open Cycles"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "untangle",
+   "args": {
+    "component": "com.elepy.annotations"
+   },
+   "text": "[E7] Tangle of 29 components containing com.elepy.annotations, in 17 levels; 27 imports run against the order. Cutting them all (27 cuts) leaves no tangle. Most untangling first:\n1. cut com.elepy.exceptions → com.elepy.annotations (2 import references in 2 files: core/src/main/java/com/elepy/exceptions/ElepyException.java, core/src/main/java/com/elepy/exceptions/Message.java) → 2 components freed, 27 still tangled\n2. cut com.elepy.query → com.elepy.query.parser (1 import references in 1 file: core/src/main/java/com/elepy/query/Queries.java) → 3 components freed, 26 still tangled\n3. cut com.elepy.query.parser.cql → com.elepy.query (1 import references in 1 file: core/src/main/java/com/elepy/query/parser/cql/CQLParser.java) → 4 components freed, 25 still tangled\n4. cut com.elepy.annotations → com.elepy.crud (1 import references in 1 file: core/src/main/java/com/elepy/annotations/Dao.java) → 4 components freed, 25 still tangled\n5. cut com.elepy.annotations → com.elepy.http (1 import references in 1 file: core/src/main/java/com/elepy/annotations/Action.java) → 4 components freed, 25 still tangled\n6. cut com.elepy.annotations → com.elepy.id (1 import references in 1 file: core/src/main/java/com/elepy/annotations/IdProvider.java) → 4 components freed, 25 still tangled\n7. cut com.elepy.annotations → com.elepy.query (1 import references in 1 file: core/src/main/java/com/elepy/annotations/Model.java) → 4 components freed, 25 still tangled\n8. cut com.elepy.annotations → com.elepy.schemas.options (1 import references in 1 file: core/src/main/java/com/elepy/annotations/Custom.java) → 4 components freed, 25 still tangled\n9. cut com.elepy.annotations → com.elepy.uploads (1 import references in 1 file: core/src/main/java/com/elepy/annotations/FileReference.java) → 4 components freed, 25 still tangled\n10. cut com.elepy.annotations.editorjs → com.elepy.annotations (1 import references in 1 file: core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java) → 4 components freed, 25 still tangled\n11. cut com.elepy.annotations.editorjs → com.elepy.schemas.options (1 import references in 1 file: core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java) → 5 components freed, 24 still tangled\n12. cut com.elepy.annotations → com.elepy.handlers (10 import references in 5 files: core/src/main/java/com/elepy/annotations/Find.java, core/src/main/java/com/elepy/annotations/Update.java, core/src/main/java/com/elepy/annotations/Delete.java, core/src/main/java/com/elepy/annotations/Create.java) → 7 components freed, 22 still tangled\n… 15 more cuts in the Cycles view.",
+   "evidence": [
+    {
+     "id": "E7",
+     "kind": "tangle",
+     "title": "Untangling 29 components around elepy.annotations",
+     "members": [
+      "com.elepy",
+      "com.elepy.annotations",
+      "com.elepy.annotations.editorjs",
+      "com.elepy.auth.authentication",
+      "com.elepy.auth.authentication.methods.basic",
+      "com.elepy.auth.authentication.methods.persistedtokens",
+      "com.elepy.auth.authentication.methods.tokens",
+      "com.elepy.auth.authorization",
+      "com.elepy.auth.extension",
+      "com.elepy.auth.users",
+      "com.elepy.configuration",
+      "com.elepy.crud",
+      "com.elepy.di",
+      "com.elepy.evaluators",
+      "com.elepy.exceptions",
+      "com.elepy.handlers",
+      "com.elepy.http",
+      "com.elepy.i18n.extension",
+      "com.elepy.id",
+      "com.elepy.igniters",
+      "com.elepy.json",
+      "com.elepy.query",
+      "com.elepy.query.parser",
+      "com.elepy.query.parser.cql",
+      "com.elepy.revisions",
+      "com.elepy.schemas",
+      "com.elepy.schemas.options",
+      "com.elepy.uploads",
+      "com.elepy.utils"
+     ],
+     "anchor": "com.elepy.annotations",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "edges": [
+      {
+       "from": "com.elepy.id",
+       "to": "com.elepy.crud",
+       "imports": 6,
+       "files": 6
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.annotations",
+       "imports": 14,
+       "files": 8
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.crud",
+       "imports": 3,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.query",
+       "to": "com.elepy.utils",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.di",
+       "imports": 4,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.auth.extension",
+       "to": "com.elepy.configuration",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.exceptions",
+       "imports": 3,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.schemas",
+       "imports": 8,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.exceptions",
+       "imports": 4,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.query",
+       "imports": 5,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.crud",
+       "imports": 4,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.crud",
+       "imports": 11,
+       "files": 11
+      },
+      {
+       "from": "com.elepy.id",
+       "to": "com.elepy.exceptions",
+       "imports": 6,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.schemas.options",
+       "to": "com.elepy.utils",
+       "imports": 11,
+       "files": 8
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.evaluators",
+       "imports": 7,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.id",
+       "to": "com.elepy.utils",
+       "imports": 5,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.schemas.options",
+       "to": "com.elepy.schemas",
+       "imports": 11,
+       "files": 6
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.schemas.options",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.http",
+       "imports": 14,
+       "files": 11
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.schemas",
+       "imports": 4,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.http",
+       "imports": 4,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.exceptions",
+       "imports": 8,
+       "files": 6
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.igniters",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.http",
+       "imports": 9,
+       "files": 7
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.auth.users",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.i18n.extension",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.http",
+       "imports": 4,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.exceptions",
+       "imports": 12,
+       "files": 8
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.extension",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.di",
+       "imports": 4,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.igniters",
+       "imports": 4,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.auth.authentication",
+       "imports": 4,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.annotations.editorjs",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.json",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.tokens",
+       "to": "com.elepy.auth.authentication",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.basic",
+       "to": "com.elepy.auth.users",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.crud",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.auth.authentication",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.configuration",
+       "imports": 7,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.handlers",
+       "imports": 10,
+       "files": 5
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.auth.authorization",
+       "imports": 5,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.igniters",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.query",
+       "imports": 8,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.id",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.utils",
+       "imports": 10,
+       "files": 6
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.authentication.methods.basic",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.id",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.handlers",
+       "imports": 7,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.http",
+       "imports": 3,
+       "files": 3
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.authentication",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.authentication.methods.tokens",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.query",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.exceptions",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.utils",
+       "to": "com.elepy.exceptions",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.query.parser.cql",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.schemas.options",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.exceptions",
+       "imports": 9,
+       "files": 7
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.utils",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations.editorjs",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.di",
+       "to": "com.elepy.utils",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.extension",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.annotations",
+       "imports": 7,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.basic",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.revisions",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.schemas.options",
+       "to": "com.elepy.annotations",
+       "imports": 10,
+       "files": 9
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.evaluators",
+       "imports": 5,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.query",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.revisions",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.schemas.options",
+       "to": "com.elepy.exceptions",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.exceptions",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.igniters",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.schemas",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.auth.users",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.id",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.utils",
+       "imports": 3,
+       "files": 3
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.http",
+       "imports": 5,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.utils",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.annotations",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.crud",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.exceptions",
+       "imports": 7,
+       "files": 4
+      },
+      {
+       "from": "com.elepy.auth.authentication",
+       "to": "com.elepy.http",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.auth.authentication.methods.tokens",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.configuration",
+       "imports": 5,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.di",
+       "to": "com.elepy.crud",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.auth.authorization",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.utils",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.schemas",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.utils",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.evaluators",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.query.parser",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.query",
+       "imports": 3,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.utils",
+       "to": "com.elepy.annotations",
+       "imports": 5,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.auth.extension",
+       "to": "com.elepy.exceptions",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.json",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.utils",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.di",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.schemas",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.di",
+       "to": "com.elepy",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.schemas",
+       "imports": 6,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.i18n.extension",
+       "to": "com.elepy.configuration",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.annotations",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.handlers",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.extension",
+       "to": "com.elepy.auth.authentication",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication",
+       "to": "com.elepy.auth.authentication.methods.tokens",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.auth.users",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.evaluators",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.revisions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.tokens",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.uploads",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.http",
+       "to": "com.elepy.schemas",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.authentication.methods.persistedtokens",
+       "imports": 3,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.uploads",
+       "imports": 4,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations.editorjs",
+       "to": "com.elepy.schemas.options",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.igniters",
+       "to": "com.elepy.handlers",
+       "imports": 3,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.utils",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.auth.authentication",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.crud",
+       "to": "com.elepy.query",
+       "imports": 4,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.http",
+       "imports": 3,
+       "files": 3
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.id",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.schemas.options",
+       "to": "com.elepy.uploads",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.auth.authentication.methods.tokens",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.di",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.users",
+       "to": "com.elepy.query",
+       "imports": 3,
+       "files": 2
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.authorization",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.query.parser",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.basic",
+       "to": "com.elepy.auth.authentication",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.json",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.uploads",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.query",
+       "to": "com.elepy",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.i18n.extension",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.uploads",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.exceptions",
+       "to": "com.elepy.annotations",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.query.parser.cql",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.auth.users",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.auth.users",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.configuration",
+       "to": "com.elepy.schemas",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.schemas",
+       "to": "com.elepy.auth.authorization",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.auth.authentication",
+       "imports": 2,
+       "files": 2
+      },
+      {
+       "from": "com.elepy.query",
+       "to": "com.elepy.query.parser",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.extension",
+       "to": "com.elepy.auth.users",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.query",
+       "to": "com.elepy.query.parser.cql",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.query",
+       "imports": 3,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.di",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authentication.methods.persistedtokens",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.utils",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.auth.authorization",
+       "to": "com.elepy.exceptions",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.handlers",
+       "to": "com.elepy.id",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy",
+       "to": "com.elepy.igniters",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.query.parser",
+       "to": "com.elepy",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.revisions",
+       "to": "com.elepy.handlers",
+       "imports": 2,
+       "files": 1
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1
+      }
+     ],
+     "steps": [
+      {
+       "from": "com.elepy.exceptions",
+       "to": "com.elepy.annotations",
+       "imports": 2,
+       "files": 2,
+       "freed": 2,
+       "tangled": 27,
+       "carriers": [
+        "core/src/main/java/com/elepy/exceptions/ElepyException.java",
+        "core/src/main/java/com/elepy/exceptions/Message.java"
+       ]
+      },
+      {
+       "from": "com.elepy.query",
+       "to": "com.elepy.query.parser",
+       "imports": 1,
+       "files": 1,
+       "freed": 3,
+       "tangled": 26,
+       "carriers": [
+        "core/src/main/java/com/elepy/query/Queries.java"
+       ]
+      },
+      {
+       "from": "com.elepy.query.parser.cql",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/query/parser/cql/CQLParser.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.crud",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/Dao.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.http",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/Action.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.id",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/IdProvider.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.query",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/Model.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.schemas.options",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/Custom.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.uploads",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/FileReference.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations.editorjs",
+       "to": "com.elepy.annotations",
+       "imports": 1,
+       "files": 1,
+       "freed": 4,
+       "tangled": 25,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations.editorjs",
+       "to": "com.elepy.schemas.options",
+       "imports": 1,
+       "files": 1,
+       "freed": 5,
+       "tangled": 24,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/editorjs/EditorJsProcessor.java"
+       ]
+      },
+      {
+       "from": "com.elepy.annotations",
+       "to": "com.elepy.handlers",
+       "imports": 10,
+       "files": 5,
+       "freed": 7,
+       "tangled": 22,
+       "carriers": [
+        "core/src/main/java/com/elepy/annotations/Find.java",
+        "core/src/main/java/com/elepy/annotations/Update.java",
+        "core/src/main/java/com/elepy/annotations/Delete.java",
+        "core/src/main/java/com/elepy/annotations/Create.java"
+       ]
+      }
+     ],
+     "open": {
+      "route": "/views/components/cycles?component=com.elepy.annotations",
+      "label": "Open in Cycles"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "graph",
+   "args": {
+    "query": "around admin/src/main/resources/frontend/src"
+   },
+   "text": "[E8] \"around admin/src/main/resources/frontend/src\": 1 component, 0 import edges among them.\nadmin/src/main/resources/frontend/src",
+   "evidence": [
+    {
+     "id": "E8",
+     "kind": "graph",
+     "title": "around admin/src/main/resources/frontend/src",
+     "query": "around admin/src/main/resources/frontend/src",
+     "nodes": [
+      "admin/src/main/resources/frontend/src"
+     ],
+     "edges": [],
+     "anchors": [
+      "admin/src/main/resources/frontend/src"
+     ],
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/connections",
+      "focus": "around admin/src/main/resources/frontend/src",
+      "label": "Open in Connections"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "graph",
+   "args": {
+    "query": "dependents of admin/src/main/resources/frontend/src depth all"
+   },
+   "text": "[E9] \"dependents of admin/src/main/resources/frontend/src depth all\": 1 component, 0 import edges among them.\nadmin/src/main/resources/frontend/src",
+   "evidence": [
+    {
+     "id": "E9",
+     "kind": "graph",
+     "title": "dependents of admin/src/main/resources/frontend/src depth all",
+     "query": "dependents of admin/src/main/resources/frontend/src depth all",
+     "nodes": [
+      "admin/src/main/resources/frontend/src"
+     ],
+     "edges": [],
+     "anchors": [
+      "admin/src/main/resources/frontend/src"
+     ],
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/connections",
+      "focus": "dependents of admin/src/main/resources/frontend/src depth all",
+      "label": "Open in Connections"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "rank",
+   "args": {
+    "metric": "dependents"
+   },
+   "text": "[E10] components by Direct Dependent Count (modularity__coupling__dependents) – Number of components that directly depend on this component., highest first:\n1. com.elepy.exceptions: 30\n2. com.elepy.http: 21\n3. com.elepy.annotations: 19\n4. com.elepy.crud: 16\n5. com.elepy.utils: 16\n6. com.elepy.query: 15\n7. com.elepy.configuration: 12\n8. com.elepy.schemas: 12\n9. com.elepy.auth.authentication: 10\n10. com.elepy.auth.users: 8",
+   "evidence": [
+    {
+     "id": "E10",
+     "kind": "bars",
+     "title": "Highest direct dependent count",
+     "metric": "modularity__coupling__dependents",
+     "unit": "Direct Dependent Count",
+     "items": [
+      {
+       "key": "com.elepy.exceptions",
+       "label": "elepy.exceptions",
+       "value": 30
+      },
+      {
+       "key": "com.elepy.http",
+       "label": "elepy.http",
+       "value": 21
+      },
+      {
+       "key": "com.elepy.annotations",
+       "label": "elepy.annotations",
+       "value": 19
+      },
+      {
+       "key": "com.elepy.crud",
+       "label": "elepy.crud",
+       "value": 16
+      },
+      {
+       "key": "com.elepy.utils",
+       "label": "elepy.utils",
+       "value": 16
+      },
+      {
+       "key": "com.elepy.query",
+       "label": "elepy.query",
+       "value": 15
+      },
+      {
+       "key": "com.elepy.configuration",
+       "label": "elepy.configuration",
+       "value": 12
+      },
+      {
+       "key": "com.elepy.schemas",
+       "label": "elepy.schemas",
+       "value": 12
+      },
+      {
+       "key": "com.elepy.auth.authentication",
+       "label": "auth.authentication",
+       "value": 10
+      },
+      {
+       "key": "com.elepy.auth.users",
+       "label": "auth.users",
+       "value": 8
+      }
+     ],
+     "note": "Number of components that directly depend on this component.",
+     "sql": "SELECT name, modularity__coupling__dependents AS value FROM components WHERE modularity__coupling__dependents IS NOT NULL AND name != '.' ORDER BY modularity__coupling__dependents DESC LIMIT 10",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/metrics",
+      "label": "Open in Metrics"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "rank",
+   "args": {
+    "metric": "size"
+   },
+   "text": "[E11] components by Line Count (complexity__lines) – The total number of lines in a file or component, including code, comments, and empty lines., highest first:\n1. admin/src/main/resources/frontend/src: 1,236\n2. com.elepy.http: 1,205\n3. com.elepy.schemas: 1,095\n4. com.elepy.mongo: 960\n5. com.elepy: 826\n6. com.elepy.annotations: 776\n7. com.elepy.handlers: 700\n8. com.elepy.uploads: 685\n9. com.elepy.schemas.options: 605\n10. com.elepy.sparkjava: 515",
+   "evidence": [
+    {
+     "id": "E11",
+     "kind": "bars",
+     "title": "Highest line count",
+     "metric": "complexity__lines",
+     "unit": "Line Count",
+     "items": [
+      {
+       "key": "admin/src/main/resources/frontend/src",
+       "label": "frontend/src",
+       "value": 1236
+      },
+      {
+       "key": "com.elepy.http",
+       "label": "elepy.http",
+       "value": 1205
+      },
+      {
+       "key": "com.elepy.schemas",
+       "label": "elepy.schemas",
+       "value": 1095
+      },
+      {
+       "key": "com.elepy.mongo",
+       "label": "elepy.mongo",
+       "value": 960
+      },
+      {
+       "key": "com.elepy",
+       "label": "com.elepy",
+       "value": 826
+      },
+      {
+       "key": "com.elepy.annotations",
+       "label": "elepy.annotations",
+       "value": 776
+      },
+      {
+       "key": "com.elepy.handlers",
+       "label": "elepy.handlers",
+       "value": 700
+      },
+      {
+       "key": "com.elepy.uploads",
+       "label": "elepy.uploads",
+       "value": 685
+      },
+      {
+       "key": "com.elepy.schemas.options",
+       "label": "schemas.options",
+       "value": 605
+      },
+      {
+       "key": "com.elepy.sparkjava",
+       "label": "elepy.sparkjava",
+       "value": 515
+      }
+     ],
+     "note": "The total number of lines in a file or component, including code, comments, and empty lines.",
+     "sql": "SELECT name, complexity__lines AS value FROM components WHERE complexity__lines IS NOT NULL AND name != '.' ORDER BY complexity__lines DESC LIMIT 10",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/metrics",
+      "label": "Open in Metrics"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "rank",
+   "args": {
+    "metric": "lines",
+    "grain": "files",
+    "limit": 10
+   },
+   "text": "[E12] files by Line Count (complexity__lines) – The total number of lines in a file or component, including code, comments, and empty lines., highest first:\n1. admin/src/main/resources/frontend/src/behave.js: 675\n2. core/src/main/java/com/elepy/Elepy.java: 637\n3. admin/src/main/resources/frontend/src/prism.js: 496\n4. admin/src/main/resources/frontend/src/components/ElepySingle.vue: 319\n5. admin/src/main/resources/frontend/src/components/fields/GenericField.vue: 294\n6. mongo/src/main/java/com/elepy/mongo/ElepyCodec.java: 269\n7. admin/src/main/resources/frontend/src/components/fields/MarkdownEditor.vue: 244\n8. core/src/main/java/com/elepy/utils/ReflectionUtils.java: 240\n9. mongo/src/main/java/com/elepy/mongo/MongoCrud.java: 232\n10. core/src/main/java/com/elepy/http/Request.java: 230",
+   "evidence": [
+    {
+     "id": "E12",
+     "kind": "bars",
+     "title": "Highest line count (files)",
+     "metric": "complexity__lines",
+     "unit": "Line Count",
+     "items": [
+      {
+       "key": "admin/src/main/resources/frontend/src/behave.js",
+       "label": "behave.js",
+       "value": 675
+      },
+      {
+       "key": "core/src/main/java/com/elepy/Elepy.java",
+       "label": "Elepy.java",
+       "value": 637
+      },
+      {
+       "key": "admin/src/main/resources/frontend/src/prism.js",
+       "label": "prism.js",
+       "value": 496
+      },
+      {
+       "key": "admin/src/main/resources/frontend/src/components/ElepySingle.vue",
+       "label": "ElepySingle.vue",
+       "value": 319
+      },
+      {
+       "key": "admin/src/main/resources/frontend/src/components/fields/GenericField.vue",
+       "label": "GenericField.vue",
+       "value": 294
+      },
+      {
+       "key": "mongo/src/main/java/com/elepy/mongo/ElepyCodec.java",
+       "label": "ElepyCodec.java",
+       "value": 269
+      },
+      {
+       "key": "admin/src/main/resources/frontend/src/components/fields/MarkdownEditor.vue",
+       "label": "MarkdownEditor.vue",
+       "value": 244
+      },
+      {
+       "key": "core/src/main/java/com/elepy/utils/ReflectionUtils.java",
+       "label": "ReflectionUtils.java",
+       "value": 240
+      },
+      {
+       "key": "mongo/src/main/java/com/elepy/mongo/MongoCrud.java",
+       "label": "MongoCrud.java",
+       "value": 232
+      },
+      {
+       "key": "core/src/main/java/com/elepy/http/Request.java",
+       "label": "Request.java",
+       "value": 230
+      }
+     ],
+     "note": "The total number of lines in a file or component, including code, comments, and empty lines.",
+     "sql": "SELECT name, complexity__lines AS value FROM files WHERE complexity__lines IS NOT NULL AND coalesce(role, 'production') = 'production' ORDER BY complexity__lines DESC LIMIT 10",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/metrics?grain=files",
+      "label": "Open in Metrics"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "component",
+   "args": {
+    "name": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E13] Component admin/src/main/resources/frontend/src\n- Lines of code: 1,236\n- Files: 10\n- Components that depend on it: 0\n- Components it depends on: 0\n- Instability (0 stable – 1 unstable): 0\n- Abstractness: 0\n- Cycles it is in: 0\n- Commits, all time: 29\n- Commits, last 90 days: 2\n- Authors, all time: 1\n- Code health (10 best): 7.58\n- Hotspot score: 19.62\n- PageRank (centrality): 0\n- Depends most on: nothing\n- Used most by: nothing",
+   "evidence": [
+    {
+     "id": "E13",
+     "kind": "component",
+     "title": "Component · frontend/src",
+     "name": "admin/src/main/resources/frontend/src",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "values": [
+      {
+       "id": "complexity__lines",
+       "label": "Lines of code",
+       "value": 1236
+      },
+      {
+       "id": "complexity__files",
+       "label": "Files",
+       "value": 10
+      },
+      {
+       "id": "modularity__coupling__dependents",
+       "label": "Components that depend on it",
+       "value": 0
+      },
+      {
+       "id": "modularity__coupling__dependencies",
+       "label": "Components it depends on",
+       "value": 0
+      },
+      {
+       "id": "modularity__instability",
+       "label": "Instability (0 stable – 1 unstable)",
+       "value": 0
+      },
+      {
+       "id": "modularity__abstractness",
+       "label": "Abstractness",
+       "value": 0
+      },
+      {
+       "id": "cycles",
+       "label": "Cycles it is in",
+       "value": 0
+      },
+      {
+       "id": "git__commits__total",
+       "label": "Commits, all time",
+       "value": 29
+      },
+      {
+       "id": "git__commits__last_90_days",
+       "label": "Commits, last 90 days",
+       "value": 2
+      },
+      {
+       "id": "git__authors__total",
+       "label": "Authors, all time",
+       "value": 1
+      },
+      {
+       "id": "codesmells__code_health",
+       "label": "Code health (10 best)",
+       "value": 7.575870153886797
+      },
+      {
+       "id": "codesmells__hotspot_score",
+       "label": "Hotspot score",
+       "value": 19.621656613075146
+      },
+      {
+       "id": "graph__page_rank",
+       "label": "PageRank (centrality)",
+       "value": 0.003683622549447907
+      }
+     ],
+     "dependents": [],
+     "dependencies": [],
+     "open": {
+      "route": "/views/components/admin%2Fsrc%2Fmain%2Fresources%2Ffrontend%2Fsrc",
+      "label": "Open component"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "files_of",
+   "args": {
+    "component": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E14] 10 files in admin/src/main/resources/frontend/src, largest first:\nadmin/src/main/resources/frontend/src/prism.js · lines 496 · commits 3 · health 4.8 · role production\nadmin/src/main/resources/frontend/src/store.js · lines 224 · commits 19 · health 9.73 · role production\nadmin/src/main/resources/frontend/src/router.js · lines 161 · commits 6 · health 10 · role production\nadmin/src/main/resources/frontend/src/main.js · lines 104 · commits 14 · health 10 · role production\nadmin/src/main/resources/frontend/src/utils.mjs · lines 79 · commits 3 · health 5.5 · role production\nadmin/src/main/resources/frontend/src/elepyClient.js · lines 69 · commits 2 · health 10 · role production\nadmin/src/main/resources/frontend/src/i18nSetup.js · lines 46 · commits 1 · health 10 · role production\nadmin/src/main/resources/frontend/src/index.js · lines 31 · commits 5 · health 10 · role production\nadmin/src/main/resources/frontend/src/intlFormatter.js · lines 22 · commits 1 · health 10 · role production\nadmin/src/main/resources/frontend/src/event-bus.js · lines 4 · commits 1 · health 10 · role production",
+   "evidence": [
+    {
+     "id": "E14",
+     "kind": "table",
+     "title": "Files in frontend/src",
+     "columns": [
+      "File",
+      "Lines",
+      "Commits",
+      "Health",
+      "Role"
+     ],
+     "rows": [
+      [
+       "admin/src/main/resources/frontend/src/prism.js",
+       496,
+       3,
+       4.795918367346939,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/store.js",
+       224,
+       19,
+       9.734375,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/router.js",
+       161,
+       6,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/main.js",
+       104,
+       14,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/utils.mjs",
+       79,
+       3,
+       5.5,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/elepyClient.js",
+       69,
+       2,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/i18nSetup.js",
+       46,
+       1,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/index.js",
+       31,
+       5,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/intlFormatter.js",
+       22,
+       1,
+       10,
+       "production"
+      ],
+      [
+       "admin/src/main/resources/frontend/src/event-bus.js",
+       4,
+       1,
+       10,
+       "production"
+      ]
+     ],
+     "total": 10,
+     "sql": "SELECT name, complexity__lines, git__commits__total, codesmells__code_health, role FROM files WHERE component = 'admin/src/main/resources/frontend/src' ORDER BY complexity__lines DESC LIMIT 40",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/components/admin%2Fsrc%2Fmain%2Fresources%2Ffrontend%2Fsrc/inside",
+      "label": "Open Inside"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "file_outline",
+   "args": {
+    "path": "./CODE_OF_CONDUCT.md"
+   },
+   "text": "[E15] ./CODE_OF_CONDUCT.md · component  · role non_code\nLines: 46 · Commits, all time: 1 · Commits, last 90 days: 0 · Authors: 1 · Days since last change: 2,126\nNo declarations recorded for this file type.\nNo other file is recorded as using it.",
+   "evidence": [
+    {
+     "id": "E15",
+     "kind": "file",
+     "title": "CODE_OF_CONDUCT.md",
+     "path": "./CODE_OF_CONDUCT.md",
+     "component": "",
+     "role": "non_code",
+     "values": [
+      {
+       "label": "Lines",
+       "value": 46
+      },
+      {
+       "label": "Commits, all time",
+       "value": 1
+      },
+      {
+       "label": "Commits, last 90 days",
+       "value": 0
+      },
+      {
+       "label": "Authors",
+       "value": 1
+      },
+      {
+       "label": "Days since last change",
+       "value": 2126
+      }
+     ],
+     "outline": [],
+     "importsFrom": [],
+     "importedBy": [],
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/files/./CODE_OF_CONDUCT.md",
+      "label": "Open file"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "activity",
+   "args": {},
+   "text": "[E16] Commits per month, 2021-10 to 2025-05 (months with commits only): 2021-10 1, 2021-11 5, 2022-01 21, 2022-02 7, 2022-04 2, 2022-05 3, 2022-06 3, 2022-07 2, 2022-08 1, 2023-01 1, 2023-06 5, 2023-07 1, 2024-06 2, 2024-07 22, 2024-08 10, 2024-12 1, 2025-03 1, 2025-05 4. Total 92.",
+   "evidence": [
+    {
+     "id": "E16",
+     "kind": "timeline",
+     "title": "Commits per month",
+     "points": [
+      {
+       "label": "2021-10",
+       "value": 1
+      },
+      {
+       "label": "2021-11",
+       "value": 5
+      },
+      {
+       "label": "2022-01",
+       "value": 21
+      },
+      {
+       "label": "2022-02",
+       "value": 7
+      },
+      {
+       "label": "2022-04",
+       "value": 2
+      },
+      {
+       "label": "2022-05",
+       "value": 3
+      },
+      {
+       "label": "2022-06",
+       "value": 3
+      },
+      {
+       "label": "2022-07",
+       "value": 2
+      },
+      {
+       "label": "2022-08",
+       "value": 1
+      },
+      {
+       "label": "2023-01",
+       "value": 1
+      },
+      {
+       "label": "2023-06",
+       "value": 5
+      },
+      {
+       "label": "2023-07",
+       "value": 1
+      },
+      {
+       "label": "2024-06",
+       "value": 2
+      },
+      {
+       "label": "2024-07",
+       "value": 22
+      },
+      {
+       "label": "2024-08",
+       "value": 10
+      },
+      {
+       "label": "2024-12",
+       "value": 1
+      },
+      {
+       "label": "2025-03",
+       "value": 1
+      },
+      {
+       "label": "2025-05",
+       "value": 4
+      }
+     ],
+     "unit": "commits",
+     "sql": "SELECT substr(commit_time, 1, 7) AS month, count(DISTINCT commit_hash) AS commits FROM git_commit_info GROUP BY 1 ORDER BY 1 DESC LIMIT 18",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/git/activity",
+      "label": "Open Activity"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "activity",
+   "args": {
+    "component": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E17] Commits per month touching admin/src/main/resources/frontend/src, 2019-10 to 2025-05 (months with commits only): 2019-10 1, 2019-11 3, 2020-01 1, 2020-03 7, 2020-04 3, 2020-07 1, 2020-12 4, 2021-01 4, 2021-02 1, 2021-03 1, 2022-01 1, 2025-03 1, 2025-05 1. Total 29.",
+   "evidence": [
+    {
+     "id": "E17",
+     "kind": "timeline",
+     "title": "Commits per month · frontend/src",
+     "points": [
+      {
+       "label": "2019-10",
+       "value": 1
+      },
+      {
+       "label": "2019-11",
+       "value": 3
+      },
+      {
+       "label": "2020-01",
+       "value": 1
+      },
+      {
+       "label": "2020-03",
+       "value": 7
+      },
+      {
+       "label": "2020-04",
+       "value": 3
+      },
+      {
+       "label": "2020-07",
+       "value": 1
+      },
+      {
+       "label": "2020-12",
+       "value": 4
+      },
+      {
+       "label": "2021-01",
+       "value": 4
+      },
+      {
+       "label": "2021-02",
+       "value": 1
+      },
+      {
+       "label": "2021-03",
+       "value": 1
+      },
+      {
+       "label": "2022-01",
+       "value": 1
+      },
+      {
+       "label": "2025-03",
+       "value": 1
+      },
+      {
+       "label": "2025-05",
+       "value": 1
+      }
+     ],
+     "unit": "commits",
+     "sql": "SELECT substr(commit_time, 1, 7) AS month, count(DISTINCT commit_hash) AS commits FROM git_commits WHERE component = 'admin/src/main/resources/frontend/src' GROUP BY 1 ORDER BY 1 DESC LIMIT 18",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/components/admin%2Fsrc%2Fmain%2Fresources%2Ffrontend%2Fsrc/history",
+      "label": "Open history"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "cochange",
+   "args": {},
+   "text": "[E18] Pairs that change in the same commits, most shared first; % = share of each side's own commits:\ncom.elepy ↔ com.elepy.http: 45 shared (18.8% / 39.1%) · import\ncom.elepy ↔ com.elepy.configuration: 42 shared (17.6% / 91.3%) · import\ncom.elepy ↔ com.elepy.annotations: 39 shared (16.3% / 37.1%) · import\ncom.elepy.http ↔ com.elepy.sparkjava: 36 shared (31.3% / 80%) · import\ncom.elepy ↔ com.elepy.handlers: 31 shared (13% / 26.5%) · NO import (hidden coupling)\ncom.elepy ↔ com.elepy.di: 27 shared (11.3% / 69.2%) · import\ncom.elepy.handlers ↔ com.elepy.http: 26 shared (22.2% / 22.6%) · import\ncom.elepy.auth.users ↔ com.elepy.http: 26 shared (40.6% / 22.6%) · import\ncom.elepy ↔ com.elepy.utils: 26 shared (10.9% / 32.5%) · import\ncom.elepy.annotations ↔ com.elepy.schemas: 25 shared (23.8% / 34.2%) · import\ncom.elepy.annotations ↔ com.elepy.utils: 25 shared (23.8% / 31.3%) · import\ncom.elepy.crud ↔ com.elepy.handlers: 25 shared (36.2% / 21.4%) · import\ncom.elepy.http ↔ com.elepy.uploads: 25 shared (21.7% / 34.2%) · import\ncom.elepy ↔ com.elepy.auth.users: 25 shared (10.5% / 39.1%) · import\ncom.elepy ↔ com.elepy.crud: 24 shared (10% / 34.8%) · import\ncom.elepy ↔ com.elepy.schemas: 23 shared (9.6% / 31.5%) · import\ncom.elepy ↔ com.elepy.hibernate: 23 shared (9.6% / 34.3%) · NO import (hidden coupling)\ncom.elepy.handlers ↔ com.elepy.utils: 22 shared (18.8% / 27.5%) · import\ncom.elepy.hibernate ↔ com.elepy.mongo: 22 shared (32.8% / 48.9%) · NO import (hidden coupling)\ncom.elepy.annotations ↔ com.elepy.handlers: 21 shared (20% / 17.9%) · import",
+   "evidence": [
+    {
+     "id": "E18",
+     "kind": "table",
+     "title": "What changes together",
+     "columns": [
+      "Component",
+      "Component",
+      "Shared commits",
+      "% of first",
+      "% of second",
+      "Import between them"
+     ],
+     "rows": [
+      [
+       "com.elepy",
+       "com.elepy.http",
+       45,
+       18.8,
+       39.1,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.configuration",
+       42,
+       17.6,
+       91.3,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.annotations",
+       39,
+       16.3,
+       37.1,
+       "yes"
+      ],
+      [
+       "com.elepy.http",
+       "com.elepy.sparkjava",
+       36,
+       31.3,
+       80,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.handlers",
+       31,
+       13,
+       26.5,
+       "no — hidden"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.di",
+       27,
+       11.3,
+       69.2,
+       "yes"
+      ],
+      [
+       "com.elepy.handlers",
+       "com.elepy.http",
+       26,
+       22.2,
+       22.6,
+       "yes"
+      ],
+      [
+       "com.elepy.auth.users",
+       "com.elepy.http",
+       26,
+       40.6,
+       22.6,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.utils",
+       26,
+       10.9,
+       32.5,
+       "yes"
+      ],
+      [
+       "com.elepy.annotations",
+       "com.elepy.schemas",
+       25,
+       23.8,
+       34.2,
+       "yes"
+      ],
+      [
+       "com.elepy.annotations",
+       "com.elepy.utils",
+       25,
+       23.8,
+       31.3,
+       "yes"
+      ],
+      [
+       "com.elepy.crud",
+       "com.elepy.handlers",
+       25,
+       36.2,
+       21.4,
+       "yes"
+      ],
+      [
+       "com.elepy.http",
+       "com.elepy.uploads",
+       25,
+       21.7,
+       34.2,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.auth.users",
+       25,
+       10.5,
+       39.1,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.crud",
+       24,
+       10,
+       34.8,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.schemas",
+       23,
+       9.6,
+       31.5,
+       "yes"
+      ],
+      [
+       "com.elepy",
+       "com.elepy.hibernate",
+       23,
+       9.6,
+       34.3,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.handlers",
+       "com.elepy.utils",
+       22,
+       18.8,
+       27.5,
+       "yes"
+      ],
+      [
+       "com.elepy.hibernate",
+       "com.elepy.mongo",
+       22,
+       32.8,
+       48.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.annotations",
+       "com.elepy.handlers",
+       21,
+       20,
+       17.9,
+       "yes"
+      ]
+     ],
+     "total": 20,
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/connections",
+      "label": "Open Connections"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "cochange",
+   "args": {
+    "component": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E19] What changes with admin/src/main/resources/frontend/src (shared commits; % of admin/src/main/resources/frontend/src's own commits; import between them?):\ncom.elepy.http: 7 shared (25%) · NO import (hidden coupling)\ncom.elepy.http: 7 shared (25%) · NO import (hidden coupling)\ncom.elepy.annotations: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy.auth.users: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy.annotations: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy.auth.users: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy: 6 shared (21.4%) · NO import (hidden coupling)\ncom.elepy.uploads: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.schemas: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.admin: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.auth.extension: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.uploads: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.schemas: 5 shared (17.9%) · NO import (hidden coupling)\ncom.elepy.admin: 5 shared (17.9%) · NO import (hidden coupling)\n15 of 15 have no import between them.",
+   "evidence": [
+    {
+     "id": "E19",
+     "kind": "table",
+     "title": "What changes with frontend/src",
+     "columns": [
+      "Component",
+      "Shared commits",
+      "% of its commits",
+      "Import between them"
+     ],
+     "rows": [
+      [
+       "com.elepy.http",
+       7,
+       25,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.http",
+       7,
+       25,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.annotations",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.auth.users",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.annotations",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.auth.users",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy",
+       6,
+       21.4,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.uploads",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.schemas",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.admin",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.auth.extension",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.uploads",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.schemas",
+       5,
+       17.9,
+       "no — hidden"
+      ],
+      [
+       "com.elepy.admin",
+       5,
+       17.9,
+       "no — hidden"
+      ]
+     ],
+     "total": 15,
+     "sql": "SELECT CASE WHEN pair_1 = 'admin/src/main/resources/frontend/src' THEN pair_2 ELSE pair_1 END AS other, shared_commits,\n                round(CASE WHEN pair_1 = 'admin/src/main/resources/frontend/src' THEN percentage_of_all_commits_pair_1 ELSE percentage_of_all_commits_pair_2 END, 1) AS pct\n                FROM git_component_shared_commits WHERE (pair_1 = 'admin/src/main/resources/frontend/src' OR pair_2 = 'admin/src/main/resources/frontend/src') AND pair_1 != pair_2 ORDER BY shared_commits DESC LIMIT 15",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/connections",
+      "focus": "around admin/src/main/resources/frontend/src",
+      "label": "Open in Connections"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "knowledge",
+   "args": {
+    "component": "admin/src/main/resources/frontend/src"
+   },
+   "text": "[E20] 29 commits touch admin/src/main/resources/frontend/src. Authors by share:\nRyan Susana: 29 commits (100%), last 2025-05-26\n1 author made half of the commits.",
+   "evidence": [
+    {
+     "id": "E20",
+     "kind": "bars",
+     "title": "Who knows frontend/src",
+     "metric": "commits",
+     "unit": "commits",
+     "items": [
+      {
+       "label": "Ryan Susana",
+       "value": 29
+      }
+     ],
+     "note": "1 author made half of the 29 commits.",
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/components/admin%2Fsrc%2Fmain%2Fresources%2Ffrontend%2Fsrc/history",
+      "label": "Open history"
+     }
+    }
+   ]
+  },
+  {
+   "tool": "knowledge_map",
+   "args": {},
+   "text": "[E21] 49 components, 16,220 lines; the last year of history, to 2025-05-28. 1 of 4 authors are still active.\nWritten by active contributors: 49 components, 16,220 lines\nChanged by active contributors: 0 components, 0 lines\nChanged once: 0 components, 0 lines\nNo active contributor: 0 components, 0 lines\nPeople to ask: Ryan Susana (49 components, 16,220 lines, 49 only they know)",
+   "evidence": [
+    {
+     "id": "E21",
+     "kind": "knowledge",
+     "title": "Who still knows the code",
+     "windowWords": "the last year",
+     "rows": [
+      {
+       "component": "admin/src/main/resources/frontend",
+       "lines": 8,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "admin/src/main/resources/frontend/src",
+       "lines": 1236,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 1,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "admin/src/main/resources/frontend/src/components/fields",
+       "lines": 4,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy",
+       "lines": 826,
+       "state": "wrote",
+       "hereShare": 0.7213525360050094,
+       "hereCommits": 10,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.admin",
+       "lines": 250,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.annotations",
+       "lines": 776,
+       "state": "wrote",
+       "hereShare": 0.6803418803418804,
+       "hereCommits": 8,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.annotations.editorjs",
+       "lines": 70,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.authentication",
+       "lines": 117,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.authentication.methods.basic",
+       "lines": 59,
+       "state": "wrote",
+       "hereShare": 0.9920634920634921,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.authentication.methods.persistedtokens",
+       "lines": 192,
+       "state": "wrote",
+       "hereShare": 0.9976580796252927,
+       "hereCommits": 5,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.authentication.methods.tokens",
+       "lines": 39,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 1,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.authorization",
+       "lines": 341,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.extension",
+       "lines": 69,
+       "state": "wrote",
+       "hereShare": 0.995475113122172,
+       "hereCommits": 4,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.auth.users",
+       "lines": 461,
+       "state": "wrote",
+       "hereShare": 0.9968879668049793,
+       "hereCommits": 10,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.aws.s3",
+       "lines": 166,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.configuration",
+       "lines": 377,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 5,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.crud",
+       "lines": 219,
+       "state": "wrote",
+       "hereShare": 0.6444444444444445,
+       "hereCommits": 5,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.di",
+       "lines": 256,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.evaluators",
+       "lines": 207,
+       "state": "wrote",
+       "hereShare": 0.5202863961813843,
+       "hereCommits": 5,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.exceptions",
+       "lines": 285,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.firebase",
+       "lines": 337,
+       "state": "wrote",
+       "hereShare": 0.9978991596638656,
+       "hereCommits": 6,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.gcp",
+       "lines": 99,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 4,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.handlers",
+       "lines": 700,
+       "state": "wrote",
+       "hereShare": 0.7,
+       "hereCommits": 6,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.hibernate",
+       "lines": 508,
+       "state": "wrote",
+       "hereShare": 0.7085377821393523,
+       "hereCommits": 6,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.http",
+       "lines": 1205,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 11,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.i18n",
+       "lines": 92,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.i18n.extension",
+       "lines": 39,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.id",
+       "lines": 275,
+       "state": "wrote",
+       "hereShare": 0.5564053537284895,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.igniters",
+       "lines": 359,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 8,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.javalin",
+       "lines": 344,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.json",
+       "lines": 137,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.jwt",
+       "lines": 108,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 4,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.mongo",
+       "lines": 960,
+       "state": "wrote",
+       "hereShare": 0.9992107340173638,
+       "hereCommits": 9,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.mongo.annotations",
+       "lines": 25,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth",
+       "lines": 301,
+       "state": "wrote",
+       "hereShare": 0.9970501474926253,
+       "hereCommits": 4,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth.facebook",
+       "lines": 51,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth.github",
+       "lines": 89,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth.google",
+       "lines": 19,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth.microsoft",
+       "lines": 34,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 0,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.oauth.openid",
+       "lines": 128,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 1,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.query",
+       "lines": 453,
+       "state": "wrote",
+       "hereShare": 0.844903988183161,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.query.parser",
+       "lines": 154,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.query.parser.cql",
+       "lines": 79,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.revisions",
+       "lines": 416,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 8,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.schemas",
+       "lines": 1095,
+       "state": "wrote",
+       "hereShare": 0.8459642637091805,
+       "hereCommits": 9,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.schemas.options",
+       "lines": 605,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 3,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.sparkjava",
+       "lines": 515,
+       "state": "wrote",
+       "hereShare": 1,
+       "hereCommits": 4,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.uploads",
+       "lines": 685,
+       "state": "wrote",
+       "hereShare": 0.9981532779316713,
+       "hereCommits": 8,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      },
+      {
+       "component": "com.elepy.utils",
+       "lines": 450,
+       "state": "wrote",
+       "hereShare": 0.7911857292759706,
+       "hereCommits": 2,
+       "ask": "Ryan Susana",
+       "main": "Ryan Susana"
+      }
+     ],
+     "ranOn": {
+      "scanId": "/Users/ryansusana/Library/Application Support/archstats/scans/89573146-7e55-459c-bfe3-95d799ac4220/88bd078e-472b-4367-bfaf-94e2c0718518.db",
+      "commit": "",
+      "revision": 0,
+      "workspace": "elepy"
+     },
+     "open": {
+      "route": "/views/git/authors",
+      "label": "Open Authors"
+     }
+    }
+   ]
+  }
+ ]
+}

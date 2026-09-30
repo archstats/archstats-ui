@@ -19,6 +19,7 @@ export const SHORTCUTS: Shortcut[] = [
     { area: "App", keys: ["Mod", "Shift", "N"], label: "Clone a repository", command: "workspace:clone" },
     { area: "App", keys: ["Mod", "["], label: "Back", command: "nav:back" },
     { area: "App", keys: ["Mod", "]"], label: "Forward", command: "nav:forward" },
+    { area: "App", keys: ["Mod", "J"], label: "Ask about what is on screen (again to go back)", command: "ask:open" },
     { area: "App", keys: ["?"], label: "Show these shortcuts", command: "help:shortcuts" },
     { area: "Views", keys: ["Mod", "K"], label: "Query: find components and files by pattern" },
     { area: "Views", keys: ["Esc"], label: "Clear the selection, close a menu" },

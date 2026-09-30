@@ -53,6 +53,8 @@
         <slot v-else/>
       </div>
     </main>
+    <AskLauncher/>
+    <ExhibitRenderHost/>
   </div>
 </template>
 
@@ -70,6 +72,8 @@ import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import GoToAnything from "~/features/shell/components/GoToAnything.vue";
 import AddToReportSheet from "~/features/reports/components/AddToReportSheet.vue";
 import SlotFillBar from "~/features/reports/components/SlotFillBar.vue";
+import AskLauncher from "~/features/ask/components/AskLauncher.vue";
+import ExhibitRenderHost from "~/features/exhibit-catalog/components/ExhibitRenderHost.vue";
 import { useReportsStore } from "~/features/reports/reports.store";
 // Provides the code search that `contains` lines in live groups answer from.
 import "~/features/files/codeSearch";

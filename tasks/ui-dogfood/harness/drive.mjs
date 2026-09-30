@@ -131,7 +131,8 @@ switch (cmd) {
     const sw = await centre("Workspace:"); if (sw) { await mouse(sw.x, sw.y); await sleep(600); }
     for (let i = 0; i < 8; i++) {
       await run(LIST);
-      const it = await run(`(window.__driveList || []).find(c => c.label.startsWith(${JSON.stringify(WS + " /")})) || null`);
+      // The switcher lists "<initials> <name> <age> <path>" (older builds: "<name> /path"): match the name as a whole word.
+      const it = await run(`(window.__driveList || []).find(c => { const l = c.label; const w = ${JSON.stringify(WS)}; return l.startsWith(w + " /") || (l.includes(" /") && (" " + l + " ").includes(" " + w + " ") && !l.startsWith("Workspace:")); }) || null`);
       if (it) { await mouse(it.x, it.y); break; }
       await send("Input.dispatchMouseEvent", { type: "mouseWheel", x: 150, y: 400, deltaX: 0, deltaY: 400 }); await sleep(300);
     }

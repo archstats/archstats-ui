@@ -399,6 +399,21 @@ export const useReportsStore = defineStore("reports", {
                     return { lens: p.lens ?? undefined, scope: p.scope ?? undefined, role: p.role ?? undefined }
                 },
                 readings: this.readingContext(k)!,
+                exhibit: async spec => {
+                    // Its figure drawn once, off-screen, and kept like a captured figure; its table when it has no figure.
+                    const { check, resolve } = await import("~/features/exhibits/engine")
+                    const { snapshotFor } = await import("~/features/exhibit-catalog/app")
+                    const { renderExhibitPng } = await import("~/features/exhibit-catalog/render")
+                    const { isAbsent } = await import("~/features/exhibits/types")
+                    const checked = check(spec.kind, spec.params)
+                    if ("error" in checked) return { error: checked.error }
+                    const data = await resolve(checked.spec, { snap: await snapshotFor(k.id) })
+                    if (isAbsent(data)) return { error: data.absent }
+                    const t = checked.def.table(data, checked.spec.params)
+                    const table = { columns: t.columns.map(c => ({ id: c.id, label: c.label, numeric: !!c.numeric })), rows: t.rows, total: t.total ?? t.rows.length, ...(t.note ? { note: t.note } : {}) }
+                    const png = await renderExhibitPng(checked.spec, k.id, { highlight: spec.highlight })
+                    return png ? { figure: await this.keepFigure(png) } : { table }
+                },
             }
         },
         async run(id: string) {

@@ -1,4 +1,4 @@
-import { computed, getCurrentInstance, onBeforeUnmount, shallowReactive } from "vue";
+import { computed, getCurrentInstance, inject, onBeforeUnmount, shallowReactive, type InjectionKey } from "vue";
 import type { ExportColumn, ExportRow } from "./export";
 import type { FigureLegend, FigureOptions, FigureOutput } from "./figure";
 
@@ -124,15 +124,27 @@ if (import.meta.env?.DEV && typeof window !== "undefined") (window as any).__arc
  * Registers exportables for as long as the calling component is mounted.
  * Returns an unregister for items that come and go with state.
  */
+/**
+ * A place of its own for what a subtree registers. A figure drawn inside the
+ * chat or for a report's cell registers here instead of the page's registry,
+ * so the page's Export menu and report slots never offer it, and whoever
+ * drew it can still export it.
+ */
+export interface ExportScope { add(item: Exportable): () => void }
+export const EXPORT_SCOPE: InjectionKey<ExportScope> = Symbol("exportScope");
+
 export function useExportables() {
     const mine: number[] = [];
+    const offs: Array<() => void> = [];
+    const scope = getCurrentInstance() ? inject(EXPORT_SCOPE, null) : null;
     function register(item: Exportable): () => void {
+        if (scope) { const off = scope.add(item); offs.push(off); return off; }
         const key = nextKey++;
         registry.set(key, { key, order: key, item });
         mine.push(key);
         return () => { registry.delete(key); };
     }
-    if (getCurrentInstance()) onBeforeUnmount(() => mine.forEach(k => registry.delete(k)));
+    if (getCurrentInstance()) onBeforeUnmount(() => { mine.forEach(k => registry.delete(k)); offs.forEach(off => off()); });
     return { register };
 }
 

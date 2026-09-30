@@ -112,6 +112,8 @@ export interface RunContext {
     context: () => { lens?: string; scope?: string; role?: string }
     /** What readings run with; one per snapshot, so the snapshot is probed once. */
     readings: ReadingContext
+    /** Runs an exhibit cell: its table, and its figure kept as a PNG. Only in the app. */
+    exhibit?: (spec: Extract<CellSpec, { type: "exhibit" }>) => Promise<CellOutput>
 }
 
 const isNumeric = (rows: Array<Record<string, unknown>>, id: string) => {
@@ -167,7 +169,9 @@ export async function runCell(cell: Cell, ctx: RunContext): Promise<Cell> {
     let output: CellOutput
     try {
         if (spec.type === "capture" || spec.type === "slot") return cell
-        if (spec.type === "reading") {
+        if (spec.type === "exhibit") {
+            output = ctx.exhibit ? await ctx.exhibit(spec) : { error: "Exhibits run only in the app." }
+        } else if (spec.type === "reading") {
             output = { reading: await runReading(spec.reading, spec.params, ctx.readings) }
         } else if (spec.type === "table") {
             const has = await ctx.columns(spec.source)

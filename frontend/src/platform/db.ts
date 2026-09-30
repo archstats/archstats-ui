@@ -1,4 +1,5 @@
 import { Open, Query, QueryIn } from "wailsjs/go/app/QueryService";
+import { STAGE_SCAN } from "./stage";
 
 // WailsDb replaces the webapp's sql.js Web Worker (DbWorker). The interface
 // the data store consumes is unchanged — raw SQL in, {column: value} rows
@@ -7,11 +8,13 @@ import { Open, Query, QueryIn } from "wailsjs/go/app/QueryService";
 export class WailsDb {
     // Selects a completed scan's snapshot as the active database.
     async open(scanId: string): Promise<void> {
+        // The stage never opens a snapshot globally: that would switch the person's window.
+        if (STAGE_SCAN) return;
         await Open(scanId);
     }
 
     async query<T = any>(sql: string): Promise<T[]> {
-        const rows = await Query(sql);
+        const rows = STAGE_SCAN ? await QueryIn(STAGE_SCAN, sql) : await Query(sql);
         return (rows ?? []) as T[];
     }
 
