@@ -9,6 +9,8 @@ import type { Evidence, RanOn } from "../engine/types"
 import type { ExhibitPart } from "~/features/exhibits/types"
 import { highlightFor } from "~/features/exhibits/engine"
 import { layoutAnswer } from "../render/blocks"
+import { untrusted } from "../render/verdict"
+import type { Grounding } from "~/features/exhibits/grounding"
 
 function ranOnOf(r: RanOn): ReportRanOn {
     return { scanId: r.scanId, label: r.workspace, commit: r.commit, revision: r.revision, at: new Date().toISOString() }
@@ -103,4 +105,18 @@ export function answerBlocks(answer: string, exhibits: ExhibitPart[], fromMarkdo
         const x = byId.get(b.id)!
         return [exhibitBlock(x, highlightFor(x, b.cites), b.caption)]
     })
+}
+
+/**
+ * What an answer said that its facts did not bear out, kept visible in the
+ * report instead of passing as a finding: one quote to check or delete.
+ */
+export function checkBlocks(g: Grounding | null | undefined, broken: string[] = []): Block[] {
+    const strip = (t: string) => t.replace(/\s*\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g, "").trim()
+    const lines = [
+        ...untrusted(g).map(c => `- ${strip(c.sentence)} (${c.verdict}: ${c.reasons.join("; ")})`),
+        ...(broken.length ? [`- The answer cited ${broken.join(", ")}, which Ask never showed.`] : []),
+    ]
+    if (!lines.length) return []
+    return [{ id: newId(), kind: "quote", text: `Check before using: Ask could not back these with the facts it cited.\n${lines.join("\n")}` }]
 }

@@ -62,5 +62,8 @@ export function appWorld(onScreen: () => ViewContext | null): World {
         embed: async texts => (await Embed("nomic-embed-text", texts)) as number[][],
         aliases: () => (authors.aliases ?? {}) as Record<string, string>,
         onScreen,
+        scans: () => (ws.scans as any[]).filter(s => s.status === "complete").map(s => ({
+            id: String(s.id), label: String(s.label ?? ""), at: String(s.finishedAt ?? s.startedAt ?? ""), commit: String(s.headCommit ?? "").slice(0, 8), revision: Number(s.analysisRevision ?? 0),
+        })),
     }
 }

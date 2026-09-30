@@ -20,7 +20,8 @@ function ctxFor(world: World): ToolContext {
 
 describe("the intents", () => {
     it("are few, named for questions, with few params", () => {
-        expect(INTENTS.length).toBeLessThanOrEqual(13)
+        // Thirteen questions and ask_user.
+        expect(INTENTS.length).toBeLessThanOrEqual(14)
         for (const t of INTENTS) {
             expect(t.name).toMatch(/^[a-z_]+$/)
             expect(Object.keys(t.params).length, t.name).toBeLessThanOrEqual(4)

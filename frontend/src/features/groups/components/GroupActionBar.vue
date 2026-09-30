@@ -1,14 +1,16 @@
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="docked">
     <!-- No transform on the tray: the menu's click-away backdrop must span the viewport. -->
     <Transition name="tray">
       <div
         v-if="selectedItems.length > 0"
         ref="trayEl"
-        class="tray-host pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center"
+        class="tray-host flex"
+        :class="docked ? 'relative z-20 mb-2' : 'pointer-events-none fixed inset-x-0 bottom-5 z-50 justify-center'"
       >
       <div
-        class="ui-popover pointer-events-auto flex max-w-[calc(100vw-2rem)] select-none items-center gap-2 py-1.5 pl-3 pr-2 text-neutral-900"
+        class="ui-popover pointer-events-auto flex select-none items-center gap-2 py-1.5 pl-3 pr-2 text-neutral-900"
+        :class="docked ? 'w-full flex-wrap gap-y-1.5' : 'max-w-[calc(100vw-2rem)]'"
         role="toolbar"
         aria-label="Selection"
       >
@@ -186,7 +188,9 @@ const props = withDefaults(defineProps<{
   onReplace?: (ids: string[]) => void
   /** Show in targets to leave out: the view the tray is on. */
   showInExcept?: string[]
-}>(), { noun: undefined, universe: undefined, onReplace: undefined, showInExcept: () => [] });
+  /** In the page's flow (above Ask's composer) instead of floating over the bottom of the window. */
+  docked?: boolean
+}>(), { noun: undefined, universe: undefined, onReplace: undefined, showInExcept: () => [], docked: false });
 
 const emit = defineEmits<{
   (e: "clear"): void

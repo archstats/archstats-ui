@@ -18,6 +18,7 @@ import { words } from "../knowledge/capabilities"
 import type { Thread, Turn } from "./ask.store"
 import { evidenceBlocks, exhibitBlock, reportable } from "./toReport"
 import { layoutAnswer } from "../render/blocks"
+import { trustedText } from "../render/verdict"
 import { stableKey } from "~/features/exhibits/schema"
 import type { ExhibitPart } from "~/features/exhibits/types"
 
@@ -32,7 +33,7 @@ export interface WriteProgress {
 const ALL = () => [...GENERAL_TEMPLATES, ...QUICK_TEMPLATES, ...ECOSYSTEM_TEMPLATES]
 
 function conversationText(t: Thread): string {
-    return t.turns.filter(x => x.status === "done").map(x => `${x.question}\n${x.answer.slice(0, 600)}`).join("\n\n")
+    return t.turns.filter(x => x.status === "done").map(x => `${x.question}\n${trustedText(x.answer, x.grounding).slice(0, 600)}`).join("\n\n")
 }
 
 async function snapshotFacts(): Promise<{ ctx: ReadingContext; facts: SnapshotFacts; ecos: Ecosystem[] } | null> {
@@ -190,9 +191,9 @@ function evidenceText(e: Evidence, toolText?: string): string {
 /** The conversation's findings for a topic: the closest answers and their tool results. */
 async function findingsFor(topic: string, thread: Thread, embed?: Embed): Promise<{ text: string; turns: Turn[] }> {
     const done = thread.turns.filter(t => t.status === "done" && (t.answer.trim() || t.evidence.length || t.exhibits?.length))
-    const hits = await hybridSearch(topic, done, t => `${t.question}\n${t.answer.slice(0, 800)}`, { embed, limit: 2 })
+    const hits = await hybridSearch(topic, done, t => `${t.question}\n${trustedText(t.answer, t.grounding).slice(0, 800)}`, { embed, limit: 2 })
     const turns = hits.filter(h => h.score > 0.25).map(h => h.item)
-    const text = turns.map(t => `Question asked: ${t.question}\nWhat was found: ${t.answer}\n${t.steps.map(s => s.text ?? "").join("\n").slice(0, 3500)}`).join("\n\n")
+    const text = turns.map(t => `Question asked: ${t.question}\nWhat was found: ${trustedText(t.answer, t.grounding)}\n${t.steps.map(s => s.text ?? "").join("\n").slice(0, 3500)}`).join("\n\n")
     return { text, turns }
 }
 
@@ -288,7 +289,7 @@ export async function writeReport(opts: {
         const reply = await model.chat({
             messages: [
                 { role: "system", content: "You organise an architecture conversation into a short report. Group related questions into 2 to 5 sections with plain, specific headings (not the questions themselves). Drop questions that found nothing (requests for visualisations, small talk). Reply as JSON." },
-                { role: "user", content: done.map((x, i) => `#${i} ${x.question}\n${x.answer.slice(0, 300)}`).join("\n\n") },
+                { role: "user", content: done.map((x, i) => `#${i} ${x.question}\n${trustedText(x.answer, x.grounding).slice(0, 300)}`).join("\n\n") },
             ],
             format: { type: "object", properties: { title: { type: "string" }, sections: { type: "array", items: { type: "object", properties: { heading: { type: "string" }, questions: { type: "array", items: { type: "number" } } }, required: ["heading", "questions"] } } }, required: ["title", "sections"] },
             think: false,
@@ -344,7 +345,7 @@ export async function writeReport(opts: {
                 continue
             }
             const found = synthesis
-                ? { text: thread.turns.filter(t => t.status === "done").map(t => `Question asked: ${t.question}\nWhat was found: ${t.answer}`).join("\n\n").slice(0, 7000), turns: [] as Turn[] }
+                ? { text: thread.turns.filter(t => t.status === "done").map(t => `Question asked: ${t.question}\nWhat was found: ${trustedText(t.answer, t.grounding)}`).join("\n\n").slice(0, 7000), turns: [] as Turn[] }
                 : await findingsFor(`${s.heading}\n${prompts.map(p => (p as any).prompt).join("\n")}`, thread, embed)
             const earlier = synthesis && allWritten.length ? `What the report says so far:\n${allWritten.join("\n\n").slice(0, 6000)}` : ""
             // Conversation evidence that belongs here, when the template did not bring its own.

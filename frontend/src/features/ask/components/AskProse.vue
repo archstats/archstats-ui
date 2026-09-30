@@ -1,10 +1,10 @@
 <template>
   <!-- eslint-disable-next-line vue/no-v-html -->
-  <div class="ask-prose" @click="onClick" v-html="rendered.html"/>
+  <div ref="root" class="ask-prose" @click="onClick" v-html="rendered.html"/>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import { Marked } from "marked"
 import { markUnsourced } from "../engine/checks"
 
@@ -18,6 +18,8 @@ const props = defineProps<{
   titles?: Map<string, string>
   /** How each citation held up against its facts: verified, partial, unsupported. */
   verdicts?: Map<string, { verdict: string; reasons: string[] }>
+  /** Sentences its facts do not bear out: the paragraph or item holding one is marked in the margin. */
+  flags?: Array<{ sentence: string; verdict: string; reasons: string[] }>
 }>()
 const emit = defineEmits<{ (e: "cite", id: string): void; (e: "unsourced", count: number): void }>()
 
@@ -45,6 +47,28 @@ const rendered = computed(() => {
   return { html: out.html, count: out.count }
 })
 
+// Marked after rendering, on the paragraph or list item that holds the sentence:
+// the sentence's words compared with the element's, citations and markup left out.
+const root = ref<HTMLElement | null>(null)
+const words = (t: string) => t.replace(/\[?E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]?/g, " ").replace(/[*_`#>\[\]()]/g, " ").replace(/\s+/g, " ").trim().toLowerCase()
+function mark() {
+  const el = root.value
+  if (!el) return
+  const flags = (props.flags ?? []).filter(f => f.verdict === "unsupported" || f.verdict === "uncited" || f.verdict === "partial")
+  for (const x of el.querySelectorAll<HTMLElement>("p, li")) {
+    x.classList.remove("ask-flag", "ask-flag-unsupported", "ask-flag-uncited", "ask-flag-partial")
+    if (x.dataset.flagged) { x.removeAttribute("title"); delete x.dataset.flagged }
+    const own = words([...x.childNodes].filter(n => !(n instanceof HTMLElement && /^(UL|OL)$/.test(n.tagName))).map(n => n.textContent ?? "").join(" "))
+    const hit = flags.find(f => { const w = words(f.sentence); return w.length > 8 && own.includes(w.slice(0, 60)) })
+    if (!hit) continue
+    x.classList.add("ask-flag", `ask-flag-${hit.verdict}`)
+    x.dataset.flagged = "1"
+    x.title = `${hit.verdict === "uncited" ? "Uncited" : hit.verdict === "partial" ? "Partly supported" : "Not supported"}: ${hit.reasons.join("; ")}`
+  }
+}
+onMounted(mark)
+watch(() => [rendered.value.html, props.flags], mark, { flush: "post" })
+
 function onClick(ev: MouseEvent) {
   const el = (ev.target as HTMLElement).closest("[data-cite]") as HTMLElement | null
   if (el?.dataset.cite) emit("cite", el.dataset.cite)
@@ -70,12 +94,16 @@ defineExpose({ unsourced: computed(() => rendered.value.count) })
 .ask-prose :deep(table) { font-size: 12px; margin: 4px 0 10px; border-collapse: collapse; }
 .ask-prose :deep(th), .ask-prose :deep(td) { padding: 3px 12px 3px 0; border-bottom: 1px solid rgb(var(--c-neutral-100)); text-align: left; }
 .ask-prose :deep(blockquote) { border-left: 2px solid rgb(var(--c-neutral-200)); padding-left: 10px; color: rgb(var(--c-neutral-600)); margin: 0 0 10px; }
-.ask-prose :deep(.ask-cite) { display: inline-block; font: 500 9.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); border-radius: 4px; padding: 2px 3px; margin: 0 1px; vertical-align: 1px; cursor: pointer; }
-.ask-prose :deep(.ask-cite:hover) { background: rgb(var(--c-accent-100)); border-color: rgb(var(--c-accent-400)); }
-.ask-prose :deep(.ask-cite-verified) { border-style: solid; box-shadow: inset 0 -1.5px 0 rgb(var(--c-accent-400)); }
+.ask-prose :deep(.ask-cite) { display: inline-block; font: 500 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); border: 1px solid transparent; border-radius: 3px; padding: 0 4px; margin: 0 1px; vertical-align: 1px; cursor: pointer; }
+.ask-prose :deep(.ask-cite:hover) { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-200)); }
 .ask-prose :deep(.ask-cite-partial) { color: rgb(var(--c-amber-800)); background: rgb(var(--c-amber-50)); border-color: rgb(var(--c-amber-300)); }
 .ask-prose :deep(.ask-cite-unsupported) { color: rgb(var(--c-red-700)); background: rgb(var(--c-red-50, 254 242 242)); border: 1px dashed rgb(var(--c-red-300, 252 165 165)); }
 .ask-prose :deep(.ask-cite-broken) { color: rgb(var(--c-red-700)); background: transparent; border: 1px dashed rgb(var(--c-red-300, 252 165 165)); cursor: help; }
+/* A sentence its facts do not bear out: a rule in the margin, the reason on hover. */
+.ask-prose :deep(.ask-flag) { position: relative; }
+.ask-prose :deep(.ask-flag)::before { content: ""; position: absolute; left: -10px; top: 3px; bottom: 3px; width: 2px; border-radius: 1px; background: rgb(var(--c-amber-400)); }
+.ask-prose :deep(li.ask-flag)::before { left: -30px; }
+.ask-prose :deep(.ask-flag-unsupported)::before { background: rgb(var(--c-red-500, 239 68 68)); }
 .ask-prose :deep(.ask-img-alt) { font-style: italic; color: rgb(var(--c-neutral-500)); }
 .ask-prose :deep(.ask-unsourced) { text-decoration: underline dotted rgb(var(--c-amber-500)); text-decoration-thickness: 1.5px; text-underline-offset: 3px; cursor: help; }
 </style>

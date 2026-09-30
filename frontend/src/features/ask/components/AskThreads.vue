@@ -7,7 +7,7 @@
     <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
       <p v-if="!ask.threads.length" class="px-2 py-3 text-[12px] leading-relaxed text-neutral-500">Questions you ask are kept here with their evidence, per workspace.</p>
       <template v-for="g in grouped" :key="g.label">
-        <p class="px-2 pb-1 pt-3 text-[10.5px] font-medium uppercase tracking-wide text-neutral-400">{{ g.label }}</p>
+        <p class="ui-section-title px-2 pb-1 pt-3">{{ g.label }}</p>
         <div
             v-for="t in g.items"
             :key="t.id"
@@ -32,7 +32,7 @@
           >
           <template v-else>
             <p class="line-clamp-2 text-[12.5px] leading-snug text-neutral-900">{{ t.title }}</p>
-            <p class="mt-0.5 flex items-center gap-1.5 text-[10.5px] text-neutral-400">
+            <p class="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[11px] text-neutral-500">
               <span>{{ questions(t) }}</span><span>·</span><span>{{ relativeAge(t.updatedAt) }}</span>
               <span v-if="t.scanId !== ask.openScanId && t.turns.length" class="ui-tag" :title="`About snapshot ${t.snapshot}`">{{ t.snapshot }}</span>
             </p>

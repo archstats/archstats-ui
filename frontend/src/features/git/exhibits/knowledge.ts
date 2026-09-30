@@ -30,12 +30,16 @@ export const knowledge = exhibit<KnowledgeData>()({
 
     async resolve(p, { snap }): Promise<KnowledgeData | Absent> {
         if (!("git_commits" in snap.columns)) return { absent: "This snapshot has no git history." }
-        const last = (await snap.query<{ t: string }>("SELECT max(commit_time) AS t FROM git_commits"))[0]?.t
-        if (!last) return { absent: "No commits recorded." }
-        const anchor = `julianday('${new Date(last).toISOString()}')`
+        const newest = (await snap.query<{ t: string }>("SELECT max(commit_time) AS t FROM git_commits"))[0]?.t
+        if (!newest) return { absent: "No commits recorded." }
+        // Counted back from where the Authors view counts: the newest commit scanned (git_based_on), else the scan's time.
+        const at = [snap.info.git_based_on, snap.info.scanned_at, newest].map(x => new Date(String(x ?? ""))).find(d => !Number.isNaN(d.getTime()))!
+        const last = at.toISOString()
+        const anchor = `julianday('${last}')`
         const pairs = await snap.query<KnowledgePair>(knowledgePairsSql({ aliases: snap.aliases?.() ?? {}, includeBots: false, anchor }))
         const lines = new Map(snap.components().map(c => [String(c.name), Number(c.complexity__lines) || 0]))
-        let rows = buildKnowledge(pairs, lines, 365)
+        // As the view: components with code today; a component whose files are all gone has nothing to know.
+        let rows = buildKnowledge(pairs, lines, 365).filter(r => r.lines > 0)
         const of = String(p.of ?? "").trim()
         if (of) rows = rows.filter(r => r.component.toLowerCase().includes(of.toLowerCase()))
         if (!rows.length) return { absent: "No components with history match." }
@@ -50,7 +54,7 @@ export const knowledge = exhibit<KnowledgeData>()({
 
     facts(d) {
         const sum = d.summary
-        const out: FactDraft[] = [{ kind: "total", text: `${plural(sum.components, "component")}, ${plural(sum.lines, "line")}; the last year of history, to ${d.last}. ${n(sum.peopleHere)} of ${plural(sum.people, "author")} are still active.`, entities: [], values: { components: sum.components, lines: sum.lines, active: sum.peopleHere, authors: sum.people } }]
+        const out: FactDraft[] = [{ kind: "total", text: `${plural(sum.components, "component")} with code and commits, ${plural(sum.lines, "line")}; people count as active with a commit in the last year, to ${d.last}. ${n(sum.peopleHere)} of the ${plural(sum.people, "author")} who wrote them are still active (bots left out).`, entities: [], values: { components: sum.components, lines: sum.lines, active: sum.peopleHere, authors: sum.people } }]
         for (const st of STATES) out.push({ kind: "row", text: `${st.label}: ${plural(sum.byState[st.id].components, "component")}, ${plural(sum.byState[st.id].lines, "line")}.`, entities: [], values: { components: sum.byState[st.id].components, lines: sum.byState[st.id].lines } })
         for (const x of d.people) out.push({ kind: "row", text: `Person to ask: ${x.name}, for ${plural(x.components, "component")} (${n(x.lines)} lines)${x.only ? `, ${n(x.only)} of them known only to them` : ""}.`, entities: [x.name], values: { components: x.components, lines: x.lines, only: x.only } })
         for (const r of d.nobody) out.push({ kind: "row", text: `No active contributor knows ${r.component} (${n(r.lines)} lines).`, entities: [r.component], values: { lines: r.lines }, element: `component:${r.component}` })

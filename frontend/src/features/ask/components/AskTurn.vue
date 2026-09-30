@@ -1,15 +1,20 @@
 <template>
   <article class="ask-turn">
     <!-- The question, and the view it was asked from. -->
-    <div class="flex flex-col items-end gap-1">
+    <div class="flex flex-col items-start gap-1">
       <p class="ask-q">{{ turn.question }}</p>
       <span v-if="turn.context" class="ask-ctx" :title="`Asked from ${turn.context.route}`"><PanelTop :size="11" :stroke-width="1.75"/> from {{ turn.context.label }}<template v-if="turn.context.subject"> · {{ short(turn.context.subject.name) }}</template></span>
     </div>
 
     <div class="mt-4">
-      <!-- The plan, for questions that judge the whole codebase. -->
-      <div v-if="turn.plan.length" class="ask-plan">
-        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> Claims to test</p>
+      <!-- The plan, for questions that judge the whole codebase: shown while it is tested, then folded
+           into one line, so hypotheses never read as the answer. -->
+      <button v-if="turn.plan.length && !running" type="button" class="ask-steps-head mb-1 text-[12px]" :aria-expanded="planOpen" @click="planOpen = !planOpen">
+        <ChevronRight :size="12" :stroke-width="2" class="transition-transform" :class="{ 'rotate-90': planOpen }"/>
+        <span>{{ planSummary }}</span>
+      </button>
+      <div v-if="turn.plan.length && (running || planOpen)" class="ask-plan">
+        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> {{ running ? "Testing these claims" : "Claims tested" }}</p>
         <ol>
           <li v-for="(p, i) in turn.plan" :key="i">
             <span class="ask-plan-n">
@@ -51,10 +56,23 @@
         </ol>
       </div>
 
+      <!-- Its verdict on itself, read before the claims: how many its facts bear out, and which to check. -->
+      <div v-if="!running && verdict.level !== 'none'" class="ask-vline" :class="`is-${verdict.level}`">
+        <button type="button" :aria-expanded="groundOpen" :disabled="!verdict.flagged.length" @click="groundOpen = !groundOpen">
+          <span class="ask-vdot" aria-hidden="true"/>
+          <span class="ask-vhead">{{ verdict.headline }}</span>
+          <span v-if="verdict.problems.length" class="ask-vprob">{{ verdict.problems.join(" · ") }}</span>
+          <span v-if="verdict.flagged.length" class="ask-vshow">{{ groundOpen ? "Hide" : "Show which" }}</span>
+        </button>
+        <ul v-if="groundOpen && verdict.flagged.length">
+          <li v-for="(c, i) in verdict.flagged" :key="i" :class="`ask-ground-${c.verdict}`"><span class="ask-ground-v">{{ c.verdict }}</span> {{ c.sentence.replace(/\s*\[E[^\]]*\]/g, "") }} <span class="text-neutral-500">— {{ c.reasons.join("; ") }}</span></li>
+        </ul>
+      </div>
+
       <!-- The answer: prose, and the exhibits it shows where it shows them. -->
       <div v-if="turn.answer.trim()" class="ask-answer mt-3 grid gap-3">
         <template v-for="(b, i) in layout.blocks" :key="b.type === 'exhibit' ? b.id : `p${i}`">
-          <AskProse v-if="b.type === 'prose'" :text="b.text" :ids="ids" :titles="titles" :verdicts="running ? undefined : verdicts" :sources="running ? undefined : sources" @cite="id => $emit('cite', id)"/>
+          <AskProse v-if="b.type === 'prose'" :text="b.text" :ids="ids" :titles="titles" :verdicts="running ? undefined : verdicts" :sources="running ? undefined : sources" :flags="running ? undefined : verdict.flagged" @cite="id => $emit('cite', id)"/>
           <ExhibitView
               v-else-if="exhibitById.get(b.id)"
               :part="exhibitById.get(b.id)!"
@@ -70,27 +88,11 @@
       <p v-else-if="turn.status === 'stopped'" class="mt-3 text-[12px] text-neutral-500">Stopped before an answer.</p>
       <div v-if="turn.status === 'error'" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/><span>{{ turn.error }}</span></div>
 
-      <!-- Each claim against the facts it cites: counted, and the ones to check listed on demand. -->
-      <div v-if="!running && tally" class="ask-ground">
-        <button type="button" :aria-expanded="groundOpen" @click="groundOpen = !groundOpen">
-          <ShieldCheck :size="12" :stroke-width="1.75"/> {{ tally }}
-        </button>
-        <ul v-if="groundOpen && flagged.length">
-          <li v-for="(c, i) in flagged" :key="i" :class="`ask-ground-${c.verdict}`"><span class="ask-ground-v">{{ c.verdict }}</span> {{ c.sentence.replace(/\s*\[E[^\]]*\]/g, "") }} <span class="text-neutral-500">— {{ c.reasons.join("; ") }}</span></li>
-        </ul>
-      </div>
-
-      <!-- Honesty, stated: what the checks found. -->
-      <p v-if="!running && failed.length" class="ask-checks">
-        <AlertTriangle :size="12" :stroke-width="1.75"/>
-        <span>{{ failed.map(c => c.detail).join(" · ") }}</span>
-      </p>
-
       <!-- What it looked at but did not cite: offered, drawn when opened. -->
       <div v-if="!running && layout.unplaced.length" class="ask-also">
         <span class="text-neutral-500">Also looked at</span>
-        <button v-for="id in layout.unplaced" :key="id" type="button" class="ask-also-chip" :class="{ 'ask-also-on': opened.has(id) }" @click="toggle(id)">
-          <span class="ask-step-id">{{ id }}</span> {{ exhibitById.get(id)?.title }}
+        <button v-for="id in layout.unplaced" :key="id" type="button" class="ui-chip ask-also-chip" :class="{ 'is-active': opened.has(id) }" @click="toggle(id)">
+          <span class="ask-step-id">{{ id }}</span> <span class="truncate">{{ exhibitById.get(id)?.title }}</span>
         </button>
       </div>
       <div v-for="id in [...layout.unplaced.filter(x => opened.has(x)), ...revealed]" :key="`open-${id}`" class="mt-2">
@@ -119,40 +121,47 @@
 
       <!-- A question back: the options, one click each. -->
       <div v-if="turn.choices && last && !running" class="mt-3 flex flex-wrap gap-1.5">
-        <button v-for="o in turn.choices.options" :key="o" type="button" class="ask-choice" @click="$emit('ask', o)">{{ o }}</button>
+        <button v-for="o in turn.choices.options" :key="o" type="button" class="ui-chip" @click="$emit('ask', o)">{{ o }}</button>
       </div>
 
       <!-- Where to go next. -->
       <div v-if="last && !running && turn.followUps.length" class="mt-3 flex flex-wrap gap-1.5">
-        <button v-for="f in turn.followUps" :key="f" type="button" class="ask-follow" @click="$emit('ask', f)"><CornerDownRight :size="11" :stroke-width="1.75"/> {{ f }}</button>
+        <button v-for="f in turn.followUps" :key="f" type="button" class="ui-chip" @click="$emit('ask', f)"><CornerDownRight :size="12" :stroke-width="1.75" class="text-neutral-400"/> {{ f }}</button>
       </div>
 
-      <!-- What can be done with the answer. -->
-      <div v-if="!running && turn.answer.trim()" class="ask-actions">
-        <button type="button" :title="copied ? 'Copied' : 'Copy the answer'" @click="copy"><Check v-if="copied" :size="12" :stroke-width="2"/><Copy v-else :size="12" :stroke-width="1.75"/></button>
-        <button v-if="last" type="button" title="Ask again" @click="ask.retry(turn.id)"><RotateCw :size="12" :stroke-width="1.75"/></button>
-        <button v-if="last" type="button" title="Edit the question and ask again" @click="$emit('edit', turn.id)"><Pencil :size="12" :stroke-width="1.75"/></button>
-        <button type="button" title="Put this answer and its evidence into the conversation's report" @click="toReport"><FilePlus2 :size="12" :stroke-width="1.75"/></button>
-        <span class="mx-0.5 h-3 w-px bg-neutral-200"/>
-        <button type="button" :class="{ 'ask-rated': turn.feedback === 'up' }" title="Good answer" @click="ask.rate(turn.id, 'up')"><ThumbsUp :size="12" :stroke-width="1.75"/></button>
-        <button type="button" :class="{ 'ask-rated': turn.feedback === 'down' }" title="Wrong or unhelpful: kept with the trace, for improving Ask" @click="ask.rate(turn.id, 'down')"><ThumbsDown :size="12" :stroke-width="1.75"/></button>
+      <div v-if="confirmReport" class="ask-confirm" role="alert">
+        <AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/>
+        <span class="min-w-0 flex-1">{{ unsafe }} {{ unsafe === 1 ? "statement here is" : "statements here are" }} not backed by the facts it cites. The report gets {{ unsafe === 1 ? "it" : "them" }} listed under “Check before using”.</span>
+        <button type="button" class="ui-btn ui-btn-sm" @click="confirmReport = false">Cancel</button>
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="confirmReport = false; toReport()">Add anyway</button>
       </div>
 
-      <p v-if="!running && turn.status !== 'error'" class="ask-meta">
-        <span>{{ turn.model }}</span>
-        <span>·</span><span class="tabular-nums">{{ (turn.tokens.ms / 1000).toFixed(1) }} s</span>
-        <span>·</span><span class="tabular-nums">{{ tokens }} tokens</span>
-        <template v-if="turn.repairs.length"><span>·</span><span :title="turn.repairs.join('\n')">revised after a check</span></template>
-        <template v-else-if="turn.checks.length && !failed.length"><span>·</span><span class="inline-flex items-center gap-1"><ShieldCheck :size="11" :stroke-width="1.75"/> checked</span></template>
-        <span>·</span><button type="button" class="hover:text-neutral-800" @click="$emit('trace', turn.id)">Trace</button>
-      </p>
+      <!-- What can be done with the answer, and what made it: one row. -->
+      <div v-if="!running && (turn.answer.trim() || turn.status !== 'error')" class="ask-foot">
+        <div v-if="turn.answer.trim()" class="ask-actions">
+          <button type="button" :title="copied ? 'Copied' : 'Copy the answer'" @click="copy"><Check v-if="copied" :size="12" :stroke-width="2"/><Copy v-else :size="12" :stroke-width="1.75"/></button>
+          <button v-if="last" type="button" title="Ask again" @click="ask.retry(turn.id)"><RotateCw :size="12" :stroke-width="1.75"/></button>
+          <button v-if="last" type="button" title="Edit the question and ask again" @click="$emit('edit', turn.id)"><Pencil :size="12" :stroke-width="1.75"/></button>
+          <button type="button" title="Put this answer and its evidence into the conversation's report" @click="askToReport"><FilePlus2 :size="12" :stroke-width="1.75"/></button>
+          <span class="mx-0.5 h-3 w-px bg-neutral-200"/>
+          <button type="button" :class="{ 'ask-rated': turn.feedback === 'up' }" title="Good answer" @click="ask.rate(turn.id, 'up')"><ThumbsUp :size="12" :stroke-width="1.75"/></button>
+          <button type="button" :class="{ 'ask-rated': turn.feedback === 'down' }" title="Wrong or unhelpful: kept with the trace, for improving Ask" @click="ask.rate(turn.id, 'down')"><ThumbsDown :size="12" :stroke-width="1.75"/></button>
+        </div>
+        <p v-if="turn.status !== 'error'" class="ask-meta">
+          <span>{{ turn.model }}</span>
+          <span>·</span><span class="tabular-nums">{{ (turn.tokens.ms / 1000).toFixed(1) }} s</span>
+          <span>·</span><span class="tabular-nums">{{ tokens }} tokens</span>
+          <template v-if="turn.repairs.length"><span>·</span><span :title="turn.repairs.join('\n')">revised after a check</span></template>
+          <span>·</span><button type="button" class="hover:text-neutral-800" @click="$emit('trace', turn.id)">Trace</button>
+        </p>
+      </div>
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue"
-import { Check, ChevronRight, AlertCircle, Copy, CornerDownRight, FilePlus2, ListChecks, Loader2, PanelTop, Pencil, RotateCw, ShieldCheck, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-vue-next"
+import { Check, ChevronRight, AlertCircle, Copy, CornerDownRight, FilePlus2, ListChecks, Loader2, PanelTop, Pencil, RotateCw, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
 import type { Turn } from "../app/ask.store"
 import type { ExhibitPart } from "~/features/exhibits/types"
@@ -161,8 +170,11 @@ import { shortName } from "../tools/shared"
 import AskEvidence from "./AskEvidence.vue"
 import AskProse from "./AskProse.vue"
 import ExhibitView from "~/features/exhibits/components/ExhibitView.vue"
+// The app's snapshots, for the exhibits drawn here.
+import "~/features/exhibit-catalog/app"
 import { highlightFor } from "~/features/exhibits/engine"
 import { layoutAnswer } from "../render/blocks"
+import { answerVerdict, brokenCitations, checkWords, untrusted } from "../render/verdict"
 
 const props = defineProps<{
   turn: Turn; last: boolean; ids: Set<string>; titles?: Map<string, string>; sources: string; selectedId: string | null; flashId: string | null
@@ -180,6 +192,12 @@ const ask = useAskStore()
 const copied = ref(false)
 async function copy() {
   try { await navigator.clipboard.writeText(props.turn.answer.replace(/\s*\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g, "").trim()); copied.value = true; setTimeout(() => (copied.value = false), 1200) } catch { /* no clipboard */ }
+}
+const confirmReport = ref(false)
+const unsafe = computed(() => untrusted(props.turn.grounding).length + brokenCitations(props.turn.answer, props.ids).length)
+function askToReport() {
+  if (unsafe.value) confirmReport.value = true
+  else void toReport()
 }
 async function toReport() {
   const title = await ask.answerToReport(props.turn.id)
@@ -213,14 +231,13 @@ const revealed = computed(() => [...(props.reveal ?? [])].filter(id => own.value
 const highlightOf = (id: string, cites: string[]) => { const x = exhibitById.value.get(id); return x ? highlightFor(x, cites) : [] }
 const opened = ref(new Set<string>())
 const groundOpen = ref(false)
-const flagged = computed(() => (props.turn.grounding?.claims ?? []).filter(c => c.verdict === "partial" || c.verdict === "unsupported" || c.verdict === "uncited"))
-/** "9 claims · 7 verified · 1 partial · 1 uncited", in claims, never a percentage. */
-const tally = computed(() => {
-  const g = props.turn.grounding
-  if (!g || !g.claims.length) return ""
-  const c = g.counts
-  return [`${g.claims.length} claim${g.claims.length === 1 ? "" : "s"}`, c.verified && `${c.verified} verified`, c.cited && `${c.cited} cited`, c.partial && `${c.partial} partial`, c.unsupported && `${c.unsupported} unsupported`, c.uncited && `${c.uncited} uncited`].filter(Boolean).join(" · ")
+const planOpen = ref(false)
+const planSummary = computed(() => {
+  const vs = (props.turn.claims ?? []).map(c => c?.verdict).filter(Boolean) as string[]
+  const n = (v: string) => vs.filter(x => x === v).length
+  return [`Tested ${props.turn.plan.length} claim${props.turn.plan.length === 1 ? "" : "s"}`, n("supported") && `${n("supported")} held`, n("refuted") && `${n("refuted")} did not`, n("can't tell") && `${n("can't tell")} could not be told`].filter(Boolean).join(" · ")
 })
+const verdict = computed(() => answerVerdict(props.turn.grounding, { broken: brokenCitations(props.turn.answer, props.ids), failedChecks: failed.value.filter(c => c.id !== "topic").map(checkWords), wrongTopic: failed.value.find(c => c.id === "topic")?.detail.replace(/\s*\[E\d+\]$/, "") }))
 /** Each citation's worst verdict among the sentences that use it. */
 const verdicts = computed(() => {
   const rank: Record<string, number> = { verified: 0, cited: 1, partial: 2, uncited: 3, unsupported: 4 }
@@ -253,14 +270,14 @@ const stepsSummary = computed(() => {
 <style scoped>
 .ask-turn { padding: 18px 0 22px; }
 .ask-turn + .ask-turn { border-top: 1px solid rgb(var(--c-neutral-100)); }
-.ask-q { max-width: 86%; white-space: pre-wrap; border-radius: 12px; background: rgb(var(--c-neutral-100)); padding: 8px 12px; font-size: 13.5px; line-height: 1.5; color: rgb(var(--c-neutral-900)); }
+.ask-q { white-space: pre-wrap; font-size: 14px; font-weight: 600; line-height: 1.45; color: rgb(var(--c-neutral-900)); }
 .ask-ctx { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: rgb(var(--c-neutral-500)); }
 .ask-eyebrow { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: rgb(var(--c-neutral-500)); margin-bottom: 4px; }
-.ask-plan { border-left: 2px solid rgb(var(--c-accent-300)); padding: 2px 0 2px 12px; margin-bottom: 12px; }
+.ask-plan { border-left: 2px solid rgb(var(--c-neutral-200)); padding: 2px 0 2px 12px; margin-bottom: 12px; }
 .ask-plan ol { display: grid; gap: 3px; }
 .ask-plan li { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45; }
-.ask-plan-n { flex-shrink: 0; width: 14px; display: inline-flex; justify-content: center; padding-top: 2px; color: rgb(var(--c-accent-700)); font-weight: 600; font-size: 11.5px; }
-.ask-verdict { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 500; padding: 0 6px; border-radius: 999px; vertical-align: 1px; }
+.ask-plan-n { flex-shrink: 0; width: 14px; display: inline-flex; justify-content: center; padding-top: 2px; color: rgb(var(--c-neutral-500)); font-weight: 600; font-size: 11.5px; }
+.ask-verdict { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 500; padding: 0 5px; border-radius: 3px; vertical-align: 1px; }
 .ask-verdict-yes { color: rgb(var(--c-green-800, 22 101 52)); background: rgb(var(--c-green-50, 240 253 244)); }
 .ask-verdict-no { color: rgb(var(--c-red-800, 153 27 27)); background: rgb(var(--c-red-50, 254 242 242)); }
 .ask-verdict-unk { color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); }
@@ -271,8 +288,8 @@ const stepsSummary = computed(() => {
 .ask-steps-list summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; padding: 2px 4px; border-radius: 4px; }
 .ask-steps-list summary::-webkit-details-marker { display: none; }
 .ask-steps-list summary:hover { background: rgb(var(--c-neutral-50)); color: rgb(var(--c-neutral-900)); }
-.ask-steps-list pre { white-space: pre-wrap; font: 10.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-600)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 7px 9px; margin: 2px 0 6px; max-height: 260px; overflow: auto; }
-.ask-step-id { font: 500 9.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); border-radius: 3px; padding: 2px 3px; }
+.ask-steps-list pre { white-space: pre-wrap; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-600)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 7px 9px; margin: 2px 0 6px; max-height: 260px; overflow: auto; }
+.ask-step-id { flex-shrink: 0; font: 500 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); border-radius: 3px; padding: 0 4px; }
 .ask-thinking { display: flex; align-items: center; gap: 8px; padding: 3px 4px; color: rgb(var(--c-neutral-500)); }
 .ask-dots { display: inline-flex; gap: 3px; }
 .ask-dots i { width: 4px; height: 4px; border-radius: 50%; background: rgb(var(--c-neutral-400)); animation: ask-dot 1.1s infinite ease-in-out; }
@@ -280,28 +297,32 @@ const stepsSummary = computed(() => {
 .ask-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes ask-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 .ask-error { margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: rgb(var(--c-red-800, 153 27 27)); background: rgb(var(--c-red-50, 254 242 242)); border-radius: 8px; padding: 8px 10px; }
-.ask-checks { margin-top: 8px; display: flex; gap: 6px; align-items: flex-start; font-size: 11.5px; color: rgb(var(--c-amber-800)); }
-.ask-follow { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgb(var(--c-neutral-200)); color: rgb(var(--c-neutral-700)); }
-.ask-follow:hover { border-color: rgb(var(--c-accent-400)); color: rgb(var(--c-neutral-900)); background: rgb(var(--c-accent-50)); }
-.ask-choice { font-size: 12.5px; font-weight: 500; padding: 5px 12px; border-radius: 8px; border: 1px solid rgb(var(--c-accent-300)); color: rgb(var(--c-accent-800)); background: rgb(var(--c-accent-50)); }
-.ask-choice:hover { border-color: rgb(var(--c-accent-500)); background: rgb(var(--c-accent-100)); }
-.ask-actions { margin-top: 8px; display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity 0.15s; }
-.ask-turn:hover .ask-actions, .ask-actions:focus-within { opacity: 1; }
+.ask-foot { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.ask-actions { display: flex; align-items: center; gap: 2px; }
 .ask-actions button { display: inline-flex; padding: 4px 5px; border-radius: 5px; color: rgb(var(--c-neutral-500)); }
 .ask-actions button:hover { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-100)); }
-.ask-actions .ask-rated { color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); }
+.ask-actions .ask-rated { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-100)); }
 /* One column that never grows past the conversation: a wide figure scrolls inside its card instead. */
 .ask-answer { grid-template-columns: minmax(0, 1fr); }
 .ask-answer > * { min-width: 0; }
 .ask-also { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11.5px; }
-.ask-also-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 8px 2px 3px; border-radius: 999px; border: 1px solid rgb(var(--c-neutral-200)); color: rgb(var(--c-neutral-700)); }
-.ask-also-chip:hover, .ask-also-on { border-color: rgb(var(--c-accent-400)); color: rgb(var(--c-neutral-900)); }
-.ask-ground { margin-top: 8px; font-size: 11.5px; color: rgb(var(--c-neutral-500)); }
-.ask-ground > button { display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; border-radius: 4px; }
-.ask-ground > button:hover { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-100)); }
-.ask-ground ul { margin-top: 4px; display: grid; gap: 3px; padding-left: 4px; }
+.ask-also-chip { max-width: 300px; padding-left: 3px; }
+.ask-vline { margin-top: 10px; border: 1px solid rgb(var(--c-neutral-200)); border-radius: 6px; background: rgb(var(--c-neutral-50)); font-size: 12px; }
+.ask-vline > button { display: flex; width: 100%; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 10px; text-align: left; color: rgb(var(--c-neutral-800)); }
+.ask-vline > button:not(:disabled):hover .ask-vshow { color: rgb(var(--c-neutral-900)); text-decoration: underline; }
+.ask-vdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: rgb(var(--c-green-600, 22 163 74)); }
+.ask-vhead { font-weight: 500; }
+.ask-vprob { color: rgb(var(--c-neutral-600)); }
+.ask-vshow { margin-left: auto; color: rgb(var(--c-neutral-500)); }
+.ask-vline.is-warn { border-color: rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); }
+.ask-vline.is-warn .ask-vdot { background: rgb(var(--c-amber-500)); }
+.ask-vline.is-bad { border-color: rgb(var(--c-red-300, 252 165 165)); background: rgb(var(--c-red-50, 254 242 242)); }
+.ask-vline.is-bad .ask-vdot { background: rgb(var(--c-red-600, 220 38 38)); }
+.ask-vline.is-bad .ask-vprob { color: rgb(var(--c-red-800, 153 27 27)); }
+.ask-vline ul { margin: 0; padding: 2px 10px 8px 28px; display: grid; gap: 4px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); }
+.ask-confirm { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); border-radius: 6px; padding: 8px 10px; }
 .ask-ground-v { display: inline-block; min-width: 72px; font-weight: 500; }
 .ask-ground-partial .ask-ground-v, .ask-ground-uncited .ask-ground-v { color: rgb(var(--c-amber-800)); }
 .ask-ground-unsupported .ask-ground-v { color: rgb(var(--c-red-700)); }
-.ask-meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px; font-size: 10.5px; color: rgb(var(--c-neutral-400)); }
+.ask-meta { margin-left: auto; display: flex; flex-wrap: wrap; gap: 5px; font-size: 11px; color: rgb(var(--c-neutral-500)); }
 </style>

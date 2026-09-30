@@ -25,9 +25,7 @@
 import { computed, defineAsyncComponent, onMounted, provide, ref, shallowRef, type Component } from "vue"
 import { ArrowUpRight, FilePlus2, Loader2 } from "lucide-vue-next"
 import { EXPORT_SCOPE, type Exportable } from "~/features/export/useExportables"
-import { defOf } from "../engine"
-import { resolve } from "../engine"
-import { snapshotFor } from "../app"
+import { defOf, resolve, snapshotOf } from "../engine"
 import { isAbsent, type ExhibitOpen, type ExhibitPart } from "../types"
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import ExhibitTable from "./ExhibitTable.vue"
@@ -66,7 +64,7 @@ const listeners = computed(() => Object.fromEntries(Object.entries(def?.figure?.
 onMounted(async () => {
   if (!def) { state.value = "error"; message.value = `This kind of exhibit (${props.part.spec.kind}) is no longer made; its table is kept.`; return }
   try {
-    const snap = await snapshotFor(props.part.ranOn.scanId)
+    const snap = await snapshotOf(props.part.ranOn.scanId)
     const d = await resolve(props.part.spec, { snap })
     if (isAbsent(d)) { state.value = "absent"; message.value = d.absent; return }
     data.value = d
@@ -91,7 +89,7 @@ defineExpose({ exportables })
 @media (prefers-reduced-motion: reduce) { .ex-shimmer { animation: none; } }
 .ex-hint { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: rgb(var(--c-neutral-500)); }
 .ex-hint-static { display: block; padding: 4px 0 2px; }
-.ex-id { font: 500 9.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); border-radius: 4px; padding: 2px 3px; }
+.ex-id { display: inline-flex; align-items: center; height: 18px; font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); border-radius: 3px; padding: 0 5px; }
 .ex-open { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; color: rgb(var(--c-neutral-600)); white-space: nowrap; }
-.ex-open:hover { color: rgb(var(--c-accent-700)); }
+.ex-open:hover { color: rgb(var(--c-neutral-900)); }
 </style>

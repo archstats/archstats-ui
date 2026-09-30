@@ -47,9 +47,9 @@ const fmt = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 
 .xb-on { background: rgb(var(--c-accent-50)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500)); }
 .xb-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgb(var(--c-neutral-800)); }
 .xb-track { height: 10px; border-radius: 3px; background: rgb(var(--c-neutral-100)); overflow: hidden; }
-.xb-bar { display: block; height: 100%; border-radius: 3px; background: rgb(var(--c-accent-500)); }
-.xb-on .xb-bar { background: rgb(var(--c-accent-700)); }
+.xb-bar { display: block; height: 100%; border-radius: 2px; background: rgb(var(--c-blue-500)); }
+.xb-on .xb-bar { background: rgb(var(--c-accent-500)); }
 .xb-value { font-variant-numeric: tabular-nums; color: rgb(var(--c-neutral-900)); min-width: 40px; text-align: right; }
-.xb-legend { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: rgb(var(--c-neutral-500)); }
-.xb-swatch { width: 10px; height: 8px; border-radius: 2px; background: rgb(var(--c-accent-500)); }
+.xb-legend { margin-top: 6px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgb(var(--c-neutral-500)); }
+.xb-swatch { width: 10px; height: 8px; border-radius: 2px; background: rgb(var(--c-blue-500)); }
 </style>

@@ -9,6 +9,8 @@ import { scanSnapshot } from "~/features/snapshot/scanSnapshot"
 import type { Snapshot } from "~/features/snapshot/snapshot"
 import type { CyclePath } from "~/features/cycles/cycles"
 import type { ConnectionRow, Definition } from "~/features/snapshot/snapshot"
+import { registerSnapshotSource } from "~/features/exhibits/engine"
+import "./catalog"
 
 export async function snapshotFor(scanId: string): Promise<Snapshot> {
     const data = useDataStore()
@@ -49,3 +51,6 @@ export function openSnapshot(): Snapshot {
         aliases: () => (authors.aliases ?? {}) as Record<string, string>,
     }
 }
+
+// Every drawn exhibit reads its scan through this.
+registerSnapshotSource(snapshotFor)

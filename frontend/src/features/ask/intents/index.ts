@@ -183,6 +183,22 @@ export const INTENTS: Tool[] = [
         async run(a, ctx) { return answered([await show("names", { text: a.text }, ctx)]) },
     }),
     intent({
+        name: "compare",
+        description: "What changed between scans: since the last scan, what got worse or better, how a measure moved over time. Ask reads one snapshot, so this offers the Changes view, which compares two scans, and lists the scans there are to compare.",
+        params: s.object({ of: OF }, { aliases: { component: "of", since: "of" } }),
+        label: () => "Offered the comparison in Changes",
+        async run(_a, { world, ranOn, nextId }) {
+            const scans = world.scans?.() ?? null
+            const id = nextId()
+            const when = (at: string) => { const d = new Date(at); return Number.isNaN(d.getTime()) ? at : d.toISOString().slice(0, 10) }
+            const list = (scans ?? []).slice(0, 6).map((x, i) => `${i === 0 ? "newest" : `${i + 1}.`} ${when(x.at)}${x.commit ? `, commit ${x.commit}` : ""}${x.id === world.scanId ? " (the one Ask reads)" : ""}`)
+            const text = scans && scans.length < 2
+                ? `[${id}] This workspace has ${scans.length === 1 ? "one scan" : "no completed scan"}, so there is nothing to compare yet: scanning again later gives Changes two to compare. Say so, then answer what this snapshot shows about recent change (the change tool).`
+                : `[${id}] Ask reads one snapshot and cannot compare scans. The Changes view compares two (what was added, removed, and which measures moved), and Over time follows a measure across all of them; an offer to open Changes is shown in the answer.${list.length ? ` Scans: ${list.join("; ")}.` : ""} Say this plainly, without guessing what changed, then answer what this snapshot shows about recent change (the change tool).`
+            return { text, evidence: [{ id, kind: "link" as const, title: "Compare scans in Changes", ranOn, open: { route: "/views/changes", label: "Open Changes" } }], followUps: ["What changed in the last 30 days?"] }
+        },
+    }),
+    intent({
         name: "explain",
         description: "What a measure or term means and how it is computed (instability, code health, hotspot, tangle…), what Archstats can answer about a question, and where in the app to see it.",
         params: s.object({ term: s.string().describe("The measure, term or question."), of: s.string().optional().describe("A component, to give its value too.") }, { aliases: { question: "term", metric: "term" } }),

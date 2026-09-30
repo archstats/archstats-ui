@@ -22,6 +22,7 @@ const ask = useAskStore()
 const scope = useScopeStore()
 
 let off: (() => void) | null = null
+let offGuard: (() => void) | null = null
 onMounted(() => {
   // In the stage, this is the door the window uses to draw views; ⌘J means nothing here.
   if (STAGE_SCAN) {
@@ -37,6 +38,12 @@ onMounted(() => {
     ask.pendingContext = context
     await router.push("/views/ask")
   })
+  // Any other way into Ask (the sidebar, a link, go-to-anything): the view left behind is
+  // taken while it is still mounted, and offered; "this" in a first question takes it.
+  offGuard = router.beforeEach((to, from) => {
+    if (to.path !== "/views/ask" || from.path === "/views/ask" || !from.matched.length) return
+    ask.lastView = ask.pendingContext ? null : captureView(from as any, { focus: scope.focus })
+  })
 })
-onBeforeUnmount(() => off?.())
+onBeforeUnmount(() => { off?.(); offGuard?.() })
 </script>

@@ -15,9 +15,11 @@ import { buildCard, type SnapshotCard } from "../knowledge/card"
 import { INTENTS, TOOLS, useIntents } from "../tools"
 import { appWorld } from "./world"
 import { listModels, ollamaClient, type LocalModel } from "./ollama"
-import { answerBlocks, draftPrompt, evidenceBlocks, exhibitBlock, reportable } from "./toReport"
+import { answerBlocks, checkBlocks, draftPrompt, evidenceBlocks, exhibitBlock, reportable } from "./toReport"
+import { brokenCitations, trustedText } from "../render/verdict"
 import { suggestTemplates, writeReport, type TemplateSuggestion, type WriteProgress } from "./writer"
 import { Embed } from "wailsjs/go/app/AskService"
+import { pointsAtView } from "./deixis"
 
 const embedLocal = async (texts: string[]) => (await Embed("nomic-embed-text", texts)) as number[][]
 let writeController: AbortController | null = null
@@ -142,6 +144,8 @@ export const useAskStore = defineStore("ask", {
         loadingModels: false,
         /** What the view the person came from showed; attached to the next question. */
         pendingContext: null as ViewContext | null,
+        /** The view the person was on before coming to Ask by any route: offered, and taken when a question says "this". */
+        lastView: null as ViewContext | null,
         running: false,
         inspector: { open: true, tab: "evidence" as "evidence" | "context" | "trace", evidenceId: null as string | null },
         writing: false,
@@ -260,8 +264,11 @@ export const useAskStore = defineStore("ask", {
             if (!thread || (thread.turns.length && thread.scanId !== this.openScanId)) thread = this.newThread()
             if (!thread.turns.length) thread.scanId = this.openScanId
 
-            const context = this.pendingContext
+            let context = this.pendingContext
             this.pendingContext = null
+            // "Is this risky?" with nothing attached: the view they came from is what "this" means.
+            if (!context && this.lastView && pointsAtView(q, !thread.turns.length)) context = this.lastView
+            if (context) this.lastView = null
             thread.turns.push({
                 historyFrom: thread.history.length,
                 id: newId(), question: q, context, askedAt: new Date().toISOString(), model: model.name, status: "running",
@@ -434,7 +441,7 @@ export const useAskStore = defineStore("ask", {
                     const cells = t.evidence.filter(reportable).flatMap(evidenceBlocks)
                     if (!cells.length && !t.answer.trim()) continue
                     blocks.push({ id: newId(), kind: "h2", text: t.question.replace(/\?+$/, "").slice(0, 90) })
-                    blocks.push({ id: newId(), kind: "p", text: "", prompt: draftPrompt(t.answer) })
+                    blocks.push({ id: newId(), kind: "p", text: "", prompt: draftPrompt(trustedText(t.answer, t.grounding)) })
                     blocks.push(...cells)
                     thread.written.push(t.id)
                     sections++
@@ -489,7 +496,8 @@ export const useAskStore = defineStore("ask", {
             if (!own) return null
             const reports = useReportsStore()
             const { fromMarkdown } = await import("~/features/reports/reportDoc")
-            const blocks: Block[] = [{ id: newId(), kind: "h2", text: turn.question.replace(/\?+$/, "").slice(0, 90) }, ...answerBlocks(turn.answer, turn.exhibits ?? [], fromMarkdown), ...turn.evidence.filter(reportable).flatMap(evidenceBlocks)]
+            const ids = new Set(thread.turns.flatMap(t => [...(t.exhibits ?? []).flatMap(x => [x.id, ...x.facts.map(f => f.id)]), ...t.evidence.map(e => e.id)]))
+            const blocks: Block[] = [{ id: newId(), kind: "h2", text: turn.question.replace(/\?+$/, "").slice(0, 90) }, ...answerBlocks(turn.answer, turn.exhibits ?? [], fromMarkdown), ...checkBlocks(turn.grounding, brokenCitations(turn.answer, ids)), ...turn.evidence.filter(reportable).flatMap(evidenceBlocks)]
             const last = reports.doc.blocks[reports.doc.blocks.length - 1]
             reports.insert(last?.id ?? null, blocks)
             void reports.runAll()

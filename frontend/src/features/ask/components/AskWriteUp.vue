@@ -36,6 +36,7 @@
             </span>
           </button>
         </div>
+        <p v-if="unbacked" class="ask-unbacked"><AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/><span>{{ unbacked }} {{ unbacked === 1 ? "statement" : "statements" }} in this conversation {{ unbacked === 1 ? "is" : "are" }} not backed by the facts {{ unbacked === 1 ? "it cites" : "they cite" }}. The report is written without {{ unbacked === 1 ? "it" : "them" }}.</span></p>
         <p v-if="ask.writeup.error" class="mt-3 text-[12px] text-red-700">{{ ask.writeup.error }}</p>
         <div class="mt-4 flex items-center justify-end gap-2">
           <button type="button" class="ui-btn ui-btn-sm" @click="close">Cancel</button>
@@ -77,12 +78,15 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue"
-import { AlertCircle, Check, Circle, FileText, ListTree, Loader2, Minus, PenLine, X } from "lucide-vue-next"
+import { AlertCircle, AlertTriangle, Check, Circle, FileText, ListTree, Loader2, Minus, PenLine, X } from "lucide-vue-next"
 import { useReportsStore } from "~/features/reports/reports.store"
 import { useAskStore } from "../app/ask.store"
+import { untrusted } from "../render/verdict"
 
 const ask = useAskStore()
 const router = useRouter()
+/** Statements the write-up leaves out: what the conversation's answers said that their facts did not bear out. */
+const unbacked = computed(() => (ask.current?.turns ?? []).filter(t => t.status === "done").reduce((n, t) => n + untrusted(t.grounding).length, 0))
 const p = computed(() => ask.writeup.progress)
 const busy = computed(() => !!p.value && !["done", "error"].includes(p.value.phase))
 
@@ -120,4 +124,5 @@ function close() {
 .ask-opt:hover { border-color: rgb(var(--c-neutral-300)); background: rgb(var(--c-neutral-50)); }
 .ask-opt-on, .ask-opt-on:hover { border-color: rgb(var(--c-accent-400)); background: rgb(var(--c-accent-50)); }
 .ask-rec { font-size: 10px; font-weight: 500; color: rgb(var(--c-accent-800)); background: rgb(var(--c-accent-100)); border-radius: 999px; padding: 1px 7px; }
+.ask-unbacked { margin-top: 12px; display: flex; gap: 8px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); border-radius: 6px; padding: 8px 10px; }
 </style>

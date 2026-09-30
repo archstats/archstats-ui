@@ -9,6 +9,16 @@
         <button type="button" class="ask-chip-x" aria-label="Ask without this view" title="Ask without this view" @click="ask.pendingContext = null"><X :size="11" :stroke-width="2"/></button>
       </span>
     </div>
+    <!-- The view they came from, offered: one click attaches it; a question saying "this" takes it anyway. -->
+    <div v-else-if="ask.lastView" class="mb-1.5 flex">
+      <span class="ask-chip ask-chip-offer">
+        <button type="button" class="inline-flex min-w-0 items-center gap-1.5" :title="`Attach what ${ask.lastView.label} shows to the next question`" @click="ask.pendingContext = ask.lastView; ask.lastView = null">
+          <Plus :size="11" :stroke-width="2"/>
+          <span class="truncate">Ask about {{ ask.lastView.label }}<template v-if="ask.lastView.subject"> · {{ short(ask.lastView.subject.name) }}</template></span>
+        </button>
+        <button type="button" class="ask-chip-x" aria-label="Not about that view" title="Not about that view" @click="ask.lastView = null"><X :size="11" :stroke-width="2"/></button>
+      </span>
+    </div>
     <textarea
         ref="input"
         v-model="text"
@@ -21,7 +31,7 @@
         @input="grow"
     />
     <div class="mt-2 flex items-center gap-2">
-      <span class="min-w-0 flex-1 truncate text-[10.5px] text-neutral-400">
+      <span class="min-w-0 flex-1 truncate text-[11px] text-neutral-500">
         <template v-if="ask.model">{{ ask.model.name }}{{ ask.model.remote ? " · cloud: leaves this machine" : " · on this machine" }}</template>
         <template v-else-if="ask.loadingModels">Finding local models…</template>
         <template v-else>No model</template>
@@ -39,7 +49,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue"
-import { ArrowUp, PanelTop, Square, X } from "lucide-vue-next"
+import { ArrowUp, PanelTop, Plus, Square, X } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
 import { shortName } from "../tools/shared"
 
@@ -81,9 +91,11 @@ defineExpose({ focus, fill })
 </script>
 
 <style scoped>
-.ask-composer { border: 1px solid rgb(var(--c-neutral-200)); border-radius: 12px; padding: 10px 12px 8px; background: rgb(var(--c-surface)); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12); transition: border-color 0.15s; }
+.ask-composer { border: 1px solid rgb(var(--c-neutral-300)); border-radius: 6px; padding: 10px 12px 8px; background: rgb(var(--c-surface)); transition: border-color 0.15s; }
 .ask-composer:focus-within { border-color: rgb(var(--c-accent-400)); }
-.ask-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font-size: 11.5px; padding: 2px 4px 2px 8px; border-radius: 999px; background: rgb(var(--c-accent-50)); color: rgb(var(--c-accent-800)); border: 1px solid rgb(var(--c-accent-200)); }
-.ask-chip-x { display: inline-flex; padding: 2px; border-radius: 999px; color: rgb(var(--c-accent-700)); }
-.ask-chip-x:hover { background: rgb(var(--c-accent-100)); }
+.ask-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; height: 22px; font-size: 11.5px; padding: 0 3px 0 7px; border-radius: 4px; background: rgb(var(--c-neutral-100)); color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-neutral-200)); }
+.ask-chip-offer { background: transparent; border-style: dashed; border-color: rgb(var(--c-neutral-300)); color: rgb(var(--c-neutral-700)); }
+.ask-chip-offer:hover { border-color: rgb(var(--c-accent-400)); color: rgb(var(--c-neutral-900)); }
+.ask-chip-x { display: inline-flex; padding: 2px; border-radius: 3px; color: rgb(var(--c-neutral-500)); }
+.ask-chip-x:hover { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-200)); }
 </style>

@@ -9,7 +9,8 @@ import { candidates } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 
-export interface TangleStep { from: string; to: string; imports: number; files: number; freed: number; tangled: number; carriers: string[] }
+/** `freed` counts every component out of the tangle after this cut and the ones before it; `frees` what this cut adds. */
+export interface TangleStep { from: string; to: string; imports: number; files: number; freed: number; frees: number; tangled: number; carriers: string[] }
 
 export interface TangleData {
     /** How many tangles the codebase has, and how many components they hold. */
@@ -73,7 +74,7 @@ export const tangle = exhibit<TangleData>()({
             count: all.length, held: all.reduce((sum, t) => sum + t.length, 0), rank, anchor, members, edges: own,
             lines: Object.fromEntries(members.map(m => [m, lineOf.get(m) ?? 0])),
             levels: layout.layers.length, against: layout.against.length,
-            steps: plan.slice(0, 12).map(x => ({ from: x.from, to: x.to, imports: x.imports, files: x.files, freed: x.freed, tangled: x.tangled, carriers: filesFor(x.from, x.to).slice(0, 4) })),
+            steps: plan.slice(0, 12).map((x, i) => ({ from: x.from, to: x.to, imports: x.imports, files: x.files, freed: x.freed, frees: x.freed - (i ? plan[i - 1].freed : 0), tangled: x.tangled, carriers: filesFor(x.from, x.to).slice(0, 4) })),
             cuts: plan.length,
         }
     },
@@ -84,8 +85,8 @@ export const tangle = exhibit<TangleData>()({
             { kind: "row", text: `This tangle has ${plural(d.members.length, "component")} in ${plural(d.levels, "level")}; ${plural(d.against, "import")} run against the levels, and cutting ${d.cuts === 1 ? "it" : `all ${n(d.cuts)}`} leaves no tangle.`, entities: d.anchor ? [d.anchor] : [], values: { components: d.members.length, levels: d.levels, against: d.against, cuts: d.cuts } },
             ...d.steps.slice(0, 8).map((x, i): FactDraft => ({
                 kind: "row",
-                text: `Cut ${i + 1}: ${x.from} → ${x.to}, ${plural(x.imports, "import reference")} in ${plural(x.files, "file")}${x.carriers.length ? ` (${x.carriers.slice(0, 2).join(", ")})` : ""}; afterwards ${plural(x.freed, "component")} freed, ${n(x.tangled)} still tangled.`,
-                entities: [x.from, x.to], values: { step: i + 1, references: x.imports, files: x.files, freed: x.freed, tangled: x.tangled }, element: `edge:${x.from}>${x.to}`,
+                text: `Cut ${i + 1}: ${x.from} → ${x.to}, ${plural(x.imports, "import reference")} in ${plural(x.files, "file")}${x.carriers.length ? ` (${x.carriers.slice(0, 2).join(", ")})` : ""}; this cut frees ${plural(x.frees ?? 0, "component")}; with the cuts before it, ${n(x.freed)} are out of the tangle and ${n(x.tangled)} still tangled.`,
+                entities: [x.from, x.to], values: { step: i + 1, references: x.imports, files: x.files, frees: x.frees ?? 0, freed: x.freed, tangled: x.tangled }, element: `edge:${x.from}>${x.to}`,
             })),
             { kind: "note", text: `Members: ${d.members.slice(0, 12).join(", ")}${d.members.length > 12 ? `, and ${n(d.members.length - 12)} more` : ""}.`, entities: d.members.slice(0, 12), values: {} },
         ]
@@ -99,8 +100,8 @@ export const tangle = exhibit<TangleData>()({
     ],
 
     table: d => ({
-        columns: [{ id: "cut", label: "Import to cut" }, { id: "imports", label: "Import references", numeric: true }, { id: "freed", label: "Components freed", numeric: true }, { id: "tangled", label: "Still tangled", numeric: true }, { id: "files", label: "Carried by" }],
-        rows: d.steps.map(x => ({ cut: `${x.from} → ${x.to}`, imports: x.imports, freed: x.freed, tangled: x.tangled, files: x.carriers.join(", ") })),
+        columns: [{ id: "cut", label: "Import to cut" }, { id: "imports", label: "Import references", numeric: true }, { id: "frees", label: "This cut frees", numeric: true }, { id: "freed", label: "Out so far", numeric: true }, { id: "tangled", label: "Still tangled", numeric: true }, { id: "files", label: "Carried by" }],
+        rows: d.steps.map(x => ({ cut: `${x.from} → ${x.to}`, imports: x.imports, frees: x.frees ?? 0, freed: x.freed, tangled: x.tangled, files: x.carriers.join(", ") })),
         total: d.cuts,
         note: `A tangle of ${plural(d.members.length, "component")}; cuts in the order that untangles most first.`,
     }),
@@ -108,7 +109,14 @@ export const tangle = exhibit<TangleData>()({
     figure: {
         load: () => import("~/features/cycles/components/TangleExhibit.vue"),
         props: (d, _p, o) => ({ members: d.members, edges: d.edges, steps: d.steps, lines: d.lines, anchor: d.anchor, highlight: o.highlight, title: o.title, density: o.density }),
-        height: (d, o) => (d.members.length > 40 ? (o.density === "inline" ? 360 : 520) : Math.min(o.density === "inline" ? 420 : 620, 100 + Math.min(8, Math.ceil(Math.sqrt(d.members.length)) + 1) * 84)),
+        // Tall enough to draw every level near full size (labels stay legible), plus the cut list under it.
+        height: (d, o) => {
+            const cuts = Math.min(8, d.steps.length) * 21 + (d.steps.length > 8 ? 20 : 0) + 8
+            const levels = layoutTangle(d.members, d.edges).layers
+            const graph = d.members.length <= 40 && Math.max(0, ...levels.map(l => l.length)) <= 10
+            const drawing = graph ? 52 + levels.length * 84 + 40 : o.density === "inline" ? 440 : 560
+            return Math.min(o.density === "inline" ? 680 : 900, Math.round(drawing * 0.92) + cuts)
+        },
         fill: true,
         picks: { "select-node": (id: string) => `component:${id}`, "select-edge": (from: string, to: string) => `edge:${from}>${to}` },
     },

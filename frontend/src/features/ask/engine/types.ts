@@ -43,6 +43,8 @@ export interface World extends Snapshot {
     embed?(texts: string[]): Promise<number[][]>
     /** The view the person came from, if they came from one. */
     onScreen?(): ViewContext | null
+    /** The workspace's completed scans, newest first: what the Changes view can compare. */
+    scans?(): Array<{ id: string; label: string; at: string; commit: string; revision: number }>
 }
 
 // ── Evidence: what a tool found, shown in the conversation ───────────────
@@ -153,7 +155,7 @@ export interface ModelClient {
 
 // ── What a turn reports as it runs ────────────────────────────────────────
 
-export interface Check { id: "unsourced" | "gave-up" | "uncited" | "verdict" | "invented" | "menu"; ok: boolean; detail: string }
+export interface Check { id: "unsourced" | "gave-up" | "uncited" | "verdict" | "invented" | "menu" | "topic"; ok: boolean; detail: string }
 
 export type TurnEvent =
     | { type: "route"; namespaces: Namespace[]; tools: string[] }

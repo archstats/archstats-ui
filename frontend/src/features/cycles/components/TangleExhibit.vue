@@ -1,6 +1,6 @@
 <template>
   <!-- A tangle and its cut plan, as the Cycles view draws it: the steps numbered on the edges,
-       each step applied in the picture by clicking it (graph mode); a matrix when it is large. -->
+       each step applied in the picture by clicking it; a matrix when it is large. -->
   <div class="tx">
     <div class="tx-figure">
       <TangleGraph
@@ -38,12 +38,12 @@
       />
     </div>
     <ol v-if="steps.length" class="tx-steps">
-      <li v-for="(s, i) in steps.slice(0, density === 'inline' ? 3 : 8)" :key="i" :class="{ 'tx-on': applied > i }">
-        <button v-if="mode === 'graph'" type="button" class="tx-n" :title="applied > i ? 'Undo this cut in the picture' : 'Apply the cuts up to here in the picture'" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
-        <span v-else class="tx-n tx-static" title="Large tangles are drawn as a matrix; open them in Cycles to apply cuts step by step">{{ i + 1 }}</span>
+      <li v-for="(s, i) in steps.slice(0, 8)" :key="i" :class="{ 'tx-on': applied > i }">
+        <button type="button" class="tx-n" :title="applied > i ? 'Undo this cut in the picture' : 'Apply the cuts up to here in the picture'" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
         <span class="min-w-0 flex-1 truncate font-mono" :title="`${s.from} → ${s.to}`">{{ shortName(s.from) }} → {{ shortName(s.to) }}</span>
-        <span class="shrink-0 text-neutral-500">{{ s.imports }} ref{{ s.imports === 1 ? "" : "s" }} · frees {{ s.freed }}</span>
+        <span class="shrink-0 text-neutral-500" :title="`This cut frees ${s.frees ?? 0}; with the cuts before it, ${s.freed} are out of the tangle`">{{ s.imports }} ref{{ s.imports === 1 ? "" : "s" }} · frees {{ s.frees ?? s.freed }} · {{ s.freed }} out</span>
       </li>
+      <li v-if="steps.length > 8" class="pl-[26px] text-neutral-500">{{ steps.length - 8 }} more cut{{ steps.length - 8 === 1 ? "" : "s" }} in the Cycles view</li>
     </ol>
   </div>
 </template>
@@ -100,11 +100,10 @@ watch(() => props.highlight.join("|"), () => {
 <style scoped>
 .tx { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .tx-figure { position: relative; flex: 1; min-height: 0; border-radius: 6px; overflow: hidden; }
-.tx-steps { margin-top: 6px; display: grid; gap: 2px; font-size: 11.5px; }
+.tx-steps { margin-top: 6px; display: grid; gap: 3px; font-size: 11.5px; }
 .tx-steps li { display: flex; align-items: center; gap: 8px; }
-.tx-n { flex-shrink: 0; width: 18px; height: 18px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); line-height: 16px; text-align: center; }
+.tx-n { flex-shrink: 0; width: 18px; height: 18px; border-radius: 3px; font-size: 11px; font-weight: 600; color: rgb(var(--c-accent-700)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); line-height: 16px; text-align: center; }
 .tx-n:hover { border-color: rgb(var(--c-accent-500)); }
-.tx-static, .tx-static:hover { border-color: rgb(var(--c-accent-200)); cursor: default; }
 .tx-on .tx-n { color: rgb(var(--c-on-accent)); background: rgb(var(--c-accent-500)); border-color: rgb(var(--c-accent-500)); }
 .tx-on .font-mono { text-decoration: line-through; text-decoration-color: rgb(var(--c-accent-500)); }
 </style>

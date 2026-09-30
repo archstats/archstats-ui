@@ -63,6 +63,9 @@ export interface TurnOutput {
 
 const INVESTIGATE = `You test one claim about a codebase with Archstats tools. Call the tools that test it (one to three calls), then reply, without thinking aloud, with exactly one line "Verdict: supported", "Verdict: refuted" or "Verdict: can't tell", followed by one to three plain sentences that give the deciding numbers with their evidence ids like [E4]. Only numbers from tool results. No verdicts on people or design quality.`
 
+/** Questions that compare this scan with another: "since the last scan", "what got worse". */
+export const COMPARES_SCANS = /\b(?:since (?:the |my )?(?:last|previous|prior|earlier) (?:scan|snapshot)|(?:got|gotten|getting) (?:worse|better)|between (?:the |two )?(?:scans|snapshots)|(?:compared?|vs\.?) (?:to |with )?(?:the )?(?:last|previous|prior|earlier) (?:scan|snapshot)|over the last (?:few )?scans)\b/i
+
 /** What of one tool result enters the model's context; the rest is recallable by evidence id. */
 const MAX_TOOL_TEXT = 6000
 
@@ -232,6 +235,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         if (findings.length) added.push({ role: "user", content: `[Findings] Your plan was tested:\n${findings.join("\n")}\nAnswer the question from these findings and their evidence ids. Call more tools only if something is missing.` })
     }
 
+    // A question that compares scans: the one thing Ask cannot do from a snapshot. The offer of the Changes
+    // view is made before the model speaks, so it says so from a tool result instead of guessing what changed.
+    if (input.intents && COMPARES_SCANS.test(input.question) && input.tools.some(t => t.name === "compare")) {
+        added.push({ role: "assistant", content: "", tool_calls: [{ function: { name: "compare", arguments: {} } }] })
+        added.push(await runCall({ name: "compare", args: {} }, "pre"))
+    }
+
     const maxSteps = input.maxSteps ?? 10
     let repairs = 0
     let answer = ""
@@ -290,13 +300,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             answer = again.content.trim()
             if (!answer) answer = `I looked at ${toolCalls} thing${toolCalls === 1 ? "" : "s"} but could not put an answer together. The evidence is below: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}.`
         }
-        let outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents })
+        let outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits })
         // Only the citations are missing and every number is sourced: the harness names the sources
         // itself. Asking a local model to rewrite a long list to add ids can scramble it.
         const onlyUncited = outcome.checks.every(c => c.ok || c.id === "uncited") && /without citing/.test(outcome.checks.find(c => c.id === "uncited")?.detail ?? "")
         if (onlyUncited && (evidence.length || exhibits.length)) {
             answer = `${answer}\n\n*Sources: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}*`
-            outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents })
+            outcome = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits })
         }
         checks = outcome.checks
         emit({ type: "checks", checks })
@@ -326,7 +336,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             const kept = list.split(/\s*,\s*/).filter(id => evidenceIds.has(id))
             return kept.length ? `[${kept.join(", ")}]` : ""
         })
-        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents }).checks
+        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks
         emit({ type: "checks", checks })
         added.push({ role: "assistant", content: answer })
         break
@@ -340,7 +350,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         } catch { /* fall through to the plain statement */ }
         if (!answer.trim()) answer = `I looked at ${toolCalls} thing${toolCalls === 1 ? "" : "s"} but could not put an answer together. The evidence is below: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}.`
         added.push({ role: "assistant", content: answer })
-        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents }).checks
+        checks = checkAnswer({ question: input.question, answer, sources, card: input.card, toolCalls, evidenceIds, intents: input.intents, exhibits }).checks
         emit({ type: "checks", checks })
     }
     if (!stopped) emit({ type: "done", answer })

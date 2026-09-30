@@ -23,7 +23,7 @@
             <summary class="ask-ev-row" :class="{ 'ask-ev-row-on': x.id === openFigure }" @click="$emit('cite', x.id)">
               <span class="ask-ev-id">{{ x.id }}</span>
               <span class="min-w-0 flex-1 truncate">{{ x.title }}</span>
-              <span class="shrink-0 text-[10.5px] text-neutral-400">{{ x.facts.length }}</span>
+              <span class="shrink-0 font-mono text-[11px] text-neutral-500">{{ x.facts.length }}</span>
             </summary>
             <ol class="ask-facts">
               <li v-for="f in x.facts" :key="f.id">
@@ -87,7 +87,7 @@
             <p class="ui-section-title mb-1">Model calls · {{ traced.trace.length }}</p>
             <div v-for="c in traced.trace" :key="c.step" class="ask-trace">
               <p class="flex gap-2 text-neutral-500"><span>step {{ c.step + 1 }}</span><span class="tabular-nums">{{ c.promptTokens }} in · {{ c.outputTokens }} out · {{ (c.ms / 1000).toFixed(1) }} s</span></p>
-              <p v-for="tc in c.toolCalls" :key="tc" class="font-mono text-[10.5px] text-neutral-800">→ {{ tc }}</p>
+              <p v-for="tc in c.toolCalls" :key="tc" class="font-mono text-[11px] text-neutral-800">→ {{ tc }}</p>
               <details v-if="c.content"><summary class="cursor-pointer text-neutral-500">text</summary><pre class="ask-pre">{{ c.content }}</pre></details>
               <details v-if="c.thinking"><summary class="cursor-pointer text-neutral-500">reasoning</summary><pre class="ask-pre">{{ c.thinking }}</pre></details>
             </div>
@@ -144,13 +144,13 @@ const iconOf = (k: string) => ({ bars: BarChart3, table: Table2, component: Brac
 </script>
 
 <style scoped>
-.ask-pre { white-space: pre-wrap; font: 10.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 8px 10px; max-height: 360px; overflow: auto; }
+.ask-pre { white-space: pre-wrap; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 8px 10px; max-height: 360px; overflow: auto; }
 .ask-ev-row { display: flex; width: 100%; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 5px; font-size: 12px; color: rgb(var(--c-neutral-800)); text-align: left; }
 .ask-ev-row:hover { background: rgb(var(--c-neutral-100)); }
 .ask-ev-row-on { background: rgb(var(--c-accent-50)); }
-.ask-ev-id { flex-shrink: 0; width: 26px; font: 500 10px ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-accent-700)); }
-.ask-cap { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgb(var(--c-neutral-200)); color: rgb(var(--c-neutral-700)); }
-.ask-cap:hover { border-color: rgb(var(--c-accent-400)); color: rgb(var(--c-neutral-900)); }
+.ask-ev-id { flex-shrink: 0; min-width: 28px; font: 500 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); }
+.ask-cap { font-size: 11.5px; height: 22px; display: inline-flex; align-items: center; padding: 0 7px; border-radius: 4px; border: 1px solid rgb(var(--c-neutral-200)); color: rgb(var(--c-neutral-700)); }
+.ask-cap:hover { background: rgb(var(--c-neutral-50)); color: rgb(var(--c-neutral-900)); }
 .ask-trace { border-left: 2px solid rgb(var(--c-neutral-200)); padding: 2px 0 4px 8px; margin-bottom: 6px; }
 .ask-fig > summary { list-style: none; }
 .ask-fig > summary::-webkit-details-marker { display: none; }

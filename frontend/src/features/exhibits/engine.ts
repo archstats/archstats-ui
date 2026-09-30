@@ -4,6 +4,7 @@
 // and the render host do that from the same spec.
 
 import { stableKey } from "./schema"
+import type { Snapshot } from "~/features/snapshot/snapshot"
 import { isAbsent, type Absent, type ExhibitDef, type ExhibitPart, type ExhibitRanOn, type ExhibitSpec, type Fact, type ResolveContext } from "./types"
 
 // The definitions are registered by the catalog (features/exhibit-catalog),
@@ -16,6 +17,19 @@ export function registerExhibits(defs: readonly ExhibitDef[]): void {
 }
 
 export const defOf = (kind: string): ExhibitDef | null => byKind.get(kind) ?? null
+
+// Where a drawn exhibit reads its scan: the app registers its stores and SQL
+// (exhibit-catalog/app); the kernel never reaches for them itself.
+let snapshotSource: ((scanId: string) => Promise<Snapshot>) | null = null
+
+export function registerSnapshotSource(source: (scanId: string) => Promise<Snapshot>): void {
+    snapshotSource = source
+}
+
+export function snapshotOf(scanId: string): Promise<Snapshot> {
+    if (!snapshotSource) return Promise.reject(new Error("No snapshot source is registered: import ~/features/exhibit-catalog/app."))
+    return snapshotSource(scanId)
+}
 
 /** The most facts one exhibit hands a model; definitions cap themselves well below this. */
 export const MAX_FACTS = 30

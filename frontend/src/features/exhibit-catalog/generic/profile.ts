@@ -137,7 +137,8 @@ async function codebase(snap: import("~/features/snapshot/snapshot").Snapshot): 
     const files = Number((await snap.query<{ n: number }>("SELECT count(*) AS n FROM files"))[0]?.n) || 0
     const edges = foldEdges(snap.connections())
     const tangles = tanglesOf(new Set([...names, ...edges.flatMap(e => [e.from, e.to])]), edges).sort((a, b) => b.length - a.length)
-    const git = "git_commit_info" in snap.columns ? (await snap.query<{ commits: number; first: string; last: string }>("SELECT count(DISTINCT commit_hash) AS commits, min(commit_time) AS first, max(commit_time) AS last FROM git_commit_info"))[0] : null
+    // Listed is not always there: an older snapshot can name the table and not hold it. History is then left out, not the profile.
+    const git = "git_commit_info" in snap.columns ? await snap.query<{ commits: number; first: string; last: string }>("SELECT count(DISTINCT commit_hash) AS commits, min(commit_time) AS first, max(commit_time) AS last FROM git_commit_info").then(r => r[0] ?? null, () => null) : null
     const authors = "git_authors" in snap.columns ? Number((await snap.query<{ n: number }>("SELECT count(*) AS n FROM git_authors"))[0]?.n) || 0 : null
     const values: Value[] = [
         { key: "components", label: "Components", value: comps.length }, { key: "files", label: "Files", value: files }, { key: "lines", label: "Lines of code in components", value: lines },

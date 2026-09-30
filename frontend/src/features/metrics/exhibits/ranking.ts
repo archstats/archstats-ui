@@ -9,6 +9,7 @@ import { shortName } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, plural, sq } from "~/features/exhibits/words"
+import { metricsPath } from "~/features/metrics/link"
 
 export interface RankingData {
     among: "components" | "files"
@@ -123,7 +124,13 @@ export const ranking = exhibit<RankingData>()({
         picks: { select: (id: string) => id },
     },
 
-    open: p => ({ route: p.among === "files" ? "/views/metrics?grain=files" : "/views/metrics", label: "Open Metrics" }),
+    // Metrics as the ranking was: the same grain, sorted by the same measure, the ranked rows selected.
+    open: (p, d) => ({
+        route: d && d.metric !== "cycles"
+            ? metricsPath({ grain: d.among, view: "table", sort: d.metric, selected: d.items.map(x => x.key) })
+            : p.among === "files" ? "/views/metrics?grain=files" : "/views/metrics",
+        label: "Open Metrics",
+    }),
 
     samples: () => [{ measure: "most depended on" }, { measure: "least healthy", among: "files" }, { measure: "health", where: "dependents > 2" }, { measure: "cycles" }, { measure: "no such measure" }],
 })

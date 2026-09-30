@@ -4,6 +4,7 @@
 
 import type { Check } from "./types"
 import { searchCapabilities, type Capability } from "../knowledge/capabilities"
+import { topicMismatch, type TopicExhibit } from "./topic"
 
 const NUMBER = /(?<![\w.#&])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?%?(?![\w])/g
 
@@ -100,6 +101,8 @@ export interface CheckInput {
     evidenceIds: Set<string>
     /** The turn used intents: repairs name intents, not the legacy tools. */
     intents?: boolean
+    /** The exhibits the turn made: a ranking the answer cites must rank by what was asked. */
+    exhibits?: TopicExhibit[]
 }
 
 /** The legacy tools a capability names, as the intents that answer the same question. */
@@ -151,6 +154,10 @@ export function checkAnswer(i: CheckInput): CheckOutcome {
     const menu = /^\s*(would you like|do you want|shall i|should i|what would you like|which (one|of these) would)/i.test(i.answer.trim())
     checks.push({ id: "menu", ok: !menu, detail: menu ? "Offered a menu instead of answering" : "Answers first" })
 
+    // Right numbers, wrong question: the answer rests on a ranking of another measure than the one asked about.
+    const topic = topicMismatch(i.question, i.answer, i.exhibits ?? [])
+    checks.push({ id: "topic", ok: !topic, detail: topic ? `Asked about ${topic.asked}; the answer rests on a ranking by ${topic.ranked} [${topic.cites}]` : "Answers the measure asked about" })
+
     const verdict = i.answer.match(VERDICT)
     checks.push({ id: "verdict", ok: !verdict, detail: verdict ? `Verdict word "${verdict[0]}"` : "No verdicts" })
 
@@ -158,6 +165,8 @@ export function checkAnswer(i: CheckInput): CheckOutcome {
     const invented = checks.find(c => c.id === "invented" && !c.ok)
     if (checks.find(c => c.id === "menu" && !c.ok)) {
         repair = "Answer the question first, in one or two sentences, from the tools (or say plainly that the scan cannot tell, and why). Offer at most one next step after that, as a sentence, not a menu."
+    } else if (topic) {
+        repair = `The question asks about ${topic.asked}, but the ranking you cite [${topic.cites}] is by ${topic.ranked}: a different measure. ${i.intents ? `Call rank with measure "${topic.asked.replace(/ \(.*\)$/, "")}"` : "Rank by what was asked"}, then answer from that ranking, and do not describe one measure in the words of the other.`
     } else if (invented) {
         repair = `${invented.detail}. Do not guess names or facts: call the tool that lists them (files_of for a component's files, file_outline for a file, find for names), then answer from what it returns.`
     } else if (gaveUp) {

@@ -106,7 +106,7 @@ export const CAPABILITIES: Capability[] = [
 
     // ── Beyond the snapshot ──
     { id: "compare", family: "Beyond this snapshot", asks: ["what changed since", "compare with last scan", "drift", "trend", "better or worse"],
-        how: "The chat reads one snapshot. The Changes view compares two scans; say so and offer it.", tools: ["show"], view: { label: "Changes", route: "/views/changes" } },
+        how: "The chat reads one snapshot and cannot compare scans. The Changes view compares two; say so plainly (the compare tool offers it), never guess what changed.", tools: [], view: { label: "Changes", route: "/views/changes" } },
     { id: "runtime", family: "Beyond this snapshot", asks: ["performance", "runtime", "latency", "production errors", "test coverage", "security vulnerabilities"],
         how: "The scan reads code and history, not running systems, coverage or CVEs. Say 'the scan cannot tell' and why.", tools: [] },
 ]

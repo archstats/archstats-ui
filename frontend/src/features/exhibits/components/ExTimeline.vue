@@ -38,9 +38,9 @@ const max = computed(() => Math.max(1, ...props.points.map(p => p.value)))
 .xt-cols { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
 .xt-col { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 3px; border-radius: 2px; }
 .xt-col:hover { background: rgb(var(--c-neutral-50)); }
-.xt-bar { display: block; width: 100%; border-radius: 2px 2px 0 0; background: rgb(var(--c-accent-400)); }
-.xt-on .xt-bar { background: rgb(var(--c-accent-700)); }
-.xt-axis { margin-top: 4px; display: flex; justify-content: space-between; font-size: 10.5px; color: rgb(var(--c-neutral-500)); }
-.xt-legend { margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: rgb(var(--c-neutral-500)); }
-.xt-swatch { width: 8px; height: 10px; border-radius: 2px; background: rgb(var(--c-accent-400)); }
+.xt-bar { display: block; width: 100%; border-radius: 2px 2px 0 0; background: rgb(var(--c-blue-500)); }
+.xt-on .xt-bar { background: rgb(var(--c-accent-500)); }
+.xt-axis { margin-top: 4px; display: flex; justify-content: space-between; font-size: 11px; color: rgb(var(--c-neutral-500)); }
+.xt-legend { margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgb(var(--c-neutral-500)); }
+.xt-swatch { width: 8px; height: 10px; border-radius: 2px; background: rgb(var(--c-blue-500)); }
 </style>

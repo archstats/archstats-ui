@@ -51,7 +51,6 @@
 
               <!-- Nothing asked yet. -->
               <section v-if="!ask.current?.turns.length" class="ask-welcome">
-                <div class="ask-mark"><Sparkles :size="18" :stroke-width="1.75"/></div>
                 <h1>What do you want to know about {{ workspaceName }}?</h1>
                 <p class="ask-sub">
                   Answers come from the open snapshot, through the code the views use. Every number cites its evidence; every piece of evidence opens in its view, pins, or goes into a report.
@@ -60,8 +59,9 @@
                 <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">Try again</button></p>
                 <div class="ask-starters">
                   <button v-for="s in starters" :key="s.q" type="button" class="ask-starter" @click="send(s.q)">
-                    <component :is="s.icon" :size="14" :stroke-width="1.75" class="mt-0.5 shrink-0 text-accent-600"/>
-                    <span><span class="block text-[12.5px] font-medium text-neutral-900">{{ s.title }}</span><span class="block text-[12px] leading-snug text-neutral-500">{{ s.q }}</span></span>
+                    <component :is="s.icon" :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400"/>
+                    <span class="w-[104px] shrink-0 truncate text-[12.5px] font-medium text-neutral-900">{{ s.title }}</span>
+                    <span class="min-w-0 truncate text-[12.5px] text-neutral-600">{{ s.q }}</span>
                   </button>
                 </div>
               </section>
@@ -94,17 +94,17 @@
             <div class="mx-auto w-full max-w-[780px]">
               <Transition name="ask-toast"><p v-if="ask.notice" class="ask-toast" role="status">{{ ask.notice }}</p></Transition>
               <p v-if="queued" class="ask-queued"><Loader2 :size="11" class="animate-spin"/> Asks next, when this answer is done: “{{ queued.length > 90 ? `${queued.slice(0, 90)}…` : queued }}” <button type="button" @click="queued = null">Cancel</button></p>
+              <!-- A selection made in a figure, ready to group: in the flow, so the composer moves up instead of being covered. -->
+              <GroupActionBar v-if="picked.size" docked :selected-items="[...picked]" :kind="pickedKind" :show-in-except="[]" @replace="picked = new Set($event)" @clear="picked = new Set()" @created="picked = new Set()"/>
               <AskComposer ref="composer" @send="send"/>
             </div>
           </div>
         </main>
 
-        <!-- Beside the conversation when there is room; over it, as a drawer, when there is not. -->
         <!-- Beside the conversation when there is room; over it, as a drawer with a backdrop, when there is not (container queries below). -->
         <div v-if="ask.inspector.open || threadsOpen" class="ask-scrim" aria-hidden="true" @click.stop.prevent="ask.inspector.open = false; threadsOpen = false" @mousedown.stop.prevent/>
         <div v-if="ask.inspector.open" class="ask-insp bg-surface hairline-l">
           <AskInspector @cite="cite" @ask="send"/>
-          <GroupActionBar v-if="picked.size" :selected-items="[...picked]" :kind="pickedKind" :show-in-except="[]" @replace="picked = new Set($event)" @clear="picked = new Set()" @created="picked = new Set()"/>
         </div>
       </div>
     </template>
@@ -324,8 +324,8 @@ watch(() => ask.currentId, () => void nextTick(() => scrollToEnd(true)))
 
 <style scoped>
 .ask-welcome { padding: 9vh 0 24px; }
-.ask-latest { position: absolute; left: 50%; bottom: 150px; z-index: 5; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; padding: 4px 11px; border-radius: 999px; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-surface)); border: 1px solid rgb(var(--c-neutral-200)); box-shadow: 0 4px 16px rgb(0 0 0 / 0.1); }
-.ask-latest:hover { border-color: rgb(var(--c-accent-400)); }
+.ask-latest { position: absolute; left: 50%; bottom: 150px; z-index: 5; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; height: 24px; padding: 0 9px; border-radius: 4px; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-surface)); border: 1px solid rgb(var(--c-neutral-200)); box-shadow: 0 4px 16px rgb(0 0 0 / 0.1); }
+.ask-latest:hover { background: rgb(var(--c-neutral-50)); }
 .ask-shell { container-type: inline-size; container-name: askshell; }
 .ask-insp { position: relative; width: 380px; flex-shrink: 0; }
 .ask-scrim { display: none; }
@@ -338,15 +338,16 @@ watch(() => ask.currentId, () => void nextTick(() => scrollToEnd(true)))
   .ask-rail:not(.ask-rail-open) { display: none; }
   .ask-rail.ask-rail-open { position: absolute; top: 0; left: 0; bottom: 0; z-index: 32; box-shadow: 12px 0 32px -12px rgb(0 0 0 / 0.22); }
 }
-.ask-mark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: rgb(var(--c-accent-600)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); margin-bottom: 16px; }
 .ask-welcome h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: rgb(var(--c-neutral-900)); }
 .ask-sub { margin-top: 6px; max-width: 620px; font-size: 13px; line-height: 1.6; color: rgb(var(--c-neutral-600)); }
-.ask-starters { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-.ask-starter { display: flex; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid rgb(var(--c-neutral-200)); background: rgb(var(--c-surface)); transition: border-color 0.15s, background 0.15s; }
-.ask-starter:hover { border-color: rgb(var(--c-accent-400)); background: rgb(var(--c-accent-50) / 0.5); }
-.ask-banner { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); border-radius: 8px; padding: 8px 10px; }
+/* Starters: a hairline list, one question per row. */
+.ask-starters { margin-top: 20px; display: grid; border: 1px solid rgb(var(--c-neutral-200)); border-radius: 6px; background: rgb(var(--c-surface)); overflow: hidden; }
+.ask-starter { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px; text-align: left; transition: background 0.12s; }
+.ask-starter + .ask-starter { border-top: 1px solid rgb(var(--c-neutral-100)); }
+.ask-starter:hover { background: rgb(var(--c-neutral-50)); }
+.ask-banner { margin-top: 16px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-50)); border: 1px solid rgb(var(--c-neutral-200)); border-radius: 6px; padding: 8px 10px; }
 .ask-error { margin-top: 12px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: rgb(var(--c-red-800, 153 27 27)); }
-.ask-toast { margin-bottom: 8px; font-size: 12px; color: rgb(var(--c-accent-800)); background: rgb(var(--c-accent-50)); border: 1px solid rgb(var(--c-accent-200)); border-radius: 8px; padding: 6px 10px; }
+.ask-toast { margin-bottom: 8px; font-size: 12px; color: rgb(var(--c-neutral-800)); background: rgb(var(--c-neutral-50)); border: 1px solid rgb(var(--c-neutral-200)); border-radius: 6px; padding: 6px 10px; }
 .ask-toast-enter-active, .ask-toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .ask-toast-enter-from, .ask-toast-leave-to { opacity: 0; transform: translateY(4px); }
 .ask-queued { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11.5px; color: rgb(var(--c-neutral-600)); }
