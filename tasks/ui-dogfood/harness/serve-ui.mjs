@@ -5,14 +5,15 @@
 // - the SQL console is switched off (QueryService.Console / QueryLimited throw);
 // - nothing is written: scans, workspace edits, saved state and evidence stay
 //   in memory for the life of the page.
-// usage: node serve-ui.mjs <generated site dir> <port> --scan <scan id> [--sql on]
+// usage: node serve-ui.mjs <generated site dir> <port> --scan <scan id> [--sql on] [--back <port>]
 //   --sql on keeps the SQL console working (for runs that allow it).
 import http from "node:http"; import net from "node:net"; import { readFile } from "node:fs/promises"; import path from "node:path";
 const [dir, port] = [process.argv[2], Number(process.argv[3])];
 const flag = (k) => { const i = process.argv.indexOf("--" + k); return i > 0 ? process.argv[i + 1] : undefined; };
 if (!flag("scan")) { console.error("--scan <scan id> is required"); process.exit(1); }
 const SQL_ON = flag("sql") === "on";
-const BACK = { host: "127.0.0.1", port: 34115 };
+// --back <port>: another dev backend (a second app run from a branch), not the owner's on 34115.
+const BACK = { host: "127.0.0.1", port: Number(flag("back") ?? 34115) };
 const SCAN = flag("scan");
 const STUB = `<script>(() => {
   const SCAN = ${JSON.stringify(SCAN)};

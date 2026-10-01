@@ -44,7 +44,8 @@
         </label>
         <p v-if="unbacked" class="ask-unbacked"><AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/><span>{{ unbacked }} {{ unbacked === 1 ? "statement" : "statements" }} in this conversation {{ unbacked === 1 ? "is" : "are" }} not backed by the facts {{ unbacked === 1 ? "it cites" : "they cite" }}. The report is written without {{ unbacked === 1 ? "it" : "them" }}.</span></p>
         <p v-if="ask.writeup.error" class="mt-3 text-[12px] text-red-700">{{ ask.writeup.error }}</p>
-        <div class="mt-4 flex items-center justify-end gap-2">
+        <!-- Pinned to the sheet's bottom edge: however long the template list, the way to write is on screen. -->
+        <div class="ask-sheet-foot">
           <button type="button" class="ui-btn ui-btn-sm" @click="close">Cancel</button>
           <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" :disabled="ask.writeup.loading || ask.running" @click="start"><PenLine :size="12" :stroke-width="2"/> Write the report</button>
         </div>
@@ -137,6 +138,7 @@ function close() {
 .ask-opt:hover { border-color: rgb(var(--c-neutral-300)); background: rgb(var(--c-neutral-50)); }
 .ask-opt-on, .ask-opt-on:hover { border-color: rgb(var(--c-accent-400)); background: rgb(var(--c-accent-50)); }
 .ask-rec { font-size: 10px; font-weight: 500; color: rgb(var(--c-accent-800)); background: rgb(var(--c-accent-100)); border-radius: 999px; padding: 1px 7px; }
+.ask-sheet-foot { position: sticky; bottom: 0; margin: 16px -20px -20px; padding: 10px 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; background: rgb(var(--c-surface)); border-top: 1px solid rgb(var(--c-neutral-200)); }
 .ask-need { margin-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .ask-unbacked { margin-top: 12px; display: flex; gap: 8px; font-size: 12px; line-height: 1.5; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-amber-300)); background: rgb(var(--c-amber-50)); border-radius: 6px; padding: 8px 10px; }
 </style>
