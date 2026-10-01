@@ -78,9 +78,25 @@ export class Writer {
         return this
     }
     sql(title: string, sql: string, limit = 20) { this.blocks.push(cellBlock({ type: "sql", sql: sql.replace(/\s+/g, " ").trim(), limit }, title)); return this }
+    /**
+     * An exhibit (features/exhibits): computed and drawn when the report runs,
+     * with no view to visit, as a figure where it has one and a table where not.
+     */
+    exhibit(kind: string, params: Record<string, unknown>, title: string) {
+        this.blocks.push(cellBlock({ type: "exhibit", kind, v: 1, params }, title))
+        this.used.add(`exhibit:${kind}:${JSON.stringify(params)}`)
+        return this
+    }
     slot(kind: "figure" | "table", title: string, view: string, route: string, hint: string, take?: string) {
         this.blocks.push(cellBlock({ type: "slot", kind, view, route, hint, ...(take ? { take } : {}) }, title))
+        this.used.add(`slot:${route}#${take ?? ""}`)
         return this
+    }
+    /** Figures this report already shows, so a shared section picks another picture rather than repeat one. */
+    used = new Set<string>()
+    /** Whether this report already has this slot (by route and take) or exhibit. */
+    has(v: ViewAsk | { kind: string; params: Record<string, unknown> }): boolean {
+        return "route" in v ? this.used.has(`slot:${v.route}#${v.take ?? ""}`) : this.used.has(`exhibit:${v.kind}:${JSON.stringify(v.params)}`)
     }
     /** A section, written only when the snapshot has what it needs; `need` is true or the reason it has not. */
     section(title: string, need: true | string, body: () => void) {
@@ -119,28 +135,34 @@ export const needs = {
 // Views a slot opens, set the way the figure needs them. Every one of them
 // offers its figure or table to Add to report.
 export const VIEWS: Record<string, ViewAsk | ((...a: any[]) => ViewAsk)> & Record<string, any> = {
-    // The dependency graph: components while they stay legible, the lens's groups beyond that.
+    // The dependency graph: components while they stay legible, rolled up into the code's own folders beyond that.
     structure: (f: SnapshotFacts) => (f.components <= 60
-        ? { view: "Connections", route: "/views/connections?level=components", hint: "Graph, components" }
-        : { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, by group" }),
-    // Without a lens its groups are the components, which past a few dozen print as a cloud.
-    graph: { view: "Connections", route: "/views/connections?level=groups", hint: "Graph, by group; set a lens first" },
+        ? { view: "Connections", route: "/views/connections?level=components&by=none", hint: "Graph, components" }
+        : { view: "Connections", route: "/views/connections?level=groups&by=Folders", hint: "Graph, rolled up by folder" }),
+    // Folders need no lens, so the graph reads at any size.
+    graph: { view: "Connections", route: "/views/connections?level=groups&by=Folders", hint: "Graph, rolled up by folder" },
     focus: (c: string) => ({ view: "Connections", route: `/views/connections?level=components&sel=${encodeURIComponent(c)}`, hint: `Graph, components, ${c} selected` }),
     // facet=production: the same production pairs as the template's own table beside it.
     hidden: { view: "Connections", route: "/views/connections?source=git&rep=list&relation=no-import&facet=production", hint: "Co-change without an import, as a list, production code", take: "Connections list" },
     // A table: the matrix exports as rows and numbered columns, in dependency levels, up to 40 of them.
     // Components while they fit; beyond that it needs a lens whose groups do.
     matrix: (f: SnapshotFacts) => (f.components <= 40
-        ? { view: "Connections", route: "/views/connections?rep=matrix&level=components&order=levels", hint: "Matrix, components, in levels", take: "Dependency matrix" }
-        : { view: "Connections", route: "/views/connections?rep=matrix&level=groups&order=levels", hint: "Matrix, by group, in levels; needs a lens of 40 groups or fewer", take: "Dependency matrix" }),
-    // Arcs by group: legible with a lens of a few dozen groups (for Django, its apps), a ring of clipped names without one.
-    chord: { view: "Connections", route: "/views/connections?rep=chord&level=groups", hint: "Chord, by group; set a lens first" },
+        ? { view: "Connections", route: "/views/connections?rep=matrix&level=components&order=levels&by=none", hint: "Matrix, components, in levels", take: "Dependency matrix" }
+        : { view: "Connections", route: "/views/connections?rep=matrix&level=groups&order=levels&by=Folders", hint: "Matrix, rolled up by folder, in levels", take: "Dependency matrix" }),
+    // Arcs between folders: how much each part of the tree leans on each other part.
+    chord: { view: "Connections", route: "/views/connections?rep=chord&level=groups&by=Folders", hint: "Chord, rolled up by folder", take: "Connections chord" },
     combined: (c: string) => ({ view: "Connections", route: `/views/connections?source=combined&level=components&sel=${encodeURIComponent(c)}`, hint: `Imports and co-change, ${c} selected` }),
     plot: (preset: string, hint: string) => ({ view: "Metrics", route: `/views/metrics?view=plot&preset=${preset}`, hint }),
     // Files: production only, or licences, Markdown and lock files lead every ranking.
     treemap: (preset: string, grain: "components" | "files" | "directories", hint: string) => ({ view: "Hotspots", route: `/views/components/hotspots?preset=${preset}&grain=${grain}${grain === "files" ? "&facet=production" : ""}`, hint }),
     cyclesAround: (c: string) => ({ view: "Cycles", route: `/views/components/cycles?component=${encodeURIComponent(c)}`, hint: `The tangle ${c} sits in` }),
     activity: { view: "Activity", route: "/views/git/activity?tab=commits", hint: "Lines added and removed by month", take: "Lines added and removed by month" },
+    // Where the work moved: each component's share of the changed lines now against the two years before.
+    workMoved: (window: "30" | "90" | "180" | "365" = "365") => ({ view: "Activity", route: `/views/git/activity?tab=now&window=${window}`, hint: `Where the work moved, ${window === "365" ? "the last year" : `the last ${window} days`} against the two years before`, take: "Where the work moved" }),
+    // Each month's changed lines split by the health of the files they went into.
+    effort: { view: "Activity", route: "/views/git/activity?tab=effort", hint: "Each month's changed lines, by the health of the files they went into", take: "Where each month's changed lines went" },
+    // Co-change between folders: which parts of the tree keep changing together.
+    cochangeGraph: { view: "Connections", route: "/views/connections?source=git&level=groups&by=Folders", hint: "Changed together, rolled up by folder" },
     // The Overview's year of commits by day: the grain a month's review reads at.
     calendar: { view: "Overview", route: "/", hint: "A year of commits, one square a day", take: "Commit calendar" },
     breadth: { view: "Activity", route: "/views/git/activity?tab=breadth", hint: "The share of commits by how many components they touched", take: "Components touched per commit" },
@@ -217,6 +239,11 @@ export const SHOWS = {
     knowledgeMap: "The map shows every component as a tile, sized by its lines and grouped by folder. The colour says how well people who still commit here know it: dark where they wrote most of it, light where they have only changed it since. Hatched tiles are code nobody active has worked on.",
     breadth: "Each column is a year of commits, split by how many components a commit touched: one, two or three, four to ten, or more. The line follows the share that touched four or more.\n\nWhen that line climbs, a typical change reaches further across the code each year. That is what coupling feels like in day-to-day work.",
     workNow: "The table lists the components the changed lines went into, most first, with each one's share of them now and in the two years before. A share that grew a lot marks where the work moved.",
+    stack: "The drawing stacks the code as floors, ordered so that imports run downward: what everything uses sits at the bottom, what nothing uses at the top. A line running back up is an import against that order; each one ties a lower floor to a higher one and is a candidate to move.",
+    graphFolders: "The graph rolls the components up into the folders that hold them. Each box is a folder, sized by its code; an arrow is an import from one folder into another, thicker the more references it carries. Red marks imports that close a cycle between folders.",
+    chord: "Each arc around the circle is a folder, as long as its share of the imports. A ribbon joins two folders whose code imports each other's, wider the more references it carries; red ribbons close a cycle.",
+    workMoved: "Each row is a component's share of all changed lines, now (the filled dot) and in the two years before (the ring). The rows are the biggest moves, gains first: work arriving at the top, work leaving at the bottom.",
+    modulesDeps: "Each bar is a build module, as long as the number of other modules it depends on.",
 }
 
 // ── Topics several templates share ────────────────────────────────────────
@@ -246,20 +273,25 @@ export function librariesAbout(eco: EcosystemId | ""): string {
     return `*Libraries* are code the project uses but did not write, here mostly packages from ${e.from}. Each one needs keeping up to date, and each can bring security issues.\n\nNames are shortened to their first two parts: ${e.two}.${e.platform ? ` Modules of the language's own platform, such as ${e.platform}, are counted separately.` : ""}`
 }
 
-/** Past this many components a drawing of the whole graph is a cloud of dots, whatever the grouping. */
-export const GRAPH_LIMIT = 300
 /** The scan recorded classes and functions, so the Units view can draw the roles. */
 export const hasUnits = (f: SnapshotFacts) => f.tables.has("units")
 /**
  * The structure, and a drawing of it: the roles as floors when the scan has
- * classes (legible at any size), else the graph while it stays legible.
+ * classes (legible at any size), else the graph, rolled up by folder past a
+ * few dozen components.
  */
-export function structure(w: Writer, withFigure = true) {
+export function structure(w: Writer, withFigure: boolean | "stack" | "graph" | "chord" = true) {
     w.explain(ABOUT.structure).reading("structure")
     if (!withFigure) return
+    if (withFigure === "stack") { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, "The codebase as floors"); return }
+    if (withFigure === "graph" || withFigure === "chord") { folderPicture(w, withFigure, withFigure === "chord" ? "How the folders lean on each other" : "The folders and their imports"); return }
     if (hasUnits(w.facts)) layers(w, "Dependency structure")
-    else if (w.facts.components > GRAPH_LIMIT) w.p(`A drawing of the whole graph is left out: with ${w.facts.components.toLocaleString("en-US")} components it prints as a cloud of dots. The tangles above say more; in the app, Connections with a lens shows the graph by group.`)
     else slotOf(w, "figure", "Dependency structure", VIEWS.structure(w.facts))
+}
+/** The folders as a graph or a chord: legible at any size, needing no lens. */
+export function folderPicture(w: Writer, how: "graph" | "chord", title: string) {
+    if (how === "chord") { w.explainSlot(SHOWS.chord); slotOf(w, "figure", title, VIEWS.chord) }
+    else { w.explainSlot(SHOWS.graphFolders); slotOf(w, "figure", title, VIEWS.graph) }
 }
 /** The roles as floors, with how to read them; nothing without classes in the scan. */
 export function layers(w: Writer, title = "How the layers lean") {

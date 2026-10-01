@@ -32,13 +32,13 @@
       <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Commits touching more than ${sweepLimit} files: renames, reformats, merges`" @click="showSweeping = !showSweeping">
         {{ showSweeping ? "Sweeping commits shown" : `${formatNumber(sweeping)} sweeping commits hidden` }}
       </button>
-      <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
+      <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 whitespace-nowrap"
               :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
               @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
         <span>{{ authorsStore.showBots ? "Bots shown" : `${formatNumber(botCommits)} bot commits hidden` }}</span>
       </button>
-      <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
+      <span class="ui-toolbar-meta ml-auto flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
         <span v-if="fixOnly" :title="`Subject lines matching /${fixSource}/i`">Commits matching <span class="font-mono text-neutral-700">/{{ fixSource.length > 28 ? fixSource.slice(0, 27) + '…' : fixSource }}/</span> <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span> of <span class="font-mono">{{ formatNumber(periodCommits.length) }}</span></span>
         <span v-else>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
         <span class="text-neutral-300">·</span>

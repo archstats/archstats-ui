@@ -71,7 +71,7 @@
               <button type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === null" @click="setState({ by: 'none' })">None</button>
               <button v-for="d in model.dimensions.value" :key="d" type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === d" @click="setState({ by: d })">{{ d }}</button>
             </div>
-            <p v-if="model.dimensions.value.length === 0" class="text-xs text-neutral-500">Create groups to roll components up.</p>
+            <p v-if="model.dimensions.value.length === 1" class="text-xs text-neutral-500">Folders is the code's own package tree. Build a lens to roll up by your own slices.</p>
           </div>
           <div v-if="model.dimensions.value.length > 1 || (model.dimensions.value.length === 1 && model.rollupDimension.value === null)" class="flex flex-col gap-1">
             <span class="ui-label">Colour by</span>
@@ -203,12 +203,16 @@
       <!-- Too big to draw. With no lens, "close some groups" pointed at
            groups that do not exist; the way out is to make some. -->
       <EmptyState
-        v-else-if="overCap && model.dimensions.value.length === 0"
+        v-else-if="overCap && !model.rollupDimension.value"
         :title="`${model.nodes.value.length} components are too many for a ${rep}`"
-        :text="`A ${rep} reads well up to ${cap} nodes. Group the components first: the lens builder proposes a cut from the names, the imports or the history, you correct it, and the ${rep} draws the groups.`"
+        :text="`A ${rep} reads well up to ${cap} nodes. Roll them up by folder for the shape of the package tree now, or group them in a lens: the lens builder proposes a cut from the names, the imports or the history, you correct it, and the ${rep} draws the groups.`"
         icon="scale"
+        :data-view-reason="`${model.nodes.value.length} components are too many for a ${rep}; roll them up by folder or by a lens`"
       >
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="setState({ by: FOLDERS, level: 'groups' })">
+          <Icon icon="folder" :size="13"/><span>Roll up by folder</span>
+        </button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
           <Icon icon="waypoints" :size="13"/><span>Propose a lens</span>
         </button>
         <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">Show the graph</button>
@@ -299,11 +303,12 @@
       <ZoomControls v-if="rep === 'graph' && !overCap && model.nodes.value.length" @zoom-in="rendererRef?.zoomIn?.()" @zoom-out="rendererRef?.zoomOut?.()" @reset="rendererRef?.resetZoom?.()"/>
       <!-- Hundreds of ungrouped components draw as a cloud. Say what makes it readable, once, out of the way. -->
       <div
-        v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && model.dimensions.value.length === 0 && !model.loading.value"
-        class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[640px] -translate-x-1/2 items-center gap-3 px-3 py-2"
+        v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && !model.rollupDimension.value && !model.loading.value"
+        class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[680px] -translate-x-1/2 items-center gap-3 px-3 py-2"
       >
         <span class="text-sm text-neutral-700">{{ model.nodes.value.length.toLocaleString() }} components at once draw as a cloud. Grouping them shows the shape.</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">Propose a lens</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="setState({ by: FOLDERS, level: 'groups' })">By folder</button>
+        <button type="button" class="ui-btn ui-btn-sm shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">Propose a lens</button>
         <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Dismiss" title="Dismiss" @click="hairballDismissed = true"><Icon icon="x" :size="13"/></button>
       </div>
 
@@ -461,6 +466,7 @@
         :memberships="model.membershipsOf"
         :cycle-set-of="model.cycleSetOf.value"
         :cycle-sets="model.cycleSets.value"
+        :rollups="model.rollupGroups.value"
         @select="focusNode"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
@@ -502,6 +508,7 @@ import { units, useGroupsStore, type UnitKind } from "~/features/groups/groups.s
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useConnectionsModel } from "~/features/connections/useConnectionsModel";
+import { FOLDERS } from "~/features/connections/folders";
 import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
 import { adjacency, shortestPath, strongestNeighbour } from "~/features/navigation/focus";
 import { showInTargets } from "~/features/navigation/showIn";
@@ -632,7 +639,7 @@ const crossColDim = computed(() => {
   const dims = model.dimensions.value.filter(d => d !== crossRowDim.value);
   return state.value.x && dims.includes(state.value.x) ? state.value.x : dims[0] ?? null;
 });
-const crossGroupsOf = (dim: string | null): CrossGroup[] => (dim ? groupsStore.groups.filter(g => g.dimension === dim).map(g => ({ id: g.id, name: g.name, color: g.color, files: groupsStore.filesOf(g) })) : []);
+const crossGroupsOf = (dim: string | null): CrossGroup[] => model.groupsOfDimension(dim).map(g => ({ id: g.id, name: g.name, color: g.color, files: g.files }));
 const crossRows = computed(() => crossGroupsOf(crossRowDim.value));
 const crossCols = computed(() => crossGroupsOf(crossColDim.value));
 const cross = computed(() => buildCrosscut({ rows: crossRows.value, cols: crossCols.value, filesOfComponent: model.filesOfComponent.value, edges: model.componentEdges.value, source: source.value }));

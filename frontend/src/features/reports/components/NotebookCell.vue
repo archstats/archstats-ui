@@ -78,7 +78,7 @@
         <p v-else-if="cell.output.figure && figureMissing" class="py-4 text-sm text-neutral-500">The figure file is missing. <template v-if="cell.spec.type === 'capture'">Open {{ cell.spec.view }} and add it again.</template></p>
         <div v-else-if="cell.output.figure" class="h-40 w-full animate-pulse rounded-md bg-neutral-100" role="img" aria-label="Loading figure"></div>
         <p v-if="cell.output.pin?.note" class="mt-2 text-[14px] leading-6 text-neutral-700">{{ cell.output.pin.note }}</p>
-        <p v-if="table && !table.rows.length && cell.output.table" class="mt-2 text-[13.5px] text-neutral-500">{{ EMPTY_TABLE }}</p>
+        <p v-if="table && !table.rows.length && cell.output.table" class="mt-2 text-[13.5px] text-neutral-500">{{ cell.output.table.note || EMPTY_TABLE }}</p>
         <div v-else-if="table" class="mt-2 overflow-x-auto">
           <table class="nb-data w-full">
             <thead><tr><th v-for="(c, i) in table.columns" :key="i" :class="[table.align[i] === 'r' ? 'text-right' : 'text-left', i === 0 ? 'w-full' : '']">{{ headParts(c)[0] }}<span v-if="headParts(c)[1]" class="ml-1.5 whitespace-normal font-mono text-[11px] font-normal text-neutral-400">all in {{ headParts(c)[1] }}</span></th></tr></thead>

@@ -86,7 +86,7 @@
 
     <!-- Workspace: visualizer left, inspector right. -->
     <div class="relative flex min-h-0 grow overflow-hidden">
-      <div class="relative flex min-w-0 grow flex-col overflow-hidden">
+      <div class="vwl-visualizer relative flex min-w-0 grow flex-col overflow-hidden">
         <slot name="visualizer"></slot>
         <slot name="visualizer-overlays"></slot>
       </div>
@@ -233,8 +233,12 @@ onMounted(() => {
   panes.load()
   observer = new ResizeObserver(() => measure())
   if (headerEl.value) observer.observe(headerEl.value)
+  // Counts and switches that fill in after the data loads (a sentence in the
+  // stats) change what fits without the window changing size.
+  if (metaEl.value) observer.observe(metaEl.value)
   nextTick(measure)
 })
+watch(switchesEl, (el, old) => { if (old) observer?.unobserve(old); if (el) observer?.observe(el) }, { flush: "post" })
 watch([hasSwitches, () => props.nodesCount, () => props.connectionsCount, () => props.searchQuery], () => nextTick(measure))
 onBeforeUnmount(() => observer?.disconnect())
 

@@ -360,8 +360,9 @@ textarea.nb-li { padding-left: 1.4em; }
     @apply font-mono text-sm;
   }
 
+  /* A choice never wraps its words or gives up its width: "1 y" stacked to "1 / y" in a full toolbar. */
   .ui-segmented {
-    @apply inline-flex h-7 select-none items-center rounded p-0.5;
+    @apply inline-flex h-7 shrink-0 select-none items-center rounded p-0.5;
     background: rgb(var(--c-neutral-100));
   }
   /* Browser-drawn controls carry the palette too. */
@@ -384,7 +385,7 @@ textarea.nb-li { padding-left: 1.4em; }
     accent-color: rgb(var(--c-accent-500));
   }
   .ui-segmented > button {
-    @apply h-full rounded-sm px-2.5 text-sm font-medium leading-none text-neutral-600 transition-colors;
+    @apply h-full whitespace-nowrap rounded-sm px-2.5 text-sm font-medium leading-none text-neutral-600 transition-colors;
   }
   .ui-segmented > button:hover {
     color: rgb(var(--c-neutral-900));
@@ -642,4 +643,12 @@ textarea.nb-li { padding-left: 1.4em; }
 .pane-handle:focus-visible::after,
 .pane-handle[data-active]::after {
   background: rgb(var(--c-accent-500));
+}
+
+/* A report's slot is taking a figure: the view draws at a page's proportions,
+   so the figure's text keeps its size when it is set in the A4 column. */
+html.figure-capture .vwl-visualizer {
+  flex: 0 0 auto;
+  width: min(100%, 840px);
+  box-shadow: 1px 0 0 rgb(var(--c-neutral-200));
 }

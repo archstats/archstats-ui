@@ -7,7 +7,7 @@
     <div ref="host" class="relative h-full w-full overflow-auto" @mouseleave="hover = null">
       <svg ref="svgRef" :width="w" :height="h" class="block select-none" role="img" :aria-label="`Matrix of a tangle of ${n} components`">
         <rect :width="w" :height="h" :fill="t.surface"/>
-        <g :transform="`translate(${LABEL + 8},${HEAD})`">
+        <g :transform="`translate(${LABEL_W + 8},${HEAD})`">
           <!-- Levels: a block per level along the diagonal. -->
           <rect v-for="b in blocks" :key="`b${b.i}`" :x="b.start * s" :y="b.start * s" :width="b.len * s" :height="b.len * s" :fill="t.ground" :stroke="t.hairline" stroke-width="1"/>
           <!-- The row and column under the pointer. -->
@@ -42,12 +42,12 @@
         <!-- Row names, and the numbers they go by across the top. -->
         <g :transform="`translate(0,${HEAD})`">
           <g v-for="(name, i) in layout.order" :key="name" class="cursor-pointer" @click="$emit('selectNode', name)" @dblclick="$emit('open', name)">
-            <text v-if="s >= 9" :x="LABEL - 22" :y="i * s + s / 2 + 3.5" text-anchor="end" :font-family="t.fontMono" :font-size="Math.min(11, s - 1)" :fill="freed.has(name) ? t.inkMuted : name === selectedNode || matches.has(name) || hover?.r === i ? t.accent : t.ink" :font-weight="name === selectedNode || matches.has(name) ? 600 : 400">{{ short(label(name)) }}</text>
-            <text v-if="s >= 9" :x="LABEL + 2" :y="i * s + s / 2 + 3.5" text-anchor="end" :font-family="t.fontMono" font-size="9.5" :fill="t.inkMuted">{{ i + 1 }}</text>
+            <text v-if="s >= 9" :x="LABEL_W - 22" :y="i * s + s / 2 + 3.5" text-anchor="end" :font-family="t.fontMono" :font-size="Math.min(11, s - 1)" :fill="freed.has(name) ? t.inkMuted : name === selectedNode || matches.has(name) || hover?.r === i ? t.accent : t.ink" :font-weight="name === selectedNode || matches.has(name) ? 600 : 400">{{ short(label(name)) }}</text>
+            <text v-if="s >= 9" :x="LABEL_W + 2" :y="i * s + s / 2 + 3.5" text-anchor="end" :font-family="t.fontMono" font-size="9.5" :fill="t.inkMuted">{{ i + 1 }}</text>
             <title>{{ name }}</title>
           </g>
         </g>
-        <g v-if="s >= 12" :transform="`translate(${LABEL + 8},${HEAD - 6})`">
+        <g v-if="s >= 12" :transform="`translate(${LABEL_W + 8},${HEAD - 6})`">
           <text v-for="(_, i) in layout.order" :key="`c${i}`" :x="i * s + s / 2" y="0" text-anchor="middle" :font-family="t.fontMono" font-size="9" :fill="hover?.c === i ? t.accent : t.inkMuted">{{ i + 1 }}</text>
         </g>
       </svg>
@@ -77,7 +77,8 @@ defineEmits<{ (e: "selectEdge", from: string, to: string): void; (e: "selectNode
 
 const { version } = useChartTheme();
 const t = computed(() => { void version.value; return chartTheme(); });
-const LABEL = 230;
+// Room for the row names; only the row numbers when the rows are too small to name.
+const LABEL_FULL = 230;
 const HEAD = 26;
 const host = ref<HTMLElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
@@ -87,8 +88,10 @@ const mouse = ref({ x: 0, y: 0 });
 
 const n = computed(() => props.layout.order.length);
 // Cells as large as the space allows, never smaller than a mark you can hit.
-const s = computed(() => Math.max(5, Math.min(22, Math.floor(Math.min(avail.value.w - LABEL - 30, avail.value.h - HEAD - 50) / Math.max(1, n.value)))));
-const w = computed(() => LABEL + 8 + n.value * s.value + 16);
+const fit = (label: number) => Math.max(5, Math.min(22, Math.floor(Math.min(avail.value.w - label - 30, avail.value.h - HEAD - 50) / Math.max(1, n.value))));
+const s = computed(() => (fit(LABEL_FULL) >= 9 ? fit(LABEL_FULL) : fit(36)));
+const LABEL_W = computed(() => (s.value >= 9 ? LABEL_FULL : 36));
+const w = computed(() => LABEL_W.value + 8 + n.value * s.value + 16);
 const h = computed(() => HEAD + n.value * s.value + 56);
 const short = (x: string) => (x.length > 30 ? `…${x.slice(-29)}` : x);
 

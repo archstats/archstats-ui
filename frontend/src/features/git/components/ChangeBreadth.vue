@@ -307,6 +307,8 @@ const aloneTable = useTable({
     { id: "changed_alone", label: "Changed alone" }, { id: "changed_with", label: "Changed with" },
     { id: "most_often_with", label: "Most often with" }, { id: "together", label: "Commits together" },
   ],
-  disabledReason: () => (!aloneRows.value.length ? "No component had two or more commits in this window." : null),
+  // Nothing is said while the commits still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!loading.value && !aloneLoading.value && !aloneRows.value.length ? "No component had two or more commits in this window." : null),
+  ready: () => !loading.value && !aloneLoading.value,
 })
 </script>

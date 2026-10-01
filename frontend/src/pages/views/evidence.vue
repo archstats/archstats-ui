@@ -65,6 +65,8 @@
           @duplicate="reports.duplicate($event)"
           @save-template="savingTemplate = reports.list.find(r => r.id === $event) ?? null"
           @remove="reports.remove($event)"
+          @remove-many="reports.removeMany($event)"
+          @merge="(ids, title, drop) => mergeReports(ids, title, drop)"
           @reorder="reports.reorder($event)"
           @jump="jump"
         />
@@ -137,14 +139,16 @@
                 class="nb-row group/row relative"
                 :data-id="b.id"
                 :data-index="i"
+                @mousedown.capture="onRowDown($event, b.id)"
+                @click.capture="onRowClick"
               >
                 <div v-if="dropIndex === i" class="nb-drop" aria-hidden="true"><span>{{ dropLabel }}</span></div>
                 <!-- The row's handle: drag to move, + to insert below. -->
-                <div class="absolute -left-[34px] top-1 flex flex-col items-center opacity-0 transition-opacity group-hover/row:opacity-100" :class="{ '!opacity-100': selectedId === b.id }">
+                <div class="absolute -left-[34px] top-1 flex flex-col items-center opacity-0 transition-opacity group-hover/row:opacity-100" :class="{ '!opacity-100': isSelected(b.id) }">
                   <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" :aria-label="'Insert below'" title="Insert below (/)" @mousedown.prevent @click="openInsert(b.id, 'below')"><Icon icon="plus" :size="13"/></button>
                   <span class="flex h-5 w-5 cursor-grab items-center justify-center rounded text-neutral-300 hover:bg-neutral-100 hover:text-neutral-700 active:cursor-grabbing" draggable="true" title="Drag to move" @dragstart="onBlockDrag($event, b.id)" @dragend="dropIndex = null"><Icon icon="grip" :size="12"/></span>
                 </div>
-                <div :class="!isCell(b) && selectedId === b.id ? 'rounded shadow-[inset_2px_0_0_rgb(var(--c-accent-500))] bg-accent-50/40 -ml-3 pl-3' : ''">
+                <div :class="!isCell(b) && isSelected(b.id) ? 'rounded shadow-[inset_2px_0_0_rgb(var(--c-accent-500))] bg-accent-50/40 -ml-3 pl-3' : ''">
                   <NotebookText
                     v-if="!isCell(b)"
                     :block="b"
@@ -166,7 +170,7 @@
                   <NotebookReading
                     v-else-if="b.cell.spec.type === 'reading'"
                     :cell="b.cell"
-                    :selected="selectedId === b.id"
+                    :selected="isSelected(b.id)"
                     :running="reports.running.includes(b.id)"
                     :stale="isStale(b)"
                     :kernel-label="kernelShort"
@@ -177,7 +181,7 @@
                     v-else-if="b.cell.spec.type === 'slot'"
                     :cell="b.cell"
                     :number="numbers.get(b.id) ?? ''"
-                    :selected="selectedId === b.id"
+                    :selected="isSelected(b.id)"
                     :taking="reports.takeQueue?.ids[reports.takeQueue.at] === b.id"
                     @select="selectCell(b.id)"
                     @open="openSlot(b.id)"
@@ -187,7 +191,7 @@
                     v-else
                     :cell="b.cell"
                     :number="numbers.get(b.id) ?? ''"
-                    :selected="selectedId === b.id"
+                    :selected="isSelected(b.id)"
                     :running="reports.running.includes(b.id)"
                     :stale="isStale(b)"
                     :kernel-label="kernelShort"
@@ -206,6 +210,8 @@
               </div>
               <div v-if="dropIndex === reports.doc.blocks.length" class="nb-drop" aria-hidden="true"><span>{{ dropLabel }}</span></div>
             </div>
+            <!-- Where a copy, cut or paste of whole blocks lands: focused for the moment of the shortcut. -->
+            <textarea ref="clipEl" class="sr-only" aria-hidden="true" tabindex="-1" @copy="onClipCopy" @cut="onClipCut" @paste="onClipPaste" @blur="clipping = false"></textarea>
           </article>
           </div>
         </div>
@@ -298,7 +304,8 @@ import { namesIn } from "~/features/reports/reportCells";
 import { useStateStore } from "~/platform/state.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { saveBundle } from "~/platform/files";
-import { cellNumbers, isCell, newId, plainText, runnable, type Block, type CellBlock, type CellSpec, type TextKind } from "~/features/reports/reportDoc";
+import { cellNumbers, fromMarkdown, isCell, newId, plainText, runnable, type Block, type CellBlock, type CellSpec, type TextKind } from "~/features/reports/reportDoc";
+import { readBlocks, writeBlocks, type ClipboardContext } from "~/features/reports/blockClipboard";
 import { newestFirst } from "~/features/workspace/scanOrder";
 import { snapshotName } from "~/features/workspace/snapshotName";
 
@@ -419,10 +426,13 @@ const cellCounts = computed(() => {
 // ── Editing ─────────────────────────────────────────────────────────────
 const editingId = ref<string | null>(null);
 const selectedId = ref<string | null>(null);
+/** The other end of a run of selected blocks; null when one block is selected. */
+const anchorId = ref<string | null>(null);
 const caret = ref<number | "start" | "end" | null>(null);
 
 function edit(id: string, c: number | "start" | "end") {
   selectedId.value = null;
+  anchorId.value = null;
   editingId.value = id;
   caret.value = c;
 }
@@ -434,11 +444,13 @@ function onBlur(id: string) {
 }
 function toCommand(id: string) {
   editingId.value = null;
+  anchorId.value = null;
   selectedId.value = id;
   (document.activeElement as HTMLElement)?.blur?.();
 }
 function selectCell(id: string) {
   editingId.value = null;
+  anchorId.value = null;
   selectedId.value = id;
   tab.value = "cell";
   paneOpen.value = true;
@@ -504,6 +516,7 @@ function pasteBlocks(id: string, blocks: Block[], before: string, after: string)
   if (b && !isCell(b) && !b.text.trim()) reports.removeBlock(id);
   const last = blocks[blocks.length - 1];
   if (!isCell(last)) edit(last.id, "end");
+  else selectRange(blocks[0].id, last.id);
 }
 function setSpec(id: string, spec: CellSpec) {
   reports.setCell(id, { spec });
@@ -511,10 +524,120 @@ function setSpec(id: string, spec: CellSpec) {
 function removeSelected() {
   const id = selectedId.value;
   if (!id) return;
-  const i = indexOf(id);
-  reports.removeBlock(id);
-  const next = reports.doc.blocks[Math.min(i, reports.doc.blocks.length - 1)];
+  const ids = rangeIds.value;
+  const i = ids.length > 1 ? reports.removeBlocks(ids) : indexOf(id);
+  if (ids.length <= 1) reports.removeBlock(id);
+  anchorId.value = null;
+  const next = reports.doc.blocks[Math.min(Math.max(0, i), reports.doc.blocks.length - 1)];
   selectedId.value = next?.id ?? null;
+}
+
+// ── Several blocks at once ──────────────────────────────────────────────
+// Shift-click, Shift-arrows, a drag across rows or ⌘A select a run of
+// blocks; it copies, cuts, pastes and deletes as one, cells with their output.
+const rangeIds = computed<string[]>(() => {
+  const focus = selectedId.value;
+  if (!focus) return [];
+  const a = anchorId.value ? indexOf(anchorId.value) : -1, b = indexOf(focus);
+  if (a < 0 || b < 0 || a === b) return [focus];
+  return reports.doc.blocks.slice(Math.min(a, b), Math.max(a, b) + 1).map(x => x.id);
+});
+const rangeSet = computed(() => new Set(rangeIds.value));
+const isSelected = (id: string) => rangeSet.value.has(id);
+function selectRange(from: string, to: string) {
+  editingId.value = null;
+  if ((document.activeElement as HTMLElement | null)?.closest?.(".nb-row")) (document.activeElement as HTMLElement).blur();
+  anchorId.value = from;
+  selectedId.value = to;
+}
+function selectAll() {
+  const bs = reports.doc.blocks;
+  if (!bs.length) return;
+  window.getSelection()?.removeAllRanges();
+  selectRange(bs[0].id, bs[bs.length - 1].id);
+}
+
+// Pressing on one row and moving onto another selects the rows between, not the text.
+let pressed: { id: string } | null = null;
+let rowDrag = false;
+let swallowClick = false;
+function onRowDown(e: MouseEvent, id: string) {
+  if (e.button !== 0) return;
+  if ((e.target as HTMLElement).closest('[draggable="true"], button, select, a')) return;
+  if (e.shiftKey) {
+    const from = anchorId.value ?? selectedId.value ?? editingId.value;
+    if (from && from !== id) {
+      e.preventDefault();
+      e.stopPropagation();
+      selectRange(from, id);
+      swallowClick = true;
+      return;
+    }
+  }
+  pressed = { id };
+  rowDrag = false;
+}
+function onPointerMove(e: MouseEvent) {
+  if (!pressed || !(e.buttons & 1)) return;
+  const row = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest?.(".nb-row") as HTMLElement | null;
+  const over = row?.dataset.id;
+  if (!over || (over === pressed.id && !rowDrag)) return;
+  if (!rowDrag) { rowDrag = true; document.body.classList.add("select-none"); }
+  window.getSelection()?.removeAllRanges();
+  if (anchorId.value !== pressed.id || selectedId.value !== over) selectRange(pressed.id, over);
+}
+function onPointerUp() {
+  if (rowDrag) { swallowClick = true; document.body.classList.remove("select-none"); }
+  if (swallowClick) setTimeout(() => { swallowClick = false; }, 0);
+  pressed = null;
+  rowDrag = false;
+}
+function onRowClick(e: MouseEvent) {
+  if (!swallowClick) return;
+  e.preventDefault();
+  e.stopPropagation();
+  swallowClick = false;
+}
+onMounted(() => { window.addEventListener("mousemove", onPointerMove); window.addEventListener("mouseup", onPointerUp); });
+onBeforeUnmount(() => { window.removeEventListener("mousemove", onPointerMove); window.removeEventListener("mouseup", onPointerUp); document.body.classList.remove("select-none"); });
+
+// The clipboard. A shortcut in command mode focuses a hidden field for its
+// moment, so the native copy, cut or paste fires there (WebKit only fires
+// them where something is selected or editable) and lands in these handlers.
+const clipEl = ref<HTMLTextAreaElement | null>(null);
+const clipping = ref(false);
+function clipCtx(): ClipboardContext {
+  return { workspace: workspaceName.value, label, figure: p => reports.figures[p] ?? null };
+}
+function armClipboard() {
+  const el = clipEl.value;
+  if (!el) return;
+  el.value = " ";
+  clipping.value = true;
+  el.focus({ preventScroll: true });
+  el.select();
+  setTimeout(() => { if (document.activeElement === el) el.blur(); }, 0);
+}
+function onClipCopy(e: ClipboardEvent) {
+  if (!e.clipboardData || !rangeIds.value.length) return;
+  e.preventDefault();
+  writeBlocks(e.clipboardData, reports.doc.blocks.filter(b => rangeSet.value.has(b.id)), clipCtx());
+}
+function onClipCut(e: ClipboardEvent) {
+  onClipCopy(e);
+  if (rangeIds.value.length) removeSelected();
+}
+function onClipPaste(e: ClipboardEvent) {
+  const data = e.clipboardData;
+  if (!data) return;
+  e.preventDefault();
+  const text = data.getData("text/plain");
+  const blocks = readBlocks(data) ?? (text.trim() ? fromMarkdown(text) : []);
+  if (!blocks.length) return;
+  const ids = rangeIds.value;
+  const after = ids.length ? ids[ids.length - 1] : reports.doc.blocks[reports.doc.blocks.length - 1]?.id ?? null;
+  reports.paste(ids.length > 1 ? null : after, blocks, ids.length > 1 ? ids : []);
+  selectRange(blocks[0].id, blocks[blocks.length - 1].id);
 }
 const selectedCell = computed(() => (reports.doc.blocks.find(b => b.id === selectedId.value && isCell(b)) as CellBlock | undefined) ?? null);
 const selectedPin = computed(() => {
@@ -684,6 +807,13 @@ function afterTemplate() {
   scroller.value?.scrollTo({ top: 0 });
 }
 const savingTemplate = ref<ReportRecord | null>(null);
+async function mergeReports(ids: string[], title: string, removeOriginals: boolean) {
+  raw.value = false;
+  editingId.value = null;
+  selectedId.value = null;
+  await reports.merge(ids, { title, removeOriginals });
+  scroller.value?.scrollTo({ top: 0 });
+}
 
 // ── Slots and computed paragraphs ───────────────────────────────────────
 const router = useRouter();
@@ -752,6 +882,17 @@ function onKey(e: KeyboardEvent) {
   const inNotebook = !!t?.closest?.("[role=document]") || !typing;
   if (!reports.current) return;
   if (mod && e.key === "/") { e.preventDefault(); toggleRaw(); return; }
+  // ⌘A: the block's own text first; pressed again (or with nothing being typed), every block.
+  if (mod && !e.shiftKey && e.key.toLowerCase() === "a" && !raw.value && !insertAt.value) {
+    const area = t?.tagName === "TEXTAREA" && t.closest(".nb-row") ? t as HTMLTextAreaElement : null;
+    if (!typing || (area && area.selectionStart === 0 && area.selectionEnd === area.value.length)) { e.preventDefault(); selectAll(); return; }
+  }
+  // ⌘C, ⌘X and ⌘V on selected blocks; a selection of text inside one block copies as text.
+  if (mod && !e.shiftKey && ["c", "x", "v"].includes(e.key.toLowerCase()) && !typing && !raw.value) {
+    const textSelected = !!window.getSelection()?.toString() && rangeIds.value.length <= 1;
+    if (e.key.toLowerCase() === "v" || (rangeIds.value.length && !textSelected)) armClipboard();
+    return;
+  }
   if (mod && e.shiftKey && e.key.toLowerCase() === "e") { e.preventDefault(); exportPdf(); return; }
   if (mod && e.key === "Enter" && e.shiftKey) { e.preventDefault(); void reports.runAll(); return; }
   if (mod && e.key.toLowerCase() === "z" && inNotebook && !raw.value) {
@@ -766,10 +907,18 @@ function onKey(e: KeyboardEvent) {
   const select = (j: number) => {
     const b = blocks[Math.max(0, Math.min(blocks.length - 1, j))];
     if (!b) return;
+    anchorId.value = null;
     if (isCell(b)) selectCell(b.id); else selectedId.value = b.id;
     (scroller.value?.querySelector(`[data-id="${b.id}"]`) as HTMLElement | null)?.scrollIntoView({ block: "nearest" });
   };
   if (!sel) return;
+  if (e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+    e.preventDefault();
+    const to = blocks[Math.max(0, Math.min(blocks.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+    selectRange(anchorId.value ?? sel.id, to.id);
+    (scroller.value?.querySelector(`[data-id="${to.id}"]`) as HTMLElement | null)?.scrollIntoView({ block: "nearest" });
+    return;
+  }
   switch (e.key) {
     case "ArrowDown": case "j": e.preventDefault(); select(i + 1); break;
     case "ArrowUp": case "k": e.preventDefault(); select(i - 1); break;
@@ -784,7 +933,7 @@ function onKey(e: KeyboardEvent) {
     case "d":
       if (Date.now() - lastD < 600) { e.preventDefault(); removeSelected(); lastD = 0; } else lastD = Date.now();
       break;
-    case "Escape": selectedId.value = null; break;
+    case "Escape": selectedId.value = null; anchorId.value = null; break;
   }
 }
 onMounted(() => window.addEventListener("keydown", onKey));

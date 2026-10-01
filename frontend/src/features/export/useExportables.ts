@@ -1,4 +1,5 @@
-import { computed, getCurrentInstance, inject, onBeforeUnmount, shallowReactive, type InjectionKey } from "vue";
+import { computed, getCurrentInstance, inject, nextTick, onBeforeUnmount, shallowReactive, type InjectionKey } from "vue";
+import { inlineStyles } from "./figure";
 import type { ExportColumn, ExportRow } from "./export";
 import type { FigureLegend, FigureOptions, FigureOutput } from "./figure";
 
@@ -186,6 +187,13 @@ export function useSvgFigure(spec: FigureSpec & {
     svg: () => SVGSVGElement | null | undefined;
     /** The chart covers its area with data colours (a map of tiles), so its most common colour is not its ground. */
     filled?: boolean;
+    /**
+     * A chart that fills the window's width is drawn again at this width for
+     * export, so its text stays legible on a report page: `relayout(width)`
+     * redraws it at that width, `relayout(null)` gives it back its own.
+     */
+    exportWidth?: number;
+    relayout?: (width: number | null) => void;
 }): FigureExportable {
     return useFigure({
         ...spec,
@@ -198,14 +206,32 @@ export function useSvgFigure(spec: FigureSpec & {
             return box.width > 1 && box.height > 1;
         },
         svg: true,
-        render: () => {
+        render: async () => {
             const el = spec.svg();
             if (!el || !el.firstChild) return null;
             const box = el.getBoundingClientRect();
+            if (spec.relayout && spec.exportWidth && box.width > spec.exportWidth * 1.15) {
+                spec.relayout(spec.exportWidth);
+                try {
+                    await nextTick();
+                    const at = spec.svg();
+                    if (!at) return null;
+                    // The size it is drawn at, from its own coordinates: on screen it may still stretch to the window.
+                    const vb = at.viewBox?.baseVal;
+                    const width = vb && vb.width ? vb.width : Number(at.getAttribute("width")) || at.getBoundingClientRect().width;
+                    const height = vb && vb.height ? vb.height : Number(at.getAttribute("height")) || at.getBoundingClientRect().height;
+                    return { kind: "svg", svg: inlineStyles(at), width: Math.round(width), height: Math.round(height), ...(spec.filled ? { filled: true } : {}) };
+                } finally {
+                    spec.relayout(null);
+                }
+            }
             return { kind: "svg", svg: el, width: Math.round(box.width), height: Math.round(box.height), ...(spec.filled ? { filled: true } : {}) };
         },
     });
 }
+
+/** The width a figure for a report page is drawn at: the A4 text column, with a little to spare. */
+export const REPORT_FIGURE_WIDTH = 680;
 
 /** A canvas drawing as an exportable figure: PNG only, at the canvas's own pixel density. */
 export function useCanvasFigure(spec: FigureSpec & { canvas: () => HTMLCanvasElement | null | undefined }): FigureExportable {

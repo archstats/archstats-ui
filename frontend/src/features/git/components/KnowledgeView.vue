@@ -301,7 +301,9 @@ const componentTable = useTable({
     { id: "commits_by_people_here", label: `Changes by active contributors (${windowWords.value})` }, { id: "written_by_people_here", label: "Written by active contributors" },
     { id: "wrote_most", label: "Main author" }, { id: "wrote_most_share", label: "Their share" }, { id: "lines", label: "Lines" },
   ],
-  disabledReason: () => (!listed.value.length ? "No components listed." : null),
+  // Nothing is said while the rows still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!props.k.loading.value && !listed.value.length ? "No components listed." : null),
+  ready: () => !props.k.loading.value,
 })
 </script>
 

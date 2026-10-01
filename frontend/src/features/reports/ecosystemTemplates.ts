@@ -8,7 +8,7 @@
 
 import { prodFile, reactComponent, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, coupling, glance, health, hotspots, lanes, libraries, lit, modules, needs, rules, slotOf, SQL, structure, tests, VIEWS,
+    ABOUT, coupling, glance, health, hotspots, lanes, layers, libraries, lit, modules, needs, rules, SHOWS, slotOf, SQL, structure, tests, VIEWS,
     type ReportTemplate, type Writer,
 } from "./templateKit"
 
@@ -79,6 +79,10 @@ const BUILD_SQL = {
     use: (f: SnapshotFacts, declaredFor: string | null, onlyKind?: string) => `SELECT u.a AS module, u.b AS "uses code from", u.refs AS "references", u.files AS "files"${declaredFor ? `, CASE WHEN ${declares("m.depends_on", "u.b")} THEN 'declared' ELSE 'not declared' END AS "in its build file"` : ""} FROM (${moduleUse(f)}) u${declaredFor ? ` JOIN modules m ON m.name = u.a AND m.kind = ${lit(declaredFor)}` : ""}${onlyKind ? ` WHERE u.a IN (SELECT name FROM modules WHERE kind = ${lit(onlyKind)}) AND u.b IN (SELECT name FROM modules WHERE kind = ${lit(onlyKind)})` : ""} ORDER BY ${declaredFor ? `5 DESC, ` : ""}3 DESC, 1, 2`,
     undeclared: (f: SnapshotFacts, kind: string) => `SELECT u.a AS module, u.b AS "uses code from", u.refs AS "references", u.files AS "files" FROM (${moduleUse(f)}) u JOIN modules m ON m.name = u.a AND m.kind = ${lit(kind)} WHERE NOT ${declares("m.depends_on", "u.b")} ORDER BY 3 DESC, 1, 2`,
     unused: (f: SnapshotFacts, kind: string) => `WITH RECURSIVE split(m, dep, rest) AS (SELECT name, '', replace(coalesce(depends_on, ''), ', ', ',') || ',' FROM modules WHERE kind = ${lit(kind)} UNION ALL SELECT m, substr(rest, 1, instr(rest, ',') - 1), substr(rest, instr(rest, ',') + 1) FROM split WHERE rest <> ''), used AS (${moduleUse(f)}) SELECT m AS module, dep AS "declares a dependency on" FROM split WHERE dep <> '' AND NOT EXISTS (SELECT 1 FROM used WHERE used.a = split.m AND used.b = split.dep) ORDER BY 1, 2`,
+    /** Each module's size, health and recent change. */
+    profile: (f: SnapshotFacts, kind: string) => `SELECT m.name AS module, count(fi.name) AS files, sum(coalesce(fi.complexity__lines, 0)) AS lines${f.fileColumns.has("codesmells__code_health") ? `, round(sum(fi.codesmells__code_health * fi.complexity__lines) / nullif(sum(CASE WHEN fi.codesmells__code_health IS NOT NULL THEN fi.complexity__lines END), 0), 1) AS "code health, by lines"` : ""}${f.fileColumns.has("git__commits__last_180_days") ? `, sum(coalesce(fi.git__commits__last_180_days, 0)) AS "file changes, last 180 days"` : ""} FROM modules m JOIN files fi ON fi.module = m.name WHERE m.kind = ${lit(kind)} AND ${prodFile(f, "fi")} GROUP BY 1 ORDER BY 3 DESC, 1`,
+    /** Modules changed in the same commits: the build's parts that move together. */
+    coChange: (kind: string) => `WITH m AS (SELECT DISTINCT c.commit_hash AS h, fi.module AS m FROM git_commits c JOIN files fi ON fi.name = c.file WHERE fi.module IN (SELECT name FROM modules WHERE kind = ${lit(kind)})) SELECT a.m AS module, b.m AS "changes with", count(*) AS "commits that changed both" FROM m a JOIN m b ON a.h = b.h AND a.m < b.m GROUP BY 1, 2 HAVING count(*) >= 3 ORDER BY 3 DESC, 1, 2`,
     usedBy: (kind: string) => `SELECT m.name AS module, m.directory, m.files, (SELECT count(*) FROM modules o WHERE o.kind = m.kind AND ${declares("o.depends_on", "m.name")}) AS "declared by modules", m.internal_dependencies AS "declares (internal)" FROM modules m WHERE m.kind = ${lit(kind)} ORDER BY 4 DESC, m.files DESC`,
 }
 
@@ -173,6 +177,8 @@ const PHP_SQL = {
 // ── Explanations ──────────────────────────────────────────────────────────
 
 const EXPLAIN = {
+    moduleCoChange: "Modules that keep changing in the same commits move together, whatever their build files say: a change to one has needed a change to the other. Pairs that change together often but declare no dependency on each other are tied by something the build does not show, such as a shared schema, a message format or copied code.",
+    dependentsBars: "Each bar is a folder, as long as the number of other folders that import it directly. The longest bars are the code everything else leans on.",
     layers: "Most frameworks expect work to flow one way: from where a request comes in, through the business logic, down to data access and the data itself. A reference one step down follows that order.\n\nA reference that *skips a layer* makes the skipped layer easy to bypass. One that runs *back up* ties a lower layer to the one above it, so neither can change alone.",
 
     spring: "Spring creates the application's objects, called *beans*, and wires them together. *Controllers* answer web requests, *services* hold the business logic, *repositories* read and write the database, and *entities* (JPA) are classes mapped to database tables.\n\nThe usual layering runs from controllers to services to repositories to entities.",
@@ -233,9 +239,11 @@ function rolesAbout(eco: EcosystemId | ""): string {
     const ex = eco ? ROLE_EXAMPLES[eco] : undefined
     return `Frameworks give classes jobs: a controller answers requests, a repository reads and writes the database, an entity holds the data. Below, each class gets the job that fits it, the same way the Classes view sorts them.\n\nWhat a class says about itself decides first: its annotations, decorators, base classes or struct tags${ex ? `. For example, ${ex}` : ""}. After that come what it imports, and then its name. A class that fits no job is counted separately rather than guessed at.`
 }
-function anatomy(w: Writer, profile: string, language?: string) {
+/** The roles, and a picture of them: where each lives (the map) or how they lean (the floors). */
+function anatomy(w: Writer, profile: string, language?: string, picture: "lanes" | "layers" = "lanes") {
     w.explain(rolesAbout(w.eco)).reading("roles", { profile, ...(language ? { language } : {}) })
-    lanes(w)
+    if (picture === "layers") layers(w, "How the roles lean on each other")
+    else lanes(w)
 }
 /** What skipping and running back up look like, in the framework's own words. */
 const LAYER_EXAMPLES: Record<string, string> = {
@@ -280,6 +288,7 @@ const SPRING: ReportTemplate[] = [
                 w.explain(EXPLAIN.springServices)
                 role(w, "services", "spring")
                 if (f.markers.has("annotation:Transactional")) w.sql("Where @Transactional sits", SPRING_SQL.transactional(f), 10)
+                w.exhibit("recipe", { recipe: "largest-classes" }, "The largest classes")
             })
             w.section("Repositories and the entity model", has.marker(f, "the code has no JPA entities", "annotation:Entity"), () => {
                 w.explain(EXPLAIN.springRepos)
@@ -303,6 +312,11 @@ const SPRING: ReportTemplate[] = [
             })
             w.section("Build modules", needs.modules(f), () => modules(w))
             w.section("Hotspots", needs.git(f), () => { hotspots(w); slotOf(w, "figure", "Churn against code health", VIEWS.treemap("churn", "components", "Churn against health, components")) })
+            w.section("Where the work has gone", needs.git(f), () => {
+                w.explain(ABOUT.churn).reading("churn", { days: "180" })
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved", VIEWS.workMoved("365"))
+            })
             w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: where the layers hold, where they leak, and which controllers, services or entities need attention first."))
         },
     },
@@ -317,11 +331,12 @@ const SPRING: ReportTemplate[] = [
         build(w) {
             const f = w.facts
             w.prompt("The layering the team intends, in a sentence or two, and anything that is allowed to break it on purpose.")
-            w.section("The roles", has.units(f), () => anatomy(w, "spring"))
+            w.section("The roles", has.units(f), () => anatomy(w, "spring", undefined, "layers"))
             w.section("References between the layers", has.links(f), () => {
                 layering(w, "spring", ["services", "repositories", "Services and Repositories"])
                 slotOf(w, "table", "Dependency matrix", VIEWS.matrix(f))
             })
+            w.section("The packages as floors", true, () => { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, "The packages as floors") })
             w.section("Entry points that skip the services", has.links(f), () => { w.explain(EXPLAIN.springShortcuts); w.sql("Entry points using repositories or entities directly", SPRING_SQL.shortcuts, 30) })
             w.section("Lower layers reaching up", has.links(f), () => { w.explain(EXPLAIN.springBackwards); w.sql("Repositories and entities that use services or controllers", SPRING_SQL.backwards, 30) })
             w.section("Transaction boundaries", has.marker(f, "no class is marked @Transactional", "annotation:Transactional"), () => { w.explain(EXPLAIN.springServices); w.sql("Where @Transactional sits", SPRING_SQL.transactional(f), 10) })
@@ -345,6 +360,7 @@ const SPRING: ReportTemplate[] = [
                 role(w, "entities", "spring")
                 w.sql("Entities by package", SPRING_SQL.entitiesByPackage(f), 20)
                 w.sql("Entities, the most used first", SPRING_SQL.entities(f), 25)
+                if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, "The types used from the most places")
             })
             w.section("How entities refer to each other", needs.all(has.marker(f, "the code has no JPA entities", "annotation:Entity"), has.links(f)), () => {
                 w.sql("Entities with the most links to other entities", SPRING_SQL.entityLinks, 20)
@@ -369,12 +385,21 @@ const SPRING: ReportTemplate[] = [
             const f = w.facts
             const kind = (f.moduleKinds.maven ?? 0) >= (f.moduleKinds.gradle ?? 0) ? "maven" : "gradle"
             w.prompt("Why the module layout is being looked at: build times, releases, a planned reorganisation.")
-            w.section("Modules", needs.modules(f), () => { w.explain(EXPLAIN.build).reading("modules"); w.sql("Modules, the most depended on first", BUILD_SQL.usedBy(kind), 40) })
+            w.section("Modules", needs.modules(f), () => {
+                w.explain(EXPLAIN.build).reading("modules")
+                w.sql("Modules, the most depended on first", BUILD_SQL.usedBy(kind), 40)
+                w.sql("Modules by size, health and recent change", BUILD_SQL.profile(f, kind), 40)
+            })
             w.section("How the modules use each other", has.links(f), () => {
                 w.explain(kind === "maven" ? EXPLAIN.drift : "The table counts references from one module's classes into another's. The scan cannot read every Gradle dependency declaration, so it does not say which uses are declared.")
                 w.sql("Module to module, by references", BUILD_SQL.use(f, kind === "maven" ? "maven" : null), 40)
             })
-            w.section("How the code connects", true, () => { structure(w); coupling(w) })
+            w.section("Which modules lean on which", needs.modules(f), () => { w.explainSlot(SHOWS.modulesDeps); w.exhibit("recipe", { recipe: "modules-deps" }, "Which modules depend on which") })
+            w.section("Modules that change together", needs.all(needs.modules(f), needs.git(f)), () => {
+                w.explain(EXPLAIN.moduleCoChange)
+                w.sql("Modules changed in the same commits", BUILD_SQL.coChange(kind), 25)
+            })
+            w.section("How the code connects", true, () => { structure(w, "stack"); coupling(w) })
             w.section("Dependency rules", needs.rules(f), () => rules(w))
             w.section("Proposal", true, () => w.prompt("Modules to merge, split or point elsewhere, and the references that justify each change."))
         },
@@ -447,6 +472,11 @@ const PYTHON: ReportTemplate[] = [
             w.section("The apps", needs.all(needs.modules(f), has.markers(f)), () => { w.explain(EXPLAIN.django); w.sql("Apps and what they hold", DJANGO_SQL.apps(f), 40) })
             w.section("Apps that use other apps", has.links(f), () => { w.explain(EXPLAIN.djangoCross); w.sql("App to app, by references", DJANGO_SQL.crossApp(f), 40); slotOf(w, "table", "Dependency matrix", VIEWS.matrix(f)) })
             w.section("Apps nothing else uses", has.links(f), () => w.sql("Apps no other app uses", DJANGO_SQL.lonely, 30))
+            w.section("Apps that change together", needs.all(needs.modules(f), needs.git(f)), () => {
+                w.explain(EXPLAIN.moduleCoChange)
+                w.sql("Apps changed in the same commits", BUILD_SQL.coChange("django"), 25)
+            })
+            w.section("The apps as floors", true, () => { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, "The code as floors") })
             w.section("Circular dependencies", needs.tangles(f), () => { structure(w, false); w.sql("Tangles", SQL.tangles, 10) })
             w.section("The boundaries you propose", true, () => w.prompt("Per app: keep, merge into another, split, or extract. For each, the references that would have to change."))
         },
@@ -466,7 +496,7 @@ const PYTHON: ReportTemplate[] = [
             w.section("Packages", has.units(f), () => { w.sql("Packages, the largest first", PYTHON_SQL.packages(f), 25); anatomy(w, "", "python") })
             w.section("Request handlers", has.marker(f, "no function carries a route decorator", "annotation:get", "annotation:post", "annotation:route", "annotation:put", "annotation:delete"), () => w.sql("Request handlers by package", PYTHON_SQL.routes(f), 20))
             w.section("Data classes", has.marker(f, "no Pydantic models or dataclasses", "supertype:BaseModel", "annotation:dataclass", "supertype:TypedDict"), () => w.sql("Pydantic models and dataclasses by package", PYTHON_SQL.schemas(f), 20))
-            w.section("Imports between packages", true, () => { structure(w); coupling(w, 0, "py") })
+            w.section("Imports between packages", true, () => { structure(w, "stack"); coupling(w, 0, "py") })
             w.section("Third-party libraries", needs.snippets(f), () => libraries(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
@@ -495,8 +525,9 @@ const WEBAPPS: ReportTemplate[] = [
                 if (f.tables.has("unit_connections") && (f.moduleKinds.node ?? 0) >= 2) w.sql("Package to package, by references", BUILD_SQL.use(f, null, "node"), 30)
             })
             w.section("Roles in the code", has.units(f), () => { anatomy(w, ""); layering(w, "") })
-            w.section("Imports between folders", true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
-            w.section("Libraries", needs.snippets(f), () => libraries(w))
+            w.section("Imports between folders", true, () => { structure(w, "graph"); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
+            w.section("The code everything uses", true, () => { w.explainSlot(EXPLAIN.dependentsBars); w.exhibit("ranking", { measure: "most dependents" }, "The most depended-on folders") })
+            w.section("Libraries", needs.snippets(f), () => { libraries(w); w.exhibit("recipe", { recipe: "external-imports" }, "The outside packages imported most") })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
             w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
@@ -577,7 +608,11 @@ const GO: ReportTemplate[] = [
             w.prompt("What the module does, and what this review should settle.")
             w.section("Modules and packages", true, () => { glance(w); w.explain(EXPLAIN.go).reading("go"); if (f.moduleKinds.go) w.sql("Modules", SQL.modulesOf("go"), 30) })
             w.section("What each package holds", has.markers(f), () => { w.sql("Packages: types, functions and what they export", GO_SQL.packages(f), 30); anatomy(w, "", "go") })
-            w.section("The packages everything imports", true, () => { w.sql("Packages by how many others import them", GO_SQL.fanIn, 15); coupling(w, 0, "go") })
+            w.section("The packages everything imports", true, () => {
+                w.sql("Packages by how many others import them", GO_SQL.fanIn, 15)
+                coupling(w, 0, "go")
+                structure(w, "graph")
+            })
             w.section("Structs that cross a boundary", has.marker(f, "no struct carries a tag", "struct_tag:json", "struct_tag:db", "struct_tag:yaml", "struct_tag:form", "struct_tag:xml", "struct_tag:toml", "struct_tag:mapstructure", "struct_tag:gorm"), () => {
                 w.explain(EXPLAIN.goTags)
                 w.sql("Tagged structs by package", GO_SQL.tagsByPackage(f), 20)
@@ -610,7 +645,7 @@ const DOTNET: ReportTemplate[] = [
             w.section("What each project holds", true, () => w.sql("Projects by the roles their file names give away", DOTNET_SQL.roles(f), 40))
             w.section("Controllers", true, () => { w.sql("The largest controllers", DOTNET_SQL.controllers(f), 15); w.prompt("Are controllers thin (they hand work to services) or do they hold the logic themselves?") })
             w.section("Roles and layers", has.units(f), () => { anatomy(w, "aspnet"); layering(w, "aspnet") })
-            w.section("Between namespaces", true, () => { structure(w); coupling(w) })
+            w.section("Between namespaces", true, () => { structure(w, "stack"); coupling(w) })
             w.section("Dependency rules", needs.rules(f), () => rules(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w))
             w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))

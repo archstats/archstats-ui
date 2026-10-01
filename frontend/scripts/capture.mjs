@@ -1,6 +1,6 @@
 // Screenshots hash routes of the running app through headless Chrome (CDP, no deps).
 // Usage: node scripts/capture.mjs --out DIR [--routes name=/path,name2=/path2] [--scheme light|dark|both]
-//        [--workspace NAME] [--size 1440x900] [--wait MS] [--pin false]
+//        [--workspace NAME] [--size 1440x900] [--wait MS] [--pin false] [--url http://localhost:34115]
 // Defaults: the 12 primary views, both schemes, workspace eai-3540597-qp-common.
 // Requires `wails dev` to be running (see scripts/dev-check.mjs).
 //
@@ -80,7 +80,7 @@ async function session(scheme) {
   await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
   if (pin) await send("Page.addScriptToEvaluateOnNewDocument", { source: PIN });
-  await send("Page.navigate", { url: "http://localhost:34115/" });
+  await send("Page.navigate", { url: (args.url ?? "http://localhost:34115") + "/" });
 
   // Wait for the app, select the workspace, wait for its data.
   let ready = false;

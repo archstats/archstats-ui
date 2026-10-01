@@ -1,5 +1,6 @@
 <template>
   <!-- A count per period as columns, oldest left. -->
+  <ExhibitFrame :exhibit="figure" header="overlay">
   <div class="xt">
     <div class="xt-cols" role="img" :aria-label="ariaLabel">
       <button
@@ -15,10 +16,15 @@
     <div class="xt-axis"><span>{{ points[0]?.label }}</span><span>{{ points[points.length - 1]?.label }}</span></div>
     <p class="xt-legend"><span class="xt-swatch"/> column height = {{ unit }} per {{ period }}<template v-if="note"> · {{ note }}</template></p>
   </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import { useFigure } from "~/features/export/useExportables"
+import { columnsSvg } from "../exportSvg"
+import { chartTheme } from "~/shared/ui/useChartTheme"
 
 const props = withDefaults(defineProps<{
   points: Array<{ label: string; value: number }>
@@ -32,6 +38,16 @@ defineEmits<{ (e: "select", label: string): void }>()
 
 const lit = computed(() => new Set(props.highlight))
 const max = computed(() => Math.max(1, ...props.points.map(p => p.value)))
+
+// Columns of buttons on screen; an SVG of the same columns for a report or a PNG.
+const figure = useFigure({
+  title: () => props.ariaLabel,
+  ready: () => props.points.length > 1,
+  svg: true,
+  render: () => ({ kind: "svg", ...columnsSvg(props.points) }),
+  legend: () => ({ items: [{ label: `Column height: ${props.unit} per ${props.period}`, color: chartTheme().blue }], ...(props.note ? { notes: [props.note] } : {}) }),
+  legendInUi: false,
+})
 </script>
 
 <style scoped>

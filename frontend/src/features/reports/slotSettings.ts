@@ -21,6 +21,7 @@ const VIEWS: Record<string, ViewDef> = {
         settings: [
             { key: "rep", label: "Shown as", fallback: "graph", always: true, values: { graph: "Graph", matrix: "Matrix", chord: "Chord", list: "List", crosscut: "Crosscut" } },
             { key: "level", label: "Level", fallback: "groups", always: true, values: { groups: "By group", components: "Components", files: "Files" } },
+            { key: "by", label: "Rolled up by", fallback: "", values: { "": "The lens", Folders: "Folders", none: "Nothing" } },
             { key: "source", label: "Connections", fallback: "static", values: { static: "Imports", git: "Changed together", combined: "Imports and co-change" } },
             { key: "order", label: "Order", fallback: "", values: { "": "As laid out", levels: "By levels", name: "By name" } },
             { key: "relation", label: "Pairs", fallback: "all", values: { all: "All", "no-import": "Without an import" } },
@@ -42,7 +43,10 @@ const VIEWS: Record<string, ViewDef> = {
     },
     "/views/git/activity": {
         name: "Activity",
-        settings: [{ key: "tab", label: "Tab", fallback: "now", always: true, values: { now: "Work now", breadth: "Breadth", effort: "Effort", commits: "Commits" } }],
+        settings: [
+            { key: "tab", label: "Tab", fallback: "now", always: true, values: { now: "Work now", breadth: "Breadth", effort: "Effort", commits: "Commits" } },
+            { key: "window", label: "Window", fallback: "", values: { "": "As last chosen", "30": "30 days", "90": "90 days", "180": "180 days", "365": "1 year" } },
+        ],
     },
     "/views/metrics": {
         name: "Metrics",

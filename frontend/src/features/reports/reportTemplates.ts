@@ -10,12 +10,13 @@
 // written with is in templateKit.ts.
 
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange"
+import { NOT_BOT_SQL } from "~/features/git/authors"
 import { ECOSYSTEM } from "./ecosystemTemplates"
 import { MOBILE } from "./mobileTemplates"
 import { isCell, newId, plainText, type Block, type Cell, type CellSpec, type TextBlock } from "./reportDoc"
 import { languageShare, prodFile, type Ecosystem, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, age, churn, coupling, glance, hasModules, hasUnits, health, hotspots, knowledge, lanes, layers, libraries, lit, modules, needs, opt, prod, REACHED, rules,
+    ABOUT, age, churn, coupling, folderPicture, glance, hasModules, hasUnits, health, hotspots, knowledge, lanes, libraries, lit, modules, needs, opt, prod, REACHED, rules,
     SHOWS, slotOf, SQL, structure, tests, VIEWS, Writer, type ReportTemplate, type TemplateContext,
 } from "./templateKit"
 
@@ -29,14 +30,32 @@ const READ = {
     dms: "The main-sequence plot places each component by *instability*, left to right (from depended on by others to depending on others), and *abstractness*, bottom to top (from concrete code to interfaces and abstract classes). Components near the diagonal from top left to bottom right are balanced.\n\nBottom left is the *zone of pain*: concrete code that many others depend on, which is hard to change. Top right is the *zone of uselessness*: abstractions that nothing uses.",
     ageTreemap: "In this treemap each rectangle is a component, sized by its lines. It runs hot where nothing has changed for longest: code nobody on the team has worked in recently.",
     nesting: "In this treemap each rectangle is a file, sized by its lines. It runs hot where the logic is nested deepest (conditions inside loops inside conditions), which is hard to read and to test.",
+    churnTreemap: "In this treemap each rectangle is a component, sized by its lines and coloured by how much it changes against how healthy it is. The hot rectangles are code that keeps changing while being hard to work in: where effort turns into interest on old debt.",
+    instabilityTreemap: "In this treemap each rectangle is a component, sized by its lines and coloured by *instability*: how much it depends on others against how much others depend on it. Stable code (cool) should be the code that changes least.",
     plotChurnHealth: "The plot places each component by how often it changed, left to right, and by its code health, bottom to top, sized by its lines. The bottom right holds the code that changes most and is hardest to work in.",
+    plotChurnComplexity: "The plot places each component by how often it changed, left to right, and how complex its code is, bottom to top. Top right is complicated code that keeps changing: the classic place for bugs.",
     plotBetweenness: "The plot places each component by how many import paths between other components run through it (*betweenness*), left to right, and by how often it changed, bottom to top. Top right are components that sit between many others and keep changing: a change there reaches far, and the changes keep coming.",
     plotAuthors: "The plot places each component by how many people have changed it, left to right, and how often it changed, bottom to top. The top left is code that changes a lot but that few people know.",
-    activity: "The chart shows the lines added and removed each month across the history, which shows how the pace of work has changed.",
+    plotAge: "The plot places each component by its age, left to right, and how often it changed, bottom to top, sized by its distance from the main sequence. Old code that still changes a lot (top right) has never settled.",
+    activity: "The chart shows the lines added and removed each month across the history, which shows how the pace of work has changed. A month far bigger than the rest (an import or a reformat) is cut at the top and its total written beside it.",
+    commitColumns: "Each column is a month's commits, oldest on the left; the busiest month is named above it.",
     calendar: "The calendar shows the last year of commits, one square a day, darker on busier days. The last few weeks are this report's period.",
     outline: "The outline lists the folders as a tree. Every number is rolled up from the files inside, which makes it a map of the codebase by folder.",
     changes: "The Changes view compares this snapshot with the one before it: components added and removed, dependencies that appeared or went away, and rule findings that are new or gone.",
     combined: "The graph shows the component with its neighbours, linked both by imports and by commits that changed them together.",
+    cochangeGraph: "The graph links folders whose code keeps changing in the same commits, whether or not an import joins them. Thicker links share more commits. A thick link between folders with no import between them is coupling the code does not show.",
+    tangle: "The tangle is drawn in levels, top to bottom, the way its imports would run if there were no cycle. The imports drawn against the levels are the ones that make the cycle. The cut plan beside it lists them in the order to cut, the one that frees most components first.",
+    dependents: "Each bar is a component, as long as the number of other components that import it directly. The longest bars are the code most of the system leans on.",
+    roots: "Each bar is a top-level folder of the repository, as long as its lines of code.",
+    languages: "Each bar is a language or file type, as long as its lines.",
+    foldersHealth: "The map shows every file, sized by its lines and nested in its folders, coloured by code health. Red files are hard to work in; a red folder is a part of the code where every change is slow.",
+    foldersChurn: "The map shows every file, sized by its lines and nested in its folders, coloured by how often it changed. The hot folders are where the team's work lands.",
+    foldersRole: "The map shows every file, sized by its lines and nested in its folders, coloured by its role: production code, tests, generated and third-party code, and files that are not code.",
+    effort: "Each column is one month's changed lines, split by the health of the files they went into; the line is the share that went into components caught in a tangle. The grey bars under it are how many lines changed that month.",
+    authorsBars: "Each bar is a person, as long as their commits. How few people made half of them is written under it.",
+    externalImports: "Each bar is an outside package, as long as the number of files that import it.",
+    largestTypes: "Each bar is one of the largest classes or types, as long as its lines.",
+    hotspotFiles: "Each bar is a file, as long as its hotspot score: complex code that keeps changing.",
 }
 
 /**
@@ -50,6 +69,23 @@ function mainSequence(w: Writer) {
     slotOf(w, "figure", "The main sequence", VIEWS.plot("dms", "Distance to Main Sequence"))
 }
 
+/** The largest tangle in levels with its cut plan, and the smallest cycles as paths. */
+function tangles(w: Writer, rows = 10) {
+    w.explain(ABOUT.structure).reading("structure")
+    w.sql("Tangles, the largest first", SQL.tangles, rows)
+    w.explainSlot(READ.tangle)
+    w.exhibit("tangle", {}, "The largest tangle, with the cuts that undo it")
+    w.exhibit("cycles", {}, "The smallest cycles, as paths")
+}
+
+/** How a team's work has run: commits per month, who made them, and how far the work moved. */
+function workOverTime(w: Writer, o: { lines?: boolean; moved?: boolean; people?: boolean } = {}) {
+    if (o.lines) { w.explainSlot(READ.activity); slotOf(w, "figure", "Lines added and removed by month", VIEWS.activity) }
+    else { w.explainSlot(READ.commitColumns); w.exhibit("activity", {}, "Commits per month") }
+    if (o.people) { w.explainSlot(READ.authorsBars); w.exhibit("authors", { since: "a year" }, "Who made the commits of the last year") }
+    if (o.moved) { w.explainSlot(SHOWS.workMoved); slotOf(w, "figure", "Where the work moved", VIEWS.workMoved("365")) }
+}
+
 // ── General ───────────────────────────────────────────────────────────────
 
 const GENERAL: ReportTemplate[] = [
@@ -57,29 +93,64 @@ const GENERAL: ReportTemplate[] = [
         id: "architecture-review",
         name: "Architecture review",
         audience: "An architecture board or tech lead",
-        summary: "A full review of how the codebase is built: its size and history, how its parts depend on each other, which dependency rules it breaks, where complicated code keeps changing, and how easy the code is to work in. Each section opens with evidence counted from the snapshot; you add what it means, your findings and what you recommend.",
+        summary: "A full review of how the codebase is built: what it holds and where, how its parts depend on each other and where the layering breaks, the tangles and the cuts that undo them, the code everything leans on, where complicated code keeps changing, how healthy the code is, and where the team's work has moved. Each section opens with evidence counted from the snapshot; you add what it means, your findings and what you recommend.",
         when: "Use it when someone needs the overall picture before a decision: a roadmap, a rewrite, a new team taking the code over, or a yearly review.",
         title: ws => `Architecture review: ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("Start with two or three sentences: why this review was done, who asked for it, and which decision it should help make. For example: whether to split out the billing code, or where to spend next quarter's clean-up time.")
-            w.section("The system at a glance", true, () => glance(w))
+            w.section("The system at a glance", true, () => {
+                glance(w)
+                w.explainSlot(READ.roots)
+                w.exhibit("recipe", { recipe: "roots" }, "The top-level areas by size")
+                w.explainSlot(READ.languages)
+                w.exhibit("recipe", { recipe: "size-by-extension" }, "Code by language")
+            })
             w.section("Structure: how the parts depend on each other", true, () => {
-                structure(w)
+                w.explain(ABOUT.structure).reading("structure")
+                w.explainSlot(SHOWS.stack)
+                w.exhibit("stack", {}, "The codebase as floors")
                 w.explainSlot(READ.matrix)
                 slotOf(w, "table", "Dependency matrix, in levels", VIEWS.matrix(f))
-                w.prompt("Compare this with the layering the team intends. Do the imports run the way the design says they should? Name any tangle that joins parts that are meant to stay apart.")
+                w.prompt("Compare this with the layering the team intends. Do the imports run the way the design says they should? Name the lines that run back up and the floors they tie together.")
             })
-            w.section("Coupling: the most depended-on parts", true, () => {
-                coupling(w, 8)
+            w.section("Tangles and the cuts that undo them", needs.tangles(f), () => {
+                w.explain(QABOUT.tangles)
+                w.sql("Tangles, the largest first", SQL.tangles, 10)
+                w.explainSlot(READ.tangle)
+                w.exhibit("tangle", {}, "The largest tangle, with the cuts that undo it")
+                w.exhibit("cycles", {}, "The smallest cycles, as paths")
+                w.prompt("Which tangle matters most for the decision above, and which two or three cuts you would make first.")
+            })
+            w.section("Coupling: the code everything leans on", true, () => {
+                coupling(w, 10)
+                w.explainSlot(READ.dependents)
+                w.exhibit("ranking", { measure: "most dependents" }, "The most depended-on components")
                 mainSequence(w)
+                if (f.componentColumns.has("modularity__instability")) { w.explain(QABOUT.unstableCore); w.sql("Depended on, yet depending on much", QSQL.unstableCore(f), 15) }
             })
             w.section("Dependency rules", needs.rules(f), () => rules(w))
-            w.section("Hotspots: complicated code that changes often", needs.git(f), () => { hotspots(w); slotOf(w, "figure", "Hotspots", VIEWS.hotspots) })
-            w.section("Code health", needs.health(f), () => {
-                health(w, "components", 8)
-                if (f.commits) { w.explainSlot(READ.plotChurnHealth); slotOf(w, "figure", "Churn against code health", VIEWS.plot("churn-health", "Churn against health")) }
+            w.section("Hotspots: complicated code that changes often", needs.git(f), () => {
+                hotspots(w, "files", 12)
+                w.explainSlot(READ.churnTreemap)
+                slotOf(w, "figure", "Churn against health, by component", VIEWS.treemap("churn", "components", "Churn against health, components"))
+                if (f.componentColumns.has("codesmells__static_complexity_score")) { w.explainSlot(READ.plotChurnComplexity); slotOf(w, "figure", "Churn against complexity", VIEWS.plot("churn-complexity", "Churn against complexity")) }
             })
+            w.section("Code health", needs.health(f), () => {
+                health(w, "components", 10)
+                w.explainSlot(READ.foldersHealth)
+                w.exhibit("folders", { by: "health" }, "Code health across the folders")
+                w.sql("The largest production files", QSQL.largestFiles(f), 12)
+            })
+            w.section("Where the work has gone", needs.git(f), () => {
+                churn(w, "180")
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved", VIEWS.workMoved("365"))
+                w.explainSlot(READ.effort)
+                slotOf(w, "figure", "Where each month's changed lines went", VIEWS.effort)
+                w.prompt("Does the work go where the roadmap says it should? Name any area that takes far more of the effort than its size suggests.")
+            })
+            w.section("Tests", needs.tests(f), () => tests(w))
             w.section("Findings", true, () => w.prompt("The two or three things the reader should remember. Tie each one to a figure or table above, so the reader can check it for themselves."))
             w.section("Recommendations", true, () => w.prompt("What you propose, most important first. For each: what the work is, roughly what it costs, and what it makes easier or safer afterwards."))
         },
@@ -88,13 +159,13 @@ const GENERAL: ReportTemplate[] = [
         id: "executive-summary",
         name: "Executive summary",
         audience: "Leadership, on one page",
-        summary: "A one-page summary for people who do not read code: how big the system is, how tangled it is, where the team's effort goes and how much of it depends on a few people. The facts are counted for you; you write what they mean for the business and what you are asking for.",
+        summary: "A short summary for people who do not read code: how big the system is, how tangled it is, where the team's effort goes and how much of it depends on a few people, with one picture of where the work moved. The facts are counted for you; you write what they mean for the business and what you are asking for.",
         when: "Use it when you need a decision or a budget from people outside engineering, or a short status for leadership.",
         title: ws => `${ws}: summary`,
         build(w) {
             const f = w.facts
             w.prompt("The one sentence to read if nothing else is read. For example: “Half of our changes land in three parts of the system that only one person knows well, and we are asking for time to spread that knowledge.”")
-            // One page for leadership: one short note on the terms instead of one per paragraph, and one figure.
+            // For leadership: one short note on the terms instead of one per paragraph, and few figures.
             w.section("The system in numbers", true, () => {
                 w.explain(QABOUT.execTerms)
                 // Names read as plain words here: leadership does not read package paths.
@@ -102,11 +173,13 @@ const GENERAL: ReportTemplate[] = [
                 w.reading("size", plain)
                 if (f.commits) w.reading("history", plain)
                 w.reading("structure", plain)
-                if (f.commits) {
-                    w.reading("churn", { days: "90", ...plain })
-                    w.reading("knowledge", plain)
-                    slotOf(w, "table", "Where changed lines went", VIEWS.workNow)
-                }
+            })
+            w.section("Where the effort goes", needs.git(f), () => {
+                const plain = { plain: "1" }
+                w.reading("churn", { days: "90", ...plain })
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved this year", VIEWS.workMoved("365"))
+                w.reading("knowledge", plain)
             })
             w.section("What it means", true, () => w.prompt("Translate the numbers into business terms: where change is slow, risky or dependent on a few people, and what that costs in delays, incidents or onboarding time. Leave out any term the reader would need explained."))
             w.section("What we ask for", true, () => w.prompt("The decision or investment you are asking for, what it will change, and by when you need an answer."))
@@ -116,32 +189,54 @@ const GENERAL: ReportTemplate[] = [
         id: "due-diligence",
         name: "Technical due diligence",
         audience: "An acquisition or investment",
-        summary: "An outside assessment for someone deciding whether to buy, invest in or take over the software: what was looked at, the team and its history, how the system is structured, how maintainable the code is, what it depends on, how well it is tested, and the risks that follow.",
+        summary: "An outside assessment for someone deciding whether to buy, invest in or take over the software: what was looked at, the team and its history, how the system is structured, how maintainable and how old the code is, what it depends on, how it ships, how well it is tested, and the risks that follow.",
         when: "Use it when the reader is not the team that wrote the code and has to judge its quality and risks, for example before an acquisition, an investment or an outsourcing contract.",
         title: ws => `Technical due diligence: ${ws}`,
         build(w) {
             const f = w.facts
-            w.section("Scope", true, () => { w.prompt("What was scanned (repositories, branches, the date of the newest commit) and what was left out, so the reader knows what the evidence covers."); w.explain(ABOUT.size).reading("size") })
+            w.section("Scope", true, () => {
+                w.prompt("What was scanned (repositories, branches, the date of the newest commit) and what was left out, so the reader knows what the evidence covers.")
+                w.explain(ABOUT.size).reading("size")
+                w.explainSlot(READ.languages)
+                w.exhibit("recipe", { recipe: "size-by-extension" }, "Code by language")
+                w.explainSlot(READ.foldersRole)
+                w.exhibit("folders", { by: "role" }, "What the repository holds")
+            })
             w.section("History and team", needs.git(f), () => {
                 w.explain(ABOUT.history).reading("history")
-                w.explainSlot(READ.activity)
-                slotOf(w, "figure", "Work over time", VIEWS.activity)
+                workOverTime(w, { lines: true, people: true })
                 knowledge(w, { map: true })
+                w.explain(QABOUT.busFactor)
+                w.sql("Components that depend on one person", QSQL.busFactor(f), 15)
             })
             w.section("Structure", true, () => {
                 structure(w, false)
                 if (hasModules(f)) modules(w)
-                if (!layers(w, "The system's parts")) slotOf(w, "figure", "The system's parts", VIEWS.graph)
+                folderPicture(w, "chord", "How the folders lean on each other")
                 mainSequence(w)
+                if (f.tangles) { w.explainSlot(READ.tangle); w.exhibit("tangle", {}, "The largest tangle, with the cuts that undo it") }
             })
             w.section("Maintainability", needs.health(f), () => {
                 health(w, null)
                 age(w)
                 w.table("f-health", 10)
                 if (f.fileColumns.has("git__last_change_age_in_days")) { w.explainSlot(READ.ageTreemap); slotOf(w, "figure", "Code age", VIEWS.treemap("age", "components", "Code age, components")) }
+                w.explainSlot(READ.largestTypes)
+                if (f.tables.has("units")) w.exhibit("recipe", { recipe: "largest-classes" }, "The largest classes and types")
             })
-            w.section("Third-party dependencies", needs.snippets(f), () => libraries(w))
-            w.section("Tests", needs.tests(f), () => tests(w))
+            w.section("Third-party dependencies", needs.snippets(f), () => {
+                libraries(w)
+                w.explainSlot(READ.externalImports)
+                w.exhibit("recipe", { recipe: "external-imports" }, "The outside packages imported most")
+            })
+            w.section("How it ships", f.tables.has("deployables") ? true : "the scan did not look for deployables", () => {
+                w.explain(QABOUT.ships)
+                w.exhibit("deployables", {}, "What ships, and what builds it")
+            })
+            w.section("Tests", needs.tests(f), () => {
+                tests(w)
+                if (needs.testFiles(f) === true) w.sql("Production components no test reaches", QSQL.untested(f), 15)
+            })
             w.section("Risks", true, () => w.prompt("Each risk, with the evidence above that supports it, how likely it is to matter after the deal, and what it would take to reduce it."))
         },
     },
@@ -149,7 +244,7 @@ const GENERAL: ReportTemplate[] = [
         id: "onboarding",
         name: "Onboarding guide",
         audience: "Developers new to the code",
-        summary: "A guided tour for someone joining the team: what the codebase holds, how its main parts fit together, where the day-to-day work happens, who knows which area, and which parts to handle with care. You add the names and context that numbers cannot give.",
+        summary: "A guided tour for someone joining the team: what the codebase holds and where, how its main parts fit together, the code everything else leans on, where the day-to-day work happens, who knows which area, and which parts to handle with care. You add the names and context that numbers cannot give.",
         when: "Use it when a new developer joins, or when a team takes over code it did not write.",
         title: ws => `Getting to know ${ws}`,
         build(w) {
@@ -157,6 +252,8 @@ const GENERAL: ReportTemplate[] = [
             w.prompt("Who this guide is for and what they will work on first, so they know which sections matter most to them.")
             w.section("What is here", true, () => {
                 w.explain(ABOUT.size).reading("size")
+                w.explainSlot(READ.roots)
+                w.exhibit("recipe", { recipe: "roots" }, "The top-level areas")
                 if (hasModules(f)) modules(w)
                 w.sql("The largest components", SQL.largest(f), 10)
                 if (hasUnits(f)) lanes(w, "A map of the code")
@@ -164,19 +261,35 @@ const GENERAL: ReportTemplate[] = [
             })
             w.section("How it hangs together", true, () => {
                 coupling(w)
-                if (!layers(w, "The system's parts")) slotOf(w, "figure", "The system's parts", VIEWS.graph)
+                folderPicture(w, "graph", "The folders and their imports")
                 w.prompt("The areas a newcomer should know by name, and what each one is for, in a sentence each.")
             })
-            w.section("Where the work is", needs.git(f), () => { churn(w, "90"); w.table("f-churn", 10) })
+            w.section("The code everything uses", true, () => {
+                w.explain(QABOUT.loadBearing)
+                w.exhibit("ranking", { measure: "most dependents" }, "The most depended-on components")
+                if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, "The types used from the most places")
+                w.prompt("For the top few: what they hold, and the conventions to follow when changing them.")
+            })
+            w.section("Where the work is", needs.git(f), () => {
+                churn(w, "90")
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved in the last 90 days", VIEWS.workMoved("90"))
+                w.table("f-churn", 10)
+            })
             w.section("Who knows what", needs.git(f), () => { knowledge(w, { map: true }); w.prompt("Who to ask about which area, if the team is happy to have names in writing.") })
-            w.section("Handle with care", needs.git(f), () => { w.explain(ABOUT.hotspots).reading("hotspots"); w.prompt("The parts that tend to bite, and why: what makes them hard, and what to check before changing them.") })
+            w.section("Handle with care", needs.git(f), () => {
+                w.explain(ABOUT.hotspots).reading("hotspots")
+                w.explainSlot(READ.hotspotFiles)
+                w.exhibit("ranking", { measure: "most hotspot", among: "files" }, "The hottest files")
+                w.prompt("The parts that tend to bite, and why: what makes them hard, and what to check before changing them.")
+            })
         },
     },
     {
         id: "refactoring-case",
         name: "Refactoring case",
         audience: "The case for reworking one component",
-        summary: "Makes the case for reworking a single component: what it is today, what its history and health say about the cost of leaving it alone, what depends on it and could break, what the work would cost, and the plan. Choose the component below; it starts on the biggest hotspot.",
+        summary: "Makes the case for reworking a single component: what it is today and what it is made of, how its history and health show the cost of leaving it alone, who works on it, what depends on it and what changes with it, the tangle it sits in, what the work would cost, and the plan. Choose the component below; it starts on the biggest hotspot.",
         when: "Use it when you want time or approval to restructure one part of the code and have to show that it is worth it.",
         params: [{ id: "component", label: "Component", kind: "component" }],
         title: (ws, p) => `Refactoring ${p.component || "a component"}`,
@@ -184,16 +297,31 @@ const GENERAL: ReportTemplate[] = [
             const f = w.facts
             const c = params.component
             w.prompt("The change you propose for this component, in one paragraph: what it looks like now, and what it should look like afterwards.")
-            w.section("The component today", true, () => { w.reading("focus", { component: c }); if (c) slotOf(w, "figure", `${c} and its neighbours`, VIEWS.focus(c)) })
-            w.section("Why now", needs.all(needs.git(f), needs.component(c)), () => {
+            w.section("The component today", true, () => {
+                w.reading("focus", { component: c })
+                if (c) { w.exhibit("profile", { of: c }, `${c} in numbers`); slotOf(w, "figure", `${c} and its neighbours`, VIEWS.focus(c)) }
+            })
+            w.section("What it is made of", needs.component(c), () => {
                 w.explain("The table lists the component's files, the hottest first. A hotspot is a file that is both complicated and changed often; code health rates how easy a file is to change, from 1 (hard) to 10 (simple).")
-                w.sql(`Files of ${c}`, SQL.filesOf(c), 15)
+                w.sql(`Files of ${c}`, SQL.filesOf(c), 20)
+                w.exhibit("ranking", { measure: "least health", among: "files", of: c }, `The least healthy files of ${c}`)
+            })
+            w.section("Why now: its history", needs.all(needs.git(f), needs.component(c)), () => {
+                w.explainSlot(READ.commitColumns)
+                w.exhibit("activity", { of: c }, `Commits per month touching ${c}`)
+                w.explainSlot(READ.authorsBars)
+                w.exhibit("authors", { of: c }, `Who has worked on ${c}`)
                 w.prompt("What its history and health say about the cost of leaving it as it is: how often it changes, how long those changes take, and what goes wrong.")
             })
             w.section("What depends on it", needs.component(c), () => {
                 w.explain(ABOUT.coupling)
-                if (f.tangles) slotOf(w, "figure", `The tangle around ${c}`, VIEWS.cyclesAround(c))
+                w.exhibit("neighbours", { of: c }, `What ${c} uses and what uses it`)
                 w.sql(`Components that import ${c}`, SQL.dependentsOf(c), 15).sql(`What ${c} imports`, SQL.dependenciesOf(c), 15)
+                if (f.tangles) { w.explainSlot(READ.tangle); w.exhibit("tangle", { of: c }, `The tangle around ${c}`) }
+            })
+            w.section("What changes with it", needs.all(needs.component(c), needs.coChange(f)), () => {
+                w.explain(QABOUT.coChange)
+                w.exhibit("cochange", { of: c }, `What changes in the same commits as ${c}`)
             })
             w.section("Cost and risk", true, () => w.prompt("How much work it is, who needs to be involved (the owners of the components that depend on it), and what could break along the way."))
             w.section("Plan", true, () => w.prompt("The steps, in order, each small enough to ship on its own, and how you will know each one worked."))
@@ -203,7 +331,7 @@ const GENERAL: ReportTemplate[] = [
         id: "debt-register",
         name: "Technical debt register",
         audience: "The team's backlog",
-        summary: "Lists the technical debt the snapshot can see (hotspots, hard-to-change files, circular dependencies and broken rules) as tables you can turn into backlog items. *Technical debt* is anything in the code that makes future changes slower or riskier than they need to be.",
+        summary: "Lists the technical debt the snapshot can see as tables you can turn into backlog items: hotspots and where effort goes into unhealthy code, hard-to-change files and the largest classes, circular dependencies with the cuts that undo them, broken rules, and large code nobody has touched in years. *Technical debt* is anything in the code that makes future changes slower or riskier than they need to be.",
         when: "Use it when you want a concrete, evidence-based list of clean-up work to plan into sprints.",
         title: ws => `Technical debt: ${ws}`,
         build(w) {
@@ -213,13 +341,24 @@ const GENERAL: ReportTemplate[] = [
                 hotspots(w, "files", 15)
                 if (f.componentColumns.has("codesmells__code_health")) { w.explainSlot(READ.plotChurnHealth); slotOf(w, "figure", "Churn against code health", VIEWS.plot("churn-health", "Churn against health")) }
             })
+            w.section("Effort going into unhealthy code", needs.all(needs.git(f), needs.health(f)), () => {
+                w.explain(QABOUT.interest)
+                w.exhibit("recipe", { recipe: "unhealthy-changing" }, "Where effort goes into unhealthy code")
+                w.explainSlot(READ.effort)
+                slotOf(w, "figure", "Where each month's changed lines went", VIEWS.effort)
+            })
             w.section("Hard-to-change files", needs.health(f), () => {
                 health(w, "files", 15)
                 w.explainSlot(READ.nesting)
                 slotOf(w, "figure", "Nesting depth", VIEWS.treemap("nesting", "files", "Nesting depth, files"))
+                if (f.tables.has("units")) { w.explainSlot(READ.largestTypes); w.exhibit("recipe", { recipe: "largest-classes" }, "The largest classes and types") }
             })
-            w.section("Circular dependencies", needs.tangles(f), () => { structure(w, false); w.sql("Tangles", SQL.tangles, 20); slotOf(w, "figure", "Cycles in the largest tangle", VIEWS.cycles) })
+            w.section("Circular dependencies", needs.tangles(f), () => tangles(w, 20))
             w.section("Broken dependency rules", needs.rules(f), () => rules(w))
+            w.section("Large code nobody has touched", needs.age(f), () => {
+                w.explain(ABOUT.age)
+                w.sql("Production files unchanged for over two years, largest first", QSQL.untouched(f), 15)
+            })
             w.section("The register", true, () => w.prompt("Per item: an owner, what leaving it costs (time lost, bugs, blocked work), and the next concrete step."))
         },
     },
@@ -227,20 +366,27 @@ const GENERAL: ReportTemplate[] = [
         id: "ownership",
         name: "Ownership and knowledge",
         audience: "Engineering managers",
-        summary: "Shows how knowledge of the code is spread across the team: which components depend on one or two people, where the recent work lands, and what to do about the risk. No names are written unless you add them.",
+        summary: "Shows how knowledge of the code is spread across the team: who has made the commits and how few made most of them, which components depend on one person, where the code no active person knows sits, where the recent work lands, and what to do about the risk. Names appear the way the Authors view shows them.",
         when: "Use it when planning team changes, before someone leaves or goes on long leave, or when work keeps waiting on the same people.",
         title: ws => `Ownership: ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("Why ownership is being looked at now: a team change, a departure, work that keeps queueing on the same people.")
-            w.section("History", needs.git(f), () => { w.explain(ABOUT.history).reading("history"); w.explainSlot(READ.activity); slotOf(w, "figure", "Work over time", VIEWS.activity) })
+            w.section("History", needs.git(f), () => { w.explain(ABOUT.history).reading("history"); workOverTime(w, { people: true }) })
             w.section("How concentrated knowledge is", needs.git(f), () => {
                 // The map, not the table: the table's eight columns print a word to a line.
                 knowledge(w, { map: true })
+                w.explain(QABOUT.busFactor)
+                w.sql("Components that depend on one person", QSQL.busFactor(f), 20)
                 w.explainSlot(READ.plotAuthors)
                 slotOf(w, "figure", "Authors against churn", VIEWS.plot("authors-churn", "Authors vs Churn"))
             })
-            w.section("Where change lands", needs.git(f), () => { churn(w, "180"); w.sql("Change by component, last 180 days", SQL.churn("180"), 12) })
+            w.section("Where change lands", needs.git(f), () => {
+                churn(w, "180")
+                w.explainSlot(READ.foldersChurn)
+                w.exhibit("folders", { by: "churn" }, "Where the commits land")
+                w.sql("Change by component, last 180 days", SQL.churn("180"), 12)
+            })
             w.section("Risks and actions", true, () => w.prompt("Where one person leaving would stall work, and for each: what you will do (pairing, reviews, documentation, rotation) and by when."))
         },
     },
@@ -248,15 +394,32 @@ const GENERAL: ReportTemplate[] = [
         id: "dependency-audit",
         name: "Dependency audit",
         audience: "Platform or security review",
-        summary: "Reviews what the code depends on: the third-party libraries it imports, the build modules and what they declare, how the code's own components depend on each other, and any broken dependency rules. You finish with what to upgrade, replace, remove or cut.",
+        summary: "Reviews what the code depends on: the third-party libraries it imports and how widely, the build modules and what they declare, imports the scan could not resolve, how the code's own components depend on each other and how far a change ripples, and any broken dependency rules. You finish with what to upgrade, replace, remove or cut.",
         when: "Use it before a major upgrade, after a security advisory, or when the build has become slow and hard to reason about.",
         title: ws => `Dependency audit: ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("What prompted the audit, and what is in scope (all libraries, one framework, one part of the system).")
-            w.section("Third-party libraries", needs.snippets(f), () => libraries(w))
-            w.section("Build modules", needs.modules(f), () => modules(w, SQL.modules))
-            w.section("Between the code's own components", true, () => { coupling(w); structure(w, false) })
+            w.section("Third-party libraries", needs.snippets(f), () => {
+                libraries(w)
+                w.explainSlot(READ.externalImports)
+                w.exhibit("recipe", { recipe: "external-imports" }, "The outside packages imported most")
+            })
+            w.section("What the scan could not see", f.tables.has("unresolved_edges") ? true : "the scan does not record unresolved imports", () => {
+                w.explain(QABOUT.unresolved)
+                w.exhibit("recipe", { recipe: "unresolved-imports" }, "Imports the scan could not resolve")
+            })
+            w.section("Build modules", needs.modules(f), () => {
+                modules(w, SQL.modules)
+                w.exhibit("recipe", { recipe: "modules-deps" }, "Which modules depend on which")
+            })
+            w.section("Between the code's own components", true, () => {
+                coupling(w)
+                structure(w, false)
+                w.exhibit("recipe", { recipe: "propagation-cost" }, "How far a change ripples")
+                folderPicture(w, "chord", "How the folders lean on each other")
+                if (f.tables.has("component_connections_direct")) w.exhibit("recipe", { recipe: "edge-kinds" }, "How the components are connected")
+            })
             w.section("Dependency rules", needs.rules(f), () => rules(w))
             w.section("Actions", true, () => w.prompt("Libraries to upgrade, replace or remove, and dependencies between components to cut, each with the reason."))
         },
@@ -265,37 +428,61 @@ const GENERAL: ReportTemplate[] = [
         id: "modularization",
         name: "Modularization plan",
         audience: "Splitting a monolith",
-        summary: "Plans how to split one large codebase (a *monolith*) into modules that can be built, tested, deployed or owned separately: where it stands, what holds it together, which modules you propose, and the order to cut them.",
+        summary: "Plans how to split one large codebase (a *monolith*) into modules that can be built, tested, deployed or owned separately: where it stands, what holds it together (imports, tangles, pairs that import each other, and changes that cross the parts), which modules you propose, and the order to cut them.",
         when: "Use it when teams keep getting in each other's way in one codebase, or before moving to separate services or packages.",
         title: ws => `Modularizing ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("The goal: what the parts should be able to do on their own (deploy, test, be owned by one team) that they cannot do today.")
-            w.section("Where it stands", true, () => { w.explain(ABOUT.size).reading("size"); structure(w) })
+            w.section("Where it stands", true, () => {
+                w.explain(ABOUT.size).reading("size")
+                w.explainSlot(READ.roots)
+                w.exhibit("recipe", { recipe: "roots" }, "The top-level areas by size")
+                w.explain(ABOUT.structure).reading("structure")
+                folderPicture(w, "graph", "The folders and their imports")
+            })
             w.section("What holds it together", true, () => {
                 coupling(w, 10)
-                if (f.tangles) w.sql("Tangles", SQL.tangles, 10)
                 w.explainSlot(READ.matrix)
                 slotOf(w, "table", "Dependency matrix, in levels", VIEWS.matrix(f))
-                if (f.commits) { w.explainSlot(SHOWS.breadth); slotOf(w, "figure", "How far a change reaches", VIEWS.breadth) }
+                if (f.tangles) { w.sql("Tangles", SQL.tangles, 10); w.explainSlot(READ.tangle); w.exhibit("tangle", {}, "The largest tangle, with the cuts that undo it") }
+                w.explain(QABOUT.twoWay)
+                w.exhibit("recipe", { recipe: "mutual-pairs" }, "Pairs of components that import each other")
             })
-            w.section("Candidate modules", true, () => { slotOf(w, "figure", "Candidate modules", VIEWS.graph); w.prompt("The modules you propose, what each one owns, and the imports that would cross between them.") })
-            w.section("Sequence", true, () => w.prompt("What to cut first and why, and what each step makes possible. Cutting where few imports cross is usually cheapest."))
+            w.section("What changes together", needs.coChange(f), () => {
+                w.explainSlot(SHOWS.breadth)
+                slotOf(w, "figure", "How far a change reaches", VIEWS.breadth)
+                w.explainSlot(READ.cochangeGraph)
+                slotOf(w, "figure", "Folders that change together", VIEWS.cochangeGraph)
+                w.explain(QABOUT.hidden)
+                w.exhibit("cochange", { hidden: true }, "Change together, no import between them")
+            })
+            w.section("Candidate modules", true, () => { w.prompt("The modules you propose, what each one owns, and the imports and shared changes that would cross between them.") })
+            w.section("Sequence", true, () => w.prompt("What to cut first and why, and what each step makes possible. Cutting where few imports cross and few commits span both sides is usually cheapest."))
         },
     },
     {
         id: "check-in",
         name: "Health check-in",
         audience: "A recurring review",
-        summary: "A short health check with the same sections every time. Make it once, then run it again on each new snapshot (monthly or quarterly): every counted paragraph says what moved since the last run, so the report tracks progress over time.",
+        summary: "A health check with the same sections every time. Make it once, then run it again on each new snapshot (monthly or quarterly): every counted paragraph says what moved since the last run, and the figures show where the work went and how healthy the code it went into is.",
         when: "Use it for a regular review with the team or management, to see whether the codebase is getting easier or harder to work in.",
         title: ws => `Check-in: ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("The period this covers, and what changed in the team or the plans since the last check-in.")
             w.section("Shape", true, () => { w.explain(ABOUT.size).reading("size"); w.explain(ABOUT.structure).reading("structure") })
-            w.section("Change", needs.git(f), () => { churn(w, "90"); hotspots(w, "components", 8) })
-            w.section("Health", needs.health(f), () => { health(w, null); age(w) })
+            w.section("Change", needs.git(f), () => {
+                churn(w, "90")
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved in the last 90 days", VIEWS.workMoved("90"))
+                hotspots(w, "components", 8)
+            })
+            w.section("Health", needs.health(f), () => {
+                health(w, null)
+                age(w)
+                if (f.commits) { w.explainSlot(READ.effort); slotOf(w, "figure", "Where each month's changed lines went", VIEWS.effort) }
+            })
             w.section("Rules", needs.rules(f), () => w.explain(ABOUT.rules).reading("rules"))
             w.section("Tests", needs.tests(f), () => tests(w))
             w.section("Since last time", true, () => { w.explain(ABOUT.trends); slotOf(w, "figure", "Trends", VIEWS.trends); w.explainSlot(READ.changes); slotOf(w, "table", "What changed since the last snapshot", VIEWS.changes); w.prompt("What moved, and whether it moved the way you meant it to. If not, what you will do differently.") })
@@ -321,18 +508,31 @@ const QSQL = {
     recentFiles: `SELECT name, git__commits__last_30_days AS commits, coalesce(git__additions__last_30_days, 0) + coalesce(git__deletions__last_30_days, 0) AS "changed lines", git__authors__last_30_days AS authors FROM files WHERE git__commits__last_30_days > 0 ORDER BY 3 DESC, name`,
     newFiles: (f: SnapshotFacts) => `SELECT name, complexity__lines AS lines, component FROM files WHERE git__age_in_days <= 30 AND ${prodFile(f)} ORDER BY lines DESC, name`,
     recentHotspots: (f: SnapshotFacts) => `SELECT name, round(codesmells__hotspot_score, 1) AS "hotspot score"${f.fileColumns.has("codesmells__code_health") ? `, round(codesmells__code_health, 1) AS "code health"` : ""}, git__commits__last_30_days AS "commits, last 30 days" FROM files WHERE git__commits__last_30_days > 0 AND codesmells__hotspot_score > 0 ORDER BY codesmells__hotspot_score DESC, name`,
+    largestFiles: (f: SnapshotFacts) => `SELECT name, complexity__lines AS lines${f.fileColumns.has("codesmells__code_health") ? `, round(codesmells__code_health, 1) AS health` : ""}${f.fileColumns.has("git__commits__last_180_days") ? `, git__commits__last_180_days AS "commits, 180 d"` : ""} FROM files WHERE ${prodFile(f)} ORDER BY lines DESC, name`,
+    // Depended on by many, while depending on much itself: a change from below ripples up through it.
+    unstableCore: (f: SnapshotFacts) => `SELECT name, modularity__coupling__dependents AS dependents, modularity__coupling__dependencies AS dependencies, round(modularity__instability, 2) AS instability${opt(f, "git__commits__last_180_days", `git__commits__last_180_days AS "commits, 180 d"`)} FROM components WHERE ${prod(f, "name")} AND modularity__coupling__dependents >= 5 AND modularity__instability >= 0.5 ORDER BY modularity__coupling__dependents * modularity__instability DESC, name`,
+    untestedShared: (f: SnapshotFacts) => `SELECT name, modularity__coupling__dependents AS dependents, complexity__lines AS lines${opt(f, "git__commits__last_180_days", `git__commits__last_180_days AS "commits, 180 d"`)} FROM components WHERE ${prod(f, "name")} AND name NOT IN ${REACHED} AND modularity__coupling__dependents >= 5 ORDER BY dependents DESC, name`,
+    // One person behind most of a component's commits, among components with enough history to say.
+    busFactor: (f: SnapshotFacts) => `WITH c AS (SELECT component, author_name AS a, count(DISTINCT commit_hash) AS n, max(commit_time) AS last FROM git_commits WHERE coalesce(component, '') <> '' AND ${NOT_BOT_SQL} GROUP BY 1, 2), t AS (SELECT component, sum(n) AS total, max(n) AS top, count(*) AS people, max(last) AS last FROM c GROUP BY 1) SELECT component, total AS commits, people AS "people who committed", CAST(round(100.0 * top / total) AS INTEGER) AS "% by the top committer", substr(last, 1, 10) AS "last commit" FROM t WHERE total >= 10 AND ${prod(f, "component")} ORDER BY 1.0 * top / total DESC, total DESC`,
 }
 
 const QABOUT = {
     execTerms: "In short: *production code* is the code that ships to users, and a *component* is a folder or package of it. A *tangle* is a set of components that all depend on one another, so none of them can change on its own. *Churn* is the number of lines added and deleted, which shows where the team's effort went.",
     impact: "A change to a component can break the code that uses it. Components that import it directly notice first; components that import *those* can be affected in turn.\n\nThe first table counts the components that depend on it by how many steps away they are: 1 step means they import it directly, 2 steps means they import something that imports it, and so on. The second table lists them, with the shortest chain of imports that links each one to it.",
     coChange: "Git also shows which components tend to change in the same commits. When two components keep changing together, a change to one has usually needed a change to the other, whether or not an import joins them. A pair with no import between them is tied by something the code structure does not show.",
-    hidden: "Two components are *coupled* when a change to one needs a change to the other. Imports make most coupling visible, but not all of it. A shared database table, a configuration key, a message format, copied code, or a front end calling a back end all tie components together without an import.\n\nThis table finds such pairs in the git history: they changed together in at least 10 commits, yet neither imports the other. The last column says how tightly. Of the commits that changed the less active of the two, it is the share that also changed the other.",
-    loadBearing: "A *load-bearing* component is one that many other components depend on: shared models, utilities, base classes, API clients. A change to it can affect every component that imports it.\n\nThis table lists them, most depended on first, with what makes a change to them safer or riskier: how easy the code is to work in, how much it is still changing, and whether any test reaches it.",
+    hidden: "Two components are *coupled* when a change to one needs a change to the other. Imports make most coupling visible, but not all of it. A shared database table, a configuration key, a message format, copied code, or a front end calling a back end all tie components together without an import.\n\nThis finds such pairs in the git history: they changed together in at least 10 commits, yet neither imports the other. The last column says how tightly. Of the commits that changed the less active of the two, it is the share that also changed the other.",
+    loadBearing: "A *load-bearing* component is one that many other components depend on: shared models, utilities, base classes, API clients. A change to it can affect every component that imports it.\n\nThis lists them, most depended on first, with what makes a change to them safer or riskier: how easy the code is to work in, how much it is still changing, and whether any test reaches it.",
     testGaps: "Tests are the safety net for change. This table lists the production components that no test reaches: no test file imports them, and none sits inside them.\n\nThey are ranked by how often they changed in the last 180 days, because code that keeps changing without tests is where regressions slip through. Some code is tested another way, through end-to-end or manual tests, which this does not see.",
     cleanup: "Code nobody uses still costs something: people read it, keep it compiling, update it when libraries change, and hesitate to delete it. These tables list candidates: components that no other component imports, least recently changed first, and large files nobody has changed in two years.\n\n**Check before deleting anything.** Entry points (main programs, controllers, command handlers, scheduled jobs) and code a framework loads by name (Spring beans, Django apps, plugins, templates) are used without being imported.",
-    twoWay: "When two components import each other, neither can be understood, tested or reused without the other. It is the smallest possible tangle, and the cheapest to break.\n\nThe table lists every such pair with how many times each imports the other, the pairs where one direction has only a few imports first. Those few imports are usually the ones to move or turn around, for example by moving the shared piece into one of the two components, or into a new one both can use.",
+    twoWay: "When two components import each other, neither can be understood, tested or reused without the other. It is the smallest possible tangle, and the cheapest to break.\n\nThe pairs where one direction has only a few imports are usually the ones to fix first: move those few imports, or turn them around, for example by moving the shared piece into one of the two components, or into a new one both can use.",
     recent: "This report looks only at the last 30 days of commits, counted back from the newest commit in the scan. It shows where the team's work went in that time: which files changed most, which hotspots were touched, and which files are new.",
+    tangles: "A *tangle* is a group of components that all reach each other through imports, so none of them can be built, tested or released on its own. The tables list the tangles, largest first, and the smallest cycles inside them; the drawing shows the largest tangle in levels with the imports that run against them.\n\nA tangle is undone by cutting a few of those imports: moving a class, inverting a dependency behind an interface, or merging two components that are really one.",
+    unstableCore: "*Instability* runs from 0 (others depend on it, it depends on nothing) to 1 (it depends on others, nothing depends on it). Code that many others depend on should be stable. The table lists components that are depended on by at least five others and yet depend on much themselves: a change underneath them ripples up through them to everything above.",
+    untestedShared: "A bug in shared code reaches every component that uses it. These components have no test of their own and at least five other components depend on them: the gaps where a test pays off most.",
+    busFactor: "The table lists the components with at least ten commits, the ones where a single person made the largest share first. Where one person made nearly every commit, the team depends on them to change that code safely.",
+    interest: "Effort that goes into hard-to-change code is where technical debt charges its interest: every change there takes longer and breaks more often. The table lists the files that changed most in the last 180 days among those with low code health.",
+    unresolved: "Some imports point at code the scan could not find: generated code, files outside the repository, or packages the build fetches. They are blind spots: dependencies that exist but that no figure in this report shows.",
+    ships: "A *deployable* is something that ships on its own: a service, an app, a function, a library that is published. The table lists the ones the scan found, what builds each one, and how much of the code it holds.",
 }
 
 // ── Quick wins ────────────────────────────────────────────────────────────
@@ -344,7 +544,7 @@ const QUICK: ReportTemplate[] = [
         icon: "network",
         name: "Change impact",
         audience: "Before changing one component",
-        summary: "Answers “what could break if I change this?” for one component: every component that depends on it, directly or through others; the components that have historically changed together with it; and the tests that reach it. Choose the component below.",
+        summary: "Answers “what could break if I change this?” for one component: every component that depends on it, directly or through others; the components that have historically changed together with it; who has worked on it; and the tests that reach it. Choose the component below.",
         when: "Use it before a risky change, a refactor or an upgrade of one component, to know who to warn and what to test.",
         params: [{ id: "component", label: "Component", kind: "component" }],
         title: (ws, p) => `Changing ${p.component || "a component"}: what it affects`,
@@ -365,6 +565,10 @@ const QUICK: ReportTemplate[] = [
                 w.explain(QABOUT.coChange)
                 w.sql(`Components that change in the same commits as ${c}`, QSQL.changesWith(f, c), 10)
             })
+            w.section("Who has worked on it", needs.all(needs.component(c), needs.git(f)), () => {
+                w.explainSlot(READ.authorsBars)
+                w.exhibit("authors", { of: c }, `Who has worked on ${c}`)
+            })
             w.section("Tests that reach it", needs.all(needs.component(c), needs.tests(f), needs.testFiles(f)), () => w.sql(`Test files that reach ${c}`, QSQL.testsOf(c), 30))
             w.section("Before you change it", true, () => w.prompt("Who to tell (the owners of the components above), which tests to run or write first, and what you will check once the change is in."))
         },
@@ -384,9 +588,15 @@ const QUICK: ReportTemplate[] = [
                 w.explain(QABOUT.hidden)
                 w.sql("Changed together, no import between them", QSQL.hidden(f), 20)
                 slotOf(w, "table", "Hidden coupling", VIEWS.hidden)
+                w.prompt("For the top pairs, what ties them together? Look at a few of the commits that changed both and name the link: a table, an API, a shared rule, copied code.")
+            })
+            w.section("Between folders", needs.coChange(f), () => {
+                w.explainSlot(READ.cochangeGraph)
+                slotOf(w, "figure", "Folders that change together", VIEWS.cochangeGraph)
+            })
+            w.section("How far a typical change reaches", needs.coChange(f), () => {
                 w.explainSlot(SHOWS.breadth)
                 slotOf(w, "figure", "How far a change reaches", VIEWS.breadth)
-                w.prompt("For the top pairs, what ties them together? Look at a few of the commits that changed both and name the link: a table, an API, a shared rule, copied code.")
             })
             w.section("What to do about each", true, () => w.prompt("Per pair, one of three: make the link visible (a shared module, an explicit interface, a contract test), remove it (merge the copied logic), or accept it and write it down where the next person will find it."))
         },
@@ -396,7 +606,7 @@ const QUICK: ReportTemplate[] = [
         icon: "layers",
         name: "Load-bearing components",
         audience: "Protecting shared code",
-        summary: "Lists the components the most other components depend on, beside what makes changing them safe or risky: how easy their code is to work in, how much they still change, and whether any test reaches them.",
+        summary: "Lists the components the most other components depend on, beside what makes changing them safe or risky: how easy their code is to work in, how much they still change, whether any test reaches them, and which of them depend on much themselves.",
         when: "Use it to decide where tests, code review and stability matter most, or before letting more teams build on shared code.",
         title: ws => `Load-bearing components: ${ws}`,
         build(w) {
@@ -404,7 +614,14 @@ const QUICK: ReportTemplate[] = [
             w.prompt("Why this list matters now: a new team building on the shared code, an upgrade, or incidents that started in shared code.")
             w.section("The most depended-on components", needs.column(f, "modularity__coupling__dependents", "the scan did not count dependents per component"), () => {
                 w.explain(QABOUT.loadBearing)
+                w.explainSlot(READ.dependents)
+                w.exhibit("ranking", { measure: "most dependents" }, "The most depended-on components")
                 w.sql("Components by how many others depend on them", QSQL.loadBearing(f), 15)
+                if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, "The types used from the most places")
+            })
+            w.section("Load-bearing and still moving", f.componentColumns.has("modularity__instability") ? true : "the scan did not measure instability", () => {
+                w.explain(QABOUT.unstableCore)
+                w.sql("Depended on, yet depending on much", QSQL.unstableCore(f), 15)
                 mainSequence(w)
             })
             w.section("What to protect", true, () => w.prompt("For the top few: which need more tests, a named owner, stricter review, or a smaller and more stable interface, and why."))
@@ -415,16 +632,25 @@ const QUICK: ReportTemplate[] = [
         icon: "flask",
         name: "Where tests are missing",
         audience: "Test planning",
-        summary: "Lists the production components no test reaches, the ones that change most first, with their size, how many other components depend on them and how easy their code is to work in.",
+        summary: "Lists the production components no test reaches, the ones that change most first, with their size, how many other components depend on them and how easy their code is to work in, beside how much test code each component has.",
         when: "Use it to decide where to write tests next, or before a refactor in an area you are not sure is tested.",
         title: ws => `Test gaps: ${ws}`,
         build(w) {
             const f = w.facts
             w.prompt("What prompted this: an incident, a planned refactor, or a push to raise the test safety net.")
-            w.section("Tests in the codebase", needs.tests(f), () => tests(w))
+            w.section("Tests in the codebase", needs.tests(f), () => {
+                tests(w)
+                w.explainSlot(READ.foldersRole)
+                w.exhibit("folders", { by: "role" }, "Where the tests sit")
+                w.exhibit("recipe", { recipe: "test-files-per-component" }, "Test files per component")
+            })
             w.section("Components no test reaches", needs.all(needs.tests(f), needs.testFiles(f)), () => {
                 w.explain(QABOUT.testGaps)
                 w.sql("Production components no test reaches", QSQL.untested(f), 20)
+            })
+            w.section("Shared code no test reaches", needs.all(needs.tests(f), needs.testFiles(f), needs.column(f, "modularity__coupling__dependents", "the scan did not count dependents per component")), () => {
+                w.explain(QABOUT.untestedShared)
+                w.sql("Untested components that five or more others depend on", QSQL.untestedShared(f), 15)
             })
             w.section("Where to start", true, () => w.prompt("The three to five components to test first, and why: they change often, many others depend on them, or a bug there would be costly."))
         },
@@ -434,7 +660,7 @@ const QUICK: ReportTemplate[] = [
         icon: "trash",
         name: "Cleanup candidates",
         audience: "Removing unused code",
-        summary: "Lists code that may no longer be needed: components no other component imports, least recently changed first, and large files nobody has changed in two years. Each is a candidate to check, not a verdict.",
+        summary: "Lists code that may no longer be needed: components no other component imports, least recently changed first, what the entry points actually reach, and large files nobody has changed in two years. Each is a candidate to check, not a verdict.",
         when: "Use it when the codebase feels bigger than it needs to be, before a migration (less code to move), or when onboarding keeps stumbling over code nobody uses.",
         title: ws => `Cleanup candidates: ${ws}`,
         build(w) {
@@ -450,6 +676,10 @@ const QUICK: ReportTemplate[] = [
                 w.explainSlot(READ.ageTreemap)
                 slotOf(w, "figure", "Code age", VIEWS.treemap("age", "components", "Code age, components"))
             })
+            w.section("Where nothing moves", needs.git(f), () => {
+                w.explainSlot(READ.foldersChurn)
+                w.exhibit("folders", { by: "churn" }, "Where the commits land, and where they do not")
+            })
             w.section("What goes", true, () => w.prompt("For each candidate you checked: remove it, keep it (and say what uses it, so the next person does not ask again), or ask its owner."))
         },
     },
@@ -458,7 +688,7 @@ const QUICK: ReportTemplate[] = [
         icon: "refresh",
         name: "Circular dependencies to break first",
         audience: "Untangling the code",
-        summary: "Lists every pair of components that import each other, the smallest and cheapest kind of circular dependency, with how many imports run each way. The pairs where one direction has only a few imports come first: they are usually the quickest to fix.",
+        summary: "Lists every pair of components that import each other, the smallest and cheapest kind of circular dependency, with how many imports run each way, then the largest tangle in levels with the cuts that undo it.",
         when: "Use it when you want to start untangling the code with small, safe steps, or to stop new circular dependencies from creeping in.",
         title: ws => `Circular dependencies: ${ws}`,
         build(w) {
@@ -468,7 +698,11 @@ const QUICK: ReportTemplate[] = [
             w.section("Components that import each other", needs.tangles(f), () => {
                 w.explain(QABOUT.twoWay)
                 w.sql("Pairs of components that import each other", QSQL.twoWay(f), 20)
-                slotOf(w, "figure", "The largest tangle", VIEWS.cycles)
+            })
+            w.section("The largest tangle", needs.tangles(f), () => {
+                w.explainSlot(READ.tangle)
+                w.exhibit("tangle", {}, "The largest tangle, with the cuts that undo it")
+                w.exhibit("cycles", {}, "The smallest cycles, as paths")
                 w.explainSlot(READ.matrix)
                 slotOf(w, "table", "Dependency matrix, in levels", VIEWS.matrix(f))
             })
@@ -480,7 +714,7 @@ const QUICK: ReportTemplate[] = [
         icon: "history",
         name: "The last 30 days",
         audience: "A sprint or monthly review",
-        summary: "What happened in the code in the last 30 days: how much changed and where, which files changed most, which hotspots the team touched and which files are new.",
+        summary: "What happened in the code in the last 30 days: how much changed and where, how the work moved against the two years before, which files changed most, which hotspots the team touched and which files are new.",
         when: "Use it for a sprint review, a monthly update, or to see where the team's time actually went.",
         title: ws => `${ws}: the last 30 days`,
         build(w) {
@@ -489,6 +723,8 @@ const QUICK: ReportTemplate[] = [
             w.section("Where the change went", needs.recent(f), () => {
                 w.explain(QABOUT.recent)
                 churn(w, "30")
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", "Where the work moved in the last 30 days", VIEWS.workMoved("30"))
                 w.sql("Files changed most in the last 30 days", QSQL.recentFiles, 15)
                 w.explainSlot(READ.calendar)
                 slotOf(w, "figure", "Commits by day", VIEWS.calendar)

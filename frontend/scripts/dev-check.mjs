@@ -6,8 +6,8 @@ import { execSync } from "node:child_process";
 import { resolve, relative } from "node:path";
 import { existsSync } from "node:fs";
 
-const NUXT = "http://localhost:3000";
-const WAILS = "http://localhost:34115";
+const NUXT = process.env.NUXT_URL ?? "http://localhost:3000";
+const WAILS = process.env.WAILS_URL ?? "http://localhost:34115";
 const frontendDir = resolve(new URL("..", import.meta.url).pathname);
 
 async function up(url) {

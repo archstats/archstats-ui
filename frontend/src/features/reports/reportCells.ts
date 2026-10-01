@@ -375,9 +375,14 @@ export function cellTitle(cell: Cell): string {
  * tables and figures, with numbering, captions and provenance.
  */
 export function exportMarkdown(title: string, meta: string[], all: Block[], opts: { workspace: string; label: (id: string) => string; figureFile: (cellId: string) => string | null }): string {
+    return [`# ${title}`, "", ...meta.map(m => `_${m}_  `), "", readableMarkdown(all, opts)].join("\n").replace(/\n{3,}/g, "\n\n")
+}
+
+/** Blocks as a reader's Markdown: cells as their findings, tables and figures, not as specs. */
+export function readableMarkdown(all: Block[], opts: { workspace: string; label: (id: string) => string; figureFile: (cellId: string) => string | null }): string {
     const { blocks, left } = printedBlocks(all)
     const numbers = cellNumbers(blocks)
-    const out: string[] = [`# ${title}`, "", ...meta.map(m => `_${m}_  `), ""]
+    const out: string[] = []
     let n = 0
     blocks.forEach((b, i) => {
         const prev = blocks[i - 1]
@@ -394,7 +399,7 @@ export function exportMarkdown(title: string, meta: string[], all: Block[], opts
         const fig = opts.figureFile(b.id)
         if (fig) out.push(`![${cellTitle(c) || head}](${fig})`, "")
         const t = displayTable(c, opts.label)
-        if (t && !t.rows.length && c.output?.table) out.push(EMPTY_TABLE, "")
+        if (t && !t.rows.length && c.output?.table) out.push(c.output.table.note || EMPTY_TABLE, "")
         else if (t) {
             out.push(`| ${t.columns.join(" | ")} |`, `|${t.align.map(a => (a === "r" ? " ---: " : " --- ")).join("|")}|`)
             for (const r of t.rows) out.push(`| ${r.map(x => x.replace(/\|/g, "\\|")).join(" | ")} |`)
@@ -450,7 +455,7 @@ export function pdfBlocks(all: Block[], opts: { workspace: string; label: (id: s
             const img = opts.figure(b.id)
             const shown = displayTable(c, opts.label)
             // A query that matched nothing prints its title and a sentence, not an empty grid of headers.
-            if (shown && !shown.rows.length && c.output?.table) { out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: ` ${EMPTY_TABLE}` }] }); continue }
+            if (shown && !shown.rows.length && c.output?.table) { out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: ` ${c.output.table.note || EMPTY_TABLE}` }] }); continue }
             const t = shown
             if (img) out.push({ kind: "image", image: img, title, caption: t ? "" : caption, provenance: t ? "" : provenance })
             if (t) out.push({ kind: "table", table: t, title: img ? "" : title, caption, provenance })

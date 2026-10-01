@@ -67,25 +67,23 @@
       </section>
 
       <section v-if="months.length > 1">
-        <ExhibitFrame :exhibit="figure" :title="`Share into health below ${effort.threshold.value}, by month`">
+        <ExhibitFrame :exhibit="figure" :title="`Where each month's changed lines went`">
           <div ref="barsHost" class="w-full">
-            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="`Monthly share of changed lines into files with health below ${effort.threshold.value}`">
-              <line x1="0" :x2="barsWidth" y1="100" y2="100" stroke="currentColor" class="text-neutral-200"/>
-              <g v-for="g in [0.25, 0.5]" :key="g">
-                <line x1="28" :x2="barsWidth" :y1="100 - g * 96" :y2="100 - g * 96" stroke="currentColor" stroke-dasharray="2 3" class="text-neutral-200"/>
-                <text x="0" :y="103 - g * 96" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
+            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} ${H}`" :width="barsWidth" :height="H" class="block max-w-full" role="img" aria-label="Each month's changed lines, split by the health of the files they went into, with the share into tangle members and the volume">
+              <!-- The split: every column is the whole of its month. -->
+              <g v-for="g in [0, 0.5, 1]" :key="g">
+                <line :x1="AXIS" :x2="barsWidth" :y1="SPLIT_Y + SPLIT_H * (1 - g)" :y2="SPLIT_Y + SPLIT_H * (1 - g)" stroke="currentColor" :stroke-dasharray="g === 0 ? '' : '2 3'" class="text-neutral-200"/>
+                <text x="0" :y="SPLIT_Y + SPLIT_H * (1 - g) + 3" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
               </g>
               <g v-for="(m, i) in months" :key="m.month">
-                <rect
-                  :x="i * step + 1"
-                  :y="100 - m.share * 96"
-                  :width="Math.max(1, step - 2)"
-                  :height="m.share * 96"
-                  :fill="m.lines ? 'rgb(var(--c-accent-500))' : 'none'"
-                  :opacity="m.lines ? 0.75 : 0"
-                ><title>{{ m.month }}: {{ m.lines ? `${Math.round(m.share * 100)}% of ${formatNumber(m.lines)} lines` : "no changes" }}</title></rect>
+                <title>{{ monthTitle(m) }}</title>
+                <rect v-for="p in parts(m)" :key="p.key" :x="AXIS + i * step + 1" :y="p.y" :width="Math.max(1, step - 2)" :height="p.h" :fill="p.color"/>
               </g>
-              <text v-for="t in monthTicks" :key="t.i" :x="t.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ t.label }}</text>
+              <polyline v-if="tangleLine" :points="tangleLine" fill="none" stroke="rgb(var(--c-accent-700))" stroke-width="1.75" stroke-linejoin="round"/>
+              <!-- The volume under it: how much there was to split. -->
+              <text x="0" :y="VOL_Y + 9" font-size="10" class="fill-neutral-400 font-mono">lines</text>
+              <rect v-for="(m, i) in months" :key="`v${m.month}`" :x="AXIS + i * step + 1" :y="VOL_Y + VOL_H - volH(m)" :width="Math.max(1, step - 2)" :height="volH(m)" fill="rgb(var(--c-neutral-400))"/>
+              <text v-for="t in monthTicks" :key="t.i" :x="AXIS + t.i * step" :y="H - 2" font-size="10" class="fill-neutral-500 font-mono">{{ t.label }}</text>
             </svg>
           </div>
         </ExhibitFrame>
@@ -102,8 +100,8 @@ import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useEffort } from "~/features/git/useEffort";
-import { useSvgFigure, useTable } from "~/features/export/useExportables";
-import { monthlyLowShare, pctText, share } from "~/features/git/effort";
+import { REPORT_FIGURE_WIDTH, useSvgFigure, useTable } from "~/features/export/useExportables";
+import { monthlyBreakdown, pctText, share, type MonthBreakdown } from "~/features/git/effort";
 import { formatNumber } from "~/shared/format";
 import { HISTORY_PERIODS, anchorLabel, historyAnchor } from "~/features/git/history";
 import { scopeWhere } from "~/features/groups/scopeSql";
@@ -137,8 +135,38 @@ const windows = computed(() => HISTORY_PERIODS.map(p => ({ id: p.id, label: p.ti
 const months = computed(() => {
   const d = effort.days.value;
   const r = effort.rangeOf(d === null ? null : Math.max(d, 365));
-  return monthlyLowShare(effort.rows.value, r.from, r.to);
+  return monthlyBreakdown(effort.rows.value, r.from, r.to);
 });
+// The split on top, the volume under it, the months along the bottom.
+const AXIS = 30, SPLIT_Y = 10, SPLIT_H = 120, VOL_Y = 138, VOL_H = 34, H = 190;
+const PARTS = computed(() => [
+  { key: "low", label: `Health below ${effort.threshold.value}`, color: "rgb(var(--c-red-500))" },
+  { key: "rated", label: `Health ${effort.threshold.value} or more`, color: "rgb(var(--c-neutral-300))" },
+  { key: "noHealth", label: "No health reading", color: "rgb(var(--c-neutral-200))" },
+  { key: "gone", label: "Files no longer in the snapshot", color: "rgb(var(--c-amber-300))" },
+] as const);
+function parts(m: MonthBreakdown) {
+  if (!m.lines) return [];
+  let y = SPLIT_Y;
+  return PARTS.value.map(p => {
+    const h = (m[p.key] / m.lines) * SPLIT_H;
+    const out = { key: p.key, color: p.color, y, h };
+    y += h;
+    return out;
+  }).filter(p => p.h > 0);
+}
+const maxLines = computed(() => {
+  // A sweeping month (an import, a reformat) would flatten the rest: the scale tops out at three times the median busy month.
+  const v = months.value.map(m => m.lines).filter(Boolean).sort((a, b) => a - b);
+  return Math.max(1, Math.min(v[v.length - 1] ?? 1, (v[Math.floor(v.length / 2)] ?? 1) * 3));
+});
+const volH = (m: MonthBreakdown) => (m.lines ? Math.max(1, Math.min(1, m.lines / maxLines.value) * VOL_H) : 0);
+const tangleLine = computed(() => months.value
+  .map((m, i) => (m.lines ? `${AXIS + i * step.value + step.value / 2},${SPLIT_Y + SPLIT_H * (1 - m.tangle / m.lines)}` : null))
+  .filter(Boolean).join(" "));
+const monthTitle = (m: MonthBreakdown) => (m.lines
+  ? `${m.month}: ${formatNumber(m.lines)} changed lines; ${pctText(share(m.low, m.lines))} into health below ${effort.threshold.value}, ${pctText(share(m.tangle, m.lines))} into tangle members`
+  : `${m.month}: no changes`);
 const barsHost = ref<HTMLElement | null>(null);
 const barsSvg = ref<SVGSVGElement | null>(null);
 const hostWidth = ref(900);
@@ -150,18 +178,25 @@ watch(barsHost, (el, old) => {
   if (el) ro.observe(el);
 }, { flush: "post" });
 onBeforeUnmount(() => ro?.disconnect());
-const barsWidth = computed(() => hostWidth.value);
-const step = computed(() => barsWidth.value / Math.max(1, months.value.length));
+// Drawn for export at a report page's width; otherwise the width it is given.
+const exportWidth = ref<number | null>(null);
+const barsWidth = computed(() => exportWidth.value ?? hostWidth.value);
+const step = computed(() => (barsWidth.value - AXIS) / Math.max(1, months.value.length));
 const monthTicks = computed(() => {
   const every = Math.max(1, Math.ceil(months.value.length / Math.floor(barsWidth.value / 70)));
   return months.value.map((m, i) => ({ i, label: `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.month.slice(5)) - 1]} ’${m.month.slice(2, 4)}` })).filter(t => t.i % every === 0);
 });
 const figure = useSvgFigure({
-  title: () => `Share of changed lines into health below ${effort.threshold.value}, by month`,
+  title: () => "Where each month's changed lines went",
   svg: () => barsSvg.value,
+  exportWidth: REPORT_FIGURE_WIDTH,
+  relayout: width => { exportWidth.value = width; },
   legend: () => ({
-    items: [{ label: `Lines changed in files with health below ${effort.threshold.value}`, color: "rgb(var(--c-accent-500))" }],
-    notes: ["One bar per month: the share of that month's changed lines."],
+    items: [
+      ...PARTS.value.map(p => ({ label: p.label, color: p.color })),
+      { label: "Share into tangle members", color: "rgb(var(--c-accent-700))", mark: "line" as const },
+    ],
+    notes: [`Each column is one month's changed lines, split by the health of the files they went into; the line is the share into components in a tangle. The grey bars under it are how many lines changed that month, cut at three times a typical month.`],
   }),
 });
 
@@ -182,6 +217,8 @@ const windowTable = useTable({
     { id: "gone", label: "Share into files not in the snapshot" },
     { id: "no_health", label: "Share into files with no health reading" },
   ],
-  disabledReason: () => (!effort.rows.value.length ? "No changes recorded." : null),
+  // Nothing is said while the commits still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!effort.loading.value && !effort.rows.value.length ? "No changes recorded." : null),
+  ready: () => !effort.loading.value,
 });
 </script>

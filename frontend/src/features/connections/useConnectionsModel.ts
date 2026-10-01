@@ -1,6 +1,6 @@
 import { computed, type Ref } from "vue";
 import { useDataStore } from "~/features/snapshot/data.store";
-import { useGroupsStore, type Coverage, type SavedGroup } from "~/features/groups/groups.store";
+import { GROUP_COLOR_PALETTE, useGroupsStore, type Coverage, type SavedGroup } from "~/features/groups/groups.store";
 
 /** A saved group resolved to component grain for the tree and the hulls. */
 export interface RollupGroup {
@@ -18,6 +18,7 @@ import { useLensStore } from "~/features/groups/lens.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { componentLabel } from "~/features/navigation/routes";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
+import { FOLDER_ID, FOLDERS, folderGroups } from "./folders";
 import { queryFileImportEdges } from "./fileImports";
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
 import { fileCoChangePairs, sweepingLimit } from "~/features/snapshot/fileCoChange";
@@ -104,7 +105,8 @@ export function useConnectionsModel(opts: {
   const error = computed(() => componentData.error.value ?? fileData.error.value);
 
   // ── Dimensions ──────────────────────────────────────────────────────────
-  const dimensions = computed(() => groups.dimensions);
+  // The lenses, and the code's own folders, which need no lens to be built.
+  const dimensions = computed(() => [...groups.dimensions.filter(d => d !== FOLDERS), FOLDERS]);
   const rollupDimension = computed(() => (opts.by.value && dimensions.value.includes(opts.by.value) ? opts.by.value : null));
   const lens = useLensStore();
   const colorDimension = computed(() => {
@@ -119,8 +121,19 @@ export function useConnectionsModel(opts: {
     const cov = groups.componentsOf(g);
     return { id: g.id, name: g.name, color: g.color, dimension: g.dimension, members: Array.from(cov.keys()), coverage: cov, files: groups.filesOf(g) };
   };
-  const rollupGroups = computed<RollupGroup[]>(() => (rollupDimension.value ? groups.groups.filter(g => g.dimension === rollupDimension.value).map(toRollup) : []));
-  const colorGroups = computed<RollupGroup[]>(() => (colorDimension.value ? groups.groups.filter(g => g.dimension === colorDimension.value).map(toRollup) : []));
+  const folderRollups = computed<RollupGroup[]>(() => folderGroups(componentData.data.value.components.map(c => c.name).sort()).map((g, i) => {
+    const files = new Set<string>();
+    const coverage = new Map<string, Coverage>();
+    for (const m of g.members) {
+      const own = (store.componentFilesIndex.get(m) ?? []) as string[];
+      for (const f of own) files.add(f);
+      coverage.set(m, { files: own.length, total: own.length, full: true });
+    }
+    return { id: FOLDER_ID + g.key, name: g.name, color: GROUP_COLOR_PALETTE[i % GROUP_COLOR_PALETTE.length], dimension: FOLDERS, members: g.members, coverage, files };
+  }));
+  const groupsOfDimension = (d: string | null): RollupGroup[] => (!d ? [] : d === FOLDERS ? folderRollups.value : groups.groups.filter(g => g.dimension === d).map(toRollup));
+  const rollupGroups = computed<RollupGroup[]>(() => groupsOfDimension(rollupDimension.value));
+  const colorGroups = computed<RollupGroup[]>(() => groupsOfDimension(colorDimension.value));
   const bestGroupOf = (list: RollupGroup[]) => {
     const m = new Map<string, RollupGroup>();
     for (const g of list) for (const [c, cov] of g.coverage) {
@@ -313,7 +326,7 @@ export function useConnectionsModel(opts: {
     importPairs,
     undirectedKey,
     nodes, edges, directed, loading, error, hasGit, componentEdges, filesOfComponent,
-    dimensions, rollupDimension, colorDimension, rollupGroups, level, openIdsForLevel, componentIds, fileRows,
+    dimensions, rollupDimension, colorDimension, rollupGroups, folderRollups, groupsOfDimension, level, openIdsForLevel, componentIds, fileRows,
     cycleSets, cycleSetOf, cycleKeys, cycleNodes, badges, hulls, membershipsOf, coverageOf,
     reload: componentData.reload,
   };

@@ -100,6 +100,8 @@ export const stack = exhibit<StackData>()({
 
     figure: {
         load: () => import("~/features/checks/components/StackDiagram.vue"),
+        // Its labels stay legible at a report page's width.
+        exportWidth: 720,
         props: (d, _p, o) => {
             const h = o.highlight[0] ?? ""
             const selected = h.startsWith("floor:") ? { kind: "floor", id: h.slice(6) } : h.startsWith("flow:") ? { kind: "flow", id: h.slice(5) } : null

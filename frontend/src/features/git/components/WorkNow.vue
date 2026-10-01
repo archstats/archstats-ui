@@ -25,6 +25,28 @@
           <template v-if="w.quiet.length"> {{ w.quiet.length === 1 ? "One component" : `${formatNumber(w.quiet.length, 0)} components` }} that took 1% or more before went quiet.</template>
         </p>
 
+        <!-- The biggest moves, as a picture: where the work went to, and where it came from. -->
+        <section v-if="movers.length >= 3" class="flex flex-col gap-2">
+          <ExhibitFrame :exhibit="moversFigure" title="Where the work moved">
+            <template #aside>The {{ movers.length }} components whose share moved most</template>
+            <div ref="moversHost" class="w-full">
+              <svg ref="moversSvg" :viewBox="`0 0 ${mw} ${mh}`" :width="mw" :height="mh" class="block max-w-full" role="img" aria-label="Each component's share of the changed lines now against the two years before">
+                <g v-for="t in moverTicks" :key="t">
+                  <line :x1="mx(t)" :x2="mx(t)" y1="14" :y2="mh - 4" stroke="rgb(var(--c-neutral-200))" stroke-dasharray="2 3"/>
+                  <text :x="mx(t)" y="10" font-size="10" text-anchor="middle" fill="rgb(var(--c-neutral-500))" font-family="ui-monospace, monospace">{{ pct(t) }}</text>
+                </g>
+                <g v-for="(r, i) in movers" :key="r.component" :transform="`translate(0 ${24 + i * ROW})`">
+                  <text x="0" y="4" font-size="11" fill="rgb(var(--c-neutral-800))" font-family="ui-monospace, monospace">{{ clip(label(r.component), Math.floor(labelW / 7)) }}</text>
+                  <line :x1="mx(r.beforeShare)" :x2="mx(r.share)" y1="0" y2="0" :stroke="r.share >= r.beforeShare ? 'rgb(var(--c-blue-300))' : 'rgb(var(--c-neutral-300))'" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle :cx="mx(r.beforeShare)" cy="0" r="4.5" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-neutral-500))" stroke-width="1.5"/>
+                  <circle :cx="mx(r.share)" cy="0" r="4.5" fill="rgb(var(--c-blue-500))"/>
+                  <text :x="mw" y="4" font-size="10.5" text-anchor="end" fill="rgb(var(--c-neutral-600))" font-family="ui-monospace, monospace">{{ r.beforeLines ? pct(r.beforeShare) : "new" }} → {{ pct(r.share) }}</text>
+                </g>
+              </svg>
+            </div>
+          </ExhibitFrame>
+        </section>
+
         <section class="flex flex-col gap-2">
           <ExhibitFrame :exhibit="linesTable" title="Where the changed lines went">
             <template #controls>
@@ -94,11 +116,11 @@
 
 <script setup lang="ts">
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
-import { computed, ref, watch } from "vue"
-import { useRouter } from "vue-router"
+import { computed, onBeforeUnmount, ref, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import { scopeWhere } from "~/features/groups/scopeSql"
-import { useTable } from "~/features/export/useExportables"
+import { REPORT_FIGURE_WIDTH, useSvgFigure, useTable } from "~/features/export/useExportables"
 import { componentLabel, componentPath } from "~/features/navigation/routes"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
@@ -118,9 +140,18 @@ const state = useStateStore()
 const workspaces = useWorkspacesStore()
 const router = useRouter()
 
+// A report's slot can ask for a window in the address (?window=30); otherwise the one last chosen here.
+const route = useRoute()
 const windowId = computed<NowWindowId>({
-  get: () => { const v = state.get<string>("activity.now", "90"); return (NOW_WINDOWS.some(w => w.id === v) ? v : "90") as NowWindowId },
-  set: v => state.set("activity.now", v === "90" ? null : v),
+  get: () => {
+    const asked = typeof route.query.window === "string" ? route.query.window : null
+    const v = asked && NOW_WINDOWS.some(w => w.id === asked) ? asked : state.get<string>("activity.now", "90")
+    return (NOW_WINDOWS.some(w => w.id === v) ? v : "90") as NowWindowId
+  },
+  set: v => {
+    state.set("activity.now", v === "90" ? null : v)
+    if (route.query.window) { const query = { ...route.query }; delete query.window; void router.replace({ query }) }
+  },
 })
 const days = computed(() => NOW_WINDOWS.find(w => w.id === windowId.value)!.days)
 const windowWords = computed(() => (days.value === 365 ? "last year" : `last ${days.value} days`))
@@ -152,6 +183,46 @@ const allSelected = computed(() => visible.value.length > 0 && visible.value.eve
 function toggle(c: string) { const n = new Set(selected.value); n.has(c) ? n.delete(c) : n.add(c); selected.value = n }
 function toggleAll() { selected.value = allSelected.value ? new Set() : new Set(visible.value.map(r => r.component)) }
 
+// ── Where the work moved: the biggest shifts in share, both ways ─────────
+const ROW = 22, LABEL_W = 230, VALUE_W = 110
+const movers = computed(() => w.value.rows
+  .filter(r => Math.max(r.share, r.beforeShare) >= 0.005)
+  .sort((a, b) => Math.abs(b.share - b.beforeShare) - Math.abs(a.share - a.beforeShare))
+  .slice(0, 16)
+  .sort((a, b) => (b.share - b.beforeShare) - (a.share - a.beforeShare)))
+const moversHost = ref<HTMLElement | null>(null)
+const moversSvg = ref<SVGSVGElement | null>(null)
+const hostW = ref(900)
+// Drawn for export at a report page's width; otherwise the width it is given.
+const exportW = ref<number | null>(null)
+const mw = computed(() => exportW.value ?? hostW.value)
+let ro: ResizeObserver | null = null
+watch(moversHost, (el, old) => {
+  ro ??= new ResizeObserver(e => { hostW.value = Math.max(480, Math.floor(e[0].contentRect.width)) })
+  if (old) ro.unobserve(old)
+  if (el) ro.observe(el)
+}, { flush: "post" })
+onBeforeUnmount(() => ro?.disconnect())
+const mh = computed(() => 24 + movers.value.length * ROW)
+const moverMax = computed(() => Math.max(0.001, ...movers.value.map(r => Math.max(r.share, r.beforeShare))))
+const labelW = computed(() => Math.min(LABEL_W, Math.round(mw.value * 0.3)))
+const mx = (v: number) => labelW.value + (v / moverMax.value) * (mw.value - labelW.value - VALUE_W - 12)
+const moverTicks = computed(() => { const m = moverMax.value; const step = m > 0.2 ? 0.1 : m > 0.08 ? 0.02 : m > 0.03 ? 0.01 : 0.005; return Array.from({ length: Math.floor(m / step) + 1 }, (_, i) => i * step) })
+const clip = (s: string, n: number) => (s.length > n ? "…" + s.slice(-(n - 1)) : s)
+const moversFigure = useSvgFigure({
+  title: () => `Where the work moved (${windowWords.value} against the two years before)`,
+  svg: () => moversSvg.value,
+  exportWidth: REPORT_FIGURE_WIDTH,
+  relayout: width => { exportW.value = width },
+  legend: () => ({
+    items: [
+      { label: windowLabel.value, color: "rgb(var(--c-blue-500))", mark: "dot" },
+      { label: "The two years before", color: "rgb(var(--c-neutral-500))", mark: "ring" },
+    ],
+    notes: ["Each row is a component's share of all changed lines in each period. Rows are the biggest moves, gains first: work arriving at the top, leaving at the bottom."],
+  }),
+})
+
 const linesTable = useTable({
   get title() { return `Where the changed lines went (${windowWords.value})` },
   rows: () => w.value.rows.map(r => ({ component: r.component, changed_lines: r.lines, share_now: Number(r.share.toFixed(4)), share_before: Number(r.beforeShare.toFixed(4)), commits: r.commits, people: r.people })),
@@ -160,6 +231,8 @@ const linesTable = useTable({
     { id: "share_now", label: "Share now" }, { id: "share_before", label: "Share in the two years before" },
     { id: "commits", label: "Commits" }, { id: "people", label: "People" },
   ],
-  disabledReason: () => (!w.value.rows.length ? "Nothing changed in this window." : null),
+  // Nothing is said while the history still loads: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!loading.value && !w.value.rows.length ? "Nothing changed in this window." : null),
+  ready: () => !loading.value,
 })
 </script>
