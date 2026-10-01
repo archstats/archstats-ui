@@ -59,14 +59,19 @@ jobs:
       - name: Resolve version
         id: version
         run: |
+          # number is what packages carry: digits and dots only. NSIS's
+          # VIFileVersion rejects anything else (the Windows canary failed on
+          # "0.0.0.devabc1234") and rpm forbids '-', so a prerelease tag like
+          # v0.5.0-rc.1 packages as 0.5.0; the binary still reports the tag.
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF#refs/tags/}"
             number="${version#v}"
+            number="${number%%-*}"
           else
             version="dev-${GITHUB_SHA::7}"
-            # rpm forbids '-' in versions; keep dry-run package metadata valid.
-            number="0.0.0.dev${GITHUB_SHA::7}"
+            number="0.0.0"
           fi
+          [[ "$number" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version number: $number"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "number=$number" >> "$GITHUB_OUTPUT"
           echo "Building $version (${{ matrix.platform }})"

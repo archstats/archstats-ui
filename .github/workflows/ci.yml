@@ -56,6 +56,10 @@ jobs:
 
       - name: Go vet + test
         run: |
+          # main.go embeds all:frontend/dist, which needs one file to match
+          # before the frontend is built. The tracked .gitkeep has been swept
+          # out by a commit once already; never let that fail CI again.
+          mkdir -p frontend/dist && touch frontend/dist/.gitkeep
           go vet ./...
           go test ./...
 
