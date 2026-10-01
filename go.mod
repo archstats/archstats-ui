@@ -3,23 +3,25 @@ module github.com/archstats/archstats-ui
 go 1.25.4
 
 require (
-	github.com/archstats/archstats v0.7.1-0.20260928141203-af2e029dc848
+	github.com/archstats/archstats v0.8.0
 	github.com/go-pdf/fpdf v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.7.0
 	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/zalando/go-keyring v0.2.8
 )
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/UserNobody14/tree-sitter-dart v0.0.0-20251003151139-c8e7cbbd1589 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/fwcd/tree-sitter-kotlin v0.0.0-20260801230305-1852ea17b7f6 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
