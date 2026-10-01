@@ -209,3 +209,13 @@ describe("profiles split out what their rules did not match", () => {
         expect(spring.lanes.find(l => l.id === "services")!.label).toBe("Services")
     })
 })
+
+describe("lane colours", () => {
+    it("gives no two lanes of a profile the same colour", () => {
+        // React's Pages & Layouts and Components were both blue, and every grey role matched Unclassified.
+        for (const p of PROFILES) {
+            const colours = p.lanes.map(l => l.color)
+            expect(new Set(colours).size, p.id).toBe(colours.length)
+        }
+    })
+})

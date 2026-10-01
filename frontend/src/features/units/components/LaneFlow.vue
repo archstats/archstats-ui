@@ -79,10 +79,10 @@
            :viewBox="'0 0 ' + EXPORT_W + ' ' + (rows.length * PITCH)"
            aria-hidden="true" style="position: absolute; left: -10000px; top: 0; pointer-events: none">
         <g v-for="(lane, i) in rows" :key="'x' + lane.id" :transform="'translate(0,' + i * PITCH + ')'">
-          <circle cx="6" :cy="PITCH / 2" r="4" :fill="colourOf(lane.color)"/>
+          <circle cx="6" :cy="PITCH / 2" r="4" :fill="laneShade(lane.color)"/>
           <text x="18" :y="PITCH / 2 + 4" font-size="13" fill="rgb(var(--c-neutral-800))">{{ lane.label }}</text>
           <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W" height="7" rx="3.5" fill="rgb(var(--c-neutral-100))"/>
-          <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W * share(lane.count) / 100" height="7" rx="3.5" :fill="colourOf(lane.color)" fill-opacity="0.75"/>
+          <rect :x="LABEL_W" :y="PITCH / 2 - 3.5" :width="BAR_W * share(lane.count) / 100" height="7" rx="3.5" :fill="laneShade(lane.color)" fill-opacity="0.75"/>
           <text :x="LABEL_W + BAR_W + 44" :y="PITCH / 2 + 4" font-size="11" text-anchor="end" font-family="ui-monospace, monospace" fill="rgb(var(--c-neutral-500))">{{ lane.count }}</text>
         </g>
         <g :transform="'translate(' + (EXPORT_W - GUTTER) + ',0)'">
@@ -100,7 +100,7 @@
 <script setup lang="ts">
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { computed, ref } from "vue"
-import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
+import { laneDotClass, laneShade, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "~/features/units/graph"
 import { useSvgFigure } from "~/features/export/useExportables"
 
@@ -126,7 +126,6 @@ defineEmits<{
 const LABEL_W = 170
 const BAR_W = 200
 const EXPORT_W = LABEL_W + BAR_W + 56 + GUTTER
-const colourOf = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400))" : `rgb(var(--c-${c}-500))`)
 const exportSvg = ref<SVGSVGElement | null>(null)
 // A report slot asks for this when a boundary between two lanes has nothing crossing it.
 const figure = useSvgFigure({

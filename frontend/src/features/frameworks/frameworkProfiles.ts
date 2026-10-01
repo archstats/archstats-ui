@@ -4,7 +4,13 @@
 // is by imports first, because a project's package imports say what it is
 // built on far more reliably than any one annotation.
 
-export type LaneColor = "blue" | "green" | "amber" | "violet" | "red" | "neutral"
+type LaneHue = "blue" | "green" | "amber" | "violet" | "red" | "neutral"
+/**
+ * Each kind of role has a hue. A profile with two roles of one kind gives the
+ * narrower its hue's deep tone, so they read as kin and still apart; plain
+ * neutral is Unclassified's, and a real grey role takes neutral-deep.
+ */
+export type LaneColor = LaneHue | `${LaneHue}-deep`
 
 /** The languages that have profiles of their own. */
 export type Language = "java" | "kotlin" | "csharp" | "typescript" | "python" | "go" | "php" | "swift" | "objc" | "dart"
@@ -182,7 +188,7 @@ export const SPRING: FrameworkProfile = {
     { id: "services", label: "Services & Other", color: "green", annotations: ["Service"], rule: anyAnnotation(["Component"]), legacy: ["java__spring__service", "java__spring__component"], hint: "Services, plain components and everything unclassified" },
     // Wiring sits beside the layers, not in them: a configuration class
     // creating beans reaches into every layer, and that is its job.
-    { id: "config", label: "Configuration", color: "neutral", annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: "Configuration classes and the application" },
+    { id: "config", label: "Configuration", color: "neutral-deep", annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: "Configuration classes and the application" },
     { id: "messaging", label: "Messaging", color: "red", annotations: ["KafkaListener", "RabbitListener", "JmsListener", "SqsListener"], supertypes: ["MessageListener"], imports: ["org.springframework.kafka", "org.springframework.amqp", "org.springframework.jms", "org.springframework.cloud.stream", "org.springframework.integration", "org.springframework.messaging"], hint: "Listeners and channels: entry points that are not requests" },
     { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "ListCrudRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository", "JpaSpecificationExecutor"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository", "org.springframework.jdbc", "org.springframework.r2dbc"], hint: "Data access" },
     { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: "Persistent models" },
@@ -291,10 +297,10 @@ export const ANDROID: FrameworkProfile = {
   label: "Android",
   detect: { imports: ["android.", "androidx."], annotations: ["activity", "HiltAndroidApp", "AndroidEntryPoint", "Composable"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: "Activities, fragments and composables named for a screen" },
+    { id: "screens", label: "Screens", color: "blue-deep", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: "Activities, fragments and composables named for a screen" },
     { id: "ui", label: "UI components", color: "blue", annotations: ["Composable"], supertypes: ["View", "ViewGroup", "FrameLayout", "LinearLayout", "ConstraintLayout", "RecyclerView", "Adapter", "ViewHolder", "ListAdapter"], hint: "Composables and Views below the screen" },
     { id: "viewmodels", label: "ViewModels & Other", color: "green", annotations: ["HiltViewModel"], supertypes: ["ViewModel", "AndroidViewModel"], nameSuffixes: ["ViewModel", "Presenter"], hint: "State holders and everything unclassified" },
-    { id: "di", label: "Dependency injection", color: "neutral", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: "Hilt, Dagger and Koin modules, the Application" },
+    { id: "di", label: "Dependency injection", color: "neutral-deep", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: "Hilt, Dagger and Koin modules, the Application" },
     { id: "background", label: "Services & Receivers", color: "red", annotations: ["service", "receiver", "provider", "HiltWorker"], supertypes: ["Service", "IntentService", "JobIntentService", "LifecycleService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: "Work off the screen" },
     { id: "data", label: "Data", color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "io.ktor.client", "androidx.datastore", "android.database", "app.cash.sqldelight", "io.realm"], nameSuffixes: ["Repository", "DataSource", "Dao", "Api", "Service", "Client"], hint: "Room, network, storage" },
     // A Kotlin `data class` is a data shape by declaration; the engine records
@@ -318,7 +324,7 @@ export const BEAM: FrameworkProfile = {
     // By supertype only: every pipeline imports TextIO or BigQueryIO to read
     // its input, and importing an IO is using one, not being one.
     { id: "io", label: "IO & Coders", color: "violet", supertypes: ["Coder", "CustomCoder", "AtomicCoder", "StructuredCoder", "BoundedSource", "UnboundedSource", "FileBasedSource", "FileBasedSink", "BoundedReader", "UnboundedReader"], hint: "Sources, sinks and encodings" },
-    { id: "other", label: "Other", color: "neutral", hint: "Models, utilities, tests" },
+    { id: "other", label: "Other", color: "neutral-deep", hint: "Models, utilities, tests" },
   ],
   fallback: "other",
 }
@@ -360,7 +366,7 @@ export const NESTJS: FrameworkProfile = {
     { id: "providers", label: "Providers & Other", color: "green", rule: (f) => isInjectable(f) && !/(Guard|Pipe|Filter|Interceptor|Middleware|Repository|Store|Client|Gateway|Dao)$/.test(f.name), ruleFirst: true, hint: "Services and everything unclassified" },
     // Wiring sits beside the layers, not in them: a module names its
     // controllers and providers alike.
-    { id: "modules", label: "Modules", color: "neutral", annotations: ["Module"], hint: "What each module imports, provides and exports" },
+    { id: "modules", label: "Modules", color: "neutral-deep", annotations: ["Module"], hint: "What each module imports, provides and exports" },
   ],
   fallback: "providers",
 }
@@ -404,14 +410,14 @@ export const REACT: FrameworkProfile = {
   label: "React",
   detect: { imports: ["react", "react-dom", "next/", "@remix-run/"], weakImports: ["@testing-library/react"] },
   lanes: [
-    { id: "pages", label: "Pages & Layouts", color: "blue", rule: isReactPage, ruleFirst: true, hint: "Components Next.js routes to, under pages/ or as app/ page and layout files" },
+    { id: "pages", label: "Pages & Layouts", color: "blue-deep", rule: isReactPage, ruleFirst: true, hint: "Components Next.js routes to, under pages/ or as app/ page and layout files" },
     { id: "components", label: "Components", color: "blue", rule: isReactComponent, ruleFirst: true, supertypes: ["Component", "PureComponent"], hint: "Named in Pascal case, in a .tsx or .jsx file" },
     // A hook that wraps useQuery or swr is still the hook the components
     // call; the client it calls is the data layer.
     { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic" },
     { id: "data", label: "Data & Clients", color: "amber", supertypes: ["createApi", "createSlice", "createAsyncThunk", "createSelector"], imports: ["@tanstack/react-query", "swr", "axios", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Store", "Repository"], hint: "What talks to a server, and Redux state" },
     { id: "models", label: "Types & Models", color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral", hint: "Everything unclassified" },
+    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
   ],
   fallback: "other",
 }
@@ -432,15 +438,15 @@ export const VUE: FrameworkProfile = {
   detect: { imports: ["vue", "nuxt", "#app", "#imports", "vue-router", "pinia", "vuex", "@vue/"], annotations: ["vue_component"] },
   weight: 4,
   lanes: [
-    { id: "pages", label: "Pages & Layouts", color: "blue", rule: isVuePage, ruleFirst: true, hint: "Components under pages/, layouts/ or views/, and the root App" },
+    { id: "pages", label: "Pages & Layouts", color: "blue-deep", rule: isVuePage, ruleFirst: true, hint: "Components under pages/, layouts/ or views/, and the root App" },
     { id: "components", label: "Components", color: "blue", annotations: ["vue_component"], supertypes: ["defineComponent"], hint: "Every other .vue file, and defineComponent() in a script" },
-    { id: "stores", label: "Stores", color: "green", supertypes: ["defineStore"], imports: ["pinia", "vuex", "@pinia/"], nameSuffixes: ["Store"], hint: "Pinia and Vuex state" },
+    { id: "stores", label: "Stores", color: "green-deep", supertypes: ["defineStore"], imports: ["pinia", "vuex", "@pinia/"], nameSuffixes: ["Store"], hint: "Pinia and Vuex state" },
     // A composable that wraps ofetch or vue-query is still the composable
     // the components call; a useXStore is a store, whatever made it.
     { id: "composables", label: "Composables", color: "green", rule: (f) => /^use[A-Z]/.test(f.name) && !/Store$/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic, named use…" },
     { id: "data", label: "Data & Clients", color: "amber", imports: ["axios", "ofetch", "@tanstack/vue-query", "@vue/apollo-composable", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: "What talks to a server" },
     { id: "models", label: "Types & Models", color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral", hint: "Everything unclassified" },
+    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
   ],
   fallback: "other",
 }
@@ -488,7 +494,7 @@ export const DJANGO: FrameworkProfile = {
     { id: "models", label: "Models & Managers", color: "violet", annotations: ["models", "abstract_models", "managers"], supertypes: ["Model", "AbstractUser", "AbstractBaseUser", "Manager", "QuerySet", "TextChoices", "IntegerChoices"], nameSuffixes: ["Model", "Manager", "QuerySet"], hint: "Persistent state" },
     { id: "wiring", label: "Apps, Signals & Middleware", color: "red", annotations: ["apps", "signals", "receivers", "middleware", "settings", "receiver"], supertypes: ["AppConfig", "MiddlewareMixin"], hint: "Registration and cross-cutting" },
     // Generated schema history: 182 classes in django-oscar, every one named Migration, which would otherwise swamp Unclassified.
-    { id: "migrations", label: "Migrations", color: "neutral", annotations: ["migrations"], supertypes: ["Migration"], hint: "Generated schema history, counted apart" },
+    { id: "migrations", label: "Migrations", color: "neutral-deep", annotations: ["migrations"], supertypes: ["Migration"], hint: "Generated schema history, counted apart" },
     { id: "logic", label: "Logic & Other", color: "green", hint: "Everything unclassified" },
   ],
   fallback: "logic",
@@ -602,8 +608,8 @@ export const LARAVEL: FrameworkProfile = {
     { id: "models", label: "Eloquent models", color: "violet", supertypes: ["Model", "Authenticatable", "Pivot", "MorphPivot"], rule: under("Models"), hint: "Persistent state" },
     // A job or command is an entry point the queue or the terminal calls, not data access; it used to sit in "Repositories & Jobs" below the logic it calls.
     { id: "background", label: "Jobs, Events & Listeners", color: "red", supertypes: ["ShouldQueue", "ShouldBroadcast", "Command", "Mailable", "Notification"], rule: under("Jobs", "Console/Commands", "Listeners", "Events", "Mail", "Notifications", "Observers"), nameSuffixes: ["Job", "Command", "Listener", "Event", "Mail", "Notification", "Observer"], hint: "Queued work, console commands and what reacts to events" },
-    { id: "wiring", label: "Providers, Middleware & Policies", color: "neutral", supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: "Registration and cross-cutting" },
-    { id: "data", label: "Repositories", color: "amber", imports: ["Illuminate\\Support\\Facades\\DB", "Illuminate\\Support\\Facades\\Http", "Illuminate\\Database\\Query", "Illuminate\\Database\\ConnectionInterface"], rule: under("Repositories"), nameSuffixes: ["Repository", "Query", "Client", "Gateway"], hint: "Data access and outbound calls" },
+    { id: "wiring", label: "Providers, Middleware & Policies", color: "neutral-deep", supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: "Registration and cross-cutting" },
+    { id: "data", label: "Repositories", color: "amber-deep", imports: ["Illuminate\\Support\\Facades\\DB", "Illuminate\\Support\\Facades\\Http", "Illuminate\\Database\\Query", "Illuminate\\Database\\ConnectionInterface"], rule: under("Repositories"), nameSuffixes: ["Repository", "Query", "Client", "Gateway"], hint: "Data access and outbound calls" },
     { id: "logic", label: "Services & Other", color: "green", rule: under("Services", "Actions"), nameSuffixes: ["Service", "Action", "Manager", "Handler"], hint: "Everything unclassified" },
   ],
   fallback: "logic",
@@ -625,7 +631,7 @@ export const SYMFONY: FrameworkProfile = {
     // known by the resource interface or a Model folder, interfaces included,
     // since every type hint in that code names the interface.
     { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Embeddable", "MappedSuperclass", "Table"], supertypes: ["ResourceInterface", "TimestampableInterface", "Model", "Authenticatable", "UserInterface"], rule: under("Entity", "Model"), nameSuffixes: ["Entity"], hint: "Persistent state" },
-    { id: "data", label: "Repositories & Providers", color: "amber", supertypes: ["ServiceEntityRepository", "EntityRepository", "RepositoryInterface", "ObjectRepository"], rule: under("Repository"), nameSuffixes: ["Repository", "RepositoryInterface", "Provider", "Loader", "Client"], hint: "Data access" },
+    { id: "data", label: "Repositories & Providers", color: "amber-deep", supertypes: ["ServiceEntityRepository", "EntityRepository", "RepositoryInterface", "ObjectRepository"], rule: under("Repository"), nameSuffixes: ["Repository", "RepositoryInterface", "Provider", "Loader", "Client"], hint: "Data access" },
     { id: "wiring", label: "Bundles, Subscribers & Compiler passes", color: "red", annotations: ["AsEventListener", "AsDecorator"], supertypes: ["Bundle", "AbstractBundle", "AbstractResourceBundle", "Extension", "AbstractExtension", "AbstractResourceExtension", "CompilerPassInterface", "EventSubscriberInterface", "ConfigurationInterface", "Voter", "Kernel"], rule: under("DependencyInjection", "EventSubscriber", "EventListener"), nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Pass", "Voter", "Kernel"], hint: "Registration and events" },
     { id: "logic", label: "Services & Other", color: "green", rule: under("Service", "Services"), nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver", "Processor", "Calculator", "Checker", "Applicator", "Generator", "Assigner", "Modifier"], hint: "Everything unclassified" },
   ],
@@ -689,8 +695,8 @@ export const IOS: FrameworkProfile = {
   label: "iOS (SwiftUI & UIKit)",
   detect: { imports: ["SwiftUI", "UIKit", "AppKit", "WidgetKit", "WatchKit"], weakImports: ["Foundation", "Combine", "Observation"], supertypes: ["UIApplicationDelegate", "App"] },
   lanes: [
-    { id: "app", label: "App & lifecycle", color: "neutral", annotations: ["main", "UIApplicationMain", "NSApplicationMain"], supertypes: ["App", "UIApplicationDelegate", "UIWindowSceneDelegate", "UISceneDelegate", "WidgetBundle", "Widget"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
-    { id: "screens", label: "Screens", color: "blue", supertypes: UIKIT_SCREENS, rule: isSwiftUIScreen, ruleFirst: true, nameSuffixes: ["ViewController"], hint: "View controllers, and SwiftUI views named for a screen" },
+    { id: "app", label: "App & lifecycle", color: "neutral-deep", annotations: ["main", "UIApplicationMain", "NSApplicationMain"], supertypes: ["App", "UIApplicationDelegate", "UIWindowSceneDelegate", "UISceneDelegate", "WidgetBundle", "Widget"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
+    { id: "screens", label: "Screens", color: "blue-deep", supertypes: UIKIT_SCREENS, rule: isSwiftUIScreen, ruleFirst: true, nameSuffixes: ["ViewController"], hint: "View controllers, and SwiftUI views named for a screen" },
     { id: "views", label: "Views", color: "blue", supertypes: [...SWIFTUI_VIEWS, ...UIKIT_VIEWS], nameSuffixes: ["View", "Cell"], hint: "SwiftUI views and UIKit views below the screen" },
     { id: "state", label: "State & Logic", color: "green", annotations: ["Observable", "ObservableState", "Published", "MainActor"], supertypes: ["ObservableObject"], nameSuffixes: ["ViewModel", "Store", "Coordinator", "Router", "Presenter", "Interactor", "Manager"], hint: "View models, stores and coordinators" },
     { id: "data", label: "Data & Networking", color: "amber", supertypes: ["Endpoint", "TargetType"], imports: ["Alamofire", "Moya", "CoreData", "SwiftData", "GRDB", "RealmSwift", "Apollo", "FirebaseFirestore"], nameSuffixes: ["Client", "Service", "API", "Api", "Repository", "Endpoint", "Request", "Cache"], hint: "Network clients, persistence, caches" },
@@ -712,10 +718,10 @@ export const TCA: FrameworkProfile = {
     { id: "views", label: "Views", color: "blue", supertypes: SWIFTUI_VIEWS, nameSuffixes: ["View"], hint: "What renders a store" },
     { id: "clients", label: "Dependencies", color: "amber", annotations: ["DependencyClient"], supertypes: ["DependencyKey", "TestDependencyKey"], nameSuffixes: ["Client"], hint: "Effects behind an interface: network, storage, clocks" },
     { id: "models", label: "Models", color: "violet", annotations: ["Model"], supertypes: APPLE_RECORDS, rule: looksLikeAppleModel, hint: "Value types" },
-    { id: "app", label: "App & lifecycle", color: "neutral", annotations: ["main"], supertypes: ["App", "UIApplicationDelegate"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
+    { id: "app", label: "App & lifecycle", color: "neutral-deep", annotations: ["main"], supertypes: ["App", "UIApplicationDelegate"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
     // Most TCA apps keep a corner of plain SwiftUI state; shown apart, since
     // it is what a migration has left to do.
-    { id: "state", label: "SwiftUI state", color: "neutral", annotations: ["Observable", "Published"], supertypes: ["ObservableObject"], hint: "ObservableObjects beside the reducers" },
+    { id: "state", label: "SwiftUI state", color: "green-deep", annotations: ["Observable", "Published"], supertypes: ["ObservableObject"], hint: "ObservableObjects beside the reducers" },
   ],
   fallback: "features",
 }
@@ -752,12 +758,12 @@ export const FLUTTER: FrameworkProfile = {
   label: "Flutter",
   detect: { imports: ["flutter/", "flutter_riverpod/", "hooks_riverpod/", "flutter_bloc/", "get/"], supertypes: ["StatelessWidget", "StatefulWidget"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue", annotations: ["RoutePage"], rule: isFlutterScreen, ruleFirst: true, hint: "Widgets named for a screen or page, with their State classes" },
+    { id: "screens", label: "Screens", color: "blue-deep", annotations: ["RoutePage"], rule: isFlutterScreen, ruleFirst: true, hint: "Widgets named for a screen or page, with their State classes" },
     { id: "widgets", label: "Widgets", color: "blue", supertypes: [...FLUTTER_WIDGETS, ...FLUTTER_STATES, "CustomPainter", "CustomClipper", "RenderBox", "SingleChildRenderObjectWidget", "InheritedWidget"], hint: "Everything else that builds UI" },
     { id: "state", label: "State management", color: "green", annotations: ["riverpod", "Riverpod", "injectable", "singleton", "lazySingleton"], supertypes: ["Bloc", "Cubit", "HydratedBloc", "HydratedCubit", "ChangeNotifier", "StateNotifier", "Notifier", "AsyncNotifier", "StreamNotifier", "ValueNotifier", "GetxController", ...RIVERPOD_PROVIDERS], nameSuffixes: ["Bloc", "Cubit", "Notifier", "Controller", "Provider", "Store", "ViewModel", "Logic"], hint: "Bloc, Riverpod, Provider, GetX" },
     { id: "data", label: "Data & Services", color: "amber", supertypes: ["Table", "DatabaseAccessor", "GeneratedDatabase", "GetxService"], imports: ["dio/", "http/", "drift/", "sqflite/", "isar/", "hive/", "shared_preferences/", "cloud_firestore/", "supabase_flutter/"], nameSuffixes: ["Repository", "Api", "Client", "Service", "Dao", "DataSource", "Database"], hint: "Network, storage, platform services" },
     { id: "models", label: "Models", color: "violet", annotations: ["freezed", "Freezed", "JsonSerializable", "collection", "HiveType", "immutable"], supertypes: ["Equatable"], rule: (f, s) => looksLikeModel(f, s) || isBlocShapeFile(f), nameSuffixes: ["Model", "Entity", "Dto", "Event", "State"], hint: "Data shapes, Bloc events and states" },
-    { id: "other", label: "Utilities & Other", color: "neutral", hint: "Everything unclassified" },
+    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
   ],
   fallback: "other",
 }
@@ -780,15 +786,15 @@ export const REACT_NATIVE: FrameworkProfile = {
   weight: 4,
   detect: { imports: ["react-native", "expo", "expo-", "@react-navigation/", "expo-router"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue", rule: isRNScreen, ruleFirst: true, hint: "Components named for a screen, and route files" },
+    { id: "screens", label: "Screens", color: "blue-deep", rule: isRNScreen, ruleFirst: true, hint: "Components named for a screen, and route files" },
     { id: "components", label: "Components", color: "blue", rule: isRNComponent, ruleFirst: true, hint: "Named in Pascal case, in a .tsx or .jsx file" },
     // Before the imports: a hook that reads a Redux store or calls axios is a hook, as its name says.
     { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic" },
-    { id: "state", label: "State", color: "green", supertypes: ["createSlice"], imports: ["@reduxjs/toolkit", "react-redux", "zustand", "jotai", "mobx", "@tanstack/react-query", "recoil"], rule: (f) => /^select[A-Z]/.test(f.name), nameSuffixes: ["Store", "Slice", "Reducer", "Context"], hint: "Slices, stores, selectors and server state" },
+    { id: "state", label: "State", color: "green-deep", supertypes: ["createSlice"], imports: ["@reduxjs/toolkit", "react-redux", "zustand", "jotai", "mobx", "@tanstack/react-query", "recoil"], rule: (f) => /^select[A-Z]/.test(f.name), nameSuffixes: ["Store", "Slice", "Reducer", "Context"], hint: "Slices, stores, selectors and server state" },
     { id: "native", label: "Native bridges", color: "red", imports: ["react-native/Libraries", "expo-modules-core"], rule: isNativeSpec, nameSuffixes: ["Module", "NativeModule", "Spec"], hint: "Where JavaScript calls native code" },
     { id: "data", label: "Data & Clients", color: "amber", supertypes: ["createApi"], imports: ["axios", "@apollo/client", "graphql-request", "@atproto/api"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: "What talks to a server" },
     { id: "models", label: "Types & Models", color: "violet", rule: (f) => f.isInterface, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral", hint: "Everything unclassified" },
+    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
   ],
   fallback: "other",
 }
@@ -990,5 +996,18 @@ export function laneOf(profile: FrameworkProfile, laneId: string): LaneDef {
 }
 
 export function laneDotClass(color: LaneColor): string {
-  return { blue: "bg-blue-500", green: "bg-green-500", amber: "bg-amber-500", violet: "bg-violet-500", red: "bg-red-500", neutral: "bg-neutral-400" }[color]
+  return {
+    blue: "bg-blue-500", green: "bg-green-500", amber: "bg-amber-500", violet: "bg-violet-500", red: "bg-red-500", neutral: "bg-neutral-400",
+    "blue-deep": "bg-blue-800", "green-deep": "bg-green-800", "amber-deep": "bg-amber-800", "violet-deep": "bg-violet-800", "red-deep": "bg-red-800", "neutral-deep": "bg-neutral-700",
+  }[color]
+}
+
+/**
+ * A lane's colour at a shade: `map` fills a map cell, `lit` a focused one,
+ * `mark` a dot, bar or floor. The deep tone sits three steps further on.
+ */
+export function laneShade(color: LaneColor, shade: "map" | "lit" | "mark" = "mark"): string {
+  const [hue, deep] = color.split("-")
+  const step = { map: hue === "neutral" ? 300 : 400, lit: 500, mark: hue === "neutral" ? 400 : 500 }[shade]
+  return `rgb(var(--c-${hue}-${deep ? step + 300 : step}))`
 }

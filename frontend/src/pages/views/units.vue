@@ -170,7 +170,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import { useScopeStore } from "~/features/groups/scope.store"
 import { useDraftStore } from "~/features/lens-builder/draft.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
-import { AUTO } from "~/features/frameworks/frameworkProfiles"
+import { AUTO, laneShade } from "~/features/frameworks/frameworkProfiles"
 import { frameworkStorageKey } from "~/features/frameworks/classFacts"
 import { dirTail } from "~/features/units/moduleGraph"
 import { reachOf } from "~/features/units/graph"
@@ -299,15 +299,13 @@ function laneBad(from: string, to: string) {
 }
 function openMapEvidence() { descend({ finding: mapMode.value === "reach" ? "unreached" : "twice" }) }
 function lanePaint(path: string) {
-  const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
-  return c === "neutral" ? "rgb(var(--c-neutral-300))" : `rgb(var(--c-${c}-400))`
+  return laneShade(laneColor(graph.value.byPath.get(path)?.lane ?? ""), "map")
 }
 /** On a focused map the lit modules take their lane's strong shade: the pale one,
  *  on a grey lane, read no different from the faded rest. */
 function focusPaint(path: string) {
   if (!focusSet.value.has(path)) return lanePaint(path)
-  const c = laneColor(graph.value.byPath.get(path)?.lane ?? "")
-  return c === "neutral" ? "rgb(var(--c-neutral-500))" : `rgb(var(--c-${c}-500))`
+  return laneShade(laneColor(graph.value.byPath.get(path)?.lane ?? ""), "lit")
 }
 function describeModule(path: string) {
   const m = graph.value.byPath.get(path)

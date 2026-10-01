@@ -1,11 +1,9 @@
 import type { Floor, Flow as StackFlow } from "~/features/checks/components/StackDiagram.vue"
 import { stackOrder } from "~/features/checks/folderTree"
-import type { LaneColor } from "~/features/frameworks/frameworkProfiles"
+import { laneShade, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "./graph"
 
 export interface LaneBand { id: string; label: string; color: LaneColor; count: number }
-
-const laneColour = (c: LaneColor) => (c === "neutral" ? "rgb(var(--c-neutral-400))" : `rgb(var(--c-${c}-500))`)
 
 /**
  * The lanes as floors, stacked so that most references run down, and the
@@ -22,7 +20,7 @@ export function laneStack(lanes: LaneBand[], flows: LaneFlow[], notLayers: strin
   const byId = new Map(lanes.map((l) => [l.id, l]))
   const ordered = [...stackOrder(layers.map((l) => l.id), pairs).map((id) => byId.get(id)!), ...lanes.filter((l) => outside.has(l.id))]
   const floors = ordered.map((l) => ({
-    id: l.id, label: l.label, weight: l.count, color: laneColour(l.color),
+    id: l.id, label: l.label, weight: l.count, color: laneShade(l.color),
     sub: `${l.count.toLocaleString()} module${l.count === 1 ? "" : "s"}`,
   }))
   const label = (id: string) => byId.get(id)?.label ?? id
