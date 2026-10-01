@@ -6,7 +6,6 @@ package clone
 import (
 	"errors"
 	"net/url"
-	"path"
 	"regexp"
 	"strings"
 )
@@ -42,6 +41,16 @@ var (
 	safeSeg   = regexp.MustCompile(`[^\w.-]+`)
 )
 
+// isLocalPath: a file:// address, or an absolute path on macOS and Linux
+// (/src/x), Windows (C:\src\x, C:/src/x) or a Windows share (\\host\x).
+func isLocalPath(in string) bool {
+	if strings.HasPrefix(in, "/") || strings.HasPrefix(in, "file://") || strings.HasPrefix(in, `\\`) {
+		return true
+	}
+	return len(in) > 2 && in[1] == ':' && (in[2] == '\\' || in[2] == '/') &&
+		(in[0] >= 'A' && in[0] <= 'Z' || in[0] >= 'a' && in[0] <= 'z')
+}
+
 // ErrNotARepo is the refusal for input that names no repository.
 var ErrNotARepo = errors.New("that is not a repository address")
 
@@ -50,7 +59,7 @@ var ErrNotARepo = errors.New("that is not a repository address")
 // GitHub's "owner/repo" shorthand, and file:// or absolute local paths.
 func Parse(input string) (Repo, error) {
 	in := strings.TrimSpace(input)
-	in = strings.TrimSuffix(in, "/")
+	in = strings.TrimRight(in, `/\`)
 	if in == "" {
 		return Repo{}, ErrNotARepo
 	}
@@ -59,10 +68,10 @@ func Parse(input string) (Repo, error) {
 		in = f[len(f)-1]
 	}
 
-	if strings.HasPrefix(in, "/") || strings.HasPrefix(in, "file://") {
+	if isLocalPath(in) {
 		p := strings.TrimPrefix(in, "file://")
-		name := trimGit(path.Base(p))
-		if name == "" || name == "/" || name == "." {
+		name := trimGit(p[strings.LastIndexAny(p, `/\`)+1:])
+		if name == "" || name == "." || strings.HasSuffix(name, ":") {
 			return Repo{}, ErrNotARepo
 		}
 		return Repo{URL: in, Name: name, Local: true}, nil

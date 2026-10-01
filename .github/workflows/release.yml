@@ -123,8 +123,11 @@ jobs:
           base="${APP}-${VERSION}-${{ matrix.name }}"
           case "$RUNNER_OS" in
             macOS)
+              # hdiutil's own size estimate fell short once the universal app
+              # grew ("No space left on device"): size the volume from the app.
+              mb=$(( $(du -sm "build/bin/${APP}.app" | cut -f1) * 5 / 4 + 32 ))
               hdiutil create -volname "Archstats Desktop" -srcfolder "build/bin/${APP}.app" \
-                -ov -format UDZO "out/${base}.dmg"
+                -size "${mb}m" -ov -format UDZO "out/${base}.dmg"
               ditto -c -k --keepParent "build/bin/${APP}.app" "out/${base}.zip"
               ;;
             Windows)

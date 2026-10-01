@@ -40,8 +40,13 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) should refuse", bad)
 		}
 	}
-	if r, err := Parse("/Users/me/src/thing.git"); err != nil || !r.Local || r.Name != "thing" {
-		t.Errorf("local path: %+v %v", r, err)
+	for _, local := range []string{"/Users/me/src/thing.git", `C:\src\thing`, `c:/src/thing/`, `\\server\share\thing.git`, "file:///src/thing"} {
+		if r, err := Parse(local); err != nil || !r.Local || r.Name != "thing" {
+			t.Errorf("local path %q: %+v %v", local, r, err)
+		}
+	}
+	if _, err := Parse(`C:\`); err == nil {
+		t.Error("a bare drive names no repository")
 	}
 }
 
