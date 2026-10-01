@@ -89,7 +89,7 @@ export function markUnsourced(html: string, sources: string): { html: string; co
 }
 
 const GAVE_UP = /\b(cannot|can't|can not|unable to|not possible|no way to|does(?:n't| not) (?:show|provide|contain|include|have|list)|isn't available|not available|no tool|insufficient|not enough (?:data|information))\b/i
-const VERDICT = /\b(bad design|poorly designed|terrible|a mess|messy|spaghetti|garbage|awful|horrible|well[- ]designed|excellent architecture|clean architecture|severe(ly)? (degradation|problems?)|degradation|lack of (architectural )?oversight|velocity|intended (separation|layer\w*|architecture|design|boundar\w*))\b/i
+const VERDICT = /\b(bad design|poorly designed|terrible|a mess|messy|spaghetti|garbage|awful|horrible|well[- ]designed|excellent architecture|clean architecture|severe(ly)? (degradation|problems?)|degradation|lack of (architectural )?oversight|velocity|intended (separation|architecture|design|boundar\w*))\b/i
 
 export interface CheckInput {
     question: string

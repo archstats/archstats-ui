@@ -123,7 +123,7 @@ export const INTENTS: Tool[] = [
     }),
     intent({
         name: "rank",
-        description: `Which components or files are the most or least of something (for the cycles and tangles themselves, use structure), e.g. "most depended on", "least healthy", "largest", "most changed", "hotspot", "cycles". Optionally only in part of the code, or only those meeting a condition ("dependents > 5"). Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 26).join(", ")}.`,
+        description: `Which components or files are the most or least of something (for the cycles and tangles themselves, use structure), e.g. "most depended on", "least healthy", "largest", "most changed", "hotspot", "cycles". Optionally only in part of the code, or only those meeting a condition ("dependents > 5"). "Which component with more than 5 dependents has the lowest health?" is ONE call: measure "least healthy", where "dependents > 5"; never rank component by component. Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 26).join(", ")}.`,
         params: s.object({
             measure: s.string().describe("What to rank by, in plain words, with most/least if it matters."),
             among: s.enum(["components", "files", "types"]).optional().describe("Components (default), files, or types and classes."),

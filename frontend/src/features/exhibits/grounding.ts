@@ -61,7 +61,7 @@ function blocksOf(text: string): string[][] {
 function numbersIn(sentence: string): Array<{ value: number; text: string; percent: boolean }> {
     const text = sentence
         // A scale is not a claim: "9.09 out of 10", "6/10", "from 1.0 to 10.0".
-        .replace(/\b(?:out of|of a possible)\s+\d+(?:\.\d+)?/gi, " ").replace(/\/\s*10(?:\.0)?\b/g, " ").replace(/\bfrom \d+(?:\.\d+)? to \d+(?:\.\d+)?/gi, " ")
+        .replace(/\b(?:out of|of a possible)\s+(?:5|10|100)(?:\.0)?(?![\d,.]\d)/gi, " ").replace(/\/\s*10(?:\.0)?\b/g, " ").replace(/\bfrom \d+(?:\.\d+)? to \d+(?:\.\d+)?/gi, " ")
         .replace(/`[^`]*`/g, " ")
         .replace(/\[[^\]]*\bE\d+[^\]]*\]/g, " ")
         .replace(/\bE\d+(?:\.\d+)?\b/g, " ")
@@ -111,6 +111,8 @@ function namesIn(sentence: string, entities: string[], near: ReadonlySet<string>
     const s = sentence.toLowerCase()
     const marked = [...sentence.matchAll(/`([^`]+)`|\*\*([^*]+)\*\*/g)].map(m => (m[1] ?? m[2]).toLowerCase()).join(" ")
     const plain = (x: string) => /^[a-z]+$/.test(x)
+    // Words every answer uses: as a name they must always be written as one, near their figure or not.
+    const generic = (x: string) => GENERIC.has(x.toLowerCase())
     const seen = (text: string, word: string) => new RegExp(`(?<![\\w./-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`).test(text)
     const tails = new Map<string, { raw: string; es: string[] }>()
     for (const e of entities) {
@@ -121,14 +123,16 @@ function namesIn(sentence: string, entities: string[], near: ReadonlySet<string>
     const out = new Set<string>()
     for (const e of entities) {
         if (e.length <= 3) continue
-        if (plain(e) && !near.has(e) ? seen(marked, e.toLowerCase()) : plain(e) ? seen(s, e.toLowerCase()) : s.includes(e.toLowerCase())) out.add(e)
+        if (plain(e) && (!near.has(e) || generic(e)) ? seen(marked, e.toLowerCase()) : plain(e) ? seen(s, e.toLowerCase()) : s.includes(e.toLowerCase())) out.add(e)
     }
     for (const [t, { raw, es }] of tails) {
         if (es.length !== 1 || out.has(es[0])) continue
-        if (seen(plain(raw) && !near.has(es[0]) ? marked : s, t)) out.add(es[0])
+        if (seen(plain(raw) && (!near.has(es[0]) || generic(raw)) ? marked : s, t)) out.add(es[0])
     }
     return [...out]
 }
+
+const GENERIC = new Set(["components", "component", "views", "view", "pages", "page", "files", "file", "types", "type", "index", "main", "src", "lib", "libs", "utils", "util", "helpers", "shared", "data", "test", "tests", "models", "model", "services", "service", "domain", "api", "config", "store", "stores", "features", "feature", "modules", "module", "packages", "package", "code", "source", "java", "resources", "assets", "scripts"])
 
 /** What a number is called, around it: which way a dependency runs, production or all, fixes or all commits. */
 const LABELS: Array<{ id: string; a: RegExp; b: RegExp; say: (x: string, fact: "a" | "b") => string }> = [

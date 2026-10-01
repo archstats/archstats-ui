@@ -106,3 +106,17 @@ describe("what a number is called", () => {
         expect(checkGrounding("The core has 12 files, and `shipping` depends on it [E1.1].", f).claims[0].verdict).toBe("partial")
     })
 })
+
+describe("common words and scales", () => {
+    const f: Fact[] = [
+        { id: "E3.1", kind: "total", text: "6 distinct shortest cycles; the smallest has 2 components.", entities: [], values: { cycles: 6 } },
+        { id: "E3.3", kind: "row", text: "1. (2) src/features/snapshot → src/features/snapshot/components.", entities: ["src/features/snapshot", "src/features/snapshot/components"], values: {} },
+        { id: "E1.1", kind: "total", text: "11,369 test lines; 98,935 lines of code.", entities: [], values: { tests: 11369, lines: 98935 } },
+    ]
+    it("does not read 'components' as a component", () => {
+        expect(checkGrounding("There are 6 cycles; the smallest involve two components importing each other [E3.1].", f).claims[0].verdict).toBe("verified")
+    })
+    it("keeps a number after 'out of' that is not a scale", () => {
+        expect(checkGrounding("There are 11,369 test lines out of 98,935 lines of code [E1.1].", f).claims[0].verdict).toBe("verified")
+    })
+})

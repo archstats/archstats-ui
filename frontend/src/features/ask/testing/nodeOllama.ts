@@ -8,7 +8,7 @@ export function nodeOllama(model: string, base = process.env.OLLAMA_HOST ?? "htt
         name: model,
         async chat(req, _onDelta, signal) {
             const t0 = Date.now()
-            const body: Record<string, unknown> = { model, messages: req.messages, stream: false, keep_alive: "30m", options: { num_ctx: 32768, temperature: 0.2, num_predict: 2048, seed: 7 }, think: !!req.think }
+            const body: Record<string, unknown> = { model, messages: req.messages, stream: false, keep_alive: "30m", options: { num_ctx: 32768, temperature: 0.2, num_predict: 2048, seed: Number(process.env.ASK_SEED ?? 7) }, think: !!req.think }
             if (req.tools?.length) body.tools = req.tools
             if (req.format) body.format = req.format
             const res = await fetch(`${base.startsWith("http") ? base : `http://${base}`}/api/chat`, { method: "POST", body: JSON.stringify(body), signal, headers: { "Content-Type": "application/json" } })
