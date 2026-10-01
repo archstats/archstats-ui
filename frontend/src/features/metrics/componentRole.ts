@@ -10,6 +10,8 @@
 // The zone note is the one exception the canon earns: Martin named the two
 // corners of the A/I square himself, and the engine ships the distance.
 
+import { t } from "~/shared/i18n"
+
 export type ComponentRoleId =
     | "isolated"
     | "foundation"
@@ -55,28 +57,28 @@ function plural(n: number, one: string, many: string): string {
 
 export function componentRole(input: RoleInput): ComponentRole {
     const { afferent: ca, efferent: ce, afferentPercentile: caPct, efferentPercentile: cePct } = input
-    const used = `${plural(ca, "component imports", "components import")} it`
-    const uses = `it imports ${plural(ce, "component", "components")}`
+    const used = t("metrics.componentRole.it", { t: t("common.count.componentImports", { count: ca }) })
+    const uses = t("metrics.componentRole.imports", { components: t("common.count.component", { count: ce }) })
 
     if (ca === 0 && ce === 0) {
-        return { id: "isolated", label: "Isolated", evidence: "Nothing imports it, and it imports nothing." }
+        return { id: "isolated", label: t("metrics.componentRole.isolated"), evidence: t("metrics.componentRole.nothingImportsImportsNothing") }
     }
     if (ce === 0) {
-        return { id: "foundation", label: "Foundation", evidence: `${used}, and it imports nothing.` }
+        return { id: "foundation", label: t("metrics.componentRole.foundation"), evidence: t("metrics.componentRole.importsNothing", { used }) }
     }
     if (ca === 0) {
-        return { id: "leaf", label: "Leaf", evidence: `Nothing imports it, and ${uses}.` }
+        return { id: "leaf", label: t("metrics.componentRole.leaf"), evidence: t("metrics.componentRole.nothingImports", { uses }) }
     }
     if (caPct >= MANY && cePct >= MANY) {
-        return { id: "hub", label: "Hub", evidence: `${used}, and ${uses}. Both are high for this codebase.` }
+        return { id: "hub", label: t("metrics.componentRole.hub"), evidence: t("metrics.componentRole.bothHighCodebase", { used, uses }) }
     }
     if (caPct >= MANY) {
-        return { id: "widely-used", label: "Widely used", evidence: `${used} — more than most — and ${uses}.` }
+        return { id: "widely-used", label: t("metrics.componentRole.widelyUsed"), evidence: t("metrics.componentRole.moreThanMost", { used, uses }) }
     }
     if (cePct >= MANY) {
-        return { id: "integrator", label: "Integrator", evidence: `${uses} — more than most — and ${used}.` }
+        return { id: "integrator", label: t("metrics.componentRole.integrator"), evidence: t("metrics.componentRole.moreThanMost2", { uses, used }) }
     }
-    return { id: "intermediate", label: "Intermediate", evidence: `${used}, and ${uses}.` }
+    return { id: "intermediate", label: t("metrics.componentRole.intermediate"), evidence: t("metrics.componentRole.and", { used, uses }) }
 }
 
 /** Martin's two corners, plus the line between them. Needs both coordinates. */
@@ -87,16 +89,16 @@ export function componentZone(abstractness: number | null, instability: number |
     const a = abstractness
     const i = instability
     const distance = Math.abs(a + i - 1)
-    const coords = `Abstractness ${a.toFixed(2)}, instability ${i.toFixed(2)}.`
+    const coords = t("metrics.componentRole.abstractnessInstability", { value: a.toFixed(2), value2: i.toFixed(2) })
 
     if (a <= 0.3 && i <= 0.3) {
-        return { id: "pain", label: "Zone of pain", evidence: `${coords} Concrete and depended on, so changes here are expensive.` }
+        return { id: "pain", label: t("metrics.componentRole.zonePain"), evidence: t("metrics.componentRole.concreteDependedSoChanges", { coords }) }
     }
     if (a >= 0.7 && i >= 0.7) {
-        return { id: "uselessness", label: "Zone of uselessness", evidence: `${coords} Abstract and unused by others.` }
+        return { id: "uselessness", label: t("metrics.componentRole.zoneUselessness"), evidence: t("metrics.componentRole.abstractUnusedOthers", { coords }) }
     }
     if (distance <= 0.2) {
-        return { id: "main-sequence", label: "On the main sequence", evidence: `${coords} Abstractness matches how much it is depended on.` }
+        return { id: "main-sequence", label: t("metrics.componentRole.mainSequence"), evidence: t("metrics.componentRole.abstractnessMatchesHowMuch", { coords }) }
     }
     return { id: "none", label: "", evidence: coords }
 }

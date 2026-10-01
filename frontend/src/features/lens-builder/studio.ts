@@ -5,6 +5,7 @@
 
 import { SIGNALS, type Cut, type SignalId, type SuggestInput, type Unit } from "./suggest"
 import { detectSeparator, domainBasisOf, domainKeys, roleKeys, rolesIn, subjectOf, subjectReason, subjectsIn, type DomainBasis } from "./subject"
+import { t } from "~/shared/i18n"
 
 export { detectSeparator, domainBasisOf, domainKeys, roleKeys, rolesIn, subjectsIn, subjectOf, subjectReason, treeKeys, wordsOf, type DomainBasis, type Role, type Subject } from "./subject"
 
@@ -20,15 +21,15 @@ export const STUDIO_WEIGHTS: Partial<Record<SignalId, number>> = {
 }
 
 const REASON: Record<SignalId, string> = {
-  references: "references between them",
-  cochange: "changed in the same commits",
-  entities: "share domain types",
-  names: "share a name",
+  references: t("lens-builder.studio.referencesBetweenThem"),
+  cochange: t("lens-builder.studio.changedSameCommits"),
+  entities: t("lens-builder.studio.shareDomainTypes"),
+  names: t("lens-builder.studio.shareName"),
   path: "same package tree",
-  lanes: "same lane",
-  depth: "same depth",
-  cycles: "in a cycle together",
-  authors: "same authors",
+  lanes: t("lens-builder.studio.sameLane"),
+  depth: t("lens-builder.studio.sameDepth"),
+  cycles: t("lens-builder.studio.cycleTogether"),
+  authors: t("lens-builder.studio.sameAuthors"),
 }
 
 /** The two piles that keep a sort moving, addressed like groups. */
@@ -82,7 +83,7 @@ export function affinityTo(id: string, members: Iterable<string>, index: Affinit
 }
 
 export function reasonFor(signal: SignalId | null): string {
-  return signal ? REASON[signal] : "loosely related"
+  return signal ? REASON[signal] : t("lens-builder.studio.looselyRelated")
 }
 
 // ── Path style: the delimiter this codebase actually uses ────────────────
@@ -122,7 +123,7 @@ export const DOT_STYLE = pathStyle([], ".")
 
 /** What to call a set of components: the deepest path they all share. */
 export function commonName(ids: string[], style: PathStyle = DOT_STYLE): string {
-  if (ids.length === 0) return "New group"
+  if (ids.length === 0) return t("lens-builder.studio.newGroup")
   if (ids.length === 1) return titleFromPrefix(ids[0], style)
   // Compare the whole names, not their parents: a branch taken with the node
   // it hangs from is still that branch, not the thing above it.
@@ -246,7 +247,7 @@ function makeBundle(prefix: string, members: string[], linesOf: (id: string) => 
     members: sorted,
     prefix,
     name: titleFromPrefix(namedAfter, style),
-    reason: members.length === 1 ? "on its own" : prefix ? `all under ${prefix}` : "no shared path",
+    reason: members.length === 1 ? t("lens-builder.studio.own") : prefix ? t("lens-builder.studio.allUnder", { prefix }) : t("lens-builder.studio.noSharedPath"),
     lines: sorted.reduce((s, id) => s + linesOf(id), 0),
     sep: style.sep,
     depth: prefix ? style.split(prefix).length : 0,
@@ -424,11 +425,11 @@ export type WayId =
 export type Reads = "names" | "graph" | "history" | "framework" | "everything"
 
 export const READS: Record<Reads, string> = {
-  names: "From the names",
-  graph: "From the references",
-  history: "From the commit history",
-  framework: "From the framework",
-  everything: "From everything",
+  names: t("lens-builder.studio.names"),
+  graph: t("lens-builder.studio.references"),
+  history: t("lens-builder.studio.commitHistory"),
+  framework: t("lens-builder.studio.framework"),
+  everything: t("lens-builder.studio.everything"),
 }
 
 /**
@@ -482,82 +483,82 @@ export interface Way {
  */
 export const GRAIN: Record<Grain, { label: string; hint: string; consequence: string; icon: string }> = {
   component: {
-    label: "Whole components",
-    hint: "A component belongs to one group, all of it.",
-    consequence: "Nothing can be divided. Counts are plain, and every component has one home.",
+    label: t("lens-builder.studio.wholeComponents"),
+    hint: t("lens-builder.studio.componentBelongsOneGroup"),
+    consequence: t("lens-builder.studio.nothingCanDividedCounts"),
     icon: "component",
   },
   file: {
-    label: "Components and parts",
-    hint: "A component can be divided between two groups, by its files.",
-    consequence: "A divided component is drawn as the groups holding it, and never counted as if it had one home.",
+    label: t("lens-builder.studio.componentsParts"),
+    hint: t("lens-builder.studio.componentCanDividedBetween"),
+    consequence: t("lens-builder.studio.dividedComponentDrawnGroups"),
     icon: "git-branch",
   },
 }
 
 export const WAYS: Way[] = [
   {
-    id: "tree", label: "Package tree", question: "Where does this sit?",
-    hint: "Where each thing already sits.",
+    id: "tree", label: t("lens-builder.studio.packageTree"), question: t("lens-builder.studio.whereDoesSit"),
+    hint: t("lens-builder.studio.whereEachThingAlready"),
     weights: { path: 2, references: 1 },
     structure: 0, reads: "names",
-    preset: "tree", cut: "vertical", grain: "component", dimension: "Domain",
+    preset: "tree", cut: "vertical", grain: "component", dimension: t("lens-builder.studio.domain"),
   },
   {
-    id: "subject", label: "Subject in the name", question: "What is this about?",
-    hint: "The word that moves — Catalog, in every layer.",
+    id: "subject", label: t("lens-builder.studio.subjectName"), question: t("lens-builder.studio.whatAbout"),
+    hint: t("lens-builder.studio.wordMovesCatalogEvery"),
     weights: { references: 1, cochange: 1, entities: 1, names: 0.6, path: 1, cycles: 0.5 },
     structure: 0, reads: "names",
-    preset: "subject", cut: "vertical", grain: "component", dimension: "Domain",
+    preset: "subject", cut: "vertical", grain: "component", dimension: t("lens-builder.studio.domain"),
   },
   {
-    id: "role", label: "Role in the name", question: "What job does this do?",
-    hint: "The word that stays put — Controllers, in every package.",
+    id: "role", label: t("lens-builder.studio.roleName"), question: t("lens-builder.studio.whatJobDoesDo"),
+    hint: t("lens-builder.studio.wordStaysPutControllers"),
     weights: { names: 2, lanes: 1, references: -0.5 },
     structure: 2, reads: "names",
-    preset: "role", cut: "horizontal", grain: "file", dimension: "Layer",
+    preset: "role", cut: "horizontal", grain: "file", dimension: t("lens-builder.studio.layer"),
   },
   {
-    id: "references", label: "Reference clusters", question: "What leans on what?",
-    hint: "What leans on what. No names read at all.",
+    id: "references", label: t("lens-builder.studio.referenceClusters"), question: t("lens-builder.studio.whatLeansWhat"),
+    hint: t("lens-builder.studio.whatLeansWhatNo"),
     weights: { references: 2, path: 2, cycles: 2, cochange: 1, names: 1 },
     structure: 0.5, reads: "graph",
-    preset: "references", cut: "free", grain: "component", dimension: "Module",
+    preset: "references", cut: "free", grain: "component", dimension: t("lens-builder.studio.module"),
   },
   {
-    id: "depth", label: "Distance from entry points", question: "How far in is this?",
-    hint: "How many hops from something that calls in.",
+    id: "depth", label: t("lens-builder.studio.distanceEntryPoints"), question: t("lens-builder.studio.howFar"),
+    hint: t("lens-builder.studio.howManyHopsSomething"),
     weights: { depth: 2, path: 1, references: -0.5 },
     structure: 2, reads: "graph",
-    preset: "depth", cut: "horizontal", grain: "file", dimension: "Layer",
+    preset: "depth", cut: "horizontal", grain: "file", dimension: t("lens-builder.studio.layer"),
   },
   {
-    id: "commits", label: "What changes together", question: "What moves with this?",
-    hint: "What gets edited in the same commits.",
+    id: "commits", label: t("lens-builder.studio.whatChangesTogether"), question: t("lens-builder.studio.whatMoves"),
+    hint: t("lens-builder.studio.whatGetsEditedSame"),
     weights: { cochange: 2, cycles: 1, references: 0.8, path: 0.3 },
     structure: 0, reads: "history",
-    preset: "commits", cut: "free", grain: "component", dimension: "Change",
+    preset: "commits", cut: "free", grain: "component", dimension: t("lens-builder.studio.change"),
   },
   {
-    id: "authors", label: "Who works on it", question: "Whose is this?",
-    hint: "The same hands, across the history.",
+    id: "authors", label: t("lens-builder.studio.whoWorks"), question: t("lens-builder.studio.whose"),
+    hint: t("lens-builder.studio.sameHandsAcrossHistory"),
     weights: { authors: 2, cochange: 1.2, path: 0.4, references: 0.2 },
     structure: 0, reads: "history",
-    preset: "authors", cut: "vertical", grain: "component", dimension: "Team",
+    preset: "authors", cut: "vertical", grain: "component", dimension: t("lens-builder.studio.team"),
   },
   {
-    id: "lanes", label: "Framework role", question: "What does the framework call this?",
-    hint: "Controller, repository, entity.",
+    id: "lanes", label: t("lens-builder.studio.frameworkRole"), question: t("lens-builder.studio.whatDoesFrameworkCall"),
+    hint: t("lens-builder.studio.controllerRepositoryEntity"),
     weights: { lanes: 2, depth: 1, path: 1, references: -0.5 },
     structure: 2, reads: "framework",
-    preset: "lanes", cut: "horizontal", grain: "file", dimension: "Layer",
+    preset: "lanes", cut: "horizontal", grain: "file", dimension: t("lens-builder.studio.layer"),
   },
   {
-    id: "blend", label: "Every signal at once", question: "Where does this belong?",
-    hint: "All of them counted together, none leading.",
+    id: "blend", label: t("lens-builder.studio.everySignalOnce"), question: t("lens-builder.studio.whereDoesBelong"),
+    hint: t("lens-builder.studio.allThemCountedTogether"),
     weights: STUDIO_WEIGHTS,
     structure: 0.5, reads: "everything",
-    preset: "blend", cut: "free", grain: "component", dimension: "Dimension",
+    preset: "blend", cut: "free", grain: "component", dimension: t("lens-builder.studio.dimension"),
   },
 ]
 
@@ -574,14 +575,14 @@ export interface Fitness { ok: boolean; basis: string; why: string }
  * see `domainBasisOf`.
  */
 export const DOMAIN_WHY: Record<DomainBasis, string> = {
-  tree: "by the package tree, which already holds the domains here",
-  subject: "by the subject each one is named for, wherever that word sits in the name",
+  tree: t("lens-builder.studio.packageTreeWhichAlready"),
+  subject: t("lens-builder.studio.subjectEachOneNamed"),
 }
 
 export const LAYER_WHY: Record<string, string> = {
-  lanes: "by the framework role each one plays",
-  names: "by the word they share in their names",
-  depth: "by how far they sit from the entry points",
+  lanes: t("lens-builder.studio.frameworkRoleEachOne"),
+  names: t("lens-builder.studio.wordTheyShareTheir"),
+  depth: t("lens-builder.studio.howFarTheySit"),
 }
 
 export function fitnessOf(way: Way, units: Map<string, Unit>, hasCochange: boolean, ctx?: BundleContext): Fitness {
@@ -596,37 +597,37 @@ export function fitnessOf(way: Way, units: Map<string, Unit>, hasCochange: boole
       if (!ctx) return { ok: true, basis: "subject", why: DOMAIN_WHY.subject }
       return subjectsIn(ids(), ctx).length
         ? { ok: true, basis: "subject", why: DOMAIN_WHY.subject }
-        : { ok: false, basis: "none", why: "No word here moves through the names; every one sits at the same depth." }
+        : { ok: false, basis: "none", why: t("lens-builder.studio.noWordHereMoves") }
     }
     case "role": {
-      const why = "by the word that fills the same slot in every name"
+      const why = t("lens-builder.studio.wordFillsSameSlot")
       if (!ctx) return { ok: true, basis: "role", why }
       return rolesIn(ids(), ctx).length
         ? { ok: true, basis: "role", why }
-        : { ok: false, basis: "none", why: "No word here is shared across enough of the tree to name a job." }
+        : { ok: false, basis: "none", why: t("lens-builder.studio.noWordHereShared") }
     }
     case "lanes":
       if (ctx ? layerKeyings(ids(), ctx).some(k => k.basis === "lanes") : any(u => u.lane)) {
         return { ok: true, basis: "lanes", why: LAYER_WHY.lanes }
       }
-      return { ok: false, basis: "none", why: "This snapshot recognises no framework roles." }
+      return { ok: false, basis: "none", why: t("lens-builder.studio.snapshotRecognisesNoFramework") }
     case "depth":
       if (ctx ? layerKeyings(ids(), ctx).some(k => k.basis === "depth") : any(u => u.depth !== null)) {
         return { ok: true, basis: "depth", why: LAYER_WHY.depth }
       }
-      return { ok: false, basis: "none", why: "Nothing here calls in, so there is nothing to be far from." }
+      return { ok: false, basis: "none", why: t("lens-builder.studio.nothingHereCallsSo") }
     case "authors":
       return any(u => u.authors.length)
-        ? { ok: true, basis: "authors", why: "by the hands in the commit history" }
-        : { ok: false, basis: "none", why: "This snapshot carries no git history." }
+        ? { ok: true, basis: "authors", why: t("lens-builder.studio.handsCommitHistory") }
+        : { ok: false, basis: "none", why: t("lens-builder.studio.snapshotCarriesNoGit") }
     case "commits":
       return hasCochange
-        ? { ok: true, basis: "cochange", why: "by what is edited in the same commits" }
-        : { ok: false, basis: "none", why: "This snapshot carries no commit history." }
+        ? { ok: true, basis: "cochange", why: t("lens-builder.studio.whatEditedSameCommits") }
+        : { ok: false, basis: "none", why: t("lens-builder.studio.snapshotCarriesNoCommit") }
     case "blend":
-      return { ok: true, basis: "blend", why: "by every signal at once, with none of them leading" }
+      return { ok: true, basis: "blend", why: t("lens-builder.studio.everySignalOnceNone") }
     default:
-      return { ok: true, basis: "references", why: "by what references what, with no name read at all" }
+      return { ok: true, basis: "references", why: t("lens-builder.studio.whatReferencesWhatNo") }
   }
 }
 
@@ -659,9 +660,9 @@ export function bundleFor(way: Way, pool: Iterable<string>, ctx: BundleContext):
     case "depth":
       return byLayer("depth")
     case "authors":
-      return keyed(ids, id => hands(ctx.units.get(id)), (k, m) => ({ name: k, reason: m.length === 1 ? `touched by ${k}` : `all touched by ${k}` }), ctx)
+      return keyed(ids, id => hands(ctx.units.get(id)), (k, m) => ({ name: k, reason: m.length === 1 ? t("lens-builder.studio.touched", { k }) : t("lens-builder.studio.allTouched", { k }) }), ctx)
     case "commits":
-      return keyed(ids, tieClusters(ids, ctx.index), (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "moves on its own" : "they move in the same commits" }), ctx)
+      return keyed(ids, tieClusters(ids, ctx.index), (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? t("lens-builder.studio.movesOwn") : t("lens-builder.studio.theyMoveSameCommits") }), ctx)
     case "role": {
       const { keys, roles } = roleKeys(ids, ctx)
       const said = new Map(roles.map(r => [r.word, r]))
@@ -669,9 +670,9 @@ export function bundleFor(way: Way, pool: Iterable<string>, ctx: BundleContext):
         const word = subjectOf(key)
         const role = word ? said.get(word) : undefined
         if (word && role) {
-          return { name: titleFromPrefix(word, ctx.style), reason: members.length === 1 ? `named for ${word}` : `all named ${word}, across ${role.reach} parts of the tree` }
+          return { name: titleFromPrefix(word, ctx.style), reason: members.length === 1 ? t("lens-builder.studio.named", { word }) : t("lens-builder.studio.allNamedAcrossParts", { word, reach: role.reach }) }
         }
-        return { name: titleFromPrefix(key || members[0], ctx.style), reason: members.length === 1 ? "on its own" : `all under ${key}` }
+        return { name: titleFromPrefix(key || members[0], ctx.style), reason: members.length === 1 ? t("lens-builder.studio.own") : t("lens-builder.studio.allUnder2", { key }) }
       }, ctx)
     }
     case "tree":
@@ -686,7 +687,7 @@ export function bundleFor(way: Way, pool: Iterable<string>, ctx: BundleContext):
         if (word && subject) return { name: titleFromPrefix(word, ctx.style), reason: subjectReason(subject, members.length) }
         return {
           name: titleFromPrefix(key || members[0], ctx.style),
-          reason: members.length === 1 ? "on its own" : key ? `all under ${key}` : "no shared path",
+          reason: members.length === 1 ? t("lens-builder.studio.own") : key ? t("lens-builder.studio.allUnder2", { key }) : t("lens-builder.studio.noSharedPath"),
         }
       }, ctx).flatMap(b => splitIfUnanswerable(b, ctx))
     }
@@ -705,7 +706,7 @@ function splitIfUnanswerable(b: Bundle, ctx: BundleContext): Bundle[] {
   const clusters = keyed(
     b.members,
     tieClusters(b.members, ctx.index),
-    (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? "nothing else leans its way" : "they lean on each other" }),
+    (_, m) => ({ name: commonName(m, ctx.style), reason: m.length === 1 ? t("lens-builder.studio.nothingElseLeansWay") : t("lens-builder.studio.theyLeanEachOther") }),
     ctx,
   )
   return clusters.length > 1 ? clusters : [b]
@@ -723,14 +724,14 @@ function layerKeyings(ids: string[], ctx: BundleContext): LayerKeying[] {
 
   const lanes = new Map<string, string>()
   for (const id of ids) { const l = ctx.units.get(id)?.lane; if (l) lanes.set(id, l) }
-  if (lanes.size) out.push({ basis: "lanes", keys: lanes, describe: (k, m) => ({ name: label(k), reason: m.length === 1 ? `plays the ${label(k)} role` : `all play the ${label(k)} role` }) })
+  if (lanes.size) out.push({ basis: "lanes", keys: lanes, describe: (k, m) => ({ name: label(k), reason: m.length === 1 ? t("lens-builder.studio.playsRole", { k: label(k) }) : t("lens-builder.studio.allPlayRole", { k: label(k) }) }) })
 
   const roles = roleTokens(ids, ctx)
-  if (roles.size) out.push({ basis: "names", keys: roles, describe: (k, m) => ({ name: titleFromPrefix(k, ctx.style), reason: m.length === 1 ? `named for ${k}` : `all named for ${k}` }) })
+  if (roles.size) out.push({ basis: "names", keys: roles, describe: (k, m) => ({ name: titleFromPrefix(k, ctx.style), reason: m.length === 1 ? t("lens-builder.studio.named2", { k }) : t("lens-builder.studio.allNamed", { k }) }) })
 
   const depths = new Map<string, string>()
   for (const id of ids) { const d = ctx.units.get(id)?.depth; if (d !== null && d !== undefined) depths.set(id, String(d)) }
-  if (depths.size) out.push({ basis: "depth", keys: depths, describe: k => ({ name: k === "0" ? "Entry points" : `${k} hops in`, reason: k === "0" ? "nothing calls in to them" : `all ${k} hops from an entry point` }) })
+  if (depths.size) out.push({ basis: "depth", keys: depths, describe: k => ({ name: k === "0" ? t("lens-builder.studio.entryPoints") : t("lens-builder.studio.hops", { k }), reason: k === "0" ? t("lens-builder.studio.nothingCallsThem") : t("lens-builder.studio.allHopsEntryPoint", { k }) }) })
 
   return out
 }
@@ -842,7 +843,7 @@ function roleTokens(pool: string[], ctx: BundleContext): Map<string, string> {
 function hands(unit: Unit | undefined): string | null {
   if (!unit || unit.authors.length === 0) return null
   const sorted = unit.authors.slice().sort()
-  return sorted.length <= 2 ? sorted.join(" & ") : sorted[0] + " and " + (sorted.length - 1) + " others"
+  return sorted.length <= 2 ? sorted.join(" & ") : t("lens-builder.studio.others", { value: sorted[0], value2: sorted.length - 1 })
 }
 
 const CLUSTER_MAX = 12

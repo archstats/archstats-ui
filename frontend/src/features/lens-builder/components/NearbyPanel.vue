@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col gap-2">
     <div class="flex items-baseline gap-2">
-      <span class="ui-label min-w-0 truncate">What leans towards {{ name }}</span>
+      <span class="ui-label min-w-0 truncate">{{ t('lens-builder.nearbyPanel.whatLeansTowards', { name }) }}</span>
       <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ total }}</span>
     </div>
     <!-- Said once. The same instruction arrived twice in two wordings, from
          the caller and from here. -->
-    <p v-if="total" class="text-2xs leading-4 text-neutral-550">The engine's offer, strongest first. Click to add · shift-click takes everything above it too.</p>
-    <p v-else class="text-sm leading-4 text-neutral-500">Nothing outside this group leans towards it. Draw a box on the map to add by hand, or say what it holds with a query above.</p>
+    <p v-if="total" class="text-2xs leading-4 text-neutral-550">{{ t('lens-builder.nearbyPanel.engineSOfferStrongest') }}</p>
+    <p v-else class="text-sm leading-4 text-neutral-500">{{ t('lens-builder.nearbyPanel.nothingOutsideGroupLeans') }}</p>
 
     <div class="flex flex-col gap-2">
 
@@ -21,14 +21,14 @@
           <!-- The reason is the same for nearly every row, so it is said once
                here and only the exceptions are marked below. -->
           <span class="min-w-0 truncate text-xs text-neutral-400">{{ band.reason }}</span>
-          <button type="button" class="ml-auto shrink-0 text-xs text-neutral-500 hover:text-neutral-900" @click="emit('add', band.items.map(i => i.id))">Add all {{ band.items.length }}</button>
+          <button type="button" class="ml-auto shrink-0 text-xs text-neutral-500 hover:text-neutral-900" @click="emit('add', band.items.map(i => i.id))">{{ t('lens-builder.nearbyPanel.addAll', { itemsLength: band.items.length }) }}</button>
         </div>
         <ul v-if="open(band)" class="flex flex-col">
           <li
             v-for="c in band.items"
             :key="c.id"
             class="group flex h-7 cursor-pointer items-center gap-2 rounded-md pl-1 pr-0.5 hover:bg-accent-50"
-            :title="`${c.id} — ${c.detail}. Click to add to ${name}; shift-click to take everything down to here.`"
+            :title="t('lens-builder.nearbyPanel.clickAddShiftClick', { id: c.id, detail: c.detail, name })"
             @click="pick(c.id, $event)"
           >
             <!-- Strength as a mark, not a sentence. -->
@@ -36,10 +36,10 @@
               <span v-for="n in 3" :key="n" class="w-[3px] rounded-[1px]" :class="c.share >= n * 33 - 20 ? 'bg-blue-500' : 'bg-neutral-200'" :style="{ height: n * 33 + '%' }"></span>
             </span>
             <span class="min-w-0 truncate font-mono text-sm text-neutral-900" dir="rtl" :title="c.id">{{ c.label }}</span>
-            <span v-if="c.rival || c.reason !== band.reason" class="shrink-0 rounded px-1 text-[10px] leading-4" :class="c.rival ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-600'" :title="c.rival ? `It leans harder towards ${c.rival}` : c.reason">{{ c.tag }}</span>
+            <span v-if="c.rival || c.reason !== band.reason" class="shrink-0 rounded px-1 text-[10px] leading-4" :class="c.rival ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-600'" :title="c.rival ? t('lens-builder.nearbyPanel.leansHarderTowards', { rival: c.rival }) : c.reason">{{ c.tag }}</span>
             <span class="flex shrink-0 items-center gap-0.5 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
-              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="`Show ${c.id} on the map`" title="Show it on the map" @click.stop="emit('focus', c.id)"><Icon icon="focus" :size="11"/></button>
-              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="`Never offer ${c.id}`" title="Never offer this one for this group again" @click.stop="emit('refuse', c.id)"><Icon icon="x" :size="11"/></button>
+              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="t('lens-builder.nearbyPanel.showMap', { id: c.id })" :title="t('lens-builder.nearbyPanel.showMap2')" @click.stop="emit('focus', c.id)"><Icon icon="focus" :size="11"/></button>
+              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="t('lens-builder.nearbyPanel.neverOffer', { id: c.id })" :title="t('lens-builder.nearbyPanel.neverOfferOneGroup')" @click.stop="emit('refuse', c.id)"><Icon icon="x" :size="11"/></button>
             </span>
           </li>
         </ul>
@@ -51,6 +51,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
+import { t } from "~/shared/i18n";
 
 // What could come into the group you have open. This is intake — the same
 // job Sort and Grab do, aimed at one group — so it sits beside them rather

@@ -3,7 +3,7 @@
        being read. A filter you cannot see is a view that lies, so the path is
        always on screen and every level above the current one is a way out. -->
   <nav class="flex shrink-0 items-center gap-1 hairline-b bg-ground px-3 py-1.5"
-       aria-label="Descent">
+       :aria-label="t('units.descentBar.descent')">
     <button type="button"
             class="shrink-0 rounded px-1.5 py-0.5 text-sm transition-colors duration-100"
             :class="steps.length ? 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900' : 'text-neutral-900'"
@@ -24,17 +24,17 @@
 
     <span v-if="count !== null"
           class="ml-2 shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">
-      {{ count.toLocaleString() }} {{ noun }}{{ count === 1 ? '' : 's' }}
+      {{ count.toLocaleString(intlLocale) }} {{ noun }}{{ count === 1 ? '' : 's' }}
     </span>
 
     <!-- The lanes are a reading, not a fact, and every level of the descent
          is coloured by it. Buried in a settings popover it looked like a
          property of the codebase rather than a choice about how to see it. -->
     <label class="ml-auto flex shrink-0 items-center gap-1.5 pl-3">
-      <span class="ui-label">Read as</span>
-      <select class="ui-input ui-input-sm max-w-[13rem]" :value="framework" aria-label="Framework"
+      <span class="ui-label">{{ t('units.descentBar.read') }}</span>
+      <select class="ui-input ui-input-sm max-w-[13rem]" :value="framework" :aria-label="t('units.descentBar.framework')"
               @change="$emit('framework', ($event.target as HTMLSelectElement).value)">
-        <option :value="AUTO">Auto · {{ autoLabel }}</option>
+        <option :value="AUTO">{{ t('units.descentBar.auto', { autoLabel }) }}</option>
         <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.label }}</option>
       </select>
     </label>
@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import Icon from "~/shared/ui/Icon.vue"
 import { AUTO } from "~/features/frameworks/frameworkProfiles"
+import { t, intlLocale } from "~/shared/i18n"
 
 defineProps<{
   root: string

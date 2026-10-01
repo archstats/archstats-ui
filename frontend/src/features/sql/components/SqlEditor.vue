@@ -50,14 +50,14 @@
       <template v-else-if="status.problem">
         <AlertTriangle :size="12" class="shrink-0"/>
         <button type="button" class="sqle-status-doc text-left hover:underline" @mousedown.prevent @click="jumpTo(status.problem.from)">{{ status.problem.message }}</button>
-        <span v-if="problems.length > 1" class="shrink-0 text-neutral-500">and {{ problems.length - 1 }} more</span>
+        <span v-if="problems.length > 1" class="shrink-0 text-neutral-500">{{ t('sql.sqlEditor.more', { value: problems.length - 1 }) }}</span>
       </template>
       <template v-else-if="status.about">
         <span class="sqle-status-name">{{ status.about.title }}</span>
         <span v-if="status.about.body" class="sqle-status-doc">{{ status.about.body }}</span>
       </template>
       <span v-else class="sqle-status-doc text-neutral-400">{{ hint }}</span>
-      <span class="sqle-pos">Ln {{ caretLine + 1 }}, Col {{ caretCol + 1 }}</span>
+      <span class="sqle-pos">{{ t('sql.sqlEditor.lnCol', { value: caretLine + 1, value2: caretCol + 1 }) }}</span>
     </div>
 
     <!-- Suggestions, with what the chosen one is. -->
@@ -68,9 +68,9 @@
         :style="{ left: `${popup.x}px`, top: `${popup.y}px` }"
         @mousedown.prevent
       >
-        <ul :id="listId" ref="listEl" class="sqle-list" :class="{ 'sqle-list-wide': popup.value }" role="listbox" :aria-label="popup.value ? `Values of ${popup.value.column}` : 'Suggestions'">
+        <ul :id="listId" ref="listEl" class="sqle-list" :class="{ 'sqle-list-wide': popup.value }" role="listbox" :aria-label="popup.value ? t('sql.sqlEditor.values', { column: popup.value.column }) : t('sql.sqlEditor.suggestions')">
           <li v-if="popup.value" class="sqle-list-head" role="presentation">
-            Values of <span class="font-mono">{{ popup.value.column }}</span><template v-if="popup.value.table"> in <span class="font-mono">{{ popup.value.table }}</span></template>
+{{ t('sql.sqlEditor.values2') }} <span class="font-mono">{{ popup.value.column }}</span><template v-if="popup.value.table">{{ ' ' + t('sql.sqlEditor.in') }} <span class="font-mono">{{ popup.value.table }}</span></template>
           </li>
           <li
             v-for="(it, i) in popup.items"
@@ -88,14 +88,14 @@
             <span v-else class="sqle-item-label"><template v-for="(part, k) in parts(it)" :key="k"><b v-if="part.hit">{{ part.text }}</b><template v-else>{{ part.text }}</template></template></span>
             <span v-if="it.detail" class="sqle-item-detail">{{ it.detail }}</span>
           </li>
-          <li v-if="popup.loading && !popup.items.length" class="sqle-list-head" role="presentation">Reading values…</li>
+          <li v-if="popup.loading && !popup.items.length" class="sqle-list-head" role="presentation">{{ t('sql.sqlEditor.readingValues') }}</li>
         </ul>
         <aside v-if="activeItem?.doc" class="sqle-doc">
           <p class="sqle-doc-title">{{ activeItem.doc.title }}</p>
           <p v-if="activeItem.doc.body" class="sqle-doc-body">{{ activeItem.doc.body }}</p>
           <p v-if="activeItem.doc.more" class="sqle-doc-more">{{ activeItem.doc.more }}</p>
           <p v-for="m in activeItem.doc.meta ?? []" :key="m" class="sqle-doc-meta">{{ m }}</p>
-          <p class="sqle-doc-keys"><kbd>↵</kbd> or <kbd>Tab</kbd> to insert · <kbd>Esc</kbd> to close</p>
+          <p class="sqle-doc-keys"><I18nT k="sql.sqlEditor.insertClose"><template #icon><kbd>↵</kbd></template><template #key><kbd>Tab</kbd></template><template #key2><kbd>Esc</kbd></template></I18nT></p>
         </aside>
       </div>
     </Teleport>
@@ -111,6 +111,8 @@ import {
   analyze, classify, complete, contextAt, lint, locateError, signatureAt,
   type Completion, type CompletionContext, type SqlDiagnostic,
 } from "~/features/sql/sqlLang";
+import { t, intlLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -127,7 +129,7 @@ const props = withDefaults(defineProps<{
   fill?: boolean
   placeholder?: string
   ariaLabel?: string
-}>(), { error: null, minRows: 3, maxRows: 22, lineNumbers: false, compact: false, fill: false, placeholder: "", ariaLabel: "SQL" });
+}>(), { error: null, minRows: 3, maxRows: 22, lineNumbers: false, compact: false, fill: false, placeholder: "", ariaLabel: t("sql.sqlEditor.sql") });
 const emit = defineEmits<{ (e: "update:modelValue", v: string): void; (e: "run"): void; (e: "blur"): void; (e: "format"): void; (e: "caret", at: number): void }>();
 
 const ICONS = { table: Table2, column: Columns, metric: Gauge, function: Sigma, keyword: Type, value: Quote, source: Layers, snippet: CornerDownLeft } as const;
@@ -226,11 +228,11 @@ const status = computed(() => {
     const d = schema.value.describe?.(name);
     const table = schema.value.tables.find(t => t.name.toLowerCase() === name.toLowerCase());
     if (d) about = { title: d.name !== name ? `${d.name} · ${name}` : name, body: d.short };
-    else if (table) about = { title: `${table.name} · ${table.columns.length} columns`, body: table.columns.slice(0, 10).map(c => c.name).join(", ") + (table.columns.length > 10 ? ", …" : "") };
+    else if (table) about = { title: t("sql.sqlEditor.columns", { tableName: table.name, columnsLength: table.columns.length }), body: table.columns.slice(0, 10).map(c => c.name).join(", ") + (table.columns.length > 10 ? ", …" : "") };
   }
   return { signature, problem, about, bad: !signature && !!problem };
 });
-const hint = computed(() => (tables.value.length ? `${tables.value.length} tables · ⌃Space suggests · ${props.compact ? "⇧↵" : "⌘↵"} runs · ⌘/ comments a line` : "Reading the schema…"));
+const hint = computed(() => (tables.value.length ? t("sql.sqlEditor.tablesSpaceSuggestsRuns", { tablesLength: tables.value.length, value: props.compact ? "⇧↵" : "⌘↵" }) : t("sql.sqlEditor.readingSchema")));
 
 // ── Editing ─────────────────────────────────────────────────────────────
 function track() {
@@ -389,7 +391,7 @@ async function refresh(openIt: boolean, manual = false) {
       const hits = await values(table!, column, prefix);
       if (ask !== valueAsk) return;
       popup.loading = false;
-      popup.items = hits.map(h => ({ kind: "value", label: h.value, detail: `${h.rows.toLocaleString("en-US")} ${h.rows === 1 ? "row" : "rows"}`, score: 0, matches: [] }));
+      popup.items = hits.map(h => ({ kind: "value", label: h.value, detail: t("common.count.row", { count: h.rows }), score: 0, matches: [] }));
       popup.active = 0;
       if (!popup.items.length && !manual) close();
       place();

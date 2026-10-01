@@ -1,5 +1,5 @@
 <template>
-  <LoadingState text="Opening Activity…"/>
+  <LoadingState :text="t('pages.gitTimeline.openingActivity')"/>
 </template>
 
 <script setup lang="ts">
@@ -7,6 +7,7 @@
 import { onMounted } from "vue"
 import { useRouter } from "vue-router"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 
 const router = useRouter()
 onMounted(() => { router.replace("/views/git/activity?tab=commits") })

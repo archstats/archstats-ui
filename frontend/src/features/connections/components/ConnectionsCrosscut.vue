@@ -5,8 +5,8 @@
         <tr>
           <th class="corner sticky left-0 top-0 z-30 bg-surface hairline-b hairline-r" :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: HEAD_H + 'px' }">
             <span class="flex h-full flex-col justify-end px-2 pb-1.5 text-left font-sans">
-              <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400">{{ rowDimension }} <span class="text-neutral-300">rows</span></span>
-              <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400">{{ colDimension }} <span class="text-neutral-300">columns</span></span>
+              <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400">{{ rowDimension }} <span class="text-neutral-300">{{ t('connections.connectionsCrosscut.rows') }}</span></span>
+              <span class="text-[10px] font-medium uppercase tracking-wider text-neutral-400">{{ colDimension }} <span class="text-neutral-300">{{ t('connections.connectionsCrosscut.columns') }}</span></span>
             </span>
           </th>
           <th
@@ -15,11 +15,11 @@
             class="col sticky top-0 z-20 bg-surface hairline-b"
             :class="{ 'is-hover': hoverCol === col.id, 'is-none': col.id === null }"
             :style="{ width: CELL_W + 'px', minWidth: CELL_W + 'px', height: HEAD_H + 'px' }"
-            :title="col.id === null ? `Files in no ${colDimension} group` : `${col.name} · ${cross.colFiles.get(col.id) ?? 0} files`"
+            :title="col.id === null ? t('connections.connectionsCrosscut.filesNoGroup', { colDimension }) : t('connections.connectionsCrosscut.files', { colName: col.name, value: cross.colFiles.get(col.id) ?? 0 })"
           >
             <span class="flex h-full flex-col justify-end gap-1 px-1.5 pb-1.5 text-left">
               <span class="truncate font-sans text-xs font-medium text-neutral-800">{{ col.name }}</span>
-              <span class="text-[10px] text-neutral-400">{{ col.id === null ? uncolumnedFiles : (cross.colFiles.get(col.id) ?? 0) }} files</span>
+              <span class="text-[10px] text-neutral-400">{{ t('connections.connectionsCrosscut.files2', { value: col.id === null ? uncolumnedFiles : (cross.colFiles.get(col.id) ?? 0) }) }}</span>
               <span class="h-[3px] rounded-sm" :style="{ backgroundColor: col.color ?? 'rgb(var(--c-neutral-300))' }"></span>
             </span>
           </th>
@@ -31,7 +31,7 @@
             class="row sticky left-0 z-10 bg-surface hairline-r"
             :class="{ 'is-none': row.id === null }"
             :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: CELL_H + 'px' }"
-            :title="row.id === null ? `Files in no ${rowDimension} group` : `${row.name} · ${cross.rowFiles.get(row.id) ?? 0} files`"
+            :title="row.id === null ? t('connections.connectionsCrosscut.filesNoGroup2', { rowDimension }) : t('connections.connectionsCrosscut.files3', { name: row.name, value: cross.rowFiles.get(row.id) ?? 0 })"
           >
             <span class="flex h-full items-center gap-1.5 px-2">
               <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: row.color ?? 'rgb(var(--c-neutral-300))' }"></span>
@@ -63,6 +63,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { NONE, cellKey, type CrossCell, type CrossGroup, type Crosscut, type Measure } from "~/features/connections/crosscut";
+import { t } from "~/shared/i18n";
 
 // Two dimensions as a table: one row per group of the first, one column per
 // group of the second, the intersection in each cell. Cells carry files,
@@ -96,11 +97,11 @@ const unrowedFiles = computed(() => { let n = 0; props.cross.cells.forEach(c => 
 const uncolumnedFiles = computed(() => { let n = 0; props.cross.cells.forEach(c => { if (c.col === null) n += c.files; }); return n; });
 const rowsShown = computed<Head[]>(() => [
   ...props.rows.map(r => ({ id: r.id, name: r.name, color: r.color })),
-  ...(unrowedFiles.value > 0 ? [{ id: null, name: `Not in ${props.rowDimension}`, color: null }] : []),
+  ...(unrowedFiles.value > 0 ? [{ id: null, name: t("connections.connectionsCrosscut.not", { rowDimension: props.rowDimension }), color: null }] : []),
 ]);
 const columns = computed<Head[]>(() => [
   ...props.cols.map(c => ({ id: c.id, name: c.name, color: c.color })),
-  ...(uncolumnedFiles.value > 0 ? [{ id: null, name: `Not in ${props.colDimension}`, color: null }] : []),
+  ...(uncolumnedFiles.value > 0 ? [{ id: null, name: t("connections.connectionsCrosscut.not2", { colDimension: props.colDimension }), color: null }] : []),
 ]);
 
 const hoverRow = ref<string | null | undefined>(undefined);
@@ -144,15 +145,15 @@ function cellStyle(row: string | null, col: string | null) {
   return { backgroundColor: `rgb(var(${hue}) / ${alpha.toFixed(3)})` };
 }
 function nameOf(list: CrossGroup[], id: string | null, dimension: string): string {
-  return id === null ? `not in ${dimension}` : (list.find(g => g.id === id)?.name ?? id);
+  return id === null ? t("connections.connectionsCrosscut.not3", { dimension }) : (list.find(g => g.id === id)?.name ?? id);
 }
 function cellTitle(row: string | null, col: string | null): string | undefined {
   const c = cellAt(row, col);
   if (!c) return undefined;
-  const parts = [`${nameOf(props.rows, row, props.rowDimension)} × ${nameOf(props.cols, col, props.colDimension)}`, `${c.files} file${c.files === 1 ? "" : "s"} in ${c.components.size} component${c.components.size === 1 ? "" : "s"}`];
-  if (c.coupling > 0) parts.push(props.directed ? `coupling out ${Math.round(c.out)}, in ${Math.round(c.in)}` : `coupling ${Math.round(c.coupling)}`);
-  if (c.cycles > 0) parts.push(`${c.cycles} cycle${c.cycles === 1 ? "" : "s"} touch it`);
-  parts.push("Click to inspect, double-click to open in the graph");
+  const parts = [`${nameOf(props.rows, row, props.rowDimension)} × ${nameOf(props.cols, col, props.colDimension)}`, t("connections.connectionsCrosscut.in", { files: t("common.count.file", { count: c.files }), components: t("common.count.component", { count: c.components.size }) })];
+  if (c.coupling > 0) parts.push(props.directed ? t("connections.connectionsCrosscut.couplingOut", { out: Math.round(c.out), in: Math.round(c.in) }) : t("connections.connectionsCrosscut.coupling", { coupling: Math.round(c.coupling) }));
+  if (c.cycles > 0) parts.push(t("connections.connectionsCrosscut.touch", { cycles: t("common.count.cycle", { count: c.cycles }) }));
+  parts.push(t("connections.connectionsCrosscut.clickInspectDoubleClick"));
   return parts.join("\n");
 }
 </script>

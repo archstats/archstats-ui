@@ -6,10 +6,12 @@
 // so their abstractness reads 0.00 whatever the design is. Distance from the
 // main sequence and the zones inherit that zero.
 
+import { t } from "~/shared/i18n"
+
 const IMPLICIT: Record<string, string> = {
-  py: "Python",
+  py: t("metrics.abstraction.python"),
   js: "JavaScript", jsx: "JavaScript", mjs: "JavaScript", cjs: "JavaScript",
-  rb: "Ruby",
+  rb: t("metrics.abstraction.ruby"),
 }
 
 const EXPLICIT = new Set(["java", "kt", "kts", "cs", "php", "ts", "tsx", "mts", "cts", "go"])

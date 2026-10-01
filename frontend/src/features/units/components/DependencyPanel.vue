@@ -5,7 +5,7 @@
        matrix cannot draw. It is in the snapshot, so it belongs here. -->
   <aside class="flex h-full flex-col bg-ground">
     <header class="shrink-0 hairline-b px-4 py-3">
-      <p class="ui-label">Dependency</p>
+      <p class="ui-label">{{ t('units.dependencyPanel.dependency') }}</p>
 
       <button type="button" class="mt-1.5 flex w-full min-w-0 items-center gap-2 text-left"
               @click="$emit('select', from.path)">
@@ -17,10 +17,10 @@
 
       <p class="my-1 flex items-center gap-1.5 pl-0.5 text-sm text-neutral-500">
         <Icon icon="chevron-down" :size="12"/>
-        <span>imports</span>
+        <span>{{ t('units.dependencyPanel.imports') }}</span>
         <span v-if="cycle" class="flex items-center gap-1 text-red-500">
           <Icon icon="recycle" :size="11"/>
-          <span>and is imported back</span>
+          <span>{{ t('units.dependencyPanel.importedBack') }}</span>
         </span>
       </p>
 
@@ -36,7 +36,7 @@
     <div class="min-h-0 flex-1 overflow-y-auto">
       <section>
         <h3 class="flex items-baseline gap-2 px-4 pb-1 pt-3">
-          <span class="ui-section-title">What creates it</span>
+          <span class="ui-section-title">{{ t('units.dependencyPanel.whatCreates') }}</span>
           <span v-if="informative" class="font-mono text-[11px] tabular-nums text-neutral-400">{{ via.length }}</span>
         </h3>
 
@@ -44,16 +44,11 @@
              language with a type-per-file rule -- the declarations are the
              modules and listing them repeats the header back. -->
         <p v-if="!informative" class="px-4 pb-2 text-xs leading-4 text-neutral-500">
-          {{ from.name }} is the only thing this module declares, so the dependency is the type
-          itself:
-          <span class="text-neutral-700">{{ via.length }}</span>
-          {{ via.length === 1 ? 'reference' : 'references' }} to {{ to.name }}.
-        </p>
+          <I18nT k="units.dependencyPanel.onlyThingModuleDeclares"><template #fromName>{{ from.name }}</template><template #viaLength><span class="text-neutral-700">{{ via.length }}</span></template><template #value>{{t('common.noun.reference', { count: via.length })}}</template><template #toName>{{ to.name }}</template></I18nT> </p>
 
         <template v-else>
           <p class="px-4 pb-2 text-xs leading-4 text-neutral-500">
-            The declarations in {{ from.name }} that reach into {{ to.name }}. Remove these and the
-            dependency is gone.
+            {{ t('units.dependencyPanel.declarationsReachRemoveThese', { fromName: from.name, toName: to.name }) }}
           </p>
           <ul>
             <li v-for="(v, i) in via" :key="i"
@@ -68,10 +63,10 @@
 
       <div class="flex flex-wrap gap-2 px-4 py-3">
         <router-link :to="`/views/files/${from.path}`" class="ui-btn ui-btn-sm">
-          <Icon icon="file-code" :size="12"/><span>Open {{ from.name }}</span>
+          <Icon icon="file-code" :size="12"/><span>{{ t('units.dependencyPanel.open', { fromName: from.name }) }}</span>
         </router-link>
         <router-link :to="`/views/files/${to.path}`" class="ui-btn ui-btn-sm">
-          <Icon icon="file-code" :size="12"/><span>Open {{ to.name }}</span>
+          <Icon icon="file-code" :size="12"/><span>{{ t('units.dependencyPanel.open2', { toName: to.name }) }}</span>
         </router-link>
         <OpenInEditor :file="from.path"/>
       </div>
@@ -85,6 +80,8 @@ import { computed } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import { dirTail, type ModuleNode } from "~/features/units/moduleGraph"
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const props = defineProps<{
   from: ModuleNode

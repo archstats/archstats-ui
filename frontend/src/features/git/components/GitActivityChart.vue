@@ -15,9 +15,9 @@
         </div>
 
         <div class="day-labels">
-          <span class="text-xs text-gray-500">Mon</span>
-          <span class="text-xs text-gray-500">Wed</span>
-          <span class="text-xs text-gray-500">Fri</span>
+          <span class="text-xs text-gray-500">{{ t('git.gitActivityChart.mon') }}</span>
+          <span class="text-xs text-gray-500">{{ t('git.gitActivityChart.wed') }}</span>
+          <span class="text-xs text-gray-500">{{ t('git.gitActivityChart.fri') }}</span>
         </div>
 
         <div class="activity-chart">
@@ -32,7 +32,7 @@
                 v-if="day.date"
                 class="ui-tooltip absolute bottom-full z-10 mb-1.5 w-max opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none"
             >
-              {{ day.commits.length }} commits on {{ formatDate(day.date) }}
+              {{ t('git.gitActivityChart.commits', { commitsLength: day.commits.length, date: formatDate(day.date) }) }}
             </div>
           </div>
         </div>
@@ -46,23 +46,24 @@ import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, ref } from 'vue';
 import { useFigure } from "~/features/export/useExportables";
 import { svgFromHtml } from "~/features/export/figure";
+import { t, intlLocale } from "~/shared/i18n";
 
 const root = ref<HTMLElement | null>(null);
 // Built from divs, so the figure is drawn from their laid-out boxes.
 const figure = useFigure({
-  title: "Commit calendar",
+  title: t("git.gitActivityChart.commitCalendar"),
   ready: () => !!root.value,
   svg: true,
   render: () => {
     if (!root.value) return null;
-    const { svg, width, height } = svgFromHtml(root.value, ".day-cell", ".year-labels > div, .month-labels > div, .day-labels > span");
+    const { svg, width, height } = svgFromHtml(root.value, ".day-cell", t("git.gitActivityChart.yearLabelsDivMonth"));
     return { kind: "svg", svg, width, height };
   },
   // The cells take the neutral ramp (tailwind's archstats family maps onto it), fewest commits palest.
   legend: () => ({
-    items: [{ label: "No commits", color: "rgb(var(--c-neutral-200))" }],
-    ramps: [{ label: "Commits a day", colors: [100, 300, 500, 700, 900].map((n) => `rgb(var(--c-neutral-${n}))`), low: "1", high: String(maxCommitsInDay.value) }],
-    notes: ["One square per day, a column per week."],
+    items: [{ label: t("git.gitActivityChart.noCommits"), color: "rgb(var(--c-neutral-200))" }],
+    ramps: [{ label: t("git.gitActivityChart.commitsDay"), colors: [100, 300, 500, 700, 900].map((n) => `rgb(var(--c-neutral-${n}))`), low: "1", high: String(maxCommitsInDay.value) }],
+    notes: [t("git.gitActivityChart.oneSquarePerDay")],
   }),
 });
 
@@ -258,7 +259,7 @@ const monthLabels = computed(() => {
       // Add the new label only if there's enough space from the previous one.
       if (!lastLabel || (newPosition - lastLabel.position) >= minSpacing) {
         labels.push({
-          name: day.date.toLocaleString('en-US', { month: 'short' }),
+          name: day.date.toLocaleString(intlLocale, { month: 'short' }),
           style: {
             position: 'absolute',
             left: `${newPosition}px`
@@ -278,7 +279,7 @@ const monthLabels = computed(() => {
  * @param date - The date to format.
  */
 const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(intlLocale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

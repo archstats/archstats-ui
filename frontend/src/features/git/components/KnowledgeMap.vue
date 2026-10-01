@@ -4,20 +4,20 @@
        Hatched tiles are code nobody still here has worked on. Packages too
        deep to show roll into one quiet tile with their mix along the bottom. -->
   <div class="flex flex-col gap-2">
-    <nav class="flex h-6 items-center gap-0.5 text-sm" aria-label="Where on the map">
+    <nav class="flex h-6 items-center gap-0.5 text-sm" :aria-label="t('git.knowledgeMap.whereMap')">
       <button type="button" class="rounded px-1.5 py-0.5 hover:bg-neutral-100" :class="zoom.length ? 'text-neutral-600 hover:text-neutral-900' : 'font-medium text-neutral-900'" @click="zoom = []">{{ rootLabel }}</button>
       <template v-for="(z, i) in zoom" :key="z.path">
         <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
         <button type="button" class="rounded px-1.5 py-0.5 font-mono text-[12px] hover:bg-neutral-100" :class="i === zoom.length - 1 ? 'font-medium text-neutral-900' : 'text-neutral-600'" @click="zoom = zoom.slice(0, i + 1)">{{ z.label }}</button>
       </template>
-      <span class="ml-auto text-xs text-neutral-500">{{ zoom.length ? "Press Esc to go back up" : "Size shows lines of code · click a package to open it" }}</span>
+      <span class="ml-auto text-xs text-neutral-500">{{ zoom.length ? t('git.knowledgeMap.pressEscGoBack') : t('git.knowledgeMap.sizeShowsLinesCode') }}</span>
     </nav>
 
     <ExhibitFrame :exhibit="figure">
       <div ref="hostRef" class="relative w-full select-none outline-none" :style="{ height: `${height}px` }" tabindex="-1"
            @mouseleave="hover = null; hoverRolled = null" @keydown.esc="zoom = zoom.slice(0, -1)">
         <svg v-if="width > 0" ref="svgRef" class="block" :width="width" :height="height" :viewBox="`0 0 ${width} ${height}`" role="img"
-             aria-label="Components sized by lines of code, grouped by package, coloured by how much active contributors wrote or changed them">
+             :aria-label="t('git.knowledgeMap.componentsSizedLinesCode')">
           <defs>
             <pattern :id="hatchId" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
               <rect width="6" height="6" :fill="p.hatchGround"/>
@@ -26,11 +26,11 @@
           </defs>
 
           <!-- Group headers: the name, and its size in lines. -->
-          <g :font-family="t.fontSans">
+          <g :font-family="theme.fontSans">
             <g v-for="g in groups" :key="`g${g.path}`">
               <template v-if="g.showLabel">
                 <text :x="g.x0 + 1" :y="g.y0 + (g.depth === 1 ? 13 : 10)" :font-size="g.depth === 1 ? 12 : 10.5" :font-weight="g.depth === 1 ? 600 : 500"
-                      :fill="g.depth === 1 ? t.ink : t.inkSecondary">{{ g.text }}<tspan v-if="g.size" :fill="t.inkMuted" font-weight="400" :font-family="t.fontMono" font-size="10.5">{{ "  " + g.size }}</tspan></text>
+                      :fill="g.depth === 1 ? theme.ink : theme.inkSecondary">{{ g.text }}<tspan v-if="g.size" :fill="theme.inkMuted" font-weight="400" :font-family="theme.fontMono" font-size="10.5">{{ "  " + g.size }}</tspan></text>
               </template>
             </g>
           </g>
@@ -45,12 +45,12 @@
                     :fill="b.id === 'nobody' ? `url(#${hatchId})` : p.fill[b.id]"/>
             </g>
             <rect :x="r.x0 + 0.5" :y="r.y0 + 0.5" :width="Math.max(0, r.w - 1)" :height="Math.max(0, r.h - 1)" rx="3" fill="none"
-                  :stroke="hoverRolled === r ? t.ink : t.hairlineStrong" :stroke-width="hoverRolled === r ? 1.5 : 1"/>
-            <rect v-if="r.w > 16 && r.h > 16" :x="r.x0 + 3.5" :y="r.y0 + 3.5" :width="Math.max(0, r.w - 7)" :height="Math.max(0, r.h - 7)" rx="2" fill="none" :stroke="t.surface" stroke-opacity="0.55"/>
+                  :stroke="hoverRolled === r ? theme.ink : theme.hairlineStrong" :stroke-width="hoverRolled === r ? 1.5 : 1"/>
+            <rect v-if="r.w > 16 && r.h > 16" :x="r.x0 + 3.5" :y="r.y0 + 3.5" :width="Math.max(0, r.w - 7)" :height="Math.max(0, r.h - 7)" rx="2" fill="none" :stroke="theme.surface" stroke-opacity="0.55"/>
             <g v-if="r.name" class="pointer-events-none">
-              <rect :x="r.x0 + 6" :y="r.y0 + 6" :width="r.chip" :height="r.sub ? 34 : 20" rx="3" :fill="t.surface" fill-opacity="0.94"/>
-              <text :x="r.x0 + 12" :y="r.y0 + 20" :font-family="t.fontSans" font-size="12" font-weight="600" :fill="t.ink">{{ r.name }}</text>
-              <text v-if="r.sub" :x="r.x0 + 12" :y="r.y0 + 34" :font-family="t.fontSans" font-size="11" :fill="t.inkSecondary">{{ r.sub }}</text>
+              <rect :x="r.x0 + 6" :y="r.y0 + 6" :width="r.chip" :height="r.sub ? 34 : 20" rx="3" :fill="theme.surface" fill-opacity="0.94"/>
+              <text :x="r.x0 + 12" :y="r.y0 + 20" :font-family="theme.fontSans" font-size="12" font-weight="600" :fill="theme.ink">{{ r.name }}</text>
+              <text v-if="r.sub" :x="r.x0 + 12" :y="r.y0 + 34" :font-family="theme.fontSans" font-size="11" :fill="theme.inkSecondary">{{ r.sub }}</text>
             </g>
           </g>
 
@@ -61,8 +61,8 @@
                   :fill="n.row.state === 'nobody' ? `url(#${hatchId})` : p.fill[n.row.state]"
                   :stroke="ring(n.row) ?? (n.row.state === 'nobody' ? p.hatchLine : 'none')"
                   :stroke-width="n.row.component === focused ? 2.5 : ring(n.row) ? 1.5 : 1"/>
-            <text v-if="n.name" :x="n.x0 + 7" :y="n.y0 + 17" :font-family="t.fontSans" font-size="12" font-weight="600" :fill="p.ink[n.row.state]" class="pointer-events-none">{{ n.name }}</text>
-            <text v-if="n.sub" :x="n.x0 + 7" :y="n.y0 + 32" :font-family="t.fontSans" font-size="11" :fill="p.inkSoft[n.row.state]" class="pointer-events-none">{{ n.sub }}</text>
+            <text v-if="n.name" :x="n.x0 + 7" :y="n.y0 + 17" :font-family="theme.fontSans" font-size="12" font-weight="600" :fill="p.ink[n.row.state]" class="pointer-events-none">{{ n.name }}</text>
+            <text v-if="n.sub" :x="n.x0 + 7" :y="n.y0 + 32" :font-family="theme.fontSans" font-size="11" :fill="p.inkSoft[n.row.state]" class="pointer-events-none">{{ n.sub }}</text>
           </g>
         </svg>
 
@@ -73,12 +73,12 @@
             <span class="h-2.5 w-2.5 rounded-sm" :class="{ hairline: b.id === 'nobody' }" :style="{ background: b.id === 'nobody' ? hatchCss : p.fill[b.id] }"></span>
             <span class="flex-1">{{ STATES.find(x => x.id === b.id)!.label }}</span><span class="font-mono text-xs tabular-nums">{{ b.pct }}</span>
           </span>
-          <span class="text-xs text-neutral-500">{{ formatNumber(hoverRolled.count, 0) }} components · click to open · ⌘-click to select them all</span>
+          <span class="text-xs text-neutral-500">{{ t('git.knowledgeMap.componentsClickOpenClick', { hoverRolledCount: formatNumber(hoverRolled.count, 0) }) }}</span>
         </div>
         <div v-if="hover" class="ui-popover pointer-events-none absolute z-10 flex w-[280px] flex-col gap-1 px-3 py-2.5" :style="cardAt(hover.x0, hover.y0, hover.y1, 110)">
           <span class="truncate font-mono text-sm font-medium text-neutral-900" :title="hover.row.component">{{ hover.row.component }}</span>
           <span class="text-sm leading-5 text-neutral-700">{{ sentence(hover.row) }}</span>
-          <span class="text-xs text-neutral-500">{{ formatNumber(hover.row.lines, 0) }} lines · click for details · ⌘-click to select</span>
+          <span class="text-xs text-neutral-500">{{ t('git.knowledgeMap.linesClickDetailsClick', { lines: formatNumber(hover.row.lines, 0) }) }}</span>
         </div>
       </div>
     </ExhibitFrame>
@@ -96,6 +96,7 @@ import { chartTheme, useChartTheme } from "~/shared/ui/useChartTheme"
 import { useAuthorsStore } from "../authors.store"
 import { STATES, type KnowledgeRow, type StateId, type TreeNode } from "../knowledgeLeft"
 import { stateBackground, useKnowledgePalette } from "./knowledgeColors"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   tree: TreeNode
@@ -114,7 +115,7 @@ const emit = defineEmits<{
 
 const authors = useAuthorsStore()
 const { version } = useChartTheme()
-const t = computed(() => { void version.value; return chartTheme() })
+const theme = computed(() => { void version.value; return chartTheme() })
 const p = useKnowledgePalette()
 const hatchCss = computed(() => stateBackground("nobody", p.value))
 const hatchId = `kn-hatch-${Math.random().toString(36).slice(2, 8)}`
@@ -128,7 +129,7 @@ const height = computed(() => Math.round(Math.min(640, Math.max(400, width.value
 const zoom = ref<TreeNode[]>([])
 watch(() => props.tree, () => { zoom.value = [] })
 const here = computed(() => zoom.value.at(-1) ?? props.tree)
-const rootLabel = computed(() => "All code")
+const rootLabel = computed(() => t("git.knowledgeMap.allCode"))
 /** Where the map stands, for the list to follow: "" at the top. */
 const at = defineModel<string>("at", { default: "" })
 watch(here, n => { at.value = zoom.value.length ? n.path : "" })
@@ -189,7 +190,7 @@ const groups = computed(() => (layout.value?.descendants() ?? [])
   .map(n => {
     const w = n.x1 - n.x0
     const text = fit(n.data.label, w, n.depth === 1 ? 7.4 : 6.6)
-    const size = n.depth === 1 && text === n.data.label && (text.length + 8) * 7.4 < w ? `${compact(n.value ?? 0)} lines` : ""
+    const size = n.depth === 1 && text === n.data.label && (text.length + 8) * 7.4 < w ? t("git.knowledgeMap.lines", { value: compact(n.value ?? 0) }) : ""
     return { path: n.data.path, depth: n.depth, x0: n.x0, y0: n.y0, text, size, showLabel: !!text && (n.depth === 1 || (n.depth === 2 && w > 80 && n.y1 - n.y0 > 50)) }
   }))
 
@@ -208,7 +209,7 @@ const rolled = computed(() => (layout.value?.leaves() ?? [])
       return b
     }).filter(b => b.w > 0)
     const name = h >= 34 ? fit(n.data.label, w - 12, 7.4) : ""
-    const sub = name && h >= 54 ? fit(`${rows.length} components`, w - 12, 6.4) : ""
+    const sub = name && h >= 54 ? fit(t("git.knowledgeMap.components", { rowsLength: rows.length }), w - 12, 6.4) : ""
     const chip = Math.min(w - 12, Math.max(name.length * 7.4, sub.length * 6.4) + 14)
     const dim = (!!props.only && !rows.some(r => r.state === props.only)) || (!!props.matching && !rows.some(r => props.matching!.has(r.component)))
     return { node, rows, count: rows.length, x0: n.x0, y0: n.y0, w, h, bands, name, sub, chip, dim }
@@ -236,14 +237,14 @@ const tiles = computed(() => (layout.value?.leaves() ?? [])
     const row = n.data.row!
     const w = n.x1 - n.x0, h = n.y1 - n.y0
     const own = n.data.label === "(own files)"
-    const name = h >= 24 ? fit(own ? "own files" : n.data.label, w) : ""
-    const who = row.ask ? authors.display(row.ask.author) : "no active contributor"
+    const name = h >= 24 ? fit(own ? t("git.knowledgeMap.ownFiles") : n.data.label, w) : ""
+    const who = row.ask ? authors.display(row.ask.author) : t("git.knowledgeMap.noActiveContributor")
     const sub = name && h >= 42 ? fit(who, w, 6.4) : ""
     return { row, x0: n.x0, y0: n.y0, y1: n.y1, w: Math.max(0, w), h: Math.max(0, h), name, sub }
   }))
 
 const dimmed = (r: KnowledgeRow) => (!!props.only && r.state !== props.only) || (!!props.matching && !props.matching.has(r.component))
-const ring = (r: KnowledgeRow) => (r.component === props.focused || props.selected.has(r.component) ? t.value.accent : null)
+const ring = (r: KnowledgeRow) => (r.component === props.focused || props.selected.has(r.component) ? theme.value.accent : null)
 
 const hover = ref<(typeof tiles.value)[number] | null>(null)
 function cardAt(x0: number, y0: number, y1: number, h: number) {
@@ -253,11 +254,11 @@ function cardAt(x0: number, y0: number, y1: number, h: number) {
 function sentence(r: KnowledgeRow): string {
   const pct = Math.round(r.hereShare * 100)
   const ask = r.ask ? authors.display(r.ask.author) : ""
-  if (r.state === "wrote") return `Active contributors wrote ${pct}% of it. Most active: ${ask}.`
-  if (r.state === "works") return `Active contributors changed it ${r.hereCommits} times in the ${props.windowWords} and wrote ${pct}% of it. Most active: ${ask}.`
-  if (r.state === "once") return `Changed once in the ${props.windowWords}, by ${ask}.`
-  const main = r.main ? ` ${authors.display(r.main.author)} wrote most of it (${Math.round(r.main.share * 100)}%)${r.main.here ? "" : " and is no longer active"}.` : ""
-  return `No active contributor wrote much of it or changed it in the ${props.windowWords}.${main}`
+  if (r.state === "wrote") return t("git.knowledgeMap.activeContributorsWroteMost", { pct, ask })
+  if (r.state === "works") return t("git.knowledgeMap.activeContributorsChangedTimes", { hereCommits: r.hereCommits, windowWords: props.windowWords, pct, ask })
+  if (r.state === "once") return t("git.knowledgeMap.changedOnce", { windowWords: props.windowWords, ask })
+  const main = r.main ? t("git.knowledgeMap.wroteMost", { author: authors.display(r.main.author), value: Math.round(r.main.share * 100), value2: r.main.here ? "" : t("git.knowledgeMap.noLongerActive") }) : ""
+  return t("git.knowledgeMap.noActiveContributorWrote", { windowWords: props.windowWords, main })
 }
 
 let ro: ResizeObserver | null = null
@@ -269,13 +270,13 @@ onBeforeUnmount(() => ro?.disconnect())
 
 // The ladder above the map is its legend, and each part of it filters; the frame shows it only in exports.
 const figure = useSvgFigure({
-  title: "Code by active contributors",
+  title: t("git.knowledgeMap.codeActiveContributors"),
   svg: () => svgRef.value,
   filled: true,
   legendInUi: false,
   legend: () => ({
     items: STATES.map(s => (s.id === "nobody" ? { label: s.label, color: p.value.hatchLine, mark: "hatch" as const } : { label: s.label, color: p.value.fill[s.id] })),
-    notes: ["A tile is a component, sized by its lines of code today and grouped by package."],
+    notes: [t("git.knowledgeMap.tileComponentSizedLines")],
   }),
 })
 </script>

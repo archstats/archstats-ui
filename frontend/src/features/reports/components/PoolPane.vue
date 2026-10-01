@@ -4,10 +4,10 @@
     <div class="flex items-center gap-2">
       <label class="relative flex min-w-0 flex-1 items-center">
         <Icon icon="search" :size="12" class="pointer-events-none absolute left-2 text-neutral-400"/>
-        <input v-model="q" class="ui-input ui-input-sm w-full pl-7" placeholder="Find a pin" aria-label="Find a pin">
+        <input v-model="q" class="ui-input ui-input-sm w-full pl-7" :placeholder="t('reports.poolPane.findPin')" :aria-label="t('reports.poolPane.findPin')">
       </label>
     </div>
-    <div class="flex flex-wrap gap-1" role="group" aria-label="Kind">
+    <div class="flex flex-wrap gap-1" role="group" :aria-label="t('reports.poolPane.kind')">
       <button v-for="k in kinds" :key="k.id" type="button" class="ui-chip" :class="{ 'is-active': kind === k.id }" :aria-pressed="kind === k.id" @click="kind = k.id">{{ k.label }} <span class="font-mono text-neutral-400">{{ k.n }}</span></button>
     </div>
 
@@ -17,7 +17,7 @@
         :key="p.id"
         class="group/pin relative flex cursor-grab items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-neutral-200/60 active:cursor-grabbing"
         draggable="true"
-        :title="`Drag into the report, or press Insert`"
+        :title="t('reports.poolPane.dragReportPressInsert')"
         @dragstart="onDrag($event, p.id)"
         @dragend="$emit('dragend')"
       >
@@ -26,30 +26,31 @@
           <Icon v-else :icon="ICONS[p.kind] ?? 'bookmark'" :size="13" class="text-neutral-400"/>
         </span>
         <span class="min-w-0 flex-1">
-          <span class="block truncate text-[13px] leading-5 text-neutral-900">{{ p.title || "Untitled pin" }}</span>
+          <span class="block truncate text-[13px] leading-5 text-neutral-900">{{ p.title || t('reports.poolPane.untitledPin') }}</span>
           <span class="flex items-center gap-1.5 text-[11px] leading-4 text-neutral-500">
             <span>{{ p.kind }}</span>
             <template v-if="status[p.id]?.text"><span class="text-neutral-300">·</span><span class="truncate" :title="status[p.id].text">{{ status[p.id].text }}</span></template>
           </span>
-          <span v-if="usage.get(p.id)?.length" class="block truncate text-[11px] leading-4 text-neutral-400" :title="usage.get(p.id)!.join(', ')">in {{ usage.get(p.id)!.join(", ") }}</span>
+          <span v-if="usage.get(p.id)?.length" class="block truncate text-[11px] leading-4 text-neutral-400" :title="usage.get(p.id)!.join(', ')">{{ t('reports.poolPane.in', { value: usage.get(p.id)!.join(", ") }) }}</span>
         </span>
         <span class="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/pin:opacity-100">
-          <button type="button" class="ui-btn ui-btn-sm" :title="'Insert under the block you are on'" @click="$emit('insert', p.id)">Insert</button>
-          <router-link v-if="p.route" :to="p.route" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="`Open where ${p.title} was pinned`" title="Open where it was pinned"><Icon icon="arrow-up-right" :size="12"/></router-link>
+          <button type="button" class="ui-btn ui-btn-sm" :title="t('reports.poolPane.insertUnderBlockYou')" @click="$emit('insert', p.id)">{{ t('reports.poolPane.insert') }}</button>
+          <router-link v-if="p.route" :to="p.route" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('reports.poolPane.openWhereWasPinned', { title: p.title })" :title="t('reports.poolPane.openWhereWasPinned2')"><Icon icon="arrow-up-right" :size="12"/></router-link>
         </span>
       </li>
     </ul>
     <div v-else-if="!pins.length" class="rounded-md px-3 py-4 text-center hairline">
-      <p class="text-sm text-neutral-700">Nothing pinned yet</p>
-      <p class="mt-1 text-xs leading-5 text-neutral-500">Pin a component, file, cycle, rule finding or a whole view with the bookmark on its page, or use Add to report in any view's Export menu.</p>
+      <p class="text-sm text-neutral-700">{{ t('reports.poolPane.nothingPinnedYet') }}</p>
+      <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t('reports.poolPane.pinComponentFileCycle') }}</p>
     </div>
-    <p v-else class="px-1 text-xs text-neutral-500">No pin matches.</p>
+    <p v-else class="px-1 text-xs text-neutral-500">{{ t('reports.poolPane.noPinMatches') }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
+import { t } from "~/shared/i18n";
 
 interface PinLike { id: string; kind: string; title: string; note: string; route: string; figurePath: string }
 
@@ -67,7 +68,7 @@ const kind = ref("all");
 const kinds = computed(() => {
   const by = new Map<string, number>();
   for (const p of props.pins) by.set(p.kind, (by.get(p.kind) ?? 0) + 1);
-  return [{ id: "all", label: "All", n: props.pins.length }, ...[...by].map(([id, n]) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)}s`, n }))];
+  return [{ id: "all", label: t("reports.poolPane.all"), n: props.pins.length }, ...[...by].map(([id, n]) => ({ id, label: `${id[0].toUpperCase()}${id.slice(1)}s`, n }))];
 });
 const shown = computed(() => {
   const needle = q.value.trim().toLowerCase();

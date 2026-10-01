@@ -6,7 +6,7 @@
     <p v-if="standing" class="text-xs leading-4" :class="standing.text">
       {{ standing.word }}
       <span class="font-mono tabular-nums">{{ Math.round(standing.kept * 100) }}%</span>
-      <span class="text-neutral-500">of its references stay home<template v-if="standing.leans">, and most of the rest is shared with {{ standing.leans }}</template>.</span>
+      <span class="text-neutral-500">{{ t('lens-builder.groupInside.referencesStayHome') }}<template v-if="standing.leans">{{ t('lens-builder.groupInside.mostRestShared', { leans: standing.leans }) }}</template>.</span>
     </p>
 
     <!-- What this group says it holds. One component, shared with the
@@ -25,9 +25,9 @@
 
     <div v-if="group.parts.length" class="flex flex-col gap-1">
       <div class="flex items-baseline gap-2">
-        <span class="ui-label">Inside</span>
+        <span class="ui-label">{{ t('lens-builder.groupInside.inside') }}</span>
         <span class="min-w-0 truncate font-mono text-xs tabular-nums text-neutral-500">
-          {{ group.parts.length }}<template v-if="totalLines"> · {{ short(totalLines) }} lines</template>
+          {{ group.parts.length }}<template v-if="totalLines">{{ ' ' + t('lens-builder.groupInside.lines', { totalLines: short(totalLines) }) }}</template>
         </span>
         <!-- A proposal fills a group without anyone standing behind it yet,
              so the act that ends that state is a button, not a hint. -->
@@ -35,25 +35,25 @@
           v-if="proposed"
           type="button"
           class="ui-btn ui-btn-sm ml-auto shrink-0"
-          :title="`Stand behind the ${proposed} the engine proposed. Until you do, they are drawn unfilled.`"
+          :title="t('lens-builder.groupInside.standBehindEngineProposed', { proposed })"
           @click="emit('confirm', group.key)"
-        >Confirm {{ proposed }}</button>
+        >{{ t('lens-builder.groupInside.confirm', { proposed }) }}</button>
       </div>
 
       <!-- Said once, because it is the head of every name below and the rows
            have no width to spend repeating it. -->
-      <p v-if="shared" class="truncate pl-1 text-2xs leading-4 text-neutral-550" :title="`Every name here begins ${shared}`">
-        <span class="text-neutral-400">…</span> is <span class="font-mono">{{ shared }}</span>
+      <p v-if="shared" class="truncate pl-1 text-2xs leading-4 text-neutral-550" :title="t('lens-builder.groupInside.everyNameHereBegins', { shared })">
+        <I18nT k="lens-builder.groupInside.is"><template #icon><span class="text-neutral-400">…</span></template><template #shared><span class="font-mono">{{ shared }}</span></template></I18nT>
       </p>
       <p v-if="pullingAway" class="pl-1 text-2xs leading-4 text-amber-700">
-        {{ pullingAway }} {{ pullingAway === 1 ? "member exchanges" : "members exchange" }} more with another group than with this one.
+        {{ t('lens-builder.groupInside.moreAnotherGroupThan', { membersExchange: t('common.count.memberExchanges', { count: pullingAway }) }) }}
       </p>
 
       <ul class="-mx-1 flex max-h-[60vh] flex-col overflow-y-auto">
         <li v-for="p in members" :key="p.component" class="group flex flex-col">
           <div class="relative flex h-7 items-center gap-2 rounded-md pl-1 pr-1.5 transition-colors hover:bg-neutral-100">
             <!-- A part of a component is never drawn as a whole one. -->
-            <span v-if="p.files" class="flex h-3 w-3 shrink-0 items-center justify-center" :title="`Part of ${p.component}`">
+            <span v-if="p.files" class="flex h-3 w-3 shrink-0 items-center justify-center" :title="t('lens-builder.groupInside.part', { component: p.component })">
               <svg width="11" height="11" viewBox="-6 -6 12 12" aria-hidden="true">
                 <circle r="5" fill="none" :stroke="color" stroke-width="1.2" stroke-dasharray="2 2"/>
                 <path :d="wedge(shareOf(p))" :fill="color"/>
@@ -65,7 +65,7 @@
               type="button"
               class="min-w-0 shrink truncate text-left font-mono text-sm hover:text-accent-700"
               :class="p.standing === 'proposed' ? 'text-neutral-500' : 'text-neutral-800'"
-              :title="p.standing === 'proposed' ? `${p.component} · proposed, not yet confirmed` : `${p.component} — show it on the map`"
+              :title="p.standing === 'proposed' ? t('lens-builder.groupInside.proposedNotYetConfirmed', { component: p.component }) : t('lens-builder.groupInside.showMap', { component: p.component })"
               @click="emit('focus', p.component)"
             ><span v-if="shared" class="text-neutral-400">…</span>{{ shorten(p.component) }}</button>
 
@@ -75,12 +75,12 @@
               v-if="p.rival"
               type="button"
               class="flex shrink-0 items-center gap-0.5 rounded bg-amber-100 px-1 text-2xs leading-4 text-amber-800 transition-colors hover:bg-amber-200"
-              :title="`${p.component} exchanges more with ${p.rival} than with ${group.name}. Click to move it there.`"
-              :aria-label="`Move ${p.component} to ${p.rival}, which it exchanges more with`"
+              :title="t('lens-builder.groupInside.exchangesMoreThanClick', { component: p.component, rival: p.rival, groupName: group.name })"
+              :aria-label="t('lens-builder.groupInside.moveWhichExchangesMore', { component: p.component, rival: p.rival })"
               @click.stop="p.rivalKey && emit('move', p.component, p.rivalKey)"
             ><Icon icon="arrow-right" :size="9"/><span class="max-w-[7rem] truncate">{{ p.rival }}</span></button>
 
-            <span v-if="p.files" class="shrink-0 rounded bg-neutral-100 px-1 font-mono text-2xs leading-4 text-neutral-600" :title="`${p.files.length} of its ${filesOf(p.component).length} files are here; the rest are in another group`">
+            <span v-if="p.files" class="shrink-0 rounded bg-neutral-100 px-1 font-mono text-2xs leading-4 text-neutral-600" :title="t('lens-builder.groupInside.filesHereRestAnother', { filesLength: p.files.length, length: filesOf(p.component).length })">
               {{ p.files.length }}/{{ filesOf(p.component).length }}
             </span>
             <!-- The engine found a line through this one. The mark is the
@@ -90,8 +90,8 @@
               v-else-if="p.tear"
               type="button"
               class="flex shrink-0 items-center gap-1 rounded bg-blue-50 px-1 text-2xs leading-4 text-blue-700 transition-colors hover:bg-blue-100"
-              :aria-label="`${p.component} has files that disagree — see the split`"
-              :title="`${p.tear.leaving.length} of its ${filesOf(p.component).length} files lean elsewhere. Click to see the line.`"
+              :aria-label="t('lens-builder.groupInside.hasFilesDisagreeSee', { component: p.component })"
+              :title="t('lens-builder.groupInside.filesLeanElsewhereClick', { leavingLength: p.tear.leaving.length, length: filesOf(p.component).length })"
               @click.stop="splitting = splitting === p.component ? null : p.component"
             >
               <Icon icon="git-branch" :size="9"/>
@@ -105,12 +105,12 @@
               v-if="p.measured"
               class="ml-auto h-1 w-8 shrink-0 overflow-hidden rounded-full bg-neutral-200"
               role="img"
-              :aria-label="`${Math.round(p.kept * 100)} percent of its references stay in this group`"
+              :aria-label="t('lens-builder.groupInside.percentReferencesStayGroup', { value: Math.round(p.kept * 100) })"
               :title="keptTitle(p)"
             ><span class="block h-full rounded-full" :class="BAR[p.tone]" :style="{ width: Math.max(2, Math.round(p.kept * 100)) + '%' }"></span></span>
             <span v-else class="ml-auto"></span>
 
-            <span v-if="totalLines" class="w-9 shrink-0 text-right font-mono text-2xs tabular-nums text-neutral-550" :title="`${lines(p.component).toLocaleString()} lines`">{{ short(lines(p.component)) }}</span>
+            <span v-if="totalLines" class="w-9 shrink-0 text-right font-mono text-2xs tabular-nums text-neutral-550" :title="t('lens-builder.groupInside.lines2', { component: lines(p.component).toLocaleString(intlLocale) })">{{ short(lines(p.component)) }}</span>
 
             <!-- Laid over the row rather than beside it. Sitting in the flow,
                  this cluster took every pixel the names needed and left them
@@ -130,9 +130,9 @@
               <!-- At component grain this is absent, not disabled: a dimension
                    made of whole components has no such act to offer, and a
                    greyed-out button would only raise the question again. -->
-              <button v-if="divisible && !p.files && filesOf(p.component).length > 1" type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="`Split ${p.component}`" title="Split it: send some of its files elsewhere" @click.stop="splitting = splitting === p.component ? null : p.component"><Icon icon="git-branch" :size="11"/></button>
-              <button v-if="p.files" type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="`Rejoin ${p.component}`" title="Rejoin: bring all of its files back here" @click.stop="emit('rejoin', p.component)"><Icon icon="recycle" :size="11"/></button>
-              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="`Take ${p.component} out`" title="Take it out of this group" @click.stop="emit('refuse', p.component)"><Icon icon="x" :size="11"/></button>
+              <button v-if="divisible && !p.files && filesOf(p.component).length > 1" type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="t('lens-builder.groupInside.split', { component: p.component })" :title="t('lens-builder.groupInside.splitSendSomeFiles')" @click.stop="splitting = splitting === p.component ? null : p.component"><Icon icon="git-branch" :size="11"/></button>
+              <button v-if="p.files" type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="t('lens-builder.groupInside.rejoin', { component: p.component })" :title="t('lens-builder.groupInside.rejoinBringAllFiles')" @click.stop="emit('rejoin', p.component)"><Icon icon="recycle" :size="11"/></button>
+              <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="t('lens-builder.groupInside.takeOut', { component: p.component })" :title="t('lens-builder.groupInside.takeOutGroup')" @click.stop="emit('refuse', p.component)"><Icon icon="x" :size="11"/></button>
             </span>
           </div>
 
@@ -163,6 +163,8 @@ import type { DraftGroup } from "~/features/lens-builder/draft.store";
 import type { GroupMode } from "~/features/groups/groups.store";
 import type { MemberQuality } from "~/features/lens-builder/cutQuality";
 import { detectSeparator, type Grain } from "~/features/lens-builder/studio";
+import { t, intlLocale } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // What a group is made of, opened in place under its row in the rail. It
 // carries no name field and no delete: the row above it is the group's
@@ -273,8 +275,8 @@ function tone(kept: number): "good" | "fair" | "poor" {
 
 function keptTitle(p: { component: string; kept: number; degree: number; leans: { name: string } | null }): string {
   const pct = Math.round(p.kept * 100);
-  const rest = p.leans ? ` Most of the rest is shared with ${p.leans.name}.` : "";
-  return `${pct}% of the ${Math.round(p.degree)} references ${p.component} shares with grouped components stay in ${props.group.name}.${rest}`;
+  const rest = p.leans ? t("lens-builder.groupInside.mostRestShared2", { leansName: p.leans.name }) : "";
+  return t("lens-builder.groupInside.referencesSharesGroupedComponents", { pct, degree: Math.round(p.degree), component: p.component, groupName: props.group.name, rest });
 }
 
 /** A size you can read at a glance rather than count digits in. */
@@ -287,9 +289,9 @@ const standing = computed(() => {
   const c = props.cohesion;
   if (!c || props.group.parts.length < 2) return null;
   const leans = c.leans[0]?.name ?? null;
-  if (c.kept >= 0.5) return { kept: c.kept, leans, word: "A real unit —", text: "text-green-700" };
-  if (c.kept >= 0.25) return { kept: c.kept, leans, word: "Holds together, but reaches out a lot —", text: "text-amber-700" };
-  return { kept: c.kept, leans, word: "Barely a unit —", text: "text-red-700" };
+  if (c.kept >= 0.5) return { kept: c.kept, leans, word: t("lens-builder.groupInside.realUnit"), text: "text-green-700" };
+  if (c.kept >= 0.25) return { kept: c.kept, leans, word: t("lens-builder.groupInside.holdsTogetherButReaches"), text: "text-amber-700" };
+  return { kept: c.kept, leans, word: t("lens-builder.groupInside.barelyUnit"), text: "text-red-700" };
 });
 const proposed = computed(() => props.group.parts.filter(p => p.standing === "proposed").length);
 

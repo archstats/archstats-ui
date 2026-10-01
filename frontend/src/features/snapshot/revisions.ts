@@ -3,36 +3,38 @@
 // says. Mirrors the log in the engine's core/revision.go; a revision the app
 // does not know yet reads as "a newer analysis".
 
+import { t } from "~/shared/i18n"
+
 export const REVISION_REASONS: Record<number, string[]> = {
     1: [
-        "Rules are scoped by ecosystem, so another language's rule no longer reads as kept.",
-        "Vendored, generated and non-code files are counted but no longer scored for health.",
-        "Git identities that are one person are merged by email.",
-        "PHP and Kotlin declare units; TypeScript workspace packages resolve to their source.",
-        "A cycle counts each of its components once; path lengths count hops.",
+        t("snapshot.revisions.rulesScopedEcosystemSo"),
+        t("snapshot.revisions.vendoredGeneratedNonCode"),
+        t("snapshot.revisions.gitIdentitiesOnePerson"),
+        t("snapshot.revisions.phpKotlinDeclareUnits"),
+        t("snapshot.revisions.cycleCountsEachComponents"),
     ],
     2: [
-        "Git history follows renames, so a moved file keeps its commits, age and authors.",
-        "Time windows count back from the scanned commit, not from the day of the scan.",
-        "Each snapshot records the commit, branch and uncommitted files it read.",
-        "Co-change no longer counts a component without commits as sharing all of its partner's.",
-        "Files carry a role (production, test, generated, third-party, non-code) and health scores keep their deductions.",
-        "Snapshots say what the walker left out, and how long each file has sat untouched.",
+        t("snapshot.revisions.gitHistoryFollowsRenames"),
+        t("snapshot.revisions.timeWindowsCountBack"),
+        t("snapshot.revisions.eachSnapshotRecordsCommit"),
+        t("snapshot.revisions.coChangeNoLonger"),
+        t("snapshot.revisions.filesCarryRoleProduction"),
+        t("snapshot.revisions.snapshotsSayWhatWalker"),
     ],
     3: [
-        "Snapshots are smaller: pairs of files that never changed together are no longer stored, and Java class reachability is off.",
-        "A workspace's own ignore patterns apply to its files and their history.",
-        "File pairs that change together are recorded with how much of each side they cover.",
-        "An ambiguous runtime lookup resolves the same way on every scan.",
+        t("snapshot.revisions.snapshotsSmallerPairsFiles"),
+        t("snapshot.revisions.workspaceSOwnIgnore"),
+        t("snapshot.revisions.filePairsChangeTogether"),
+        t("snapshot.revisions.ambiguousRuntimeLookupResolves"),
     ],
     6: [
-        "Indentation is measured at the width each project uses (its Prettier config or .editorconfig, else the file's own), so two-space code is no longer read as half as deep.",
+        t("snapshot.revisions.indentationMeasuredWidthEach"),
     ],
     7: [
-        "Swift, Objective-C and Dart are read: iOS and Flutter code has components, edges and classes.",
-        "Swift packages, Xcode targets and Dart packages are modules; Gradle modules are named by project path, and dependencies written as projects.x.y are read.",
-        "Kotlin annotations mark the declaration they are written on, functions included, so composables are marked.",
-        "What an app declares to its platform (activities, permissions, URL schemes, entitlements) is recorded, and mobile apps are deployables with their stack.",
+        t("snapshot.revisions.swiftObjectiveCDart"),
+        t("snapshot.revisions.swiftPackagesXcodeTargets"),
+        t("snapshot.revisions.kotlinAnnotationsMarkDeclaration"),
+        t("snapshot.revisions.whatAppDeclaresPlatform"),
     ],
 }
 
@@ -40,7 +42,7 @@ export const REVISION_REASONS: Record<number, string[]> = {
 export function reasonsBetween(from: number, to: number): string[] {
     const out: string[] = []
     for (let r = Math.max(1, from + 1); r <= to; r++) {
-        out.push(...(REVISION_REASONS[r] ?? [`Analysis revision ${r} changed how scans are read.`]))
+        out.push(...(REVISION_REASONS[r] ?? [t("snapshot.revisions.analysisRevisionChangedHow", { r })]))
     }
     return out
 }

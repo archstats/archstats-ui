@@ -1,5 +1,6 @@
 import { parseDimensions, parseGroups, type Dimension, type SavedGroup } from "~/features/groups/groups.store"
 import type { AliasMap } from "~/features/git/authors"
+import { t } from "~/shared/i18n"
 
 // A workspace's hand-made state as one file: groups and lenses, author
 // merges, arrangements and saved queries. The consultant hands a lens to the
@@ -35,12 +36,12 @@ export function buildConfig(groups: SavedGroup[], dimensions: Dimension[], alias
 /** Reads a config file, or a groups-only export; throws with a reason on anything else. */
 export function parseConfig(text: string): WorkspaceConfig {
     let data: any
-    try { data = JSON.parse(text) } catch { throw new Error("The file is not JSON.") }
-    if (!data || typeof data !== "object") throw new Error("The file holds no workspace config.")
+    try { data = JSON.parse(text) } catch { throw new Error(t("workspace.workspaceConfig.fileNotJson")) }
+    if (!data || typeof data !== "object") throw new Error(t("workspace.workspaceConfig.fileHoldsNoWorkspace"))
     const isConfig = data.format === CONFIG_FORMAT
     const isGroups = !isConfig && (Array.isArray(data.groups) || Array.isArray(data.componentGroups) || Array.isArray(data.fileGroups))
-    if (!isConfig && !isGroups) throw new Error("This is not an Archstats workspace config or groups export.")
-    if (isConfig && Number(data.version) > CONFIG_VERSION) throw new Error(`The file was written by a newer Archstats (config version ${data.version}).`)
+    if (!isConfig && !isGroups) throw new Error(t("workspace.workspaceConfig.notArchstatsWorkspaceConfig"))
+    if (isConfig && Number(data.version) > CONFIG_VERSION) throw new Error(t("workspace.workspaceConfig.fileWasWrittenNewer", { version: data.version }))
     const groups = parseGroups(data)
     const aliases: AliasMap = {}
     if (isConfig && data.authorAliases && typeof data.authorAliases === "object") {

@@ -4,8 +4,8 @@
   <div class="ex" :class="`ex-${density}`" :data-exhibit="part.id">
     <ExhibitFrame :title="caption || part.title" header-class="pb-1.5">
       <template #aside>
-        <span class="ex-id" :title="`${part.id} · computed on ${part.ranOn.commit.slice(0, 7) || 'this scan'}`">{{ part.id }}</span>
-        <button v-if="addable" type="button" class="ex-open" title="Add it to this conversation's report; it runs again on the report's snapshot" @click="$emit('add')"><FilePlus2 :size="12" :stroke-width="1.75"/> Report</button>
+        <span class="ex-id" :title="t('exhibits.exhibitView.computed', { partId: part.id, value: part.ranOn.commit.slice(0, 7) || t('exhibits.exhibitView.scan') })">{{ part.id }}</span>
+        <button v-if="addable" type="button" class="ex-open" :title="t('exhibits.exhibitView.addConversationSReport')" @click="$emit('add')"><FilePlus2 :size="12" :stroke-width="1.75"/>{{ ' ' + t('exhibits.exhibitView.report') }}</button>
         <button v-if="part.open" type="button" class="ex-open" @click="$emit('open', part.open)"><ArrowUpRight :size="12" :stroke-width="2"/> {{ part.open.label.replace(/^Open /, "") }}</button>
       </template>
       <div class="ex-body" :style="{ minHeight: state === 'loading' ? `${reserve}px` : undefined }">
@@ -14,7 +14,7 @@
         </div>
         <ExhibitTable v-else-if="data && table" :table="table"/>
         <ExhibitTable v-else-if="state !== 'loading' && part.table" :table="part.table"/>
-        <div v-else-if="state === 'loading'" class="ex-wait" :style="{ height: `${reserve}px` }"><span class="ex-shimmer"/><span class="ex-hint"><Loader2 :size="12" class="animate-spin"/> Drawing…</span></div>
+        <div v-else-if="state === 'loading'" class="ex-wait" :style="{ height: `${reserve}px` }"><span class="ex-shimmer"/><span class="ex-hint"><Loader2 :size="12" class="animate-spin"/>{{ ' ' + t('exhibits.exhibitView.drawing') }}</span></div>
         <p v-if="state === 'absent' || state === 'error'" class="ex-hint ex-hint-static">{{ message }}</p>
       </div>
     </ExhibitFrame>
@@ -29,6 +29,7 @@ import { defOf, resolve, snapshotOf } from "../engine"
 import { isAbsent, type ExhibitOpen, type ExhibitPart } from "../types"
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import ExhibitTable from "./ExhibitTable.vue"
+import { t } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   part: ExhibitPart
@@ -62,7 +63,7 @@ const table = computed(() => (def && data.value && !figure.value ? def.table(dat
 const listeners = computed(() => Object.fromEntries(Object.entries(def?.figure?.picks ?? {}).map(([event, toElement]) => [event, (...args: unknown[]) => emit("pick", toElement(...args))])))
 
 onMounted(async () => {
-  if (!def) { state.value = "error"; message.value = `This kind of exhibit (${props.part.spec.kind}) is no longer made; its table is kept.`; return }
+  if (!def) { state.value = "error"; message.value = t("exhibits.exhibitView.kindExhibitNoLonger", { kind: props.part.spec.kind }); return }
   try {
     const snap = await snapshotOf(props.part.ranOn.scanId)
     const d = await resolve(props.part.spec, { snap })
@@ -71,7 +72,7 @@ onMounted(async () => {
     state.value = "done"
   } catch (e: any) {
     state.value = "error"
-    message.value = `Could not draw it from its scan (${String(e?.message ?? e)}); the table it had is kept.`
+    message.value = t("exhibits.exhibitView.couldNotDrawScan", { value: String(e?.message ?? e) })
   }
 })
 

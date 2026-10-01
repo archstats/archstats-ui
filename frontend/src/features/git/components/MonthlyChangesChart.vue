@@ -1,7 +1,7 @@
 <template>
   <ExhibitFrame :exhibit="figure">
     <div ref="hostRef" class="w-full">
-      <svg ref="svgRef" class="block w-full" :style="{ height: height + 'px' }" role="img" aria-label="Monthly additions and deletions"></svg>
+      <svg ref="svgRef" class="block w-full" :style="{ height: height + 'px' }" role="img" :aria-label="t('git.monthlyChangesChart.monthlyAdditionsDeletions')"></svg>
     </div>
   </ExhibitFrame>
 </template>
@@ -14,6 +14,7 @@ import * as d3 from "d3"
 import type { GitCommit } from "~/features/git/git"
 import { chartTheme, useChartTheme } from "~/shared/ui/useChartTheme"
 import { formatSigned } from "~/shared/format"
+import { t } from "~/shared/i18n"
 
 // Diverging bars per month: additions up, deletions down. Shared by Activity
 // (full height) and the Overview activity panel (compact).
@@ -137,13 +138,13 @@ onBeforeUnmount(() => ro?.disconnect())
 watch([() => props.commits, () => props.height, version], () => draw(), { flush: "post" })
 
 const figure = useSvgFigure({
-  title: "Lines added and removed by month",
+  title: t("git.monthlyChangesChart.linesAddedRemovedMonth"),
   svg: () => svgRef.value,
   legend: () => {
-    const t = chartTheme()
+    const theme = chartTheme()
     return {
-      items: [{ label: "Lines added", color: t.green }, { label: "Lines removed", color: t.red }],
-      notes: ["One bar per month: added above the line, removed below it."],
+      items: [{ label: t("git.monthlyChangesChart.linesAdded"), color: theme.green }, { label: t("git.monthlyChangesChart.linesRemoved"), color: theme.red }],
+      notes: [t("git.monthlyChangesChart.oneBarPerMonth")],
     }
   },
 })

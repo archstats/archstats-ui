@@ -1,40 +1,40 @@
 <template>
-  <ViewWorkspaceLayout :queryable="false" title="Changes">
+  <ViewWorkspaceLayout :queryable="false" :title="t('pages.trends.changes')">
     <template #stats>
-      <span v-if="points.length">Snapshots <span class="text-neutral-800">{{ points.length }}</span></span>
+      <span v-if="points.length">{{ t('pages.trends.snapshots') }} <span class="text-neutral-800">{{ points.length }}</span></span>
     </template>
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Changes">
-        <router-link to="/views/changes" custom v-slot="{ navigate }"><button type="button" aria-pressed="false" @click="navigate">Compare</button></router-link>
-        <router-link to="/views/trends" custom v-slot="{ navigate }"><button type="button" aria-pressed="true" @click="navigate">Over time</button></router-link>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.trends.changes')">
+        <router-link to="/views/changes" custom v-slot="{ navigate }"><button type="button" aria-pressed="false" @click="navigate">{{ t('pages.trends.compare') }}</button></router-link>
+        <router-link to="/views/trends" custom v-slot="{ navigate }"><button type="button" aria-pressed="true" @click="navigate">{{ t('pages.trends.overTime') }}</button></router-link>
       </div>
-      <div v-if="points.length > 1" class="ui-segmented" role="group" aria-label="Show as">
-        <button type="button" :aria-pressed="mode === 'chart'" @click="mode = 'chart'">Chart</button>
-        <button type="button" :aria-pressed="mode === 'table'" @click="mode = 'table'">Table</button>
+      <div v-if="points.length > 1" class="ui-segmented" role="group" :aria-label="t('pages.trends.show')">
+        <button type="button" :aria-pressed="mode === 'chart'" @click="mode = 'chart'">{{ t('pages.trends.chart') }}</button>
+        <button type="button" :aria-pressed="mode === 'table'" @click="mode = 'table'">{{ t('pages.trends.table') }}</button>
       </div>
     </template>
 
     <template #visualizer>
       <div class="flex min-h-0 grow flex-col overflow-y-auto">
-        <LoadingState v-if="loading" :text="`Reading ${complete} snapshots…`"/>
-        <EmptyState v-else-if="error" title="Could not read the snapshots" :text="error" icon="alert"/>
-        <EmptyState v-else-if="points.length < 2" title="Over time needs two snapshots" text="Each point is one snapshot. Scan again after the code moves, or rebuild an earlier commit from a scan's menu (Rescan this commit…)." icon="history"/>
+        <LoadingState v-if="loading" :text="t('pages.trends.readingSnapshots', { complete })"/>
+        <EmptyState v-else-if="error" :title="t('pages.trends.couldNotReadSnapshots')" :text="error" icon="alert"/>
+        <EmptyState v-else-if="points.length < 2" :title="t('pages.trends.overTimeNeedsTwo')" :text="t('pages.trends.eachPointOneSnapshot')" icon="history"/>
         <div v-else class="mx-auto flex w-full max-w-[1100px] flex-col gap-4 px-6 pb-12 pt-5">
           <p v-if="onlyOneSinceBreak" class="text-sm text-neutral-600">
-            One point since {{ lastBreak?.reason }}; the lines start again there. Rescan an earlier commit to extend them.
+            {{ t('pages.trends.onePointSinceLines', { reason: lastBreak?.reason }) }}
           </p>
-          <p v-if="failed.length" class="text-sm text-amber-700">{{ failed.length }} snapshot{{ failed.length === 1 ? "" : "s" }} could not be read and {{ failed.length === 1 ? "is" : "are" }} left out.</p>
+          <p v-if="failed.length" class="text-sm text-amber-700">{{ t('pages.trends.couldNotReadLeft', { snapshots: t('common.count.snapshot', { count: failed.length }), are: t('common.noun.is', { count: failed.length }) }) }}</p>
 
-          <ExhibitFrame v-if="mode === 'chart'" :exhibit="figure" title="Readings over time">
+          <ExhibitFrame v-if="mode === 'chart'" :exhibit="figure" :title="t('pages.trends.readingsOverTime')">
             <TrendRows ref="chart" :points="points" :series="series" :breaks="breaks" :basis="basis" :selected="selected" @pick="pick"/>
           </ExhibitFrame>
 
-          <ExhibitFrame v-else :exhibit="readingsTable" title="Readings over time">
+          <ExhibitFrame v-else :exhibit="readingsTable" :title="t('pages.trends.readingsOverTime')">
             <div class="overflow-x-auto rounded-lg hairline">
               <table class="ui-table">
                 <thead>
                   <tr>
-                    <th>Snapshot</th>
+                    <th>{{ t('pages.trends.snapshot') }}</th>
                     <th v-for="s in series" :key="s.id" class="text-right">{{ s.label }}</th>
                   </tr>
                 </thead>
@@ -50,15 +50,15 @@
 
           <!-- The picked snapshots: open one, or compare two. -->
           <div v-if="selected.length" class="flex flex-wrap items-center gap-2 rounded-lg px-4 py-3 hairline">
-            <span class="text-sm text-neutral-700">{{ selected.map(i => pointLabel(points[i])).join(" and ") }}</span>
+            <span class="text-sm text-neutral-700">{{ listOf(selected.map(i => pointLabel(points[i]))) }}</span>
             <span class="ml-auto flex items-center gap-2">
-              <span v-if="selected.length === 1" class="text-sm text-neutral-500">Shift-click another to compare.</span>
-              <button v-if="selected.length === 1" type="button" class="ui-btn ui-btn-sm" :disabled="points[selected[0]].scanId === workspaces.openScanId" @click="openPoint(selected[0])">Open this snapshot</button>
-              <button v-if="selected.length === 2" type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="compare">Compare these two</button>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selected = []">Clear</button>
+              <span v-if="selected.length === 1" class="text-sm text-neutral-500">{{ t('pages.trends.shiftClickAnotherCompare') }}</span>
+              <button v-if="selected.length === 1" type="button" class="ui-btn ui-btn-sm" :disabled="points[selected[0]].scanId === workspaces.openScanId" @click="openPoint(selected[0])">{{ t('pages.trends.openSnapshot') }}</button>
+              <button v-if="selected.length === 2" type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="compare">{{ t('pages.trends.compareTheseTwo') }}</button>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selected = []">{{ t('pages.trends.clear') }}</button>
             </span>
           </div>
-          <p class="text-sm text-neutral-500">Readings are the app's own, computed per snapshot; each is defined, with the SQL that reproduces it, in the <router-link to="/views/reference?m=app__propagation_cost" class="underline-offset-2 hover:underline">Metric reference</router-link>.</p>
+          <p class="text-sm text-neutral-500">{{ t('pages.trends.readingsAppSOwn') }} <router-link to="/views/reference?m=app__propagation_cost" class="underline-offset-2 hover:underline">{{ t('pages.trends.metricReference') }}</router-link>.</p>
         </div>
       </div>
     </template>
@@ -79,6 +79,7 @@ import { useFigure, useTable } from "~/features/export/useExportables";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { formatScanTime } from "~/shared/time";
 import { TREND_SERIES, breaksOf, dedupePoints, xBasis, type TrendPoint } from "~/features/trends/trends";
+import { t, intlLocale, listOf } from "~/shared/i18n";
 
 // Is the architecture getting better or worse: the app's readings of every
 // snapshot, one strip each, on the time axis of the code they read.
@@ -111,8 +112,8 @@ const series = computed(() => TREND_SERIES.filter(s => points.value.some(p => p.
 
 function fmt(v: number | null, s: { digits: number; percent?: boolean }): string {
   if (v === null || !Number.isFinite(v)) return "—";
-  if (s.percent) return `${(v * 100).toLocaleString("en-US", { maximumFractionDigits: s.digits })}%`;
-  return v.toLocaleString("en-US", { maximumFractionDigits: s.digits, minimumFractionDigits: s.digits });
+  if (s.percent) return `${(v * 100).toLocaleString(intlLocale, { maximumFractionDigits: s.digits })}%`;
+  return v.toLocaleString(intlLocale, { maximumFractionDigits: s.digits, minimumFractionDigits: s.digits });
 }
 const pointLabel = (p: TrendPoint) => `${p.label ? p.label + " · " : ""}${formatScanTime(p.headTime ?? p.startedAt)}${p.headCommit ? ` · ${p.headCommit.slice(0, 7)}` : ""} · r${p.analysisRevision}`;
 
@@ -129,7 +130,7 @@ function compare() {
 }
 
 const figure = useFigure({
-  title: "Over time",
+  title: t("pages.trends.overTime"),
   ready: () => mode.value === "chart" && !!chart.value?.svg,
   svg: true,
   render: () => {
@@ -139,21 +140,21 @@ const figure = useFigure({
     return { kind: "svg", svg, width, height };
   },
   legend: () => {
-    const t = chartTheme();
+    const theme = chartTheme();
     return {
       items: [
-        { label: "A snapshot", color: t.inkSecondary, mark: "dot" as const },
-        { label: "A snapshot of unknown analysis", color: t.inkMuted, mark: "ring" as const },
-        ...(selected.value.length ? [{ label: "Picked", color: t.accent, mark: "dot" as const }] : []),
-        ...(breaks.value.length ? [{ label: "The analysis or the ignore rules changed; the lines start again", color: t.hairlineStrong, mark: "dashed" as const }] : []),
+        { label: t("pages.trends.snapshot2"), color: theme.inkSecondary, mark: "dot" as const },
+        { label: t("pages.trends.snapshotUnknownAnalysis"), color: theme.inkMuted, mark: "ring" as const },
+        ...(selected.value.length ? [{ label: t("pages.trends.picked"), color: theme.accent, mark: "dot" as const }] : []),
+        ...(breaks.value.length ? [{ label: t("pages.trends.analysisIgnoreRulesChanged"), color: theme.hairlineStrong, mark: "dashed" as const }] : []),
       ],
-      notes: [`One row per reading, snapshots placed ${basis.value === "commit" ? "by commit time" : "by scan time"}.`],
+      notes: [t("pages.trends.oneRowPerReading", { value: basis.value === "commit" ? t("pages.trends.commitTime") : t("pages.trends.scanTime") })],
     };
   },
 });
 const readingsTable = useTable({
-  title: "Readings over time",
+  title: t("pages.trends.readingsOverTime"),
   rows: () => points.value.map(p => ({ snapshot: pointLabel(p), commit: p.headCommit, revision: p.analysisRevision, ...Object.fromEntries(series.value.map(s => [s.id, p.readings?.[s.id] ?? null])) })),
-  columns: () => [{ id: "snapshot", label: "Snapshot" }, { id: "commit", label: "Commit" }, { id: "revision", label: "Analysis" }, ...series.value.map(s => ({ id: s.id, label: s.label }))],
+  columns: () => [{ id: "snapshot", label: t("pages.trends.snapshot") }, { id: "commit", label: t("pages.trends.commit") }, { id: "revision", label: t("pages.trends.analysis") }, ...series.value.map(s => ({ id: s.id, label: s.label }))],
 });
 </script>

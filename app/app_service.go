@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/archstats/archstats-ui/app/locale"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -23,6 +24,12 @@ func NewAppService(version string) *AppService {
 // goes on every export, next to the analysis revision that read the code.
 func (a *AppService) Version() string {
 	return a.version
+}
+
+// SetLocale tells the Go side the app's language, for the dialog titles and
+// messages it writes itself. The frontend calls it once at startup.
+func (a *AppService) SetLocale(lang string) {
+	locale.Set(lang)
 }
 
 // QueueSnapshots keeps the .db paths among args for the window to import.

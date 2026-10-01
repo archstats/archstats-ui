@@ -10,7 +10,7 @@
       class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm transition-colors"
       :class="off ? 'text-neutral-300 hover:text-neutral-500' : 'text-accent-600 hover:text-accent-700'"
       :aria-pressed="!off"
-      :title="off ? 'Use this line again' : excludes ? 'This line takes matches away. Click to switch it off.' : 'Leave this line out without deleting it'"
+      :title="off ? t('groups.queryRow.useLineAgain') : excludes ? t('groups.queryRow.lineTakesMatchesAway') : t('groups.queryRow.leaveLineOutWithout')"
       @click="emit('toggle')"
     >
       <Icon :icon="off ? 'eye-off' : excludes ? 'minus' : 'check'" :size="12"/>
@@ -25,7 +25,7 @@
         aria-hidden="true"
         class="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre py-0.5 font-mono text-sm leading-5"
         :class="{ 'query-clipped': clipped }"
-      ><span v-for="(t, i) in tokens" :key="i" :class="COLOUR[t.kind]">{{ t.text }}</span></pre>
+      ><span v-for="(token, i) in tokens" :key="i" :class="COLOUR[token.kind]">{{ token.text }}</span></pre>
       <input
         ref="field"
         :value="modelValue"
@@ -59,8 +59,8 @@
     <button
       type="button"
       class="ui-btn ui-btn-icon ui-btn-quiet h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-      :aria-label="`Delete line ${index + 1}`"
-      title="Delete this line"
+      :aria-label="t('groups.queryRow.deleteLine', { value: index + 1 })"
+      :title="t('groups.queryRow.deleteLine2')"
       @click="emit('remove')"
     >
       <Icon icon="x" :size="11"/>
@@ -73,6 +73,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { highlight, type TokenKind } from "~/features/groups/queryAssist";
 import { SEARCH_SEED } from "~/features/groups/query";
+import { t } from "~/shared/i18n";
 
 // One line of a query, coloured and counted.
 //
@@ -136,7 +137,7 @@ const off = computed(() => props.modelValue.trim().startsWith("#"));
 const excludes = computed(() => props.modelValue.trim().startsWith("!"));
 const tokens = computed(() => highlight(props.modelValue, props.sep));
 watch(() => props.modelValue, () => nextTick(syncScroll));
-const label = computed(() => `Line ${props.index + 1}`);
+const label = computed(() => t("groups.queryRow.line", { value: props.index + 1 }));
 
 /**
  * What the row is, said in words.
@@ -147,8 +148,8 @@ const label = computed(() => `Line ${props.index + 1}`);
  */
 const accessibleName = computed(() => {
   const text = props.modelValue.trim();
-  if (text.startsWith("#")) return `${label.value}, switched off`;
-  if (text.startsWith("!")) return `${label.value}, excludes`;
+  if (text.startsWith("#")) return t("groups.queryRow.switchedOff", { label: label.value });
+  if (text.startsWith("!")) return t("groups.queryRow.excludes", { label: label.value });
   return label.value;
 });
 
@@ -172,11 +173,11 @@ const noteClass = computed(() => {
 
 const noteTitle = computed(() => {
   if (props.error) return props.error;
-  if (off.value) return "This line is switched off";
-  if (props.removes !== null) return `Takes ${props.removes} away`;
-  if (props.matches === 0) return "Nothing in this snapshot matches — a rename would look exactly like this";
-  if (props.coveredBy !== null) return `Already covered by line ${props.coveredBy + 1}`;
-  return `Matches ${props.matches}`;
+  if (off.value) return t("groups.queryRow.lineSwitchedOff");
+  if (props.removes !== null) return t("groups.queryRow.takesAway", { removes: props.removes });
+  if (props.matches === 0) return t("groups.queryRow.nothingSnapshotMatchesRename");
+  if (props.coveredBy !== null) return t("groups.queryRow.alreadyCoveredLine", { value: props.coveredBy + 1 });
+  return t("groups.queryRow.matches", { matches: props.matches });
 });
 
 function onInput(event: Event) {

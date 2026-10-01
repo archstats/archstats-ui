@@ -12,20 +12,20 @@
           v-model="filter"
           type="search"
           class="ui-input ui-input-sm w-full pl-6"
-          placeholder="Find a table, column or query"
-          aria-label="Find a table, column or query"
+          :placeholder="t('sql.schemaExplorer.findTableColumnQuery')"
+          :aria-label="t('sql.schemaExplorer.findTableColumnQuery')"
           @keydown.down.prevent="focusTree(0)"
           @keydown.esc="filter = ''"
         >
       </label>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" title="Collapse all" aria-label="Collapse all" @click="collapseAll"><ChevronsDownUp :size="13"/></button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :title="t('sql.schemaExplorer.collapseAll')" :aria-label="t('sql.schemaExplorer.collapseAll')" @click="collapseAll"><ChevronsDownUp :size="13"/></button>
     </div>
 
     <div
       ref="treeEl"
       class="sx-tree min-h-0 flex-1 overflow-y-auto py-1 outline-none"
       role="tree"
-      aria-label="Explorer"
+      :aria-label="t('sql.schemaExplorer.explorer')"
       tabindex="0"
       :aria-activedescendant="selectedKey ? rowId(selectedKey) : undefined"
       @keydown="onKey"
@@ -43,7 +43,7 @@
           @mousedown="n.kind !== 'hint' && select(i)"
           @dblclick="activate(n)"
         >
-          <button v-if="expandable(n)" type="button" tabindex="-1" class="sx-chev" :aria-label="isOpen(n) ? 'Collapse' : 'Expand'" @mousedown.stop="select(i)" @click.stop="toggle(n)">
+          <button v-if="expandable(n)" type="button" tabindex="-1" class="sx-chev" :aria-label="isOpen(n) ? t('sql.schemaExplorer.collapse') : t('sql.schemaExplorer.expand')" @mousedown.stop="select(i)" @click.stop="toggle(n)">
             <ChevronRight :size="11" class="transition-transform duration-100" :class="{ 'rotate-90': isOpen(n) }"/>
           </button>
           <span v-else class="sx-chev" aria-hidden="true"></span>
@@ -62,18 +62,18 @@
           </template>
         </div>
       </template>
-      <p v-if="filter && !nodes.some(n => n.kind !== 'section')" class="px-3 py-3 text-xs text-neutral-500">Nothing here matches “{{ filter }}”.</p>
-      <p v-else-if="!tables.length && scanId" class="px-3 py-3 text-xs text-neutral-500">Reading the snapshot’s schema…</p>
+      <p v-if="filter && !nodes.some(n => n.kind !== 'section')" class="px-3 py-3 text-xs text-neutral-500">{{ t('sql.schemaExplorer.nothingHereMatches', { filter }) }}</p>
+      <p v-else-if="!tables.length && scanId" class="px-3 py-3 text-xs text-neutral-500">{{ t('sql.schemaExplorer.readingSnapshotSSchema') }}</p>
     </div>
 
     <!-- The selection, described; its actions sit here, not on hover. -->
-    <section v-if="selected && selected.kind !== 'section' && selected.kind !== 'hint'" class="sx-detail hairline-t" aria-label="Details">
+    <section v-if="selected && selected.kind !== 'section' && selected.kind !== 'hint'" class="sx-detail hairline-t" :aria-label="t('sql.schemaExplorer.details')">
       <template v-if="selected.kind === 'table'">
         <p class="sx-d-title font-mono">{{ selected.t.name }}</p>
-        <p class="sx-d-meta">{{ selected.t.view ? "View" : "Table" }} · <template v-if="rowCount(selected.t.name) !== null">{{ fmt(rowCount(selected.t.name)!) }} rows · </template>{{ selected.t.columns.length }} columns</p>
+        <p class="sx-d-meta">{{ selected.t.view ? t('sql.schemaExplorer.view') : t('sql.schemaExplorer.table') }} · <template v-if="rowCount(selected.t.name) !== null">{{ t('sql.schemaExplorer.rows', { tName: fmt(rowCount(selected.t.name)!) }) + ' ' }} </template>{{ t('sql.schemaExplorer.columns', { columnsLength: selected.t.columns.length }) }}</p>
         <div class="sx-d-actions">
-          <button type="button" class="ui-btn ui-btn-sm" title="A new tab reading its first 100 rows (double-click, ↵)" @click="$emit('open-table', selected.t.name)"><Play :size="10" fill="currentColor"/> Open</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Put the name at the caret" @click="$emit('insert', selected.t.name)">Insert name</button>
+          <button type="button" class="ui-btn ui-btn-sm" :title="t('sql.schemaExplorer.newTabReadingFirst')" @click="$emit('open-table', selected.t.name)"><Play :size="10" fill="currentColor"/>{{ ' ' + t('sql.schemaExplorer.open') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('sql.schemaExplorer.putNameCaret')" @click="$emit('insert', selected.t.name)">{{ t('sql.schemaExplorer.insertName') }}</button>
         </div>
       </template>
       <template v-else-if="selected.kind === 'column'">
@@ -85,33 +85,33 @@
           <p v-if="selected.metric.long && selected.metric.long !== selected.metric.short" class="sx-d-long">{{ selected.metric.long }}</p>
         </template>
         <div class="sx-d-actions">
-          <button type="button" class="ui-btn ui-btn-sm" title="Put the column at the caret (double-click, ↵)" @click="$emit('insert', selected.c.name)">Insert</button>
-          <button v-if="selected.metric" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="The metric in the reference, with every other definition" @click="$emit('reference', selected.c.name)">Reference</button>
+          <button type="button" class="ui-btn ui-btn-sm" :title="t('sql.schemaExplorer.putColumnCaretDouble')" @click="$emit('insert', selected.c.name)">{{ t('sql.schemaExplorer.insert') }}</button>
+          <button v-if="selected.metric" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('sql.schemaExplorer.metricReferenceEveryOther')" @click="$emit('reference', selected.c.name)">{{ t('sql.schemaExplorer.reference') }}</button>
         </div>
       </template>
       <template v-else-if="selected.kind === 'saved'">
         <p class="sx-d-title">{{ selected.q.name }}</p>
-        <p v-if="selected.q.lastRun" class="sx-d-meta">Last run on {{ selected.q.lastRun.snapshot }}: {{ fmt(selected.q.lastRun.rows) }} rows</p>
+        <p v-if="selected.q.lastRun" class="sx-d-meta">{{ t('sql.schemaExplorer.lastRunRows', { snapshot: selected.q.lastRun.snapshot, rows: fmt(selected.q.lastRun.rows) }) }}</p>
         <pre class="sx-d-sql">{{ selected.q.sql }}</pre>
         <div class="sx-d-actions">
-          <button type="button" class="ui-btn ui-btn-sm" @click="$emit('open-saved', selected.q)">Open</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="$emit('remove-saved', selected.q.id)"><Trash2 :size="12"/> Remove</button>
+          <button type="button" class="ui-btn ui-btn-sm" @click="$emit('open-saved', selected.q)">{{ t('sql.schemaExplorer.open') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="$emit('remove-saved', selected.q.id)"><Trash2 :size="12"/>{{ ' ' + t('sql.schemaExplorer.remove') }}</button>
         </div>
       </template>
       <template v-else-if="selected.kind === 'report'">
         <p class="sx-d-title">{{ selected.report }}</p>
-        <p class="sx-d-meta">{{ selected.count }} SQL {{ selected.count === 1 ? "cell" : "cells" }}</p>
+        <p class="sx-d-meta">{{ t('sql.schemaExplorer.sql', { selectedCount: selected.count, cells: t('common.noun.cell', { count: selected.count }) }) }}</p>
         <div class="sx-d-actions">
-          <button type="button" class="ui-btn ui-btn-sm" @click="$emit('open-report', selected.reportId)"><FileText :size="12"/> Open report</button>
+          <button type="button" class="ui-btn ui-btn-sm" @click="$emit('open-report', selected.reportId)"><FileText :size="12"/>{{ ' ' + t('sql.schemaExplorer.openReport') }}</button>
         </div>
       </template>
       <template v-else-if="selected.kind === 'cell'">
         <p class="sx-d-title">{{ selected.cell.title || selected.cell.label }}</p>
-        <p class="sx-d-meta">{{ selected.cell.label }} in {{ selected.report }}</p>
+        <p class="sx-d-meta">{{ t('sql.schemaExplorer.in', { cellLabel: selected.cell.label, report: selected.report }) }}</p>
         <pre class="sx-d-sql">{{ selected.cell.sql }}</pre>
         <div class="sx-d-actions">
-          <button type="button" class="ui-btn ui-btn-sm" title="Opens linked to the cell: Update cell writes your edits back" @click="$emit('open-cell', selected.reportId, selected.report, selected.cell)">Open</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="$emit('open-report', selected.reportId)">Open report</button>
+          <button type="button" class="ui-btn ui-btn-sm" :title="t('sql.schemaExplorer.opensLinkedCellUpdate')" @click="$emit('open-cell', selected.reportId, selected.report, selected.cell)">{{ t('sql.schemaExplorer.open') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="$emit('open-report', selected.reportId)">{{ t('sql.schemaExplorer.openReport') }}</button>
         </div>
       </template>
     </section>
@@ -124,6 +124,7 @@ import { Bookmark, ChevronRight, ChevronsDownUp, Columns, Eye, FileText, Gauge, 
 import { QueryIn } from "wailsjs/go/app/QueryService";
 import { useSqlSchema } from "~/features/sql/useSqlSchema";
 import type { SqlColumn, SqlTable } from "~/features/sql/sqlLang";
+import { t, intlLocale } from "~/shared/i18n";
 
 export interface SavedQuery { id: string; name: string; sql: string; lastRun?: { snapshot: string; rows: number } }
 export interface ReportSql { reportId: string; report: string; cells: CellSql[] }
@@ -151,7 +152,7 @@ const { tables } = useSqlSchema(toRef(props, "scanId"));
 const filter = ref("");
 const treeEl = ref<HTMLElement | null>(null);
 const filterEl = ref<HTMLInputElement | null>(null);
-const fmt = (n: number) => n.toLocaleString("en-US");
+const fmt = (n: number) => n.toLocaleString(intlLocale);
 
 // ── Row counts, one query per snapshot ────────────────────────────────
 const countCache = new Map<string, Promise<Map<string, number>>>();
@@ -197,7 +198,7 @@ const nodes = computed<Node[]>(() => {
   };
 
   const savedNodes: Node[] = props.saved.filter(s => hit(s.name, s.sql)).map(s => ({ key: `q:${s.id}`, depth: 1, kind: "saved" as const, q: s }));
-  section("saved", "Saved queries", props.saved.length, savedNodes.length || f ? savedNodes : [{ key: "h:saved", depth: 1, kind: "hint", text: "Save a query (⌘S) to keep it here; reports can insert it too." }]);
+  section("saved", t("sql.schemaExplorer.savedQueries"), props.saved.length, savedNodes.length || f ? savedNodes : [{ key: "h:saved", depth: 1, kind: "hint", text: t("sql.schemaExplorer.saveQuerySKeep") }]);
 
   const rep: Node[] = [];
   for (const r of props.reports) {
@@ -206,7 +207,7 @@ const nodes = computed<Node[]>(() => {
     rep.push({ key: `r:${r.reportId}`, depth: 1, kind: "report", reportId: r.reportId, report: r.report, count: r.cells.length });
     if (open.value.has(`r:${r.reportId}`) || f) for (const c of cells) rep.push({ key: `c:${r.reportId}:${c.cellId}`, depth: 2, kind: "cell", reportId: r.reportId, report: r.report, cell: c });
   }
-  section("reports", "In reports", props.reports.reduce((n, r) => n + r.cells.length, 0), rep);
+  section("reports", t("sql.schemaExplorer.reports"), props.reports.reduce((n, r) => n + r.cells.length, 0), rep);
 
   const tableNodes = (views: boolean) => {
     const list: Node[] = [];

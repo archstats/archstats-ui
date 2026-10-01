@@ -1,5 +1,6 @@
 import type { LegendItem } from "~/features/export/figure"
 import { chartTheme } from "~/shared/ui/useChartTheme";
+import { t } from "~/shared/i18n";
 
 // Shared vocabulary for the Java detail tabs: which snippet types name a
 // role, how roles rank when a class has several, which data hue draws each
@@ -68,10 +69,15 @@ export function roleColor(role: JavaRole | null | undefined): string {
 
 const ROLE_ORDER: Array<JavaRole | null> = ["Controller", "Service", "Repository", "Entity", null]
 
+/** A role as people read it, in the app's language. The role itself stays the engine's word. */
+export function roleName(role: JavaRole | null | undefined): string {
+    return t(`java.roles.${(role ?? "Class").toLowerCase()}`)
+}
+
 /** Legend entries for the roles a drawing actually shows, in layer order. */
 export function roleLegend(roles: Iterable<JavaRole | null | undefined>): LegendItem[] {
     const present = new Set(Array.from(roles, r => r ?? null))
-    return ROLE_ORDER.filter(r => present.has(r)).map(r => ({ label: r ?? "Other", color: roleColor(r), mark: "dot" as const }))
+    return ROLE_ORDER.filter(r => present.has(r)).map(r => ({ label: r ? roleName(r) : t("java.java.other"), color: roleColor(r), mark: "dot" as const }))
 }
 
 // Tailwind class for the same hue, for legends and dots in templates.
@@ -123,22 +129,22 @@ export function structuralFlags(edges: FlagEdge[], beans: FlagBean[]): Structura
     for (const e of edges) {
         const from = { label: e.from.label, file: e.from.file };
         const to = { label: e.to.label, file: e.to.file };
-        const refs = e.references === 1 ? "1 import" : `${e.references} imports`;
+        const refs = e.references === 1 ? "1 import" : t("java.java.imports", { references: e.references });
         if (e.from.roles.has("Controller") && e.to.roles.has("Repository")) {
-            out.push({ key: `c-r:${e.from.file}:${e.to.file}`, rule: "Controller imports repository", from, to, detail: `${refs}; bypasses the service layer` });
+            out.push({ key: `c-r:${e.from.file}:${e.to.file}`, rule: t("java.java.controllerImportsRepository"), from, to, detail: t("java.java.bypassesServiceLayer", { refs }) });
         }
         if (e.from.roles.has("Service") && e.to.roles.has("Controller")) {
-            out.push({ key: `s-c:${e.from.file}:${e.to.file}`, rule: "Service imports controller", from, to, detail: `${refs}; reaches back into the web layer` });
+            out.push({ key: `s-c:${e.from.file}:${e.to.file}`, rule: t("java.java.serviceImportsController"), from, to, detail: t("java.java.reachesBackWebLayer", { refs }) });
         }
         if (e.from.roles.has("Repository") && (e.to.roles.has("Controller") || e.to.roles.has("Service"))) {
             const layer = e.to.roles.has("Controller") ? "controller" : "service";
-            out.push({ key: `r-up:${e.from.file}:${e.to.file}`, rule: `Repository imports ${layer}`, from, to, detail: `${refs}; persistence depends on a layer above it` });
+            out.push({ key: `r-up:${e.from.file}:${e.to.file}`, rule: t("java.java.repositoryImports", { layer }), from, to, detail: t("java.java.persistenceDependsLayerAbove", { refs }) });
         }
     }
     for (const b of beans) {
         const singleton = b.roles.has("Controller") || b.roles.has("Service") || b.roles.has("Component");
         if (singleton && b.fields >= STATEFUL_FIELD_THRESHOLD) {
-            out.push({ key: `fields:${b.file}`, rule: "Singleton with many fields", from: { label: b.label, file: b.file }, to: null, detail: `declares ${b.fields} fields` });
+            out.push({ key: `fields:${b.file}`, rule: t("java.java.singletonManyFields"), from: { label: b.label, file: b.file }, to: null, detail: t("java.java.declaresFields", { fields: b.fields }) });
         }
     }
     return out.sort((a, b) => a.rule.localeCompare(b.rule) || a.from.label.localeCompare(b.from.label) || (a.to?.label ?? "").localeCompare(b.to?.label ?? ""));

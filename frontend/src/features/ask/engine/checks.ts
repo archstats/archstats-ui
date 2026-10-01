@@ -5,6 +5,7 @@
 import type { Check } from "./types"
 import { searchCapabilities, type Capability } from "../knowledge/capabilities"
 import { subjectMismatch, topicMismatch, type TopicExhibit } from "./topic"
+import { t } from "~/shared/i18n"
 
 const NUMBER = /(?<![\w.#&])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?%?(?![\w])/g
 
@@ -119,7 +120,7 @@ export interface CheckOutcome { checks: Check[]; repair: string | null; suggesti
 export function checkAnswer(i: CheckInput): CheckOutcome {
     const checks: Check[] = []
     const unsourced = unsourcedNumbers(i.answer, i.sources)
-    checks.push({ id: "unsourced", ok: unsourced.length === 0, detail: unsourced.length ? `No source for ${unsourced.join(", ")}` : "Every number traced to evidence" })
+    checks.push({ id: "unsourced", ok: unsourced.length === 0, detail: unsourced.length ? t("ask.checks.noSource", { value: unsourced.join(", ") }) : t("ask.checks.everyNumberTracedEvidence") })
 
     const cited = [...i.answer.matchAll(/\bE(\d+(?:\.\d+)?)\b/g)].map(m => `E${m[1]}`)
     // Made-up markers ("[Snapshot]", "[show: cycles]") read as citations and point at nothing.
@@ -137,30 +138,30 @@ export function checkAnswer(i: CheckInput): CheckOutcome {
     const hasNumbers = answerNums.some(v => v > 3 && !fromCard(v))
     const uncitedOk = unknown.length === 0 && (!hasNumbers || cited.length > 0 || i.evidenceIds.size === 0)
     const citesOk = uncitedOk && markers.length === 0
-    checks.push({ id: "uncited", ok: citesOk, detail: unknown.length ? `Cites ids no tool returned: ${[...new Set(unknown)].join(", ")}` : markers.length ? `Made-up markers: ${[...new Set(markers)].slice(0, 3).join(", ")}` : !uncitedOk ? "States numbers without citing evidence" : "Citations resolve" })
+    checks.push({ id: "uncited", ok: citesOk, detail: unknown.length ? t("ask.checks.citesIdsNoTool", { value: [...new Set(unknown)].join(", ") }) : markers.length ? t("ask.checks.madeUpMarkers", { value: [...new Set(markers)].slice(0, 3).join(", ") }) : !uncitedOk ? t("ask.checks.statesNumbersWithoutCiting") : t("ask.checks.citationsResolve") })
 
     const suggestions = searchCapabilities(i.question, 2)
     // Only the best match counts: when it is a known "cannot" (coverage, runtime), saying so is right.
     const gaveUp = GAVE_UP.test(i.answer) && i.toolCalls < 2 && !!suggestions[0] && suggestions[0].tools.length > 0
-    checks.push({ id: "gave-up", ok: !gaveUp, detail: gaveUp ? `Said it could not answer after ${i.toolCalls} tool call${i.toolCalls === 1 ? "" : "s"}; the catalogue says: ${suggestions[0]?.how ?? ""}` : "Did not give up early" })
+    checks.push({ id: "gave-up", ok: !gaveUp, detail: gaveUp ? t("ask.checks.saidCouldNotAnswer", { toolCalls: i.toolCalls, calls: t("common.noun.call", { count: i.toolCalls }), value: suggestions[0]?.how ?? "" }) : t("ask.checks.didNotGiveUp") })
 
     // File names no tool returned, and admitted guesses: the answer made them up.
     const fileNames = [...new Set([...i.answer.matchAll(/\b[\w-]+\.(java|kt|kts|scala|ts|tsx|js|jsx|mjs|vue|svelte|py|go|cs|php|rb|rs|swift|m|dart|sql|xml|yml|yaml|json|gradle)\b/gi)].map(m => m[0]))]
         .filter(f => !i.sources.includes(f) && !i.question.includes(f))
     const guessed = /\b(typical(ly)?|usually|standard (broadleaf|spring|java|project)?\s*structure|based on (common|typical|usual)|would likely be|are likely to be|I (assume|believe|expect) (it|they|the)|not listed[^.]*but)\b/i.exec(i.answer)
-    checks.push({ id: "invented", ok: !fileNames.length && !guessed, detail: fileNames.length ? `Names no tool returned: ${fileNames.slice(0, 4).join(", ")}` : guessed ? `Guesses instead of looking ("${guessed[0]}")` : "Every name came from a tool" })
+    checks.push({ id: "invented", ok: !fileNames.length && !guessed, detail: fileNames.length ? t("ask.checks.namesNoToolReturned", { value: fileNames.slice(0, 4).join(", ") }) : guessed ? t("ask.checks.guessesInsteadLooking", { value: guessed[0] }) : t("ask.checks.everyNameCameTool") })
 
     // A menu instead of an answer ("Would you like to see: 1… 2… 3…").
     const menu = /^\s*(would you like|do you want|shall i|should i|what would you like|which (one|of these) would)/i.test(i.answer.trim())
-    checks.push({ id: "menu", ok: !menu, detail: menu ? "Offered a menu instead of answering" : "Answers first" })
+    checks.push({ id: "menu", ok: !menu, detail: menu ? t("ask.checks.offeredMenuInsteadAnswering") : t("ask.checks.answersFirst") })
 
     // Right numbers, wrong question: the answer rests on a ranking of another measure than the one asked about.
     const topic = topicMismatch(i.question, i.answer, i.exhibits ?? [])
     const subject = topic ? null : subjectMismatch(i.question, i.answer, i.exhibits ?? [])
-    checks.push({ id: "topic", ok: !topic && !subject, detail: topic ? `Asked about ${topic.asked}; the answer rests on a ranking by ${topic.ranked} [${topic.cites}]` : subject ? `Asked about ${subject.asked}; the answer does not use the figure that shows it [${subject.cites}]` : "Answers what was asked" })
+    checks.push({ id: "topic", ok: !topic && !subject, detail: topic ? t("ask.checks.askedAboutAnswerRests", { asked: topic.asked, ranked: topic.ranked, cites: topic.cites }) : subject ? t("ask.checks.askedAboutAnswerDoes", { asked: subject.asked, cites: subject.cites }) : t("ask.checks.answersWhatWasAsked") })
 
     const verdict = i.answer.match(VERDICT)
-    checks.push({ id: "verdict", ok: !verdict, detail: verdict ? `Verdict word "${verdict[0]}"` : "No verdicts" })
+    checks.push({ id: "verdict", ok: !verdict, detail: verdict ? t("ask.checks.verdictWord", { value: verdict[0] }) : t("ask.checks.noVerdicts") })
 
     let repair: string | null = null
     const invented = checks.find(c => c.id === "invented" && !c.ok)

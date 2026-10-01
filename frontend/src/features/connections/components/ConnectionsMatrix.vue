@@ -1,7 +1,7 @@
 <template>
   <!-- A table that fills its pane: a strip names it and ends in its export button. -->
   <ExhibitFrame :exhibit="matrixTable" fill header-class="h-9 shrink-0 px-3 hairline-b">
-    <template #aside>{{ directed ? 'Row uses column' : 'Coupled pairs' }}</template>
+    <template #aside>{{ directed ? t('connections.connectionsMatrix.rowUsesColumn') : t('connections.connectionsMatrix.coupledPairs') }}</template>
     <div ref="scroller" class="h-full w-full overflow-auto bg-surface" @mouseleave="hover(null, null)">
       <!-- Hover is one delegated listener that toggles classes on the row and
            column it touches. Bound per cell and kept in reactive state, every
@@ -11,7 +11,7 @@
         <thead @mouseover="onOver">
           <tr>
             <th class="corner sticky left-0 top-0 z-30 bg-surface hairline-b hairline-r" :style="{ width: LABEL_W + 'px', minWidth: LABEL_W + 'px', height: HEAD_H + 'px' }">
-              <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">{{ directed ? 'row uses column' : 'coupled pairs' }}</span>
+              <span class="block px-2 pb-1 text-left text-[10px] font-medium uppercase tracking-wider text-neutral-500">{{ directed ? t('connections.connectionsMatrix.rowUsesColumn2') : t('connections.connectionsMatrix.coupledPairs2') }}</span>
             </th>
             <th
               v-for="col in orderedCols"
@@ -49,9 +49,9 @@
                     : { borderColor: row.color ?? 'rgb(var(--c-neutral-300))', backgroundColor: row.kind === 'group' ? (row.color ?? 'rgb(var(--c-neutral-300))') : 'transparent', opacity: row.kind === 'group' ? 0.85 : 1 }"
                   :title="row.kind"
                 ></span>
-                <span v-if="levels" class="w-5 shrink-0 text-right text-[10px] text-neutral-400" :title="`Dependency level ${(levels.level.get(row.id) ?? 0) + 1} of ${levels.depth}`">{{ (levels.level.get(row.id) ?? 0) + 1 }}</span>
+                <span v-if="levels" class="w-5 shrink-0 text-right text-[10px] text-neutral-400" :title="t('connections.connectionsMatrix.dependencyLevel', { value: (levels.level.get(row.id) ?? 0) + 1, depth: levels.depth })">{{ (levels.level.get(row.id) ?? 0) + 1 }}</span>
                 <span class="min-w-0 truncate">{{ row.label }}</span>
-                <span v-if="badges?.get(row.id)" class="ml-auto rounded-full bg-red-600 px-1.5 font-mono text-[10px] font-semibold leading-4 text-white" :title="`${badges.get(row.id)} cycles inside`">{{ badges.get(row.id) }}</span>
+                <span v-if="badges?.get(row.id)" class="ml-auto rounded-full bg-red-600 px-1.5 font-mono text-[10px] font-semibold leading-4 text-white" :title="t('connections.connectionsMatrix.cyclesInside', { id: badges.get(row.id) })">{{ badges.get(row.id) }}</span>
               </span>
             </th>
             <td
@@ -75,6 +75,7 @@ import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { type CEdge, type CNode, type Levels, edgeKey, orderNodes } from "~/features/connections/connections";
 import { useTable } from "~/features/export/useExportables";
+import { t } from "~/shared/i18n";
 
 // A dependency structure matrix: rows use columns when the source is
 // directed; otherwise the grid is symmetric. Cells shade on the blue data
@@ -174,7 +175,7 @@ function edgeAt(row: string, col: string): CEdge | undefined {
 // from its row into its column. Past 40 nodes a printed grid stops being read.
 const MAX_EXPORT = 40;
 const matrixTable = useTable({
-  title: "Dependency matrix",
+  title: t("connections.connectionsMatrix.dependencyMatrix"),
   rows: () => orderedRows.value.map((row, i) => ({
     n: i + 1,
     name: row.label,
@@ -183,8 +184,8 @@ const matrixTable = useTable({
       return [`c${j + 1}`, row.id === col.id ? "·" : e ? (props.directed ? e.references : e.sharedCommits) || "" : ""];
     })),
   })),
-  columns: () => [{ id: "n", label: "#" }, { id: "name", label: props.directed ? "Row uses column" : "Changes with column" }, ...orderedCols.value.map((_, j) => ({ id: `c${j + 1}`, label: String(j + 1) }))],
-  disabledReason: () => (orderedCols.value.length > MAX_EXPORT ? `The matrix has ${orderedCols.value.length} columns; group it to ${MAX_EXPORT} or fewer to add it as a table.` : null),
+  columns: () => [{ id: "n", label: "#" }, { id: "name", label: props.directed ? t("connections.connectionsMatrix.rowUsesColumn") : t("connections.connectionsMatrix.changesColumn") }, ...orderedCols.value.map((_, j) => ({ id: `c${j + 1}`, label: String(j + 1) }))],
+  disabledReason: () => (orderedCols.value.length > MAX_EXPORT ? t("connections.connectionsMatrix.matrixHasColumnsGroup", { orderedColsLength: orderedCols.value.length, MAX_EXPORT }) : null),
 });
 
 function cellStyle(row: string, col: string) {
@@ -208,8 +209,8 @@ function cellTitle(row: string, col: string): string | undefined {
   const e = edgeAt(row, col);
   if (!e) return undefined;
   const parts = [];
-  if (e.references) parts.push(`${e.references} reference${e.references === 1 ? "" : "s"}${e.dynamicRefs ? ` (${e.dynamicRefs} dynamic)` : ""}`);
-  if (e.sharedCommits) parts.push(`${e.sharedCommits} shared commit${e.sharedCommits === 1 ? "" : "s"}`);
+  if (e.references) parts.push(t("connections.connectionsMatrix.text", { references: t("common.count.reference", { count: e.references }), value: e.dynamicRefs ? ` (${e.dynamicRefs} dynamic)` : "" }));
+  if (e.sharedCommits) parts.push(t("connections.connectionsMatrix.shared", { sharedCommits: e.sharedCommits, commits: t("common.noun.commit", { count: e.sharedCommits }) }));
   const from = labelOf.value.get(row) ?? row;
   const to = labelOf.value.get(col) ?? col;
   return `${from} ${props.directed ? "uses" : "with"} ${to}: ${parts.join(", ")}`;

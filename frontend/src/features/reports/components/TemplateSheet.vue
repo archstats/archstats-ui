@@ -15,19 +15,19 @@
         @keydown="onKey"
       >
         <header class="flex shrink-0 items-baseline gap-3 px-5 pb-3 pt-4 hairline-b">
-          <h2 id="tpl-title" class="text-[15px] font-semibold text-neutral-900">New report</h2>
+          <h2 id="tpl-title" class="text-[15px] font-semibold text-neutral-900">{{ t('reports.templateSheet.newReport') }}</h2>
           <p class="min-w-0 truncate font-mono text-[11.5px] text-neutral-500">{{ sourceLine }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Close" @click="close"><Icon icon="x" :size="13"/></button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" :aria-label="t('reports.templateSheet.close')" @click="close"><Icon icon="x" :size="13"/></button>
         </header>
 
         <div class="flex min-h-0 flex-1">
           <!-- The templates, this codebase's first. -->
-          <nav class="flex w-[284px] shrink-0 flex-col overflow-y-auto bg-ground pb-4 hairline-r" aria-label="Templates">
+          <nav class="flex w-[284px] shrink-0 flex-col overflow-y-auto bg-ground pb-4 hairline-r" :aria-label="t('reports.templateSheet.templates')">
             <div class="sticky top-0 z-[1] bg-ground px-3 pb-1 pt-3">
-              <input v-model="query" type="search" class="ui-input ui-input-sm w-full" placeholder="Find a template" aria-label="Find a template" @keydown.down.prevent="moveSelection(1)" @keydown.up.prevent="moveSelection(-1)" @keydown.enter.prevent="create">
+              <input v-model="query" type="search" class="ui-input ui-input-sm w-full" :placeholder="t('reports.templateSheet.findTemplate')" :aria-label="t('reports.templateSheet.findTemplate')" @keydown.down.prevent="moveSelection(1)" @keydown.up.prevent="moveSelection(-1)" @keydown.enter.prevent="create">
             </div>
-            <p v-if="query && !choices.length" class="px-4 pt-3 text-[12.5px] text-neutral-500">No template mentions “{{ query }}”.</p>
-            <ul class="px-2 pt-1" role="listbox" aria-label="Templates" :aria-activedescendant="`tpl-${selected}`">
+            <p v-if="query && !choices.length" class="px-4 pt-3 text-[12.5px] text-neutral-500">{{ t('reports.templateSheet.noTemplateMentions', { query }) }}</p>
+            <ul class="px-2 pt-1" role="listbox" :aria-label="t('reports.templateSheet.templates')" :aria-activedescendant="`tpl-${selected}`">
               <li v-for="row in rows" :key="row.key" :role="row.heading ? 'presentation' : undefined">
                 <h3 v-if="row.heading" class="ui-label flex items-center gap-1.5 px-2 pb-1" :class="row.first ? 'pt-1.5' : 'pt-4'">
                   <button v-if="row.toggle" type="button" class="flex items-center gap-1 hover:text-neutral-900" :aria-expanded="showOthers" @click="showOthers = !showOthers">
@@ -48,15 +48,15 @@
                   <Icon :icon="row.icon" :size="14" class="mt-[2px] shrink-0" :class="selected === row.key ? 'text-accent-600' : 'text-neutral-400'"/>
                   <span class="min-w-0 flex-1">
                     <span class="block truncate text-[13px]" :class="row.empty ? 'text-neutral-500' : 'text-neutral-900'">{{ row.name }}</span>
-                    <span class="block truncate text-[11.5px] leading-4" :class="row.empty ? 'text-neutral-400' : row.why ? 'text-accent-700' : 'text-neutral-500'" :title="row.empty ? emptyWhy : row.why || row.audience">{{ row.empty ? "Nothing in this snapshot fits it" : row.why || row.audience }}</span>
+                    <span class="block truncate text-[11.5px] leading-4" :class="row.empty ? 'text-neutral-400' : row.why ? 'text-accent-700' : 'text-neutral-500'" :title="row.empty ? emptyWhy : row.why || row.audience">{{ row.empty ? t('reports.templateSheet.nothingSnapshotFits') : row.why || row.audience }}</span>
                   </span>
                   <button
                     v-if="row.saved"
                     type="button"
                     class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet -mr-1 h-6 w-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/t:opacity-100"
                     :class="{ '!opacity-100 text-red-700': confirmRemove === row.key }"
-                    :aria-label="confirmRemove === row.key ? `Delete ${row.name} for good` : `Delete ${row.name}`"
-                    :title="confirmRemove === row.key ? 'Click again to delete this template' : 'Delete this template'"
+                    :aria-label="confirmRemove === row.key ? t('reports.templateSheet.deleteGood', { name: row.name }) : t('reports.templateSheet.delete', { name: row.name })"
+                    :title="confirmRemove === row.key ? t('reports.templateSheet.clickAgainDeleteTemplate') : t('reports.templateSheet.deleteTemplate')"
                     @click.stop="removeSaved(row.key)"
                   ><Icon icon="trash" :size="12"/></button>
                 </div>
@@ -66,7 +66,7 @@
 
           <!-- The report it writes, as it will open. -->
           <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-surface">
-            <div v-if="!kernel" class="flex h-full items-center justify-center px-10 text-center text-sm text-neutral-500">Templates are written from a snapshot; scan the workspace first.</div>
+            <div v-if="!kernel" class="flex h-full items-center justify-center px-10 text-center text-sm text-neutral-500">{{ t('reports.templateSheet.templatesWrittenSnapshotScan') }}</div>
             <template v-else>
               <section class="border-b border-neutral-200/70 bg-ground/60 px-10 pb-4 pt-5">
                 <div class="mx-auto max-w-[620px]">
@@ -74,17 +74,17 @@
                   <p class="mt-1 text-[12.5px] leading-5 text-neutral-600" v-html="inlineHtml(chosen.summary)"></p>
                   <p v-if="chosen.when" class="mt-1.5 text-[12.5px] leading-5 text-neutral-600">{{ chosen.when }}</p>
                   <p v-if="facts && selected !== 'blank' && emptyChosen" class="mt-2.5 rounded bg-amber-50 px-2.5 py-1.5 text-[12.5px] leading-5 text-amber-900 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-200))]" role="alert">
-                    Nothing in this snapshot fits this template: every section it would write is left out{{ built.skipped.length ? ` (${skippedLine})` : "" }}. The report would hold only headings and prompts.
+                    {{ t('reports.templateSheet.nothingSnapshotFitsTemplate', { value: built.skipped.length ? ` (${skippedLine})` : "" }) }}
                   </p>
                   <p v-else-if="built.skipped.length" class="mt-2.5 rounded bg-amber-50 px-2.5 py-1.5 text-[12.5px] leading-5 text-amber-900 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-200))]">
-                    Leaves out {{ skippedLine }}.
+                    {{ t('reports.templateSheet.leavesOut', { skippedLine }) }}
                   </p>
                   <p v-if="selected !== 'blank'" class="mt-2.5 text-[12.5px] leading-5 text-neutral-800">
-                    <template v-if="!facts">Reading the snapshot…</template>
+                    <template v-if="!facts">{{ t('reports.templateSheet.readingSnapshot') }}</template>
                     <template v-else>{{ tallyLine }}</template>
                   </p>
                   <p v-if="facts && selected !== 'blank' && tallied.prompts" class="mt-1 text-[12px] leading-5 text-neutral-500">
-                    The grey italic lines are prompts: they say what to write there, and are never printed or exported.
+                    {{ t('reports.templateSheet.greyItalicLinesPrompts') }}
                   </p>
                   <label v-for="p in chosen.params ?? []" :key="p.id" class="mt-3 flex items-center gap-3 text-[12.5px] text-neutral-700">
                     <span class="w-20 shrink-0">{{ p.label }}</span>
@@ -93,7 +93,7 @@
                       class="ui-input ui-input-sm min-w-0 flex-1 font-mono"
                       :list="`tpl-${p.id}-list`"
                       :aria-label="p.label"
-                      placeholder="A component"
+                      :placeholder="t('reports.templateSheet.component')"
                       @change="setParam(p.id, ($event.target as HTMLInputElement).value)"
                     >
                     <datalist :id="`tpl-${p.id}-list`"><option v-for="c in componentNames" :key="c" :value="c"/></datalist>
@@ -103,19 +103,19 @@
 
               <!-- The report as it will open: its first page, set as it prints. -->
               <div class="bg-ground px-5 py-6">
-              <article class="paper paper-sheet mx-auto" aria-label="Preview">
-                <p class="font-sans text-[22pt] font-semibold leading-[1.15] tracking-[-0.02em] text-neutral-950">{{ name || "Untitled report" }}</p>
+              <article class="paper paper-sheet mx-auto" :aria-label="t('reports.templateSheet.preview')">
+                <p class="font-sans text-[22pt] font-semibold leading-[1.15] tracking-[-0.02em] text-neutral-950">{{ name || t('reports.templateSheet.untitledReport') }}</p>
                 <div class="mt-[3mm] h-[0.7mm] w-[24mm] bg-accent-500" aria-hidden="true"></div>
                 <p class="mt-[4mm] font-sans text-[8pt] leading-[1.5] text-neutral-500">{{ kernelLine }}</p>
                 <div class="pointer-events-none mt-[7mm] select-none" aria-hidden="true">
-                  <p v-if="selected === 'blank'" class="doc-prose py-2 !text-neutral-400">An empty page. Write, or press / to add evidence.</p>
+                  <p v-if="selected === 'blank'" class="doc-prose py-2 !text-neutral-400">{{ t('reports.templateSheet.emptyPageWritePress') }}</p>
                   <template v-for="b in built.blocks" :key="b.id">
                     <NotebookText v-if="!isCell(b)" :block="b" :editing="false" :number="olNumbers.get(b.id)"/>
                     <NotebookReading v-else-if="b.cell.spec.type === 'reading'" :cell="readingCell(b)" :selected="false" :running="false" :stale="false" kernel-label="" :gutter="false"/>
                     <NotebookSlot v-else-if="b.cell.spec.type === 'slot'" :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" compact/>
                     <div v-else class="my-3 flex items-center gap-3 rounded-lg px-4 py-3 hairline">
                       <Icon icon="table" :size="14" class="shrink-0 text-neutral-400"/>
-                      <span class="min-w-0 flex-1 truncate text-[13px]"><span class="text-xs font-medium text-neutral-500">{{ numbers.get(b.id) }}</span> <span class="font-semibold text-neutral-800">{{ b.cell.title || "Query" }}</span></span>
+                      <span class="min-w-0 flex-1 truncate text-[13px]"><span class="text-xs font-medium text-neutral-500">{{ numbers.get(b.id) }}</span> <span class="font-semibold text-neutral-800">{{ b.cell.title || t('reports.templateSheet.query') }}</span></span>
                       <span class="shrink-0 text-[11.5px] text-neutral-500">{{ tableHint(b) }}</span>
                     </div>
                   </template>
@@ -128,16 +128,16 @@
 
         <footer class="flex shrink-0 items-center gap-3 px-5 py-3 hairline-t">
           <label class="flex min-w-0 flex-1 items-center gap-2.5">
-            <span class="shrink-0 text-[12.5px] text-neutral-600">Name</span>
-            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm w-full max-w-[380px]" aria-label="Report name" @input="nameTouched = true" @keydown.enter.prevent="create">
+            <span class="shrink-0 text-[12.5px] text-neutral-600">{{ t('reports.templateSheet.name') }}</span>
+            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm w-full max-w-[380px]" :aria-label="t('reports.templateSheet.reportName')" @input="nameTouched = true" @keydown.enter.prevent="create">
           </label>
-          <label v-if="template || savedExplains" class="flex shrink-0 cursor-default items-center gap-2 text-[12.5px] text-neutral-700" title="Each section opens with a short paragraph that explains its terms in plain words. They are printed; turn them off for readers who know the terms.">
-            <Checkbox v-model="explain" aria-label="Explain the terms"/>Explain the terms
+          <label v-if="template || savedExplains" class="flex shrink-0 cursor-default items-center gap-2 text-[12.5px] text-neutral-700" :title="t('reports.templateSheet.eachSectionOpensShort')">
+            <Checkbox v-model="explain" :aria-label="t('reports.templateSheet.explainTerms')"/>{{ t('reports.templateSheet.explainTerms') }}
           </label>
           <p v-if="slotCount" class="min-w-0 shrink truncate text-[12.5px] text-neutral-500" :title="takeText">{{ takeText }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="creating || (selected !== 'blank' && !kernel)" title="⌘↵" @click="create">{{ creating ? "Writing…" : emptyChosen ? "Create it anyway" : "Create report" }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">{{ t('reports.templateSheet.cancel') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="creating || (selected !== 'blank' && !kernel)" title="⌘↵" @click="create">{{ creating ? t('reports.templateSheet.writing') : emptyChosen ? t('reports.templateSheet.createAnyway') : t('reports.templateSheet.createReport') }}</button>
         </footer>
       </div>
     </div>
@@ -158,6 +158,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { ecosystems, probe, runReading, type Ecosystem, type SnapshotFacts } from "~/features/reports/readings";
 import { cellNumbers, inlineHtml, isCell, type Block, type Cell, type CellBlock, type RanOn, type ReadingOutput } from "~/features/reports/reportDoc";
 import { bestTemplate, buildTemplate, ECOSYSTEM_TEMPLATES, fromSaved, GENERAL_TEMPLATES, hasEvidence, QUICK_TEMPLATES, tally, type BuiltTemplate, type ReportTemplate, type SavedTemplate } from "~/features/reports/reportTemplates";
+import { t, listOf } from "~/shared/i18n";
 
 const emit = defineEmits<{ (e: "blank"): void; (e: "created"): void }>();
 
@@ -166,12 +167,12 @@ const workspaces = useWorkspacesStore();
 const data = useDataStore();
 const state = useStateStore();
 const open = computed(() => reports.choosingTemplate);
-const workspace = computed(() => workspaces.active?.name ?? "this workspace");
+const workspace = computed(() => workspaces.active?.name ?? t("reports.templateSheet.workspace"));
 // A new report runs on the snapshot open in the sidebar; so does its preview.
 const kernel = computed(() => reports.openKernel);
-const commitText = (k: { headCommit: string; committed?: string }) => (k.headCommit ? ` · commit ${k.headCommit.slice(0, 7)}${k.committed ? ` of ${k.committed}` : ""}` : "");
-const kernelLine = computed(() => (kernel.value ? `Snapshot of ${kernel.value.label}${commitText(kernel.value)} · analysis r${kernel.value.revision}` : ""));
-const sourceLine = computed(() => (kernel.value ? `Written for ${workspace.value} from the snapshot of ${kernel.value.label}` : ""));
+const commitText = (k: { headCommit: string; committed?: string }) => (k.headCommit ? t("reports.templateSheet.commit", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? t("reports.templateSheet.of", { committed: k.committed }) : "" }) : "");
+const kernelLine = computed(() => (kernel.value ? t("reports.templateSheet.snapshotAnalysisR", { kernelLabel: kernel.value.label, kernel: commitText(kernel.value), revision: kernel.value.revision }) : ""));
+const sourceLine = computed(() => (kernel.value ? t("reports.templateSheet.writtenSnapshot", { workspace: workspace.value, kernelLabel: kernel.value.label }) : ""));
 
 // ── What the snapshot holds ─────────────────────────────────────────────
 const facts = ref<SnapshotFacts | null>(null);
@@ -196,13 +197,13 @@ watch([open, () => kernel.value?.id], async ([o]) => {
 const componentNames = computed(() => (data.allComponents ?? []).map((c: any) => String(c.name)).filter((n: string) => n !== ".").sort());
 
 // ── The list ────────────────────────────────────────────────────────────
-const BLANK = { id: "blank", name: "Blank report", audience: "An empty page", summary: "Start from nothing; add facts, tables, queries and pins as you write.", when: "" };
+const BLANK = { id: "blank", name: t("reports.templateSheet.blankReport"), audience: t("reports.templateSheet.emptyPage"), summary: t("reports.templateSheet.startNothingAddFacts"), when: "" };
 const saved = computed<SavedTemplate[]>(() => reports.savedTemplates());
 const detected = computed(() => {
   const m = new Map(ecos.value.map(e => [e.id, e]));
   // A Django project is a Python codebase too: the Python review fits it, the Django review more closely.
   const dj = m.get("django");
-  if (dj && !m.has("python")) m.set("python", { id: "python", label: "Python codebase", why: `${dj.why}; the Django project review covers it more closely` });
+  if (dj && !m.has("python")) m.set("python", { id: "python", label: t("reports.templateSheet.pythonCodebase"), why: t("reports.templateSheet.djangoProjectReviewCovers", { why: dj.why }) });
   return m;
 });
 const ecoTemplates = computed(() => ECOSYSTEM_TEMPLATES.filter(t => t.ecosystem && detected.value.has(t.ecosystem)));
@@ -221,7 +222,7 @@ const emptyIds = computed(() => {
   return out;
 });
 const emptyChosen = computed(() => !!template.value && emptyIds.value.has(template.value.id));
-const emptyWhy = "Every section this template writes needs something this snapshot does not have; choose it to see what.";
+const emptyWhy = t("reports.templateSheet.everySectionTemplateWrites");
 
 interface Row { key: string; heading?: string; first?: boolean; toggle?: boolean; name?: string; audience?: string; why?: string; icon?: string; saved?: boolean; empty?: boolean }
 const rows = computed<Row[]>(() => {
@@ -243,7 +244,7 @@ const rows = computed<Row[]>(() => {
 });
 function withOthers(all: Row[], open: boolean): Row[] {
   if (!open || showOthers.value) return all;
-  return [...all, ...otherTemplates.value.map(t => ({ key: t.id, name: t.name, audience: `${t.audience}; not found here`, icon: "layout-list", empty: emptyIds.value.has(t.id) }))];
+  return [...all, ...otherTemplates.value.map(otherTemplate => ({ key: otherTemplate.id, name: otherTemplate.name, audience: t("reports.templateSheet.notFoundHere", { audience: otherTemplate.audience }), icon: "layout-list", empty: emptyIds.value.has(otherTemplate.id) }))];
 }
 function moveSelection(d: 1 | -1) {
   const list = choices.value;
@@ -253,21 +254,21 @@ function moveSelection(d: 1 | -1) {
 }
 watch(query, () => { const list = choices.value; if (list.length && !list.includes(selected.value)) select(list[0]); });
 const allRows = computed<Row[]>(() => {
-  const out: Row[] = [{ key: "h:start", heading: "Start", first: true }, { key: "blank", name: BLANK.name, audience: BLANK.audience, icon: "file-text" }];
+  const out: Row[] = [{ key: "h:start", heading: t("reports.templateSheet.start"), first: true }, { key: "blank", name: BLANK.name, audience: BLANK.audience, icon: "file-text" }];
   if (ecoTemplates.value.length) {
-    out.push({ key: "h:eco", heading: `For ${workspace.value}` });
-    for (const t of ecoTemplates.value) out.push({ key: t.id, name: t.name, audience: t.audience, why: `Found: ${detected.value.get(t.ecosystem!)!.why}`, icon: "scan-line", empty: emptyIds.value.has(t.id) });
+    out.push({ key: "h:eco", heading: t("reports.templateSheet.for", { workspace: workspace.value }) });
+    for (const ecoTemplate of ecoTemplates.value) out.push({ key: ecoTemplate.id, name: ecoTemplate.name, audience: ecoTemplate.audience, why: t("reports.templateSheet.found", { why: detected.value.get(ecoTemplate.ecosystem!)!.why }), icon: "scan-line", empty: emptyIds.value.has(ecoTemplate.id) });
   }
-  out.push({ key: "h:quick", heading: "Quick wins" });
+  out.push({ key: "h:quick", heading: t("reports.templateSheet.quickWins") });
   for (const t of QUICK_TEMPLATES) out.push({ key: t.id, name: t.name, audience: t.audience, icon: t.icon ?? "layout-list", empty: emptyIds.value.has(t.id) });
-  out.push({ key: "h:general", heading: "General" });
+  out.push({ key: "h:general", heading: t("reports.templateSheet.general") });
   for (const t of GENERAL_TEMPLATES) out.push({ key: t.id, name: t.name, audience: t.audience, icon: "layout-list", empty: emptyIds.value.has(t.id) });
   if (saved.value.length) {
-    out.push({ key: "h:saved", heading: "Yours" });
-    for (const t of saved.value) out.push({ key: `saved:${t.id}`, name: t.name, audience: t.summary || `Saved from ${t.from}`, icon: "bookmark", saved: true });
+    out.push({ key: "h:saved", heading: t("reports.templateSheet.yours") });
+    for (const saved2 of saved.value) out.push({ key: `saved:${saved2.id}`, name: saved2.name, audience: saved2.summary || t("reports.templateSheet.saved", { from: saved2.from }), icon: "bookmark", saved: true });
   }
-  out.push({ key: "h:others", heading: `Other ecosystems (${otherTemplates.value.length})`, toggle: true });
-  if (showOthers.value) for (const t of otherTemplates.value) out.push({ key: t.id, name: t.name, audience: `${t.audience}; not found here`, icon: "layout-list", empty: emptyIds.value.has(t.id) });
+  out.push({ key: "h:others", heading: t("reports.templateSheet.otherEcosystems", { otherTemplatesLength: otherTemplates.value.length }), toggle: true });
+  if (showOthers.value) for (const otherTemplate of otherTemplates.value) out.push({ key: otherTemplate.id, name: otherTemplate.name, audience: t("reports.templateSheet.notFoundHere", { audience: otherTemplate.audience }), icon: "layout-list", empty: emptyIds.value.has(otherTemplate.id) });
   return out;
 });
 const choices = computed(() => rows.value.filter(r => !r.heading).map(r => r.key));
@@ -277,7 +278,7 @@ const chosenOnce = ref(false);
 const template = computed<ReportTemplate | null>(() => [...GENERAL_TEMPLATES, ...QUICK_TEMPLATES, ...ECOSYSTEM_TEMPLATES].find(t => t.id === selected.value) ?? null);
 const savedExplains = computed(() => !!savedChosen.value?.blocks.some(b => !isCell(b) && b.explain));
 const savedChosen = computed(() => (selected.value.startsWith("saved:") ? saved.value.find(t => `saved:${t.id}` === selected.value) ?? null : null));
-const chosen = computed(() => template.value ?? (savedChosen.value ? { id: selected.value, name: savedChosen.value.name, audience: `Yours, saved from ${savedChosen.value.from}`, summary: savedChosen.value.summary || "Your structure, cells and prompts; nothing it found before comes with it.", when: "", params: undefined } : BLANK) as { name: string; audience: string; summary: string; when: string; params?: ReportTemplate["params"] });
+const chosen = computed(() => template.value ?? (savedChosen.value ? { id: selected.value, name: savedChosen.value.name, audience: t("reports.templateSheet.yoursSaved", { from: savedChosen.value.from }), summary: savedChosen.value.summary || t("reports.templateSheet.yourStructureCellsPrompts"), when: "", params: undefined } : BLANK) as { name: string; audience: string; summary: string; when: string; params?: ReportTemplate["params"] });
 
 function select(key: string) {
   selected.value = key;
@@ -312,25 +313,25 @@ const olNumbers = computed(() => {
 });
 const count = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 /** "2 tables and 1 figure": what the run takes from the views. */
-const slotPhrase = (t: { figures: number; slotTables: number }) => [t.slotTables ? count(t.slotTables, "table") : "", t.figures ? count(t.figures, "figure") : ""].filter(Boolean).join(" and ");
+const slotPhrase = (item: { figures: number; slotTables: number }) => listOf([item.slotTables ? t("common.count.table", { count: item.slotTables }) : "", item.figures ? t("common.count.figure", { count: item.figures }) : ""].filter(Boolean));
 const tallied = computed(() => tally(built.value.blocks));
 const tallyLine = computed(() => {
-  const t = tallied.value;
+  const tallied2 = tallied.value;
   const parts = [
-    t.explanations ? count(t.explanations, "paragraph") + " explaining the terms" : "",
-    t.readings ? count(t.readings, "paragraph") + " counted from the snapshot" : "",
-    t.tables ? `${count(t.tables, "table")} run from the snapshot` : "",
-    t.slots ? `${slotPhrase(t)} to add from the views` : "",
-    t.prompts ? count(t.prompts, "prompt") + " for your reading" : "",
+    tallied2.explanations ? t("reports.templateSheet.explainingTerms", { count: t("common.count.paragraph", { count: tallied2.explanations }) }) : "",
+    tallied2.readings ? t("reports.templateSheet.countedSnapshot", { count: t("common.count.paragraph", { count: tallied2.readings }) }) : "",
+    tallied2.tables ? t("reports.templateSheet.runSnapshot", { count: t("common.count.table", { count: tallied2.tables }) }) : "",
+    tallied2.slots ? t("reports.templateSheet.addViews", { tallied2: slotPhrase(tallied2) }) : "",
+    tallied2.prompts ? t("reports.templateSheet.yourReading", { count: t("common.count.prompt", { count: tallied2.prompts }) }) : "",
   ].filter(Boolean);
   const last = parts.pop();
-  return `Writes ${count(t.sections, "section")}: ${parts.length ? `${parts.join(", ")} and ${last}` : last ?? "nothing yet"}.`;
+  return t("reports.templateSheet.writes", { section: t("common.count.section", { count: tallied2.sections }), value: parts.length ? t("reports.templateSheet.and", { parts: parts.join(", "), last }) : last ?? t("reports.templateSheet.nothingYet") });
 });
-const skippedLine = computed(() => built.value.skipped.map(s => `“${s.section}”, because ${s.why}`).join("; "));
+const skippedLine = computed(() => built.value.skipped.map(s => t("reports.templateSheet.because", { section: s.section, why: s.why })).join("; "));
 function tableHint(b: CellBlock) {
   const s = b.cell.spec;
-  if (s.type === "table") return `${s.limit} ${s.source} · runs when created`;
-  return "query · runs when created";
+  if (s.type === "table") return t("reports.templateSheet.runsWhenCreated", { limit: s.limit, source: s.source });
+  return t("reports.templateSheet.queryRunsWhenCreated");
 }
 
 // Readings are counted as the preview shows them, and the report opens with them.
@@ -383,8 +384,8 @@ async function create() {
       const out = counted.value[readingKey(b)];
       return out ? { ...b, cell: { ...b.cell, output: { reading: out }, ranOn } } : b;
     });
-    const made = await reports.create(name.value.trim() || defaultName() || "Untitled report", blocks);
-    if (!made) throw new Error("The report could not be made: no workspace is open.");
+    const made = await reports.create(name.value.trim() || defaultName() || t("reports.templateSheet.untitledReport"), blocks);
+    if (!made) throw new Error(t("reports.templateSheet.reportCouldNotMade"));
     // Made: the gallery closes for good, whatever the cells do next, so a second Create cannot copy it.
     reports.choosingTemplate = false;
     // The report opens and stays open; its "Figures to add" block starts taking them.
@@ -400,7 +401,7 @@ async function create() {
 
 // Figures the template asks for can be taken from their views as soon as the report exists.
 const slotCount = computed(() => tallied.value.slots);
-const takeText = computed(() => `The report lists the ${slotPhrase(tallied.value)} to take from ${slotCount.value === 1 ? "its view" : "their views"} at its top`);
+const takeText = computed(() => t("reports.templateSheet.reportListsTakeTop", { tallied: slotPhrase(tallied.value), theirViews: t("common.noun.itsView", { count: slotCount.value }) }));
 
 const confirmRemove = ref<string | null>(null);
 async function removeSaved(key: string) {

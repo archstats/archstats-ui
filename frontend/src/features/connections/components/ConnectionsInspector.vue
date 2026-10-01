@@ -1,6 +1,6 @@
 <template>
   <div v-if="!selection" class="text-sm leading-relaxed text-neutral-500">
-    Click a node or a cell to inspect it. Double-click opens a node one level; shift-click selects several, then create a group from the selection.
+    {{ t('connections.connectionsInspector.clickNodeCellInspect') }}
   </div>
 
   <!-- A cycle: how big it is, which edges hold it shut, and who is most
@@ -8,18 +8,18 @@
   <div v-else-if="selection.type === 'cycle'" class="flex flex-col gap-4">
     <div class="flex items-center gap-2">
       <Icon icon="refresh" :size="14" class="text-red-600"/>
-      <span class="text-base font-medium text-neutral-900">Cycle of {{ cycleMembers.length }}</span>
+      <span class="text-base font-medium text-neutral-900">{{ t('connections.connectionsInspector.cycle', { cycleMembersLength: cycleMembers.length }) }}</span>
     </div>
     <StatStrip :cells="cycleCells"/>
-    <p class="-mt-2 text-xs leading-4 text-neutral-400">Every one of these can reach every other. Nothing here can be built, tested or released on its own.</p>
+    <p class="-mt-2 text-xs leading-4 text-neutral-400">{{ t('connections.connectionsInspector.everyOneTheseCan') }}</p>
 
     <!-- The whole job: which edges to cut. -->
     <div v-if="cycleCuts.length" class="flex flex-col gap-1">
-      <span class="ui-label">Cheapest way out</span>
+      <span class="ui-label">{{ t('connections.connectionsInspector.cheapestWayOut') }}</span>
       <p class="text-xs leading-4 text-neutral-500">{{ cutSentence }}</p>
       <ul class="flex flex-col">
         <li v-for="c in shownCuts" :key="c.from + '>' + c.to">
-          <button type="button" class="flex w-full items-center gap-1.5 rounded-sm px-1 py-1 text-left hover:bg-neutral-50" :title="`${c.from} → ${c.to} · inspect this edge`" @click="emit('select-pair', c.from, c.to)">
+          <button type="button" class="flex w-full items-center gap-1.5 rounded-sm px-1 py-1 text-left hover:bg-neutral-50" :title="t('connections.connectionsInspector.inspectEdge', { from: c.from, to: c.to })" @click="emit('select-pair', c.from, c.to)">
             <span class="flex min-w-0 flex-col">
               <span class="truncate font-mono text-sm text-neutral-800">{{ labelOf(c.from) }}</span>
               <span class="flex min-w-0 items-center gap-1 truncate font-mono text-xs text-neutral-500">
@@ -32,36 +32,36 @@
         </li>
       </ul>
       <button v-if="cycleCuts.length > SHORT_LIST" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="cutsExpanded = !cutsExpanded">
-        {{ cutsExpanded ? 'Show fewer' : `Show all ${cycleCuts.length}` }}
+        {{ cutsExpanded ? t('connections.connectionsInspector.showFewer') : t('connections.connectionsInspector.showAll', { cycleCutsLength: cycleCuts.length }) }}
       </button>
     </div>
 
     <!-- Who is most tangled: the members worth looking at first. -->
     <div class="flex flex-col gap-1">
-      <span class="ui-label">Members <span class="font-mono text-neutral-400">{{ cycleMembers.length }}</span></span>
-      <p class="text-xs leading-4 text-neutral-400">Most entangled first, counting only the edges inside the loop.</p>
+      <span class="ui-label">{{ t('connections.connectionsInspector.members') }} <span class="font-mono text-neutral-400">{{ cycleMembers.length }}</span></span>
+      <p class="text-xs leading-4 text-neutral-400">{{ t('connections.connectionsInspector.mostEntangledFirstCounting') }}</p>
       <ul class="flex flex-col">
         <li v-for="m in shownMembers" :key="m.id">
-          <button type="button" class="flex h-7 w-full items-center gap-2 rounded-sm px-1 text-left hover:bg-neutral-50" :title="`${m.id} · show it in the view`" @click="emit('select', m.id)">
+          <button type="button" class="flex h-7 w-full items-center gap-2 rounded-sm px-1 text-left hover:bg-neutral-50" :title="t('connections.connectionsInspector.showView', { id: m.id })" @click="emit('select', m.id)">
             <KindMark :kind="m.kind" :color="m.color"/>
             <span class="min-w-0 truncate font-mono text-sm text-neutral-800">{{ m.label }}</span>
-            <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-400" :title="`${m.inn} in, ${m.out} out, inside the loop`">{{ m.inn }} in · {{ m.out }} out</span>
+            <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-400" :title="t('connections.connectionsInspector.outInsideLoop', { inn: m.inn, out: m.out })">{{ t('connections.connectionsInspector.out', { inn: m.inn, out: m.out }) }}</span>
           </button>
         </li>
       </ul>
       <button v-if="cycleRanked.length > MEMBER_LIST" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="membersExpanded = !membersExpanded">
-        {{ membersExpanded ? 'Show fewer' : `Show all ${cycleRanked.length}` }}
+        {{ membersExpanded ? t('connections.connectionsInspector.showFewer') : t('connections.connectionsInspector.showAll2', { cycleRankedLength: cycleRanked.length }) }}
       </button>
     </div>
 
     <div class="flex flex-wrap gap-2">
-      <button type="button" class="ui-btn ui-btn-sm" title="Show only this tangle, in every view" @click="emit('focus', 'tangle')">
+      <button type="button" class="ui-btn ui-btn-sm" :title="t('connections.connectionsInspector.showOnlyTangleEvery')" @click="emit('focus', 'tangle')">
         <Icon icon="focus" :size="13"/>
-        <span>Focus on the tangle</span>
+        <span>{{ t('connections.connectionsInspector.focusTangle') }}</span>
       </button>
       <router-link v-if="cycleMembers.every(id => byId.get(id)?.kind === 'component')" :to="`/views/components/cycles?component=${encodeURIComponent(cycleMembers[0])}`" class="ui-btn ui-btn-sm">
         <Icon icon="external-link" :size="13"/>
-        <span>Open in Cycles</span>
+        <span>{{ t('connections.connectionsInspector.openCycles') }}</span>
       </router-link>
     </div>
   </div>
@@ -76,24 +76,24 @@
         </div>
         <div v-if="i === 0" class="flex items-center gap-1.5 pl-1 text-xs text-neutral-400">
           <Icon :icon="directed ? 'arrow-up-right' : 'link'" :size="12"/>
-          <span>{{ directed ? `depends on · ${formatNumber(pairForward, 0)} ${pairForward === 1 ? 'reference' : 'references'}` : 'coupled with' }}</span>
+          <span>{{ directed ? t('connections.connectionsInspector.depends', { references: t('common.count.reference', { count: pairForward }) }) : t('connections.connectionsInspector.coupled') }}</span>
         </div>
       </template>
       <div v-if="directed && pairBack > 0" class="flex items-center gap-1.5 pl-1 text-xs text-red-700">
         <Icon icon="arrow-up-right" :size="12" class="rotate-180"/>
-        <span>and back · {{ formatNumber(pairBack, 0) }} {{ pairBack === 1 ? 'reference' : 'references' }}</span>
+        <span>{{ t('connections.connectionsInspector.back', { references: t('common.count.reference', { count: pairBack }) }) }}</span>
       </div>
     </div>
-    <p v-if="directed && pairBack > 0 && pairForward > 0" class="-mt-2 text-xs leading-4 text-neutral-500">These two point at each other, which is a cycle of its own. The lighter direction is the cheaper one to break.</p>
+    <p v-if="directed && pairBack > 0 && pairForward > 0" class="-mt-2 text-xs leading-4 text-neutral-500">{{ t('connections.connectionsInspector.theseTwoPointEach') }}</p>
     <StatStrip :cells="pairCells"/>
     <p v-if="pairInCycle" class="flex items-center gap-1.5 text-sm text-red-700">
       <Icon icon="refresh" :size="13"/>
-      <span>This edge is part of a cycle.</span>
+      <span>{{ t('connections.connectionsInspector.edgePartCycle') }}</span>
     </p>
     <div v-if="selection.type === 'pair' && pairEnds.every(e => e.kind === 'component')" class="flex flex-wrap items-center gap-2">
-      <button type="button" class="ui-btn ui-btn-sm" title="Show only these two and what sits between them, in every view" @click="emit('focus', 'between')">
+      <button type="button" class="ui-btn ui-btn-sm" :title="t('connections.connectionsInspector.showOnlyTheseTwo')" @click="emit('focus', 'between')">
         <Icon icon="focus" :size="13"/>
-        <span>Focus on both</span>
+        <span>{{ t('connections.connectionsInspector.focusBoth') }}</span>
       </button>
       <ShowInMenu :pair="{ from: selection.from, to: selection.to }" :except="source === 'static' ? ['imports'] : ['cochange']"/>
       <PinButton kind="pair" :entity-key="`${selection.from}>${selection.to}`" :title="`${pairEnds[0]?.label} → ${pairEnds[1]?.label}`" :values="{ references: pairForward }"/>
@@ -107,9 +107,9 @@
     <div class="flex flex-col gap-1.5">
       <div class="flex items-center gap-2">
         <KindMark :kind="node.kind" :color="node.color"/>
-        <button type="button" class="min-w-0 truncate text-left font-mono text-sm font-medium text-neutral-900 hover:text-accent-700" :title="`${node.label} · centre it in the view`" @click="emit('select', node.id)">{{ node.label }}</button>
+        <button type="button" class="min-w-0 truncate text-left font-mono text-sm font-medium text-neutral-900 hover:text-accent-700" :title="t('connections.connectionsInspector.centreView', { nodeLabel: node.label })" @click="emit('select', node.id)">{{ node.label }}</button>
         <span class="ui-tag shrink-0">{{ node.kind }}</span>
-        <router-link v-if="nodeRoute" :to="nodeRoute" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :title="`Open the ${node.kind} page`" :aria-label="`Open the ${node.kind} page`">
+        <router-link v-if="nodeRoute" :to="nodeRoute" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :title="t('connections.connectionsInspector.openPage', { kind: node.kind })" :aria-label="t('connections.connectionsInspector.openPage', { kind: node.kind })">
           <Icon icon="external-link" :size="12"/>
         </router-link>
       </div>
@@ -132,17 +132,17 @@
          answer to "where does this sit" is usually to look only there. -->
     <div class="flex flex-col gap-1.5">
       <div class="flex items-center gap-2">
-        <span class="ui-label">Focus</span>
+        <span class="ui-label">{{ t('connections.connectionsInspector.focus') }}</span>
         <ShowInMenu v-if="node.kind !== 'group'" class="ml-auto" :kind="node.kind === 'file' ? 'file' : 'component'" :ids="[node.id]" :except="['connections']"/>
       </div>
       <div class="flex flex-wrap gap-1">
-        <button type="button" class="ui-chip" :title="`Show only ${node.label}, in every view`" @click="emit('focus', 'only')">Only this</button>
-        <button type="button" class="ui-chip" title="It and everything it imports or is imported by (F)" @click="emit('focus', 'around')">Neighbours</button>
+        <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.showOnlyEveryView', { nodeLabel: node.label })" @click="emit('focus', 'only')">{{ t('connections.connectionsInspector.only') }}</button>
+        <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.everythingImportsImportedF')" @click="emit('focus', 'around')">{{ t('connections.connectionsInspector.neighbours') }}</button>
         <template v-if="directed">
-          <button type="button" class="ui-chip" title="It and what it imports" @click="emit('focus', 'dependencies')">What it uses</button>
-          <button type="button" class="ui-chip" title="It and what imports it" @click="emit('focus', 'dependents')">What uses it</button>
-          <button type="button" class="ui-chip" title="Everything that reaches it, however far: what a change here can break" @click="emit('focus', 'blast')">Blast radius</button>
-          <button type="button" class="ui-chip" title="Pick another node and see only the shortest routes between them" @click="emit('path-from')">Path to…</button>
+          <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.whatImports')" @click="emit('focus', 'dependencies')">{{ t('connections.connectionsInspector.whatUses') }}</button>
+          <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.whatImports2')" @click="emit('focus', 'dependents')">{{ t('connections.connectionsInspector.whatUses2') }}</button>
+          <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.everythingReachesHoweverFar')" @click="emit('focus', 'blast')">{{ t('connections.connectionsInspector.blastRadius') }}</button>
+          <button type="button" class="ui-chip" :title="t('connections.connectionsInspector.pickAnotherNodeSee')" @click="emit('path-from')">{{ t('connections.connectionsInspector.path') }}</button>
         </template>
       </div>
     </div>
@@ -155,69 +155,69 @@
     <!-- Inside: what this node actually holds, worst first. -->
     <div v-if="node.kind !== 'file'" class="flex flex-col gap-1">
       <div class="flex items-baseline gap-2">
-        <span class="ui-label">Inside</span>
+        <span class="ui-label">{{ t('connections.connectionsInspector.inside') }}</span>
         <span class="font-mono text-xs text-neutral-400">{{ insideTotal }}</span>
         <button v-if="canOpen" type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="emit('toggle-open', node.id)">
-          {{ openIds.has(node.id) ? 'Close' : node.kind === 'group' ? 'Open into components' : 'Open into files' }}
+          {{ openIds.has(node.id) ? t('connections.connectionsInspector.close') : node.kind === 'group' ? t('connections.connectionsInspector.openComponents') : t('connections.connectionsInspector.openFiles') }}
         </button>
       </div>
-      <LoadingState v-if="insideLoading" text="Reading contents"/>
+      <LoadingState v-if="insideLoading" :text="t('connections.connectionsInspector.readingContents')"/>
       <template v-else-if="insideRows.length">
         <p class="text-xs leading-4 text-neutral-400">{{ insideHint }}</p>
         <ul class="flex flex-col">
           <li v-for="r in insideRows" :key="r.id" class="flex h-6 items-center gap-2">
             <KindMark :kind="node.kind === 'group' ? 'component' : 'file'" :color="node.color"/>
-            <button type="button" class="min-w-0 truncate text-left font-mono text-sm text-neutral-800 hover:text-accent-700" :title="`${r.id} · show it in the view`" @click="emit('select', r.id)">{{ r.label }}</button>
-            <span class="ml-auto h-1 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-100" :title="`${formatNumber(r.lines ?? 0, 0)} lines`">
+            <button type="button" class="min-w-0 truncate text-left font-mono text-sm text-neutral-800 hover:text-accent-700" :title="t('connections.connectionsInspector.showView', { id: r.id })" @click="emit('select', r.id)">{{ r.label }}</button>
+            <span class="ml-auto h-1 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-100" :title="t('connections.connectionsInspector.lines2', { value: formatNumber(r.lines ?? 0, 0) })">
               <span class="block h-full rounded-full bg-neutral-400" :style="{ width: Math.max(4, ((r.lines ?? 0) / insideMaxLines) * 100) + '%' }"></span>
             </span>
-            <span v-if="r.level && r.level !== 'none'" class="h-2 w-2 shrink-0 rounded-full" :class="levelDotClass(r.level)" :title="`Code health ${formatHealth(r.health)}`"></span>
+            <span v-if="r.level && r.level !== 'none'" class="h-2 w-2 shrink-0 rounded-full" :class="levelDotClass(r.level)" :title="t('connections.connectionsInspector.codeHealth', { health: formatHealth(r.health) })"></span>
             <span v-else class="w-2 shrink-0"></span>
           </li>
         </ul>
-        <p v-if="insideTotal > insideRows.length" class="text-xs text-neutral-400">and {{ insideTotal - insideRows.length }} more</p>
+        <p v-if="insideTotal > insideRows.length" class="text-xs text-neutral-400">{{ t('connections.connectionsInspector.more', { value: insideTotal - insideRows.length }) }}</p>
       </template>
-      <p v-else class="text-sm text-neutral-500">Nothing to show.</p>
+      <p v-else class="text-sm text-neutral-500">{{ t('connections.connectionsInspector.nothingShow') }}</p>
     </div>
 
     <div v-if="node.kind === 'group'" class="flex flex-wrap gap-2">
       <button type="button" class="ui-btn ui-btn-sm" @click="emit('scope', node.id)">
         <Icon icon="scale" :size="13"/>
-        <span>Scope views</span>
+        <span>{{ t('connections.connectionsInspector.scopeViews') }}</span>
       </button>
       <router-link :to="groupPath(node.id)" class="ui-btn ui-btn-sm">
         <Icon icon="arrow-up-right" :size="13"/>
-        <span>Open group</span>
+        <span>{{ t('connections.connectionsInspector.openGroup') }}</span>
       </router-link>
     </div>
 
     <!-- Cycles: not only that it is in one, but how much of it is. -->
     <div v-if="nodeCycle" class="flex flex-col gap-1">
-      <span class="ui-label flex items-center gap-1.5 text-red-700"><Icon icon="refresh" :size="12"/> In a cycle with {{ nodeCycle.length - 1 }} other{{ nodeCycle.length === 2 ? '' : 's' }}</span>
+      <span class="ui-label flex items-center gap-1.5 text-red-700"><Icon icon="refresh" :size="12"/>{{ ' ' + t('connections.connectionsInspector.cycleOther', { value: nodeCycle.length - 1, value2: nodeCycle.length === 2 ? '' : 's' }) }}</span>
       <p class="text-xs leading-4 text-neutral-500">
-        {{ cyclicPartners }} of its {{ partners.length }} connection{{ partners.length === 1 ? '' : 's' }} stay inside the loop, marked in red below.
+        {{ t('connections.connectionsInspector.stayInsideLoopMarked', { cyclicPartners, connections: t('common.count.connection', { count: partners.length }) }) }}
       </p>
-      <button type="button" class="ui-btn ui-btn-sm self-start" @click="emit('select-cycle', node.id)">Show the cycle and how to break it</button>
+      <button type="button" class="ui-btn ui-btn-sm self-start" @click="emit('select-cycle', node.id)">{{ t('connections.connectionsInspector.showCycleHowBreak') }}</button>
     </div>
 
     <!-- Who it touches, split by direction, strongest first. The bar is the
          same story in one line: how much of it points out against in. -->
     <div v-if="directed && partners.length" class="flex flex-col gap-1.5">
-      <span class="flex h-1.5 overflow-hidden rounded-full bg-neutral-100" :title="`${outRows.length} out, ${inRows.length} in`">
+      <span class="flex h-1.5 overflow-hidden rounded-full bg-neutral-100" :title="t('connections.connectionsInspector.out2', { outRowsLength: outRows.length, inRowsLength: inRows.length })">
         <span class="bg-blue-500" :style="{ width: outShare + '%' }"></span>
         <span class="bg-violet-500" :style="{ width: 100 - outShare + '%' }"></span>
       </span>
       <p class="text-xs leading-4 text-neutral-500">{{ shapeSentence }}</p>
     </div>
     <template v-if="directed">
-      <PartnerList title="Depends on" icon="arrow-right" :rows="outRows" :unit="unit" @select="emit('select', $event)"/>
-      <PartnerList title="Used by" icon="arrow-left" :rows="inRows" :unit="unit" @select="emit('select', $event)"/>
+      <PartnerList :title="t('connections.connectionsInspector.depends2')" icon="arrow-right" :rows="outRows" :unit="unit" @select="emit('select', $event)"/>
+      <PartnerList :title="t('connections.connectionsInspector.used')" icon="arrow-left" :rows="inRows" :unit="unit" @select="emit('select', $event)"/>
     </template>
-    <PartnerList v-else title="Coupled with" icon="link" :rows="outRows" :unit="unit" @select="emit('select', $event)"/>
-    <p v-if="!partners.length" class="text-sm text-neutral-500">No connections with the current source and scope.</p>
+    <PartnerList v-else :title="t('connections.connectionsInspector.coupled2')" icon="link" :rows="outRows" :unit="unit" @select="emit('select', $event)"/>
+    <p v-if="!partners.length" class="text-sm text-neutral-500">{{ t('connections.connectionsInspector.noConnectionsCurrentSource') }}</p>
   </div>
 
-  <div v-else class="text-sm text-neutral-500">The selected item is not in view. Clear the search or scope, or close the group it is in.</div>
+  <div v-else class="text-sm text-neutral-500">{{ t('connections.connectionsInspector.selectedItemNotView') }}</div>
 </template>
 
 <script setup lang="ts">
@@ -237,6 +237,7 @@ import { formatNumber } from "~/shared/format";
 import { sqlLiteral } from "~/shared/sql";
 import { formatHealth, formatHotspot, healthLevel, hotspotLevel, levelDotClass, type HealthLevel } from "~/features/metrics/useHealth";
 import { type CEdge, type CNode, type Selection, type Source, detailRoute, feedbackEdges, neighboursOf } from "~/features/connections/connections";
+import { t, ordinal } from "~/shared/i18n";
 
 const props = defineProps<{
   selection: Selection | null
@@ -281,7 +282,7 @@ const membershipChips = computed(() => {
   if (!componentId) return [];
   return props.memberships(componentId).map(g => {
     const cov = groups.coverage(g, componentId);
-    const part = cov && !cov.full ? `${cov.files} of ${cov.total || "?"} files` : null;
+    const part = cov && !cov.full ? t("connections.connectionsInspector.files", { files: cov.files, value: cov.total || "?" }) : null;
     return { id: g.id, name: g.name, color: g.color, dimension: g.dimension, part };
   });
 });
@@ -292,24 +293,20 @@ const nodeCells = computed(() => {
   if (!n) return [];
   if (n.kind === "group") {
     return [
-      { label: "Components", value: formatNumber(groupComponents.value.length, 0) },
-      { label: "Files", value: formatNumber(n.files ?? 0, 0) },
-      { label: "Lines", value: formatNumber(n.lines ?? 0, 0) },
+      { label: t("connections.connectionsInspector.components"), value: formatNumber(groupComponents.value.length, 0) },
+      { label: t("connections.connectionsInspector.files2"), value: formatNumber(n.files ?? 0, 0) },
+      { label: t("connections.connectionsInspector.lines"), value: formatNumber(n.lines ?? 0, 0) },
     ];
   }
-  const cells: any[] = [{ label: "Lines", value: formatNumber(n.lines ?? 0, 0) }];
-  if (n.kind === "component") cells.push({ label: "Files", value: formatNumber(n.files ?? 0, 0) });
+  const cells: any[] = [{ label: t("connections.connectionsInspector.lines"), value: formatNumber(n.lines ?? 0, 0) }];
+  if (n.kind === "component") cells.push({ label: t("connections.connectionsInspector.files2"), value: formatNumber(n.files ?? 0, 0) });
   cells.push(
-    { label: "Code health", value: formatHealth(n.health), level: healthLevel(n.health) },
-    { label: "Hotspot", value: formatHotspot(n.hotspot), level: hotspotLevel(n.hotspot) },
+    { label: t("connections.connectionsInspector.codeHealth2"), value: formatHealth(n.health), level: healthLevel(n.health) },
+    { label: t("connections.connectionsInspector.hotspot"), value: formatHotspot(n.hotspot), level: hotspotLevel(n.hotspot) },
   );
   return cells;
 });
 
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"], v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
 
 /** A number means little alone; say what share of what is on screen it is. */
 const vitalsCaption = computed(() => {
@@ -319,11 +316,11 @@ const vitalsCaption = computed(() => {
   const parts: string[] = [];
   if (n.lines && totalLines > 0) {
     const share = (n.lines / totalLines) * 100;
-    parts.push(`${share < 0.5 ? "<1" : Math.round(share)}% of the ${formatNumber(totalLines, 0)} lines in view`);
+    parts.push(t("connections.connectionsInspector.linesView", { value: share < 0.5 ? "<1" : Math.round(share), totalLines: formatNumber(totalLines, 0) }));
   }
   const sameKind = props.nodes.filter(x => x.kind === n.kind && (x.lines ?? 0) > 0).sort((a, b) => (b.lines ?? 0) - (a.lines ?? 0));
   const rank = sameKind.findIndex(x => x.id === n.id);
-  if (rank >= 0 && sameKind.length > 1) parts.push(`${ordinal(rank + 1)} largest of ${sameKind.length} ${n.kind}s`);
+  if (rank >= 0 && sameKind.length > 1) parts.push(t("connections.connectionsInspector.largestS", { value: ordinal(rank + 1), sameKindLength: sameKind.length, kind: n.kind }));
   return parts.join(" · ");
 });
 
@@ -331,7 +328,7 @@ const vitalsCaption = computed(() => {
 const partners = computed(() => (node.value ? neighboursOf(node.value.id, props.edges) : []));
 const cycleSet = computed(() => new Set(nodeCycle.value ?? []));
 const cyclicPartners = computed(() => partners.value.filter(p => cycleSet.value.has(p.id)).length);
-const unit = computed(() => (props.source === "git" ? "shared commits" : "references"));
+const unit = computed(() => (props.source === "git" ? t("connections.connectionsInspector.sharedCommits") : t("connections.connectionsInspector.references")));
 
 function toRows(list: Array<{ id: string; references: number; sharedCommits: number }>): PartnerRow[] {
   return list
@@ -359,9 +356,9 @@ const shapeSentence = computed(() => {
   const out = outRows.value.length, inn = inRows.value.length;
   if (out + inn === 0) return "";
   const instability = out / (out + inn);
-  if (instability >= 0.7) return "Mostly points outward. It leans on the rest of the codebase, so changes here stay cheap for everyone else.";
-  if (instability <= 0.3) return "Mostly depended on. Changes here ripple outward, so it pays to keep this one stable.";
-  return "It uses and is used in much the same measure, which makes it hard to change in isolation.";
+  if (instability >= 0.7) return t("connections.connectionsInspector.mostlyPointsOutwardLeans");
+  if (instability <= 0.3) return t("connections.connectionsInspector.mostlyDependedChangesHere");
+  return t("connections.connectionsInspector.usesUsedMuchSame");
 });
 
 // ── Inside: what the node holds, worst first ─────────────────────────────
@@ -375,7 +372,7 @@ const insideTotal = computed(() => {
   if (!n) return 0;
   return n.kind === "group" ? groupComponents.value.length : n.files ?? 0;
 });
-const insideHint = computed(() => (node.value?.kind === "group" ? "Largest first." : "Hottest first: the files that change most and read worst."));
+const insideHint = computed(() => (node.value?.kind === "group" ? t("connections.connectionsInspector.largestFirst") : t("connections.connectionsInspector.hottestFirstFilesChange")));
 const insideMaxLines = computed(() => Math.max(1, ...insideRows.value.map(r => r.lines ?? 0)));
 
 let insideSeq = 0;
@@ -438,9 +435,9 @@ const cutSentence = computed(() => {
   const n = cycleCuts.value.length;
   const refs = formatNumber(cutReferences.value, 0);
   if (n === 0) return "";
-  if (n === 1) return `One edge holds this loop shut, ${refs} ${cutReferences.value === 1 ? "reference" : "references"}. Reverse or remove it and the loop is gone.`;
-  if (n <= SHORT_LIST) return `Reversing or removing these ${n} edges (${refs} references in all) leaves nothing here circular. Lightest first.`;
-  return `${n} edges hold this loop shut, ${refs} references in all. The lightest are below: each one is a cheap place to start.`;
+  if (n === 1) return t("connections.connectionsInspector.oneEdgeHoldsLoop", { refs, references: t("common.noun.reference", { count: cutReferences.value }) });
+  if (n <= SHORT_LIST) return t("connections.connectionsInspector.reversingRemovingTheseEdges", { n, refs });
+  return t("connections.connectionsInspector.edgesHoldLoopShut", { n, refs });
 });
 
 const cycleCells = computed(() => {
@@ -448,10 +445,10 @@ const cycleCells = computed(() => {
   if (!members.length) return [];
   const lines = members.reduce((s, id) => s + (byId.value.get(id)?.lines ?? 0), 0);
   return [
-    { label: "Members", value: formatNumber(members.length, 0) },
-    { label: "Edges inside", value: formatNumber(cycleInner.value.length, 0) },
-    { label: "Lines caught", value: formatNumber(lines, 0) },
-    { label: "Cuts", value: formatNumber(cycleCuts.value.length, 0), title: "Edges whose removal would leave nothing here circular" },
+    { label: t("connections.connectionsInspector.members"), value: formatNumber(members.length, 0) },
+    { label: t("connections.connectionsInspector.edgesInside"), value: formatNumber(cycleInner.value.length, 0) },
+    { label: t("connections.connectionsInspector.linesCaught"), value: formatNumber(lines, 0) },
+    { label: t("connections.connectionsInspector.cuts"), value: formatNumber(cycleCuts.value.length, 0), title: t("connections.connectionsInspector.edgesWhoseRemovalWould") },
   ];
 });
 
@@ -518,9 +515,9 @@ const pairCells = computed(() => {
   const dynamic = hits.reduce((s, e) => s + (e.dynamicRefs ?? 0), 0);
   const shared = hits.reduce((s, e) => s + e.sharedCommits, 0);
   const cells: any[] = [];
-  if (props.source !== "git") cells.push({ label: "References", value: dynamic ? `${formatNumber(refs, 0)} (${formatNumber(dynamic, 0)} dynamic)` : formatNumber(refs, 0) });
-  if (props.source !== "static") cells.push({ label: "Shared commits", value: formatNumber(shared, 0) });
-  cells.push({ label: "Weight", value: formatNumber(Math.max(0, ...hits.map(e => e.weight)) * 100, 0) + "%" });
+  if (props.source !== "git") cells.push({ label: t("connections.connectionsInspector.references2"), value: dynamic ? `${formatNumber(refs, 0)} (${formatNumber(dynamic, 0)} dynamic)` : formatNumber(refs, 0) });
+  if (props.source !== "static") cells.push({ label: t("connections.connectionsInspector.sharedCommits2"), value: formatNumber(shared, 0) });
+  cells.push({ label: t("connections.connectionsInspector.weight"), value: formatNumber(Math.max(0, ...hits.map(e => e.weight)) * 100, 0) + "%" });
   return cells;
 });
 </script>

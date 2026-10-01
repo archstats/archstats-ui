@@ -1,8 +1,8 @@
 <template>
   <div class="ui-popover pointer-events-auto absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 py-1.5 pl-3 pr-1.5">
-    <span class="shrink-0 text-sm font-medium text-neutral-900">{{ count }} selected</span>
+    <span class="shrink-0 text-sm font-medium text-neutral-900">{{ t('lens-builder.selectionBar.selected', { count }) }}</span>
     <span class="shrink-0 text-xs text-neutral-500">
-      {{ verb }}<template v-if="home"> <span class="text-neutral-400">(now in {{ home }})</span></template>
+      {{ verb }}<template v-if="home"> <span class="text-neutral-400">{{ t('lens-builder.selectionBar.now', { home }) }}</span></template>
     </span>
 
     <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
@@ -11,7 +11,7 @@
         :key="g.key"
         type="button"
         class="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-neutral-800 transition-colors hover:bg-neutral-100"
-        :title="g.hotkey ? `${g.name} · press ${g.hotkey}` : g.name"
+        :title="g.hotkey ? t('lens-builder.selectionBar.press', { gName: g.name, hotkey: g.hotkey }) : g.name"
         @click="emit('assign', g.key)"
       >
         <span class="h-2 w-2 shrink-0 rounded-[2px]" :style="{ backgroundColor: g.color }"></span>
@@ -21,8 +21,8 @@
     </div>
 
     <span class="h-5 w-px shrink-0 bg-neutral-200"></span>
-    <button type="button" class="ui-btn ui-btn-sm shrink-0" title="Start a group from this selection (N)" @click="emit('new-group')">
-      <Icon icon="plus" :size="13" class="text-neutral-500"/><span>New group</span>
+    <button type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('lens-builder.selectionBar.startGroupSelectionN')" @click="emit('new-group')">
+      <Icon icon="plus" :size="13" class="text-neutral-500"/><span>{{ t('lens-builder.selectionBar.newGroup') }}</span>
     </button>
     <!-- The same thing, said rather than listed. A group written as a pattern
          survives the rename that would have emptied the list in silence, so
@@ -38,9 +38,9 @@
       <span class="min-w-0 truncate font-mono text-xs">{{ pattern.lead }}</span>
       <span v-if="pattern.extra" class="shrink-0 text-xs text-neutral-400">+{{ pattern.extra }}</span>
     </button>
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" title="Decide these later (L)" @click="emit('park', 'later')">Later</button>
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" title="Not in this lens (X)" @click="emit('park', 'out')">Out</button>
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Clear the selection" title="Clear the selection (Esc)" @click="emit('clear')">
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="t('lens-builder.selectionBar.decideTheseLaterL')" @click="emit('park', 'later')">{{ t('lens-builder.selectionBar.later') }}</button>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="t('lens-builder.selectionBar.notLensX')" @click="emit('park', 'out')">{{ t('lens-builder.selectionBar.out') }}</button>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :aria-label="t('lens-builder.selectionBar.clearSelection')" :title="t('lens-builder.selectionBar.clearSelectionEsc')" @click="emit('clear')">
       <Icon icon="x" :size="13"/>
     </button>
   </div>
@@ -50,6 +50,7 @@
 import { computed } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { usePatternOffer } from "~/features/groups/usePatternOffer";
+import { t } from "~/shared/i18n";
 
 // What you picked on the map, and every answer it can be given. It appears
 // only while something is selected, over the map rather than beside it, so
@@ -63,7 +64,7 @@ const props = withDefaults(defineProps<{
   /** "Put into" for something unplaced, "Move to" for something already home. */
   verb?: string
   home?: string | null
-}>(), { verb: "put into", home: null, selected: () => [] });
+}>(), { verb: t("lens-builder.selectionBar.put"), home: null, selected: () => [] });
 const emit = defineEmits<{
   (e: "assign", key: string): void
   (e: "new-group"): void

@@ -12,6 +12,7 @@
 // fifteen to twenty-two. The handful is the story and a grid buries it.
 
 import type { Reference } from "./findings"
+import { t } from "~/shared/i18n"
 
 /** One module that crosses the boundary, and how far it reaches. */
 export interface Crossing {
@@ -101,9 +102,9 @@ export function readRelationship(
             id: "cycle",
             kind: "cycle",
             headline: cycles.length === 1
-                ? `${nameOf(cycles[0].from)} and ${nameOf(cycles[0].to)} import each other.`
-                : `${cycles.length} pairs here import each other.`,
-            detail: "Neither side can be extracted, tested or replaced on its own.",
+                ? t("units.relationship.importEachOther", { from: nameOf(cycles[0].from), to: nameOf(cycles[0].to) })
+                : t("units.relationship.pairsHereImportEach", { cyclesLength: cycles.length }),
+            detail: t("units.relationship.neitherSideCanExtracted"),
             tone: "warn",
             paths: [...new Set(cycles.flatMap((r) => [r.from, r.to]))],
             references: cycles,
@@ -115,10 +116,8 @@ export function readRelationship(
         anomalies.push({
             id: "against-grain",
             kind: "against-grain",
-            headline: `${backward.length} ${backward.length === 1 ? "reference runs" : "references run"} ` +
-                `from ${labelOf(tail)} back into ${labelOf(head)}.`,
-            detail: `${share}% of the traffic here, against the direction of the other ${forward.length}. ` +
-                `${returners.length} ${returners.length === 1 ? "module is" : "modules are"} responsible.`,
+            headline: t("units.relationship.back", { referencesRun: t("common.count.referenceRuns", { count: backward.length }), tail: labelOf(tail), head: labelOf(head) }),
+            detail: t("units.relationship.trafficHereAgainstDirection", { share, forwardLength: forward.length, modulesAre: t("common.count.moduleIs", { count: returners.length }) }),
             tone: "warn",
             paths: [...new Set(backward.flatMap((r) => [r.from, r.to]))],
             references: backward,
@@ -132,8 +131,8 @@ export function readRelationship(
         anomalies.push({
             id: "bottleneck",
             kind: "bottleneck",
-            headline: `${nameOf(top.path)} carries ${top.partners.length} of the ${senders.length} crossings.`,
-            detail: "Most of this boundary is one module. Changing it touches everything that crosses.",
+            headline: t("units.relationship.carriesCrossings", { path: nameOf(top.path), partnersLength: top.partners.length, sendersLength: senders.length }),
+            detail: t("units.relationship.mostBoundaryOneModule"),
             tone: "warn",
             paths: [top.path, ...top.partners],
             references: forward.filter((r) => r.to === top.path),
@@ -145,8 +144,8 @@ export function readRelationship(
         anomalies.push({
             id: "wide",
             kind: "wide",
-            headline: `${nameOf(widest.path)} reaches ${widest.partners.length} modules across the boundary.`,
-            detail: "A module crossing this widely is not using an interface, it is using the internals.",
+            headline: t("units.relationship.reachesModulesAcrossBoundary", { path: nameOf(widest.path), partnersLength: widest.partners.length }),
+            detail: t("units.relationship.moduleCrossingWidelyNot"),
             tone: "warn",
             paths: [widest.path, ...widest.partners],
             references: forward.filter((r) => r.from === widest.path),
@@ -159,9 +158,8 @@ export function readRelationship(
         anomalies.push({
             id: "clean",
             kind: "wide",
-            headline: "Nothing is wrong at this boundary.",
-            detail: `Every reference runs from ${labelOf(head)} into ${labelOf(tail)}, ` +
-                `no pair imports back, and no single module carries it.`,
+            headline: t("units.relationship.nothingWrongBoundary"),
+            detail: t("units.relationship.everyReferenceRunsNo", { head: labelOf(head), tail: labelOf(tail) }),
             tone: "neutral",
             paths: [],
             references: [],

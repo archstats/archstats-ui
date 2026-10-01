@@ -7,6 +7,7 @@
 // that teaches you the codebase while you compose.
 
 import { globToRegExp, type UnitKind } from "./query"
+import { t } from "~/shared/i18n"
 
 // ── Colour ───────────────────────────────────────────────────────────────
 
@@ -145,12 +146,12 @@ export function assist(line: string, caret: number, world: AssistWorld): Assist 
   // like. The three entry points are the whole grammar a person needs.
   if (!trimmed) {
     const items: Suggestion[] = [
-      { label: "a package", detail: "everything under it", insert: "", kind: "start" },
-      { label: "a file path", detail: "src/**/*.java", insert: "", kind: "start" },
-      { label: "a measurement", detail: "components where …", insert: "components where ", kind: "start" },
+      { label: t("groups.queryAssist.package"), detail: t("groups.queryAssist.everythingUnder"), insert: "", kind: "start" },
+      { label: t("groups.queryAssist.filePath"), detail: "src/**/*.java", insert: "", kind: "start" },
+      { label: t("groups.queryAssist.measurement"), detail: "components where …", insert: "components where ", kind: "start" },
     ]
-    for (const q of (world.recents ?? []).slice(0, 5)) items.push({ label: q.split("\n")[0], detail: "recent", insert: q, kind: "recent" })
-    for (const g of (world.saved ?? []).slice(0, 5)) items.push({ label: g.name, detail: "saved group", insert: g.query, kind: "group" })
+    for (const q of (world.recents ?? []).slice(0, 5)) items.push({ label: q.split("\n")[0], detail: t("groups.queryAssist.recent"), insert: q, kind: "recent" })
+    for (const g of (world.saved ?? []).slice(0, 5)) items.push({ label: g.name, detail: t("groups.queryAssist.savedGroup"), insert: g.query, kind: "group" })
     return { items, from: caret, to: caret }
   }
 
@@ -203,7 +204,7 @@ function assistName(line: string, caret: number, world: AssistWorld): Assist {
       // under shipdoc" are different questions and both get asked. The exact
       // row says what IT would match — one thing — rather than borrowing the
       // count of everything beneath it, which would be a lie by proximity.
-      if (pool.includes(exact)) rows.push({ label: exact, detail: `this one`, insert: exact, kind })
+      if (pool.includes(exact)) rows.push({ label: exact, detail: t("groups.queryAssist.one"), insert: exact, kind })
       const all = exact + sep + "**"
       if (n > 1 || !pool.includes(exact)) {
         rows.push({ label: all, detail: `${n} ${n === 1 ? word : word + "s"}`, insert: all, kind })
@@ -228,7 +229,7 @@ function assistCondition(line: string, caret: number, clause: string, world: Ass
     const sorted = [...values].sort((a, b) => a - b)
     const at = (q: number) => sorted[Math.max(0, Math.min(sorted.length - 1, Math.floor(q * (sorted.length - 1))))]
     const marks: Array<[string, number]> = [
-      ["median", at(0.5)], ["top quarter", at(0.75)], ["top tenth", at(0.9)], ["largest", sorted[sorted.length - 1]],
+      ["median", at(0.5)], [t("groups.queryAssist.topQuarter"), at(0.75)], [t("groups.queryAssist.topTenth"), at(0.9)], ["largest", sorted[sorted.length - 1]],
     ]
     const seen = new Set<number>()
     const items = marks
@@ -236,7 +237,7 @@ function assistCondition(line: string, caret: number, clause: string, world: Ass
       .map(([label, v]) => {
         const rounded = Math.round(v)
         const over = sorted.filter(x => x > rounded).length
-        return { label: String(rounded), detail: `${label} · ${over} above`, insert: String(rounded), kind: "value" as const }
+        return { label: String(rounded), detail: t("groups.queryAssist.above", { label, over }), insert: String(rounded), kind: "value" as const }
       })
     const start = before.length - (op[3]?.length ?? 0)
     return { items, from: start, to: caret }

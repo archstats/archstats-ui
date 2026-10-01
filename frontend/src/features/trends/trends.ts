@@ -1,5 +1,6 @@
 import { comparability } from "./comparability"
 import { compareScans } from "~/features/workspace/scanOrder"
+import { t } from "~/shared/i18n"
 
 // Over time: the app's readings of every snapshot, as series. A series breaks
 // wherever two neighbouring snapshots cannot be compared (another analysis,
@@ -21,16 +22,16 @@ export interface TrendPoint {
 }
 
 export const TREND_SERIES = [
-    { id: "app__components", label: "Components", digits: 0 },
-    { id: "app__components_in_tangles", label: "Components in tangles", digits: 0 },
-    { id: "app__lines_in_tangles_share", label: "Lines in tangles", digits: 1, percent: true },
-    { id: "app__largest_tangle", label: "Largest tangle", digits: 0 },
-    { id: "app__cross_component_edges", label: "Component dependencies", digits: 0 },
-    { id: "app__propagation_cost", label: "Propagation cost", digits: 1, percent: true },
-    { id: "app__dependency_levels", label: "Dependency levels", digits: 0 },
-    { id: "app__rule_findings", label: "Rule findings", digits: 0 },
-    { id: "app__median_instability", label: "Median instability", digits: 2 },
-    { id: "app__median_distance", label: "Median distance", digits: 2 },
+    { id: "app__components", label: t("trends.trends.components"), digits: 0 },
+    { id: "app__components_in_tangles", label: t("trends.trends.componentsTangles"), digits: 0 },
+    { id: "app__lines_in_tangles_share", label: t("trends.trends.linesTangles"), digits: 1, percent: true },
+    { id: "app__largest_tangle", label: t("trends.trends.largestTangle"), digits: 0 },
+    { id: "app__cross_component_edges", label: t("trends.trends.componentDependencies"), digits: 0 },
+    { id: "app__propagation_cost", label: t("trends.trends.propagationCost"), digits: 1, percent: true },
+    { id: "app__dependency_levels", label: t("trends.trends.dependencyLevels"), digits: 0 },
+    { id: "app__rule_findings", label: t("trends.trends.ruleFindings"), digits: 0 },
+    { id: "app__median_instability", label: t("trends.trends.medianInstability"), digits: 2 },
+    { id: "app__median_distance", label: t("trends.trends.medianDistance"), digits: 2 },
 ] as const
 
 export interface Break { index: number; reason: string }
@@ -59,10 +60,10 @@ export function breaksOf(points: TrendPoint[]): Break[] {
     for (let i = 1; i < points.length; i++) {
         const a = points[i - 1], b = points[i]
         if (b.analysisRevision === 0) continue
-        if (a.analysisRevision === 0) { out.push({ index: i, reason: `analysis r${b.analysisRevision}` }); continue }
+        if (a.analysisRevision === 0) { out.push({ index: i, reason: t("trends.trends.analysisR", { analysisRevision: b.analysisRevision }) }); continue }
         const c = comparability(a, b)
         if (c.ok) continue
-        out.push({ index: i, reason: a.analysisRevision !== b.analysisRevision ? `analysis r${b.analysisRevision}` : "ignore rules changed" })
+        out.push({ index: i, reason: a.analysisRevision !== b.analysisRevision ? t("trends.trends.analysisR", { analysisRevision: b.analysisRevision }) : t("trends.trends.ignoreRulesChanged") })
     }
     return out
 }

@@ -1,11 +1,11 @@
 <template>
   <div class="flex min-h-0 grow flex-col overflow-y-auto">
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-      <div class="ui-segmented" role="group" aria-label="Window">
+      <div class="ui-segmented" role="group" :aria-label="t('git.effortShare.window')">
         <button v-for="p in HISTORY_PERIODS" :key="p.id" type="button" :aria-pressed="effort.windowId.value === p.id" :title="anchorLabel(p.days, anchorObj)" @click="effort.windowId.value = p.id">{{ p.label }}</button>
       </div>
       <label class="flex items-center gap-2 text-sm text-neutral-600">
-        Health below
+        {{ t('git.effortShare.healthBelow') }}
         <input
           type="number"
           min="1"
@@ -13,42 +13,41 @@
           step="0.5"
           class="ui-input ui-input-sm w-16 font-mono"
           :value="effort.threshold.value"
-          aria-label="Health threshold"
+          :aria-label="t('git.effortShare.healthThreshold')"
           @change="setThreshold(($event.target as HTMLInputElement).value)"
         >
       </label>
-      <router-link to="/views/components/hotspots?grain=files&preset=churn" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">Churn against health →</router-link>
+      <router-link to="/views/components/hotspots?grain=files&preset=churn" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">{{ t('git.effortShare.churnAgainstHealth') }}</router-link>
     </div>
 
-    <LoadingState v-if="effort.loading.value && !effort.rows.value.length" text="Adding up changed lines…"/>
-    <EmptyState v-else-if="!effort.available.value" title="Nothing to add up" text="Effort needs git history and the dependency analysis in the snapshot." icon="git-branch"/>
-    <EmptyState v-else-if="!effort.rows.value.length" title="No changes recorded" text="No human commits touch the files in scope." icon="git-branch"/>
+    <LoadingState v-if="effort.loading.value && !effort.rows.value.length" :text="t('git.effortShare.addingUpChangedLines')"/>
+    <EmptyState v-else-if="!effort.available.value" :title="t('git.effortShare.nothingAddUp')" :text="t('git.effortShare.effortNeedsGitHistory')" icon="git-branch"/>
+    <EmptyState v-else-if="!effort.rows.value.length" :title="t('git.effortShare.noChangesRecorded')" :text="t('git.effortShare.noHumanCommitsTouch')" icon="git-branch"/>
     <div v-else class="mx-auto flex w-full max-w-[1100px] flex-col gap-6 px-6 pb-12 pt-5">
       <div class="flex items-start gap-3">
         <p class="max-w-[72ch] text-lg leading-7 text-neutral-900">{{ effort.lede.value }}</p>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="copied ? 'Copied' : 'Copy the sentence'" @click="copy">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="copied ? t('git.effortShare.copied') : t('git.effortShare.copySentence')" @click="copy">
           <Icon :icon="copied ? 'check' : 'copy'" :size="13"/>
         </button>
       </div>
 
       <StatStrip :cells="cells"/>
       <p class="-mt-4 text-sm text-neutral-500">
-        Changed lines are additions plus deletions, per file, from {{ formatNumber(s.commits) }} human commits{{ scoped ? " touching the files in scope" : "" }}. The shares overlap: a line into a low-health tangle member counts in both.
-        The hotspot score is left out: it is built from churn, so its share would restate its own input.
+        {{ t('git.effortShare.changedLinesAdditionsPlus', { commits: formatNumber(s.commits), value: scoped ? t('git.effortShare.touchingFilesScope') : "" }) }}
       </p>
 
       <section>
-        <ExhibitFrame :exhibit="windowTable" title="By window">
+        <ExhibitFrame :exhibit="windowTable" :title="t('git.effortShare.window2')">
           <table class="ui-table">
             <thead>
               <tr>
-                <th>Window</th>
-                <th class="text-right">Changed lines</th>
-                <th class="text-right">Health below {{ effort.threshold.value }}</th>
-                <th class="text-right">Tangle members</th>
-                <th class="text-right" :title="`Subject matching /${effort.fix.value.source}/i`">Fix pattern</th>
-                <th class="text-right">Not in the snapshot</th>
-                <th class="text-right">No health reading</th>
+                <th>{{ t('git.effortShare.window') }}</th>
+                <th class="text-right">{{ t('git.effortShare.changedLines') }}</th>
+                <th class="text-right">{{ t('git.effortShare.healthBelow2', { threshold: effort.threshold.value }) }}</th>
+                <th class="text-right">{{ t('git.effortShare.tangleMembers') }}</th>
+                <th class="text-right" :title="t('git.effortShare.subjectMatchingI', { source: effort.fix.value.source })">{{ t('git.effortShare.fixPattern') }}</th>
+                <th class="text-right">{{ t('git.effortShare.notSnapshot') }}</th>
+                <th class="text-right">{{ t('git.effortShare.noHealthReading') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -67,9 +66,9 @@
       </section>
 
       <section v-if="months.length > 1">
-        <ExhibitFrame :exhibit="figure" :title="`Share into health below ${effort.threshold.value}, by month`">
+        <ExhibitFrame :exhibit="figure" :title="t('git.effortShare.shareHealthBelowMonth', { threshold: effort.threshold.value })">
           <div ref="barsHost" class="w-full">
-            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="`Monthly share of changed lines into files with health below ${effort.threshold.value}`">
+            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="t('git.effortShare.monthlyShareChangedLines', { threshold: effort.threshold.value })">
               <line x1="0" :x2="barsWidth" y1="100" y2="100" stroke="currentColor" class="text-neutral-200"/>
               <g v-for="g in [0.25, 0.5]" :key="g">
                 <line x1="28" :x2="barsWidth" :y1="100 - g * 96" :y2="100 - g * 96" stroke="currentColor" stroke-dasharray="2 3" class="text-neutral-200"/>
@@ -83,9 +82,9 @@
                   :height="m.share * 96"
                   :fill="m.lines ? 'rgb(var(--c-accent-500))' : 'none'"
                   :opacity="m.lines ? 0.75 : 0"
-                ><title>{{ m.month }}: {{ m.lines ? `${Math.round(m.share * 100)}% of ${formatNumber(m.lines)} lines` : "no changes" }}</title></rect>
+                ><title>{{ m.month }}: {{ m.lines ? t('git.effortShare.lines', { value: Math.round(m.share * 100), lines: formatNumber(m.lines) }) : t('git.effortShare.noChanges') }}</title></rect>
               </g>
-              <text v-for="t in monthTicks" :key="t.i" :x="t.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ t.label }}</text>
+              <text v-for="monthTick in monthTicks" :key="monthTick.i" :x="monthTick.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ monthTick.label }}</text>
             </svg>
           </div>
         </ExhibitFrame>
@@ -107,6 +106,7 @@ import { monthlyLowShare, pctText, share } from "~/features/git/effort";
 import { formatNumber } from "~/shared/format";
 import { HISTORY_PERIODS, anchorLabel, historyAnchor } from "~/features/git/history";
 import { scopeWhere } from "~/features/groups/scopeSql";
+import { t } from "~/shared/i18n";
 
 // Where change effort goes: one sentence to quote, the strip it summarises,
 // the same shares for every window, and the low-health share month by month.
@@ -123,12 +123,12 @@ function setThreshold(v: string) {
 }
 
 const cells = computed<StatCell[]>(() => [
-  { label: "Changed lines", value: formatNumber(s.value.lines), title: `${formatNumber(s.value.commits)} commits` },
-  { label: `Health below ${effort.threshold.value}`, value: pct(s.value.low, s.value.lines), title: effort.lowFiles.value === null ? "" : `These files are ${pctText(effort.lowFiles.value)} of the files with a health reading` },
-  { label: "Tangle members", value: pct(s.value.tangle, s.value.lines), title: "Files of components in a tangle of two or more" },
-  { label: "Fix pattern", value: pct(s.value.fix, s.value.lines), title: `Commits whose subject matches /${effort.fix.value.source}/i` },
-  { label: "Not in the snapshot", value: pct(s.value.gone, s.value.lines), title: "Files deleted, or moved where renames were not followed" },
-  { label: "No health reading", value: pct(s.value.noHealth, s.value.lines), title: "Files the snapshot has but did not rate: configuration, templates, data" },
+  { label: t("git.effortShare.changedLines"), value: formatNumber(s.value.lines), title: t("git.effortShare.commits", { commits: formatNumber(s.value.commits) }) },
+  { label: t("git.effortShare.healthBelow2", { threshold: effort.threshold.value }), value: pct(s.value.low, s.value.lines), title: effort.lowFiles.value === null ? "" : t("git.effortShare.theseFilesFilesHealth", { lowFiles: pctText(effort.lowFiles.value) }) },
+  { label: t("git.effortShare.tangleMembers"), value: pct(s.value.tangle, s.value.lines), title: t("git.effortShare.filesComponentsTangleTwo") },
+  { label: t("git.effortShare.fixPattern"), value: pct(s.value.fix, s.value.lines), title: t("git.effortShare.commitsWhoseSubjectMatches", { source: effort.fix.value.source }) },
+  { label: t("git.effortShare.notSnapshot"), value: pct(s.value.gone, s.value.lines), title: t("git.effortShare.filesDeletedMovedWhere") },
+  { label: t("git.effortShare.noHealthReading"), value: pct(s.value.noHealth, s.value.lines), title: t("git.effortShare.filesSnapshotHasBut") },
 ]);
 
 const windows = computed(() => HISTORY_PERIODS.map(p => ({ id: p.id, label: p.title, s: effort.sharesFor(p.days) })));
@@ -157,11 +157,11 @@ const monthTicks = computed(() => {
   return months.value.map((m, i) => ({ i, label: `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.month.slice(5)) - 1]} ’${m.month.slice(2, 4)}` })).filter(t => t.i % every === 0);
 });
 const figure = useSvgFigure({
-  title: () => `Share of changed lines into health below ${effort.threshold.value}, by month`,
+  title: () => t("git.effortShare.shareChangedLinesHealth", { threshold: effort.threshold.value }),
   svg: () => barsSvg.value,
   legend: () => ({
-    items: [{ label: `Lines changed in files with health below ${effort.threshold.value}`, color: "rgb(var(--c-accent-500))" }],
-    notes: ["One bar per month: the share of that month's changed lines."],
+    items: [{ label: t("git.effortShare.linesChangedFilesHealth", { threshold: effort.threshold.value }), color: "rgb(var(--c-accent-500))" }],
+    notes: [t("git.effortShare.oneBarPerMonth")],
   }),
 });
 
@@ -171,17 +171,17 @@ async function copy() {
 }
 
 const windowTable = useTable({
-  title: "Where change effort goes",
+  title: t("git.effortShare.whereChangeEffortGoes"),
   rows: () => windows.value.map(w => ({ window: w.label, lines: w.s.lines, low: share(w.s.low, w.s.lines), tangle: share(w.s.tangle, w.s.lines), fix: share(w.s.fix, w.s.lines), gone: share(w.s.gone, w.s.lines), no_health: share(w.s.noHealth, w.s.lines) })),
   columns: () => [
-    { id: "window", label: "Window" },
-    { id: "lines", label: "Changed lines" },
-    { id: "low", label: `Share into health below ${effort.threshold.value}` },
-    { id: "tangle", label: "Share into tangle members" },
-    { id: "fix", label: "Share in commits matching the fix pattern" },
-    { id: "gone", label: "Share into files not in the snapshot" },
-    { id: "no_health", label: "Share into files with no health reading" },
+    { id: "window", label: t("git.effortShare.window") },
+    { id: "lines", label: t("git.effortShare.changedLines") },
+    { id: "low", label: t("git.effortShare.shareHealthBelow", { threshold: effort.threshold.value }) },
+    { id: "tangle", label: t("git.effortShare.shareTangleMembers") },
+    { id: "fix", label: t("git.effortShare.shareCommitsMatchingFix") },
+    { id: "gone", label: t("git.effortShare.shareFilesNotSnapshot") },
+    { id: "no_health", label: t("git.effortShare.shareFilesNoHealth") },
   ],
-  disabledReason: () => (!effort.rows.value.length ? "No changes recorded." : null),
+  disabledReason: () => (!effort.rows.value.length ? t("git.effortShare.noChangesRecorded2") : null),
 });
 </script>

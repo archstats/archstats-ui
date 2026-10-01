@@ -4,6 +4,7 @@
 
 import type { World } from "../engine/types"
 import { candidates, shortName } from "~/features/snapshot/names"
+import { intlLocale } from "~/shared/i18n"
 
 export { candidates, shortName }
 
@@ -11,7 +12,7 @@ export const fmt = (v: unknown): string => {
     if (v === null || v === undefined || v === "") return "–"
     const n = Number(v)
     if (!Number.isFinite(n)) return String(v)
-    return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 2 })
+    return Number.isInteger(n) ? n.toLocaleString(intlLocale) : n.toLocaleString(intlLocale, { maximumFractionDigits: 2 })
 }
 
 export const num = (v: unknown): number | null => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v))

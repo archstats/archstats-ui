@@ -2,25 +2,25 @@
   <div class="flex h-full min-h-0 flex-col">
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
       <span class="ui-toolbar-meta flex items-center gap-1.5">
-        <span>Cycles <span class="font-mono text-neutral-800">{{ formatNumber(selected.length) }}</span></span>
+        <span>{{ t('pages.componentCycles.cycles') }} <span class="font-mono text-neutral-800">{{ formatNumber(selected.length) }}</span></span>
         <span class="text-neutral-300">·</span>
-        <span>Components <span class="font-mono text-neutral-800">{{ formatNumber(participants.length) }}</span></span>
+        <span>{{ t('pages.componentCycles.components') }} <span class="font-mono text-neutral-800">{{ formatNumber(participants.length) }}</span></span>
       </span>
-      <button v-if="withComponent" type="button" class="ui-chip is-active font-mono" title="Showing only the cycles these two share" @click="setWith(null)">
-        with {{ short(withComponent) }}<Icon icon="x" :size="11" class="ml-1 text-neutral-500"/>
+      <button v-if="withComponent" type="button" class="ui-chip is-active font-mono" :title="t('pages.componentCycles.showingOnlyCyclesThese')" @click="setWith(null)">
+        {{ t('pages.componentCycles.with', { withComponent: short(withComponent) }) }}<Icon icon="x" :size="11" class="ml-1 text-neutral-500"/>
       </button>
-      <button v-if="selectedCut" type="button" class="ui-chip is-active font-mono" title="Showing the tangle with this import removed" @click="selectedIndex = null">
-        cut {{ short(selectedCut.from) }} → {{ short(selectedCut.to) }}<Icon icon="x" :size="11" class="ml-1 text-neutral-500"/>
+      <button v-if="selectedCut" type="button" class="ui-chip is-active font-mono" :title="t('pages.componentCycles.showingTangleImportRemoved')" @click="selectedIndex = null">
+        {{ t('pages.componentCycles.cut', { from: short(selectedCut.from), to: short(selectedCut.to) }) }}<Icon icon="x" :size="11" class="ml-1 text-neutral-500"/>
       </button>
       <router-link :to="`/views/components/cycles?component=${encodeURIComponent(name)}`" class="ui-btn ui-btn-sm ml-auto">
-        <Icon icon="route" :size="13" class="text-neutral-500"/><span>Open in Cycles</span>
+        <Icon icon="route" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentCycles.openCycles') }}</span>
       </router-link>
     </div>
 
     <EmptyState
       v-if="mine.length === 0"
-      title="Not part of any cycle"
-      :text="`${short(name)} does not appear in any dependency cycle in this snapshot. Its dependencies flow one way.`"
+      :title="t('pages.componentCycles.notPartAnyCycle')"
+      :text="t('pages.componentCycles.doesNotAppearAny', { name: short(name) })"
       icon="route"
     />
     <div v-else class="min-h-0 grow overflow-y-auto">
@@ -43,20 +43,17 @@
         />
 
         <p class="mx-auto max-w-[720px] px-1 text-sm text-neutral-600">
-          Every line is one import. The <span class="text-accent-700">bold ones</span> are worth removing, and the number on each says how
-          many of these {{ formatNumber(selected.length) }} cycles it breaks. The faint lines are the rest of the imports these cycles run
-          through — all {{ formatNumber(mapEdges.length) }} of them, between {{ centreLabel }} and the {{ formatNumber(participants.length) }} components around it.
-        </p>
+<I18nT k="pages.componentCycles.everyLineOneImport"><template #span><span class="text-accent-700">{{ t('pages.componentCycles.boldOnes') }}</span></template><template #selectedLength>{{ formatNumber(selected.length) }}</template><template #mapEdgesLength>{{ formatNumber(mapEdges.length) }}</template><template #centreLabel>{{ centreLabel }}</template><template #participantsLength>{{ formatNumber(participants.length) }}</template></I18nT> </p>
 
         <!-- A ring component, once chosen, says what can be done with it. -->
         <div v-if="withComponent" class="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 hairline">
           <span class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="withComponent">{{ short(withComponent) }}</span>
-          <span class="shrink-0 text-sm text-neutral-500">shares {{ formatNumber(selected.length) }} of {{ formatNumber(mine.length) }} cycles</span>
+          <span class="shrink-0 text-sm text-neutral-500">{{ t('pages.componentCycles.sharesCycles', { selectedLength: formatNumber(selected.length), mineLength: formatNumber(mine.length) }) }}</span>
           <router-link :to="componentPath(withComponent)" class="ui-btn ui-btn-sm ml-auto shrink-0">
-            <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>Open</span>
+            <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentCycles.open') }}</span>
           </router-link>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="setWith(null)">
-            <Icon icon="x" :size="13" class="text-neutral-500"/><span>Clear</span>
+            <Icon icon="x" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentCycles.clear') }}</span>
           </button>
         </div>
       </section>
@@ -64,30 +61,28 @@
       <!-- Where to cut: the decision the map is arguing for. -->
       <section v-if="plan.length > 0" class="mt-5 px-4">
         <div class="flex items-baseline justify-between gap-4">
-          <h3 class="ui-section-title">Where to cut</h3>
+          <h3 class="ui-section-title">{{ t('pages.componentCycles.whereCut') }}</h3>
           <span class="text-sm text-neutral-500">{{ planLede }}</span>
         </div>
         <p class="mt-1.5 max-w-[92ch] text-sm text-neutral-500">
-          A cycle breaks if you remove any one import in it. These are chosen greedily: the import that appears in the most
-          still-standing cycles first, ties going to the one with fewest references to rewrite, repeated until every listed
-          cycle is gone.
+          {{ t('pages.componentCycles.cycleBreaksIfYou') }}
         </p>
         <p v-if="verdict" class="mt-1.5 max-w-[92ch] text-base" :class="completion.clear ? 'text-neutral-700' : 'text-amber-700'">{{ verdict }}</p>
 
         <!-- Column names, so no number on this page is unlabelled. -->
         <div class="mt-3 flex items-center gap-3 px-3 pb-1 text-xs text-neutral-500">
           <span class="w-4 shrink-0"></span>
-          <span class="min-w-0 grow">Import to remove</span>
+          <span class="min-w-0 grow">{{ t('pages.componentCycles.importRemove') }}</span>
           <span class="hidden w-[150px] shrink-0 sm:block"></span>
-          <span class="w-[104px] shrink-0 text-right">Cycles it breaks</span>
-          <span class="w-[150px] shrink-0 text-right">Work to remove it</span>
-          <span class="w-[76px] shrink-0 text-right">Still looping</span>
+          <span class="w-[104px] shrink-0 text-right">{{ t('pages.componentCycles.cyclesBreaks') }}</span>
+          <span class="w-[150px] shrink-0 text-right">{{ t('pages.componentCycles.workRemove') }}</span>
+          <span class="w-[76px] shrink-0 text-right">{{ t('pages.componentCycles.stillLooping') }}</span>
         </div>
 
         <ol class="overflow-hidden rounded-lg hairline">
           <li v-for="(step, i) in fullPlan" :key="`${step.from}-${step.to}`" class="hairline-b last:border-b-0">
             <div v-if="step.beyondListed && i === plan.length" class="bg-ground px-3 py-1.5 text-xs text-neutral-500 hairline-b">
-              Beyond the listed cycles — each of these was found by looking for a loop that survived the cuts above
+              {{ t('pages.componentCycles.beyondListedCyclesEach') }}
             </div>
             <button
               type="button"
@@ -99,7 +94,7 @@
               <span class="w-4 shrink-0 text-right font-mono text-xs text-neutral-400">{{ i + 1 }}</span>
               <span class="flex min-w-0 grow items-center gap-2">
                 <span class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="step.from">{{ short(step.from) }}</span>
-                <span class="shrink-0 text-sm text-neutral-500">imports</span>
+                <span class="shrink-0 text-sm text-neutral-500">{{ t('pages.componentCycles.imports') }}</span>
                 <span class="min-w-0 truncate font-mono text-sm text-neutral-900" :title="step.to">{{ short(step.to) }}</span>
               </span>
               <span class="hidden w-[150px] shrink-0 items-center sm:flex">
@@ -109,14 +104,14 @@
               </span>
               <span
                 class="w-[104px] shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500"
-                :title="step.beyondListed ? `Found in a loop of ${step.loopSize} components that survived the cuts above` : `Removing this import destroys ${step.breaks} of the ${selected.length} cycles`"
+                :title="step.beyondListed ? t('pages.componentCycles.foundLoopComponentsSurvived', { loopSize: step.loopSize }) : t('pages.componentCycles.removingImportDestroysCycles', { breaks: step.breaks, selectedLength: selected.length })"
               >
-                <template v-if="step.beyondListed">a {{ step.loopSize }}-long loop</template>
-                <template v-else><span class="text-neutral-800">{{ formatNumber(step.breaks) }}</span> of {{ formatNumber(selected.length) }}</template>
+                <template v-if="step.beyondListed">{{ t('pages.componentCycles.longLoop', { loopSize: step.loopSize }) }}</template>
+                <template v-else><I18nT k="pages.componentCycles.of"><template #breaks><span class="text-neutral-800">{{ formatNumber(step.breaks) }}</span></template><template #selectedLength>{{ formatNumber(selected.length) }}</template></I18nT></template>
               </span>
               <span class="w-[150px] shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500" :title="costTitle(step)">
-                {{ formatNumber(step.references) }} {{ step.references === 1 ? "ref" : "refs" }}<template v-if="step.sharedCommits">
-                  · <span :class="entangled(step) ? 'text-amber-700' : ''">{{ formatNumber(step.sharedCommits) }} shared</span>
+                {{ formatNumber(step.references) }} {{t('common.noun.ref', { count: step.references })}}<template v-if="step.sharedCommits">
+                  · <span :class="entangled(step) ? 'text-amber-700' : ''">{{ t('pages.componentCycles.shared', { sharedCommits: formatNumber(step.sharedCommits) }) }}</span>
                 </template>
               </span>
               <span class="w-[76px] shrink-0 text-right font-mono text-xs tabular-nums" :class="step.remaining === 0 && !step.beyondListed ? 'text-green-700' : 'text-neutral-400'">
@@ -125,22 +120,22 @@
             </button>
 
             <div v-if="selectedIndex === i" class="bg-ground px-3 py-3 hairline-t">
-              <LoadingState v-if="cutFilesLoading" text="Reading imports…"/>
+              <LoadingState v-if="cutFilesLoading" :text="t('pages.componentCycles.readingImports')"/>
               <template v-else>
                 <p v-if="cutStory" class="mb-3 max-w-[80ch] text-base text-neutral-700">{{ cutStory }}</p>
                 <div class="grid gap-x-8 gap-y-4 md:grid-cols-2">
                   <div v-if="cutDetail.symbols.length > 0" class="min-w-0">
-                    <h4 class="ui-label">What to break</h4>
+                    <h4 class="ui-label">{{ t('pages.componentCycles.whatBreak') }}</h4>
                     <ul class="mt-1.5 flex flex-col">
                       <li v-for="sym in cutDetail.symbols" :key="sym.name" class="flex h-6 items-center gap-3">
                         <span class="min-w-0 truncate font-mono text-sm text-neutral-800" :title="sym.name">{{ sym.name }}</span>
-                        <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ sym.files }} {{ sym.files === 1 ? "file" : "files" }}</span>
+                        <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ sym.files }} {{t('common.noun.file', { count: sym.files })}}</span>
                       </li>
                     </ul>
                   </div>
                   <div class="min-w-0">
-                    <h4 class="ui-label">Where</h4>
-                    <p v-if="cutDetail.sites.length === 0" class="mt-1.5 text-sm text-neutral-500">The snapshot records no file-level import for this edge.</p>
+                    <h4 class="ui-label">{{ t('pages.componentCycles.where') }}</h4>
+                    <p v-if="cutDetail.sites.length === 0" class="mt-1.5 text-sm text-neutral-500">{{ t('pages.componentCycles.snapshotRecordsNoFile') }}</p>
                     <ul v-else class="mt-1.5 flex flex-col">
                       <li v-for="site in cutDetail.sites" :key="site.file" class="group flex h-6 items-center gap-3">
                         <router-link :to="`/views/files/${site.file}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="site.file">
@@ -163,28 +158,28 @@
       <details class="group mt-6 px-4 pb-8">
         <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900">
           <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform duration-200 group-open:rotate-90"/>
-          <span>Every cycle</span>
+          <span>{{ t('pages.componentCycles.everyCycle') }}</span>
           <span class="font-mono text-xs text-neutral-400">{{ formatNumber(shown.length) }}</span>
         </summary>
 
         <div class="mt-3 flex h-8 items-center gap-3">
           <label class="flex items-center gap-1.5 text-sm text-neutral-700">
             <input v-model="shortestOnly" type="checkbox" class="ui-check"/>
-            Shortest only
+            {{ t('pages.componentCycles.shortestOnly') }}
           </label>
-          <div class="ui-segmented ml-auto" role="group" aria-label="Sort cycles">
+          <div class="ui-segmented ml-auto" role="group" :aria-label="t('pages.componentCycles.sortCycles')">
             <button v-for="s in sorts" :key="s.id" type="button" :aria-pressed="sortBy === s.id" :title="s.title" @click="sortBy = s.id">{{ s.label }}</button>
           </div>
         </div>
 
-        <EmptyState v-if="shown.length === 0" class="py-8" title="Nothing matches" text="No cycle here matches the current filters." icon="route"/>
+        <EmptyState v-if="shown.length === 0" class="py-8" :title="t('pages.componentCycles.nothingMatches')" :text="t('pages.componentCycles.noCycleHereMatches')" icon="route"/>
         <table v-else class="ui-table mt-1">
           <thead>
             <tr>
-              <th class="w-[48px]">Size</th>
-              <th>Through <span class="normal-case text-neutral-400">— from {{ centreLabel }} and back</span></th>
-              <th class="w-[124px] text-right">Shared commits</th>
-              <th class="w-[96px] text-right" :title="severityTitle">Severity</th>
+              <th class="w-[48px]">{{ t('pages.componentCycles.size') }}</th>
+              <th>{{ t('pages.componentCycles.through') }} <span class="normal-case text-neutral-400">{{ t('pages.componentCycles.back', { centreLabel }) }}</span></th>
+              <th class="w-[124px] text-right">{{ t('pages.componentCycles.sharedCommits') }}</th>
+              <th class="w-[96px] text-right" :title="severityTitle">{{ t('pages.componentCycles.severity') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -192,14 +187,14 @@
               <td class="is-num">{{ cycle.size }}</td>
               <td class="max-w-0">
                 <span class="flex items-center gap-1 overflow-x-auto whitespace-nowrap">
-                  <span v-if="cycle.through.length === 1" class="ui-tag shrink-0" title="These two import each other">mutual</span>
+                  <span v-if="cycle.through.length === 1" class="ui-tag shrink-0" :title="t('pages.componentCycles.theseTwoImportEach')">{{ t('pages.componentCycles.mutual') }}</span>
                   <template v-for="(node, i) in cycle.through" :key="`${cycle.id}-${i}`">
                     <Icon v-if="i !== 0" icon="chevron-right" :size="12" class="shrink-0 text-neutral-300"/>
                     <button
                       type="button"
                       class="font-mono text-sm transition-colors hover:text-neutral-900"
                       :class="node === withComponent ? 'text-accent-700' : 'text-neutral-800'"
-                      :title="`${node} — show only the cycles these two share`"
+                      :title="t('pages.componentCycles.showOnlyCyclesThese', { node })"
                       @click="toggleWith(node)"
                     >{{ short(node) }}</button>
                   </template>
@@ -238,6 +233,8 @@ import CycleMap, { type MapEdge, type MapNode } from "~/features/cycles/componen
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 type SortKey = "severity" | "size" | "sharedCommits"
 
@@ -277,11 +274,11 @@ const selectedIndex = ref<number | null>(null)
 watch([name, withComponent], () => { shortestOnly.value = false; selectedIndex.value = null })
 
 const sorts: Array<{ id: SortKey; label: string; title: string }> = [
-  { id: "severity", label: "Severity", title: "Length × shared commits × average hotspot of the components in it" },
-  { id: "size", label: "Size", title: "How many components the cycle runs through" },
-  { id: "sharedCommits", label: "Shared commits", title: "Commits that touched every component in the cycle" },
+  { id: "severity", label: t("pages.componentCycles.severity"), title: t("pages.componentCycles.lengthSharedCommitsAverage") },
+  { id: "size", label: t("pages.componentCycles.size"), title: t("pages.componentCycles.howManyComponentsCycle") },
+  { id: "sharedCommits", label: t("pages.componentCycles.sharedCommits"), title: t("pages.componentCycles.commitsTouchedEveryComponent") },
 ]
-const severityTitle = "A reading of this view, not the engine: length × (1 + shared commits) × (1 + average hotspot)."
+const severityTitle = t("pages.componentCycles.readingViewNotEngine")
 
 // ── The cycles ─────────────────────────────────────────────────────
 const mine = computed<CyclePath[]>(() =>
@@ -355,12 +352,12 @@ const verdict = computed(() => {
   const { extra, clear, checked } = completion.value
   if (!checked) return ""
   if (clear && extra.length === 0) {
-    return `Checked against the full dependency graph: with these ${formatNumber(plan.value.length)} removed, no cycle runs through ${centreLabel.value} at all.`
+    return t("pages.componentCycles.checkedAgainstFullDependency", { planLength: formatNumber(plan.value.length), centreLabel: centreLabel.value })
   }
   if (clear) {
-    return `Those break every cycle listed here, but the snapshot lists only the shortest ones and longer loops survive them. ${formatNumber(extra.length)} more ${extra.length === 1 ? "cut" : "cuts"}, below, clear the rest — checked against the full dependency graph.`
+    return t("pages.componentCycles.thoseBreakEveryCycle", { extraLength: formatNumber(extra.length), cuts: t("common.noun.cut", { count: extra.length }) })
   }
-  return `Those break every cycle listed here, but the snapshot lists only the shortest ones. Longer loops remain beyond the ${formatNumber(extra.length)} further cuts below: this component sits in a tangle deeper than a short plan can undo.`
+  return t("pages.componentCycles.thoseBreakEveryCycle2", { extraLength: formatNumber(extra.length) })
 })
 
 const selectedCut = computed(() => (selectedIndex.value === null ? null : fullPlan.value[selectedIndex.value] ?? null))
@@ -520,10 +517,10 @@ function coChangeShare(step: CutStep): number | null {
 }
 const entangled = (step: CutStep) => (coChangeShare(step) ?? 0) >= 0.75
 function costTitle(step: CutStep): string {
-  const refs = `${step.references} import ${step.references === 1 ? "reference" : "references"} to remove`
+  const refs = t("pages.componentCycles.importRemove2", { references: step.references, references2: t("common.noun.reference", { count: step.references }) })
   const share = coChangeShare(step)
   if (share === null) return refs
-  return `${refs}. ${step.sharedCommits} commits touched both — ${Math.round(share * 100)}% of this component's history.`
+  return t("pages.componentCycles.commitsTouchedBothComponent", { refs, sharedCommits: step.sharedCommits, value: Math.round(share * 100) })
 }
 
 const cutStory = computed(() => {
@@ -531,15 +528,15 @@ const cutStory = computed(() => {
   if (!cut) return ""
   const symbols = cutDetail.value.symbols
   const files = cutDetail.value.sites.length
-  const importers = `${files} ${files === 1 ? "file imports" : "files import"}`
+  const importers = `${files} ${files === 1 ? t("pages.componentCycles.fileImports") : t("pages.componentCycles.filesImport")}`
   const what = symbols.length === 1
-    ? `${importers} one name from ${short(cut.to)}: ${symbols[0].name}.`
+    ? t("pages.componentCycles.oneName", { importers, to: short(cut.to), name: symbols[0].name })
     : symbols.length > 1
-      ? `${importers} ${symbols.length} names from ${short(cut.to)}.`
+      ? t("pages.componentCycles.names", { importers, symbolsLength: symbols.length, to: short(cut.to) })
       : `${importers} ${short(cut.to)}.`
   const share = coChangeShare(cut)
   const together = share !== null && share >= 0.75
-    ? ` The two have barely changed apart: ${cut.sharedCommits} of this component's ${ownCommits.value} commits touched both.`
+    ? t("pages.componentCycles.twoHaveBarelyChanged", { sharedCommits: cut.sharedCommits, ownCommits: ownCommits.value })
     : ""
   return `${what}${together}`
 })
@@ -572,22 +569,22 @@ const calibration = computed(() => {
   if (ours <= 0) return ""
   let above = 0, atLeast = 0
   for (const n of counts.values()) { if (n > ours) above++; if (n >= ours) atLeast++ }
-  if (above === 0) return atLeast > 1 ? ` — tied for the most tangled component in this snapshot` : " — the most tangled component in this snapshot"
+  if (above === 0) return atLeast > 1 ? t("pages.componentCycles.tiedMostTangledComponent") : t("pages.componentCycles.mostTangledComponentSnapshot")
   // Strictly less tangled, components in no cycle included; never "100%",
   // which would count this component against itself.
   const percentile = Math.min(99, Math.floor(((total - atLeast) / total) * 100))
-  return percentile >= 50 ? ` — more tangled than ${percentile}% of this codebase` : ""
+  return percentile >= 50 ? t("pages.componentCycles.moreTangledThanCodebase", { percentile }) : ""
 })
 
 const lede = computed(() => {
   const n = selected.value.length
   if (n === 0) return ""
   if (withComponent.value) {
-    return `${formatNumber(n)} of its ${formatNumber(mine.value.length)} cycles also run through ${short(withComponent.value)}.`
+    return t("pages.componentCycles.cyclesAlsoRunThrough", { n: formatNumber(n), mineLength: formatNumber(mine.value.length), withComponent: short(withComponent.value) })
   }
   const sizes = selected.value.map(c => c.size)
-  const span = Math.min(...sizes) === Math.max(...sizes) ? `${Math.min(...sizes)} components long` : `${Math.min(...sizes)} to ${Math.max(...sizes)} components long`
-  return `${formatNumber(n)} ${n === 1 ? "cycle" : "cycles"} through ${formatNumber(participants.value.length)} other ${participants.value.length === 1 ? "component" : "components"}, ${span}${calibration.value}.`
+  const span = Math.min(...sizes) === Math.max(...sizes) ? t("pages.componentCycles.componentsLong", { value: Math.min(...sizes) }) : t("pages.componentCycles.componentsLong2", { value: Math.min(...sizes), value2: Math.max(...sizes) })
+  return t("pages.componentCycles.throughOther", { cycles: t("common.count.cycle", { count: n }), participantsLength: formatNumber(participants.value.length), components: t("common.noun.component", { count: participants.value.length }), span, calibration: calibration.value })
 })
 
 const planLede = computed(() => {
@@ -602,8 +599,8 @@ const planLede = computed(() => {
   // The head of the plan, said as the head: "removing 3 imports destroys 53 of
   // the 66" beside "those break every cycle listed" read as two answers.
   const all = plan.value.length
-  if (taken >= all) return `${formatNumber(all)} ${all === 1 ? "import breaks" : "imports break"} all ${formatNumber(total)}`
-  return `the first ${formatNumber(taken)} break ${formatNumber(covered)} of the ${formatNumber(total)}; all ${formatNumber(all)} break every one`
+  if (taken >= all) return t("pages.componentCycles.all", { all: formatNumber(all), value: all === 1 ? t("pages.componentCycles.importBreaks") : t("pages.componentCycles.importsBreak"), total: formatNumber(total) })
+  return t("pages.componentCycles.firstBreakAllBreak", { taken: formatNumber(taken), covered: formatNumber(covered), total: formatNumber(total), all: formatNumber(all) })
 })
 
 function basename(path: string): string {

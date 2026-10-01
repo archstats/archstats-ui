@@ -1,11 +1,11 @@
 <template>
   <div class="flex flex-col gap-1.5">
     <div class="flex items-center gap-2">
-      <span class="ui-label">Defined by</span>
+      <span class="ui-label">{{ t('groups.groupDefinition.defined') }}</span>
 
       <!-- Only shown once there is a query, because until then there is
            nothing to choose between. -->
-      <div v-if="query" class="ui-segmented" role="group" aria-label="How this group is defined">
+      <div v-if="query" class="ui-segmented" role="group" :aria-label="t('groups.groupDefinition.howGroupDefined')">
         <button
           v-for="m in MODES"
           :key="m.mode"
@@ -26,20 +26,20 @@
         v-if="!editing && !(empty && !query)"
         type="button"
         class="ui-btn ui-btn-sm ml-auto"
-        :title="query ? 'Edit what this group says it holds' : 'Say what this group holds, instead of listing it'"
+        :title="query ? t('groups.groupDefinition.editWhatGroupSays') : t('groups.groupDefinition.sayWhatGroupHolds')"
         @click="start"
       >
         <Icon :icon="query ? 'pencil' : 'braces'" :size="12" class="text-neutral-500"/>
-        <span>{{ query ? "Edit" : "Describe" }}</span>
+        <span>{{ query ? t('groups.groupDefinition.edit') : t('groups.groupDefinition.describe') }}</span>
       </button>
     </div>
 
     <template v-if="editing">
       <QueryComposer ref="composer" v-model="draft" :world="world" :assist-world="assistWorld" inline/>
       <div class="flex items-center gap-1.5">
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="commit">Save</button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="editing = false">Cancel</button>
-        <button v-if="query" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" title="Go back to a plain list" @click="emit('query', '')">Remove</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="commit">{{ t('groups.groupDefinition.save') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="editing = false">{{ t('groups.groupDefinition.cancel') }}</button>
+        <button v-if="query" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :title="t('groups.groupDefinition.goBackPlainList')" @click="emit('query', '')">{{ t('groups.groupDefinition.remove') }}</button>
       </div>
     </template>
 
@@ -50,10 +50,10 @@
          that it was empty said nothing the count had not already said. -->
     <div v-else-if="empty" class="hairline flex flex-col items-start gap-2 rounded-lg bg-surface px-3 py-2.5">
       <p class="text-sm leading-4 text-neutral-500">
-        Say what this group holds and it keeps matching as the code moves — and says so on the scan it stops.
+        {{ t('groups.groupDefinition.sayWhatGroupHolds2') }}
       </p>
       <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="start">
-        <Icon icon="braces" :size="12"/><span>Describe with a pattern</span>
+        <Icon icon="braces" :size="12"/><span>{{ t('groups.groupDefinition.describePattern') }}</span>
       </button>
       <!-- The ways to fill it by hand belong to whoever is hosting this, so
            they are said by the host or not at all: the groups manager has no
@@ -62,7 +62,7 @@
     </div>
 
     <p v-else class="text-sm leading-4 text-neutral-500">
-      A list of {{ size }} {{ size === 1 ? "name" : "names" }}. It cannot tell you when one of them stops existing.
+      {{ t('groups.groupDefinition.listCannotTellYou', { names: t('common.count.name', { count: size }) }) }}
     </p>
 
     <!-- A cut gives each component one home, so two overlapping queries
@@ -70,16 +70,16 @@
          answer and it was arrived at in silence: a group could go on showing
          "**.controller" while another group held every controller. -->
     <p v-if="claims" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-amber-700">
-      <span>{{ claims }} {{ claims === 1 ? "component it names is" : "components it names are" }} in another group.</span>
-      <button type="button" class="ui-btn ui-btn-sm" :title="reclaimHint" @click="emit('reclaim')">Take {{ claims === 1 ? "it" : "them" }} back</button>
+      <span>{{ t('groups.groupDefinition.anotherGroup', { componentsItNamesAre: t('common.count.componentItNamesIs', { count: claims }) }) }}</span>
+      <button type="button" class="ui-btn ui-btn-sm" :title="reclaimHint" @click="emit('reclaim')">{{ t('groups.groupDefinition.takeBack', { them: t('common.noun.it', { count: claims }) }) }}</button>
     </p>
 
     <!-- A fixed group's query is a watchlist: it offers what it would catch
          now, and never adds anything itself. -->
     <p v-if="candidates" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-500">
-      <span>Its query now matches {{ candidates }} more.</span>
-      <button type="button" class="ui-btn ui-btn-sm" @click="emit('accept')">Review and add</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Stop re-checking this query" @click="emit('unwatch')">Stop watching</button>
+      <span>{{ t('groups.groupDefinition.queryNowMatchesMore', { candidates }) }}</span>
+      <button type="button" class="ui-btn ui-btn-sm" @click="emit('accept')">{{ t('groups.groupDefinition.reviewAdd') }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('groups.groupDefinition.stopReCheckingQuery')" @click="emit('unwatch')">{{ t('groups.groupDefinition.stopWatching') }}</button>
     </p>
   </div>
 </template>
@@ -91,6 +91,7 @@ import QueryComposer from "./QueryComposer.vue";
 import { useQueryWorld } from "~/features/groups/useQueryWorld";
 import { isBlankQuery, SEARCH_SEED, SEARCH_SEED_CARET } from "~/features/groups/query";
 import type { GroupMode } from "~/features/groups/groups.store";
+import { t } from "~/shared/i18n";
 
 // What a group says it holds, wherever a group is being looked at.
 //
@@ -100,8 +101,8 @@ import type { GroupMode } from "~/features/groups/groups.store";
 // component, one editor, one set of words.
 
 const MODES: Array<{ mode: GroupMode; label: string; hint: string }> = [
-  { mode: "live", label: "Query", hint: "The group is the query. Re-run against every scan; membership changes on its own." },
-  { mode: "fixed", label: "Members", hint: "The group is what is listed. The query is kept and re-checked, and offers new matches rather than adding them." },
+  { mode: "live", label: t("groups.groupDefinition.query"), hint: t("groups.groupDefinition.groupQueryReRun") },
+  { mode: "fixed", label: t("groups.groupDefinition.members"), hint: t("groups.groupDefinition.groupWhatListedQuery") },
 ];
 
 const props = defineProps<{
@@ -133,8 +134,8 @@ const draft = ref("");
 const empty = computed(() => props.size === 0);
 
 const reclaimHint = computed(() => {
-  const it = props.claims === 1 ? "it" : "them";
-  return `Take ${it} out of whatever is holding ${it} and bring ${it} here`;
+  const it = t("common.noun.it", { count: props.claims });
+  return t("groups.groupDefinition.takeOutWhateverHolding", { it, it2: it, it3: it });
 });
 
 const composer = ref<InstanceType<typeof QueryComposer> | null>(null);

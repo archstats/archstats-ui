@@ -9,6 +9,7 @@
 
 import { NOT_BOT_SQL } from "./authors"
 import { formatDate } from "~/shared/time"
+import { t } from "~/shared/i18n"
 
 export interface EffortCommit {
     hash: string
@@ -38,7 +39,7 @@ export interface EffortShares {
  * on older snapshots.
  */
 export function effortSql(threshold: number, where: string | null, health = "f.codesmells__code_health"): string {
-    const ln = "(coalesce(c.file_additions, 0) + coalesce(c.file_deletions, 0))"
+    const ln = t("git.effort.coalesceCFileAdditions")
     return `
     WITH tangle AS (
       SELECT component FROM component_strongly_connected_groups
@@ -84,10 +85,10 @@ export const pctText = (x: number) => `${Math.round(x * 100)}%`
 
 /** "In the 90 days to 18 Sep 2026, 16% of changed lines went into files with health below 5 (34% of files)." */
 export function effortLede(s: EffortShares, days: number | null, anchor: Date, threshold: number, lowFiles: number | null): string {
-    const when = days === null ? `Over the whole history to ${formatDate(anchor)}` : `In the ${days === 365 ? "year" : `${days} days`} to ${formatDate(anchor)}`
-    if (!s.lines) return `${when}, no lines changed.`
-    const files = lowFiles === null ? "" : ` (${pctText(lowFiles)} of files)`
-    return `${when}, ${pctText(share(s.low, s.lines))} of changed lines went into files with health below ${threshold}${files}.`
+    const when = days === null ? t("git.effort.overWholeHistory", { anchor: formatDate(anchor) }) : t("git.effort.inTheTo", { value: days === 365 ? t("git.effort.year") : t("git.effort.days", { days }), anchor: formatDate(anchor) })
+    if (!s.lines) return t("git.effort.noLinesChanged", { when })
+    const files = lowFiles === null ? "" : t("git.effort.files", { lowFiles: pctText(lowFiles) })
+    return t("git.effort.changedLinesWentFiles", { when, share: pctText(share(s.low, s.lines)), threshold, files })
 }
 
 /** The low-health share by calendar month, oldest first, months without changes kept as gaps. */

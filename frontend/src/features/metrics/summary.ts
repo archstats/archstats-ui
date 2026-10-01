@@ -6,6 +6,7 @@
 import { formatReading } from "~/shared/format";
 import { finiteSorted, metricValue, quantile, readPlot, splitName } from "./plotReading";
 import { spearman, strengthWord, type Brushes } from "./lab";
+import { t, intlLocale } from "~/shared/i18n";
 
 type Row = { name: string; [key: string]: any };
 
@@ -66,7 +67,7 @@ export function summarize(
 ): Finding[] {
   const { niceName, noun, one } = opts;
   const has = (k: string) => metrics.includes(k) && rows.some((r) => Number.isFinite(metricValue(r, k)));
-  const count = (n: number) => `${n.toLocaleString("en-US")} ${n === 1 ? one : noun}`;
+  const count = (n: number) => `${n.toLocaleString(intlLocale)} ${n === 1 ? one : noun}`;
   const out: Finding[] = [];
 
   // 1. How concentrated change is.
@@ -81,11 +82,11 @@ export function summarize(
       const share = ranked.slice(0, top).reduce((s, p) => s + p.v, 0) / total;
       out.push({
         id: "concentration",
-        title: share >= 0.4 ? "Change concentrates" : "Change is spread out",
-        text: `The busiest ${count(top)} of ${ranked.length.toLocaleString("en-US")} carry ${pct(share)} of all commits.`,
+        title: share >= 0.4 ? t("metrics.summary.changeConcentrates") : t("metrics.summary.changeSpreadOut"),
+        text: t("metrics.summary.busiestCarryAllCommits", { top: count(top), value: ranked.length.toLocaleString(intlLocale), share: pct(share) }),
         names: ranked.slice(0, 3).map((p) => p.name),
         figure: { kind: "bars", values: ranked.map((p) => p.v), hot: top },
-        action: { label: "Show them in Strips", go: { view: "strips", sort: COMMITS, brushes: { [COMMITS]: [ranked[top - 1].v, ranked[0].v] } } },
+        action: { label: t("metrics.summary.showThemStrips"), go: { view: "strips", sort: COMMITS, brushes: { [COMMITS]: [ranked[top - 1].v, ranked[0].v] } } },
       });
     }
   }
@@ -104,23 +105,23 @@ export function summarize(
     const [first, ...rest] = together;
     out.push({
       id: "together",
-      title: "Metrics that move together",
-      text: `${niceName(first.a)} and ${niceName(first.b)} rise together: ρ ${rho2(first.rho)}, ${strengthWord(first.rho)}, by rank.`,
-      more: rest.slice(0, 2).map((p) => `${niceName(p.a)} and ${niceName(p.b)}: ρ ${rho2(p.rho)}`),
+      title: t("metrics.summary.metricsMoveTogether"),
+      text: t("metrics.summary.riseTogetherRank", { first: niceName(first.a), b: niceName(first.b), rho: rho2(first.rho), rho2: strengthWord(first.rho) }),
+      more: rest.slice(0, 2).map((p) => t("metrics.summary.and", { a: niceName(p.a), b: niceName(p.b), rho: rho2(p.rho) })),
       names: [],
       figure: { kind: "scatter", x: first.a, y: first.b, hot: [] },
-      action: { label: "Compare every pair", go: { view: "matrix", pair: [first.a, first.b] } },
+      action: { label: t("metrics.summary.compareEveryPair"), go: { view: "matrix", pair: [first.a, first.b] } },
     });
   }
   const apart = pairs.filter((p) => p.rho <= -0.3).sort((x, y) => x.rho - y.rho)[0];
   if (apart) {
     out.push({
       id: "apart",
-      title: "Pulling opposite ways",
-      text: `As ${niceName(apart.a)} rises, ${niceName(apart.b)} falls: ρ ${rho2(apart.rho)}, ${strengthWord(apart.rho)}, by rank.`,
+      title: t("metrics.summary.pullingOppositeWays"),
+      text: t("metrics.summary.risesFallsRank", { apart: niceName(apart.a), b: niceName(apart.b), rho: rho2(apart.rho), rho2: strengthWord(apart.rho) }),
       names: [],
       figure: { kind: "scatter", x: apart.a, y: apart.b, hot: [] },
-      action: { label: "Open the plot", go: { view: "plot", pair: [apart.a, apart.b] } },
+      action: { label: t("metrics.summary.openPlot"), go: { view: "plot", pair: [apart.a, apart.b] } },
     });
   }
 
@@ -135,11 +136,11 @@ export function summarize(
       });
       out.push({
         id: "churn-health",
-        title: "Changing often, lower health",
-        text: `${count(br.length)} have more commits than the median (${formatReading(r.mx)}) and a Code Health below it (${formatReading(r.my)}).`,
+        title: t("metrics.summary.changingOftenLowerHealth"),
+        text: t("metrics.summary.haveMoreCommitsThan", { brLength: count(br.length), mx: formatReading(r.mx), my: formatReading(r.my) }),
         names: byHeat.slice(0, 3),
         figure: { kind: "scatter", x: COMMITS, y: HEALTH, hot: br },
-        action: { label: "Read the plot", go: { view: "plot", preset: "churn-health", selected: br } },
+        action: { label: t("metrics.summary.readPlot"), go: { view: "plot", preset: "churn-health", selected: br } },
       });
     }
   }
@@ -165,11 +166,11 @@ export function summarize(
     if (far.length) {
       out.push({
         id: "far-out",
-        title: "Far out on several metrics",
-        text: `${count(far.length)} sit in the outer 5% on ${need} or more of these ${metrics.length} metrics.`,
+        title: t("metrics.summary.farOutSeveralMetrics"),
+        text: t("metrics.summary.sitOuter5More", { farLength: count(far.length), need, metricsLength: metrics.length }),
         names: far.slice(0, 3).map((h) => h.name),
         figure: { kind: "profiles", keys: metrics, hot: far.slice(0, 8).map((h) => h.name) },
-        action: { label: "Compare their profiles", go: { view: "profiles", selected: far.map((h) => h.name) } },
+        action: { label: t("metrics.summary.compareTheirProfiles"), go: { view: "profiles", selected: far.map((h) => h.name) } },
       });
     }
   }
@@ -184,11 +185,11 @@ export function summarize(
     if (ranked.length && ranked[0].value > 0) {
       out.push({
         id: "hubs",
-        title: "Most depended on",
-        text: `${tail(ranked[0].name)} is used by ${ranked[0].value.toLocaleString("en-US")} other ${noun}; the median ${one} by ${formatReading(med)}.`,
+        title: t("metrics.summary.mostDepended"),
+        text: t("metrics.summary.usedOtherMedian", { name: tail(ranked[0].name), value: ranked[0].value.toLocaleString(intlLocale), noun, one, med: formatReading(med) }),
         names: ranked.slice(0, 3).map((p) => p.name),
         figure: { kind: "hbars", items: ranked.slice(0, 5), median: med },
-        action: { label: "See where they stand", go: { view: "strips", sort: DEPENDENTS, selected: ranked.slice(0, 5).map((p) => p.name) } },
+        action: { label: t("metrics.summary.seeWhereTheyStand"), go: { view: "strips", sort: DEPENDENTS, selected: ranked.slice(0, 5).map((p) => p.name) } },
       });
     }
   }

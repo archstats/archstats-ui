@@ -7,6 +7,7 @@ import { comparability } from "~/features/trends/comparability"
 import { measurePin, pinStatus, type PinKind, type PinStatus, type PinValues } from "./evidence"
 import { buildProvenance } from "~/features/export/provenance"
 import { newestFirst } from "~/features/workspace/scanOrder"
+import { t } from "~/shared/i18n"
 
 // The evidence board: findings pinned with where they came from, re-checked
 // against the newest snapshot of the code (not whichever is open), each
@@ -122,7 +123,7 @@ export const useEvidenceStore = defineStore("evidence", {
                 if (p.kind === "heading" || p.kind === "view") continue
                 const pinnedScan: any = p.scanId ? ws.scans.find((s: any) => s.id === p.scanId) : null
                 const c = pinnedScan ? comparability(pinnedScan, newest) : { ok: true, reasons: [] as Array<{ level: string; text: string }> }
-                const blocked = c.ok ? null : c.reasons.find(r => r.level === "block")?.text ?? "different analyses"
+                const blocked = c.ok ? null : c.reasons.find(r => r.level === "block")?.text ?? t("reports.evidenceStore.differentAnalyses")
                 let values: PinValues | null = null
                 try { values = await measurePin(p, q, cache) } catch { values = null }
                 now[p.id] = values

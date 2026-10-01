@@ -3,41 +3,41 @@
     <div v-if="lens" class="fixed inset-0 z-[65] flex items-start justify-center bg-neutral-900/20 pt-[6vh]" @click.self="close" @keydown.esc="close">
       <div class="ui-popover flex max-h-[86vh] w-[900px] max-w-[95vw] flex-col animate-in" role="dialog" aria-modal="true" aria-labelledby="declare-title">
         <header class="flex items-center gap-3 px-5 py-3 hairline-b">
-          <h2 id="declare-title" class="text-base font-semibold text-neutral-900">Declared dependencies: {{ lens }}</h2>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Close" @click="close"><Icon icon="x" :size="13"/></button>
+          <h2 id="declare-title" class="text-base font-semibold text-neutral-900">{{ t('rules.declareSheet.declaredDependencies', { lens }) }}</h2>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" :aria-label="t('rules.declareSheet.close')" @click="close"><Icon icon="x" :size="13"/></button>
         </header>
 
-        <EmptyState v-if="groupList.length < 2" class="py-10" title="Declare needs two groups" text="A declaration says which groups of this lens may use which. Add a second group first." icon="layers"/>
+        <EmptyState v-if="groupList.length < 2" class="py-10" :title="t('rules.declareSheet.declareNeedsTwoGroups')" :text="t('rules.declareSheet.declarationSaysWhichGroups')" icon="layers"/>
         <div v-else class="grid min-h-0 grow gap-6 overflow-y-auto p-5 md:grid-cols-[260px_minmax(0,1fr)]">
           <!-- Layers: top may use anything below. -->
           <section>
-            <h3 class="ui-section-title">Layers, top first</h3>
-            <p class="mt-1 text-sm text-neutral-500">A layer may use any layer below it; an import upward crosses the order. Leave a group out to judge it by pairs only.</p>
+            <h3 class="ui-section-title">{{ t('rules.declareSheet.layersTopFirst') }}</h3>
+            <p class="mt-1 text-sm text-neutral-500">{{ t('rules.declareSheet.layerMayUseAny') }}</p>
             <ol class="mt-3 flex flex-col gap-1">
               <li v-for="(id, i) in layers" :key="id" class="flex h-8 items-center gap-2 rounded px-2 hairline">
                 <span class="w-5 font-mono text-xs text-neutral-400">{{ i + 1 }}</span>
                 <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: groupById.get(id)?.color }"></span>
                 <span class="min-w-0 flex-1 truncate text-sm text-neutral-900">{{ groupById.get(id)?.name }}</span>
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="i === 0" :aria-label="`Move ${groupById.get(id)?.name} up`" @click="move(i, -1)"><Icon icon="chevron-up" :size="12"/></button>
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="i === layers.length - 1" :aria-label="`Move ${groupById.get(id)?.name} down`" @click="move(i, 1)"><Icon icon="chevron-down" :size="12"/></button>
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="`Leave ${groupById.get(id)?.name} out of the layers`" @click="layers = layers.filter(x => x !== id)"><Icon icon="x" :size="12"/></button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="i === 0" :aria-label="t('rules.declareSheet.moveUp', { groupByIdName: groupById.get(id)?.name })" @click="move(i, -1)"><Icon icon="chevron-up" :size="12"/></button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="i === layers.length - 1" :aria-label="t('rules.declareSheet.moveDown', { groupByIdName: groupById.get(id)?.name })" @click="move(i, 1)"><Icon icon="chevron-down" :size="12"/></button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('rules.declareSheet.leaveOutLayers', { groupByIdName: groupById.get(id)?.name })" @click="layers = layers.filter(x => x !== id)"><Icon icon="x" :size="12"/></button>
               </li>
             </ol>
             <div v-if="outOfLayers.length" class="mt-3 flex flex-wrap gap-1.5">
-              <button v-for="g in outOfLayers" :key="g.id" type="button" class="ui-chip" :title="`Add ${g.name} at the bottom`" @click="layers = [...layers, g.id]">+ {{ g.name }}</button>
-              <button v-if="outOfLayers.length > 1" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="layers = [...layers, ...outOfLayers.map(g => g.id)]">Add all {{ outOfLayers.length }}</button>
+              <button v-for="g in outOfLayers" :key="g.id" type="button" class="ui-chip" :title="t('rules.declareSheet.addBottom', { gName: g.name })" @click="layers = [...layers, g.id]">+ {{ g.name }}</button>
+              <button v-if="outOfLayers.length > 1" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="layers = [...layers, ...outOfLayers.map(g => g.id)]">{{ t('rules.declareSheet.addAll', { outOfLayersLength: outOfLayers.length }) }}</button>
             </div>
             <fieldset class="mt-5">
-              <legend class="ui-section-title">Anything not declared</legend>
-              <label class="mt-2 flex items-center gap-2 text-sm text-neutral-700"><input v-model="unset" type="radio" value="unjudged"> Not judged</label>
-              <label class="mt-1 flex items-center gap-2 text-sm text-neutral-700"><input v-model="unset" type="radio" value="forbidden"> Forbidden</label>
+              <legend class="ui-section-title">{{ t('rules.declareSheet.anythingNotDeclared') }}</legend>
+              <label class="mt-2 flex items-center gap-2 text-sm text-neutral-700"><input v-model="unset" type="radio" value="unjudged">{{ ' ' + t('rules.declareSheet.notJudged') }}</label>
+              <label class="mt-1 flex items-center gap-2 text-sm text-neutral-700"><input v-model="unset" type="radio" value="forbidden">{{ ' ' + t('rules.declareSheet.forbidden') }}</label>
             </fieldset>
           </section>
 
           <!-- Pairs: click a cell to forbid or allow that direction outright. -->
           <section class="min-w-0">
-            <h3 class="ui-section-title">Pairs</h3>
-            <p class="mt-1 text-sm text-neutral-500">Each cell: row uses column, with the imports this snapshot has. Click to set it: forbidden, allowed, then back to the layers' say.</p>
+            <h3 class="ui-section-title">{{ t('rules.declareSheet.pairs') }}</h3>
+            <p class="mt-1 text-sm text-neutral-500">{{ t('rules.declareSheet.eachCellRowUses') }}</p>
             <div class="mt-3 overflow-auto">
               <table class="border-separate border-spacing-0 text-xs">
                 <thead>
@@ -58,31 +58,31 @@
               </table>
             </div>
             <p class="mt-2 flex flex-wrap gap-4 text-xs text-neutral-500">
-              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-red-100 ring-1 ring-red-500"></span>forbidden (set)</span>
-              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-red-50"></span>forbidden by the layers</span>
-              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-green-100 ring-1 ring-green-600"></span>allowed (set)</span>
+              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-red-100 ring-1 ring-red-500"></span>{{ t('rules.declareSheet.forbiddenSet') }}</span>
+              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-red-50"></span>{{ t('rules.declareSheet.forbiddenLayers') }}</span>
+              <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-green-100 ring-1 ring-green-600"></span>{{ t('rules.declareSheet.allowedSet') }}</span>
             </p>
             <p class="mt-3 text-sm text-neutral-700">{{ preview }}</p>
           </section>
         </div>
 
         <footer class="flex items-center gap-2 px-5 py-3 hairline-t">
-          <button v-if="existing" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="remove">Remove declaration</button>
+          <button v-if="existing" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="remove">{{ t('rules.declareSheet.removeDeclaration') }}</button>
           <button
             v-if="manifestGroups.size >= 2"
             type="button"
             class="ui-btn ui-btn-sm"
-            :title="`Allow exactly what the build files declare between ${manifestGroups.size} groups named for modules, and forbid the rest`"
+            :title="t('rules.declareSheet.allowExactlyWhatBuild', { manifestGroupsSize: manifestGroups.size })"
             @click="seedFromManifests"
-          >Declare what the manifests state</button>
-          <span v-if="source === 'manifests'" class="text-xs text-neutral-500">Declared by manifests</span>
+          >{{ t('rules.declareSheet.declareWhatManifestsState') }}</button>
+          <span v-if="source === 'manifests'" class="text-xs text-neutral-500">{{ t('rules.declareSheet.declaredManifests') }}</span>
           <span class="ml-auto"></span>
           <!-- Saving with groups left out is allowed; doing it without knowing is not. -->
           <span v-if="layers.length && outOfLayers.length" class="max-w-[320px] text-right text-xs text-amber-700" :title="outOfLayers.map(g => g.name).join(', ')">
-            {{ outOfLayers.length }} of {{ groupList.length }} groups are not in the layers ({{ outOfLayers.slice(0, 3).map(g => g.name).join(", ") }}{{ outOfLayers.length > 3 ? "…" : "" }}): only pairs judge them.
+            {{ t('rules.declareSheet.groupsNotLayersOnly', { outOfLayersLength: outOfLayers.length, groupListLength: groupList.length, value: outOfLayers.slice(0, 3).map(g => g.name).join(", "), value2: outOfLayers.length > 3 ? "…" : "" }) }}
           </span>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="groupList.length < 2" @click="save">Save</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">{{ t('rules.declareSheet.cancel') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="groupList.length < 2" @click="save">{{ t('rules.declareSheet.save') }}</button>
         </footer>
       </div>
     </div>
@@ -99,6 +99,7 @@ import { useGroupsStore, type Declaration } from "~/features/groups/groups.store
 import { groupPairTotals, type GroupEdge } from "~/features/groups/groupEdges";
 import { crossingCount, crossings, verdictOf } from "~/features/rules/lensRules";
 import { useBuildModules } from "~/features/lens-builder/useBuildModules";
+import { t } from "~/shared/i18n";
 
 // Writing down the agreed architecture of one lens: the layer order and the
 // pairs that are allowed or forbidden whatever the layers say. The grid shows
@@ -179,11 +180,11 @@ function cellClass(a: string, b: string): string {
 }
 function cellTitle(r: { id: string; name: string }, c: { id: string; name: string }): string {
   const v = verdictOf(r.id, c.id, draft.value);
-  return `${r.name} uses ${c.name}: ${refs(r.id, c.id)} imports · ${v === "unjudged" ? "not judged" : v}`;
+  return t("rules.declareSheet.usesImports", { name: r.name, name2: c.name, refs: refs(r.id, c.id), value: v === "unjudged" ? t("rules.declareSheet.notJudged2") : v });
 }
 const preview = computed(() => {
   const n = crossingCount(crossings(edges.value, draft.value));
-  return n ? `${n.toLocaleString("en-US")} import${n === 1 ? "" : "s"} in this snapshot would cross this declaration.` : "Nothing in this snapshot crosses this declaration.";
+  return n ? t("rules.declareSheet.snapshotWouldCrossDeclaration", { imports: t("common.count.import", { count: n }) }) : t("rules.declareSheet.nothingSnapshotCrossesDeclaration");
 });
 
 function save() {

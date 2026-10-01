@@ -4,6 +4,7 @@
 
 import * as d3 from "d3";
 import { metricValue, suggestLog } from "./plotReading";
+import { t } from "~/shared/i18n";
 
 type Row = { name: string; [key: string]: any };
 
@@ -135,7 +136,7 @@ export function spearman(rows: Row[], a: string, b: string): { rho: number; n: n
 /** Plain words for a correlation's strength, the way the Reading panel says it. */
 export function strengthWord(rho: number): string {
   const a = Math.abs(rho);
-  if (!Number.isFinite(a)) return "no reading";
+  if (!Number.isFinite(a)) return t("metrics.lab.noReading");
   if (a >= 0.7) return "strong";
   if (a >= 0.4) return "moderate";
   if (a >= 0.2) return "weak";

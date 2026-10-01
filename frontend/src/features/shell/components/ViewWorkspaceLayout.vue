@@ -10,9 +10,9 @@
         </h2>
         <span v-if="badgeText" class="ui-tag shrink-0">{{ badgeText }}</span>
         <span v-show="level < 2" ref="metaEl" class="ui-toolbar-meta flex shrink-0 items-center gap-1.5">
-          <span v-if="nodesCount !== undefined">{{ statsLabels.nodes || 'Nodes' }} <span class="text-neutral-800">{{ nodesCount }}</span></span>
+          <span v-if="nodesCount !== undefined">{{ statsLabels.nodes || t('shell.viewWorkspaceLayout.nodes') }} <span class="text-neutral-800">{{ nodesCount }}</span></span>
           <span v-if="nodesCount !== undefined && connectionsCount !== undefined" class="text-neutral-300">·</span>
-          <span v-if="connectionsCount !== undefined">{{ statsLabels.connections || 'Connections' }} <span class="text-neutral-800">{{ connectionsCount }}</span></span>
+          <span v-if="connectionsCount !== undefined">{{ statsLabels.connections || t('shell.viewWorkspaceLayout.connections') }} <span class="text-neutral-800">{{ connectionsCount }}</span></span>
           <slot name="stats"></slot>
         </span>
         <!-- The query is scope, not a view setting, so it lives beside the
@@ -43,7 +43,7 @@
             class="ui-input ui-input-sm pl-7 pr-6 transition-[width] duration-150"
             :class="level >= 1 && !searchQuery ? 'w-8 focus:w-44' : hasSwitches ? 'w-48' : 'w-56'"
           />
-          <button v-if="searchQuery" type="button" class="absolute right-1.5 text-neutral-400 hover:text-neutral-700" aria-label="Clear search" @click="$emit('update:searchQuery', '')">
+          <button v-if="searchQuery" type="button" class="absolute right-1.5 text-neutral-400 hover:text-neutral-700" :aria-label="t('shell.viewWorkspaceLayout.clearSearch')" @click="$emit('update:searchQuery', '')">
             <Icon icon="x" :size="12"/>
           </button>
         </label>
@@ -54,13 +54,13 @@
         <div v-if="showConfig || (hasSwitches && narrow)" class="relative">
           <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="showConfigPopover" @click="showConfigPopover = !showConfigPopover">
             <Icon icon="settings" :size="13" class="text-neutral-500"/>
-            <span>Configure</span>
+            <span>{{ t('shell.viewWorkspaceLayout.configure') }}</span>
           </button>
           <div v-if="showConfigPopover" class="fixed inset-0 z-40 cursor-default" @click="showConfigPopover = false"></div>
           <div v-if="showConfigPopover" class="ui-popover absolute right-0 z-50 mt-1 flex w-72 flex-col gap-3 p-3 animate-in md:w-80">
             <div class="flex items-center justify-between pb-2 hairline-b">
-              <span class="text-base font-semibold text-neutral-900">Configuration</span>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="showConfigPopover = false"><Icon icon="x" :size="13"/></button>
+              <span class="text-base font-semibold text-neutral-900">{{ t('shell.viewWorkspaceLayout.configuration') }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('shell.viewWorkspaceLayout.close')" @click="showConfigPopover = false"><Icon icon="x" :size="13"/></button>
             </div>
             <!-- Narrow windows fold the toolbar switches in here so the row never wraps. -->
             <div v-if="hasSwitches && narrow" class="flex flex-wrap items-center gap-2" :class="{ 'pb-3 hairline-b': showConfig }">
@@ -76,7 +76,7 @@
           class="ui-btn ui-btn-sm ui-btn-icon"
           :class="{ 'bg-neutral-100': isSidebarOpen }"
           :aria-pressed="isSidebarOpen"
-          :title="isSidebarOpen ? 'Hide panel' : 'Show panel'"
+          :title="isSidebarOpen ? t('shell.viewWorkspaceLayout.hidePanel') : t('shell.viewWorkspaceLayout.showPanel')"
           @click="$emit('update:isSidebarOpen', !isSidebarOpen)"
         >
           <Icon :icon="isSidebarOpen ? 'panel-right-close' : 'panel-right'" :size="14" class="text-neutral-600"/>
@@ -100,7 +100,7 @@
         <PaneHandle
           v-if="isSidebarOpen"
           side="left"
-          label="Resize inspector"
+          :label="t('shell.viewWorkspaceLayout.resizeInspector')"
           :model-value="inspectorWidth"
           :min="INSPECTOR.min"
           :max="INSPECTOR.max"
@@ -142,6 +142,7 @@ import ScopeBar from "~/features/groups/components/ScopeBar.vue";
 import PaneHandle from "./PaneHandle.vue";
 import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import { INSPECTOR, usePanesStore } from "~/features/shell/panes.store";
+import { t } from "~/shared/i18n";
 
 const props = withDefaults(defineProps<{
   /**
@@ -170,10 +171,10 @@ const props = withDefaults(defineProps<{
   keepInto: 'lens',
   title: '',
   badgeText: '',
-  statsLabels: () => ({ nodes: 'Nodes', connections: 'Connections' }),
+  statsLabels: () => ({ nodes: t("shell.viewWorkspaceLayout.nodes"), connections: t("shell.viewWorkspaceLayout.connections") }),
   searchQuery: undefined,
   // Fits the field beside its icon at its narrowest; "Search components" read "Search componer".
-  searchPlaceholder: 'Find by name',
+  searchPlaceholder: t("shell.viewWorkspaceLayout.findName"),
   isSidebarOpen: true,
   activeTab: '',
   tabs: () => [],

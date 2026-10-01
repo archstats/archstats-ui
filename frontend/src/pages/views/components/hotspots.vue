@@ -1,32 +1,32 @@
 <template>
   <div class="flex h-full flex-col overflow-hidden">
     <ViewWorkspaceLayout
-      title="Hotspots"
+      :title="t('pages.componentsHotspots.hotspots')"
       :nodes-count="units.length"
       :stats-labels="{ nodes: grainLabel }"
       v-model:search-query="searchQuery"
       v-model:is-sidebar-open="sidebarExpanded"
       v-model:active-tab="activeSidebarTab"
       :tabs="[
-        { id: 'perspectives', label: 'Perspectives' },
-        { id: 'inspector', label: 'Inspector' }
+        { id: 'perspectives', label: t('pages.componentsHotspots.perspectives') },
+        { id: 'inspector', label: t('pages.componentsHotspots.inspector') }
       ]"
       :show-config="false"
       sidebar-width="340px"
     >
       <template #stats>
-        <span v-if="scoped">of <span class="text-neutral-800">{{ allUnits.length }}</span></span>
+        <span v-if="scoped">{{ t('pages.componentsHotspots.of') }} <span class="text-neutral-800">{{ allUnits.length }}</span></span>
         <template v-if="leftOut > 0">
           <span class="text-neutral-300">·</span>
-          <span :title="leftOutNote ?? undefined">{{ formatNumber(leftOut, 0) }} not code, left out</span>
+          <span :title="leftOutNote ?? undefined">{{ t('pages.componentsHotspots.notCodeLeftOut', { leftOut: formatNumber(leftOut, 0) }) }}</span>
         </template>
       </template>
 
       <template #switches>
-        <div class="ui-segmented" role="group" aria-label="Grain">
+        <div class="ui-segmented" role="group" :aria-label="t('pages.componentsHotspots.grain')">
           <button v-for="g in GRAINS" :key="g.id" type="button" :aria-pressed="grain === g.id" @click="grain = g.id">{{ g.label }}</button>
         </div>
-        <div class="ui-segmented" role="group" aria-label="Layout">
+        <div class="ui-segmented" role="group" :aria-label="t('pages.componentsHotspots.layout')">
           <button v-for="l in LAYOUTS" :key="l.id" type="button" :aria-pressed="layout === l.id" @click="layout = l.id">{{ l.label }}</button>
         </div>
       </template>
@@ -35,7 +35,7 @@
         <div class="relative flex h-full w-full flex-col overflow-hidden">
           <!-- Group legend -->
           <div v-if="legendGroups.length > 0" class="flex shrink-0 flex-wrap items-center gap-1.5 px-4 py-2 hairline-b">
-            <span class="ui-label mr-1">Groups</span>
+            <span class="ui-label mr-1">{{ t('pages.componentsHotspots.groups') }}</span>
             <span
               v-for="group in legendGroups"
               :key="group.id"
@@ -44,7 +44,7 @@
               role="button"
               tabindex="0"
               :aria-pressed="activeFilters.has(group.id)"
-              :title="hiddenGroups.has(group.id) ? `Show ${group.name}` : `Filter to ${group.name}`"
+              :title="hiddenGroups.has(group.id) ? t('pages.componentsHotspots.show', { groupName: group.name }) : t('pages.componentsHotspots.filter', { groupName: group.name })"
               @click="hiddenGroups.has(group.id) ? toggleGroupVisibility(group.id) : toggleFilter(group.id)"
               @keydown.enter.prevent="hiddenGroups.has(group.id) ? toggleGroupVisibility(group.id) : toggleFilter(group.id)"
               @mouseenter="!hiddenGroups.has(group.id) && (hoveredGroupId = group.id)"
@@ -56,38 +56,38 @@
               <button
                 type="button"
                 class="-mr-1 flex h-4 w-4 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900"
-                :aria-label="hiddenGroups.has(group.id) ? `Show ${group.name}` : `Hide ${group.name}`"
-                :title="hiddenGroups.has(group.id) ? 'Show group' : 'Hide group'"
+                :aria-label="hiddenGroups.has(group.id) ? t('pages.componentsHotspots.show', { groupName: group.name }) : t('pages.componentsHotspots.hide', { groupName: group.name })"
+                :title="hiddenGroups.has(group.id) ? t('pages.componentsHotspots.showGroup') : t('pages.componentsHotspots.hideGroup')"
                 @click.stop="toggleGroupVisibility(group.id)"
               >
                 <Icon :icon="hiddenGroups.has(group.id) ? 'eye' : 'eye-off'" :size="11"/>
               </button>
             </span>
-            <button v-if="activeFilters.size > 0 || hiddenGroups.size > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="activeFilters.clear(); hiddenGroups.clear()">Clear</button>
+            <button v-if="activeFilters.size > 0 || hiddenGroups.size > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="activeFilters.clear(); hiddenGroups.clear()">{{ t('pages.componentsHotspots.clear') }}</button>
           </div>
 
           <!-- Canvas -->
           <div class="relative min-h-0 w-full grow">
-            <LoadingState v-if="loading" :text="`Reading ${grainLabel.toLowerCase()}…`"/>
-            <EmptyState v-else-if="error" :title="`Could not read ${grainLabel.toLowerCase()}`" :text="error" icon="alert"/>
+            <LoadingState v-if="loading" :text="t('pages.componentsHotspots.reading', { grainLabel: grainLabel.toLowerCase() })"/>
+            <EmptyState v-else-if="error" :title="t('pages.componentsHotspots.couldNotRead', { grainLabel: grainLabel.toLowerCase() })" :text="error" icon="alert"/>
             <EmptyState
               v-else-if="units.length === 0 && scoped"
-              title="Nothing in this scope"
-              :text="`Clear the scope to see all ${grainLabel.toLowerCase()}.`"
+              :title="t('pages.componentsHotspots.nothingScope')"
+              :text="t('pages.componentsHotspots.clearScopeSeeAll', { grainLabel: grainLabel.toLowerCase() })"
               icon="filter"
             >
-              <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">Clear scope</button>
+              <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">{{ t('pages.componentsHotspots.clearScope') }}</button>
             </EmptyState>
             <EmptyState
               v-else-if="units.length === 0"
-              :title="`No ${grainLabel.toLowerCase()} in this snapshot`"
-              :text="`The scan recorded no ${grainLabel.toLowerCase()} to pack.`"
+              :title="t('pages.componentsHotspots.noSnapshot', { grainLabel: grainLabel.toLowerCase() })"
+              :text="t('pages.componentsHotspots.scanRecordedNoPack', { grainLabel: grainLabel.toLowerCase() })"
               icon="flame"
             />
             <EmptyState
               v-else-if="!sizeMetric || !colorMetric"
-              title="No metrics to map"
-              :text="`The ${grainLabel.toLowerCase()} table has no numeric columns for size and heat.`"
+              :title="t('pages.componentsHotspots.noMetricsMap')"
+              :text="t('pages.componentsHotspots.tableHasNoNumeric', { grainLabel: grainLabel.toLowerCase() })"
               icon="flame"
             />
             <HotspotsTreemap
@@ -136,7 +136,7 @@
       <!-- Perspectives -->
       <template #tab-perspectives>
         <div class="flex flex-col gap-1.5">
-          <h3 class="ui-section-title">Perspectives</h3>
+          <h3 class="ui-section-title">{{ t('pages.componentsHotspots.perspectives') }}</h3>
           <ul class="-mx-2 flex flex-col">
             <li v-for="preset in presets" :key="preset.id">
               <button
@@ -150,12 +150,12 @@
                 <span class="min-w-0 flex-1">
                   <span class="block text-base font-medium leading-4 text-neutral-900">{{ preset.label }}</span>
                   <span class="mt-0.5 block text-sm leading-4 text-neutral-500">{{ preset.description }}</span>
-                  <span v-if="activePresetId === preset.id" class="mt-1 block font-mono text-xs leading-4 text-neutral-500">Size: {{ store.statNiceName(preset.sizeMetric) }} · Heat: {{ store.statNiceName(preset.colorMetric) }}</span>
+                  <span v-if="activePresetId === preset.id" class="mt-1 block font-mono text-xs leading-4 text-neutral-500">{{ t('pages.componentsHotspots.sizeHeat', { sizeMetric: store.statNiceName(preset.sizeMetric), colorMetric: store.statNiceName(preset.colorMetric) }) }}</span>
                 </span>
               </button>
               <div v-if="activePresetId === preset.id && preset.windowed && commitWindows.length > 1" class="mb-2 ml-8 mr-2 mt-1 flex flex-col gap-1.5">
-                <span class="ui-label">Volatility window</span>
-                <div class="ui-segmented w-full" role="group" aria-label="Volatility window">
+                <span class="ui-label">{{ t('pages.componentsHotspots.volatilityWindow') }}</span>
+                <div class="ui-segmented w-full" role="group" :aria-label="t('pages.componentsHotspots.volatilityWindow')">
                   <button v-for="opt in commitWindows" :key="opt.value" type="button" class="flex-1" :aria-pressed="commitWindow === opt.value" @click="commitWindow = opt.value">{{ opt.label }}</button>
                 </div>
               </div>
@@ -170,17 +170,17 @@
               >
                 <Icon icon="settings" :size="14" class="mt-px shrink-0 text-neutral-500"/>
                 <span class="min-w-0 flex-1">
-                  <span class="block text-base font-medium leading-4 text-neutral-900">Custom</span>
-                  <span class="mt-0.5 block text-sm leading-4 text-neutral-500">Choose the size and heat metrics yourself.</span>
+                  <span class="block text-base font-medium leading-4 text-neutral-900">{{ t('pages.componentsHotspots.custom') }}</span>
+                  <span class="mt-0.5 block text-sm leading-4 text-neutral-500">{{ t('pages.componentsHotspots.chooseSizeHeatMetrics') }}</span>
                 </span>
               </button>
               <div v-if="activePresetId === 'custom'" class="mb-2 ml-8 mr-2 mt-1 flex flex-col gap-2">
                 <label class="flex flex-col gap-1">
-                  <span class="ui-label">Circle size</span>
+                  <span class="ui-label">{{ t('pages.componentsHotspots.circleSize') }}</span>
                   <StatSelectSingle v-model="sizeMetric" :options="columns" class="w-full"/>
                 </label>
                 <label class="flex flex-col gap-1">
-                  <span class="ui-label">Heat</span>
+                  <span class="ui-label">{{ t('pages.componentsHotspots.heat') }}</span>
                   <StatSelectSingle v-model="colorMetric" :options="columns" :align-right="true" class="w-full"/>
                 </label>
               </div>
@@ -215,7 +215,7 @@
             </li>
           </ol>
         </div>
-        <p class="pt-3 text-sm leading-4 text-neutral-500 hairline-t">Click a circle to inspect it, double-click to open it, click a ring to zoom into it. Shift-click or shift-drag selects several; right-click adds to a group.</p>
+        <p class="pt-3 text-sm leading-4 text-neutral-500 hairline-t">{{ t('pages.componentsHotspots.clickCircleInspectDouble') }}</p>
       </template>
 
       <!-- Inspector -->
@@ -231,37 +231,37 @@
             <dt>{{ store.statNiceName(colorMetric) }}</dt>
             <dd>{{ formatNumber(selectedUnit[colorMetric]) }}</dd>
             <template v-if="hasColumn('codesmells__code_health')">
-              <dt>Code health</dt>
+              <dt>{{ t('pages.componentsHotspots.codeHealth') }}</dt>
               <dd class="flex items-center justify-end gap-1.5">
                 <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(selectedUnit.codesmells__code_health))"></span>
                 <span :class="levelTextClass(healthLevel(selectedUnit.codesmells__code_health))">{{ formatHealth(selectedUnit.codesmells__code_health) }}</span>
               </dd>
             </template>
             <template v-if="hasColumn('codesmells__hotspot_score')">
-              <dt>Hotspot score</dt>
+              <dt>{{ t('pages.componentsHotspots.hotspotScore') }}</dt>
               <dd class="flex items-center justify-end gap-1.5">
                 <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(hotspotLevel(selectedUnit.codesmells__hotspot_score))"></span>
                 <span :class="levelTextClass(hotspotLevel(selectedUnit.codesmells__hotspot_score))">{{ formatHotspot(selectedUnit.codesmells__hotspot_score) }}</span>
               </dd>
             </template>
             <template v-if="grain === 'directories' && hasColumn('complexity__files')">
-              <dt>Files</dt>
+              <dt>{{ t('pages.componentsHotspots.files') }}</dt>
               <dd>{{ formatNumber(selectedUnit.complexity__files, 0) }}</dd>
             </template>
             <template v-if="grain === 'files' && selectedUnit.component">
-              <dt>Component</dt>
+              <dt>{{ t('pages.componentsHotspots.component') }}</dt>
               <dd class="truncate"><router-link :to="componentPath(selectedUnit.component)" class="text-neutral-800 hover:underline">{{ selectedUnit.component }}</router-link></dd>
             </template>
           </dl>
           <div class="flex items-center gap-2">
             <router-link :to="detailRoute(selectedUnit.name)" class="ui-btn ui-btn-sm">
               <Icon :icon="grain === 'directories' ? 'table' : 'arrow-up-right'" :size="13" class="text-neutral-500"/>
-              <span>{{ grain === 'directories' ? 'Files in directory' : 'Open' }}</span>
+              <span>{{ grain === 'directories' ? t('pages.componentsHotspots.filesDirectory') : t('pages.componentsHotspots.open') }}</span>
             </router-link>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selected = null">Deselect</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selected = null">{{ t('pages.componentsHotspots.deselect') }}</button>
           </div>
         </template>
-        <p v-else class="text-sm leading-4 text-neutral-500">Click a circle to inspect it. Double-click opens it.</p>
+        <p v-else class="text-sm leading-4 text-neutral-500">{{ t('pages.componentsHotspots.clickCircleInspectDouble2') }}</p>
         <button v-if="ranked.length > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet -ml-2 self-start" @click="activeSidebarTab = 'perspectives'">
           <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
           <span>{{ labelHigh }}</span>
@@ -296,6 +296,7 @@ import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import { useIncomingSelection } from "~/features/navigation/useIncomingSelection"
 import { choosePreset, presetForUrl } from "~/features/metrics/hotspotPreset"
+import { t } from "~/shared/i18n"
 
 const store = useDataStore()
 const router = useRouter()
@@ -309,13 +310,13 @@ const treemap = ref<InstanceType<typeof HotspotsTreemap> | null>(null)
 // Grain and layout, mirrored into the query string so links survive.
 
 const GRAINS: Array<{ id: HotspotGrain; label: string }> = [
-  { id: "components", label: "Components" },
-  { id: "directories", label: "Directories" },
-  { id: "files", label: "Files" },
+  { id: "components", label: t("pages.componentsHotspots.components") },
+  { id: "directories", label: t("pages.componentsHotspots.directories") },
+  { id: "files", label: t("pages.componentsHotspots.files") },
 ]
 const LAYOUTS: Array<{ id: HotspotLayout; label: string }> = [
-  { id: "packed", label: "Packed" },
-  { id: "flat", label: "Flat" },
+  { id: "packed", label: t("pages.componentsHotspots.packed") },
+  { id: "flat", label: t("pages.componentsHotspots.flat") },
 ]
 
 function parseGrain(v: unknown): HotspotGrain {
@@ -327,8 +328,8 @@ function parseLayout(v: unknown): HotspotLayout {
 
 const grain = ref<HotspotGrain>(parseGrain(route.query.grain))
 const layout = ref<HotspotLayout>(parseLayout(route.query.layout))
-const grainLabel = computed(() => GRAINS.find(g => g.id === grain.value)?.label || "Components")
-const unitKind = computed(() => grain.value === "components" ? "Component" : grain.value === "files" ? "File" : "Directory")
+const grainLabel = computed(() => GRAINS.find(g => g.id === grain.value)?.label || t("pages.componentsHotspots.components"))
+const unitKind = computed(() => grain.value === "components" ? t("pages.componentsHotspots.component") : grain.value === "files" ? t("pages.componentsHotspots.file") : t("pages.componentsHotspots.directory"))
 
 watch(() => route.query.grain, v => { const g = parseGrain(v); if (g !== grain.value) grain.value = g })
 watch(() => route.query.layout, v => { const l = parseLayout(v); if (l !== layout.value) layout.value = l })
@@ -371,7 +372,7 @@ const columnsSettled = computed(() => store.hasData && (grain.value === "compone
 const grainRows = computed<HotspotUnit[]>(() => grain.value === "files" ? queried.value.rows.filter(isSourceFile) : queried.value.rows)
 const leftOut = computed(() => grain.value === "files" ? queried.value.rows.length - grainRows.value.length : 0)
 const leftOutNote = computed(() => leftOut.value > 0
-  ? `${formatNumber(leftOut.value, 0)} ${leftOut.value === 1 ? "file that is" : "files that are"} not source code left out: documents, data, templates, generated and third-party files.`
+  ? t("pages.componentsHotspots.notSourceCodeLeft", { filesThatAre: t("common.count.fileThatIs", { count: leftOut.value }) })
   : null)
 
 const codeAge = useCodeAge()
@@ -435,10 +436,10 @@ const COMMIT_WINDOW = /^git__commits__last_(\d+)_days$/
 
 const commitWindows = computed<Array<{ label: string; value: string }>>(() => {
   const out: Array<{ label: string; value: string; days: number }> = []
-  if (hasColumn("git__commits__total")) out.push({ label: "All time", value: "git__commits__total", days: Infinity })
+  if (hasColumn("git__commits__total")) out.push({ label: t("pages.componentsHotspots.allTime"), value: "git__commits__total", days: Infinity })
   for (const c of columns.value) {
     const m = c.match(COMMIT_WINDOW)
-    if (m) out.push({ label: `Last ${m[1]} days`, value: c, days: Number(m[1]) })
+    if (m) out.push({ label: t("pages.componentsHotspots.lastDays", { value: m[1] }), value: c, days: Number(m[1]) })
   }
   return out.sort((a, b) => a.days - b.days).map(({ label, value }) => ({ label, value }))
 })
@@ -456,68 +457,68 @@ const presets = computed<HotspotPreset[]>(() => {
   if (hasColumn(lines) && hasColumn("codesmells__hotspot_score")) {
     list.push({
       id: "hotspots",
-      label: "Hotspots",
-      description: "Large units with a high hotspot score, the engine's combined risk signal.",
+      label: t("pages.componentsHotspots.hotspots"),
+      description: t("pages.componentsHotspots.largeUnitsHighHotspot"),
       icon: "flame",
       sizeMetric: lines,
       colorMetric: "codesmells__hotspot_score",
-      labelHigh: "Hottest",
-      labelLow: "Coolest",
+      labelHigh: t("pages.componentsHotspots.hottest"),
+      labelLow: t("pages.componentsHotspots.coolest"),
       // The engine scores a file without commits 0.
-      zeroLabel: "No commits",
+      zeroLabel: t("pages.componentsHotspots.noCommits"),
     })
   }
   if (commitWindows.value.length > 0 && hasColumn("codesmells__code_health")) {
     list.push({
       id: "churn",
-      label: "Churn against health",
-      description: "Frequently changed units, hot where code health is low. Big and hot is where refactoring pays.",
+      label: t("pages.componentsHotspots.churnAgainstHealth"),
+      description: t("pages.componentsHotspots.frequentlyChangedUnitsHot"),
       icon: "git-commit",
       sizeMetric: commitWindow.value,
       colorMetric: "codesmells__code_health",
       heatInverted: true,
       windowed: true,
-      labelHigh: "Churning, unhealthy",
-      labelLow: "Churning, healthy",
+      labelHigh: t("pages.componentsHotspots.churningUnhealthy"),
+      labelLow: t("pages.componentsHotspots.churningHealthy"),
       // Code health runs 1 to 10; 0 is a unit without a score.
-      zeroLabel: "No health score",
+      zeroLabel: t("pages.componentsHotspots.noHealthScore"),
       rankBusierHalf: true,
     })
   }
   if (hasColumn(lines) && hasColumn("modularity__instability")) {
     list.push({
       id: "instability",
-      label: "Instability",
-      description: "Units that depend on more than depends on them; a change here fans out.",
+      label: t("pages.componentsHotspots.instability"),
+      description: t("pages.componentsHotspots.unitsDependMoreThan"),
       icon: "scale",
       sizeMetric: lines,
       colorMetric: "modularity__instability",
-      labelHigh: "Most unstable",
-      labelLow: "Most stable",
+      labelHigh: t("pages.componentsHotspots.mostUnstable"),
+      labelLow: t("pages.componentsHotspots.mostStable"),
     })
   }
   if (hasColumn(lines) && codeAge.available.value && grain.value !== "directories") {
     list.push({
       id: "age",
-      label: "Code age",
-      description: "Sized by lines, hot where nothing has changed for longest: the code nobody has touched, and fewer people remember.",
+      label: t("pages.componentsHotspots.codeAge"),
+      description: t("pages.componentsHotspots.sizedLinesHotWhere"),
       icon: "history",
       sizeMetric: lines,
       colorMetric: LAST_CHANGED,
-      labelHigh: "Untouched longest",
-      labelLow: "Changed recently",
+      labelHigh: t("pages.componentsHotspots.untouchedLongest"),
+      labelLow: t("pages.componentsHotspots.changedRecently"),
     })
   }
   if (hasColumn(lines) && hasColumn("complexity__indentation__max")) {
     list.push({
       id: "nesting",
-      label: "Nesting depth",
-      description: "Deeply indented logic that is hard to read and to test.",
+      label: t("pages.componentsHotspots.nestingDepth"),
+      description: t("pages.componentsHotspots.deeplyIndentedLogicHard"),
       icon: "list-tree",
       sizeMetric: lines,
       colorMetric: "complexity__indentation__max",
-      labelHigh: "Deepest nesting",
-      labelLow: "Flattest",
+      labelHigh: t("pages.componentsHotspots.deepestNesting"),
+      labelLow: t("pages.componentsHotspots.flattest"),
     })
   }
   return list
@@ -531,11 +532,11 @@ const matchedPreset = computed(() => presets.value.find(p => p.sizeMetric === si
 const activePresetId = computed(() => customPinned.value ? "custom" : (matchedPreset.value?.id ?? "custom"))
 const activePreset = computed(() => customPinned.value ? null : matchedPreset.value)
 const heatInverted = computed(() => !!activePreset.value?.heatInverted)
-const labelHigh = computed(() => activePreset.value?.labelHigh || "Hottest")
-const labelLow = computed(() => activePreset.value?.labelLow || "Coolest")
+const labelHigh = computed(() => activePreset.value?.labelHigh || t("pages.componentsHotspots.hottest"))
+const labelLow = computed(() => activePreset.value?.labelLow || t("pages.componentsHotspots.coolest"))
 const zeroLabel = computed(() => activePreset.value?.zeroLabel ?? null)
 const rankedNote = computed(() => activePreset.value?.rankBusierHalf
-  ? `Among the half with the most ${store.statNiceName(sizeMetric.value).toLowerCase().replace(/ count$/, "s")}`
+  ? t("pages.componentsHotspots.amongHalfMost", { replace: store.statNiceName(sizeMetric.value).toLowerCase().replace(/ count$/, "s") })
   : null)
 
 function selectPreset(preset: HotspotPreset) {

@@ -9,15 +9,15 @@
   <ExhibitFrame :exhibit="table">
     <div class="ship"><div class="ship-inner">
       <div class="ship-grid h-7 items-end pb-1 text-[11px] text-neutral-500 hairline-b" aria-hidden="true">
-        <span class="pl-2">Pipeline and what starts it</span>
+        <span class="pl-2">{{ t('deployables.shipBoard.pipelineWhatStarts') }}</span>
         <span class="grid" :style="{ gridTemplateColumns: `repeat(${STAGES.length}, var(--stage-w))` }">
           <span v-for="s in STAGES" :key="s" class="text-center"><span class="stage-long">{{ STAGE_LABEL[s] }}</span><span class="stage-short">{{ SHORT[s] }}</span></span>
         </span>
-        <span>Builds or deploys</span>
-        <span>Environments</span>
+        <span>{{ t('deployables.shipBoard.buildsDeploys') }}</span>
+        <span>{{ t('deployables.shipBoard.environments') }}</span>
       </div>
 
-      <p v-if="!rows.length" class="py-3 text-sm text-neutral-600">No pipeline here starts on its own<template v-if="blocks.length">; the workflows and actions below run when another repository's pipeline uses them</template>.</p>
+      <p v-if="!rows.length" class="py-3 text-sm text-neutral-600">{{ t('deployables.shipBoard.noPipelineHereStarts') }}<template v-if="blocks.length">{{ t('deployables.shipBoard.workflowsActionsBelowRun') }}</template>.</p>
       <ul>
         <li v-for="r in rows" :key="r.key">
           <button
@@ -30,14 +30,14 @@
             <span class="flex min-w-0 flex-col gap-0.5 pl-2">
               <span class="flex min-w-0 items-baseline gap-2">
                 <span class="truncate text-sm text-neutral-900" :title="r.pipelines.map(p => p.file).join('\n')">{{ r.name }}</span>
-                <span v-if="r.pipelines.length > 1 && !r.name.endsWith('pipelines')" class="ui-tag !h-4 shrink-0 !text-[11px]" :title="`${r.pipelines.length} pipelines do this`">×{{ r.pipelines.length }}</span>
+                <span v-if="r.pipelines.length > 1 && !r.name.endsWith('pipelines')" class="ui-tag !h-4 shrink-0 !text-[11px]" :title="t('deployables.shipBoard.pipelinesDo', { pipelinesLength: r.pipelines.length })">×{{ r.pipelines.length }}</span>
                 <span v-if="r.system !== 'github_actions'" class="shrink-0 text-xs text-neutral-500">{{ SYSTEM_LABEL[r.system] ?? r.system }}</span>
               </span>
               <span class="flex min-w-0 items-center gap-2.5 text-xs text-neutral-600">
-                <span v-for="t in r.triggers.slice(0, 4)" :key="t" class="flex shrink-0 items-center gap-1" :title="t"><component :is="triggerIcon(t)" :size="12" :stroke-width="1.75" class="text-neutral-400"/>{{ TRIGGER_LABEL[t] ?? t }}</span>
+                <span v-for="slice in r.triggers.slice(0, 4)" :key="slice" class="flex shrink-0 items-center gap-1" :title="slice"><component :is="triggerIcon(slice)" :size="12" :stroke-width="1.75" class="text-neutral-400"/>{{ TRIGGER_LABEL[slice] ?? slice }}</span>
                 <span v-if="r.triggers.length > 4" class="shrink-0 text-neutral-500" :title="r.triggers.slice(4).join(', ')">+{{ r.triggers.length - 4 }}</span>
-                <span v-if="!r.triggers.length" class="text-neutral-500">{{ r.pipelines.every(p => p.parsed === 'none') ? "recognised, not read" : "no trigger read" }}</span>
-                <span v-if="r.delegates.length" class="flex min-w-0 items-center gap-1 text-neutral-500" :title="`Hands the work to ${r.delegates.join(', ')}, outside this workspace`">
+                <span v-if="!r.triggers.length" class="text-neutral-500">{{ r.pipelines.every(p => p.parsed === 'none') ? t('deployables.shipBoard.recognisedNotRead') : t('deployables.shipBoard.noTriggerRead') }}</span>
+                <span v-if="r.delegates.length" class="flex min-w-0 items-center gap-1 text-neutral-500" :title="t('deployables.shipBoard.handsWorkOutsideWorkspace', { value: r.delegates.join(', ') })">
                   <CornerDownRight :size="12" :stroke-width="1.75" class="shrink-0 text-neutral-400"/><span class="truncate font-mono text-[11px]">{{ shortTemplate(r.delegates[0]) }}</span><span v-if="r.delegates.length > 1" class="shrink-0">+{{ r.delegates.length - 1 }}</span>
                 </span>
               </span>
@@ -51,8 +51,8 @@
 
       <template v-if="blocks.length">
         <div class="mt-4 flex items-baseline gap-2 pb-1 hairline-b">
-          <h4 class="text-xs font-medium text-neutral-700">Run inside them</h4>
-          <p class="text-xs text-neutral-500">Reusable workflows and actions defined here. They start when a pipeline uses them, and what they do counts in that pipeline too.</p>
+          <h4 class="text-xs font-medium text-neutral-700">{{ t('deployables.shipBoard.runInsideThem') }}</h4>
+          <p class="text-xs text-neutral-500">{{ t('deployables.shipBoard.reusableWorkflowsActionsDefined') }}</p>
         </div>
         <ul>
           <li v-for="b in shownBlocks" :key="b.pipeline.id">
@@ -68,7 +68,7 @@
                   <component :is="BLOCK_ICON[b.kind] ?? Puzzle" :size="13" :stroke-width="1.75" class="shrink-0 text-neutral-500"/>
                   <span class="truncate text-sm text-neutral-800" :title="b.pipeline.file">{{ b.pipeline.name }}</span>
                 </span>
-                <span class="truncate text-xs text-neutral-500">{{ PIPELINE_KIND_LABEL[b.kind] ?? b.kind }} · {{ b.usedBy.length ? `used by ${plural(b.usedBy.length, "pipeline")}` : "used by nothing here" }}</span>
+                <span class="truncate text-xs text-neutral-500">{{ PIPELINE_KIND_LABEL[b.kind] ?? b.kind }} · {{ b.usedBy.length ? t('deployables.shipBoard.used', { pipelines: t('common.count.pipeline', { count: b.usedBy.length }) }) : t('deployables.shipBoard.usedNothingHere') }}</span>
               </span>
               <StageTrack :stages="b.pipeline.stages" muted/>
               <ShipsCell :actions="blockActions(b.pipeline.id)"/>
@@ -76,7 +76,7 @@
             </button>
           </li>
         </ul>
-        <button v-if="blocks.length > BLOCK_CAP && !allBlocks" type="button" class="mt-1 text-xs text-neutral-600 underline underline-offset-2 hover:text-neutral-900" @click="allBlocks = true">Show all {{ blocks.length }}</button>
+        <button v-if="blocks.length > BLOCK_CAP && !allBlocks" type="button" class="mt-1 text-xs text-neutral-600 underline underline-offset-2 hover:text-neutral-900" @click="allBlocks = true">{{ t('deployables.shipBoard.showAll', { blocksLength: blocks.length }) }}</button>
       </template>
     </div></div>
   </ExhibitFrame>
@@ -92,6 +92,7 @@ import {
   PIPELINE_KIND_LABEL, STAGE_LABEL, STAGES, SYSTEM_LABEL, TRIGGER_LABEL, list, pipelineKind,
   type Block, type DeployableModel, type ShipRow,
 } from "../deployables"
+import { t, intlLocale } from "~/shared/i18n"
 
 export type ShipPick = { kind: "pipeline" | "row"; id: string }
 
@@ -105,13 +106,13 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (e: "pick", p: ShipPick): void }>()
 
-const SHORT: Record<string, string> = { build: "Bld", test: "Tst", scan: "Scn", package: "Pkg", publish: "Pub", deploy: "Dep", approve: "Apr" }
+const SHORT: Record<string, string> = { build: t("deployables.shipBoard.bld"), test: t("deployables.shipBoard.tst"), scan: t("deployables.shipBoard.scn"), package: t("deployables.shipBoard.pkg"), publish: t("deployables.shipBoard.pub"), deploy: t("deployables.shipBoard.dep"), approve: t("deployables.shipBoard.apr") }
 const BLOCK_ICON = { reusable_workflow: Workflow, composite_action: Puzzle, docker_action: Container, javascript_action: FileCode2, action: Box }
 const BLOCK_CAP = 12
 const allBlocks = ref(false)
 const shownBlocks = computed(() => (allBlocks.value ? props.blocks : props.blocks.slice(0, BLOCK_CAP)))
 
-const plural = (n: number, w: string) => `${n.toLocaleString("en-US")} ${w}${n === 1 ? "" : "s"}`
+const plural = (n: number, w: string) => `${n.toLocaleString(intlLocale)} ${w}${n === 1 ? "" : "s"}`
 const isPicked = (r: ShipRow) => (props.picked?.kind === "row" && props.picked.id === r.key) || (props.picked?.kind === "pipeline" && r.pipelines.length === 1 && r.pipelines[0].id === props.picked.id)
 const dim = (ids: string[]) => !!props.lit && !ids.some(id => props.lit!.has(id))
 
@@ -144,7 +145,7 @@ const ShipsCell = defineComponent({
           h("span", { class: "shrink-0" }, action),
           ds.length === 1
             ? h("span", { class: "truncate font-mono text-[11px] text-neutral-900" }, ds[0])
-            : h("span", { class: "shrink-0 font-mono text-[11px] text-neutral-900" }, `${ds.length} deployables`),
+            : h("span", { class: "shrink-0 font-mono text-[11px] text-neutral-900" }, t("deployables.shipBoard.deployables", { dsLength: ds.length })),
         ])))
     }
   },
@@ -162,7 +163,7 @@ const EnvCell = defineComponent({
 })
 
 const table = useTable({
-  get title() { return "Pipelines" },
+  get title() { return t("deployables.shipBoard.pipelines") },
   rows: () => props.model.pipelines.map(p => ({
     pipeline: p.name, kind: PIPELINE_KIND_LABEL[pipelineKind(p)] ?? pipelineKind(p), system: SYSTEM_LABEL[p.system] ?? p.system, file: p.file,
     starts_on: list(p.triggers).map(t => TRIGGER_LABEL[t] ?? t).join(", "), stages: list(p.stages).map(s => STAGE_LABEL[s] ?? s).join(", "),
@@ -171,12 +172,12 @@ const table = useTable({
     environments: p.environments, hands_off_to: p.delegates_to, uses: p.calls ?? "",
   })),
   columns: () => [
-    { id: "pipeline", label: "Pipeline" }, { id: "kind", label: "Kind" }, { id: "system", label: "System" }, { id: "file", label: "File" },
-    { id: "starts_on", label: "Starts on" }, { id: "stages", label: "Stages" }, { id: "builds", label: "Builds" }, { id: "deploys", label: "Deploys" },
-    { id: "environments", label: "Environments" }, { id: "hands_off_to", label: "Hands off to" }, { id: "uses", label: "Uses" },
+    { id: "pipeline", label: t("deployables.shipBoard.pipeline") }, { id: "kind", label: t("deployables.shipBoard.kind") }, { id: "system", label: t("deployables.shipBoard.system") }, { id: "file", label: t("deployables.shipBoard.file") },
+    { id: "starts_on", label: t("deployables.shipBoard.starts") }, { id: "stages", label: t("deployables.shipBoard.stages") }, { id: "builds", label: t("deployables.shipBoard.builds") }, { id: "deploys", label: t("deployables.shipBoard.deploys") },
+    { id: "environments", label: t("deployables.shipBoard.environments") }, { id: "hands_off_to", label: t("deployables.shipBoard.handsOff") }, { id: "uses", label: t("deployables.shipBoard.uses") },
   ],
-  notes: () => [["read from", "pipeline files: what they would do when they run, not what ran"]],
-  disabledReason: () => (!props.model.pipelines.length ? "No pipelines in this snapshot." : null),
+  notes: () => [[t("deployables.shipBoard.read"), t("deployables.shipBoard.pipelineFilesWhatThey")]],
+  disabledReason: () => (!props.model.pipelines.length ? t("deployables.shipBoard.noPipelinesSnapshot") : null),
 })
 </script>
 

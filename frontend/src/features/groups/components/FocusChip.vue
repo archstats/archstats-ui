@@ -4,21 +4,21 @@
       v-if="canBack"
       type="button"
       class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet"
-      :title="`Back to ${backLabel} (⌥←)`"
-      :aria-label="`Back to ${backLabel}`"
+      :title="t('groups.focusChip.back', { backLabel })"
+      :aria-label="t('groups.focusChip.back2', { backLabel })"
       @click="scope.back()"
     >
       <Icon icon="arrow-left" :size="13"/>
     </button>
     <span v-if="scope.focus" class="ui-chip is-active max-w-[300px] pr-1">
       <Icon icon="focus" :size="12" class="shrink-0 text-accent-600"/>
-      <button type="button" class="min-w-0 truncate text-left" :title="`${label}\n\n${scope.focus}\n\nEvery view shows only these ${count.toLocaleString('en-US')} components.`" :aria-expanded="open" @click.stop="open = !open">{{ label }}</button>
-      <span class="shrink-0 font-mono text-xs text-neutral-500">{{ count.toLocaleString("en-US") }}</span>
+      <button type="button" class="min-w-0 truncate text-left" :title="t('groups.focusChip.everyViewShowsOnly', { label, focus: scope.focus, value: count.toLocaleString(intlLocale) })" :aria-expanded="open" @click.stop="open = !open">{{ label }}</button>
+      <span class="shrink-0 font-mono text-xs text-neutral-500">{{ count.toLocaleString(intlLocale) }}</span>
       <template v-if="spec && hasDepth(spec)">
-        <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 disabled:opacity-30" :disabled="!narrower" title="One hop less (−)" aria-label="One hop less" @click.stop="step(-1)"><Icon icon="minus" :size="11"/></button>
-        <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 disabled:opacity-30" :disabled="!wider" title="One hop more (+)" aria-label="One hop more" @click.stop="step(1)"><Icon icon="plus" :size="11"/></button>
+        <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 disabled:opacity-30" :disabled="!narrower" :title="t('groups.focusChip.oneHopLess')" :aria-label="t('groups.focusChip.oneHopLess2')" @click.stop="step(-1)"><Icon icon="minus" :size="11"/></button>
+        <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 disabled:opacity-30" :disabled="!wider" :title="t('groups.focusChip.oneHopMore')" :aria-label="t('groups.focusChip.oneHopMore2')" @click.stop="step(1)"><Icon icon="plus" :size="11"/></button>
       </template>
-      <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900" title="Clear the focus" aria-label="Clear the focus" @click.stop="scope.clearFocus()">
+      <button type="button" class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900" :title="t('groups.focusChip.clearFocus')" :aria-label="t('groups.focusChip.clearFocus')" @click.stop="scope.clearFocus()">
         <Icon icon="x" :size="11"/>
       </button>
     </span>
@@ -26,8 +26,8 @@
       v-if="scope.focusAhead.length"
       type="button"
       class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet"
-      :title="`Forward (⌥→)`"
-      aria-label="Forward"
+      :title="t('groups.focusChip.forward')"
+      :aria-label="t('groups.focusChip.forward2')"
       @click="scope.forward()"
     >
       <Icon icon="arrow-right" :size="13"/>
@@ -37,35 +37,35 @@
       <div class="fixed inset-0 z-40" @click="open = false"></div>
       <div class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-80 flex-col gap-3 p-3 animate-in">
         <div class="flex flex-col gap-1">
-          <span class="ui-label">Focus</span>
+          <span class="ui-label">{{ t('groups.focusChip.focus') }}</span>
           <p class="text-sm text-neutral-800">{{ label }}</p>
           <code class="whitespace-pre-wrap break-all rounded bg-neutral-100 px-1.5 py-1 font-mono text-xs text-neutral-700">{{ scope.focus }}</code>
-          <p class="text-xs leading-4 text-neutral-500">Every view shows only these {{ count.toLocaleString("en-US") }} components, measured on runtime imports.</p>
+          <p class="text-xs leading-4 text-neutral-500">{{ t('groups.focusChip.everyViewShowsOnly2', { value: count.toLocaleString(intlLocale) }) }}</p>
         </div>
         <div v-if="spec && directional" class="flex flex-col gap-1">
-          <span class="ui-label">Follow</span>
-          <div class="ui-segmented w-full" role="group" aria-label="Follow">
-            <button type="button" class="flex-1" :aria-pressed="spec.op === 'around'" @click="retarget('around')">Both ways</button>
-            <button type="button" class="flex-1" :aria-pressed="spec.op === 'dependencies'" @click="retarget('dependencies')">What it uses</button>
-            <button type="button" class="flex-1" :aria-pressed="spec.op === 'dependents'" @click="retarget('dependents')">What uses it</button>
+          <span class="ui-label">{{ t('groups.focusChip.follow') }}</span>
+          <div class="ui-segmented w-full" role="group" :aria-label="t('groups.focusChip.follow')">
+            <button type="button" class="flex-1" :aria-pressed="spec.op === 'around'" @click="retarget('around')">{{ t('groups.focusChip.bothWays') }}</button>
+            <button type="button" class="flex-1" :aria-pressed="spec.op === 'dependencies'" @click="retarget('dependencies')">{{ t('groups.focusChip.whatUses') }}</button>
+            <button type="button" class="flex-1" :aria-pressed="spec.op === 'dependents'" @click="retarget('dependents')">{{ t('groups.focusChip.whatUses2') }}</button>
           </div>
-          <div class="ui-segmented w-full" role="group" aria-label="How far">
-            <button v-for="d in [1, 2, 3]" :key="d" type="button" class="flex-1" :aria-pressed="spec.depth === d" @click="setDepth(d)">{{ d }} hop{{ d === 1 ? "" : "s" }}</button>
-            <button type="button" class="flex-1" :aria-pressed="spec.depth === null" @click="setDepth(null)">All</button>
+          <div class="ui-segmented w-full" role="group" :aria-label="t('groups.focusChip.howFar')">
+            <button v-for="d in [1, 2, 3]" :key="d" type="button" class="flex-1" :aria-pressed="spec.depth === d" @click="setDepth(d)">{{ t('groups.focusChip.text', { hops: t('common.count.hop', { count: d }) }) }}</button>
+            <button type="button" class="flex-1" :aria-pressed="spec.depth === null" @click="setDepth(null)">{{ t('groups.focusChip.all') }}</button>
           </div>
         </div>
         <div v-if="trail.length" class="flex flex-col gap-0.5">
-          <span class="ui-label">Earlier</span>
-          <button v-for="t in trail" :key="t.index" type="button" class="ui-menu-item" @click="scope.jumpBack(t.index); open = false">
+          <span class="ui-label">{{ t('groups.focusChip.earlier') }}</span>
+          <button v-for="trail in trail" :key="trail.index" type="button" class="ui-menu-item" @click="scope.jumpBack(trail.index); open = false">
             <Icon icon="history" :size="12" class="text-neutral-400"/>
-            <span class="min-w-0 flex-1 truncate">{{ t.label }}</span>
+            <span class="min-w-0 flex-1 truncate">{{ trail.label }}</span>
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" title="Keep this focus as a group whose members follow the imports" @click="saveAsGroup">
-            <Icon icon="users" :size="13"/><span>Save as group</span>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :title="t('groups.focusChip.keepFocusGroupWhose')" @click="saveAsGroup">
+            <Icon icon="users" :size="13"/><span>{{ t('groups.focusChip.saveGroup') }}</span>
           </button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="scope.clearFocus(); open = false">Clear</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="scope.clearFocus(); open = false">{{ t('groups.focusChip.clear') }}</button>
         </div>
       </div>
     </template>
@@ -82,6 +82,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { componentLabel } from "~/features/navigation/routes";
 import { describeFocus, focusText, hasDepth, shortName, stepDepth, type FocusOp } from "~/features/navigation/focusSpec";
 import { parseFocus } from "~/features/groups/query";
+import { t, intlLocale } from "~/shared/i18n";
 
 // The focus, said once in every view's toolbar: what it holds, one hop
 // wider or narrower, back along the trail, and kept as a group when it turns
@@ -95,7 +96,7 @@ const open = ref(false);
 
 // The tail of the name: `org.broadleafcommerce.` filled the chip before the name began.
 const nameOf = (id: string) => (id === "." ? componentLabel(id, workspaces.active?.name) : shortName(id));
-const describe = (text: string) => (text ? describeFocus(parseFocus(text), text, nameOf) : "Everything");
+const describe = (text: string) => (text ? describeFocus(parseFocus(text), text, nameOf) : t("groups.focusChip.everything"));
 
 const spec = computed(() => parseFocus(scope.focus));
 const label = computed(() => describe(scope.focus));

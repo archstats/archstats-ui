@@ -59,9 +59,9 @@
         <div class="break-all font-mono text-[11px]">{{ hover }}</div>
         <div class="mt-0.5 text-[11px] opacity-80">{{ tip }}</div>
         <div v-if="hoverRefs" class="mt-1 flex items-center gap-3 text-[11px] opacity-80">
-          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-current"/>imports {{ hoverRefs.uses.length }}</span>
-          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-blue-400"/>imported by {{ hoverRefs.usedBy.length }}</span>
-          <span v-if="hoverRefs.bad" class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-red-400"/>{{ hoverRefs.bad }} against the grain</span>
+          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-current"/>{{ t('checks.folderMap.imports', { usesLength: hoverRefs.uses.length }) }}</span>
+          <span class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-blue-400"/>{{ t('checks.folderMap.imported', { usedByLength: hoverRefs.usedBy.length }) }}</span>
+          <span v-if="hoverRefs.bad" class="flex items-center gap-1"><span class="inline-block h-0.5 w-3 bg-red-400"/>{{ t('checks.folderMap.againstGrain', { bad: hoverRefs.bad }) }}</span>
         </div>
       </div>
     </div>
@@ -75,6 +75,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { folderTree, type FolderNode } from "../folderTree"
 import { useSvgFigure } from "~/features/export/useExportables"
 import type { FigureLegend } from "~/features/export/figure"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   files: string[]
@@ -116,7 +117,7 @@ const figure = props.figure
       legendInUi: () => props.legendInUi,
       legend: () => ({
         ...props.legend,
-        notes: [...(props.legend?.notes ?? []), "A cell is a production file, sized by its lines and nested in the folders that hold it."],
+        notes: [...(props.legend?.notes ?? []), t("checks.folderMap.cellProductionFileSized")],
       }),
     })
   : null
@@ -254,7 +255,7 @@ const hoverRect = computed(() => (hover.value ? rectOf.value.get(hover.value) ??
 const tip = computed(() => {
   if (!hover.value) return ""
   const n = props.lines.get(hover.value)
-  const size = n ? `${n.toLocaleString("en-US")} lines` : "no line count"
+  const size = n ? t("checks.folderMap.lines", { value: n.toLocaleString(intlLocale) }) : t("checks.folderMap.noLineCount")
   const more = props.describe?.(hover.value)
   return more ? `${size} · ${more}` : size
 })

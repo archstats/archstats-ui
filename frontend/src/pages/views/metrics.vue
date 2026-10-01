@@ -1,8 +1,8 @@
 <template>
   <ViewWorkspaceLayout
-      title="Metrics"
+      :title="t('pages.metrics.metrics')"
       v-model:search-query="searchQuery"
-    :search-placeholder="grain === 'files' ? 'Find a file' : grain === 'directories' ? 'Find a directory' : 'Find a component'"
+    :search-placeholder="grain === 'files' ? t('pages.metrics.findFile') : grain === 'directories' ? t('pages.metrics.findDirectory') : t('pages.metrics.findComponent')"
       v-model:is-sidebar-open="isSidebarOpen"
       v-model:active-tab="activeTab"
       :tabs="inspectorTabs"
@@ -11,34 +11,34 @@
   >
     <template #stats>
       <span v-if="grain !== 'directories'">{{ grainLabel }} <span class="text-neutral-800">{{ countText }}</span></span>
-      <button v-if="isOverview && brushTotal > 0" type="button" class="ui-chip is-active" :title="'Clear every brush'" @click="brushes = {}">
-        <span>{{ brushTotal }} {{ brushTotal === 1 ? 'brush' : 'brushes' }}</span><Icon icon="x" :size="11"/>
+      <button v-if="isOverview && brushTotal > 0" type="button" class="ui-chip is-active" :title="t('pages.metrics.clearEveryBrush')" @click="brushes = {}">
+        <span>{{ brushTotal }} {{t('common.noun.brush', { count: brushTotal })}}</span><Icon icon="x" :size="11"/>
       </button>
     </template>
 
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Grain">
-        <button type="button" :aria-pressed="grain === 'components'" @click="grain = 'components'">Components</button>
-        <button type="button" :aria-pressed="grain === 'files'" @click="grain = 'files'">Files</button>
-        <button type="button" :aria-pressed="grain === 'directories'" title="An outline by directory, every number rolled up" @click="grain = 'directories'">Directories</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.grain')">
+        <button type="button" :aria-pressed="grain === 'components'" @click="grain = 'components'">{{ t('pages.metrics.components') }}</button>
+        <button type="button" :aria-pressed="grain === 'files'" @click="grain = 'files'">{{ t('pages.metrics.files') }}</button>
+        <button type="button" :aria-pressed="grain === 'directories'" :title="t('pages.metrics.outlineDirectoryEveryNumber')" @click="grain = 'directories'">{{ t('pages.metrics.directories') }}</button>
       </div>
-      <div class="ui-segmented" role="group" aria-label="View">
-        <button type="button" :aria-pressed="view === 'summary' && grain !== 'directories'" :disabled="grain === 'directories'" title="What stands out, and where to look next" @click="view = 'summary'">Summary</button>
-        <button type="button" :aria-pressed="view === 'table' || grain === 'directories'" @click="view = 'table'">Table</button>
-        <button type="button" :aria-pressed="view === 'plot' && grain !== 'directories'" :disabled="grain === 'directories'" :title="grain === 'directories' ? 'Directories have no plot: their numbers are rollups, not measurements' : undefined" @click="view = 'plot'">Plot</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.view')">
+        <button type="button" :aria-pressed="view === 'summary' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.whatStandsOutWhere')" @click="view = 'summary'">{{ t('pages.metrics.summary') }}</button>
+        <button type="button" :aria-pressed="view === 'table' || grain === 'directories'" @click="view = 'table'">{{ t('pages.metrics.table') }}</button>
+        <button type="button" :aria-pressed="view === 'plot' && grain !== 'directories'" :disabled="grain === 'directories'" :title="grain === 'directories' ? t('pages.metrics.directoriesHaveNoPlot') : undefined" @click="view = 'plot'">{{ t('pages.metrics.plot') }}</button>
       </div>
-      <div class="ui-segmented" role="group" aria-label="Overview prototypes">
-        <button type="button" :aria-pressed="view === 'matrix' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every metric pair at once, one opened as the full plot" @click="view = 'matrix'">Matrix</button>
-        <button type="button" :aria-pressed="view === 'strips' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every metric as a strip of dots, brushed together" @click="view = 'strips'">Strips</button>
-        <button type="button" :aria-pressed="view === 'profiles' && grain !== 'directories'" :disabled="grain === 'directories'" title="Prototype: every row as one line across every metric" @click="view = 'profiles'">Profiles</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.overviewPrototypes')">
+        <button type="button" :aria-pressed="view === 'matrix' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryMetricPair')" @click="view = 'matrix'">{{ t('pages.metrics.matrix') }}</button>
+        <button type="button" :aria-pressed="view === 'strips' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryMetricStrip')" @click="view = 'strips'">{{ t('pages.metrics.strips') }}</button>
+        <button type="button" :aria-pressed="view === 'profiles' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryRowOne')" @click="view = 'profiles'">{{ t('pages.metrics.profiles') }}</button>
       </div>
     </template>
 
     <template #config-popover>
       <div class="flex flex-col gap-2">
-        <span class="ui-label">Table columns</span>
+        <span class="ui-label">{{ t('pages.metrics.tableColumns') }}</span>
         <StatSelectMulti :key="pickerKey" v-model="visibleColumns" :options="columnOptions"/>
-        <button type="button" class="ui-btn ui-btn-sm self-start" @click="resetColumns">Reset to defaults</button>
+        <button type="button" class="ui-btn ui-btn-sm self-start" @click="resetColumns">{{ t('pages.metrics.resetDefaults') }}</button>
       </div>
     </template>
 
@@ -47,60 +47,60 @@
       <!-- Plot controls: a second toolbar row under the frame; groups wrap whole rather than clip. -->
       <div v-if="(view === 'plot' || view === 'matrix') && grain !== 'directories'" class="flex min-h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-1.5 hairline-b">
         <div class="flex items-center gap-2">
-          <span class="ui-label">Preset</span>
-          <SingleSelect :model-value="activePreset?.name ?? null" :options="presetNames" placeholder="Custom" @update:model-value="selectPresetByName"/>
+          <span class="ui-label">{{ t('pages.metrics.preset') }}</span>
+          <SingleSelect :model-value="activePreset?.name ?? null" :options="presetNames" :placeholder="t('pages.metrics.custom')" @update:model-value="selectPresetByName"/>
         </div>
         <span class="ui-toolbar-sep"></span>
         <div class="flex items-center gap-2">
           <span class="ui-label">X</span>
           <StatSelectSingle v-model="xAxis" :options="numericColumns"/>
-          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="xLog" title="Log scale on X" @click="xLog = !xLog">log</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Swap axes" title="Swap X and Y" @click="swapAxes">
+          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="xLog" :title="t('pages.metrics.logScaleX')" @click="xLog = !xLog">{{ t('pages.metrics.log') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('pages.metrics.swapAxes')" :title="t('pages.metrics.swapXY')" @click="swapAxes">
             <Icon icon="arrow-left-right" :size="13"/>
           </button>
           <span class="ui-label">Y</span>
           <StatSelectSingle v-model="yAxis" :options="numericColumns"/>
-          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="yLog" title="Log scale on Y" @click="yLog = !yLog">log</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-log-toggle" :aria-pressed="yLog" :title="t('pages.metrics.logScaleY')" @click="yLog = !yLog">{{ t('pages.metrics.log') }}</button>
         </div>
         <span class="ui-toolbar-sep"></span>
         <div class="flex items-center gap-2">
-          <span class="ui-label">Size</span>
-          <StatSelectSingle v-model="radius" :options="numericColumns" placeholder="Even"/>
-          <button v-if="radius" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear size" title="Clear size" @click="radius = null">
+          <span class="ui-label">{{ t('pages.metrics.size') }}</span>
+          <StatSelectSingle v-model="radius" :options="numericColumns" :placeholder="t('pages.metrics.even')"/>
+          <button v-if="radius" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('pages.metrics.clearSize')" :title="t('pages.metrics.clearSize')" @click="radius = null">
             <Icon icon="x" :size="12"/>
           </button>
-          <span class="ui-label">Colour</span>
-          <StatSelectSingle v-model="colour" :options="numericColumns" placeholder="Groups"/>
-          <button v-if="colour" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Colour by group" title="Colour by group" @click="colour = null">
+          <span class="ui-label">{{ t('pages.metrics.colour') }}</span>
+          <StatSelectSingle v-model="colour" :options="numericColumns" :placeholder="t('pages.metrics.groups')"/>
+          <button v-if="colour" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('pages.metrics.colourGroup')" :title="t('pages.metrics.colourGroup')" @click="colour = null">
             <Icon icon="x" :size="12"/>
           </button>
         </div>
         <span class="ui-toolbar-sep"></span>
-        <div class="ui-segmented" role="group" aria-label="Labels">
-          <button type="button" :aria-pressed="labelMode === 'auto'" title="Name the marks furthest out, and whatever you select" @click="labelMode = 'auto'">Outliers</button>
-          <button type="button" :aria-pressed="labelMode === 'all'" @click="labelMode = 'all'">All</button>
-          <button type="button" :aria-pressed="labelMode === 'none'" title="Only the selection and the mark under the pointer" @click="labelMode = 'none'">None</button>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.labels')">
+          <button type="button" :aria-pressed="labelMode === 'auto'" :title="t('pages.metrics.nameMarksFurthestOut')" @click="labelMode = 'auto'">{{ t('pages.metrics.outliers') }}</button>
+          <button type="button" :aria-pressed="labelMode === 'all'" @click="labelMode = 'all'">{{ t('pages.metrics.all') }}</button>
+          <button type="button" :aria-pressed="labelMode === 'none'" :title="t('pages.metrics.onlySelectionMarkUnder')" @click="labelMode = 'none'">{{ t('pages.metrics.none') }}</button>
         </div>
         <!-- These are the plot's controls, so the plot exports from their end. -->
         <ExhibitButton :exhibit="plotFigure" class="ml-auto"/>
       </div>
 
       <DirectoryTree v-if="grain === 'directories'" :search="searchQuery"/>
-      <LoadingState v-else-if="loading" :text="grain === 'files' ? 'Loading files…' : 'Loading components…'"/>
+      <LoadingState v-else-if="loading" :text="grain === 'files' ? t('pages.metrics.loadingFiles') : t('pages.metrics.loadingComponents')"/>
       <EmptyState
           v-else-if="allRows.length === 0"
-          :title="grain === 'files' ? 'No file metrics in this snapshot.' : 'No components in this snapshot.'"
-          :text="grain === 'files' ? 'The snapshot has no files table; run a scan with file metrics enabled.' : 'Open a snapshot with at least one component.'"
+          :title="grain === 'files' ? t('pages.metrics.noFileMetricsSnapshot') : t('pages.metrics.noComponentsSnapshot')"
+          :text="grain === 'files' ? t('pages.metrics.snapshotHasNoFiles') : t('pages.metrics.openSnapshotLeastOne')"
           icon="table"
       />
       <EmptyState
           v-else-if="filteredRows.length === 0"
-          title="Nothing matches."
-          :text="scope.isActive ? 'The active scope and search leave nothing to show. Clear one of them.' : 'No name matches the search.'"
+          :title="t('pages.metrics.nothingMatches')"
+          :text="scope.isActive ? t('pages.metrics.activeScopeSearchLeave') : t('pages.metrics.noNameMatchesSearch')"
           icon="search"
       >
-        <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
-        <button v-if="scope.isActive" type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">Clear scope</button>
+        <button v-if="searchQuery" type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">{{ t('pages.metrics.clearSearch') }}</button>
+        <button v-if="scope.isActive" type="button" class="ui-btn ui-btn-sm" @click="scope.clear(); scope.setFacet('all')">{{ t('pages.metrics.clearScope') }}</button>
       </EmptyState>
       <MetricsSummary v-else-if="view === 'summary'" :rows="filteredRows" :metrics="overviewKeys" :grain="grain === 'files' ? 'file' : 'component'" @go="go" @open="openName"/>
       <div v-else-if="view === 'table'" class="min-h-0 grow overflow-y-auto px-4 py-3">
@@ -112,8 +112,8 @@
             :show-groups="grainGroups.length > 0"
             :instrumented="true"
             :max-page-size="25"
-            :name-column="grain === 'files' ? 'File' : 'Component'"
-            :export-title="grain === 'files' ? 'Metrics: files' : 'Metrics: components'"
+            :name-column="grain === 'files' ? t('pages.metrics.file') : t('pages.metrics.component')"
+            :export-title="grain === 'files' ? t('pages.metrics.metricsFiles') : t('pages.metrics.metricsComponents')"
             :initial-sort="tableSort ?? (visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name')"
             :key="`${grain}:${tableSort ?? ''}`"
             :selected-elements="selectedNames"
@@ -146,8 +146,8 @@
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
           <ElementTable :key="`m-${grain}`" :elements="playRows" :only-show-columns="matrixSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
-                        :export-title="brushTotal ? 'In the brushes' : 'Metrics in play'"
-                        :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
+                        :export-title="brushTotal ? t('pages.metrics.brushes') : t('pages.metrics.metricsPlay')"
+                        :name-column="grain === 'files' ? t('pages.metrics.file') : t('pages.metrics.component')" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
       </div>
@@ -171,7 +171,7 @@
         </div>
         </div>
         <aside class="w-[340px] shrink-0 bg-ground hairline-l">
-          <RankedRows :rows="playRows" :sort-key="stripSort" :title="brushTotal ? 'In the brushes' : 'All'"
+          <RankedRows :rows="playRows" :sort-key="stripSort" :title="brushTotal ? t('pages.metrics.brushes') : t('pages.metrics.all')"
                       :selected="selectedNames" @update:selected="selectedNames = $event"
                       v-model:hovered="hoveredName" @open="openName"/>
         </aside>
@@ -194,8 +194,8 @@
         </div>
         <div class="min-h-0 grow overflow-y-auto px-4 py-2 hairline-t">
           <ElementTable :key="`p-${grain}`" :elements="playRows" :only-show-columns="profileSet" :clickable-elements="true" :selectable-elements="true" :instrumented="true" :max-page-size="25"
-                        :export-title="brushTotal ? 'In the brushes' : 'Metrics in play'"
-                        :name-column="grain === 'files' ? 'File' : 'Component'" initial-sort="codesmells__hotspot_score"
+                        :export-title="brushTotal ? t('pages.metrics.brushes') : t('pages.metrics.metricsPlay')"
+                        :name-column="grain === 'files' ? t('pages.metrics.file') : t('pages.metrics.component')" initial-sort="codesmells__hotspot_score"
                         :selected-elements="selectedNames" @update:selected-elements="selectedNames = $event" @clicked-element="openRow"/>
         </div>
       </div>
@@ -227,7 +227,7 @@
           />
         </ExhibitFrame>
       </div>
-      <EmptyState v-else title="Pick two metrics to plot." text="Choose an X and a Y metric above, or a preset." icon="settings"/>
+      <EmptyState v-else :title="t('pages.metrics.pickTwoMetricsPlot')" :text="t('pages.metrics.chooseXYMetric')" icon="settings"/>
 
       <GroupActionBar v-if="grain !== 'directories'" :selected-items="selectedNames" :kind="grain === 'files' ? 'file' : 'component'" :universe="filteredRows.map(r => String(r.name))" :show-in-except="['metrics']" @replace="selectedNames = $event" @clear="selectedNames = []"/>
     </template>
@@ -239,15 +239,14 @@
     <template #tab-reading>
       <template v-if="reading && xAxis && yAxis">
         <section class="flex flex-col gap-2">
-          <h3 class="ui-section-title">{{ reading.kind === 'main-sequence' ? 'Zones' : 'Split at the medians' }}</h3>
+          <h3 class="ui-section-title">{{ reading.kind === 'main-sequence' ? t('pages.metrics.zones') : t('pages.metrics.splitMedians') }}</h3>
           <p v-if="reading.kind === 'medians'" class="text-sm leading-4 text-neutral-500">
-            Half of all {{ grainNoun }} sit either side of each line: {{ niceName(xAxis) }} <span class="font-mono text-neutral-700">{{ formatReading(reading.mx) }}</span>, {{ niceName(yAxis) }} <span class="font-mono text-neutral-700">{{ formatReading(reading.my) }}</span>.
-          </p>
-          <p v-else class="text-sm leading-4 text-neutral-500">Distance from the main sequence above 0.5, on either side of the line.</p>
+<I18nT k="pages.metrics.halfAllSitEither"><template #grainNoun>{{ grainNoun }}</template><template #xAxis>{{ niceName(xAxis) }}</template><template #mx><span class="font-mono text-neutral-700">{{ formatReading(reading.mx) }}</span></template><template #yAxis>{{ niceName(yAxis) }}</template><template #my><span class="font-mono text-neutral-700">{{ formatReading(reading.my) }}</span></template></I18nT> </p>
+          <p v-else class="text-sm leading-4 text-neutral-500">{{ t('pages.metrics.distanceMainSequenceAbove') }}</p>
           <div class="-mx-2 flex flex-col">
             <button v-for="cell in readingCells" :key="cell.id" type="button"
                     class="group flex h-8 items-center gap-2 rounded px-2 text-left hover:bg-neutral-200/60"
-                    :title="`Select these ${cell.names.length}`"
+                    :title="t('pages.metrics.selectThese', { namesLength: cell.names.length })"
                     @click="selectedNames = [...cell.names]">
               <span class="w-8 shrink-0 text-right font-mono text-sm font-semibold tabular-nums text-neutral-900">{{ cell.names.length }}</span>
               <span class="min-w-0 grow truncate text-sm text-neutral-700 group-hover:text-neutral-900">{{ cellText[cell.id] }}</span>
@@ -256,7 +255,7 @@
           </div>
         </section>
         <section class="flex flex-col gap-2">
-          <h3 class="ui-section-title">Furthest out</h3>
+          <h3 class="ui-section-title">{{ t('pages.metrics.furthestOut') }}</h3>
           <ul class="-mx-2 flex flex-col">
             <li v-for="name in reading.outliers.slice(0, 10)" :key="name">
               <button type="button"
@@ -270,28 +269,27 @@
               </button>
             </li>
           </ul>
-          <p class="text-sm leading-4 text-neutral-500">{{ reading.kind === 'main-sequence' ? 'Ranked by distance from the main sequence.' : 'Ranked by how far each sits from both medians, in interquartile ranges.' }}</p>
+          <p class="text-sm leading-4 text-neutral-500">{{ reading.kind === 'main-sequence' ? t('pages.metrics.rankedDistanceMainSequence') : t('pages.metrics.rankedHowFarEach') }}</p>
         </section>
         <p v-if="reading.missing > 0" class="text-sm leading-4 text-neutral-500">
-          <span class="font-mono text-neutral-700">{{ reading.missing }}</span> {{ reading.missing === 1 ? grainNoun.slice(0, -1) : grainNoun }} without {{ missingAxes }} {{ reading.missing === 1 ? 'is' : 'are' }} not drawn.
-        </p>
+          <I18nT k="pages.metrics.withoutNotDrawn"><template #missing><span class="font-mono text-neutral-700">{{ reading.missing }}</span></template><template #value>{{ reading.missing === 1 ? grainNoun.slice(0, -1) : grainNoun }}</template><template #missingAxes>{{ missingAxes }}</template><template #value2>{{t('common.noun.is', { count: reading.missing })}}</template></I18nT> </p>
       </template>
     </template>
 
     <template #tab-selection>
       <div class="flex items-center justify-between">
-        <h3 class="ui-section-title">Selection <span class="ui-tag ml-1">{{ selectedNames.length }}</span></h3>
-        <button v-if="selectedNames.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selectedNames = []">Clear</button>
+        <h3 class="ui-section-title">{{ t('pages.metrics.selection2') }} <span class="ui-tag ml-1">{{ selectedNames.length }}</span></h3>
+        <button v-if="selectedNames.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="selectedNames = []">{{ t('pages.metrics.clear') }}</button>
       </div>
-      <p v-if="selectedNames.length === 0" class="text-sm leading-4 text-neutral-500">Nothing selected. Click a mark, drag a box across the plot, or pick a corner.</p>
+      <p v-if="selectedNames.length === 0" class="text-sm leading-4 text-neutral-500">{{ t('pages.metrics.nothingSelectedClickMark') }}</p>
       <template v-else>
         <dl v-if="xAxis && yAxis && selectionMedians" class="ui-kv">
-          <dt class="truncate">Median {{ niceName(xAxis) }}</dt><dd>{{ formatReading(selectionMedians.x) }}</dd>
-          <dt class="truncate">Median {{ niceName(yAxis) }}</dt><dd>{{ formatReading(selectionMedians.y) }}</dd>
+          <dt class="truncate">{{ t('pages.metrics.median', { xAxis: niceName(xAxis) }) }}</dt><dd>{{ formatReading(selectionMedians.x) }}</dd>
+          <dt class="truncate">{{ t('pages.metrics.median2', { yAxis: niceName(yAxis) }) }}</dt><dd>{{ formatReading(selectionMedians.y) }}</dd>
         </dl>
         <ul class="-mx-2 flex flex-col">
           <li v-for="name in selectedNames" :key="name">
-            <router-link :to="detailRoute(name)" class="flex h-7 items-center gap-2 rounded px-2 hover:bg-neutral-200/60" :title="`${name} · open`">
+            <router-link :to="detailRoute(name)" class="flex h-7 items-center gap-2 rounded px-2 hover:bg-neutral-200/60" :title="t('pages.metrics.open', { name })">
               <span class="min-w-0 grow truncate font-mono text-sm text-neutral-900">{{ shortNames.get(name) ?? name }}</span>
               <span v-if="xAxis && yAxis" class="shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatReading(rowByName.get(name)?.[xAxis]) }} · {{ formatReading(rowByName.get(name)?.[yAxis]) }}</span>
             </router-link>
@@ -302,10 +300,10 @@
 
     <template #tab-legend>
       <div class="flex items-center justify-between">
-        <h3 class="ui-section-title">Groups</h3>
-        <button v-if="activeFilters.size > 0 || hiddenGroups.size > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="activeFilters.clear(); hiddenGroups.clear()">Clear</button>
+        <h3 class="ui-section-title">{{ t('pages.metrics.groups') }}</h3>
+        <button v-if="activeFilters.size > 0 || hiddenGroups.size > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="activeFilters.clear(); hiddenGroups.clear()">{{ t('pages.metrics.clear') }}</button>
       </div>
-      <p v-if="grainGroups.length === 0" class="text-sm leading-4 text-neutral-500">No groups yet. Select marks and use Add to group.</p>
+      <p v-if="grainGroups.length === 0" class="text-sm leading-4 text-neutral-500">{{ t('pages.metrics.noGroupsYetSelect') }}</p>
       <div v-else class="flex flex-wrap gap-1.5">
         <button
             v-for="group in grainGroups"
@@ -313,7 +311,7 @@
             type="button"
             class="ui-chip"
             :class="{ 'is-muted': hiddenGroups.has(group.id), 'is-active': !hiddenGroups.has(group.id) && activeFilters.has(group.id) }"
-            :title="hiddenGroups.has(group.id) ? 'Show group' : 'Click to filter to this group'"
+            :title="hiddenGroups.has(group.id) ? t('pages.metrics.showGroup') : t('pages.metrics.clickFilterGroup')"
             @click="hiddenGroups.has(group.id) ? toggleGroupVisibility(group.id) : toggleFilter(group.id)"
             @mouseenter="!hiddenGroups.has(group.id) && (hoveredGroupId = group.id)"
             @mouseleave="hoveredGroupId = null"
@@ -321,10 +319,10 @@
           <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: group.color }" :class="hiddenGroups.has(group.id) ? 'opacity-30' : ''"></span>
           <span :class="hiddenGroups.has(group.id) ? 'line-through' : ''">{{ group.name }}</span>
           <span class="font-mono text-xs text-neutral-500">{{ group.members.length }}</span>
-          <span v-if="!hiddenGroups.has(group.id)" class="ml-0.5 text-neutral-400 hover:text-neutral-700" title="Hide group" @click.stop="toggleGroupVisibility(group.id)"><Icon icon="x" :size="11"/></span>
+          <span v-if="!hiddenGroups.has(group.id)" class="ml-0.5 text-neutral-400 hover:text-neutral-700" :title="t('pages.metrics.hideGroup')" @click.stop="toggleGroupVisibility(group.id)"><Icon icon="x" :size="11"/></span>
         </button>
       </div>
-      <p class="text-sm leading-4 text-neutral-500">Marks take the colour of their group; a mark in several groups is striped. Click a chip to filter, hover to highlight.</p>
+      <p class="text-sm leading-4 text-neutral-500">{{ t('pages.metrics.marksTakeColourTheir') }}</p>
     </template>
   </ViewWorkspaceLayout>
 </template>
@@ -365,6 +363,8 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { formatReading } from "~/shared/format";
 import { distinctTails, finiteSorted, metricValue, quantile, readPlot, suggestLog, type PlotReading } from "~/features/metrics/plotReading";
+import { t, listOf } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // Metrics: every number for every component or file, as a table or a plot.
 // One grain switch, one filter (scope + search), one column picker, one
@@ -398,7 +398,7 @@ const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
 const isSidebarOpen = ref(true);
 const activeTab = ref("reading");
 const inspectorTabs = computed(() => ((view.value === "plot" || view.value === "matrix") && grain.value !== "directories"
-  ? [{ id: "reading", label: "Reading" }, { id: "selection", label: selectedNames.value.length ? `Selection ${selectedNames.value.length}` : "Selection" }, { id: "legend", label: "Groups" }]
+  ? [{ id: "reading", label: t("pages.metrics.reading") }, { id: "selection", label: selectedNames.value.length ? t("pages.metrics.selection", { selectedNamesLength: selectedNames.value.length }) : t("pages.metrics.selection2") }, { id: "legend", label: t("pages.metrics.groups") }]
   : []));
 
 // ─── Rows ───
@@ -449,10 +449,10 @@ const filteredRows = computed<Row[]>(() => {
   return scopedRows.value.filter((r) => test(String(r.name ?? "")));
 });
 
-const grainLabel = computed(() => (grain.value === "files" ? "Files" : grain.value === "directories" ? "Files" : "Components"));
+const grainLabel = computed(() => (grain.value === "files" ? t("pages.metrics.files") : grain.value === "directories" ? t("pages.metrics.files") : t("pages.metrics.components")));
 const countText = computed(() => {
-  if (isOverview.value && brushTotal.value) return `${playRows.value.length} of ${allRows.value.length}`;
-  return scope.isActive || searchQuery.value.trim() ? `${filteredRows.value.length} of ${allRows.value.length}` : `${allRows.value.length}`;
+  if (isOverview.value && brushTotal.value) return t("pages.metrics.of", { playRowsLength: playRows.value.length, allRowsLength: allRows.value.length });
+  return scope.isActive || searchQuery.value.trim() ? t("pages.metrics.of2", { filteredRowsLength: filteredRows.value.length, allRowsLength: allRows.value.length }) : `${allRows.value.length}`;
 });
 
 // ─── Columns ───
@@ -549,24 +549,24 @@ const labelMode = ref<"auto" | "all" | "none">("auto");
 type Words = { x?: [string, string]; y?: [string, string] };
 interface Preset { id: string; name: string; x: string; y: string; r?: string; c?: string; words?: Words }
 
-const CHANGES: [string, string] = ["Few changes", "Many changes"];
-const changes: [string, string] = ["few changes", "many changes"];
-const PATHS: [string, string] = ["Off the paths", "On many paths"];
+const CHANGES: [string, string] = [t("pages.metrics.fewChanges"), t("pages.metrics.manyChanges")];
+const changes: [string, string] = [t("pages.metrics.fewChanges2"), t("pages.metrics.manyChanges2")];
+const PATHS: [string, string] = [t("pages.metrics.offPaths"), t("pages.metrics.manyPaths")];
 
 const ALL_PRESETS: Preset[] = [
-  { id: "dms", name: "Distance to Main Sequence (DMS)", x: "modularity__instability", y: "modularity__abstractness", r: "complexity__lines", c: "codesmells__hotspot_score" },
-  { id: "dms-changes", name: "DMS vs Code Changes", x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
-  { id: "age-churn-dms", name: "Age vs Churn vs DMS", x: "git__age_in_days", y: "git__commits__total", r: "modularity__distance_main_sequence", words: { x: ["Young", "Old"], y: changes } },
-  { id: "betweenness-churn", name: "Betweenness vs Churn", x: "graph__betweenness", y: "git__commits__total", c: "codesmells__hotspot_score", words: { x: PATHS, y: changes } },
-  { id: "betweenness-avg-indentation", name: "Betweenness vs Avg. Indentation", x: "graph__betweenness", y: "complexity__indentation__avg", words: { x: PATHS, y: ["shallow", "deeply nested"] } },
-  { id: "betweenness-max-indentation", name: "Betweenness vs Max Indentation", x: "graph__betweenness", y: "complexity__indentation__max", words: { x: PATHS, y: ["shallow", "deeply nested"] } },
-  { id: "avg-indentation-lines", name: "Avg. Indentation vs Line Count", x: "complexity__indentation__avg", y: "complexity__lines", words: { x: ["Shallow", "Deeply nested"], y: ["small", "large"] } },
-  { id: "max-indentation-lines", name: "Max Indentation vs Line Count", x: "complexity__indentation__max", y: "complexity__lines", words: { x: ["Shallow", "Deeply nested"], y: ["small", "large"] } },
-  { id: "dms-betweenness", name: "DMS vs Betweenness", x: "modularity__instability", y: "modularity__abstractness", r: "graph__betweenness" },
-  { id: "dms-churn", name: "DMS vs Churn", x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
-  { id: "authors-churn", name: "Authors vs Churn", x: "git__authors__total", y: "git__commits__total", r: "complexity__lines", words: { x: ["Few authors", "Many authors"], y: changes } },
-  { id: "churn-health", name: "Churn against health", x: "git__commits__total", y: "codesmells__code_health", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: ["lower health", "higher health"] } },
-  { id: "churn-complexity", name: "Churn against complexity", x: "git__commits__total", y: "codesmells__static_complexity_score", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: ["simpler", "more complex"] } },
+  { id: "dms", name: t("pages.metrics.distanceMainSequenceDms"), x: "modularity__instability", y: "modularity__abstractness", r: "complexity__lines", c: "codesmells__hotspot_score" },
+  { id: "dms-changes", name: t("pages.metrics.dmsVsCodeChanges"), x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
+  { id: "age-churn-dms", name: t("pages.metrics.ageVsChurnVs"), x: "git__age_in_days", y: "git__commits__total", r: "modularity__distance_main_sequence", words: { x: ["Young", "Old"], y: changes } },
+  { id: "betweenness-churn", name: t("pages.metrics.betweennessVsChurn"), x: "graph__betweenness", y: "git__commits__total", c: "codesmells__hotspot_score", words: { x: PATHS, y: changes } },
+  { id: "betweenness-avg-indentation", name: t("pages.metrics.betweennessVsAvgIndentation"), x: "graph__betweenness", y: "complexity__indentation__avg", words: { x: PATHS, y: ["shallow", t("pages.metrics.deeplyNested")] } },
+  { id: "betweenness-max-indentation", name: t("pages.metrics.betweennessVsMaxIndentation"), x: "graph__betweenness", y: "complexity__indentation__max", words: { x: PATHS, y: ["shallow", t("pages.metrics.deeplyNested")] } },
+  { id: "avg-indentation-lines", name: t("pages.metrics.avgIndentationVsLine"), x: "complexity__indentation__avg", y: "complexity__lines", words: { x: ["Shallow", t("pages.metrics.deeplyNested2")], y: ["small", "large"] } },
+  { id: "max-indentation-lines", name: t("pages.metrics.maxIndentationVsLine"), x: "complexity__indentation__max", y: "complexity__lines", words: { x: ["Shallow", t("pages.metrics.deeplyNested2")], y: ["small", "large"] } },
+  { id: "dms-betweenness", name: t("pages.metrics.dmsVsBetweenness"), x: "modularity__instability", y: "modularity__abstractness", r: "graph__betweenness" },
+  { id: "dms-churn", name: t("pages.metrics.dmsVsChurn"), x: "modularity__instability", y: "modularity__abstractness", r: "git__commits__total" },
+  { id: "authors-churn", name: t("pages.metrics.authorsVsChurn"), x: "git__authors__total", y: "git__commits__total", r: "complexity__lines", words: { x: [t("pages.metrics.fewAuthors"), t("pages.metrics.manyAuthors")], y: changes } },
+  { id: "churn-health", name: t("pages.metrics.churnAgainstHealth"), x: "git__commits__total", y: "codesmells__code_health", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: [t("pages.metrics.lowerHealth"), t("pages.metrics.higherHealth")] } },
+  { id: "churn-complexity", name: t("pages.metrics.churnAgainstComplexity"), x: "git__commits__total", y: "codesmells__static_complexity_score", r: "complexity__lines", c: "codesmells__hotspot_score", words: { x: CHANGES, y: ["simpler", t("pages.metrics.moreComplex")] } },
 ];
 
 // A preset needs its axes and size; a colour the snapshot lacks is dropped, not the preset.
@@ -630,7 +630,7 @@ const usesAbstractness = (p: { x: string | null; y: string | null; r?: string | 
 const abstractnessCaveat = computed(() => {
   const lang = implicitLanguage.value;
   if (!lang || grain.value !== "components" || !usesAbstractness({ x: xAxis.value, y: yAxis.value, r: radius.value })) return "";
-  return `${lang} has no abstract types to count, so abstractness is 0 for every component here and distance from the main sequence is only instability turned around.`;
+  return t("pages.metrics.hasNoAbstractTypes", { lang });
 });
 
 // Axes that no longer exist at this grain fall back to a preset or the first two metrics.
@@ -682,10 +682,10 @@ const cellShare = (n: number) => {
 
 const cellText = computed<Partial<Record<PlotReading["cells"][number]["id"], string>>>(() => {
   if (!xAxis.value || !yAxis.value) return {};
-  if (isMainSequence.value) return { pain: "Zone of pain · stable, concrete", useless: "Zone of uselessness · abstract, unused" };
+  if (isMainSequence.value) return { pain: t("pages.metrics.zonePainStableConcrete"), useless: t("pages.metrics.zoneUselessnessAbstractUnused") };
   const words = activePreset.value?.words ?? {};
-  const x = words.x ?? [`Low ${niceName(xAxis.value)}`, `High ${niceName(xAxis.value)}`];
-  const y = words.y ?? [`low ${niceName(yAxis.value)}`, `high ${niceName(yAxis.value)}`];
+  const x = words.x ?? [t("pages.metrics.low", { xAxis: niceName(xAxis.value) }), t("pages.metrics.high", { xAxis: niceName(xAxis.value) })];
+  const y = words.y ?? [t("pages.metrics.low2", { yAxis: niceName(yAxis.value) }), t("pages.metrics.high2", { yAxis: niceName(yAxis.value) })];
   return { tl: `${x[0]} · ${y[1]}`, tr: `${x[1]} · ${y[1]}`, bl: `${x[0]} · ${y[0]}`, br: `${x[1]} · ${y[0]}` };
 });
 
@@ -695,7 +695,7 @@ const missingAxes = computed(() => {
   const rows = filteredRows.value;
   const lacks = (k: string) => rows.some((r) => !Number.isFinite(metricValue(r, k)));
   const names = [lacks(x) && niceName(x), lacks(y) && niceName(y)].filter(Boolean);
-  return names.join(" or ") || "a reading";
+  return listOf(names, "disjunction") || "a reading";
 });
 
 const selectionMedians = computed(() => {
@@ -722,9 +722,9 @@ const overviewKeys = computed(() => overviewMetrics(numericColumns.value));
 type OverviewView = "matrix" | "strips" | "profiles";
 const OVERVIEW_VIEWS: OverviewView[] = ["matrix", "strips", "profiles"];
 const SET_LIMITS: Record<OverviewView, { min: number; max: number; name: string }> = {
-  matrix: { min: 2, max: 8, name: "Matrix" },
-  strips: { min: 1, max: 16, name: "Strips" },
-  profiles: { min: 2, max: 16, name: "Profiles" },
+  matrix: { min: 2, max: 8, name: t("pages.metrics.matrix") },
+  strips: { min: 1, max: 16, name: t("pages.metrics.strips") },
+  profiles: { min: 2, max: 16, name: t("pages.metrics.profiles") },
 };
 const defaultSet = (v: OverviewView) => (v === "matrix" ? overviewMetrics(numericColumns.value, 6) : overviewKeys.value);
 const setStorageKey = (g: Grain, v: OverviewView) => `archstats-metrics-set-${g}-${v}`;

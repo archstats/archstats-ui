@@ -5,6 +5,8 @@
 // `archstats` block holding its spec, so the raw view shows it, moves it and
 // deletes it like any other text, and its output is reattached by id.
 
+import { t } from "~/shared/i18n"
+
 export type TextKind = "p" | "h1" | "h2" | "h3" | "ul" | "ol" | "quote" | "code" | "hr" | "table"
 
 /**
@@ -434,8 +436,8 @@ export function cellNumbers(blocks: Block[]): Map<string, string> {
         if (!isCell(b)) continue
         const kind = cellKind(b.cell)
         if (kind === "reading") continue
-        if (kind === "figure") out.set(b.id, `Figure ${++fig}`)
-        else out.set(b.id, `Table ${++tab}`)
+        if (kind === "figure") out.set(b.id, t("reports.reportDoc.figure", { value: ++fig }))
+        else out.set(b.id, t("reports.reportDoc.table", { value: ++tab }))
     }
     return out
 }

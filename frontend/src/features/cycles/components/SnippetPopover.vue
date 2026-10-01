@@ -8,7 +8,7 @@
   >
     <slot />
   </div>
-  <p v-if="inline && !fileContents" class="text-sm text-neutral-500">Source not available for this file.</p>
+  <p v-if="inline && !fileContents" class="text-sm text-neutral-500">{{ t('cycles.snippetPopover.sourceNotAvailableFile') }}</p>
 
   <!-- `inline` renders the same snippet in flow instead of as a hover popover. -->
   <Teleport to="body" :disabled="inline">
@@ -31,12 +31,12 @@
           <router-link
             :to="goToFileUrl"
             class="inline-flex items-center gap-1 px-2 py-0.5 text-[8px] font-extrabold text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 rounded transition-colors cursor-pointer"
-            title="View file at this line"
+            :title="t('cycles.snippetPopover.viewFileLine')"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-2.5 h-2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
-            <span>Go to file</span>
+            <span>{{ t('cycles.snippetPopover.goFile') }}</span>
           </router-link>
         </div>
       </div>
@@ -73,6 +73,7 @@
 import { ref, computed, watch } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
 import hljs from "highlight.js"
+import { t } from "~/shared/i18n"
 import "highlight.js/styles/atom-one-dark.css"
 
 const props = withDefaults(defineProps<{

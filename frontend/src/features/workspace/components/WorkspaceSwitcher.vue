@@ -8,8 +8,8 @@
         :class="open ? 'bg-neutral-100' : 'hover:bg-neutral-100'"
         :aria-expanded="open"
         aria-haspopup="dialog"
-        :aria-label="active ? `Workspace: ${active.name}. Switch workspace` : 'Add a workspace'"
-        :title="active ? `${active.managed && active.slug ? active.slug : active.folderPath}\nDouble-click the name to rename` : undefined"
+        :aria-label="active ? t('workspace.workspaceSwitcher.workspaceSwitchWorkspace', { activeName: active.name }) : t('workspace.workspaceSwitcher.addWorkspace')"
+        :title="active ? t('workspace.workspaceSwitcher.doubleClickNameRename', { value: active.managed && active.slug ? active.slug : active.folderPath }) : undefined"
         @click="toggle"
     >
       <Monogram :name="active?.name ?? ''"/>
@@ -19,7 +19,7 @@
           v-model="draftName"
           type="text"
           class="ui-input ui-input-sm -ml-1 h-6 min-w-0 flex-1 px-1 text-base font-semibold"
-          aria-label="Workspace name"
+          :aria-label="t('workspace.workspaceSwitcher.workspaceName')"
           maxlength="40"
           @keydown.enter.prevent="commitRename"
           @keydown.esc.prevent="cancelRename"
@@ -30,24 +30,24 @@
           v-else
           class="min-w-0 flex-1 truncate text-base font-semibold text-neutral-900"
           @dblclick.stop="beginRename"
-      >{{ active?.name ?? "No workspace" }}</span>
+      >{{ active?.name ?? t('workspace.workspaceSwitcher.noWorkspace') }}</span>
       <ChevronDown :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400 transition-transform" :class="{ 'rotate-180': open }" aria-hidden="true"/>
     </button>
 
     <!-- Clones in flight or waiting, under the workspace they will become. -->
-    <ul v-if="railClones.length || clones.landed" class="mt-1 flex flex-col gap-1" aria-label="Clones">
+    <ul v-if="railClones.length || clones.landed" class="mt-1 flex flex-col gap-1" :aria-label="t('workspace.workspaceSwitcher.clones')">
       <li v-for="j in railClones" :key="j.id">
         <button
             type="button"
             class="group/clone w-full rounded px-2 py-1 text-left transition-colors hover:bg-neutral-100"
-            :title="j.state === 'failed' ? j.error : `Show the clone of ${slugOf(j)}`"
+            :title="j.state === 'failed' ? j.error : t('workspace.workspaceSwitcher.showClone', { j: slugOf(j) })"
             @click="clones.show(j.id)"
         >
           <span class="flex items-center gap-1.5 text-xs leading-4">
             <AlertTriangle v-if="j.state === 'failed'" :size="12" class="shrink-0 text-red-600" aria-hidden="true"/>
             <Download v-else :size="12" :stroke-width="1.75" class="shrink-0 text-neutral-500" aria-hidden="true"/>
             <span class="min-w-0 flex-1 truncate" :class="j.state === 'failed' ? 'text-red-700' : 'text-neutral-700'">
-              {{ j.state === "failed" ? `Clone of ${slugOf(j)} failed` : `Cloning ${slugOf(j)}` }}
+              {{ j.state === "failed" ? t('workspace.workspaceSwitcher.cloneFailed', { j: slugOf(j) }) : t('workspace.workspaceSwitcher.cloning', { j: slugOf(j) }) }}
             </span>
             <span v-if="j.state === 'running' && j.progress.percent >= 0" class="shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">{{ Math.floor(j.progress.percent) }}%</span>
           </span>
@@ -59,14 +59,14 @@
       </li>
       <li v-if="clones.landed" class="flex items-center gap-1.5 px-2 py-1 text-xs leading-4 text-neutral-600" role="status">
         <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" aria-hidden="true"/>
-        <span class="min-w-0 truncate">Cloned {{ slugOf(clones.landed) }}.</span>
-        <button type="button" class="shrink-0 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500" @click="clones.openLanded()">Open it</button>
-        <button type="button" class="ml-auto shrink-0 text-neutral-400 hover:text-neutral-700" aria-label="Dismiss" @click="clones.dismissLanded()"><X :size="12"/></button>
+        <span class="min-w-0 truncate">{{ t('workspace.workspaceSwitcher.cloned', { landed: slugOf(clones.landed) }) }}</span>
+        <button type="button" class="shrink-0 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500" @click="clones.openLanded()">{{ t('workspace.workspaceSwitcher.open') }}</button>
+        <button type="button" class="ml-auto shrink-0 text-neutral-400 hover:text-neutral-700" :aria-label="t('workspace.workspaceSwitcher.dismiss')" @click="clones.dismissLanded()"><X :size="12"/></button>
       </li>
     </ul>
 
     <p v-if="conflict" class="mt-0.5 px-2 text-xs leading-4 text-neutral-500" role="status">
-      That folder was already a workspace, so it opened.
+      {{ t('workspace.workspaceSwitcher.folderWasAlreadyWorkspace') }}
     </p>
 
     <Teleport to="body">
@@ -77,7 +77,7 @@
             class="ui-popover fixed z-[900] flex w-[340px] flex-col overflow-hidden text-neutral-900"
             :style="panelStyle"
             role="dialog"
-            aria-label="Workspaces"
+            :aria-label="t('workspace.workspaceSwitcher.workspaces')"
         >
           <!-- Type to narrow; arrows and Enter pick. -->
           <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
@@ -87,8 +87,8 @@
                 v-model="query"
                 type="text"
                 class="h-full min-w-0 flex-1 bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400"
-                placeholder="Find a workspace"
-                aria-label="Find a workspace"
+                :placeholder="t('workspace.workspaceSwitcher.findWorkspace')"
+                :aria-label="t('workspace.workspaceSwitcher.findWorkspace')"
                 role="combobox"
                 aria-controls="workspace-list"
                 :aria-activedescendant="shown[highlight] ? `ws-${shown[highlight].id}` : undefined"
@@ -98,19 +98,19 @@
                 @keydown.up.prevent="move(-1)"
                 @keydown.enter.prevent="chooseHighlighted"
             >
-            <span class="shrink-0 font-mono text-[11px] text-neutral-400">{{ shown.length }}<template v-if="query"> of {{ workspaces.length }}</template></span>
+            <span class="shrink-0 font-mono text-[11px] text-neutral-400">{{ shown.length }}<template v-if="query">{{ ' ' + t('workspace.workspaceSwitcher.of', { workspacesLength: workspaces.length }) }}</template></span>
           </div>
 
-          <ul id="workspace-list" role="listbox" aria-label="Workspaces" class="max-h-[min(400px,55vh)] overflow-y-auto p-1">
+          <ul id="workspace-list" role="listbox" :aria-label="t('workspace.workspaceSwitcher.workspaces')" class="max-h-[min(400px,55vh)] overflow-y-auto p-1">
             <li v-for="(ws, i) in shown" :id="`ws-${ws.id}`" :key="ws.id" role="option" :aria-selected="i === highlight" class="group/row relative">
               <div v-if="confirmingId === ws.id" class="rounded bg-neutral-50 px-2 py-2">
                 <p class="text-base leading-5 text-neutral-900">
-                  Delete <span class="font-semibold">{{ ws.name }}</span>{{ deletionSuffix(ws) }}?
+{{ t('workspace.workspaceSwitcher.delete') }} <span class="font-semibold">{{ ws.name }}</span>{{ deletionSuffix(ws) }}?
                 </p>
-                <p class="mt-0.5 text-xs leading-4 text-neutral-500">{{ ws.managed ? "Archstats made this clone; it goes with the workspace." : "The folder on disk is untouched." }}</p>
+                <p class="mt-0.5 text-xs leading-4 text-neutral-500">{{ ws.managed ? t('workspace.workspaceSwitcher.archstatsMadeCloneGoes') : t('workspace.workspaceSwitcher.folderDiskUntouched') }}</p>
                 <div class="mt-2 flex gap-2">
-                  <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete(ws.id)">Delete</button>
-                  <button type="button" class="ui-btn ui-btn-sm" :ref="(el) => focusOnMount(el)" @click="cancelConfirm">Keep</button>
+                  <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete(ws.id)">{{ t('workspace.workspaceSwitcher.delete') }}</button>
+                  <button type="button" class="ui-btn ui-btn-sm" :ref="(el) => focusOnMount(el)" @click="cancelConfirm">{{ t('workspace.workspaceSwitcher.keep') }}</button>
                 </div>
               </div>
               <template v-else>
@@ -128,7 +128,7 @@
                     <span class="flex items-baseline gap-2">
                       <span class="min-w-0 flex-1 truncate text-base font-medium leading-4 text-neutral-900">{{ ws.name }}</span>
                       <span v-if="store.progress[ws.id]" class="flex shrink-0 items-center gap-1 font-mono text-[11px] leading-4 text-neutral-600">
-                        <Loader2 :size="10" class="animate-spin" aria-hidden="true"/>scanning
+                        <Loader2 :size="10" class="animate-spin" aria-hidden="true"/>{{ t('workspace.workspaceSwitcher.scanning') }}
                       </span>
                       <span v-else class="shrink-0 font-mono text-[11px] leading-4 text-neutral-500" :title="metaTitle(ws.id)">{{ lastScan(ws.id) }}</span>
                     </span>
@@ -141,8 +141,8 @@
                 <button
                     type="button"
                     class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 hover:!text-red-700"
-                    :aria-label="`Delete workspace ${ws.name}`"
-                    :title="`Delete ${ws.name}`"
+                    :aria-label="t('workspace.workspaceSwitcher.deleteWorkspace', { wsName: ws.name })"
+                    :title="t('workspace.workspaceSwitcher.delete2', { wsName: ws.name })"
                     tabindex="-1"
                     @click.stop="confirmingId = ws.id"
                 >
@@ -152,10 +152,10 @@
             </li>
             <li v-if="!shown.length" class="px-2 py-3 text-sm leading-4 text-neutral-500">
               <template v-if="query">
-                No workspace matches “{{ query }}”.
-                <button v-if="looksLikeAddress" type="button" class="ml-1 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2" @click="cloneQuery">Clone it</button>
+                {{ t('workspace.workspaceSwitcher.noWorkspaceMatches', { query }) }}
+                <button v-if="looksLikeAddress" type="button" class="ml-1 font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2" @click="cloneQuery">{{ t('workspace.workspaceSwitcher.clone') }}</button>
               </template>
-              <template v-else>No workspaces yet.</template>
+              <template v-else>{{ t('workspace.workspaceSwitcher.noWorkspacesYet') }}</template>
             </li>
           </ul>
 
@@ -165,17 +165,17 @@
                 <Loader2 v-if="adding" :size="13" class="animate-spin"/>
                 <FolderPlus v-else :size="14" :stroke-width="1.75"/>
               </span>
-              <span class="flex-1">Add folder…</span>
+              <span class="flex-1">{{ t('workspace.workspaceSwitcher.addFolder') }}</span>
               <kbd class="font-mono text-[11px] text-neutral-400">{{ mod }}N</kbd>
             </button>
             <button type="button" class="ui-menu-item" @click="cloneQuery">
               <span class="flex w-5 justify-center text-neutral-500" aria-hidden="true"><Download :size="14" :stroke-width="1.75"/></span>
-              <span class="flex-1">Clone repository…</span>
+              <span class="flex-1">{{ t('workspace.workspaceSwitcher.cloneRepository') }}</span>
               <kbd class="font-mono text-[11px] text-neutral-400">{{ isMac ? "⇧⌘N" : "Ctrl+Shift+N" }}</kbd>
             </button>
             <button v-if="active" type="button" class="ui-menu-item" @click="settingsOpen = true; open = false">
               <span class="flex w-5 justify-center text-neutral-500" aria-hidden="true"><Settings2 :size="14" :stroke-width="1.75"/></span>
-              <span class="flex-1 truncate">Settings for {{ active.name }}…</span>
+              <span class="flex-1 truncate">{{ t('workspace.workspaceSwitcher.settings', { activeName: active.name }) }}</span>
             </button>
           </div>
         </div>
@@ -196,6 +196,7 @@ import { useCloneStore } from "~/features/workspace/clone.store";
 import { relativeAge } from "~/shared/time";
 import { shortenPath } from "~/features/workspace/scanFlow";
 import { usePlatform } from "~/platform/usePlatform";
+import { t, listOf } from "~/shared/i18n";
 
 const store = useWorkspacesStore();
 const clones = useCloneStore();
@@ -331,20 +332,20 @@ async function confirmDelete(id: string) {
 function deletionSuffix(ws: models.Workspace): string {
   const n = store.scanCounts[ws.id] ?? 0;
   const parts: string[] = [];
-  if (n === 1) parts.push("its snapshot");
-  else if (n > 1) parts.push(`its ${n} snapshots`);
-  if (ws.managed) parts.push("its clone");
-  return parts.length ? ` and ${parts.join(" and ")}` : "";
+  if (n === 1) parts.push(t("workspace.workspaceSwitcher.snapshot"));
+  else if (n > 1) parts.push(t("workspace.workspaceSwitcher.snapshots2", { n }));
+  if (ws.managed) parts.push(t("workspace.workspaceSwitcher.clone2"));
+  return parts.length ? t("workspace.workspaceSwitcher.and", { parts: listOf(parts) }) : "";
 }
 
 function lastScan(id: string): string {
   const last = store.lastScanAt[id];
-  return last ? relativeAge(last, new Date(store.now)) : "not scanned";
+  return last ? relativeAge(last, new Date(store.now)) : t("workspace.workspaceSwitcher.notScanned");
 }
 
 function metaTitle(id: string): string {
   const n = store.scanCounts[id] ?? 0;
-  return n === 1 ? "1 snapshot" : `${n} snapshots`;
+  return n === 1 ? "1 snapshot" : t("workspace.workspaceSwitcher.snapshots", { n });
 }
 
 async function cancelConfirm() {

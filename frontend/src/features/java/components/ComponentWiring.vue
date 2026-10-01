@@ -4,17 +4,17 @@
   <div v-if="hasJava && (flags.length > 0 || wiring.nodes.length > 0)" class="flex flex-col gap-5">
     <section v-if="flags.length > 0">
       <div class="flex items-center gap-2">
-        <h3 class="ui-section-title">Structural flags</h3>
+        <h3 class="ui-section-title">{{ t('java.componentWiring.structuralFlags') }}</h3>
         <span class="font-mono text-xs text-neutral-400">{{ formatNumber(flags.length) }}</span>
       </div>
       <div class="mt-2 overflow-hidden rounded-lg hairline">
         <table class="ui-table">
           <thead>
             <tr>
-              <th class="w-[200px]">Rule</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Detail</th>
+              <th class="w-[200px]">{{ t('java.componentWiring.rule') }}</th>
+              <th>{{ t('java.componentWiring.from') }}</th>
+              <th>{{ t('java.componentWiring.to') }}</th>
+              <th>{{ t('java.componentWiring.detail') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -35,14 +35,14 @@
     </section>
 
     <section v-if="wiring.nodes.length > 0">
-      <ExhibitFrame title="Wiring">
+      <ExhibitFrame :title="t('java.componentWiring.wiring')">
         <template #controls>
-          <span v-if="crowded" class="text-xs text-neutral-400">Busiest classes named · hover any node</span>
+          <span v-if="crowded" class="text-xs text-neutral-400">{{ t('java.componentWiring.busiestClassesNamedHover') }}</span>
         </template>
         <template #aside>
           <label class="flex items-center gap-1.5 text-sm text-neutral-700">
             <input v-model="includeExternal" type="checkbox" class="ui-check"/>
-            Include external wiring
+            {{ t('java.componentWiring.includeExternalWiring') }}
           </label>
         </template>
         <!-- The graph takes the full column; what a selected node touches reads
@@ -51,21 +51,21 @@
         <EmptyState
           v-if="wiring.edges.length === 0"
           class="rounded-lg py-10 hairline"
-          title="No imports between these classes"
+          :title="t('java.componentWiring.noImportsBetweenThese')"
           :text="includeExternal
-            ? `The snapshot records no import between these ${wiring.nodes.length} classes, inside the component or out.`
-            : `The snapshot records no import from one of this component's own classes to another. Include external wiring to see what they reach outside it.`"
+            ? t('java.componentWiring.snapshotRecordsNoImport', { nodesLength: wiring.nodes.length })
+            : t('java.componentWiring.snapshotRecordsNoImport2')"
           icon="waypoints"
         />
         <div v-else class="overflow-hidden rounded-lg hairline">
           <ComponentWiringGraph class="w-full" :nodes="wiring.nodes" :edges="wiring.edges" :selected="selected" @select="selected = $event"/>
           <div class="bg-ground hairline-t">
-            <EmptyState v-if="!selectedNode" class="py-6" title="No bean selected" text="Click a node to see what it imports and what imports it." icon="focus"/>
+            <EmptyState v-if="!selectedNode" class="py-6" :title="t('java.componentWiring.noBeanSelected')" :text="t('java.componentWiring.clickNodeSeeWhat')" icon="focus"/>
             <template v-else>
               <div class="flex items-center gap-2 px-4 py-3 hairline-b">
                 <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full" :class="roleDotClass(selectedNode.role)"></span>
                 <router-link :to="`/views/files/${selectedNode.file}`" class="min-w-0 truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="selectedNode.file">{{ selectedNode.label }}</router-link>
-                <span class="ui-tag shrink-0">{{ selectedNode.role ?? "Class" }}</span>
+                <span class="ui-tag shrink-0">{{ roleName(selectedNode.role) }}</span>
               </div>
               <div class="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2">
                 <div v-for="side in sides" :key="side.key" class="min-w-0">
@@ -93,10 +93,11 @@ import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import { computed } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useComponentJava } from "~/features/java/useComponentJava"
-import { roleDotClass } from "~/features/java/java"
+import { roleDotClass, roleName } from "~/features/java/java"
 import { formatNumber } from "~/shared/format"
 import ComponentWiringGraph from "./ComponentWiringGraph.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ name: string }>()
 
@@ -107,8 +108,8 @@ const { hasJava, flags, wiring, includeExternal, selected, selectedNode, selecte
 const crowded = computed(() => wiring.value.nodes.length > 24)
 
 const sides = computed(() => [
-  { key: "out", title: "Imports", nodes: selectedOut.value, empty: "Imports nothing in the graph." },
-  { key: "in", title: "Imported by", nodes: selectedIn.value, empty: "Nothing in the graph imports it." },
+  { key: "out", title: t("java.componentWiring.imports"), nodes: selectedOut.value, empty: t("java.componentWiring.importsNothingGraph") },
+  { key: "in", title: t("java.componentWiring.imported"), nodes: selectedIn.value, empty: t("java.componentWiring.nothingGraphImports") },
 ])
 
 </script>

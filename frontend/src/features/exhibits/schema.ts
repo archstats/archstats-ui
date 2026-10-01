@@ -3,6 +3,8 @@
 // strings, enums, numbers and booleans, all flat, which is all a tool call or
 // an exhibit spec should ever need.
 
+import { t } from "~/shared/i18n"
+
 export type Scalar = string | number | boolean
 
 interface FieldDef {
@@ -82,19 +84,19 @@ export class ObjectSchema<S extends Shape = Shape> {
             let v = raw[k]
             if (v === null || v === undefined || v === "") {
                 if (d.default !== undefined) out[k] = d.default
-                else if (!d.optional) return { error: `"${k}" is required${d.description ? `: ${d.description}` : ""}.` }
+                else if (!d.optional) return { error: t("exhibits.schema.required", { k, value: d.description ? `: ${d.description}` : "" }) }
                 continue
             }
             if (d.type === "string") {
                 v = String(v).trim()
                 if (d.enum) {
                     const hit = d.enum.find(e => e.toLowerCase() === String(v).toLowerCase())
-                    if (!hit) return { error: `"${k}" must be one of ${d.enum.map(e => `"${e}"`).join(", ")}; got "${v}".` }
+                    if (!hit) return { error: t("exhibits.schema.mustOneGot", { k, value: d.enum.map(e => `"${e}"`).join(", "), v }) }
                     v = hit
                 }
             } else if (d.type === "number") {
                 let n = Number(v)
-                if (!Number.isFinite(n)) return { error: `"${k}" must be a number; got "${v}".` }
+                if (!Number.isFinite(n)) return { error: t("exhibits.schema.mustNumberGot", { k, v }) }
                 if (d.integer) n = Math.round(n)
                 if (d.min !== undefined) n = Math.max(d.min, n)
                 if (d.max !== undefined) n = Math.min(d.max, n)

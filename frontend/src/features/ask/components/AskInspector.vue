@@ -1,11 +1,11 @@
 <template>
-  <aside class="flex h-full flex-col" aria-label="Inspector">
+  <aside class="flex h-full flex-col" :aria-label="t('ask.askInspector.inspector')">
     <div class="flex h-9 shrink-0 items-center gap-1 px-2 hairline-b">
-      <div class="ui-segmented" role="tablist" aria-label="Inspector">
-        <button v-for="t in tabs" :key="t.id" type="button" role="tab" :aria-selected="ask.inspector.tab === t.id" :class="{ 'is-active': ask.inspector.tab === t.id }" @click="ask.inspector.tab = t.id">{{ t.label }}</button>
+      <div class="ui-segmented" role="tablist" :aria-label="t('ask.askInspector.inspector')">
+        <button v-for="tab2 in tabs" :key="tab2.id" type="button" role="tab" :aria-selected="ask.inspector.tab === tab2.id" :class="{ 'is-active': ask.inspector.tab === tab2.id }" @click="ask.inspector.tab = tab2.id">{{ tab2.label }}</button>
       </div>
       <span class="flex-1"/>
-      <button type="button" class="ui-btn ui-btn-quiet ui-btn-icon ui-btn-sm" title="Close the inspector" aria-label="Close the inspector" @click="ask.inspector.open = false"><X :size="13" :stroke-width="1.75"/></button>
+      <button type="button" class="ui-btn ui-btn-quiet ui-btn-icon ui-btn-sm" :title="t('ask.askInspector.closeInspector')" :aria-label="t('ask.askInspector.closeInspector')" @click="ask.inspector.open = false"><X :size="13" :stroke-width="1.75"/></button>
     </div>
 
     <div class="min-h-0 flex-1 overflow-y-auto">
@@ -13,12 +13,12 @@
       <div v-if="ask.inspector.tab === 'evidence'" class="p-3">
         <template v-if="chosen">
           <AskEvidence :e="chosen" compact @open="actions.open" @add="actions.add" @pin="actions.pin" @sql="actions.sql" @ask="q => $emit('ask', q)"/>
-          <p class="mt-2 text-[11px] text-neutral-500">Asked in: “{{ turnOf(chosen.id)?.question }}”</p>
+          <p class="mt-2 text-[11px] text-neutral-500">{{ t('ask.askInspector.asked', { question: turnOf(chosen.id)?.question }) }}</p>
         </template>
-        <p v-else-if="!all.length && !figures.length" class="py-6 text-center text-[12px] leading-relaxed text-neutral-500">Evidence appears here as the answers find it: every number an answer states points at one of these.</p>
+        <p v-else-if="!all.length && !figures.length" class="py-6 text-center text-[12px] leading-relaxed text-neutral-500">{{ t('ask.askInspector.evidenceAppearsHereAnswers') }}</p>
         <!-- The figures of the conversation and what each states: every fact id an answer cites is one of these. -->
         <div v-if="figures.length" :class="chosen ? 'mt-4' : ''">
-          <p class="ui-section-title mb-1">Figures and their facts · {{ figures.length }}</p>
+          <p class="ui-section-title mb-1">{{ t('ask.askInspector.figuresTheirFacts', { figuresLength: figures.length }) }}</p>
           <details v-for="x in figures" :key="x.id" class="ask-fig" :open="x.id === openFigure">
             <summary class="ask-ev-row" :class="{ 'ask-ev-row-on': x.id === openFigure }" @click="$emit('cite', x.id)">
               <span class="ask-ev-id">{{ x.id }}</span>
@@ -33,7 +33,7 @@
           </details>
         </div>
         <div v-if="all.length" class="mt-4">
-          <p class="ui-section-title mb-1">All evidence · {{ all.length }}</p>
+          <p class="ui-section-title mb-1">{{ t('ask.askInspector.allEvidence', { allLength: all.length }) }}</p>
           <button v-for="e in all" :key="e.id" type="button" class="ask-ev-row" :class="{ 'ask-ev-row-on': e.id === ask.inspector.evidenceId }" @click="$emit('cite', e.id)">
             <span class="ask-ev-id">{{ e.id }}</span>
             <component :is="iconOf(e.kind)" :size="12" :stroke-width="1.75" class="shrink-0 text-neutral-400"/>
@@ -45,21 +45,21 @@
       <!-- Context: what the model knows before it looks. -->
       <div v-else-if="ask.inspector.tab === 'context'" class="space-y-4 p-3 text-[12px]">
         <section>
-          <p class="ui-section-title mb-1">The snapshot card</p>
-          <p class="mb-1.5 text-[11px] text-neutral-500">Every question starts with this brief, so the model never starts from zero.</p>
-          <pre class="ask-pre">{{ ask.cardText || "Building…" }}</pre>
+          <p class="ui-section-title mb-1">{{ t('ask.askInspector.snapshotCard') }}</p>
+          <p class="mb-1.5 text-[11px] text-neutral-500">{{ t('ask.askInspector.everyQuestionStartsBrief') }}</p>
+          <pre class="ask-pre">{{ ask.cardText || t('ask.askInspector.building') }}</pre>
         </section>
         <section v-if="context">
-          <p class="ui-section-title mb-1">From the view</p>
+          <p class="ui-section-title mb-1">{{ t('ask.askInspector.view') }}</p>
           <p class="mb-1 text-neutral-700">{{ context.label }}<template v-if="context.subject"> · {{ context.subject.name }}</template></p>
           <ul class="space-y-0.5 text-[11.5px] text-neutral-600">
-            <li v-if="context.focus">Focus: <span class="font-mono">{{ context.focus }}</span></li>
-            <li v-if="context.selection?.length">Selected: {{ context.selection.length }}</li>
-            <li v-for="x in context.exhibits" :key="x.title">{{ x.kind === "table" ? `Table · ${x.title} (${x.total} rows)` : `Figure · ${x.title}` }}</li>
+            <li v-if="context.focus">{{ t('ask.askInspector.focus') }} <span class="font-mono">{{ context.focus }}</span></li>
+            <li v-if="context.selection?.length">{{ t('ask.askInspector.selected', { selectionLength: context.selection.length }) }}</li>
+            <li v-for="x in context.exhibits" :key="x.title">{{ x.kind === "table" ? t('ask.askInspector.tableRows', { title: x.title, total: x.total }) : t('ask.askInspector.figure', { title: x.title }) }}</li>
           </ul>
         </section>
         <section>
-          <p class="ui-section-title mb-1">What it can answer</p>
+          <p class="ui-section-title mb-1">{{ t('ask.askInspector.whatCanAnswer') }}</p>
           <div class="flex flex-wrap gap-1">
             <button v-for="c in capabilities" :key="c.id" type="button" class="ask-cap" :title="c.how" @click="$emit('ask', capitalise(c.asks[0]) + '?')">{{ c.asks[0] }}</button>
           </div>
@@ -68,40 +68,40 @@
 
       <!-- Trace: everything the last turns did, for tuning the harness. -->
       <div v-else class="space-y-3 p-3 text-[11.5px]">
-        <p v-if="!traced" class="py-6 text-center text-[12px] text-neutral-500">Ask something; each step shows here.</p>
+        <p v-if="!traced" class="py-6 text-center text-[12px] text-neutral-500">{{ t('ask.askInspector.askSomethingEachStep') }}</p>
         <template v-else>
           <div class="flex items-center gap-2">
-            <select v-model="traceId" class="ui-input ui-input-sm min-w-0 flex-1" aria-label="Which question">
-              <option v-for="t in turns" :key="t.id" :value="t.id">{{ t.question.slice(0, 60) }}</option>
+            <select v-model="traceId" class="ui-input ui-input-sm min-w-0 flex-1" :aria-label="t('ask.askInspector.whichQuestion')">
+              <option v-for="turn in turns" :key="turn.id" :value="turn.id">{{ turn.question.slice(0, 60) }}</option>
             </select>
           </div>
           <section>
-            <p class="ui-section-title mb-1">Route</p>
-            <p class="text-neutral-700">{{ traced.namespaces.join(" · ") }}<span class="text-neutral-400"> — offered tools follow these namespaces</span></p>
+            <p class="ui-section-title mb-1">{{ t('ask.askInspector.route') }}</p>
+            <p class="text-neutral-700">{{ traced.namespaces.join(" · ") }}<span class="text-neutral-400">{{ ' ' + t('ask.askInspector.offeredToolsFollowThese') }}</span></p>
           </section>
           <section v-if="traced.plan.length">
-            <p class="ui-section-title mb-1">Plan</p>
+            <p class="ui-section-title mb-1">{{ t('ask.askInspector.plan') }}</p>
             <ol class="list-decimal pl-4 text-neutral-700"><li v-for="(p, i) in traced.plan" :key="i">{{ p.claim }} <span class="text-neutral-400">— {{ p.test }}</span></li></ol>
           </section>
           <section>
-            <p class="ui-section-title mb-1">Model calls · {{ traced.trace.length }}</p>
+            <p class="ui-section-title mb-1">{{ t('ask.askInspector.modelCalls', { traceLength: traced.trace.length }) }}</p>
             <div v-for="c in traced.trace" :key="c.step" class="ask-trace">
-              <p class="flex gap-2 text-neutral-500"><span>step {{ c.step + 1 }}</span><span class="tabular-nums">{{ c.promptTokens }} in · {{ c.outputTokens }} out · {{ (c.ms / 1000).toFixed(1) }} s</span></p>
+              <p class="flex gap-2 text-neutral-500"><span>{{ t('ask.askInspector.step', { value: c.step + 1 }) }}</span><span class="tabular-nums">{{ t('ask.askInspector.outS', { promptTokens: c.promptTokens, outputTokens: c.outputTokens, value: (c.ms / 1000).toFixed(1) }) }}</span></p>
               <p v-for="tc in c.toolCalls" :key="tc" class="font-mono text-[11px] text-neutral-800">→ {{ tc }}</p>
-              <details v-if="c.content"><summary class="cursor-pointer text-neutral-500">text</summary><pre class="ask-pre">{{ c.content }}</pre></details>
-              <details v-if="c.thinking"><summary class="cursor-pointer text-neutral-500">reasoning</summary><pre class="ask-pre">{{ c.thinking }}</pre></details>
+              <details v-if="c.content"><summary class="cursor-pointer text-neutral-500">{{ t('ask.askInspector.text') }}</summary><pre class="ask-pre">{{ c.content }}</pre></details>
+              <details v-if="c.thinking"><summary class="cursor-pointer text-neutral-500">{{ t('ask.askInspector.reasoning') }}</summary><pre class="ask-pre">{{ c.thinking }}</pre></details>
             </div>
           </section>
           <section>
-            <p class="ui-section-title mb-1">Checks</p>
+            <p class="ui-section-title mb-1">{{ t('ask.askInspector.checks') }}</p>
             <p v-for="c in traced.checks" :key="c.id" class="flex gap-1.5" :class="c.ok ? 'text-neutral-600' : 'text-amber-800'"><span>{{ c.ok ? "✓" : "✗" }}</span><span>{{ c.detail }}</span></p>
-            <p v-for="(r, i) in traced.repairs" :key="i" class="mt-1 text-neutral-500">Repair sent: {{ r }}</p>
+            <p v-for="(r, i) in traced.repairs" :key="i" class="mt-1 text-neutral-500">{{ t('ask.askInspector.repairSent', { r }) }}</p>
           </section>
           <section>
             <details>
-              <summary class="ui-section-title cursor-pointer">System prompt (last turn) · tools {{ ask.lastTools.length }}</summary>
+              <summary class="ui-section-title cursor-pointer">{{ t('ask.askInspector.systemPromptLastTurn', { lastToolsLength: ask.lastTools.length }) }}</summary>
               <p class="mt-1 text-neutral-500">{{ ask.lastTools.join(", ") }}</p>
-              <pre class="ask-pre mt-1">{{ ask.lastSystem || "Not in this session yet." }}</pre>
+              <pre class="ask-pre mt-1">{{ ask.lastSystem || t('ask.askInspector.notSessionYet') }}</pre>
             </details>
           </section>
         </template>
@@ -118,11 +118,12 @@ import { useAskStore } from "../app/ask.store"
 import { useAskActions } from "../app/useAskActions"
 import { CAPABILITIES } from "../knowledge/capabilities"
 import AskEvidence from "./AskEvidence.vue"
+import { t } from "~/shared/i18n"
 
 defineEmits<{ (e: "cite", id: string): void; (e: "ask", q: string): void }>()
 const ask = useAskStore()
 const actions = useAskActions()
-const tabs = [{ id: "evidence", label: "Evidence" }, { id: "context", label: "Context" }, { id: "trace", label: "Trace" }] as const
+const tabs = [{ id: "evidence", label: t("ask.askInspector.evidence") }, { id: "context", label: t("ask.askInspector.context") }, { id: "trace", label: t("ask.askInspector.trace") }] as const
 
 const turns = computed(() => [...(ask.current?.turns ?? [])].reverse())
 const all = computed(() => ask.allEvidence.filter(e => e.kind !== "link"))

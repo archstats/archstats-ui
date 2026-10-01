@@ -25,7 +25,7 @@
           @mouseenter="hovered = band.key"
           @mouseleave="hovered = null"
         >
-          <title>{{ band.label }} — {{ formatNumber(band.components) }} {{ side.noun }}, {{ formatNumber(band.references) }} references</title>
+          <title>{{ t('connections.couplingFlow.references', { bandLabel: band.label, components: formatNumber(band.components), noun: side.noun, references: formatNumber(band.references) }) }}</title>
         </path>
       </g>
 
@@ -65,6 +65,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { bandHeights, type NeighbourGroup } from "~/features/connections/neighbours"
 import { formatNumber } from "~/shared/format"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   dependents: NeighbourGroup[]
@@ -176,9 +177,9 @@ const sides = computed(() => [
     key: "in" as const,
     bands: inSide.value.bands,
     total: props.totalIn,
-    noun: "dependents",
-    heading: "Depends on this ",
-    empty: "Nothing imports it",
+    noun: t("connections.couplingFlow.dependents"),
+    heading: t("connections.couplingFlow.depends"),
+    empty: t("connections.couplingFlow.nothingImports"),
     labelX: LABEL_PAD + labelWidth.value,
     labelAnchor: "end" as const,
     headX: LABEL_PAD,
@@ -188,9 +189,9 @@ const sides = computed(() => [
     key: "out" as const,
     bands: outSide.value.bands,
     total: props.totalOut,
-    noun: "dependencies",
-    heading: "This depends on ",
-    empty: "It imports nothing",
+    noun: t("connections.couplingFlow.dependencies"),
+    heading: t("connections.couplingFlow.depends2"),
+    empty: t("connections.couplingFlow.importsNothing"),
     labelX: width.value - LABEL_PAD - labelWidth.value,
     labelAnchor: "start" as const,
     headX: width.value - LABEL_PAD,
@@ -218,5 +219,5 @@ function truncate(text: string, chars: number): string {
 }
 
 const caption = computed(() =>
-  `${formatNumber(props.totalIn)} components depend on ${props.centreLabel}; it depends on ${formatNumber(props.totalOut)}.`)
+  t("connections.couplingFlow.componentsDependDepends", { totalIn: formatNumber(props.totalIn), centreLabel: props.centreLabel, totalOut: formatNumber(props.totalOut) }))
 </script>

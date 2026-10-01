@@ -3,6 +3,8 @@
 // footer band holding the legend and the provenance caption. Light by default,
 // whatever the app's appearance: a report page is white.
 
+import { t, intlLocale } from "~/shared/i18n"
+
 /** How a legend entry is drawn: the mark the chart itself uses for it. */
 export type LegendMark = "swatch" | "dot" | "ring" | "line" | "dashed" | "hatch"
 
@@ -190,8 +192,8 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 const FOOTER_FONT = 11
 const FOOTER_PAD = 14
-const SANS = "Inter, system-ui, sans-serif"
-const MONO = "\"JetBrains Mono\", ui-monospace, monospace"
+const SANS = t("export.figure.interSystemUiSans")
+const MONO = t("export.figure.jetbrainsMonoUiMonospace")
 
 type Op =
     | { t: "rect"; x: number; y: number; w: number; h: number; rx?: number; fill?: string; stroke?: string }
@@ -272,7 +274,7 @@ function layoutFooter(width: number, legend: FigureLegend | null | undefined, ca
     if (items.length) {
         let x = FOOTER_PAD
         for (const item of items) {
-            const label = item.count != null ? `${item.label} ${item.count.toLocaleString("en-US")}` : item.label
+            const label = item.count != null ? `${item.label} ${item.count.toLocaleString(intlLocale)}` : item.label
             const text = fitText(label, inner - 18, sans)
             const w = 18 + measureText(text, sans) + 16
             if (x + w > width - FOOTER_PAD && x > FOOTER_PAD) { x = FOOTER_PAD; y += LINE }
@@ -421,7 +423,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
         const img = new Image()
         img.onload = () => resolve(img)
-        img.onerror = () => reject(new Error("The figure could not be drawn as an image."))
+        img.onerror = () => reject(new Error(t("export.figure.figureCouldNotDrawn")))
         img.src = src
     })
 }
@@ -441,9 +443,9 @@ const DRAWN = "path, rect, circle, ellipse, line, polyline, polygon, text, image
 /** Before drawing: the chart has a size and something in it. */
 export function checkFigure(out: FigureOutput): void {
     if (!(out.width >= 16 && out.height >= 16)) {
-        throw new FigureError(`The chart has no size to capture (${Math.round(out.width) || 0} by ${Math.round(out.height) || 0}); it is not on screen, or not drawn yet.`)
+        throw new FigureError(t("export.figure.chartHasNoSize", { value: Math.round(out.width) || 0, value2: Math.round(out.height) || 0 }))
     }
-    if (out.kind === "svg" && !out.svg.querySelector(DRAWN)) throw new FigureError("The chart has nothing drawn in it yet.")
+    if (out.kind === "svg" && !out.svg.querySelector(DRAWN)) throw new FigureError(t("export.figure.chartHasNothingDrawn"))
 }
 
 /**
@@ -467,11 +469,11 @@ export function checkDrawn(g: CanvasRenderingContext2D, width: number, chartHeig
     }
     let ground = 0, most = -1
     for (const [q, c] of counts) if (c > most) { most = c; ground = q }
-    if (total - most < Math.max(3, total * 0.002)) throw new FigureError("The figure came out blank: nothing but its background was drawn.")
+    if (total - most < Math.max(3, total * 0.002)) throw new FigureError(t("export.figure.figureCameOutBlank"))
     if (light && !filled) {
         const r = (ground >> 12) & 15, gr = (ground >> 8) & 15, b = (ground >> 4) & 15, a = ground & 15
         const luminance = (0.2126 * r + 0.7152 * gr + 0.0722 * b) / 15
-        if (a >= 8 && luminance < 0.6) throw new FigureError("The light rendering came out dark: a colour in the chart did not map to its light value.")
+        if (a >= 8 && luminance < 0.6) throw new FigureError(t("export.figure.lightRenderingCameOut"))
     }
 }
 

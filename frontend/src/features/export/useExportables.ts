@@ -1,6 +1,7 @@
 import { computed, getCurrentInstance, inject, onBeforeUnmount, shallowReactive, type InjectionKey } from "vue";
 import type { ExportColumn, ExportRow } from "./export";
 import type { FigureLegend, FigureOptions, FigureOutput } from "./figure";
+import { english } from "~/shared/i18n"
 
 // What the current view can hand over. Views, tables and charts register what
 // they hold while mounted; the Export menu (⌘E) lists whatever is registered.
@@ -108,7 +109,8 @@ export function pickFor(kind: Exportable["kind"] | undefined, take?: string): Ex
     // Alternatives are separated by "|", first choice first: "Boundary flow|How the layers lean".
     if (take) {
         for (const want of take.toLowerCase().split("|").map(w => w.trim()).filter(Boolean)) {
-            const hit = [...ok].reverse().find(i => (!kind || i.kind === kind) && i.title.toLowerCase().startsWith(want));
+            // Titles are in the app's language; what a slot asks for is English (see english()).
+            const hit = [...ok].reverse().find(i => (!kind || i.kind === kind) && (i.title.toLowerCase().startsWith(want) || english(i.title).toLowerCase().startsWith(want)));
             if (hit) return hit;
         }
         return null;

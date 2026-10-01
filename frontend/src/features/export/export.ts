@@ -2,6 +2,8 @@
 // headed by metric ids in CSV so a spreadsheet can join on them, and by metric
 // names in Markdown so a report reads. Both carry where the numbers came from.
 
+import { intlLocale } from "~/shared/i18n"
+
 export interface ExportColumn {
     /** The key in each row, and the CSV header: the metric id. */
     id: string
@@ -57,7 +59,7 @@ function isNumericColumn(rows: ExportRow[], id: string): boolean {
 /** Formats a number the way the tables read: grouped, at most two decimals. */
 export function formatExportNumber(v: number): string {
     if (!Number.isFinite(v)) return ""
-    return v.toLocaleString("en-US", { maximumFractionDigits: Number.isInteger(v) ? 0 : 2 })
+    return v.toLocaleString(intlLocale, { maximumFractionDigits: Number.isInteger(v) ? 0 : 2 })
 }
 
 /** A GitHub-flavoured table with numbers right-aligned, then the caption in italics. */

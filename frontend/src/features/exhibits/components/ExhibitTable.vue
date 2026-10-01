@@ -10,7 +10,7 @@
       </tbody>
     </table>
     <p v-if="more > 0 || table.note" class="ex-table-foot">
-      <button v-if="more > 0" type="button" @click="all = !all">{{ all ? "Fewer rows" : `All ${total.toLocaleString("en-US")} rows` }}</button>
+      <button v-if="more > 0" type="button" @click="all = !all">{{ all ? t('exhibits.exhibitTable.fewerRows') : t('exhibits.exhibitTable.allRows', { value: total.toLocaleString(intlLocale) }) }}</button>
       <span v-if="table.note">{{ table.note }}</span>
     </p>
   </div>
@@ -19,13 +19,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 import type { ExhibitTable } from "../types"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{ table: ExhibitTable; limit?: number }>(), { limit: 8 })
 const all = ref(false)
 const shown = computed(() => (all.value ? props.table.rows : props.table.rows.slice(0, props.limit)))
 const total = computed(() => props.table.total ?? props.table.rows.length)
 const more = computed(() => Math.min(total.value, props.table.rows.length) - props.limit)
-const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "–" : typeof v === "number" ? v.toLocaleString("en-US", { maximumFractionDigits: 2 }) : String(v))
+const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "–" : typeof v === "number" ? v.toLocaleString(intlLocale, { maximumFractionDigits: 2 }) : String(v))
 </script>
 
 <style scoped>

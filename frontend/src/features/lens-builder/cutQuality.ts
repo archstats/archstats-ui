@@ -16,6 +16,8 @@
 // same measure scores a hand-built dimension, a preset's first pass, and any
 // future algorithm, which is the only way to tell whether one beats another.
 
+import { t } from "~/shared/i18n"
+
 export interface QualityEdge { from: string; to: string; weight?: number }
 
 export interface GroupQuality {
@@ -155,11 +157,11 @@ export function measureCut(
  * better than calling a clean pair of domains arbitrary.
  */
 export function readModularity(q: number, groups = 4): { word: string; tone: "good" | "fair" | "poor" } {
-  if (groups < 4) return { word: "too few groups to judge yet", tone: "fair" }
-  if (q >= 0.4) return { word: "strong structure", tone: "good" }
-  if (q >= 0.25) return { word: "real structure", tone: "good" }
-  if (q >= 0.1) return { word: "weak structure", tone: "fair" }
-  return { word: "little better than arbitrary", tone: "poor" }
+  if (groups < 4) return { word: t("lens-builder.cutQuality.tooFewGroupsJudge"), tone: "fair" }
+  if (q >= 0.4) return { word: t("lens-builder.cutQuality.strongStructure"), tone: "good" }
+  if (q >= 0.25) return { word: t("lens-builder.cutQuality.realStructure"), tone: "good" }
+  if (q >= 0.1) return { word: t("lens-builder.cutQuality.weakStructure"), tone: "fair" }
+  return { word: t("lens-builder.cutQuality.littleBetterThanArbitrary"), tone: "poor" }
 }
 
 export interface MemberQuality {

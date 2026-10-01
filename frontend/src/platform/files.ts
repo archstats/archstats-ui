@@ -1,5 +1,6 @@
 import { ref } from "vue"
 import { CopyText, Reveal, SaveBundle, SaveFile } from "wailsjs/go/app/FilesService"
+import { t } from "~/shared/i18n"
 
 // The one way anything leaves the app: a native save dialog, the system
 // clipboard, a reveal in the file manager. Every export and every "Copy …"
@@ -9,27 +10,27 @@ import { CopyText, Reveal, SaveBundle, SaveFile } from "wailsjs/go/app/FilesServ
 export interface Filter { name: string; patterns: string }
 
 export const FILTERS = {
-    csv: { name: "CSV table", patterns: "*.csv" },
-    md: { name: "Markdown", patterns: "*.md" },
-    png: { name: "PNG image", patterns: "*.png" },
-    svg: { name: "SVG image", patterns: "*.svg" },
-    json: { name: "JSON", patterns: "*.json" },
-    db: { name: "Archstats snapshot", patterns: "*.db" },
-    pdf: { name: "PDF document", patterns: "*.pdf" },
+    csv: { name: t("platform.files.csvTable"), patterns: "*.csv" },
+    md: { name: t("platform.files.markdown"), patterns: "*.md" },
+    png: { name: t("platform.files.pngImage"), patterns: "*.png" },
+    svg: { name: t("platform.files.svgImage"), patterns: "*.svg" },
+    json: { name: t("platform.files.json"), patterns: "*.json" },
+    db: { name: t("platform.files.archstatsSnapshot"), patterns: "*.db" },
+    pdf: { name: t("platform.files.pdfDocument"), patterns: "*.pdf" },
 } satisfies Record<string, Filter>
 
 /** The path of the last file saved this session, for "Reveal last export". */
 export const lastExport = ref<string | null>(null)
 
 /** Saves text; resolves to the path, or null when the user cancelled. */
-export async function saveText(defaultName: string, text: string, filters: Filter[], title = "Save"): Promise<string | null> {
+export async function saveText(defaultName: string, text: string, filters: Filter[], title = t("platform.files.save")): Promise<string | null> {
     const path = await SaveFile({ defaultName, title, filters, text, base64: "" } as any)
     if (path) lastExport.value = path
     return path || null
 }
 
 /** Saves binary content given as base64 (a PNG, say). */
-export async function saveBase64(defaultName: string, base64: string, filters: Filter[], title = "Save"): Promise<string | null> {
+export async function saveBase64(defaultName: string, base64: string, filters: Filter[], title = t("platform.files.save")): Promise<string | null> {
     const path = await SaveFile({ defaultName, title, filters, text: "", base64 } as any)
     if (path) lastExport.value = path
     return path || null

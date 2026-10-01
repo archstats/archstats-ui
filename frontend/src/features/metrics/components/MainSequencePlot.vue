@@ -12,13 +12,13 @@
       <line :x1="sx(0)" :y1="sy(1)" :x2="sx(1)" :y2="sy(0)" class="stroke-neutral-400" stroke-width="1" stroke-dasharray="4 3"/>
 
       <!-- The two corners Martin named -->
-      <text :x="PAD_L + 6" :y="PAD_T + SIZE - 6" class="fill-neutral-400 text-[9px]">Zone of pain</text>
-      <text :x="PAD_L + SIZE - 6" :y="PAD_T + 12" text-anchor="end" class="fill-neutral-400 text-[9px]">Zone of uselessness</text>
+      <text :x="PAD_L + 6" :y="PAD_T + SIZE - 6" class="fill-neutral-400 text-[9px]">{{ t('metrics.mainSequencePlot.zonePain') }}</text>
+      <text :x="PAD_L + SIZE - 6" :y="PAD_T + 12" text-anchor="end" class="fill-neutral-400 text-[9px]">{{ t('metrics.mainSequencePlot.zoneUselessness') }}</text>
 
       <!-- Every other component -->
       <g>
         <circle v-for="p in peers" :key="p.name" :cx="p.x" :cy="p.y" r="2" class="fill-neutral-400" opacity="0.5">
-          <title>{{ p.name }} — A {{ p.a.toFixed(2) }}, I {{ p.i.toFixed(2) }}</title>
+          <title>{{ p.name }} — A {{ fixed(p.a, 2) }}, I {{ fixed(p.i, 2) }}</title>
         </circle>
       </g>
 
@@ -30,17 +30,19 @@
       </template>
 
       <!-- Axes, named where they are read -->
-      <text :x="PAD_L" :y="H - 6" class="fill-neutral-500 text-[10px]">Instability 0</text>
+      <text :x="PAD_L" :y="H - 6" class="fill-neutral-500 text-[10px]">{{ t('metrics.mainSequencePlot.instability0') }}</text>
       <text :x="PAD_L + SIZE" :y="H - 6" text-anchor="end" class="fill-neutral-500 text-[10px]">1</text>
       <text :x="12" :y="PAD_T + 4" class="fill-neutral-500 text-[10px]">1</text>
-      <text :x="12" :y="PAD_T + SIZE" class="fill-neutral-500 text-[10px]" :transform="`rotate(-90 12 ${PAD_T + SIZE})`">Abstractness 0</text>
+      <text :x="12" :y="PAD_T + SIZE" class="fill-neutral-500 text-[10px]" :transform="`rotate(-90 12 ${PAD_T + SIZE})`">{{ t('metrics.mainSequencePlot.abstractness0') }}</text>
     </svg>
     <figcaption class="sr-only">{{ caption }}</figcaption>
   </figure>
 </template>
 
 <script setup lang="ts">
+import { fixed } from "~/shared/format"
 import { computed } from "vue"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   /** Every component with both coordinates; the current one included. */
@@ -83,7 +85,7 @@ const foot = computed(() => {
 
 const caption = computed(() => {
   const p = me.value
-  if (!p) return "Main sequence plot"
-  return `${props.current}: abstractness ${p.a.toFixed(2)}, instability ${p.i.toFixed(2)}, among ${placed.value.length} components.`
+  if (!p) return t("metrics.mainSequencePlot.mainSequencePlot")
+  return t("metrics.mainSequencePlot.abstractnessInstabilityAmongComponents", { current: props.current, value: p.a.toFixed(2), value2: p.i.toFixed(2), placedLength: placed.value.length })
 })
 </script>

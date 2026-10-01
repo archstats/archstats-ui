@@ -11,12 +11,12 @@
     <template #actions>
       <PinButton v-if="file" kind="file" :entity-key="filePath" :title="fileBasename" :values="() => pickValues(file as any, PIN_METRICS.file)"/>
       <OpenInEditor v-if="file" :file="filePath" button-class="!h-7 !w-7"/>
-      <router-link v-if="file?.component" :to="componentPath(file.component)" class="ui-btn ui-btn-sm" :title="`Open ${file.component}`">
-        <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>Component</span>
+      <router-link v-if="file?.component" :to="componentPath(file.component)" class="ui-btn ui-btn-sm" :title="t('pages.files.open', { component: file.component })">
+        <Icon icon="boxes" :size="13" class="text-neutral-500"/><span>{{ t('pages.files.component') }}</span>
       </router-link>
     </template>
-    <EmptyState v-if="store.hasData && !loading && !file" title="File not in this snapshot" :text="`${filePath} was not found in the open scan.`" icon="file-text">
-      <router-link to="/views/metrics?grain=files&view=table" class="ui-btn ui-btn-sm">All files</router-link>
+    <EmptyState v-if="store.hasData && !loading && !file" :title="t('pages.files.fileNotSnapshot')" :text="t('pages.files.wasNotFoundOpen', { filePath })" icon="file-text">
+      <router-link to="/views/metrics?grain=files&view=table" class="ui-btn ui-btn-sm">{{ t('pages.files.allFiles') }}</router-link>
     </EmptyState>
     <NuxtPage v-else/>
   </DetailFrame>
@@ -36,6 +36,7 @@ import { formatNumber } from "~/shared/format"
 import DetailFrame, { type DetailCrumb, type DetailStat, type DetailTab } from "~/features/shell/components/DetailFrame.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { t } from "~/shared/i18n"
 
 const store = useDataStore()
 const { filePath, escapedPath, fileBasename } = useFileRoute()
@@ -53,7 +54,7 @@ const { data: file, loading } = useAsyncQuery<FileRow | null>(
 )
 
 const crumbs = computed<DetailCrumb[]>(() => {
-  const list: DetailCrumb[] = [{ label: "Files", to: "/views/metrics?grain=files&view=table" }]
+  const list: DetailCrumb[] = [{ label: t("pages.files.files"), to: "/views/metrics?grain=files&view=table" }]
   const component = file.value?.component
   if (component) list.push({ label: String(component), to: componentPath(component) })
   return list
@@ -63,17 +64,17 @@ const stats = computed<DetailStat[]>(() => {
   const row = file.value
   if (!row) return []
   return [
-    { label: "Lines", value: formatNumber(row.complexity__lines) },
-    { label: "Commits", value: formatNumber(row.git__commits__total) },
-    { label: "Authors", value: formatNumber(row.git__authors__total) },
+    { label: t("pages.files.lines"), value: formatNumber(row.complexity__lines) },
+    { label: t("pages.files.commits"), value: formatNumber(row.git__commits__total) },
+    { label: t("pages.files.authors"), value: formatNumber(row.git__authors__total) },
     // What part of building, shipping or running the software the file
     // describes; engine revision 5 and later, empty for most files.
-    ...(row.system_kind ? [{ label: "Kind", value: SYSTEM_KIND_LABEL[row.system_kind] ?? row.system_kind }] : []),
+    ...(row.system_kind ? [{ label: t("pages.files.kind"), value: SYSTEM_KIND_LABEL[row.system_kind] ?? row.system_kind }] : []),
   ]
 })
 
 const SYSTEM_KIND_LABEL: Record<string, string> = {
-  build: "Build file", lockfile: "Lockfile", ci: "Pipeline", container: "Container", deploy: "Deployment", infra: "Infrastructure", config: "Runtime config",
+  build: t("pages.files.buildFile"), lockfile: t("pages.files.lockfile"), ci: t("pages.files.pipeline"), container: t("pages.files.container"), deploy: t("pages.files.deployment"), infra: t("pages.files.infrastructure"), config: t("pages.files.runtimeConfig"),
 }
 
 // The Java tab only exists when the engine found something Java-shaped in
@@ -95,12 +96,12 @@ const { data: hasJava } = useAsyncQuery<boolean>(
 const tabs = computed<DetailTab[]>(() => {
   const base = `/views/files/${filePath.value}`
   const list: DetailTab[] = [
-    { id: "overview", label: "Overview", to: base, exact: true },
-    { id: "source", label: "Source", to: `${base}/source` },
-    { id: "imports", label: "Imports", to: `${base}/imports` },
-    { id: "history", label: "History", to: `${base}/history` },
+    { id: "overview", label: t("pages.files.overview"), to: base, exact: true },
+    { id: "source", label: t("pages.files.source"), to: `${base}/source` },
+    { id: "imports", label: t("pages.files.imports"), to: `${base}/imports` },
+    { id: "history", label: t("pages.files.history"), to: `${base}/history` },
   ]
-  if (hasJava.value) list.push({ id: "java", label: "Java", to: `${base}/java` })
+  if (hasJava.value) list.push({ id: "java", label: t("pages.files.java"), to: `${base}/java` })
   return list
 })
 </script>

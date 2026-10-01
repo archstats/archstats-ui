@@ -33,13 +33,13 @@
         <button
           type="button"
           class="flex h-7 items-center gap-1.5 rounded pl-1.5 pr-2 text-sm text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
-          title="Add a line (Enter)"
+          :title="t('groups.queryComposer.addLineEnter')"
           @click="addLine(lines.length)"
         >
-          <Icon icon="plus" :size="11"/><span>add a line</span>
+          <Icon icon="plus" :size="11"/><span>{{ t('groups.queryComposer.addLine') }}</span>
         </button>
         <span v-if="inline" class="ml-auto pr-1 font-mono text-xs tabular-nums" :class="total ? 'text-neutral-600' : 'text-neutral-400'">
-          {{ total }} {{ total === 1 ? "component" : "components" }}
+          {{ total }} {{t('common.noun.component', { count: total })}}
         </span>
       </div>
     </div>
@@ -56,7 +56,7 @@
       ref="listEl"
       class="max-h-56 overflow-y-auto p-1 hairline-t"
       role="listbox"
-      :aria-label="`Suggestions for line ${row + 1}`"
+      :aria-label="t('groups.queryComposer.suggestionsLine', { value: row + 1 })"
     >
       <template v-for="section in sections" :key="section.title">
         <li v-if="section.title" :id="`${listId}-h-${section.title}`" role="presentation" class="px-1.5 pb-0.5 pt-1.5 text-2xs font-semibold uppercase tracking-wider text-neutral-550">
@@ -86,11 +86,11 @@
 
     <div v-if="!inline" class="flex items-center gap-2 px-2 py-1.5 hairline-t">
       <span class="font-mono text-xs tabular-nums" :class="total ? 'text-neutral-700' : 'text-neutral-400'">
-        {{ total }} {{ total === 1 ? "component" : "components" }}
-        <template v-if="fileCount"> · {{ fileCount }} files</template>
+        {{ total }} {{t('common.noun.component', { count: total })}}
+        <template v-if="fileCount">{{ ' ' + t('groups.queryComposer.files', { fileCount }) }}</template>
       </span>
-      <span v-if="live" class="ui-tag" title="This query asks about measurements, so what it matches depends on the scan.">measured</span>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('close')">Done</button>
+      <span v-if="live" class="ui-tag" :title="t('groups.queryComposer.queryAsksAboutMeasurements')">{{ t('groups.queryComposer.measured') }}</span>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('close')">{{ t('groups.queryComposer.done') }}</button>
       <button
         type="button"
         class="ui-btn ui-btn-sm ui-btn-primary"
@@ -108,6 +108,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import QueryRow from "./QueryRow.vue";
 import { isLive, parseQuery, runQuery, globToRegExp, type QueryWorld } from "~/features/groups/query";
 import { applySuggestion, assist, coveredBy, type AssistWorld, type SuggestionKind } from "~/features/groups/queryAssist";
+import { t } from "~/shared/i18n";
 
 // Building a query one line at a time, with the answer beside each line.
 //
@@ -142,7 +143,7 @@ const props = withDefaults(defineProps<{
   keepLabel?: string;
   /** Where it goes, named, when that is not "a lens you will be asked about". */
   keepInto?: string;
-}>(), { placeholder: "com.example.order.**", inline: false, keepLabel: "Keep" });
+}>(), { placeholder: "com.example.order.**", inline: false, keepLabel: t("groups.queryComposer.keep") });
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
@@ -208,15 +209,15 @@ const stats = computed(() => {
 
 /** A disabled button that will not say why is a dead end. */
 const keepHint = computed(() => {
-  if (parsed.value.errors.length) return `Line ${parsed.value.errors[0].no} cannot be read yet`;
-  if (!total.value) return "Nothing matches yet, so there is nothing to keep";
-  return `Keep these ${total.value} as a group${props.keepInto ? ` in ${props.keepInto}` : ""} (⌘↵)`;
+  if (parsed.value.errors.length) return t("groups.queryComposer.lineCannotReadYet", { no: parsed.value.errors[0].no });
+  if (!total.value) return t("groups.queryComposer.nothingMatchesYetSo");
+  return t("groups.queryComposer.keepTheseGroup", { total: total.value, value: props.keepInto ? t("groups.queryComposer.in", { keepInto: props.keepInto }) : "" });
 });
 
 const suggestions = computed(() => assist(lines.value[row.value] ?? "", caret.value, props.assistWorld));
 
 const SECTION: Partial<Record<SuggestionKind, string>> = {
-  start: "Start with", recent: "Recent", group: "Saved groups",
+  start: t("groups.queryComposer.start"), recent: t("groups.queryComposer.recent"), group: "Saved groups",
 };
 
 /** The same items, in named runs, keeping each one's index in the whole list
@@ -236,9 +237,9 @@ const sections = computed(() => {
 /** Announced, not drawn: a parse complaint and the running total. */
 const spoken = computed(() => {
   const bad = parsed.value.errors[0];
-  if (bad) return `Line ${bad.no}: ${bad.message}`;
+  if (bad) return t("groups.queryComposer.line", { no: bad.no, message: bad.message });
   if (!props.modelValue.trim()) return "";
-  return `${total.value} ${total.value === 1 ? "component" : "components"} match`;
+  return t("groups.queryComposer.match", { components: t("common.count.component", { count: total.value }) });
 });
 watch(suggestions, () => { picked.value = -1; });
 

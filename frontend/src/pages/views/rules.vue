@@ -1,20 +1,20 @@
 <template>
-  <ViewWorkspaceLayout title="Rules" :queryable="false" :show-config="false">
+  <ViewWorkspaceLayout :title="t('pages.rules.rules')" :queryable="false" :show-config="false">
     <template #stats>
       <span v-if="verdict === 'violations'" class="text-neutral-800">{{ summaryLine }}</span>
-      <span v-else-if="verdict === 'clean'">{{ heldRules.length ? `${heldRules.length} kept` : "None applied" }}</span>
+      <span v-else-if="verdict === 'clean'">{{ heldRules.length ? t('pages.rules.kept', { heldRulesLength: heldRules.length }) : t('pages.rules.noneApplied') }}</span>
     </template>
 
     <template #visualizer>
       <div class="h-full w-full overflow-y-auto">
         <div class="mx-auto w-full max-w-[900px] px-8 py-7">
 
-          <LoadingState v-if="loading" text="Checking rules…"/>
+          <LoadingState v-if="loading" :text="t('pages.rules.checkingRules')"/>
 
           <EmptyState
             v-else-if="error"
             icon="alert"
-            title="Could not read the rules"
+            :title="t('pages.rules.couldNotReadRules')"
             :text="error"
           />
 
@@ -24,8 +24,8 @@
           <EmptyState
             v-else-if="verdict === 'no-modules'"
             icon="boxes"
-            title="This project declares no modules"
-            text="Rules compare the things a project builds and publishes — .csproj projects, composer packages, gradle modules, npm workspaces, Django apps. This snapshot found none, so there is nothing for a rule to compare and no verdict to give."
+            :title="t('pages.rules.projectDeclaresNoModules')"
+            :text="t('pages.rules.rulesCompareThingsProject')"
           />
 
           <template v-else>
@@ -46,10 +46,10 @@
                 <table class="ui-table">
                   <thead>
                     <tr>
-                      <th class="w-[22%]">From</th>
-                      <th class="w-[22%]">To</th>
-                      <th class="w-[80px]">How</th>
-                      <th>Where</th>
+                      <th class="w-[22%]">{{ t('pages.rules.from') }}</th>
+                      <th class="w-[22%]">{{ t('pages.rules.to') }}</th>
+                      <th class="w-[80px]">{{ t('pages.rules.how') }}</th>
+                      <th>{{ t('pages.rules.where') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -81,7 +81,7 @@
                  the only thing that distinguishes a clean project from one
                  nothing was checked against. -->
             <section v-if="heldRules.length > 0" class="mb-6">
-              <h3 class="ui-section-title">Kept</h3>
+              <h3 class="ui-section-title">{{ t('pages.rules.kept2') }}</h3>
               <ul class="mt-2 flex flex-col gap-1.5">
                 <li v-for="group in heldRules" :key="group.id" class="flex items-start gap-2">
                   <Icon icon="check" :size="14" class="mt-0.5 shrink-0 text-green-600"/>
@@ -94,14 +94,14 @@
             </section>
 
             <p v-if="brokenRules.length === 0 && heldRules.length === 0" class="mb-6 max-w-[64ch] text-base text-neutral-600">
-              None of the built-in rules is about an ecosystem this codebase uses, so nothing was checked here. That is no verdict either way.
+              {{ t('pages.rules.noneBuiltRulesAbout') }}
             </p>
 
             <!-- Not the same as kept, and the difference is the point. -->
             <section v-if="silentRules.length > 0">
-              <h3 class="ui-section-title">No opinion here</h3>
+              <h3 class="ui-section-title">{{ t('pages.rules.noOpinionHere') }}</h3>
               <p class="mt-1 text-sm leading-4 text-neutral-500">
-                These rules are about an ecosystem or a layout this codebase does not have, so they were not checked.
+                {{ t('pages.rules.theseRulesAboutEcosystem') }}
               </p>
               <ul class="mt-2 flex flex-col gap-1">
                 <li v-for="group in silentRules" :key="group.id" class="flex items-center gap-2">
@@ -116,38 +116,38 @@
                import by import. Independent of the project's module rules. -->
           <section v-if="lensDeclared" id="lens" class="mt-10">
             <div class="flex items-baseline gap-3">
-              <h2 class="ui-section-title">Lens rules: {{ lens.active }}</h2>
-              <span v-if="lensDeclared.source === 'manifests'" class="ui-tag" title="Seeded from the dependencies the build files declare">declared by manifests</span>
-              <span class="text-sm text-neutral-500">{{ lensCheck.count ? `${lensCheck.count.toLocaleString("en-US")} imports cross the declared order` : "Nothing crosses the declared order" }}</span>
+              <h2 class="ui-section-title">{{ t('pages.rules.lensRules', { active: lens.active }) }}</h2>
+              <span v-if="lensDeclared.source === 'manifests'" class="ui-tag" :title="t('pages.rules.seededDependenciesBuildFiles')">{{ t('pages.rules.declaredManifests') }}</span>
+              <span class="text-sm text-neutral-500">{{ lensCheck.count ? t('pages.rules.importsCrossDeclaredOrder', { value: lensCheck.count.toLocaleString(intlLocale) }) : t('pages.rules.nothingCrossesDeclaredOrder') }}</span>
               <RulesExport v-if="lens.active" :lens="lens.active" class="ml-auto"/>
-              <button type="button" class="text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">Edit declaration…</button>
+              <button type="button" class="text-sm text-neutral-500 hover:text-neutral-900" @click="declaring = lens.active">{{ t('pages.rules.editDeclaration') }}</button>
             </div>
             <p v-if="lensCheck.ambiguous || lensCheck.unplacedFrom" class="mt-1 text-sm text-neutral-500">
-              <template v-if="lensCheck.unplacedFrom">{{ lensCheck.unplacedFrom.toLocaleString("en-US") }} imports come from files in no group and are not judged. </template>
-              <template v-if="lensCheck.ambiguous">{{ lensCheck.ambiguous.toLocaleString("en-US") }} go to a component the groups split, where the target file is unknown: marked ambiguous.</template>
+              <template v-if="lensCheck.unplacedFrom">{{ t('pages.rules.importsComeFilesNo', { value: lensCheck.unplacedFrom.toLocaleString(intlLocale) }) + ' ' }} </template>
+              <template v-if="lensCheck.ambiguous">{{ t('pages.rules.goComponentGroupsSplit', { value: lensCheck.ambiguous.toLocaleString(intlLocale) }) }}</template>
             </p>
             <p v-for="sc in lensCheck.silent" :key="sc.groups.join()" class="mt-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              A cycle of {{ sc.groups.length }} groups ({{ sc.groups.map(groupName).join(", ") }}) crosses nothing declared:
-              <template v-if="sc.outOfLayers.length">{{ sc.outOfLayers.map(groupName).join(", ") }} {{ sc.outOfLayers.length === 1 ? "is" : "are" }} not in the layers, so {{ sc.outOfLayers.length === 1 ? "its" : "their" }} imports are not judged.</template>
-              <template v-else>pairs allowed by hand let it through.</template>
-              <button type="button" class="ml-1 underline" @click="declaring = lens.active">Edit declaration…</button>
+              {{ t('pages.rules.cycleGroupsCrossesNothing', { groupsLength: sc.groups.length, value: sc.groups.map(groupName).join(", ") }) }}
+              <template v-if="sc.outOfLayers.length">{{ t('pages.rules.notLayersSoImports', { value: sc.outOfLayers.map(groupName).join(", "), are: t('common.noun.is', { count: sc.outOfLayers.length }), their: t('common.noun.its', { count: sc.outOfLayers.length }) }) }}</template>
+              <template v-else>{{ t('pages.rules.pairsAllowedHandLet') }}</template>
+              <button type="button" class="ml-1 underline" @click="declaring = lens.active">{{ t('pages.rules.editDeclaration') }}</button>
             </p>
-            <LoadingState v-if="lensLoading" text="Checking the declaration…"/>
+            <LoadingState v-if="lensLoading" :text="t('pages.rules.checkingDeclaration')"/>
             <div v-for="c in lensCheck.crossings" :key="c.from + '>' + c.to" class="ui-panel mt-4 overflow-hidden">
               <div class="flex items-baseline gap-2 px-4 py-2.5 hairline-b">
                 <span class="text-base font-medium text-neutral-900">{{ groupName(c.from) }}</span>
                 <Icon icon="arrow-right" :size="12" class="text-neutral-400"/>
                 <span class="text-base font-medium text-neutral-900">{{ groupName(c.to) }}</span>
-                <span v-if="lensDeclared.source === 'manifests'" class="text-sm text-neutral-500">imported, not declared<template v-if="viaOf(c)"> (declared via {{ viaOf(c) }})</template></span>
-                <span class="ml-auto font-mono text-xs text-neutral-500">{{ c.edges.length }} import{{ c.edges.length === 1 ? "" : "s" }} · {{ c.refs.toLocaleString("en-US") }} refs<template v-if="c.typeOnly"> · also {{ c.typeOnly }} type-only</template></span>
+                <span v-if="lensDeclared.source === 'manifests'" class="text-sm text-neutral-500">{{ t('pages.rules.importedNotDeclared') }}<template v-if="viaOf(c)">{{ ' ' + t('pages.rules.declaredVia', { c: viaOf(c) }) }}</template></span>
+                <span class="ml-auto font-mono text-xs text-neutral-500">{{ t('pages.rules.refs', { imports: t('common.count.import', { count: c.edges.length }), value: c.refs.toLocaleString(intlLocale) }) }}<template v-if="c.typeOnly">{{ ' ' + t('pages.rules.alsoTypeOnly', { typeOnly: c.typeOnly }) }}</template></span>
               </div>
               <table class="ui-table">
-                <thead><tr><th>From</th><th>To</th><th class="w-24">How</th><th>Where</th></tr></thead>
+                <thead><tr><th>{{ t('pages.rules.from') }}</th><th>{{ t('pages.rules.to') }}</th><th class="w-24">{{ t('pages.rules.how') }}</th><th>{{ t('pages.rules.where') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="e in c.edges.slice(0, lensShown(c))" :key="e.file + e.toComponent" class="group">
                     <td class="max-w-0 truncate font-mono text-sm" :title="e.fromComponent">{{ e.fromComponent }}</td>
-                    <td class="max-w-0 truncate font-mono text-sm" :title="e.toComponent">{{ e.toComponent }}<span v-if="e.ambiguous" class="ui-tag ml-2" title="The target component is split between groups">ambiguous</span></td>
-                    <td class="text-sm text-neutral-600">{{ e.kind === "dynamic" ? "runtime lookup" : "import" }}</td>
+                    <td class="max-w-0 truncate font-mono text-sm" :title="e.toComponent">{{ e.toComponent }}<span v-if="e.ambiguous" class="ui-tag ml-2" :title="t('pages.rules.targetComponentSplitBetween')">{{ t('pages.rules.ambiguous') }}</span></td>
+                    <td class="text-sm text-neutral-600">{{ e.kind === "dynamic" ? t('pages.rules.runtimeLookup') : t('pages.rules.import') }}</td>
                     <td class="relative max-w-0 pr-9">
                       <OpenInEditor :file="e.file" :line="e.line ?? undefined" class="absolute right-1 top-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"/>
                       <router-link :to="`${filePath(e.file, 'source')}${e.line ? `#L${e.line}` : ''}`" class="block truncate font-mono text-sm text-neutral-700 hover:underline" :title="e.file">{{ e.file.split("/").pop() }}{{ e.line ? `:${e.line}` : "" }}</router-link>
@@ -155,7 +155,7 @@
                   </tr>
                 </tbody>
               </table>
-              <button v-if="c.edges.length > lensShown(c)" type="button" class="ui-btn ui-btn-sm ui-btn-quiet m-2" @click="lensExpanded = new Set([...lensExpanded, c.from + '>' + c.to])">Show all {{ c.edges.length }}</button>
+              <button v-if="c.edges.length > lensShown(c)" type="button" class="ui-btn ui-btn-sm ui-btn-quiet m-2" @click="lensExpanded = new Set([...lensExpanded, c.from + '>' + c.to])">{{ t('pages.rules.showAll', { edgesLength: c.edges.length }) }}</button>
             </div>
           </section>
           <DeclareSheet v-model="declaring"/>
@@ -208,6 +208,7 @@ import {
   atLine, groupByRule, held, kindHint, kindLabel, notApplicable, scopeToEcosystems, shortLocation, summarise, verdictOf,
   type RuleFinding,
 } from "~/features/rules/rules"
+import { t, intlLocale } from "~/shared/i18n"
 
 // Every rule's verdict on this codebase.
 //
@@ -262,8 +263,8 @@ const summaryLine = computed(() => summarise(brokenRules.value))
 // "twice, between 2 module pairs" reads worse than it sounds; keep it to the
 // fact that matters — how many pairs of modules break it.
 function brokenBetween(group: { edges: number; violations: unknown[] }): string {
-  const pairs = group.edges === 1 ? "1 module pair" : `${group.edges} module pairs`
-  const lines = group.violations.length === 1 ? "1 place" : `${group.violations.length} places`
+  const pairs = group.edges === 1 ? t("pages.rules.text1ModulePair") : t("pages.rules.modulePairs", { edges: group.edges })
+  const lines = group.violations.length === 1 ? "1 place" : t("pages.rules.places", { violationsLength: group.violations.length })
   return `${pairs} · ${lines}`
 }
 </script>

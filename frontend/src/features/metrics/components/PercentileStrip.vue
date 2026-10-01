@@ -6,11 +6,11 @@
   <table class="ui-table">
     <thead>
       <tr>
-        <th>Metric</th>
-        <th class="w-[120px] text-right">Value</th>
-        <th class="w-[76px] text-right">Change</th>
-        <th class="w-[96px] text-right">Rank</th>
-        <th class="w-[200px]">Percentile</th>
+        <th>{{ t('metrics.percentileStrip.metric') }}</th>
+        <th class="w-[120px] text-right">{{ t('metrics.percentileStrip.value') }}</th>
+        <th class="w-[76px] text-right">{{ t('metrics.percentileStrip.change') }}</th>
+        <th class="w-[96px] text-right">{{ t('metrics.percentileStrip.rank') }}</th>
+        <th class="w-[200px]">{{ t('metrics.percentileStrip.percentile') }}</th>
       </tr>
     </thead>
     <tbody>
@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import DeltaChip from "~/features/trends/components/DeltaChip.vue"
 import type { Delta } from "~/features/trends/delta"
+import { t } from "~/shared/i18n"
 
 export interface StandingRow {
     key: string

@@ -1,7 +1,7 @@
 <template>
   <span class="inline-flex items-center gap-1">
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!declared" :title="declared ? 'Save this declaration as archstats-rules.yml: archstats assert runs it on every build and fails, with file and line, when an import crosses it' : 'Declare dependencies on this lens first'" @click="save">Rules for CI…</button>
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!declared" title="Copy a GitHub Actions job that runs the saved rules" @click="copyText(CI_SNIPPET)">Copy CI step</button>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!declared" :title="declared ? t('rules.rulesExport.saveDeclarationArchstatsRules') : t('rules.rulesExport.declareDependenciesLensFirst')" @click="save">{{ t('rules.rulesExport.rulesCi') }}</button>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!declared" :title="t('rules.rulesExport.copyGithubActionsJob')" @click="copyText(CI_SNIPPET)">{{ t('rules.rulesExport.copyCiStep') }}</button>
   </span>
 </template>
 
@@ -14,6 +14,7 @@ import { parseQuery } from "~/features/groups/query";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { copyText, saveText } from "~/platform/files";
 import { CI_SNIPPET, ruleGroup, rulesYaml } from "../rulesAsCode";
+import { t } from "~/shared/i18n";
 
 // A lens's declaration, carried out of the app into the build: the rules a
 // person drew here, run by `archstats assert` on every change.
@@ -33,7 +34,7 @@ function save() {
     return ruleGroup(g, lines, comps, groups.filesOf(g), f => data.fileComponentIndex.get(f));
   });
   const sep = detectSeparator(data.componentFilesIndex.keys());
-  const origin = `${workspaces.active?.name ?? "workspace"}, scan ${(workspaces.openScanId ?? "").slice(0, 8)}`;
-  void saveText("archstats-rules.yml", rulesYaml(props.lens, rgs, d, sep, origin), [{ name: "YAML", patterns: "*.yml" }], "Save the rules for CI");
+  const origin = t("rules.rulesExport.scan", { value: workspaces.active?.name ?? "workspace", value2: (workspaces.openScanId ?? "").slice(0, 8) });
+  void saveText("archstats-rules.yml", rulesYaml(props.lens, rgs, d, sep, origin), [{ name: t("rules.rulesExport.yaml"), patterns: "*.yml" }], t("rules.rulesExport.saveRulesCi"));
 }
 </script>

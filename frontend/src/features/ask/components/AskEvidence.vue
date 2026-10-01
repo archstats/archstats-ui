@@ -8,19 +8,19 @@
     <header class="flex items-center gap-2 px-3 pt-2.5">
       <span class="ev-id">{{ e.id }}</span>
       <figcaption class="min-w-0 flex-1 truncate text-[12.5px] font-medium text-neutral-900" :title="e.title">{{ e.title }}</figcaption>
-      <span v-if="e.verified" class="ev-verified" title="From a verified cookbook query: the SQL is checked against real snapshots"><BadgeCheck :size="12" :stroke-width="1.75"/> verified</span>
-      <button v-if="!compact" type="button" class="ev-icon" title="Inspect" aria-label="Inspect" @click="$emit('inspect', e)"><Maximize2 :size="12" :stroke-width="1.75"/></button>
+      <span v-if="e.verified" class="ev-verified" :title="t('ask.askEvidence.verifiedCookbookQuerySql')"><BadgeCheck :size="12" :stroke-width="1.75"/>{{ ' ' + t('ask.askEvidence.verified') }}</span>
+      <button v-if="!compact" type="button" class="ev-icon" :title="t('ask.askEvidence.inspect')" :aria-label="t('ask.askEvidence.inspect')" @click="$emit('inspect', e)"><Maximize2 :size="12" :stroke-width="1.75"/></button>
     </header>
 
     <div class="px-3 pb-1 pt-2">
       <!-- Ranked bars. -->
       <template v-if="e.kind === 'bars'">
         <div v-for="it in e.items" :key="it.key ?? it.label" class="ev-bar-row" :title="`${it.key ?? it.label}: ${fmt(it.value)}`">
-          <button type="button" class="ev-bar-label" @click="$emit('ask', `Tell me about ${it.key ?? it.label}`)">{{ it.label }}</button>
+          <button type="button" class="ev-bar-label" @click="$emit('ask', t('ask.askEvidence.tellMeAbout', { value: it.key ?? it.label }))">{{ it.label }}</button>
           <div class="ev-bar-track"><div class="ev-bar" :style="{ width: `${barWidth(it.value)}%` }"/></div>
           <span class="ev-bar-value">{{ fmt(it.value) }}</span>
         </div>
-        <p class="ev-legend"><span class="ev-swatch"/> bar length = {{ e.unit.toLowerCase() }}<template v-if="e.note"> · {{ e.note }}</template></p>
+        <p class="ev-legend"><span class="ev-swatch"/>{{ ' ' + t('ask.askEvidence.barLength', { unit: e.unit.toLowerCase() }) }}<template v-if="e.note"> · {{ e.note }}</template></p>
       </template>
 
       <!-- Commits per month. -->
@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="mt-1 flex justify-between text-[10.5px] text-neutral-500"><span>{{ e.points[0]?.label }}</span><span>{{ e.points[e.points.length - 1]?.label }}</span></div>
-        <p class="ev-legend"><span class="ev-swatch"/> bar height = {{ e.unit }} per month (months without commits left out)</p>
+        <p class="ev-legend"><span class="ev-swatch"/>{{ ' ' + t('ask.askEvidence.barHeightPerMonth', { unit: e.unit }) }}</p>
       </template>
 
       <!-- One component. -->
@@ -45,11 +45,11 @@
         <div class="mt-2.5 grid grid-cols-2 gap-4 text-[11.5px]">
           <div v-for="side in sides" :key="side.title">
             <p class="mb-0.5 text-neutral-500">{{ side.title }}</p>
-            <button v-for="d in side.items.slice(0, 5)" :key="d.name" type="button" class="ev-name" :title="d.name" @click="$emit('ask', `Tell me about ${d.name}`)">{{ short(d.name) }} <span class="text-neutral-400">{{ fmt(d.refs) }}</span></button>
-            <p v-if="!side.items.length" class="text-neutral-400">nothing</p>
+            <button v-for="d in side.items.slice(0, 5)" :key="d.name" type="button" class="ev-name" :title="d.name" @click="$emit('ask', t('ask.askEvidence.tellMeAbout2', { name: d.name }))">{{ short(d.name) }} <span class="text-neutral-400">{{ fmt(d.refs) }}</span></button>
+            <p v-if="!side.items.length" class="text-neutral-400">{{ t('ask.askEvidence.nothing') }}</p>
           </div>
         </div>
-        <p class="ev-legend">numbers after names = import references</p>
+        <p class="ev-legend">{{ t('ask.askEvidence.numbersAfterNamesImport') }}</p>
       </template>
 
       <!-- A file, skimmed. -->
@@ -57,19 +57,19 @@
         <p class="mb-1.5 truncate font-mono text-[11px] text-neutral-500" :title="e.path">{{ e.path }}</p>
         <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-[11.5px]">
           <span v-for="v in e.values" :key="v.label" class="text-neutral-500">{{ v.label }} <span class="tabular-nums text-neutral-900">{{ fmt(v.value) }}</span></span>
-          <span class="text-neutral-500">Role <span class="text-neutral-900">{{ e.role }}</span></span>
+          <span class="text-neutral-500">{{ t('ask.askEvidence.role') }} <span class="text-neutral-900">{{ e.role }}</span></span>
         </div>
         <ol v-if="e.outline.length" class="ev-outline">
           <li v-for="o in e.outline.slice(0, outlineAll ? 60 : 12)" :key="`${o.line}-${o.text}`">
-            <button type="button" :title="`Read from line ${o.line}`" @click="$emit('ask', `Read ${e.path} from line ${Math.max(1, o.line - 3)}`)">
+            <button type="button" :title="t('ask.askEvidence.readLine', { line: o.line })" @click="$emit('ask', t('ask.askEvidence.readLine2', { path: e.path, max: Math.max(1, o.line - 3) }))">
               <span class="ev-line">{{ o.line }}</span><span class="ev-kind">{{ o.kind }}</span><span class="truncate">{{ o.text }}</span>
             </button>
           </li>
         </ol>
-        <button v-if="e.outline.length > 12" type="button" class="ev-more" @click="outlineAll = !outlineAll">{{ outlineAll ? "Fewer" : `All ${e.outline.length} declarations` }}</button>
+        <button v-if="e.outline.length > 12" type="button" class="ev-more" @click="outlineAll = !outlineAll">{{ outlineAll ? t('ask.askEvidence.fewer') : t('ask.askEvidence.allDeclarations', { outlineLength: e.outline.length }) }}</button>
         <div v-if="e.importedBy.length || e.importsFrom.length" class="mt-2 grid grid-cols-2 gap-4 text-[11.5px]">
-          <div><p class="mb-0.5 text-neutral-500">Used by</p><button v-for="f in e.importedBy.slice(0, 5)" :key="f" type="button" class="ev-name" :title="f" @click="$emit('ask', `Outline ${f}`)">{{ f.split("/").pop() }}</button><p v-if="!e.importedBy.length" class="text-neutral-400">nothing recorded</p></div>
-          <div><p class="mb-0.5 text-neutral-500">Uses</p><button v-for="f in e.importsFrom.slice(0, 5)" :key="f" type="button" class="ev-name" :title="f" @click="$emit('ask', f.includes('/') ? `Outline ${f}` : `Tell me about ${f}`)">{{ f.split("/").pop() }}</button></div>
+          <div><p class="mb-0.5 text-neutral-500">{{ t('ask.askEvidence.used') }}</p><button v-for="f in e.importedBy.slice(0, 5)" :key="f" type="button" class="ev-name" :title="f" @click="$emit('ask', t('ask.askEvidence.outline', { f }))">{{ f.split("/").pop() }}</button><p v-if="!e.importedBy.length" class="text-neutral-400">{{ t('ask.askEvidence.nothingRecorded') }}</p></div>
+          <div><p class="mb-0.5 text-neutral-500">{{ t('ask.askEvidence.uses') }}</p><button v-for="f in e.importsFrom.slice(0, 5)" :key="f" type="button" class="ev-name" :title="f" @click="$emit('ask', f.includes('/') ? t('ask.askEvidence.outline', { f }) : t('ask.askEvidence.tellMeAbout3', { f }))">{{ f.split("/").pop() }}</button></div>
         </div>
       </template>
 
@@ -90,7 +90,7 @@
             </tbody>
           </table>
         </div>
-        <button v-if="e.rows.length > 8" type="button" class="ev-more" @click="tableAll = !tableAll">{{ tableAll ? "Fewer rows" : `All ${e.rows.length} rows` }}</button>
+        <button v-if="e.rows.length > 8" type="button" class="ev-more" @click="tableAll = !tableAll">{{ tableAll ? t('ask.askEvidence.fewerRows') : t('ask.askEvidence.allRows', { rowsLength: e.rows.length }) }}</button>
         <p v-if="e.note" class="ev-legend whitespace-pre-line">{{ e.note }}</p>
       </template>
 
@@ -103,9 +103,9 @@
     <footer class="flex items-center gap-1 px-2 pb-1.5 pt-0.5">
       <span class="min-w-0 flex-1 truncate px-1 text-[10.5px] text-neutral-400" :title="provenance">{{ provenance }}</span>
       <button v-if="e.open" type="button" class="ui-btn ui-btn-quiet ui-btn-sm" @click="$emit('open', e)"><ArrowUpRight :size="12" :stroke-width="1.75"/> {{ e.open.label }}</button>
-      <button v-if="pinnable" type="button" class="ui-btn ui-btn-quiet ui-btn-sm" title="Keep it in Evidence; it is re-checked on every scan" @click="$emit('pin', e)"><Pin :size="12" :stroke-width="1.75"/> Pin</button>
-      <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" :title="addTitle" @click="$emit('add', e)"><FilePlus2 :size="12" :stroke-width="1.75"/> Report</button>
-      <button v-if="e.sql" type="button" class="ui-btn ui-btn-quiet ui-btn-sm" title="Open the query in the SQL console" @click="$emit('sql', e)"><Terminal :size="12" :stroke-width="1.75"/></button>
+      <button v-if="pinnable" type="button" class="ui-btn ui-btn-quiet ui-btn-sm" :title="t('ask.askEvidence.keepEvidenceReChecked')" @click="$emit('pin', e)"><Pin :size="12" :stroke-width="1.75"/>{{ ' ' + t('ask.askEvidence.pin') }}</button>
+      <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" :title="addTitle" @click="$emit('add', e)"><FilePlus2 :size="12" :stroke-width="1.75"/>{{ ' ' + t('ask.askEvidence.report') }}</button>
+      <button v-if="e.sql" type="button" class="ui-btn ui-btn-quiet ui-btn-sm" :title="t('ask.askEvidence.openQuerySqlConsole')" @click="$emit('sql', e)"><Terminal :size="12" :stroke-width="1.75"/></button>
     </footer>
   </figure>
 </template>
@@ -121,6 +121,7 @@ import EvTangle from "./EvTangle.vue"
 import EvGraph from "./EvGraph.vue"
 import EvFigures from "./EvFigures.vue"
 import EvView from "./EvView.vue"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ e: Evidence; selected?: boolean; flash?: boolean; compact?: boolean }>()
 defineEmits<{
@@ -140,15 +141,15 @@ const tableAll = ref(false)
 
 const provenance = computed(() => {
   const r = props.e.ranOn
-  return `${r.workspace} · ${r.commit ? r.commit.slice(0, 7) : "no commit"} · rev ${r.revision}`
+  return t("ask.askEvidence.rev", { workspace: r.workspace, value: r.commit ? r.commit.slice(0, 7) : t("ask.askEvidence.noCommit"), revision: r.revision })
 })
 const pinnable = computed(() => props.e.kind === "component" || props.e.kind === "file")
 const addTitle = computed(() => {
   const e = props.e
-  if (e.kind === "component") return "Add the component reading to this conversation's report; it runs again on newer scans"
-  if (e.sql) return "Add the query to this conversation's report; it runs again on newer scans"
-  if (e.kind === "code") return "Quote the code in this conversation's report"
-  return "Add it to this conversation's report, as captured now"
+  if (e.kind === "component") return t("ask.askEvidence.addComponentReadingConversation")
+  if (e.sql) return t("ask.askEvidence.addQueryConversationS")
+  if (e.kind === "code") return t("ask.askEvidence.quoteCodeConversationS")
+  return t("ask.askEvidence.addConversationSReport")
 })
 
 const maxValue = computed(() => (props.e.kind === "bars" ? Math.max(1e-9, ...props.e.items.map(i => Math.abs(i.value))) : 1))
@@ -156,7 +157,7 @@ const barWidth = (v: number) => Math.max(1.5, (Math.abs(v) / maxValue.value) * 1
 const maxPoint = computed(() => (props.e.kind === "timeline" ? Math.max(1, ...props.e.points.map(p => p.value)) : 1))
 
 const sides = computed(() => (props.e.kind === "component"
-  ? [{ title: "Used most by", items: props.e.dependents }, { title: "Depends most on", items: props.e.dependencies }]
+  ? [{ title: t("ask.askEvidence.usedMost"), items: props.e.dependents }, { title: t("ask.askEvidence.dependsMost"), items: props.e.dependencies }]
   : []))
 
 const highlighted = computed(() => {

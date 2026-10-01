@@ -119,6 +119,7 @@ export namespace app {
 	    hasSnapshot: boolean;
 	    scanning: boolean;
 	    canExport: boolean;
+	    labels?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new MenuState(source);
@@ -130,6 +131,7 @@ export namespace app {
 	        this.hasSnapshot = source["hasSnapshot"];
 	        this.scanning = source["scanning"];
 	        this.canExport = source["canExport"];
+	        this.labels = source["labels"];
 	    }
 	}
 	export class PrintedPDF {

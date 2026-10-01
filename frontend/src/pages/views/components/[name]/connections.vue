@@ -2,29 +2,29 @@
   <div class="flex h-full min-h-0 flex-col">
     <!-- Controls: how neighbours are rolled up, and where the walk stands. -->
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-      <span class="ui-label">Roll up by</span>
-      <div class="ui-segmented" role="group" aria-label="Grouping">
+      <span class="ui-label">{{ t('pages.componentsConnections.rollUp') }}</span>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.componentsConnections.grouping')">
         <button v-for="m in modes" :key="m.value" type="button" :aria-pressed="mode === m.value" :disabled="!m.available" @click="mode = m.value">{{ m.label }}</button>
       </div>
       <template v-if="mode === 'path'">
-        <span class="ui-label">Segments</span>
-        <div class="ui-segmented" role="group" aria-label="Name segments to group by" :title="segmentsHint">
+        <span class="ui-label">{{ t('pages.componentsConnections.segments') }}</span>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.componentsConnections.nameSegmentsGroup')" :title="segmentsHint">
           <button v-for="d in DEPTHS" :key="d" type="button" :aria-pressed="depth === d" @click="depth = d">{{ d }}</button>
         </div>
         <span v-if="segmentsExample" class="ui-toolbar-meta truncate">{{ segmentsExample }}</span>
       </template>
       <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
-        <span>Dependents <span class="font-mono text-neutral-800">{{ formatNumber(dependents.length) }}</span></span>
+        <span>{{ t('pages.componentsConnections.dependents') }} <span class="font-mono text-neutral-800">{{ formatNumber(dependents.length) }}</span></span>
         <span class="text-neutral-300">·</span>
-        <span>Dependencies <span class="font-mono text-neutral-800">{{ formatNumber(dependencies.length) }}</span></span>
+        <span>{{ t('pages.componentsConnections.dependencies') }} <span class="font-mono text-neutral-800">{{ formatNumber(dependencies.length) }}</span></span>
       </span>
     </div>
 
     <!-- The subject: which component the diagram and the list are about, how
          the reader got there, and the two ways to change it. Always on
          screen — a jump used to move the subject and leave no trace. -->
-    <div class="flex h-9 shrink-0 items-center gap-1.5 overflow-x-auto px-4 hairline-b" aria-label="Subject">
-      <span class="ui-label shrink-0">Showing</span>
+    <div class="flex h-9 shrink-0 items-center gap-1.5 overflow-x-auto px-4 hairline-b" :aria-label="t('pages.componentsConnections.subject')">
+      <span class="ui-label shrink-0">{{ t('pages.componentsConnections.showing') }}</span>
       <template v-for="(step, i) in trail" :key="i">
         <span v-if="i > 0" class="flex shrink-0 items-center gap-1 text-xs text-neutral-400">
           <Icon icon="chevron-right" :size="12" class="text-neutral-300"/>{{ trail[i - 1].relationship }}<Icon icon="chevron-right" :size="12" class="text-neutral-300"/>
@@ -38,14 +38,14 @@
         >{{ leaf(step.name) }}</button>
       </template>
       <button v-if="awayFromPage" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="reset">
-        <Icon icon="rotate" :size="13" class="text-neutral-500"/><span>Back to {{ leaf(pageName) }}</span>
+        <Icon icon="rotate" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsConnections.back', { pageName: leaf(pageName) }) }}</span>
       </button>
-      <span v-else class="ui-toolbar-meta min-w-0 truncate">Select a neighbour, then Walk here to follow the chain</span>
+      <span v-else class="ui-toolbar-meta min-w-0 truncate">{{ t('pages.componentsConnections.selectNeighbourThenWalk') }}</span>
       <span class="ml-auto shrink-0 pl-3">
         <ModalTrigger>
           <template #trigger>
-            <button type="button" class="ui-btn ui-btn-sm" title="Point this view at a different component, without leaving this page">
-              <Icon icon="footprints" :size="13" class="text-neutral-500"/><span>Show another…</span>
+            <button type="button" class="ui-btn ui-btn-sm" :title="t('pages.componentsConnections.pointViewDifferentComponent')">
+              <Icon icon="footprints" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsConnections.showAnother') }}</span>
             </button>
           </template>
           <template #modal>
@@ -55,7 +55,7 @@
       </span>
     </div>
 
-    <LoadingState v-if="loading && neighbours.length === 0" text="Reading connections…"/>
+    <LoadingState v-if="loading && neighbours.length === 0" :text="t('pages.componentsConnections.readingConnections')"/>
     <div v-else class="flex min-h-0 grow overflow-hidden">
       <!-- Main column: the shape, then the names behind it. -->
       <div class="min-w-0 grow overflow-y-auto">
@@ -75,8 +75,8 @@
         <section class="mt-2">
           <div class="sticky top-0 z-10 flex h-9 items-center gap-2 bg-surface px-4 hairline-b hairline-t">
             <h3 class="ui-section-title">{{ activeDirection.title }}</h3>
-            <span class="font-mono text-xs text-neutral-400">{{ formatNumber(visibleGroups.length) }} {{ visibleGroups.length === 1 ? "group" : "groups" }}</span>
-            <div class="ui-segmented ml-auto" role="group" aria-label="Direction">
+            <span class="font-mono text-xs text-neutral-400">{{ formatNumber(visibleGroups.length) }} {{t('common.noun.group', { count: visibleGroups.length })}}</span>
+            <div class="ui-segmented ml-auto" role="group" :aria-label="t('pages.componentsConnections.direction')">
               <button v-for="d in directions" :key="d.value" type="button" :aria-pressed="direction === d.value" :disabled="!d.count" @click="direction = d.value">
                 {{ d.label }} <span class="font-mono text-neutral-400">{{ formatNumber(d.count) }}</span>
               </button>
@@ -105,7 +105,7 @@
                   ></span>
                 </span>
                 <span class="w-[120px] shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500">
-                  {{ formatNumber(group.components) }} · {{ formatNumber(group.references) }} refs
+                  {{ t('pages.componentsConnections.refs', { components: formatNumber(group.components), references: formatNumber(group.references) }) }}
                 </span>
               </button>
 
@@ -120,8 +120,8 @@
                     @click="pickMember($event, member.name)"
                   >
                     <span class="min-w-0 grow truncate font-mono text-sm" :title="member.name"><span class="text-neutral-500">{{ member.shared }}</span><span class="text-neutral-800">{{ member.own }}</span></span>
-                    <span v-if="member.direction === 'both'" class="ui-tag shrink-0" title="These two import each other">both ways</span>
-                    <span class="w-[92px] shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500">{{ member.references ? `${formatNumber(member.references)} refs` : "—" }}</span>
+                    <span v-if="member.direction === 'both'" class="ui-tag shrink-0" :title="t('pages.componentsConnections.theseTwoImportEach')">{{ t('pages.componentsConnections.bothWays') }}</span>
+                    <span class="w-[92px] shrink-0 text-right font-mono text-xs tabular-nums text-neutral-500">{{ member.references ? t('pages.componentsConnections.refs2', { references: formatNumber(member.references) }) : "—" }}</span>
                   </button>
                 </li>
               </ul>
@@ -133,12 +133,12 @@
              import joins them in either direction. An implicit contract. -->
         <section v-if="coChangeOnly.length" class="px-4 pb-2 pt-5">
           <div class="flex items-baseline gap-2">
-            <h3 class="ui-section-title">Changes with, doesn't import</h3>
-            <router-link :to="`/views/connections?source=git&rep=list&relation=no-import&level=components&q=${encodeURIComponent(current)}`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">All hidden coupling</router-link>
+            <h3 class="ui-section-title">{{ t('pages.componentsConnections.changesDoesnTImport') }}</h3>
+            <router-link :to="`/views/connections?source=git&rep=list&relation=no-import&level=components&q=${encodeURIComponent(current)}`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">{{ t('pages.componentsConnections.allHiddenCoupling') }}</router-link>
           </div>
-          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">They share commits (sweeping ones left out) but no import joins them: a contract the code does not state.</p>
+          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">{{ t('pages.componentsConnections.theyShareCommitsSweeping') }}</p>
           <table class="ui-table mt-2">
-            <thead><tr><th>Component</th><th class="w-24 text-right">Shared</th><th class="w-28 text-right">Of its commits</th></tr></thead>
+            <thead><tr><th>{{ t('pages.componentsConnections.component') }}</th><th class="w-24 text-right">{{ t('pages.componentsConnections.shared') }}</th><th class="w-28 text-right">{{ t('pages.componentsConnections.commits') }}</th></tr></thead>
             <tbody>
               <tr v-for="c in coChangeOnly.slice(0, 20)" :key="c.name">
                 <td class="max-w-0 truncate font-mono text-sm"><router-link :to="componentPath(c.name, 'connections')" class="text-neutral-900 hover:underline" :title="c.name">{{ c.name }}</router-link></td>
@@ -147,18 +147,18 @@
               </tr>
             </tbody>
           </table>
-          <p v-if="coChangeOnly.length > 20" class="mt-1 text-sm text-neutral-500">And {{ coChangeOnly.length - 20 }} more.</p>
+          <p v-if="coChangeOnly.length > 20" class="mt-1 text-sm text-neutral-500">{{ t('pages.componentsConnections.more', { value: coChangeOnly.length - 20 }) }}</p>
         </section>
 
         <!-- Lookups the analysis saw but could not tie to a component: a string
              naming a module that is not in the scan. Each is a dependency the
              numbers above leave out. -->
         <section v-if="unplaced.length" class="px-4 pb-6 pt-5">
-          <h3 class="ui-section-title">Dependencies it can't place</h3>
-          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">Names used at runtime that match no module in this scan, so they count in no coupling number here.</p>
+          <h3 class="ui-section-title">{{ t('pages.componentsConnections.dependenciesCanTPlace') }}</h3>
+          <p class="mt-1 max-w-[70ch] text-sm text-neutral-500">{{ t('pages.componentsConnections.namesUsedRuntimeMatch') }}</p>
           <div class="mt-2 overflow-hidden rounded-lg hairline">
             <table class="ui-table">
-              <thead><tr><th>Where</th><th>Name used</th><th>Why it is unplaced</th></tr></thead>
+              <thead><tr><th>{{ t('pages.componentsConnections.where') }}</th><th>{{ t('pages.componentsConnections.nameUsed') }}</th><th>{{ t('pages.componentsConnections.whyUnplaced') }}</th></tr></thead>
               <tbody>
                 <tr v-for="u in unplaced" :key="`${u.file}:${u.line}:${u.names}`">
                   <td class="max-w-0"><router-link :to="`${filePath(u.file, 'source')}#L${u.line}`" class="block truncate font-mono text-sm text-neutral-900 hover:underline" :title="`${u.file}:${u.line}`">{{ u.file.split("/").pop() }}:{{ u.line }}</router-link></td>
@@ -172,19 +172,19 @@
         <!-- What it imports from outside the project, rolled up to two segments. -->
         <section v-if="external.length" class="px-4 pb-6 pt-5">
           <div class="flex items-baseline gap-3">
-            <h3 class="ui-section-title">External</h3>
-            <span class="text-sm text-neutral-500">Imports of anything that is not one of the project's components</span>
-            <router-link :to="`/views/libraries`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">Libraries →</router-link>
+            <h3 class="ui-section-title">{{ t('pages.componentsConnections.external') }}</h3>
+            <span class="text-sm text-neutral-500">{{ t('pages.componentsConnections.importsAnythingNotOne') }}</span>
+            <router-link :to="`/views/libraries`" class="ml-auto text-sm text-neutral-500 hover:text-neutral-900">{{ t('pages.componentsConnections.libraries') }}</router-link>
           </div>
           <ul class="mt-2 flex flex-col">
             <li v-for="l in external.slice(0, 30)" :key="l.name" class="flex h-7 items-center gap-2">
               <span class="min-w-0 truncate font-mono text-sm text-neutral-800" :title="l.name">{{ l.name }}</span>
-              <span v-if="l.platform" class="ui-tag shrink-0">Platform</span>
-              <span v-if="l.internal" class="ui-tag shrink-0" title="Starts where the project's own names start">Looks internal</span>
-              <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ l.imports.toLocaleString("en-US") }} in {{ l.files.toLocaleString("en-US") }} {{ l.files === 1 ? "file" : "files" }}</span>
+              <span v-if="l.platform" class="ui-tag shrink-0">{{ t('pages.componentsConnections.platform') }}</span>
+              <span v-if="l.internal" class="ui-tag shrink-0" :title="t('pages.componentsConnections.startsWhereProjectS')">{{ t('pages.componentsConnections.looksInternal') }}</span>
+              <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ t('pages.componentsConnections.in', { value: l.imports.toLocaleString(intlLocale), files: t('common.count.file', { count: l.files }) }) }}</span>
             </li>
           </ul>
-          <p v-if="external.length > 30" class="mt-1 text-sm text-neutral-500">And {{ external.length - 30 }} more.</p>
+          <p v-if="external.length > 30" class="mt-1 text-sm text-neutral-500">{{ t('pages.componentsConnections.more', { value: external.length - 30 }) }}</p>
         </section>
       </div>
 
@@ -193,22 +193,22 @@
       <aside class="flex w-[340px] shrink-0 flex-col overflow-y-auto bg-ground hairline-l">
         <template v-if="selectedName">
           <div class="px-4 pb-3 pt-4 hairline-b">
-            <p class="ui-label">{{ selectedNeighbour?.direction === "out" ? "This depends on" : selectedNeighbour?.direction === "in" ? "Depends on this" : "Both ways" }}</p>
+            <p class="ui-label">{{ selectedNeighbour?.direction === "out" ? t('pages.componentsConnections.depends') : selectedNeighbour?.direction === "in" ? t('pages.componentsConnections.depends2') : t('pages.componentsConnections.bothWays2') }}</p>
             <p class="mt-1 break-all font-mono text-sm font-medium text-neutral-900">{{ selectedName }}</p>
             <div class="mt-3 flex gap-2">
               <router-link :to="componentPath(selectedName)" class="ui-btn ui-btn-sm">
-                <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>Open</span>
+                <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsConnections.open') }}</span>
               </router-link>
               <button type="button" class="ui-btn ui-btn-sm" @click="walkTo(selectedName)">
-                <Icon icon="footprints" :size="13" class="text-neutral-500"/><span>Walk here</span>
+                <Icon icon="footprints" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsConnections.walkHere') }}</span>
               </button>
               <router-link
                 v-if="selectedNeighbour?.direction === 'both'"
                 :to="`${componentPath(pageName)}/cycles?with=${encodeURIComponent(selectedName)}`"
                 class="ui-btn ui-btn-sm"
-                title="These two import each other — show the cycles they share"
+                :title="t('pages.componentsConnections.theseTwoImportEach2')"
               >
-                <Icon icon="route" :size="13" class="text-neutral-500"/><span>Cycle</span>
+                <Icon icon="route" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsConnections.cycle') }}</span>
               </router-link>
             </div>
           </div>
@@ -221,7 +221,7 @@
           </dl>
 
           <div class="px-4 py-4">
-            <LoadingState v-if="evidenceLoading" text="Reading imports…"/>
+            <LoadingState v-if="evidenceLoading" :text="t('pages.componentsConnections.readingImports')"/>
             <template v-else>
               <div v-for="side in evidenceSides" :key="side.key" class="mb-5 last:mb-0">
                 <h4 class="ui-label">{{ side.title }}</h4>
@@ -245,7 +245,7 @@
               </div>
 
               <p v-if="!hasEvidence" class="text-sm text-neutral-500">
-                No import runs between these two. They are related by shared commits or directory distance alone.
+                {{ t('pages.componentsConnections.noImportRunsBetween') }}
               </p>
             </template>
           </div>
@@ -254,19 +254,19 @@
         <!-- A group is selected, but no single component in it. -->
         <template v-else-if="selectedGroupRow">
           <div class="px-4 pb-3 pt-4 hairline-b">
-            <p class="ui-label">{{ direction === "out" ? "Dependency group" : "Dependent group" }}</p>
+            <p class="ui-label">{{ direction === "out" ? t('pages.componentsConnections.dependencyGroup') : t('pages.componentsConnections.dependentGroup') }}</p>
             <p class="mt-1 flex items-center gap-2">
               <span v-if="selectedGroupRow.color" class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: selectedGroupRow.color }"></span>
               <span class="min-w-0 break-all font-mono text-sm font-medium text-neutral-900">{{ selectedGroupRow.label }}</span>
             </p>
           </div>
           <dl class="ui-kv gap-y-1.5 px-4 py-3 hairline-b">
-            <dt>Components</dt><dd>{{ formatNumber(selectedGroupRow.components) }}</dd>
-            <dt>References</dt><dd>{{ formatNumber(selectedGroupRow.references) }}</dd>
-            <dt>Share of this side</dt><dd>{{ share(selectedGroupRow) }}%</dd>
+            <dt>{{ t('pages.componentsConnections.components') }}</dt><dd>{{ formatNumber(selectedGroupRow.components) }}</dd>
+            <dt>{{ t('pages.componentsConnections.references') }}</dt><dd>{{ formatNumber(selectedGroupRow.references) }}</dd>
+            <dt>{{ t('pages.componentsConnections.shareSide') }}</dt><dd>{{ share(selectedGroupRow) }}%</dd>
           </dl>
           <div class="px-4 py-4">
-            <h4 class="ui-label">Heaviest in this group</h4>
+            <h4 class="ui-label">{{ t('pages.componentsConnections.heaviestGroup') }}</h4>
             <ul class="mt-1.5 flex flex-col">
               <li v-for="m in selectedGroupRow.rows.slice(0, 10)" :key="m.name">
                 <button type="button" class="flex h-6 w-full items-center gap-2 text-left" @click="selectedName = m.name">
@@ -281,7 +281,7 @@
         <!-- Nothing selected: the component's own coupling, and how to read the page. -->
         <template v-else>
           <div class="px-4 pb-3 pt-4 hairline-b">
-            <p class="ui-label">Selected</p>
+            <p class="ui-label">{{ t('pages.componentsConnections.selected') }}</p>
             <p class="mt-1 break-all font-mono text-sm font-medium text-neutral-900">{{ current }}</p>
           </div>
           <dl class="ui-kv gap-y-1.5 px-4 py-3 hairline-b">
@@ -291,7 +291,7 @@
             </template>
           </dl>
           <p class="px-4 py-4 text-sm text-neutral-500">
-            Click a band or a name to see why the two are connected: which files carry the import, and the path between them when there is none.
+            {{ t('pages.componentsConnections.clickBandNameSee') }}
           </p>
         </template>
       </aside>
@@ -323,6 +323,7 @@ import SelectComponentModal from "~/features/connections/components/SelectCompon
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import CouplingFlow from "~/features/connections/components/CouplingFlow.vue"
 import { hopsOf, walkNextHops } from "~/features/snapshot/hops"
+import { t, intlLocale } from "~/shared/i18n"
 
 type Relationship = "depends on" | "is depended on by"
 
@@ -494,8 +495,8 @@ const dependencies = computed(() => neighbours.value.filter(n => n.direction !==
 // ── Rolling the names up ───────────────────────────────────────────
 const hasUserGroups = computed(() => groupsStore.componentGroupIndex.size > 0)
 const modes = computed(() => [
-  { value: "path" as const, label: "Name", available: true },
-  { value: "groups" as const, label: "Groups", available: hasUserGroups.value },
+  { value: "path" as const, label: t("pages.componentsConnections.name"), available: true },
+  { value: "groups" as const, label: t("pages.componentsConnections.groups"), available: hasUserGroups.value },
 ])
 const mode = ref<"path" | "groups">("path")
 // The depth opens where this component's neighbours split into a readable
@@ -532,7 +533,7 @@ function rollUp(list: Neighbour[]): NeighbourGroup[] {
 }
 
 const segmentsHint = computed(() =>
-  `Group by the first ${depth.value} ${depth.value === 1 ? "segment" : "segments"} of the component name${sharedPrefix.value ? `, after the shared ${sharedPrefix.value}` : ""}. Not a hop count.`)
+  t("pages.componentsConnections.groupByFirst", { count: depth.value, shared: sharedPrefix.value ? t("pages.componentsConnections.afterShared", { sharedPrefix: sharedPrefix.value }) : "" }))
 
 /** What the current depth actually produces, so the control explains itself. */
 const segmentsExample = computed(() => {
@@ -548,8 +549,8 @@ const flowIn = computed(() => foldTail(inGroups.value, FLOW_BANDS))
 const flowOut = computed(() => foldTail(outGroups.value, FLOW_BANDS))
 
 const directions = computed(() => [
-  { value: "in" as const, label: "Dependents", count: dependents.value.length },
-  { value: "out" as const, label: "Dependencies", count: dependencies.value.length },
+  { value: "in" as const, label: t("pages.componentsConnections.dependents"), count: dependents.value.length },
+  { value: "out" as const, label: t("pages.componentsConnections.dependencies"), count: dependencies.value.length },
 ])
 const direction = ref<"in" | "out">("in")
 watch(directions, list => {
@@ -558,8 +559,8 @@ watch(directions, list => {
 }, { immediate: true })
 
 const activeDirection = computed(() => direction.value === "out"
-  ? { title: "What this depends on", emptyTitle: "Imports nothing", emptyText: "This component imports no other component in the snapshot." }
-  : { title: "What depends on this", emptyTitle: "Nothing imports it", emptyText: "No component in the snapshot imports this one." })
+  ? { title: t("pages.componentsConnections.whatDepends"), emptyTitle: t("pages.componentsConnections.importsNothing"), emptyText: t("pages.componentsConnections.componentImportsNoOther") }
+  : { title: t("pages.componentsConnections.whatDepends2"), emptyTitle: t("pages.componentsConnections.nothingImports"), emptyText: t("pages.componentsConnections.noComponentSnapshotImports") })
 
 const rawGroups = computed(() => direction.value === "out" ? outGroups.value : inGroups.value)
 
@@ -641,11 +642,11 @@ const neighbourFacts = computed(() => {
   const n = selectedNeighbour.value
   if (!n) return []
   const rows: Array<{ label: string; value: string }> = [
-    { label: "References", value: n.references ? formatNumber(n.references) : "—" },
+    { label: t("pages.componentsConnections.references"), value: n.references ? formatNumber(n.references) : "—" },
   ]
-  if (n.hops !== null) rows.push({ label: "Shortest path", value: n.hops === 1 ? "Direct import" : `${formatNumber(n.hops)} hops` })
-  if (n.sharedCommits !== null) rows.push({ label: "Shared commits", value: formatNumber(n.sharedCommits) })
-  if (n.coChangeRate !== null) rows.push({ label: "Co-change", value: `${Math.round(n.coChangeRate * 100)}%` })
+  if (n.hops !== null) rows.push({ label: t("pages.componentsConnections.shortestPath"), value: n.hops === 1 ? "Direct import" : `${formatNumber(n.hops)} hops` })
+  if (n.sharedCommits !== null) rows.push({ label: t("pages.componentsConnections.sharedCommits"), value: formatNumber(n.sharedCommits) })
+  if (n.coChangeRate !== null) rows.push({ label: t("pages.componentsConnections.coChange"), value: `${Math.round(n.coChangeRate * 100)}%` })
   return rows
 })
 
@@ -656,14 +657,14 @@ const centreFacts = computed(() => {
   const num = (k: string) => { const v = Number(c?.[k]); return Number.isFinite(v) ? v : null }
   const def = (k: string) => store.definitions.get(k)?.short_description || ""
   const rows: Array<{ label: string; value: string; title: string }> = [
-    { label: "Dependents", value: formatNumber(dependents.value.length), title: "Components that import this one" },
-    { label: "Dependencies", value: formatNumber(dependencies.value.length), title: "Components this one imports" },
+    { label: t("pages.componentsConnections.dependents"), value: formatNumber(dependents.value.length), title: t("pages.componentsConnections.componentsImportOne") },
+    { label: t("pages.componentsConnections.dependencies"), value: formatNumber(dependencies.value.length), title: t("pages.componentsConnections.componentsOneImports") },
   ]
   const afferent = num("modularity__coupling__afferent")
-  if (afferent !== null) rows.push({ label: "Importing files", value: formatNumber(afferent), title: "Files elsewhere that import this component" })
+  if (afferent !== null) rows.push({ label: t("pages.componentsConnections.importingFiles"), value: formatNumber(afferent), title: t("pages.componentsConnections.filesElsewhereImportComponent") })
   const instability = num("modularity__instability")
-  if (instability !== null) rows.push({ label: "Instability", value: instability.toFixed(2), title: def("modularity__instability") })
-  rows.push({ label: "Cycles", value: cycleCount.value ? formatNumber(cycleCount.value) : "None", title: "Dependency cycles this component appears in" })
+  if (instability !== null) rows.push({ label: t("pages.componentsConnections.instability"), value: instability.toFixed(2), title: def("modularity__instability") })
+  rows.push({ label: t("pages.componentsConnections.cycles"), value: cycleCount.value ? formatNumber(cycleCount.value) : "None", title: t("pages.componentsConnections.dependencyCyclesComponentAppears") })
   return rows
 })
 
@@ -717,8 +718,8 @@ const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>
 const evidenceSides = computed(() => {
   const other = selectedName.value ? leaf(selectedName.value) : ""
   return [
-    { key: "out", title: `Files here that import ${other}`, files: evidence.value.out, empty: `Nothing here imports ${other}.` },
-    { key: "in", title: `Files in ${other} that import this`, files: evidence.value.in, empty: `No file in ${other} imports this component.` },
+    { key: "out", title: t("pages.componentsConnections.filesHereImport", { other }), files: evidence.value.out, empty: t("pages.componentsConnections.nothingHereImports", { other }) },
+    { key: "in", title: t("pages.componentsConnections.filesImport", { other }), files: evidence.value.in, empty: t("pages.componentsConnections.noFileImportsComponent", { other }) },
   ].filter(side => side.files.length > 0 || evidence.value.out.length + evidence.value.in.length > 0)
 })
 
@@ -726,10 +727,10 @@ const evidencePaths = computed(() => {
   const other = selectedName.value ? leaf(selectedName.value) : ""
   const out: Array<{ key: string; title: string; steps: string[] }> = []
   if (evidence.value.out.length === 0 && evidence.value.outPath.length > 2) {
-    out.push({ key: "outPath", title: `How it reaches ${other}`, steps: evidence.value.outPath })
+    out.push({ key: "outPath", title: t("pages.componentsConnections.howReaches", { other }), steps: evidence.value.outPath })
   }
   if (evidence.value.in.length === 0 && evidence.value.inPath.length > 2) {
-    out.push({ key: "inPath", title: `How ${other} reaches it`, steps: evidence.value.inPath })
+    out.push({ key: "inPath", title: t("pages.componentsConnections.howReaches2", { other }), steps: evidence.value.inPath })
   }
   return out
 })

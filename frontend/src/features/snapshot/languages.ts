@@ -2,6 +2,8 @@
 // Every file gets an answer, code or not: a report's first sentence is often
 // "876,814 of 996,736 lines are translations", and that has to be countable.
 
+import { t } from "~/shared/i18n"
+
 const BY_EXT: Record<string, string> = {
     java: "Java", kt: "Kotlin", kts: "Kotlin", scala: "Scala", groovy: "Groovy", gradle: "Gradle",
     cs: "C#", csproj: "MSBuild", vb: "Visual Basic", fs: "F#", razor: "Razor", cshtml: "Razor",
@@ -62,14 +64,19 @@ export function extensionOf(path: string): string {
     return dot <= 0 ? "" : base.slice(dot)
 }
 
+/** A language name as people read it: "No extension" is the one the app names itself. */
+export function languageLabel(language: string): string {
+    return language === "No extension" ? t("snapshot.languages.noExtension") : language
+}
+
 export type FileRole = "production" | "test" | "generated" | "third_party" | "non_code"
 
 export const ROLE_LABELS: Record<FileRole, string> = {
-    production: "Production",
-    test: "Tests",
-    generated: "Generated",
-    third_party: "Third-party",
-    non_code: "Not code",
+    production: t("snapshot.languages.production"),
+    test: t("snapshot.languages.tests"),
+    generated: t("snapshot.languages.generated"),
+    third_party: t("snapshot.languages.thirdParty"),
+    non_code: t("snapshot.languages.notCode"),
 }
 
 export interface CompositionRow {

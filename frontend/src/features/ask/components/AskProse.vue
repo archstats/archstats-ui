@@ -7,6 +7,7 @@
 import { computed, onMounted, ref, watch } from "vue"
 import { Marked } from "marked"
 import { markUnsourced } from "../engine/checks"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   text: string
@@ -38,8 +39,8 @@ const rendered = computed(() => {
     list.split(/\s*,\s*/).map(id => (props.ids.has(id)
       ? (() => {
           const v = props.verdicts?.get(id)
-          const why = v?.reasons.length ? `\n${v.verdict === "verified" ? "" : "Check: "}${v.reasons.join("; ")}` : v?.verdict === "verified" ? "\nVerified: its numbers and names are in this fact." : ""
-          return `<button type="button" class="ask-cite${v ? ` ask-cite-${v.verdict}` : ""}" data-cite="${id}" title="${escapeHtml(`${id} · ${props.titles?.get(id) ?? "evidence"}${why}\nClick to show`).replace(/"/g, "&quot;")}">${id}</button>`
+          const why = v?.reasons.length ? `\n${v.verdict === "verified" ? "" : t("ask.askProse.check")}${v.reasons.join("; ")}` : v?.verdict === "verified" ? t("ask.askProse.verifiedNumbersNamesFact") : ""
+          return `<button type="button" class="ask-cite${v ? ` ask-cite-${v.verdict}` : ""}" data-cite="${id}" title="${escapeHtml(t("ask.askProse.clickShow", { id, value: props.titles?.get(id) ?? t("ask.askProse.evidence"), why })).replace(/"/g, "&quot;")}">${id}</button>`
         })()
       : `<span class="ask-cite ask-cite-broken" title="No evidence ${id} in this conversation">${id}</span>`)).join(""))
   if (props.sources === undefined) return { html, count: 0 }
@@ -63,7 +64,7 @@ function mark() {
     if (!hit) continue
     x.classList.add("ask-flag", `ask-flag-${hit.verdict}`)
     x.dataset.flagged = "1"
-    x.title = `${hit.verdict === "uncited" ? "Uncited" : hit.verdict === "partial" ? "Partly supported" : "Not supported"}: ${hit.reasons.join("; ")}`
+    x.title = `${hit.verdict === "uncited" ? t("ask.askProse.uncited") : hit.verdict === "partial" ? t("ask.askProse.partlySupported") : t("ask.askProse.notSupported")}: ${hit.reasons.join("; ")}`
   }
 }
 onMounted(mark)

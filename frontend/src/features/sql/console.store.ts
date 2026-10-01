@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from "pinia"
 import { markRaw } from "vue"
 import { useStateStore } from "~/platform/state.store"
+import { t } from "~/shared/i18n"
 
 // The SQL console's working set: its tabs and what each last returned, and
 // the history of every run. Tabs and history are the workspace's, kept across
@@ -83,7 +84,7 @@ export const useConsoleStore = defineStore("sqlConsole", {
             if (!state.workspace || state.workspace === this.workspace) return
             this.workspace = state.workspace
             const kept = state.get<{ tabs: ConsoleTab[]; active: string } | null>("console.tabs", null)
-            this.tabs = kept?.tabs?.length ? kept.tabs : [{ id: newId(), name: "Query 1", sql: "" }]
+            this.tabs = kept?.tabs?.length ? kept.tabs : [{ id: newId(), name: t("sql.consoleStore.query1"), sql: "" }]
             this.activeId = kept?.active && this.tabs.some(t => t.id === kept.active) ? kept.active : this.tabs[0].id
             this.history = state.get<HistoryEntry[]>("console.history", []) ?? []
             this.runs = {}
@@ -102,7 +103,7 @@ export const useConsoleStore = defineStore("sqlConsole", {
             this.persist()
         },
         /** A name no open tab has: "Query 3". */
-        freshName(stem = "Query") {
+        freshName(stem = t("sql.consoleStore.query")) {
             const taken = new Set(this.tabs.map(t => t.name))
             let n = 1
             while (taken.has(`${stem} ${n}`)) n++
@@ -162,7 +163,7 @@ export const useConsoleStore = defineStore("sqlConsole", {
             this.tabs.splice(i, 1)
             const { [id]: _gone, ...rest } = this.runs
             this.runs = rest
-            if (!this.tabs.length) this.tabs.push({ id: newId(), name: "Query 1", sql: "" })
+            if (!this.tabs.length) this.tabs.push({ id: newId(), name: t("sql.consoleStore.query1"), sql: "" })
             if (this.activeId === id) this.activeId = this.tabs[Math.min(i, this.tabs.length - 1)].id
             this.persist()
         },

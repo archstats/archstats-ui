@@ -1,0 +1,69 @@
+{
+  "exhibitButton": {
+    "export": "Exporteer {exhibitTitle}",
+    "stillDrawing": "Nog aan het tekenen",
+    "savePng": "PNG opslaan",
+    "savePng2": "PNG opslaan (2×)…",
+    "saveSvg": "SVG opslaan",
+    "saveSvg2": "SVG opslaan…",
+    "copyRowsClickAgain": "{value} rijen kopiëren? Klik nogmaals",
+    "copyMarkdown": "Kopiëren als Markdown",
+    "copyCsv": "Kopiëren als CSV",
+    "saveCsv": "CSV opslaan…",
+    "rows": "{value} rijen",
+    "previewReportWriteAround": "Bekijk het in een rapport, schrijf eromheen en voeg het dan toe",
+    "nothingDrawnHereAdd": "Hier is nog niets getekend om toe te voegen",
+    "addReport": "Aan rapport toevoegen",
+    "addReport2": "Aan rapport toevoegen…",
+    "keepFigureViewCame": "Bewaar deze figuur, en de view waar hij vandaan komt, op het bewijsbord",
+    "pin": "Pinnen",
+    "pinFigure": "Figuur pinnen",
+    "drawLegendUnderFigure": "Teken de legenda onder de figuur als die wordt opgeslagen, toegevoegd of gepind",
+    "figureDeclaresNoLegend": "Deze figuur heeft geen legenda",
+    "legendExport": "Legenda in export",
+    "showLegendUnderFigure": "Toon de legenda onder de figuur in deze view",
+    "legendHere": "Legenda hier",
+    "shownDark": "Zoals getoond (donker)",
+    "stillLoading": "Nog aan het laden.",
+    "noRowsScope": "Geen rijen in scope.",
+    "export2": "Exporteren",
+    "reportsNotLoadedWindow": "rapporten zijn nog niet geladen in dit venster; probeer het zo opnieuw"
+  },
+  "figureLegend": {
+    "legend": "Legenda"
+  },
+  "exportActions": {
+    "copied": "Gekopieerd",
+    "saveCsv": "CSV opslaan",
+    "saved": "Opgeslagen"
+  },
+  "figure": {
+    "interSystemUiSans": "Inter, system-ui, sans-serif",
+    "jetbrainsMonoUiMonospace": "\"JetBrains Mono\", ui-monospace, monospace",
+    "figureCouldNotDrawn": "De figuur kon niet als afbeelding getekend worden.",
+    "chartHasNoSize": "De chart heeft geen afmetingen om vast te leggen ({value} bij {value2}); hij staat niet in beeld of is nog niet getekend.",
+    "chartHasNothingDrawn": "Er is nog niets in de chart getekend.",
+    "figureCameOutBlank": "De figuur is leeg: er is alleen een achtergrond getekend.",
+    "lightRenderingCameOut": "De lichte weergave is donker uitgekomen: een kleur in de chart is niet naar zijn lichte waarde vertaald."
+  },
+  "figureActions": {
+    "chartHasNothingDrawn": "er is nog niets in de chart getekend",
+    "savePng": "PNG opslaan",
+    "saved": "Opgeslagen",
+    "chartDrawnCanvasSave": "deze chart is op een canvas getekend; sla hem op als PNG",
+    "saveSvg": "SVG opslaan"
+  },
+  "provenance": {
+    "uncommittedFiles": "niet-gecommitte bestanden",
+    "analysisRevision": "analysis revision",
+    "olderThanBuildS": " (ouder dan de analyse van deze build)",
+    "archstatsDesktop": "archstats desktop",
+    "to": "{since} tot {until}",
+    "uncommitted": " +{uncommitted} niet gecommit",
+    "matching": "passend bij {query}",
+    "lens": "lens {lens}",
+    "scope": "scope {scope}",
+    "files": "{role}-bestanden",
+    "authorsPseudonymised": "auteurs gepseudonimiseerd"
+  }
+}

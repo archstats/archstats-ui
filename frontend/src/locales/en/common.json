@@ -1,0 +1,598 @@
+{
+  "count": {
+    "cycle": {
+      "one": "{count} cycle",
+      "other": "{count} cycles"
+    },
+    "ref": {
+      "one": "{count} ref",
+      "other": "{count} refs"
+    },
+    "import": {
+      "one": "{count} import",
+      "other": "{count} imports"
+    },
+    "file": {
+      "one": "{count} file",
+      "other": "{count} files"
+    },
+    "distinctShortestCycle": {
+      "one": "{count} distinct shortest cycle",
+      "other": "{count} distinct shortest cycles"
+    },
+    "component": {
+      "one": "{count} component",
+      "other": "{count} components"
+    },
+    "tangle": {
+      "one": "{count} tangle",
+      "other": "{count} tangles"
+    },
+    "level": {
+      "one": "{count} level",
+      "other": "{count} levels"
+    },
+    "importReference": {
+      "one": "{count} import reference",
+      "other": "{count} import references"
+    },
+    "line": {
+      "one": "{count} line",
+      "other": "{count} lines"
+    },
+    "commit": {
+      "one": "{count} commit",
+      "other": "{count} commits"
+    },
+    "floor": {
+      "one": "{count} floor",
+      "other": "{count} floors"
+    },
+    "link": {
+      "one": "{count} link",
+      "other": "{count} links"
+    },
+    "hop": {
+      "one": "{count} hop",
+      "other": "{count} hops"
+    },
+    "module": {
+      "one": "{count} module",
+      "other": "{count} modules"
+    },
+    "reference": {
+      "one": "{count} reference",
+      "other": "{count} references"
+    },
+    "rule": {
+      "one": "{count} rule",
+      "other": "{count} rules"
+    },
+    "is": {
+      "one": "{count} is",
+      "other": "{count} are"
+    },
+    "time": {
+      "one": "{count} time",
+      "other": "{count} times"
+    },
+    "match": {
+      "one": "{count} match",
+      "other": "{count} matches"
+    },
+    "connection": {
+      "one": "{count} connection",
+      "other": "{count} connections"
+    },
+    "name": {
+      "one": "{count} name",
+      "other": "{count} names"
+    },
+    "componentItNamesIs": {
+      "one": "{count} component it names is",
+      "other": "{count} components it names are"
+    },
+    "group": {
+      "one": "{count} group",
+      "other": "{count} groups"
+    },
+    "lineMatches": {
+      "one": "{count} line matches",
+      "other": "{count} lines match"
+    },
+    "pipeline": {
+      "one": "{count} pipeline",
+      "other": "{count} pipelines"
+    },
+    "deployable": {
+      "one": "{count} deployable",
+      "other": "{count} deployables"
+    },
+    "month": {
+      "one": "{count} month",
+      "other": "{count} months"
+    },
+    "day": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
+    "author": {
+      "one": "{count} author",
+      "other": "{count} authors"
+    },
+    "sharedCommit": {
+      "one": "{count} shared commit",
+      "other": "{count} shared commits"
+    },
+    "memberExchanges": {
+      "one": "{count} member exchanges",
+      "other": "{count} members exchange"
+    },
+    "groupHolds": {
+      "one": "{count} group holds",
+      "other": "{count} groups hold"
+    },
+    "part": {
+      "one": "{count} part",
+      "other": "{count} parts"
+    },
+    "componentImports": {
+      "one": "{count} component imports",
+      "other": "{count} components import"
+    },
+    "shown": {
+      "one": "{count} shown",
+      "other": "{count} showns"
+    },
+    "moduleIs": {
+      "one": "{count} module is",
+      "other": "{count} modules are"
+    },
+    "referenceRuns": {
+      "one": "{count} reference runs",
+      "other": "{count} references run"
+    },
+    "snapshot": {
+      "one": "{count} snapshot",
+      "other": "{count} snapshots"
+    },
+    "newCommit": {
+      "one": "{count} new commit",
+      "other": "{count} new commits"
+    },
+    "editedFile": {
+      "one": "{count} edited file",
+      "other": "{count} edited files"
+    },
+    "class": {
+      "one": "{count} class",
+      "other": "{count} classes"
+    },
+    "other": {
+      "one": "{count} other",
+      "other": "{count} others"
+    },
+    "cut": {
+      "one": "{count} cut",
+      "other": "{count} cuts"
+    },
+    "fileThatIs": {
+      "one": "{count} file that is",
+      "other": "{count} files that are"
+    },
+    "row": {
+      "one": "{count} row",
+      "other": "{count} rows"
+    },
+    "prompt": {
+      "one": "{count} prompt",
+      "other": "{count} prompts"
+    },
+    "cell": {
+      "one": "{count} cell",
+      "other": "{count} cells"
+    },
+    "topic": {
+      "one": "{count} topic",
+      "other": "{count} topics"
+    },
+    "test": {
+      "one": "{count} test",
+      "other": "{count} tests"
+    },
+    "section": {
+      "one": "{count} section",
+      "other": "{count} sections"
+    },
+    "statementHereIs": {
+      "one": "{count} statement here is",
+      "other": "{count} statements here are"
+    },
+    "thing": {
+      "one": "{count} thing",
+      "other": "{count} things"
+    },
+    "statement": {
+      "one": "{count} statement",
+      "other": "{count} statements"
+    },
+    "citation": {
+      "one": "{count} citation",
+      "other": "{count} citations"
+    },
+    "claim": {
+      "one": "{count} claim",
+      "other": "{count} claims"
+    },
+    "referenceGoes": {
+      "one": "{count} reference goes",
+      "other": "{count} references go"
+    },
+    "columnIs": {
+      "one": "{count} column is",
+      "other": "{count} columns are"
+    },
+    "paragraph": {
+      "one": "{count} paragraph",
+      "other": "{count} paragraphs"
+    },
+    "report": {
+      "one": "{count} report",
+      "other": "{count} reports"
+    },
+    "springBean": {
+      "one": "{count} Spring bean",
+      "other": "{count} Spring beans"
+    },
+    "jpaEntity": {
+      "one": "{count} JPA entity",
+      "other": "{count} JPA entities"
+    },
+    "reactComponent": {
+      "one": "{count} React component",
+      "other": "{count} React components"
+    },
+    "vueComponent": {
+      "one": "{count} Vue component",
+      "other": "{count} Vue components"
+    },
+    "app": {
+      "one": "{count} app",
+      "other": "{count} apps"
+    },
+    "androidApplicationModule": {
+      "one": "{count} Android application module",
+      "other": "{count} Android application modules"
+    },
+    "multiplatformModule": {
+      "one": "{count} multiplatform module",
+      "other": "{count} multiplatform modules"
+    },
+    "testFolder": {
+      "one": "{count} test folder",
+      "other": "{count} test folders"
+    },
+    "productionComponent": {
+      "one": "{count} production component",
+      "other": "{count} production components"
+    },
+    "library": {
+      "one": "{count} library",
+      "other": "{count} libraries"
+    },
+    "otherComponent": {
+      "one": "{count} other component",
+      "other": "{count} other components"
+    },
+    "person": {
+      "one": "{count} person",
+      "other": "{count} people"
+    },
+    "bean": {
+      "one": "{count} bean",
+      "other": "{count} beans"
+    },
+    "request": {
+      "one": "{count} request",
+      "other": "{count} requests"
+    },
+    "jaxRsResource": {
+      "one": "{count} JAX-RS resource",
+      "other": "{count} JAX-RS resources"
+    },
+    "modelClass": {
+      "one": "{count} model class",
+      "other": "{count} model classes"
+    },
+    "view": {
+      "one": "{count} view",
+      "other": "{count} views"
+    },
+    "form": {
+      "one": "{count} form",
+      "other": "{count} forms"
+    },
+    "package": {
+      "one": "{count} package",
+      "other": "{count} packages"
+    },
+    "namespace": {
+      "one": "{count} namespace",
+      "other": "{count} namespaces"
+    },
+    "mobileApp": {
+      "one": "{count} mobile app",
+      "other": "{count} mobile apps"
+    },
+    "applicationModule": {
+      "one": "{count} application module",
+      "other": "{count} application modules"
+    },
+    "libraryModule": {
+      "one": "{count} library module",
+      "other": "{count} library modules"
+    },
+    "permission": {
+      "one": "{count} permission",
+      "other": "{count} permissions"
+    },
+    "composable": {
+      "one": "{count} composable",
+      "other": "{count} composables"
+    },
+    "fragment": {
+      "one": "{count} Fragment",
+      "other": "{count} Fragments"
+    },
+    "swiftuiView": {
+      "one": "{count} SwiftUI view",
+      "other": "{count} SwiftUI views"
+    },
+    "widget": {
+      "one": "{count} widget",
+      "other": "{count} widgets"
+    },
+    "expectDeclaration": {
+      "one": "{count} expect declaration",
+      "other": "{count} expect declarations"
+    },
+    "picture": {
+      "one": "{count} picture",
+      "other": "{count} pictures"
+    },
+    "step": {
+      "one": "{count} step",
+      "other": "{count} steps"
+    },
+    "lane": {
+      "one": "{count} lane",
+      "other": "{count} lanes"
+    },
+    "scan": {
+      "one": "{count} scan",
+      "other": "{count} scans"
+    },
+    "sampleApp": {
+      "one": "{count} sample, demo or preview app",
+      "other": "{count} sample, demo or preview apps"
+    },
+    "otherApp": {
+      "one": "{count} other app",
+      "other": "{count} other apps"
+    },
+    "lens": {
+      "one": "{count} lens",
+      "other": "{count} lenses"
+    },
+    "arrangement": {
+      "one": "{count} arrangement",
+      "other": "{count} arrangements"
+    },
+    "heading": {
+      "one": "{count} heading",
+      "other": "{count} headings"
+    },
+    "explanation": {
+      "one": "{count} explanation",
+      "other": "{count} explanations"
+    },
+    "block": {
+      "one": "{count} block",
+      "other": "{count} blocks"
+    },
+    "table": {
+      "one": "{count} table",
+      "other": "{count} tables"
+    },
+    "figure": {
+      "one": "{count} figure",
+      "other": "{count} figures"
+    }
+  },
+  "noun": {
+    "cut": {
+      "one": "cut",
+      "other": "cuts"
+    },
+    "component": {
+      "one": "component",
+      "other": "components"
+    },
+    "import": {
+      "one": "import",
+      "other": "imports"
+    },
+    "es": {
+      "one": "es",
+      "other": ""
+    },
+    "reference": {
+      "one": "reference",
+      "other": "references"
+    },
+    "it": {
+      "one": "it",
+      "other": "them"
+    },
+    "line": {
+      "one": "line",
+      "other": "lines"
+    },
+    "s": {
+      "one": "s",
+      "other": ""
+    },
+    "group": {
+      "one": "group",
+      "other": "groups"
+    },
+    "type": {
+      "one": "type",
+      "other": "types"
+    },
+    "cell": {
+      "one": "cell",
+      "other": "cells"
+    },
+    "imports": {
+      "one": "imports",
+      "other": "import"
+    },
+    "tag": {
+      "one": "tag",
+      "other": "tags"
+    },
+    "file": {
+      "one": "file",
+      "other": "files"
+    },
+    "itCalls": {
+      "one": "it calls",
+      "other": "they call"
+    },
+    "cycle": {
+      "one": "cycle",
+      "other": "cycles"
+    },
+    "fixture": {
+      "one": "fixture",
+      "other": "fixtures"
+    },
+    "part": {
+      "one": "part",
+      "other": "parts"
+    },
+    "is": {
+      "one": "is",
+      "other": "are"
+    },
+    "its": {
+      "one": "its",
+      "other": "their"
+    },
+    "set": {
+      "one": "set",
+      "other": "sets"
+    },
+    "is2": {
+      "one": "is",
+      "other": "es"
+    },
+    "itCites": {
+      "one": "it cites",
+      "other": "they cite"
+    },
+    "call": {
+      "one": "call",
+      "other": "calls"
+    },
+    "lives": {
+      "one": "lives",
+      "other": "all live"
+    },
+    "itLives": {
+      "one": "It lives",
+      "other": "They all live"
+    },
+    "this": {
+      "one": "this",
+      "other": "these"
+    },
+    "itsView": {
+      "one": "its view",
+      "other": "their views"
+    },
+    "ratesBelow4ItHolds": {
+      "one": "rates below 4; it holds",
+      "other": "rate below 4; together they hold"
+    },
+    "componentImports": {
+      "one": "component imports",
+      "other": "components import"
+    },
+    "answers": {
+      "one": "answers",
+      "other": "answer"
+    },
+    "breaks": {
+      "one": "breaks",
+      "other": "break"
+    },
+    "item": {
+      "one": "item",
+      "other": "items"
+    },
+    "itWas": {
+      "one": "it was",
+      "other": "they were"
+    },
+    "pair": {
+      "one": "pair",
+      "other": "pairs"
+    },
+    "lens": {
+      "one": "lens",
+      "other": "lenses"
+    },
+    "directory": {
+      "one": "directory",
+      "other": "directories"
+    },
+    "ref": {
+      "one": "ref",
+      "other": "refs"
+    },
+    "author": {
+      "one": "author",
+      "other": "authors"
+    },
+    "library": {
+      "one": "library",
+      "other": "libraries"
+    },
+    "brush": {
+      "one": "brush",
+      "other": "brushes"
+    },
+    "page": {
+      "one": "page",
+      "other": "pages"
+    },
+    "module": {
+      "one": "module",
+      "other": "modules"
+    },
+    "hop": {
+      "one": "hop",
+      "other": "hops"
+    },
+    "commit": {
+      "one": "commit",
+      "other": "commits"
+    },
+    "lookup": {
+      "one": "lookup",
+      "other": "lookups"
+    }
+  }
+}

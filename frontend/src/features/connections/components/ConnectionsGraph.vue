@@ -5,7 +5,7 @@
         ref="canvasEl"
         class="block h-full w-full select-none"
         role="img"
-        :aria-label="`Coupling graph of ${nodes.length} nodes and ${edges.length} connections`"
+        :aria-label="t('connections.connectionsGraph.couplingGraphNodesConnections', { nodesLength: nodes.length, edgesLength: edges.length })"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
@@ -35,10 +35,10 @@
         @mouseleave="emit('hover-suggestion', null)"
       >
         <span class="flex min-w-0 flex-col px-1">
-          <span class="flex items-center gap-1.5 text-xs font-medium text-neutral-700"><Icon v-if="s.locked" icon="bookmark" :size="11" class="shrink-0 text-accent-700" aria-label="Locked"/><span class="truncate">{{ s.name }}</span><span class="font-mono text-neutral-400">{{ s.count }}</span><span v-if="s.split" class="font-mono text-neutral-400" :title="`${s.split} component${s.split === 1 ? '' : 's'} only partly in`">· {{ s.split }} split</span></span>
+          <span class="flex items-center gap-1.5 text-xs font-medium text-neutral-700"><Icon v-if="s.locked" icon="bookmark" :size="11" class="shrink-0 text-accent-700" :aria-label="t('connections.connectionsGraph.locked')"/><span class="truncate">{{ s.name }}</span><span class="font-mono text-neutral-400">{{ s.count }}</span><span v-if="s.split" class="font-mono text-neutral-400" :title="t('connections.connectionsGraph.onlyPartly', { components: t('common.count.component', { count: s.split }) })">{{ t('connections.connectionsGraph.split', { split: s.split }) }}</span></span>
           <span v-if="s.reason" class="truncate text-[11px] leading-3.5 text-neutral-500">{{ s.reason }}</span>
         </span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" title="Save this group now" @click="emit('accept-suggestion', s.key)">Save</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" :title="t('connections.connectionsGraph.saveGroupNow')" @click="emit('accept-suggestion', s.key)">{{ t('connections.connectionsGraph.save') }}</button>
       </div>
     </div>
   </ExhibitFrame>
@@ -55,6 +55,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import { type CEdge, type CNode, type GroupSuggestion, edgeKey, idsInRect, isDynamicOnly, topDegreeIds } from "~/features/connections/connections";
 import type { Hull as ModelHull } from "~/features/connections/useConnectionsModel";
 import { begin, count } from "~/platform/perf";
+import { t } from "~/shared/i18n";
 
 // The merged coupling view: a force layout where a node is a component, a
 // file or a collapsed group, coloured by the group it belongs to. Hulls
@@ -123,7 +124,7 @@ const emit = defineEmits<{
 
 const host = ref<HTMLElement | null>(null);
 const canvasEl = ref<HTMLCanvasElement | null>(null);
-const KIND_WORD: Record<string, string> = { group: "Group", component: "Component", file: "File" };
+const KIND_WORD: Record<string, string> = { group: "Group", component: t("connections.connectionsGraph.component"), file: "File" };
 const KIND_ORDER = ["group", "component", "file"];
 const kindsPresent = computed(() => KIND_ORDER.filter(k => props.nodes.some(n => n.kind === k)));
 
@@ -831,9 +832,9 @@ function onPointerMove(event: PointerEvent) {
     const m = markerAt(x, y);
     const h = m ? null : hullLabelAt(x, y);
     const l = m || h ? null : linkAt(x, y);
-    if (m) { key = "m:" + m.edge.from + "|" + m.edge.to; title = "Part of a cycle"; sub = "Click to inspect it."; }
-    else if (h) { key = "h:" + h.key; title = `Close ${h.name}`; }
-    else if (l) { key = "l:" + l.edge.from + "|" + l.edge.to; title = `${nodeById.value.get(l.edge.from)?.label ?? l.edge.from} ${props.directed ? "→" : "↔"} ${nodeById.value.get(l.edge.to)?.label ?? l.edge.to}`; sub = `${l.edge.references ? `${l.edge.references} ref${l.edge.references === 1 ? "" : "s"}${l.edge.dynamicRefs ? ` (${l.edge.dynamicRefs} dynamic)` : ""}. ` : ""}Click to inspect this edge.`; }
+    if (m) { key = "m:" + m.edge.from + "|" + m.edge.to; title = t("connections.connectionsGraph.partCycle"); sub = t("connections.connectionsGraph.clickInspect"); }
+    else if (h) { key = "h:" + h.key; title = t("connections.connectionsGraph.close", { hName: h.name }); }
+    else if (l) { key = "l:" + l.edge.from + "|" + l.edge.to; title = `${nodeById.value.get(l.edge.from)?.label ?? l.edge.from} ${props.directed ? "→" : "↔"} ${nodeById.value.get(l.edge.to)?.label ?? l.edge.to}`; sub = t("connections.connectionsGraph.clickInspectEdge", { value: l.edge.references ? `${l.edge.references} ref${l.edge.references === 1 ? "" : "s"}${l.edge.dynamicRefs ? ` (${l.edge.dynamicRefs} dynamic)` : ""}. ` : "" }); }
   }
   canvas.style.cursor = key ? "pointer" : "grab";
   if (key !== tipKey) { tipKey = key; tip.value = key ? { x: px, y: py, title, sub } : null; }
@@ -972,20 +973,20 @@ const dynamicPairs = computed(() => props.edges.filter(isDynamicOnly).length);
 // colours; a light export remaps them the way it remaps the drawing.
 const KIND_MARK = { group: "swatch", component: "dot", file: "ring" } as const;
 function figureLegend(): FigureLegend {
-  const t = chartTheme();
+  const theme = chartTheme();
   const items: LegendItem[] = [];
-  if (kindsPresent.value.length > 1) for (const k of kindsPresent.value) items.push({ label: KIND_WORD[k], color: t.inkSecondary, mark: KIND_MARK[k as keyof typeof KIND_MARK] ?? "dot" });
-  items.push({ label: props.directed ? "Depends on (the arrow points at the dependency)" : "Changed together", color: t.inkMuted, mark: "line" });
-  if (dynamicPairs.value) items.push({ label: "Only by runtime lookup: no import names the pair, so a rename breaks it silently", color: t.inkMuted, mark: "dashed" });
-  if (props.cycleKeys.size) items.push({ label: "In a cycle", color: t.red, mark: "line" });
+  if (kindsPresent.value.length > 1) for (const k of kindsPresent.value) items.push({ label: KIND_WORD[k], color: theme.inkSecondary, mark: KIND_MARK[k as keyof typeof KIND_MARK] ?? "dot" });
+  items.push({ label: props.directed ? t("connections.connectionsGraph.dependsArrowPointsDependency") : t("connections.connectionsGraph.changedTogether"), color: theme.inkMuted, mark: "line" });
+  if (dynamicPairs.value) items.push({ label: t("connections.connectionsGraph.onlyRuntimeLookupNo"), color: theme.inkMuted, mark: "dashed" });
+  if (props.cycleKeys.size) items.push({ label: t("connections.connectionsGraph.cycle"), color: theme.red, mark: "line" });
   const named = props.hulls.filter(h => h.color);
   for (const h of named.slice(0, 12)) items.push({ label: h.name, color: h.color! });
-  if (props.suggestions.length) items.push({ label: "Suggested group", color: t.inkMuted, mark: "dashed" });
-  const notes = named.length > 12 ? [`${named.length - 12} more groups are outlined in their own colours.`] : [];
+  if (props.suggestions.length) items.push({ label: t("connections.connectionsGraph.suggestedGroup"), color: theme.inkMuted, mark: "dashed" });
+  const notes = named.length > 12 ? [t("connections.connectionsGraph.moreGroupsOutlinedTheir", { value: named.length - 12 })] : [];
   return { items, notes };
 }
 
-const figure = useFigure({ title: "Connections graph", ready: () => !!ctx && simNodes.length > 0, render: exportFigure, svg: false, legend: figureLegend });
+const figure = useFigure({ title: t("connections.connectionsGraph.connectionsGraph"), ready: () => !!ctx && simNodes.length > 0, render: exportFigure, svg: false, legend: figureLegend });
 
 defineExpose({ zoomIn: () => zoomBy(1.3), zoomOut: () => zoomBy(1 / 1.3), resetZoom: () => fit(), focusNode, exportFigure });
 

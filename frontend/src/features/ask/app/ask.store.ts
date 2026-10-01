@@ -21,6 +21,7 @@ import { brokenCitations, trustedText, untrusted } from "../render/verdict"
 import { suggestTemplates, writeReport, type TemplateSuggestion, type WriteProgress } from "./writer"
 import { Embed } from "wailsjs/go/app/AskService"
 import { pointsAtView } from "./deixis"
+import { t } from "~/shared/i18n"
 
 const embedLocal = async (texts: string[]) => (await Embed("nomic-embed-text", texts)) as number[][]
 let writeController: AbortController | null = null
@@ -245,8 +246,8 @@ export const useAskStore = defineStore("ask", {
             try {
                 const ai = useAIStore()
                 await ai.refresh()
-                if (!ai.enabled) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = "AI features are off. Turn them on in Settings."; return }
-                if (!ai.ready.length) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = "No model provider is set up. Add one in Settings → AI."; return }
+                if (!ai.enabled) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = t("ask.askStore.aiFeaturesOffTurn"); return }
+                if (!ai.ready.length) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = t("ask.askStore.noModelProviderSet"); return }
                 const { models, problems } = await listModels()
                 this.models = models
                 this.problems = problems
@@ -260,8 +261,8 @@ export const useAskStore = defineStore("ask", {
                 if (!usable.length) {
                     const onlyOllama = ai.ready.every(p => p.id === "ollama")
                     this.modelsError = problems.length
-                        ? problems.map(p => `${p.label}: ${p.message}`).join(" · ") + (onlyOllama ? " Start it (ollama serve) and try again." : "")
-                        : onlyOllama ? "No local model can call tools. Pull one, for example: ollama pull qwen3:8b" : "None of the models can call tools."
+                        ? problems.map(p => `${p.label}: ${p.message}`).join(" · ") + (onlyOllama ? t("ask.askStore.startOllamaServeTry") : "")
+                        : onlyOllama ? t("ask.askStore.noLocalModelCan") : t("ask.askStore.noneModelsCanCall")
                 }
             } catch (e: any) {
                 this.modelsError = String(e?.message ?? e)
@@ -284,13 +285,13 @@ export const useAskStore = defineStore("ask", {
         },
         newThread(): Thread {
             const info = appWorld(() => null).info
-            const t: Thread = {
-                id: newId(), title: "New conversation", scanId: this.openScanId,
-                snapshot: `${String(info.git_head_commit ?? "").slice(0, 7) || "snapshot"} · rev ${info.analysis_revision ?? "?"}`,
+            const time: Thread = {
+                id: newId(), title: t("ask.askStore.newConversation"), scanId: this.openScanId,
+                snapshot: t("ask.askStore.rev", { value: String(info.git_head_commit ?? "").slice(0, 7) || "snapshot", value2: info.analysis_revision ?? "?" }),
                 createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), turns: [], history: [], seq: 0, reportId: null, written: [],
             }
-            this.threads.push(t)
-            this.currentId = t.id
+            this.threads.push(time)
+            this.currentId = time.id
             this.inspector.evidenceId = null
             return this.threads[this.threads.length - 1]
         },
@@ -361,12 +362,12 @@ export const useAskStore = defineStore("ask", {
 
             this.running = true
             this.runningThreadId = thread.id
-            turn.phase = "Reading the snapshot"
+            turn.phase = t("ask.askStore.readingSnapshot")
             controller = new AbortController()
             const signal = controller.signal
             const thr = thread
             try {
-                const card = await withTimeout(cardFor(world.scanId, () => buildCard(world)), 30_000, "Reading the snapshot took too long: the app may have lost its connection to its backend. Reload the window.")
+                const card = await withTimeout(cardFor(world.scanId, () => buildCard(world)), 30_000, t("ask.askStore.readingSnapshotTookToo"))
                 if (signal.aborted) return
                 const earlier = thr.turns.slice(0, -1)
                 const sources = [card.numbers, ...earlier.flatMap(t => t.steps.map(s => s.text ?? ""))].join("\n")
@@ -394,16 +395,16 @@ export const useAskStore = defineStore("ask", {
                     emit: e => {
                         switch (e.type) {
                             case "route": turn.namespaces = e.namespaces; break
-                            case "plan": turn.plan = e.steps; turn.claims = e.steps.map(() => ({ status: "waiting" })); turn.phase = "Testing the claims"; break
+                            case "plan": turn.plan = e.steps; turn.claims = e.steps.map(() => ({ status: "waiting" })); turn.phase = t("ask.askStore.testingClaims"); break
                             case "claim":
                                 if (turn.claims?.[e.index]) turn.claims[e.index] = { status: e.status, verdict: e.verdict, summary: e.summary }
-                                if (e.status === "testing") turn.phase = `Testing claim ${e.index + 1} of ${turn.plan.length}`
+                                if (e.status === "testing") turn.phase = t("ask.askStore.testingClaim", { value: e.index + 1, planLength: turn.plan.length })
                                 break
                             case "system": this.lastSystem = e.content; this.lastTools = e.tools; break
-                            case "delta": turn.answer += e.content; turn.thinking += e.thinking; if (e.content) turn.phase = "Writing"; break
+                            case "delta": turn.answer += e.content; turn.thinking += e.thinking; if (e.content) turn.phase = t("ask.askStore.writing"); break
                             case "draft-reset": turn.answer = ""; break
                             case "model":
-                                if (e.phase === "start") turn.phase = turn.steps.length ? "Reading what it found" : "Deciding where to look"
+                                if (e.phase === "start") turn.phase = turn.steps.length ? t("ask.askStore.readingWhatFound") : t("ask.askStore.decidingWhereLook")
                                 if (e.phase === "end") turn.trace.push({ step: e.step, promptTokens: e.reply.promptTokens, outputTokens: e.reply.outputTokens, ms: e.reply.ms, toolCalls: e.reply.toolCalls.map(c => `${c.name}(${JSON.stringify(c.args)})`), content: e.reply.content.slice(0, 2000), thinking: e.reply.thinking.slice(0, 2000) })
                                 break
                             case "tool":
@@ -425,7 +426,7 @@ export const useAskStore = defineStore("ask", {
                                 break
                             case "checks": turn.checks = e.checks; break
                             case "choices": turn.choices = { question: e.question, options: e.options }; turn.answer = e.question; break
-                            case "repair": turn.repairs.push(e.reason); turn.phase = "Revising after a check"; break
+                            case "repair": turn.repairs.push(e.reason); turn.phase = t("ask.askStore.revisingAfterCheck"); break
                             case "done": turn.answer = e.answer; break
                             case "error": turn.error = e.message; break
                         }
@@ -461,7 +462,7 @@ export const useAskStore = defineStore("ask", {
                 if (reports.currentId !== thread.reportId) reports.open(thread.reportId)
                 return { created: false }
             }
-            const intro: Block = { id: newId(), kind: "p", text: "", prompt: "Why this was looked into, and for whom. Drafted from an Ask conversation: each answer waits below as a prompt, and nothing of it prints until you write it in your own words." }
+            const intro: Block = { id: newId(), kind: "p", text: "", prompt: t("ask.askStore.whyWasLookedWhom") }
             const rec = await reports.create(`Ask: ${thread.title}`, [intro])
             if (!rec) return null
             thread.reportId = rec.id
@@ -519,11 +520,11 @@ export const useAskStore = defineStore("ask", {
                     sections++
                 }
                 if (own.created) {
-                    blocks.push({ id: newId(), kind: "h2", text: "What this cannot show" })
-                    blocks.push({ id: newId(), kind: "p", text: "", prompt: "What the scan leaves out (ignored folders, tests, generated code), and any question the evidence could not answer." })
+                    blocks.push({ id: newId(), kind: "h2", text: t("ask.askStore.whatCannotShow") })
+                    blocks.push({ id: newId(), kind: "p", text: "", prompt: t("ask.askStore.whatScanLeavesOut") })
                 }
                 if (blocks.length) {
-                    const at = reports.doc.blocks.findIndex(b => b.kind === "h2" && b.text === "What this cannot show")
+                    const at = reports.doc.blocks.findIndex(b => b.kind === "h2" && (b.text === t("ask.askStore.whatCannotShow") || b.text === "What this cannot show"))
                     const after = own.created || at <= 0 ? reports.doc.blocks[reports.doc.blocks.length - 1]?.id ?? null : reports.doc.blocks[at - 1].id
                     reports.insert(after, blocks)
                 }
@@ -622,12 +623,12 @@ export const useAskStore = defineStore("ask", {
             const thread = this.current
             const model = this.model
             // Never a silent no-op: what stops it is said in the sheet.
-            if (!thread) { this.writeup.error = "There is no conversation to write up."; return null }
-            if (!model) { this.writeup.error = "No model is selected: choose one in the toolbar, then write the report."; return null }
-            if (this.running) { this.writeup.error = "An answer is still being written. Write up can start when it is done."; return null }
+            if (!thread) { this.writeup.error = t("ask.askStore.thereNoConversationWrite"); return null }
+            if (!model) { this.writeup.error = t("ask.askStore.noModelSelectedChoose"); return null }
+            if (this.running) { this.writeup.error = t("ask.askStore.answerStillBeingWritten"); return null }
             writeController = new AbortController()
             this.writeup.error = ""
-            this.writeup.progress = { phase: "planning", sections: [], message: "Laying out the report" }
+            this.writeup.progress = { phase: "planning", sections: [], message: t("ask.askStore.layingOutReport") }
             this.running = true
             try {
                 const r = await writeReport({ thread, templateId, params, model: modelClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
@@ -655,9 +656,9 @@ export const useAskStore = defineStore("ask", {
             const ev = useEvidenceStore()
             if (e.kind === "component") {
                 const values = Object.fromEntries(e.values.filter(v => v.value !== null && v.id !== "cycles").map(v => [v.id, v.value as number]))
-                return !!(await ev.pin({ kind: "component", entityKey: e.name, title: e.name, values, note: "Pinned from Ask" }))
+                return !!(await ev.pin({ kind: "component", entityKey: e.name, title: e.name, values, note: t("ask.askStore.pinnedAsk") }))
             }
-            if (e.kind === "file") return !!(await ev.pin({ kind: "file", entityKey: e.path, title: e.path, note: "Pinned from Ask" }))
+            if (e.kind === "file") return !!(await ev.pin({ kind: "file", entityKey: e.path, title: e.path, note: t("ask.askStore.pinnedAsk") }))
             return false
         },
 

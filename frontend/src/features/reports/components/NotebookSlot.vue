@@ -5,13 +5,13 @@
   <figure
     class="nb-slot relative my-3 rounded-lg transition-shadow"
     :class="selected ? 'nb-slot-on' : ''"
-    :aria-label="`${number}, to add from ${spec.view}`"
+    :aria-label="t('reports.notebookSlot.add', { number, view: spec.view })"
     @mousedown="$emit('select')"
   >
     <div class="flex items-baseline gap-2 px-4 pt-3">
       <span class="shrink-0 text-xs font-medium text-neutral-500">{{ number }}</span>
       <span class="min-w-0 flex-1 truncate text-[13px] font-semibold text-neutral-800">{{ cell.title || spec.view }}</span>
-      <span class="ui-tag shrink-0">to add</span>
+      <span class="ui-tag shrink-0">{{ t('reports.notebookSlot.add2') }}</span>
     </div>
     <div class="flex items-center gap-5 px-4 pb-4 pt-3" :class="compact ? '' : 'min-h-[132px]'">
       <!-- A sketch of what goes here: a frame for a figure, rows for a table. -->
@@ -28,19 +28,19 @@
         </template>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[13px] leading-5 text-neutral-700">From <span class="font-medium text-neutral-900">{{ view }}</span>, set as</p>
+        <p class="text-[13px] leading-5 text-neutral-700"><I18nT k="reports.notebookSlot.set"><template #view><span class="font-medium text-neutral-900">{{ view }}</span></template></I18nT></p>
         <!-- The ask in the view's own settings, so it reads at a glance. -->
-        <dl class="mt-1 flex flex-wrap gap-1.5" aria-label="Asked for">
+        <dl class="mt-1 flex flex-wrap gap-1.5" :aria-label="t('reports.notebookSlot.asked')">
           <div v-for="r in asked" :key="r.label" class="flex items-baseline gap-1 rounded bg-surface px-1.5 py-[1px] text-[11.5px] leading-[18px] hairline">
             <dt class="text-neutral-500">{{ r.label }}</dt><dd class="text-neutral-900">{{ r.asked }}</dd>
           </div>
           <p v-if="!asked.length" class="text-[12px] text-neutral-600">{{ spec.hint }}</p>
         </dl>
         <div v-if="!compact" class="mt-3 flex items-center gap-3">
-          <button type="button" class="ui-btn ui-btn-sm" :disabled="taking" :title="`Opens ${view} set as asked, takes the ${spec.kind}, and shows it here before it goes in`" @mousedown.stop @click.stop="$emit('take')">
-            <Icon :icon="spec.kind === 'figure' ? 'image' : 'table'" :size="13" class="text-neutral-500"/><span>{{ taking ? "Taking…" : `Take it from ${view}` }}</span>
+          <button type="button" class="ui-btn ui-btn-sm" :disabled="taking" :title="t('reports.notebookSlot.opensSetAskedTakes', { view, kind: spec.kind })" @mousedown.stop @click.stop="$emit('take')">
+            <Icon :icon="spec.kind === 'figure' ? 'image' : 'table'" :size="13" class="text-neutral-500"/><span>{{ taking ? t('reports.notebookSlot.taking') : t('reports.notebookSlot.take', { view }) }}</span>
           </button>
-          <button type="button" class="text-[12px] text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @mousedown.stop @click.stop="$emit('open')">Set it yourself</button>
+          <button type="button" class="text-[12px] text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @mousedown.stop @click.stop="$emit('open')">{{ t('reports.notebookSlot.setYourself') }}</button>
         </div>
       </div>
     </div>
@@ -52,12 +52,14 @@ import { computed } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import type { Cell, CellSpec } from "~/features/reports/reportDoc";
 import { askedSettings, viewName } from "~/features/reports/slotSettings";
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 const props = withDefaults(defineProps<{ cell: Cell; number: string; selected: boolean; compact?: boolean; taking?: boolean }>(), { compact: false, taking: false });
 defineEmits<{ (e: "select"): void; (e: "open"): void; (e: "take"): void }>();
 const spec = computed(() => props.cell.spec as Extract<CellSpec, { type: "slot" }>);
 const view = computed(() => viewName(spec.value.route) || spec.value.view);
-const asked = computed(() => askedSettings(spec.value.route).filter(r => r.label !== "View"));
+const asked = computed(() => askedSettings(spec.value.route).filter(r => r.label !== t("reports.slotSettings.view2")));
 </script>
 
 <style scoped>

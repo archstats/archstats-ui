@@ -13,6 +13,7 @@ import { isTestPath } from "~/features/snapshot/fileRole"
 import { loadUnits } from "~/features/units/units"
 import { proseName, proseNames, type ReadingOutput } from "./reportDoc"
 import type { ReadingContext, ReadingDef } from "./readings"
+import { t, intlLocale } from "~/shared/i18n"
 
 export interface AnatomyUnit { id: string; name: string; lane: string; component: string; fanIn: number; fanOut: number }
 
@@ -88,10 +89,10 @@ export function layersOf(profile: FrameworkProfile): string[] {
 
 const NOUN: Record<Language, string> = {
     java: "classes", kotlin: "classes", csharp: "classes", php: "classes",
-    python: "classes and functions", go: "types and functions", typescript: "functions, classes and types",
+    python: t("reports.anatomy.classesFunctions"), go: t("reports.anatomy.typesFunctions"), typescript: t("reports.anatomy.functionsClassesTypes"),
     // Swift's structs, enums and actors are types; Dart's screens are classes
     // and its providers may be functions.
-    swift: "types", objc: "classes", dart: "classes and functions",
+    swift: "types", objc: "classes", dart: t("reports.anatomy.classesFunctions"),
 }
 
 const cache = new WeakMap<ReadingContext, Map<string, Promise<Anatomy | null>>>()
@@ -161,16 +162,16 @@ async function readAnatomy(ctx: ReadingContext, profileId: string, only: string)
 
 // ── Writing it down ───────────────────────────────────────────────────────
 
-const n = (v: number) => Math.round(v).toLocaleString("en-US")
+const n = (v: number) => Math.round(v).toLocaleString(intlLocale)
 const b = (s: string) => `**${s}**`
 /** A name set as code, shortened for prose (proseName); the root folder's component "." reads as "(root)". */
 const code = (s: string) => `\`${proseName(s).replace(/`/g, "'")}\``
 const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`
 /** "`a` (10) and `b` (7)": places with their counts, names kept apart when shortened. */
 const places = (where: Array<[string, number]>) => { const shown = proseNames(where.map(([c]) => c)); return listOf(where.map(([, x], i) => `\`${shown[i].replace(/`/g, "'")}\` (${n(x)})`)) }
-const listOf = (items: string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`)
+const listOf = (items: string[]) => (items.length <= 1 ? items.join("") : t("reports.anatomy.and", { items: items.slice(0, -1).join(", "), value: items[items.length - 1] }))
 const absent = (text: string): ReadingOutput => ({ text, values: {}, absent: true })
-const noAnatomy = absent("This scan did not record classes and functions, so they cannot be sorted into roles. Scanning again adds them.")
+const noAnatomy = absent(t("reports.anatomy.scanDidNotRecord"))
 
 const labelOf = (p: FrameworkProfile, lane: string) => p.lanes.find(l => l.id === lane)?.label ?? lane
 const hintOf = (p: FrameworkProfile, lane: string) => p.lanes.find(l => l.id === lane)?.hint
@@ -180,7 +181,7 @@ const inProse = (label: string) => label.replace(/ & /g, " and ").split(" ").map
 const countRole = (k: number, p: FrameworkProfile, lane: string) => {
     const label = inProse(labelOf(p, lane))
     if (k !== 1) return `${n(k)} ${label}`
-    return /\s/.test(label) ? `1 of the ${label}` : `1 ${label.replace(/ies$/, "y").replace(/(ss)es$/, "$1").replace(/s$/, "")}`
+    return /\s/.test(label) ? t("reports.anatomy.text1", { label }) : `1 ${label.replace(/ies$/, "y").replace(/(ss)es$/, "$1").replace(/s$/, "")}`
 }
 /** A lane's hint as an aside: "(what answers a request)". */
 const aside = (p: FrameworkProfile, lane: string) => { const h = hintOf(p, lane); return h ? ` (${/^[A-Z][a-z]/.test(h) ? h.charAt(0).toLowerCase() + h.slice(1) : h})` : "" }
@@ -202,7 +203,7 @@ const inLane = (a: Anatomy, lane: string) => a.units.filter(u => u.lane === lane
 export const ANATOMY_READINGS: ReadingDef[] = [
     {
         id: "roles",
-        label: "Roles in the framework",
+        label: t("reports.anatomy.rolesFramework"),
         describe: "Every class or function outside tests, sorted into its framework's roles by the Classes view's profiles (annotations, base types, imports, then names), with where each role lives.",
         async run(ctx, p) {
             const a = await anatomy(ctx, p.profile, p.language)
@@ -210,34 +211,34 @@ export const ANATOMY_READINGS: ReadingDef[] = [
             const noun = a.language ? NOUN[a.language] : "declarations"
             const counts = new Map(countBy(a.units, u => u.lane))
             const lanes = a.profile.lanes.filter(l => l.id !== UNCLASSIFIED && counts.get(l.id))
-            if (!lanes.length) return absent(`None of the code's ${noun} match a ${a.profile.label} role.`)
+            if (!lanes.length) return absent(t("reports.anatomy.noneCodeSMatch", { noun, profileLabel: a.profile.label }))
             const unclassified = counts.get(UNCLASSIFIED) ?? 0
             const classified = a.units.length - unclassified
             const name = a.profile.label
             const lead = a.evidence.strong && (p.profile || a.confident)
-                ? `This is a ${b(name)} codebase: ${n(a.evidence.strong)} of its ${n(a.evidence.total)} ${noun} (tests included) use ${possessive(name)} annotations, base classes or imports.`
-                : p.profile ? `The ${noun} are sorted into the roles ${name} gives them.`
-                : `No single framework stands out, so the ${noun} are sorted by their structure instead.`
-            const intro = `${lead} Outside the tests there are ${b(n(a.units.length))} ${noun}. ${classified >= unclassified ? "Most of them" : "Some of them"} fit one of ${possessive(name)} roles:`
+                ? t("reports.anatomy.codebaseTestsIncludedUse", { name: b(name), strong: n(a.evidence.strong), evidenceTotal: n(a.evidence.total), noun, name2: possessive(name) })
+                : p.profile ? t("reports.anatomy.sortedRolesGivesThem", { noun, name })
+                : t("reports.anatomy.noSingleFrameworkStands", { noun })
+            const intro = t("reports.anatomy.outsideTestsThereFit", { lead, unitsLength: b(n(a.units.length)), noun, value: classified >= unclassified ? t("reports.anatomy.mostThem") : t("reports.anatomy.someThem"), name: possessive(name) })
             const layers = new Set(layersOf(a.profile))
             const top = layersOf(a.profile)[0]
             const items = lanes.map(l => {
                 const us = inLane(a, l.id)
                 const k = us.length
-                const where = countBy(us, u => u.component || "(no component)")
+                const where = countBy(us, u => u.component || t("reports.anatomy.noComponent"))
                 const lives = where.length === 1
-                    ? `${k === 1 ? "lives" : "all live"} in ${code(where[0][0])}`
-                    : `live mostly in ${places(where.slice(0, 2))}`
+                    ? t("reports.anatomy.in", { allLive: t("common.noun.lives", { count: k }), value: code(where[0][0]) })
+                    : t("reports.anatomy.liveMostly", { slice: places(where.slice(0, 2)) })
                 const reaches = l.id === top || !layers.has(l.id)
                 const pick = reaches
                     ? [...us].sort((x, y) => y.fanOut - x.fanOut || x.name.localeCompare(y.name))[0]
                     : [...us].sort((x, y) => y.fanIn - x.fanIn || x.name.localeCompare(y.name))[0]
                 const note = pick && (reaches ? pick.fanOut : pick.fanIn) > 0 && k > 1
-                    ? reaches ? ` ${code(pick.name)} uses the most other classes (${n(pick.fanOut)}).` : ` The most used is ${code(pick.name)}, by ${plural(pick.fanIn, "class", "classes")}.`
+                    ? reaches ? t("reports.anatomy.usesMostOtherClasses", { pickName: code(pick.name), fanOut: n(pick.fanOut) }) : t("reports.anatomy.mostUsed", { pickName: code(pick.name), classes: t("common.count.class", { count: pick.fanIn }) })
                     : ""
                 return `- ${b(countRole(k, a.profile, l.id))}${aside(a.profile, l.id)} ${lives}.${note}`
             })
-            const rest = unclassified ? `\n\nThe other ${b(n(unclassified))} fit none of these roles. They are counted apart rather than guessed at.` : ""
+            const rest = unclassified ? t("reports.anatomy.otherFitNoneThese", { unclassified: b(n(unclassified)) }) : ""
             return {
                 text: `${intro}\n\n${items.join("\n")}${rest}`,
                 values: { declared: a.units.length, ...Object.fromEntries(lanes.map(l => [labelOf(a.profile, l.id), counts.get(l.id) ?? 0])), unclassified },
@@ -246,13 +247,13 @@ export const ANATOMY_READINGS: ReadingDef[] = [
     },
     {
         id: "layers",
-        label: "How the roles reference each other",
-        describe: "References between classes (unit_connections, members rolled up to their owners) counted by the roles at each end, against the framework's order from entry points down to data: one step down, a skipped layer, or back up.",
+        label: t("reports.anatomy.howRolesReferenceEach"),
+        describe: t("reports.anatomy.referencesBetweenClassesUnit"),
         async run(ctx, p) {
             const a = await anatomy(ctx, p.profile, p.language)
             if (!a) return noAnatomy
             const order = layersOf(a.profile)
-            if (order.length < 2) return absent(`${a.profile.label} has no top-to-bottom order of roles to check.`)
+            if (order.length < 2) return absent(t("reports.anatomy.hasNoTopBottom", { profileLabel: a.profile.label }))
             const rank = new Map(order.map((id, i) => [id, i]))
             const byId = new Map(a.units.map(u => [u.id, u]))
             const down: Array<[string, string]> = [], skip: Array<[string, string]> = [], back: Array<[string, string]> = []
@@ -267,41 +268,41 @@ export const ANATOMY_READINGS: ReadingDef[] = [
                 if (f === undefined || t === undefined || f === t) continue
                 if (t === f + 1 || (t === shapes && f < t)) down.push(e); else if (t > f + 1) skip.push(e); else back.push(e)
             }
-            if (!a.linked) return absent("This scan does not record which classes use which, so the references between roles cannot be counted. A newer scan records them.")
-            if (!down.length && !skip.length && !back.length) return absent(`No reference runs between two ${a.profile.label} roles.`)
+            if (!a.linked) return absent(t("reports.anatomy.scanDoesNotRecord"))
+            if (!down.length && !skip.length && !back.length) return absent(t("reports.anatomy.noReferenceRunsBetween", { profileLabel: a.profile.label }))
             const pairText = (list: Array<[string, string]>) => {
                 const pairs = countBy(list, e => `${byId.get(e[0])!.lane}\n${byId.get(e[1])!.lane}`)
                 const [key, k] = pairs[0]
                 const [fl, tl] = key.split("\n")
                 const own = list.filter(e => byId.get(e[0])!.lane === fl && byId.get(e[1])!.lane === tl)
                 const who = countBy(own, e => byId.get(e[0])!.name).slice(0, 3)
-                return `Most go from ${inProse(labelOf(a.profile, fl))} into ${inProse(labelOf(a.profile, tl))} (${n(k)}, from ${plural(new Set(own.map(e => e[0])).size, "class", "classes")})${who[0][1] > 1 ? `; ${code(who[0][0])} makes the most (${n(who[0][1])})` : ""}.`
+                return t("reports.anatomy.mostGo", { labelOf: inProse(labelOf(a.profile, fl)), labelOf2: inProse(labelOf(a.profile, tl)), k: n(k), classes: t("common.count.class", { count: new Set(own.map(e => e[0])).size }), value: who[0][1] > 1 ? t("reports.anatomy.makesMost", { value: code(who[0][0]), value2: n(who[0][1]) }) : "" })
             }
             const chain = order.map(id => inProse(labelOf(a.profile, id))).join(" → ")
             const parts = [
-                `${a.profile.label} code is meant to run one way: ${chain}. Between classes in those roles:`,
+                t("reports.anatomy.codeMeantRunOne", { profileLabel: a.profile.label, chain }),
                 "",
-                `- ${b(n(down.length))} ${down.length === 1 ? "reference goes" : "references go"} one step down${shapes >= 0 ? ` or into the ${inProse(labelOf(a.profile, order[shapes]))}` : ""}, as expected.`,
-                skip.length ? `- ${b(n(skip.length))} skip a layer. ${pairText(skip)}` : "- None skip a layer.",
-                back.length ? `- ${b(n(back.length))} run back up, against the order. ${pairText(back)}` : "- None run back up.",
+                t("reports.anatomy.oneStepDownExpected", { referencesGo: t("common.count.referenceGoes", { count: down.length }), value: shapes >= 0 ? t("reports.anatomy.orIntoThe", { labelOf: inProse(labelOf(a.profile, order[shapes])) }) : "" }),
+                skip.length ? t("reports.anatomy.skipLayer", { skipLength: b(n(skip.length)), skip: pairText(skip) }) : t("reports.anatomy.noneSkipLayer"),
+                back.length ? t("reports.anatomy.runBackUpAgainst", { backLength: b(n(back.length)), back: pairText(back) }) : t("reports.anatomy.noneRunBackUp"),
             ]
             return { text: parts.join("\n"), values: { "one step down": down.length, "skip a layer": skip.length, "back up": back.length } }
         },
     },
     {
         id: "role",
-        label: "One role",
-        describe: "One of the framework's roles: how many, where they live, what they reference and what references them, by role, and the ones that reach furthest or are used most.",
+        label: t("reports.anatomy.oneRole"),
+        describe: t("reports.anatomy.oneFrameworkSRoles"),
         async run(ctx, p) {
             const a = await anatomy(ctx, p.profile, p.language)
             if (!a) return noAnatomy
             const lane = p.lane
             const us = inLane(a, lane)
             const label = labelOf(a.profile, lane)
-            if (!us.length) return absent(`The code has no ${a.profile.label} ${inProse(label)}.`)
+            if (!us.length) return absent(t("reports.anatomy.codeHasNo", { profileLabel: a.profile.label, label: inProse(label) }))
             const ids = new Set(us.map(u => u.id))
             const byId = new Map(a.units.map(u => [u.id, u]))
-            const where = countBy(us, u => u.component || "(no component)")
+            const where = countBy(us, u => u.component || t("reports.anatomy.noComponent"))
             const outTo = countBy(a.edges.filter(e => ids.has(e[0]) && !ids.has(e[1])), e => byId.get(e[1])!.lane).filter(([l]) => l !== UNCLASSIFIED)
             const inFrom = countBy(a.edges.filter(e => ids.has(e[1]) && !ids.has(e[0])), e => byId.get(e[0])!.lane).filter(([l]) => l !== UNCLASSIFIED)
             const reach = [...us].sort((x, y) => y.fanOut - x.fanOut || x.name.localeCompare(y.name)).filter(u => u.fanOut > 0).slice(0, 3)
@@ -309,17 +310,17 @@ export const ANATOMY_READINGS: ReadingDef[] = [
             const unused = us.filter(u => u.fanIn === 0).length
             const noun = inProse(label)
             const lines = [
-                `There ${us.length === 1 ? "is" : "are"} ${b(countRole(us.length, a.profile, lane))}${aside(a.profile, lane)} in ${plural(where.length, "component")}. ${where.length === 1 ? `${us.length === 1 ? "It lives" : "They all live"} in ${code(where[0][0])}.` : `Most live in ${places(where.slice(0, 3))}.`}`,
+                t("reports.anatomy.there", { are: t("common.noun.is", { count: us.length }), countRole: b(countRole(us.length, a.profile, lane)), aside: aside(a.profile, lane), components: t("common.count.component", { count: where.length }), value: where.length === 1 ? t("reports.anatomy.in2", { theyAllLive: t("common.noun.itLives", { count: us.length }), value: code(where[0][0]) }) : t("reports.anatomy.mostLive", { slice: places(where.slice(0, 3)) }) }),
             ]
             const items: string[] = []
-            if (!a.linked) lines.push("This scan does not record which classes use which, so what they use and what uses them is not counted.")
+            if (!a.linked) lines.push(t("reports.anatomy.scanDoesNotRecord2"))
             else {
-                items.push(outTo.length ? `They use ${listOf(outTo.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${n(k)} ${k === 1 ? "time" : "times"})`))}.` : "They use no class in another role.")
-                items.push(inFrom.length ? `They are used by ${listOf(inFrom.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${n(k)})`))}.` : "No class in another role uses them.")
+                items.push(outTo.length ? t("reports.anatomy.theyUse", { roles: listOf(outTo.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${t("common.count.time", { count: k })})`)) }) : t("reports.anatomy.theyUseNoOtherRole"))
+                items.push(inFrom.length ? t("reports.anatomy.theyUsed", { value: listOf(inFrom.slice(0, 4).map(([l, k]) => `${inProse(labelOf(a.profile, l))} (${n(k)})`)) }) : t("reports.anatomy.noClassAnotherRole"))
             }
-            if (reach.length) items.push(`${code(reach[0].name)} uses the most other classes (${n(reach[0].fanOut)})${reach.length > 1 ? `, then ${listOf(reach.slice(1).map(u => `${code(u.name)} (${n(u.fanOut)})`))}` : ""}.`)
-            if (used.length) items.push(`The most used is ${code(used[0].name)}, by ${plural(used[0].fanIn, "class", "classes")}${used.length > 1 ? `, then ${listOf(used.slice(1).map(u => `${code(u.name)} (${n(u.fanIn)})`))}` : ""}.`)
-            if (a.linked && unused && unused < us.length) items.push(`${n(unused)} of the ${noun} ${unused === 1 ? "is" : "are"} used by nothing in the code.`)
+            if (reach.length) items.push(t("reports.anatomy.usesMostOtherClasses2", { name: code(reach[0].name), fanOut: n(reach[0].fanOut), value: reach.length > 1 ? t("reports.anatomy.then", { value: listOf(reach.slice(1).map(u => `${code(u.name)} (${n(u.fanOut)})`)) }) : "" }))
+            if (used.length) items.push(t("reports.anatomy.mostUsed2", { name: code(used[0].name), class: t("common.count.class", { count: used[0].fanIn }), value: used.length > 1 ? t("reports.anatomy.then", { value: listOf(used.slice(1).map(u => `${code(u.name)} (${n(u.fanIn)})`)) }) : "" }))
+            if (a.linked && unused && unused < us.length) items.push(t("reports.anatomy.usedNothingCode", { unused: n(unused), noun, value: unused === 1 ? t("reports.anatomy.is") : t("reports.anatomy.are") }))
             const text = [lines.join(" "), items.length ? items.map(t => `- ${t}`).join("\n") : ""].filter(Boolean)
             return { text: text.join("\n\n"), values: { [label]: us.length, components: where.length, "referenced by nothing": unused } }
         },

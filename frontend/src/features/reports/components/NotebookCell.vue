@@ -14,8 +14,8 @@
         type="button"
         class="flex h-6 w-6 items-center justify-center rounded-full transition-colors"
         :class="stale ? 'bg-accent-500 text-white hover:bg-accent-600' : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800'"
-        :aria-label="stale ? `Run on ${kernelLabel}` : 'Run again'"
-        :title="stale ? `Ran on ${cell.ranOn?.label ?? 'nothing yet'}; run on ${kernelLabel} (⇧↵)` : `Run again on ${kernelLabel} (⇧↵)`"
+        :aria-label="stale ? t('reports.notebookCell.run', { kernelLabel }) : t('reports.notebookCell.runAgain')"
+        :title="stale ? t('reports.notebookCell.ranRun', { value: cell.ranOn?.label ?? t('reports.notebookCell.nothingYet'), kernelLabel }) : t('reports.notebookCell.runAgain2', { kernelLabel })"
         :disabled="running"
         @mousedown.stop
         @click.stop="$emit('run')"
@@ -23,7 +23,7 @@
         <Loader2 v-if="running" :size="12" class="animate-spin"/>
         <Play v-else :size="10" :stroke-width="2.4" fill="currentColor" class="translate-x-[1px]"/>
       </button>
-      <span class="font-mono text-[10px] leading-3 text-neutral-400" :title="cell.ranOn ? `Ran on the snapshot of ${cell.ranOn.label}` : 'Not run yet'">{{ runLabel }}</span>
+      <span class="font-mono text-[10px] leading-3 text-neutral-400" :title="cell.ranOn ? t('reports.notebookCell.ranSnapshot', { ranOnLabel: cell.ranOn.label }) : t('reports.notebookCell.notRunYet')">{{ runLabel }}</span>
     </div>
 
     <div class="flex items-baseline gap-2 px-4 pt-3">
@@ -31,23 +31,23 @@
       <input
         :value="cell.title"
         class="min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-400"
-        :placeholder="defaultTitle || 'Title'"
-        aria-label="Cell title"
+        :placeholder="defaultTitle || t('reports.notebookCell.title')"
+        :aria-label="t('reports.notebookCell.cellTitle')"
         @mousedown.stop="$emit('select')"
         @change="$emit('patch', { title: ($event.target as HTMLInputElement).value })"
         @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
       >
-      <span v-if="stale && runnable" class="ui-tag shrink-0" :title="`Ran on ${cell.ranOn?.label ?? 'nothing yet'}; the report runs on ${kernelLabel}`">{{ cell.ranOn ? "older snapshot" : "not run" }}</span>
-      <span v-else-if="changeText" class="ui-tag shrink-0" :title="changeText">changed</span>
+      <span v-if="stale && runnable" class="ui-tag shrink-0" :title="t('reports.notebookCell.ranReportRuns', { value: cell.ranOn?.label ?? t('reports.notebookCell.nothingYet'), kernelLabel })">{{ cell.ranOn ? t('reports.notebookCell.olderSnapshot') : t('reports.notebookCell.notRun') }}</span>
+      <span v-else-if="changeText" class="ui-tag shrink-0" :title="changeText">{{ t('reports.notebookCell.changed') }}</span>
       <button
         v-if="cell.spec.type === 'sql' && gutter"
         type="button"
         class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 self-center opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"
         :class="{ 'opacity-100': selected }"
-        title="Open this query in the SQL console, with the schema, a full result grid and its plan; Update cell there writes it back"
+        :title="t('reports.notebookCell.openQuerySqlConsole')"
         @mousedown.stop
         @click.stop="$emit('console')"
-      ><TerminalSquare :size="13" class="text-neutral-500"/> Open in console</button>
+      ><TerminalSquare :size="13" class="text-neutral-500"/>{{ ' ' + t('reports.notebookCell.openConsole') }}</button>
       <span class="ui-tag shrink-0">{{ kindLabel }}</span>
     </div>
 
@@ -61,7 +61,7 @@
           compact
           :min-rows="3"
           :max-rows="16"
-          aria-label="SQL"
+          :aria-label="t('reports.notebookCell.sql')"
           @mousedown.stop="$emit('select')"
           @blur="commitSql"
           @run="commitSql(); $emit('run')"
@@ -69,26 +69,26 @@
       </div>
 
       <p v-if="!cell.output" class="py-6 text-center text-sm text-neutral-500">
-        <template v-if="runnable">Not run yet. <button type="button" class="font-medium text-accent-700 hover:underline" @click.stop="$emit('run')">Run on {{ kernelLabel }}</button></template>
-        <template v-else>Nothing captured.</template>
+        <template v-if="runnable">{{ t('reports.notebookCell.notRunYet2') }} <button type="button" class="font-medium text-accent-700 hover:underline" @click.stop="$emit('run')">{{ t('reports.notebookCell.run', { kernelLabel }) }}</button></template>
+        <template v-else>{{ t('reports.notebookCell.nothingCaptured') }}</template>
       </p>
       <p v-else-if="cell.output.error" class="rounded-md bg-red-50 px-3 py-2 font-mono text-xs text-red-800" role="alert">{{ cell.output.error }}</p>
       <template v-else>
         <img v-if="figure" :src="figure" :alt="title || defaultTitle" class="max-h-[520px] w-full rounded-md object-contain object-left">
-        <p v-else-if="cell.output.figure && figureMissing" class="py-4 text-sm text-neutral-500">The figure file is missing. <template v-if="cell.spec.type === 'capture'">Open {{ cell.spec.view }} and add it again.</template></p>
-        <div v-else-if="cell.output.figure" class="h-40 w-full animate-pulse rounded-md bg-neutral-100" role="img" aria-label="Loading figure"></div>
+        <p v-else-if="cell.output.figure && figureMissing" class="py-4 text-sm text-neutral-500">{{ t('reports.notebookCell.figureFileMissing') }} <template v-if="cell.spec.type === 'capture'">{{ t('reports.notebookCell.openAddAgain', { view: cell.spec.view }) }}</template></p>
+        <div v-else-if="cell.output.figure" class="h-40 w-full animate-pulse rounded-md bg-neutral-100" role="img" :aria-label="t('reports.notebookCell.loadingFigure')"></div>
         <p v-if="cell.output.pin?.note" class="mt-2 text-[14px] leading-6 text-neutral-700">{{ cell.output.pin.note }}</p>
         <p v-if="table && !table.rows.length && cell.output.table" class="mt-2 text-[13.5px] text-neutral-500">{{ EMPTY_TABLE }}</p>
         <div v-else-if="table" class="mt-2 overflow-x-auto">
           <table class="nb-data w-full">
-            <thead><tr><th v-for="(c, i) in table.columns" :key="i" :class="[table.align[i] === 'r' ? 'text-right' : 'text-left', i === 0 ? 'w-full' : '']">{{ headParts(c)[0] }}<span v-if="headParts(c)[1]" class="ml-1.5 whitespace-normal font-mono text-[11px] font-normal text-neutral-400">all in {{ headParts(c)[1] }}</span></th></tr></thead>
+            <thead><tr><th v-for="(c, i) in table.columns" :key="i" :class="[table.align[i] === 'r' ? 'text-right' : 'text-left', i === 0 ? 'w-full' : '']">{{ headParts(c)[0] }}<span v-if="headParts(c)[1]" class="ml-1.5 whitespace-normal font-mono text-[11px] font-normal text-neutral-400">{{ t('reports.notebookCell.all', { value: headParts(c)[1] }) }}</span></th></tr></thead>
             <tbody>
               <tr v-for="(r, i) in shownRows" :key="i">
                 <td v-for="(v, j) in r" :key="j" :class="[table.align[j] === 'r' ? 'whitespace-nowrap text-right font-mono tabular-nums' : '', j === 0 ? 'nb-name font-mono' : identifier(v) ? 'nb-ident font-mono' : '']" :title="j === 0 || identifier(v) || table.full?.[i]?.[j] !== v ? table.full?.[i]?.[j] ?? v : undefined"><span v-if="j === 0 || identifier(v)" class="flex min-w-0"><span class="min-w-0 truncate">{{ splitTail(v)[0] }}</span><span class="shrink-0 whitespace-pre">{{ splitTail(v)[1] }}</span></span><template v-else>{{ v }}</template></td>
               </tr>
             </tbody>
           </table>
-          <button v-if="table.rows.length > ROWS && !allRows" type="button" class="mt-1 text-xs font-medium text-neutral-500 hover:text-neutral-900" @click.stop="allRows = true">Show all {{ table.rows.length }} rows</button>
+          <button v-if="table.rows.length > ROWS && !allRows" type="button" class="mt-1 text-xs font-medium text-neutral-500 hover:text-neutral-900" @click.stop="allRows = true">{{ t('reports.notebookCell.showAllRows', { rowsLength: table.rows.length }) }}</button>
           <p v-if="totalNote" class="mt-1 text-xs text-neutral-500">{{ totalNote }}</p>
         </div>
       </template>
@@ -98,8 +98,8 @@
       <input
         :value="cell.caption"
         class="w-full bg-transparent text-[13px] italic leading-5 text-neutral-600 outline-none placeholder:not-italic placeholder:text-neutral-400"
-        placeholder="Add a caption"
-        aria-label="Caption"
+        :placeholder="t('reports.notebookCell.addCaption')"
+        :aria-label="t('reports.notebookCell.caption')"
         @mousedown.stop="$emit('select')"
         @change="$emit('patch', { caption: ($event.target as HTMLInputElement).value })"
         @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
@@ -115,6 +115,7 @@ import SqlEditor from "~/features/sql/components/SqlEditor.vue";
 import { Loader2, Play, TerminalSquare } from "lucide-vue-next";
 import { EMPTY_TABLE, describeChange, displayTable, provenanceLine } from "~/features/reports/reportCells";
 import type { Cell, CellSpec } from "~/features/reports/reportDoc";
+import { t, intlLocale } from "~/shared/i18n";
 
 const props = withDefaults(defineProps<{
   cell: Cell
@@ -158,18 +159,18 @@ const kindLabel = computed(() => {
   if (s.type === "sql") return "SQL";
   if (s.type === "table") return s.source === "files" ? "files" : "components";
   if (s.type === "reading") return "computed";
-  if (s.type === "slot") return "to add";
-  return s.kind === "figure" ? "figure" : "captured table";
+  if (s.type === "slot") return t("reports.notebookCell.add");
+  return s.kind === "figure" ? t("reports.notebookCell.figure") : t("reports.notebookCell.capturedTable");
 });
 const defaultTitle = computed(() => props.cell.output?.pin?.title ?? (props.cell.spec.type === "capture" ? props.cell.spec.view : ""));
 const title = computed(() => props.cell.title || defaultTitle.value);
 const table = computed(() => displayTable(props.cell, props.label));
 const shownRows = computed(() => (table.value ? (allRows.value ? table.value.rows : table.value.rows.slice(0, ROWS)) : []));
 const totalNote = computed(() => {
-  const t = props.cell.output?.table;
-  if (!t) return "";
-  const of = t.total < 0 ? `First ${t.rows.length} rows; the query returned more.` : t.total > t.rows.length ? `${t.rows.length} of ${t.total.toLocaleString("en-US")}.` : "";
-  return [of, t.note ?? ""].filter(Boolean).join(" ");
+  const table2 = props.cell.output?.table;
+  if (!table2) return "";
+  const of = table2.total < 0 ? t("reports.notebookCell.firstRowsQueryReturned", { rowsLength: table2.rows.length }) : table2.total > table2.rows.length ? t("reports.notebookCell.of", { rowsLength: table2.rows.length, table2Total: table2.total.toLocaleString(intlLocale) }) : "";
+  return [of, table2.note ?? ""].filter(Boolean).join(" ");
 });
 const provenance = computed(() => provenanceLine(props.cell.ranOn, props.workspace));
 const runLabel = computed(() => {

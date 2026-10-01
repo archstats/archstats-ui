@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useDataStore } from '~/features/snapshot/data.store'
 import { isLive, parseQuery, runQuery, type Query } from './query'
 import { detectSeparator } from "~/features/snapshot/names"
+import { t } from "~/shared/i18n"
 
 // ═══════════════════════════════════════════════════════
 // TYPES
@@ -73,7 +74,7 @@ export interface Coverage {
 }
 
 /** Where a group lands when nothing chose a dimension for it: the "Ad hoc" dimension. */
-export const DEFAULT_DIMENSION = 'Ad hoc'
+export const DEFAULT_DIMENSION = t("groups.groupsStore.adHoc")
 /** The name the old default carried; migrated on load. */
 const LEGACY_DEFAULT = 'Groups'
 
@@ -834,7 +835,7 @@ export const useGroupsStore = defineStore('groups', {
                 this._persist()
             } catch (e) {
                 console.error('Failed to import groups:', e)
-                throw new Error('Invalid groups JSON format')
+                throw new Error(t("groups.groupsStore.invalidGroupsJsonFormat"))
             }
         },
 

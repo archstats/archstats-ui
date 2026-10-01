@@ -1,11 +1,12 @@
 <template>
-  <LoadingState text="Opening Units…"/>
+  <LoadingState :text="t('pages.checks.openingUnits')"/>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 // The structure checks became findings in Units: layers are its lanes, and
 // reachability and repeated names open on its folder map. Old links land there.
 const route = useRoute()

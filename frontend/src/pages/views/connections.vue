@@ -1,11 +1,11 @@
 <template>
   <ViewWorkspaceLayout
-    title="Connections"
+    :title="t('pages.connections.connections')"
     :nodes-count="model.nodes.value.length"
     :connections-count="shownEdges.length"
-    :stats-labels="{ nodes: 'Nodes', connections: 'Connections' }"
+    :stats-labels="{ nodes: t('pages.connections.nodes'), connections: t('pages.connections.connections') }"
     v-model:search-query="q"
-    search-placeholder="Search nodes"
+    :search-placeholder="t('pages.connections.searchNodes')"
     :tabs="tabs"
     v-model:active-tab="activeTab"
     v-model:is-sidebar-open="inspectorOpen"
@@ -13,52 +13,52 @@
     sidebar-width="340px"
   >
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Source">
-        <button type="button" :aria-pressed="source === 'static'" @click="setState({ source: 'static' })">Static</button>
-        <button type="button" :aria-pressed="source === 'git'" :title="model.hasGit.value ? 'Shared commits between units' : 'No git history in this snapshot'" @click="setState({ source: 'git' })">Git</button>
-        <button type="button" :aria-pressed="source === 'combined'" :title="model.hasGit.value ? 'Imports and shared commits together' : 'No git history in this snapshot'" @click="setState({ source: 'combined' })">Combined</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.connections.source')">
+        <button type="button" :aria-pressed="source === 'static'" @click="setState({ source: 'static' })">{{ t('pages.connections.static') }}</button>
+        <button type="button" :aria-pressed="source === 'git'" :title="model.hasGit.value ? t('pages.connections.sharedCommitsBetweenUnits') : t('pages.connections.noGitHistorySnapshot')" @click="setState({ source: 'git' })">{{ t('pages.connections.git') }}</button>
+        <button type="button" :aria-pressed="source === 'combined'" :title="model.hasGit.value ? t('pages.connections.importsSharedCommitsTogether') : t('pages.connections.noGitHistorySnapshot')" @click="setState({ source: 'combined' })">{{ t('pages.connections.combined') }}</button>
       </div>
       <!-- Imports: on a big graph the edges are the clutter, and most of them
            are one or two references. A floor keeps the ones that carry weight. -->
       <div v-if="source === 'static'" class="relative">
-        <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="refsOpen" :class="{ 'bg-neutral-100': refsFloor > 1 }" title="How many references an import needs to be drawn" @click="refsOpen = !refsOpen">≥ {{ refsFloor }} ref{{ refsFloor === 1 ? "" : "s" }}</button>
+        <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="refsOpen" :class="{ 'bg-neutral-100': refsFloor > 1 }" :title="t('pages.connections.howManyReferencesImport')" @click="refsOpen = !refsOpen">{{ t('pages.connections.text', { refs: t('common.count.ref', { count: refsFloor }) }) }}</button>
         <template v-if="refsOpen">
           <div class="fixed inset-0 z-40" @click="refsOpen = false"></div>
           <div class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-64 flex-col gap-3 p-3 animate-in">
-            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">References, at least <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="refsFloor" @change="setState({ minRefs: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
-            <div class="ui-segmented w-full" role="group" aria-label="Reference floor">
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">{{ t('pages.connections.referencesLeast') }} <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="refsFloor" @change="setState({ minRefs: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
+            <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.referenceFloor')">
               <button v-for="n in [1, 2, 5, 10, 25]" :key="n" type="button" class="flex-1" :aria-pressed="refsFloor === n" @click="setState({ minRefs: n })">{{ n }}</button>
             </div>
-            <p class="text-xs leading-4 text-neutral-500">{{ weakEdges.toLocaleString("en-US") }} of {{ model.edges.value.length.toLocaleString("en-US") }} edges are hidden by this floor. Cycles and the inspector still count every import.</p>
+            <p class="text-xs leading-4 text-neutral-500">{{ t('pages.connections.edgesHiddenFloorCycles', { value: weakEdges.toLocaleString(intlLocale), value2: model.edges.value.length.toLocaleString(intlLocale) }) }}</p>
           </div>
         </template>
       </div>
       <!-- Co-change: which pairs, how strong, over what window. Hidden coupling
            is the pairs that change together with no import between them. -->
       <template v-if="source === 'git' && model.hasGit.value">
-        <div class="ui-segmented" role="group" aria-label="Relation">
-          <button type="button" :aria-pressed="state.relation === 'all'" @click="setState({ relation: 'all', minShared: null, minRate: null })">All pairs</button>
-          <button type="button" :aria-pressed="state.relation === 'no-import'" title="Pairs that change together while no import joins them: implicit contracts" @click="setState({ relation: 'no-import', rep: 'list' })">Without an import</button>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.connections.relation')">
+          <button type="button" :aria-pressed="state.relation === 'all'" @click="setState({ relation: 'all', minShared: null, minRate: null })">{{ t('pages.connections.allPairs') }}</button>
+          <button type="button" :aria-pressed="state.relation === 'no-import'" :title="t('pages.connections.pairsChangeTogetherWhile')" @click="setState({ relation: 'no-import', rep: 'list' })">{{ t('pages.connections.withoutImport') }}</button>
         </div>
         <div class="relative">
-          <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="floorsOpen" title="How strong a pair must be to show" @click="floorsOpen = !floorsOpen">≥ {{ floors.shared }} shared · ≥ {{ Math.round(floors.rate * 100) }}%</button>
+          <button type="button" class="ui-btn ui-btn-sm font-mono" :aria-expanded="floorsOpen" :title="t('pages.connections.howStrongPairMust')" @click="floorsOpen = !floorsOpen">{{ t('pages.connections.shared', { shared: floors.shared, value: Math.round(floors.rate * 100) }) }}</button>
           <template v-if="floorsOpen">
             <div class="fixed inset-0 z-40" @click="floorsOpen = false"></div>
             <div class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-64 flex-col gap-3 p-3 animate-in">
-              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Shared commits, at least <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="floors.shared" @change="setState({ minShared: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
-              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Of the smaller side, at least <span class="flex items-center gap-1"><input type="number" min="0" max="100" class="ui-input ui-input-sm w-16" :value="Math.round(floors.rate * 100)" @change="setState({ minRate: Math.min(100, Math.max(0, Number(($event.target as HTMLInputElement).value) || 0)) / 100 })">%</span></label>
-              <p class="text-xs leading-4 text-neutral-500">The smaller side is the one with fewer commits: a pair that shares 12 of a component's 40 commits reads 30%. Co-change is only seen within one repository.</p>
+              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">{{ t('pages.connections.sharedCommitsLeast') }} <input type="number" min="1" class="ui-input ui-input-sm w-20" :value="floors.shared" @change="setState({ minShared: Math.max(1, Number(($event.target as HTMLInputElement).value) || 1) })"></label>
+              <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">{{ t('pages.connections.smallerSideLeast') }} <span class="flex items-center gap-1"><input type="number" min="0" max="100" class="ui-input ui-input-sm w-16" :value="Math.round(floors.rate * 100)" @change="setState({ minRate: Math.min(100, Math.max(0, Number(($event.target as HTMLInputElement).value) || 0)) / 100 })">%</span></label>
+              <p class="text-xs leading-4 text-neutral-500">{{ t('pages.connections.smallerSideOneFewer') }}</p>
             </div>
           </template>
         </div>
-        <div class="ui-segmented" role="group" aria-label="Window">
-          <button v-for="p in (['all', '180', '90', '30'] as const)" :key="p" type="button" :aria-pressed="state.period === p" @click="setState({ period: p })">{{ p === "all" ? "All" : `${p} d` }}</button>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.connections.window')">
+          <button v-for="p in (['all', '180', '90', '30'] as const)" :key="p" type="button" :aria-pressed="state.period === p" @click="setState({ period: p })">{{ p === "all" ? t('pages.connections.all') : `${p} d` }}</button>
         </div>
       </template>
 
       <!-- Level: which dimension rolls the tree up, which colours it, and how far it is open. -->
       <div class="relative">
-        <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="levelOpen" title="Roll-up, colour and how far the tree is open" @click.stop="levelOpen = !levelOpen">
+        <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="levelOpen" :title="t('pages.connections.rollUpColourHow')" @click.stop="levelOpen = !levelOpen">
           <Icon icon="list-tree" :size="13" class="text-neutral-500"/>
           <span>{{ levelLabel }}</span>
           <Icon icon="chevron-right" :size="12" class="rotate-90 text-neutral-400"/>
@@ -66,68 +66,68 @@
         <div v-if="levelOpen" class="fixed inset-0 z-40" @click="levelOpen = false"></div>
         <div v-if="levelOpen" class="ui-popover absolute left-0 z-50 mt-1 flex w-72 flex-col gap-3 p-3 animate-in">
           <div class="flex flex-col gap-1">
-            <span class="ui-label">Roll up by</span>
-            <div class="ui-segmented w-full" role="group" aria-label="Roll up by">
-              <button type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === null" @click="setState({ by: 'none' })">None</button>
+            <span class="ui-label">{{ t('pages.connections.rollUp') }}</span>
+            <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.rollUp')">
+              <button type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === null" @click="setState({ by: 'none' })">{{ t('pages.connections.none') }}</button>
               <button v-for="d in model.dimensions.value" :key="d" type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === d" @click="setState({ by: d })">{{ d }}</button>
             </div>
-            <p v-if="model.dimensions.value.length === 0" class="text-xs text-neutral-500">Create groups to roll components up.</p>
+            <p v-if="model.dimensions.value.length === 0" class="text-xs text-neutral-500">{{ t('pages.connections.createGroupsRollComponents') }}</p>
           </div>
           <div v-if="model.dimensions.value.length > 1 || (model.dimensions.value.length === 1 && model.rollupDimension.value === null)" class="flex flex-col gap-1">
-            <span class="ui-label">Colour by</span>
-            <div class="ui-segmented w-full" role="group" aria-label="Colour by">
+            <span class="ui-label">{{ t('pages.connections.colour') }}</span>
+            <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.colour')">
               <button v-for="d in model.dimensions.value" :key="d" type="button" class="flex-1" :aria-pressed="model.colorDimension.value === d" @click="setState({ color: d })">{{ d }}</button>
             </div>
           </div>
           <template v-if="rep === 'crosscut'">
             <div class="flex flex-col gap-1">
-              <span class="ui-label">Columns</span>
-              <div class="ui-segmented w-full" role="group" aria-label="Column lens">
+              <span class="ui-label">{{ t('pages.connections.columns') }}</span>
+              <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.columnLens')">
                 <button v-for="d in model.dimensions.value.filter(x => x !== crossRowDim)" :key="d" type="button" class="flex-1" :aria-pressed="crossColDim === d" @click="setState({ x: d })">{{ d }}</button>
               </div>
-              <p class="text-xs text-neutral-500">Rows follow “Roll up by”.</p>
+              <p class="text-xs text-neutral-500">{{ t('pages.connections.rowsFollowRollUp') }}</p>
             </div>
             <div class="flex flex-col gap-1">
-              <span class="ui-label">Cells show</span>
-              <div class="ui-segmented w-full" role="group" aria-label="Cell measure">
-                <button type="button" class="flex-1" :aria-pressed="measure === 'coupling'" @click="setState({ measure: 'coupling' })">Coupling</button>
-                <button type="button" class="flex-1" :aria-pressed="measure === 'files'" @click="setState({ measure: 'files' })">Files</button>
-                <button type="button" class="flex-1" :aria-pressed="measure === 'cycles'" :disabled="!model.directed.value" @click="setState({ measure: 'cycles' })">Cycles</button>
+              <span class="ui-label">{{ t('pages.connections.cellsShow') }}</span>
+              <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.cellMeasure')">
+                <button type="button" class="flex-1" :aria-pressed="measure === 'coupling'" @click="setState({ measure: 'coupling' })">{{ t('pages.connections.coupling') }}</button>
+                <button type="button" class="flex-1" :aria-pressed="measure === 'files'" @click="setState({ measure: 'files' })">{{ t('pages.connections.files') }}</button>
+                <button type="button" class="flex-1" :aria-pressed="measure === 'cycles'" :disabled="!model.directed.value" @click="setState({ measure: 'cycles' })">{{ t('pages.connections.cycles') }}</button>
               </div>
             </div>
           </template>
           <div v-else class="flex flex-col gap-1">
-            <span class="ui-label">Open everything to</span>
-            <div class="ui-segmented w-full" role="group" aria-label="Open everything to">
-              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'groups'" :disabled="model.rollupDimension.value === null" @click="applyLevel('groups')">Groups</button>
-              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'components'" @click="applyLevel('components')">Components</button>
-              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'files'" @click="applyLevel('files')">Files</button>
+            <span class="ui-label">{{ t('pages.connections.openEverything') }}</span>
+            <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.openEverything')">
+              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'groups'" :disabled="model.rollupDimension.value === null" @click="applyLevel('groups')">{{ t('pages.connections.groups') }}</button>
+              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'components'" @click="applyLevel('components')">{{ t('pages.connections.components') }}</button>
+              <button type="button" class="flex-1" :aria-pressed="model.level.value === 'files'" @click="applyLevel('files')">{{ t('pages.connections.files') }}</button>
             </div>
-            <p class="text-xs text-neutral-500">Double-click any node to open it; close it from its menu.</p>
+            <p class="text-xs text-neutral-500">{{ t('pages.connections.doubleClickAnyNode') }}</p>
           </div>
         </div>
       </div>
 
-      <div class="ui-segmented" role="group" aria-label="Representation">
-        <button type="button" :aria-pressed="rep === 'graph'" @click="setState({ rep: 'graph' })">Graph</button>
-        <button type="button" :aria-pressed="rep === 'matrix'" @click="setState({ rep: 'matrix' })">Matrix</button>
-        <button type="button" :aria-pressed="rep === 'chord'" @click="setState({ rep: 'chord' })">Chord</button>
-        <button type="button" :aria-pressed="rep === 'list'" title="Every pair as a table, with no cap" @click="setState({ rep: 'list' })">List</button>
-        <button type="button" :aria-pressed="rep === 'crosscut'" title="Two lenses at once: rows by one, columns by the other" @click="setState({ rep: 'crosscut' })">Cross-cut</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.connections.representation')">
+        <button type="button" :aria-pressed="rep === 'graph'" @click="setState({ rep: 'graph' })">{{ t('pages.connections.graph') }}</button>
+        <button type="button" :aria-pressed="rep === 'matrix'" @click="setState({ rep: 'matrix' })">{{ t('pages.connections.matrix') }}</button>
+        <button type="button" :aria-pressed="rep === 'chord'" @click="setState({ rep: 'chord' })">{{ t('pages.connections.chord') }}</button>
+        <button type="button" :aria-pressed="rep === 'list'" :title="t('pages.connections.everyPairTableNo')" @click="setState({ rep: 'list' })">{{ t('pages.connections.list') }}</button>
+        <button type="button" :aria-pressed="rep === 'crosscut'" :title="t('pages.connections.twoLensesOnceRows')" @click="setState({ rep: 'crosscut' })">{{ t('pages.connections.crossCut') }}</button>
       </div>
-      <button v-if="rep === 'matrix' && crossingKeys.size" type="button" class="ui-btn ui-btn-sm" :aria-pressed="showCrossings" :class="{ 'bg-neutral-100': showCrossings }" :title="`Mark the ${crossingKeys.size} group pairs whose imports cross ${lens.active}'s declared order`" @click="showCrossings = !showCrossings">
-        <Icon icon="scale" :size="13" :class="showCrossings ? 'text-red-600' : 'text-neutral-500'"/><span>Crossings</span>
+      <button v-if="rep === 'matrix' && crossingKeys.size" type="button" class="ui-btn ui-btn-sm" :aria-pressed="showCrossings" :class="{ 'bg-neutral-100': showCrossings }" :title="t('pages.connections.markGroupPairsWhose', { crossingKeysSize: crossingKeys.size, active: lens.active })" @click="showCrossings = !showCrossings">
+        <Icon icon="scale" :size="13" :class="showCrossings ? 'text-red-600' : 'text-neutral-500'"/><span>{{ t('pages.connections.crossings') }}</span>
       </button>
       <div v-if="rep === 'graph' && canArrange" class="relative flex items-center gap-1">
-        <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="arranging" :class="{ 'bg-neutral-100': arranging }" title="Place nodes by hand; the arrangement is kept for this lens" @click="arranging = !arranging">
-          <Icon icon="maximize" :size="13" class="text-neutral-500"/><span>Arrange</span>
+        <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="arranging" :class="{ 'bg-neutral-100': arranging }" :title="t('pages.connections.placeNodesHandArrangement')" @click="arranging = !arranging">
+          <Icon icon="maximize" :size="13" class="text-neutral-500"/><span>{{ t('pages.connections.arrange') }}</span>
         </button>
-        <span v-if="arranging && unplaced" class="ui-tag" :title="`${unplaced} nodes have no place yet: drag them where they belong`">Unplaced ({{ unplaced }})</span>
-        <button v-if="arranging && Object.keys(arrangement).length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Forget this lens's arrangement" @click="resetArrangement">Reset</button>
+        <span v-if="arranging && unplaced" class="ui-tag" :title="t('pages.connections.nodesHaveNoPlace', { unplaced })">{{ t('pages.connections.unplaced', { unplaced }) }}</span>
+        <button v-if="arranging && Object.keys(arrangement).length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.connections.forgetLensSArrangement')" @click="resetArrangement">{{ t('pages.connections.reset') }}</button>
       </div>
-      <div v-if="rep === 'matrix'" class="ui-segmented" role="group" aria-label="Matrix order" :title="model.directed.value ? '' : 'Co-change has no direction, so it has no levels'">
-        <button type="button" :aria-pressed="!orderByLevels" @click="setState({ order: 'name' })">Name</button>
-        <button type="button" :aria-pressed="orderByLevels" :disabled="!model.directed.value" :title="`Callers on top, dependencies below; ${levels.depth} levels, tangles boxed`" @click="setState({ order: 'levels' })">Levels</button>
+      <div v-if="rep === 'matrix'" class="ui-segmented" role="group" :aria-label="t('pages.connections.matrixOrder')" :title="model.directed.value ? '' : t('pages.connections.coChangeHasNo')">
+        <button type="button" :aria-pressed="!orderByLevels" @click="setState({ order: 'name' })">{{ t('pages.connections.name') }}</button>
+        <button type="button" :aria-pressed="orderByLevels" :disabled="!model.directed.value" :title="t('pages.connections.callersTopDependenciesBelow', { depth: levels.depth })" @click="setState({ order: 'levels' })">{{ t('pages.connections.levels') }}</button>
       </div>
     </template>
 
@@ -135,11 +135,11 @@
       <button
         type="button"
         class="ui-btn ui-btn-sm"
-        :title="draft.isOpen ? `Carry on building ${draft.dimension}` : 'Build a lens in the studio'"
+        :title="draft.isOpen ? t('pages.connections.carryBuilding', { dimension: draft.dimension }) : t('pages.connections.buildLensStudio')"
         @click="openBuilder"
       >
         <Icon icon="layers" :size="13" class="text-neutral-500"/>
-        <span class="hidden min-[1440px]:inline">{{ draft.isOpen ? `Carry on · ${draft.dimension}` : 'Build a lens' }}</span>
+        <span class="hidden min-[1440px]:inline">{{ draft.isOpen ? t('pages.connections.carry', { dimension: draft.dimension }) : t('pages.connections.buildLens') }}</span>
       </button>
       <!-- Cycles: hidden, all, or only the one through the selection. -->
       <div class="relative">
@@ -149,25 +149,25 @@
           :class="{ 'bg-neutral-100': cycles !== 'off' && model.cycleSets.value.length > 0 }"
           :aria-expanded="cyclesOpen"
           :disabled="!model.directed.value"
-          :title="model.directed.value ? 'Cycles at this level' : 'Cycles need the static source'"
+          :title="model.directed.value ? t('pages.connections.cyclesLevel') : t('pages.connections.cyclesNeedStaticSource')"
           @click.stop="cyclesOpen = !cyclesOpen"
         >
           <Icon icon="refresh" :size="13" :class="cycles !== 'off' && model.cycleSets.value.length ? 'text-red-600' : 'text-neutral-500'"/>
-          <span class="hidden min-[1440px]:inline">In cycles</span>
-          <span v-if="model.directed.value && cycleNodeCount" class="font-mono text-xs" :class="cycles !== 'off' ? 'text-red-600' : 'text-neutral-500'" :title="`${cycleNodeCount} nodes sit in ${model.cycleSets.value.length} tangle${model.cycleSets.value.length === 1 ? '' : 's'}: groups where each can reach every other. The Cycles view counts the loops through them.`">{{ cycleNodeCount }}</span>
+          <span class="hidden min-[1440px]:inline">{{ t('pages.connections.cycles2') }}</span>
+          <span v-if="model.directed.value && cycleNodeCount" class="font-mono text-xs" :class="cycles !== 'off' ? 'text-red-600' : 'text-neutral-500'" :title="t('pages.connections.nodesSitGroupsWhere', { cycleNodeCount, tangles: t('common.count.tangle', { count: model.cycleSets.value.length }) })">{{ cycleNodeCount }}</span>
         </button>
         <div v-if="cyclesOpen" class="fixed inset-0 z-40" @click="cyclesOpen = false"></div>
         <div v-if="cyclesOpen" class="ui-menu absolute right-0 z-50 mt-1 w-64 animate-in" role="menu">
-          <div class="ui-menu-title">Cycles at this level</div>
+          <div class="ui-menu-title">{{ t('pages.connections.cyclesLevel') }}</div>
           <button v-for="m in CYCLE_MODES" :key="m.id" type="button" class="ui-menu-item" role="menuitemradio" :aria-checked="cycles === m.id" :class="{ 'is-active': cycles === m.id }" @click="setState({ cycles: m.id }); cyclesOpen = false">
             <span class="w-3 text-accent-600">{{ cycles === m.id ? '•' : '' }}</span>
             <span class="flex-1">{{ m.label }}</span>
-            <span v-if="m.id === 'all'" class="font-mono text-xs text-neutral-400">{{ cycleNodeCount }} nodes</span>
+            <span v-if="m.id === 'all'" class="font-mono text-xs text-neutral-400">{{ t('pages.connections.nodes2', { cycleNodeCount }) }}</span>
           </button>
           <div class="my-1 hairline-b"></div>
           <router-link to="/views/components/cycles" class="ui-menu-item" role="menuitem">
             <Icon icon="external-link" :size="13" class="text-neutral-500"/>
-            <span>Open the Cycles view</span>
+            <span>{{ t('pages.connections.openCyclesView') }}</span>
           </router-link>
         </div>
       </div>
@@ -177,52 +177,52 @@
     <template #config-popover>
       <div v-if="hidden.size > 0" class="flex flex-col gap-2">
         <div class="flex items-center justify-between gap-3">
-          <span class="text-sm text-neutral-700">{{ hidden.size }} hidden from view</span>
-          <button type="button" class="ui-btn ui-btn-sm" @click="hidden = new Set()">Show all</button>
+          <span class="text-sm text-neutral-700">{{ t('pages.connections.hiddenView', { hiddenSize: hidden.size }) }}</span>
+          <button type="button" class="ui-btn ui-btn-sm" @click="hidden = new Set()">{{ t('pages.connections.showAll') }}</button>
         </div>
         <ul class="flex max-h-56 flex-col overflow-y-auto">
           <li v-for="id in hiddenList" :key="id" class="flex h-7 items-center gap-2">
             <span class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-800" :title="id">{{ labelOf(id) }}</span>
-            <button type="button" class="text-xs text-neutral-500 hover:text-neutral-900" @click="unhide(id)">Show</button>
+            <button type="button" class="text-xs text-neutral-500 hover:text-neutral-900" @click="unhide(id)">{{ t('pages.connections.show') }}</button>
           </li>
         </ul>
       </div>
     </template>
 
     <template #visualizer>
-      <LoadingState v-if="model.loading.value" text="Loading connections…"/>
-      <EmptyState v-else-if="model.error.value" title="Could not load connections" :text="model.error.value" icon="x"/>
+      <LoadingState v-if="model.loading.value" :text="t('pages.connections.loadingConnections')"/>
+      <EmptyState v-else-if="model.error.value" :title="t('pages.connections.couldNotLoadConnections')" :text="model.error.value" icon="x"/>
       <EmptyState
         v-else-if="source !== 'static' && !model.hasGit.value"
-        title="No git history in this snapshot"
-        text="Shared commits need a scan of a git checkout. Switch back to Static to see import coupling."
+        :title="t('pages.connections.noGitHistorySnapshot')"
+        :text="t('pages.connections.sharedCommitsNeedScan')"
         icon="git-commit"
       >
-        <button type="button" class="ui-btn ui-btn-sm mt-3" @click="setState({ source: 'static' })">Show static coupling</button>
+        <button type="button" class="ui-btn ui-btn-sm mt-3" @click="setState({ source: 'static' })">{{ t('pages.connections.showStaticCoupling') }}</button>
       </EmptyState>
       <!-- Too big to draw. With no lens, "close some groups" pointed at
            groups that do not exist; the way out is to make some. -->
       <EmptyState
         v-else-if="overCap && model.dimensions.value.length === 0"
-        :title="`${model.nodes.value.length} components are too many for a ${rep}`"
-        :text="`A ${rep} reads well up to ${cap} nodes. Group the components first: the lens builder proposes a cut from the names, the imports or the history, you correct it, and the ${rep} draws the groups.`"
+        :title="t('pages.connections.componentsTooMany', { nodesLength: model.nodes.value.length, rep })"
+        :text="t('pages.connections.readsWellUpNodes', { rep, cap, rep2: rep })"
         icon="scale"
       >
         <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
-          <Icon icon="waypoints" :size="13"/><span>Propose a lens</span>
+          <Icon icon="waypoints" :size="13"/><span>{{ t('pages.connections.proposeLens') }}</span>
         </button>
-        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">Show the graph</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">{{ t('pages.connections.showGraph') }}</button>
       </EmptyState>
       <EmptyState
         v-else-if="overCap"
-        :title="`Too many nodes to draw as a ${rep}`"
-        :text="`This ${rep} reads well up to ${cap} nodes; there are ${model.nodes.value.length}. Close some groups, scope to a group or search to narrow it, or switch to the graph.`"
+        :title="t('pages.connections.tooManyNodesDraw', { rep })"
+        :text="t('pages.connections.readsWellUpNodes2', { rep, cap, nodesLength: model.nodes.value.length })"
         icon="scale"
       >
-        <button type="button" class="ui-btn ui-btn-sm" @click="applyLevel('groups')">Close every group</button>
-        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">Show the graph</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="applyLevel('groups')">{{ t('pages.connections.closeEveryGroup') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">{{ t('pages.connections.showGraph') }}</button>
       </EmptyState>
-      <EmptyState v-else-if="model.nodes.value.length === 0" title="Nothing to show" text="Clear the search or the scope to see everything again." icon="search"/>
+      <EmptyState v-else-if="model.nodes.value.length === 0" :title="t('pages.connections.nothingShow')" :text="t('pages.connections.clearSearchScopeSee')" icon="search"/>
       <ConnectionsCrosscut
         v-else-if="rep === 'crosscut' && crossRowDim && crossColDim"
         :rows="crossRows"
@@ -239,15 +239,15 @@
       />
       <EmptyState
         v-else-if="rep === 'crosscut'"
-        :title="model.dimensions.value.length === 0 ? 'No lenses yet' : 'One more lens needed'"
-        :text="model.dimensions.value.length === 0 ? 'A cross-cut puts one lens in rows and another in columns. Build two ways of slicing this codebase first, Domains and Layers say.' : `${model.dimensions.value[0]} will be the rows. Build a second lens for the columns, Layers say, and the table appears here.`"
+        :title="model.dimensions.value.length === 0 ? t('pages.connections.noLensesYet') : t('pages.connections.oneMoreLensNeeded')"
+        :text="model.dimensions.value.length === 0 ? t('pages.connections.crossCutPutsOne') : t('pages.connections.willRowsBuildSecond', { value: model.dimensions.value[0] })"
         icon="layers"
       >
         <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="openBuilder">
-          <Icon icon="plus" :size="13"/><span>Build a lens</span>
+          <Icon icon="plus" :size="13"/><span>{{ t('pages.connections.buildLens') }}</span>
         </button>
         <router-link v-if="isJavaProject" to="/views/units" class="ui-btn ui-btn-sm">
-          <Icon icon="braces" :size="13" class="text-neutral-500"/><span>Lanes → lens in Classes</span>
+          <Icon icon="braces" :size="13" class="text-neutral-500"/><span>{{ t('pages.connections.lanesLensClasses') }}</span>
         </router-link>
       </EmptyState>
       <ConnectionsList
@@ -302,21 +302,21 @@
         v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && model.dimensions.value.length === 0 && !model.loading.value"
         class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[640px] -translate-x-1/2 items-center gap-3 px-3 py-2"
       >
-        <span class="text-sm text-neutral-700">{{ model.nodes.value.length.toLocaleString() }} components at once draw as a cloud. Grouping them shows the shape.</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">Propose a lens</button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Dismiss" title="Dismiss" @click="hairballDismissed = true"><Icon icon="x" :size="13"/></button>
+        <span class="text-sm text-neutral-700">{{ t('pages.connections.componentsOnceDrawCloud', { nodesLength: model.nodes.value.length.toLocaleString(intlLocale) }) }}</span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">{{ t('pages.connections.proposeLens') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :aria-label="t('pages.connections.dismiss')" :title="t('pages.connections.dismiss')" @click="hairballDismissed = true"><Icon icon="x" :size="13"/></button>
       </div>
 
 
       <!-- Path to…: the next click picks the other end. -->
       <div v-if="pathFrom" class="ui-popover absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 px-3 py-2" role="status">
         <Icon icon="route" :size="14" class="text-accent-600"/>
-        <span class="text-sm text-neutral-700">Path from <span class="font-mono">{{ pathFromLabel }}</span>: click the other end.</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pathFrom = null">Cancel <kbd class="ml-1 font-mono text-xs text-neutral-400">Esc</kbd></button>
+        <span class="text-sm text-neutral-700"><I18nT k="pages.connections.pathClickOtherEnd"><template #pathFromLabel><span class="font-mono">{{ pathFromLabel }}</span></template></I18nT></span>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pathFrom = null">{{ t('pages.connections.cancel') }} <kbd class="ml-1 font-mono text-xs text-neutral-400">Esc</kbd></button>
       </div>
       <div v-else-if="pathNote" class="ui-popover absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 px-3 py-2" role="status">
         <span class="text-sm text-neutral-700">{{ pathNote }}</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Dismiss" @click="pathNote = ''"><Icon icon="x" :size="13"/></button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('pages.connections.dismiss')" @click="pathNote = ''"><Icon icon="x" :size="13"/></button>
       </div>
 
       <GroupActionBar
@@ -340,45 +340,45 @@
             </button>
             <button v-if="menuCloseParent" type="button" class="ui-menu-item" role="menuitem" @click="toggleOpen(menuCloseParent.id); menu = null">
               <Icon icon="list-tree" :size="13" class="text-neutral-500"/>
-              <span>Close {{ menuCloseParent.name }}</span>
+              <span>{{ t('pages.connections.close', { menuCloseParentName: menuCloseParent.name }) }}</span>
             </button>
             <div v-if="menuOpenLabel || menuCloseParent" class="my-1 hairline-b"></div>
             <button v-if="menuNode?.kind !== 'group'" type="button" class="ui-menu-item" role="menuitem" @click="createFromMenu">
               <Icon icon="users" :size="13" class="text-neutral-500"/>
-              <span>{{ multi.size > 1 && menu && multi.has(menu.id) ? `Create group from ${multi.size} selected` : 'Create group from this' }}</span>
+              <span>{{ multi.size > 1 && menu && multi.has(menu.id) ? t('pages.connections.createGroupSelected', { multiSize: multi.size }) : t('pages.connections.createGroup') }}</span>
             </button>
             <button v-if="menuNode?.kind !== 'group' && groupsForMenu.length" type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'add'">
               <Icon icon="folder-closed" :size="13" class="text-neutral-500"/>
-              <span class="flex-1">Add to group</span>
+              <span class="flex-1">{{ t('pages.connections.addGroup') }}</span>
               <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
             </button>
             <button v-if="menuNode?.group && menuNode.kind !== 'group'" type="button" class="ui-menu-item" role="menuitem" @click="selectAllInGroup">
               <Icon icon="component" :size="13" class="text-neutral-500"/>
-              <span>Select all in {{ menuNode.group }}</span>
+              <span>{{ t('pages.connections.selectAll', { group: menuNode.group }) }}</span>
             </button>
             <div class="my-1 hairline-b"></div>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'focus'">
               <Icon icon="focus" :size="13" class="text-neutral-500"/>
-              <span class="flex-1">{{ menuTargets.length > 1 ? `Focus on ${menuTargets.length} selected` : 'Focus' }}</span>
+              <span class="flex-1">{{ menuTargets.length > 1 ? t('pages.connections.focusSelected', { menuTargetsLength: menuTargets.length }) : t('pages.connections.focus') }}</span>
               <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
             </button>
             <button v-if="menuScopeGroup" type="button" class="ui-menu-item" role="menuitem" @click="scopeToGroup">
               <Icon icon="scale" :size="13" class="text-neutral-500"/>
-              <span class="truncate">Scope views to {{ menuScopeGroup.name }}</span>
+              <span class="truncate">{{ t('pages.connections.scopeViews', { menuScopeGroupName: menuScopeGroup.name }) }}</span>
             </button>
             <button type="button" class="ui-menu-item" role="menuitem" @click="hideFromMenu">
               <Icon icon="x" :size="13" class="text-neutral-500"/>
-              <span>{{ multi.size > 1 && menu && multi.has(menu.id) ? `Hide ${multi.size} selected` : 'Hide' }}</span>
+              <span>{{ multi.size > 1 && menu && multi.has(menu.id) ? t('pages.connections.hideSelected', { multiSize: multi.size }) : t('pages.connections.hide') }}</span>
             </button>
             <template v-if="menuRoute || menuShowIn.length">
               <div class="my-1 hairline-b"></div>
               <button v-if="menuRoute" type="button" class="ui-menu-item" role="menuitem" @click="router.push(menuRoute); menu = null">
                 <Icon icon="external-link" :size="13" class="text-neutral-500"/>
-                <span>Open detail</span>
+                <span>{{ t('pages.connections.openDetail') }}</span>
               </button>
               <button v-if="menuShowIn.length" type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'showin'">
                 <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/>
-                <span class="flex-1">Show in</span>
+                <span class="flex-1">{{ t('pages.connections.show2') }}</span>
                 <Icon icon="chevron-right" :size="12" class="text-neutral-400"/>
               </button>
             </template>
@@ -386,42 +386,42 @@
           <template v-else-if="menuMode === 'focus'">
             <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
               <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
-              <span>Back</span>
+              <span>{{ t('pages.connections.back') }}</span>
             </button>
-            <div class="ui-menu-title">Show only, in every view</div>
+            <div class="ui-menu-title">{{ t('pages.connections.showOnlyEveryView') }}</div>
             <template v-if="menuTargets.length > 1">
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">The selection</button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">The selection and its neighbours</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
-              <button v-if="model.directed.value" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('between')">Every route between them</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">{{ t('pages.connections.selection') }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">{{ t('pages.connections.selectionNeighbours') }}</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
+              <button v-if="model.directed.value" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('between')">{{ t('pages.connections.everyRouteBetweenThem') }}</button>
             </template>
             <template v-else>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">{{ menuNode?.kind === 'group' ? 'This group' : 'This only' }}</button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">With its neighbours</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('only')">{{ menuNode?.kind === 'group' ? t('pages.connections.group') : t('pages.connections.only') }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('around')"><span class="flex-1">{{ t('pages.connections.neighbours') }}</span><kbd class="font-mono text-xs text-neutral-400">F</kbd></button>
               <template v-if="model.directed.value">
-                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependencies')">With what it uses</button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependents')">With what uses it</button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('reach')">Everything it reaches</button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('blast')">Everything that reaches it</button>
-                <button type="button" class="ui-menu-item" role="menuitem" @click="startPath(menuTargets); menu = null">Path to…</button>
-                <button v-if="menu && model.cycleSetOf.value.has(menu.id)" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('tangle')">Its tangle</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependencies')">{{ t('pages.connections.whatUses') }}</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('dependents')">{{ t('pages.connections.whatUses2') }}</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('reach')">{{ t('pages.connections.everythingReaches') }}</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('blast')">{{ t('pages.connections.everythingReaches2') }}</button>
+                <button type="button" class="ui-menu-item" role="menuitem" @click="startPath(menuTargets); menu = null">{{ t('pages.connections.path') }}</button>
+                <button v-if="menu && model.cycleSetOf.value.has(menu.id)" type="button" class="ui-menu-item" role="menuitem" @click="focusMenu('tangle')">{{ t('pages.connections.tangle') }}</button>
               </template>
             </template>
           </template>
           <template v-else-if="menuMode === 'showin'">
             <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
               <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
-              <span>Back</span>
+              <span>{{ t('pages.connections.back') }}</span>
             </button>
-            <button v-for="t in menuShowIn" :key="t.id" type="button" class="ui-menu-item" role="menuitem" @click="menu = null; showIn(t)">
-              <Icon :icon="t.icon" :size="13" class="text-neutral-500"/>
-              <span class="flex-1">{{ t.label }}</span>
-              <Icon v-if="t.focus" icon="focus" :size="12" class="text-neutral-400"/>
+            <button v-for="menuShowIn in menuShowIn" :key="menuShowIn.id" type="button" class="ui-menu-item" role="menuitem" @click="menu = null; showIn(menuShowIn)">
+              <Icon :icon="menuShowIn.icon" :size="13" class="text-neutral-500"/>
+              <span class="flex-1">{{ menuShowIn.label }}</span>
+              <Icon v-if="menuShowIn.focus" icon="focus" :size="12" class="text-neutral-400"/>
             </button>
           </template>
           <template v-else>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menuMode = 'main'">
               <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
-              <span>Back</span>
+              <span>{{ t('pages.connections.back') }}</span>
             </button>
             <template v-for="bucket in groupsForMenu" :key="bucket.dimension">
               <div class="ui-menu-title">{{ bucket.dimension }}</div>
@@ -513,6 +513,8 @@ import {
   capFor, decodeSelection, detailRoute, encodeSelection, isOverCap, parseConnectionsQuery,
   toConnectionsQuery, toggleSelection,
 } from "~/features/connections/connections";
+import { t, intlLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 // One view for every "what is coupled to what" question. The picture is a
 // tree (groups ⊃ components ⊃ files) opened per node; source, roll-up
@@ -526,9 +528,9 @@ const store = useDataStore();
 const workspaces = useWorkspacesStore();
 
 const CYCLE_MODES: Array<{ id: CycleMode; label: string }> = [
-  { id: "off", label: "Hidden" },
-  { id: "all", label: "All cycles" },
-  { id: "selected", label: "Only through the selection" },
+  { id: "off", label: t("pages.connections.hidden") },
+  { id: "all", label: t("pages.connections.allCycles") },
+  { id: "selected", label: t("pages.connections.onlyThroughSelection") },
 ];
 
 // ── URL state ────────────────────────────────────────────────────────────
@@ -591,7 +593,7 @@ const showCrossings = ref(true);
 const crossingKeys = computed(() => new Set(lensCheck.value.crossings.map(c => crossingEdgeKey(c.from, c.to))));
 const { isJavaProject } = useJavaMetrics();
 const activeTab = ref("inspector");
-const tabs = [{ id: "inspector", label: "Inspector" }];
+const tabs = [{ id: "inspector", label: t("pages.connections.inspector") }];
 // A dimension is built in the studio, so this view draws none of one: no
 // dashed hulls, no dials, no draft tab. It reads the graph and the lens.
 const EMPTY_SUGGESTIONS: GroupSuggestion[] = [];
@@ -669,7 +671,7 @@ const levelLabel = computed(() => {
   const roll = model.rollupDimension.value;
   const lvl = model.level.value;
   const depth = lvl === "groups" ? "closed" : lvl === "components" ? "components" : lvl === "files" ? "files" : "mixed";
-  return roll ? `${roll} · ${depth}` : lvl === "files" ? "Files" : lvl === "components" ? "Components" : "Components · mixed";
+  return roll ? `${roll} · ${depth}` : lvl === "files" ? t("pages.connections.files") : lvl === "components" ? t("pages.connections.components") : t("pages.connections.componentsMixed");
 });
 
 // ── Presets: apply the URL level when it changes, and once data arrives ──
@@ -749,8 +751,8 @@ const menuRoute = computed(() => (menuNode.value ? detailRoute(menuNode.value.ki
 const menuOpenLabel = computed(() => {
   const n = menuNode.value;
   if (!n) return null;
-  if (n.kind === "group") return openIds.value.has(n.id) ? "Close into one node" : "Open into components";
-  if (n.kind === "component") return (n.files ?? 0) > 0 ? "Open into files" : null;
+  if (n.kind === "group") return openIds.value.has(n.id) ? t("pages.connections.closeOneNode") : t("pages.connections.openComponents");
+  if (n.kind === "component") return (n.files ?? 0) > 0 ? t("pages.connections.openFiles") : null;
   return null;
 });
 const menuCloseParent = computed<{ id: string; name: string } | null>(() => {
@@ -765,7 +767,7 @@ const menuCloseParent = computed<{ id: string; name: string } | null>(() => {
 const menuScopeGroup = computed<{ id: string; name: string } | null>(() => {
   const n = menuNode.value;
   if (!n || n.kind === "file") return null;
-  if (n.kind === "group") return { id: n.id, name: "this group" };
+  if (n.kind === "group") return { id: n.id, name: t("pages.connections.group2") };
   const g = n.group ? model.rollupGroups.value.find(x => x.name === n.group) ?? groupsStore.groups.find(x => x.name === n.group) : null;
   return g ? { id: g.id, name: g.name } : null;
 });
@@ -871,7 +873,7 @@ function focusFromInspector(choice: "only" | "around" | "dependencies" | "depend
 // Path to…: pick one end, click the other, and only the shortest routes stay.
 const pathFrom = ref<string[] | null>(null);
 const pathNote = ref("");
-const pathFromLabel = computed(() => (pathFrom.value ? (pathFrom.value.length === 1 ? labelOf(pathFrom.value[0]) : `${pathFrom.value.length} selected`) : ""));
+const pathFromLabel = computed(() => (pathFrom.value ? (pathFrom.value.length === 1 ? labelOf(pathFrom.value[0]) : t("pages.connections.selected", { pathFromLength: pathFrom.value.length })) : ""));
 function startPath(ids: string[]) {
   pathFrom.value = ids.length ? ids : null;
   pathNote.value = "";
@@ -883,8 +885,8 @@ function finishPath(id: string) {
   if (!from.length || !to.length) return;
   // Said before it is set: an empty focus would blank every view.
   const found = shortestPath(adjacency(store.componentConnections), from, to);
-  if (found.nodes.size === 0) { pathNote.value = `No import route joins ${labelOf(from[0])} and ${labelOf(to[0])} in either direction.`; return; }
-  pathNote.value = found.reversed ? `Nothing leads that way; this is the route back, ${found.hops} hop${found.hops === 1 ? "" : "s"}.` : "";
+  if (found.nodes.size === 0) { pathNote.value = t("pages.connections.noImportRouteJoins", { value: labelOf(from[0]), value2: labelOf(to[0]) }); return; }
+  pathNote.value = found.reversed ? t("pages.connections.nothingLeadsWayRoute", { hops: t("common.count.hop", { count: found.hops }) }) : "";
   scopeStore.setFocus(focusText({ op: "path", anchors: from, to, depth: null }));
 }
 

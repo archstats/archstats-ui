@@ -1,33 +1,33 @@
 <template>
-  <ViewWorkspaceLayout :queryable="false" title="About this snapshot">
+  <ViewWorkspaceLayout :queryable="false" :title="t('pages.snapshot.aboutSnapshot')">
     <template #stats>
       <span v-if="scanLabel" class="font-mono">{{ scanLabel }}</span>
     </template>
     <template #visualizer>
-      <EmptyState v-if="!data.hasData" title="No snapshot open" text="Open a scan to see what it read and what it left out." icon="file-text"/>
+      <EmptyState v-if="!data.hasData" :title="t('pages.snapshot.noSnapshotOpen')" :text="t('pages.snapshot.openScanSeeWhat')" icon="file-text"/>
       <div v-else class="min-h-0 grow overflow-y-auto">
         <div class="mx-auto w-full max-w-[920px] px-6 pb-12 pt-6">
 
           <!-- 1. What the code is made of. -->
-          <ReadingBand title="Composition" :lede="compositionLede">
+          <ReadingBand :title="t('pages.snapshot.composition')" :lede="compositionLede">
             <template #actions><ExhibitButton :exhibit="compositionTable"/></template>
-            <LoadingState v-if="filesLoading" text="Counting files…"/>
+            <LoadingState v-if="filesLoading" :text="t('pages.snapshot.countingFiles')"/>
             <div v-else class="overflow-hidden rounded-lg hairline">
               <table class="ui-table">
                 <thead>
                   <tr>
-                    <th>Language</th>
-                    <th class="w-[90px] text-right">Files</th>
-                    <th class="w-[120px] text-right">Lines</th>
-                    <th class="w-[70px] text-right">Share</th>
-                    <th class="w-[200px]">By role</th>
+                    <th>{{ t('pages.snapshot.language') }}</th>
+                    <th class="w-[90px] text-right">{{ t('pages.snapshot.files') }}</th>
+                    <th class="w-[120px] text-right">{{ t('pages.snapshot.lines') }}</th>
+                    <th class="w-[70px] text-right">{{ t('pages.snapshot.share') }}</th>
+                    <th class="w-[200px]">{{ t('pages.snapshot.role') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="r in visibleComposition" :key="r.language">
                     <td>
-                      <router-link v-if="r.extension" :to="{ path: '/views/metrics', query: { grain: 'files', q: r.extension } }" class="text-neutral-900 underline-offset-2 hover:underline" :title="`Files ending ${r.extension} in Metrics`">{{ r.language }}</router-link>
-                      <span v-else class="text-neutral-900">{{ r.language }}</span>
+                      <router-link v-if="r.extension" :to="{ path: '/views/metrics', query: { grain: 'files', q: r.extension } }" class="text-neutral-900 underline-offset-2 hover:underline" :title="t('pages.snapshot.filesEndingMetrics', { extension: r.extension })">{{ r.language }}</router-link>
+                      <span v-else class="text-neutral-900">{{ languageLabel(r.language) }}</span>
                     </td>
                     <td class="is-num text-right">{{ fmt(r.files) }}</td>
                     <td class="is-num text-right">{{ fmt(r.lines) }}</td>
@@ -42,72 +42,72 @@
               </table>
             </div>
             <button v-if="compositionRows.length > COMPOSITION_PREVIEW" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mt-2" @click="showAllLanguages = !showAllLanguages">
-              {{ showAllLanguages ? "Show fewer" : `Show all ${compositionRows.length} languages` }}
+              {{ showAllLanguages ? t('pages.snapshot.showFewer') : t('pages.snapshot.showAllLanguages', { compositionRowsLength: compositionRows.length }) }}
             </button>
             <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-500">
-              <span v-for="role in ROLE_ORDER" :key="role" class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm" :class="ROLE_INK[role]"></span>{{ ROLE_LABELS[role] }} {{ fmt(roleTotals[role]) }} lines</span>
+              <span v-for="role in ROLE_ORDER" :key="role" class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm" :class="ROLE_INK[role]"></span>{{ t('pages.snapshot.lines2', { value: ROLE_LABELS[role], value2: fmt(roleTotals[role]) }) }}</span>
             </div>
-            <p v-if="!hasRoles" class="mt-2 text-sm text-neutral-500">This snapshot does not record which files are tests; scan again to tell production code from tests.</p>
+            <p v-if="!hasRoles" class="mt-2 text-sm text-neutral-500">{{ t('pages.snapshot.snapshotDoesNotRecord') }}</p>
           </ReadingBand>
 
           <!-- 2. Which code: the commit, and how complete its history is. -->
-          <ReadingBand title="Repositories" :lede="repoLede">
-            <p v-if="repos.length === 0" class="text-base text-neutral-600">Not a git checkout: no history, authors or co-change were read.</p>
+          <ReadingBand :title="t('pages.snapshot.repositories')" :lede="repoLede">
+            <p v-if="repos.length === 0" class="text-base text-neutral-600">{{ t('pages.snapshot.notGitCheckoutNo') }}</p>
             <dl v-for="r in repos" :key="r.name" class="ui-kv mb-4 max-w-[640px]">
-              <dt>Repository</dt><dd class="font-mono">{{ r.name === "." ? workspaceName + " (root)" : r.name }}<span v-if="r.shallow" class="ui-tag ml-2" title="Cloned with --depth: history stops where the clone did">shallow clone</span></dd>
-              <template v-if="r.head"><dt>Head</dt><dd class="font-mono">{{ r.branch || "detached" }} @ {{ r.head.slice(0, 12) }}</dd></template>
-              <template v-if="r.headTime"><dt>Head committed</dt><dd>{{ formatDay(r.headTime) }}</dd></template>
-              <template v-if="r.dirty !== null"><dt>Uncommitted files</dt><dd>{{ fmt(r.dirty) }}</dd></template>
-              <template v-if="r.commits !== null"><dt>Commits read</dt><dd>{{ fmt(r.commits) }}</dd></template>
-              <template v-if="r.first"><dt>History</dt><dd>{{ formatDay(r.first) }} – {{ formatDay(r.last) }}</dd></template>
+              <dt>{{ t('pages.snapshot.repository') }}</dt><dd class="font-mono">{{ r.name === "." ? workspaceName + " (root)" : r.name }}<span v-if="r.shallow" class="ui-tag ml-2" :title="t('pages.snapshot.clonedDepthHistoryStops')">{{ t('pages.snapshot.shallowClone') }}</span></dd>
+              <template v-if="r.head"><dt>{{ t('pages.snapshot.head') }}</dt><dd class="font-mono">{{ r.branch || "detached" }} @ {{ r.head.slice(0, 12) }}</dd></template>
+              <template v-if="r.headTime"><dt>{{ t('pages.snapshot.headCommitted') }}</dt><dd>{{ formatDay(r.headTime) }}</dd></template>
+              <template v-if="r.dirty !== null"><dt>{{ t('pages.snapshot.uncommittedFiles') }}</dt><dd>{{ fmt(r.dirty) }}</dd></template>
+              <template v-if="r.commits !== null"><dt>{{ t('pages.snapshot.commitsRead') }}</dt><dd>{{ fmt(r.commits) }}</dd></template>
+              <template v-if="r.first"><dt>{{ t('pages.snapshot.history') }}</dt><dd>{{ formatDay(r.first) }} – {{ formatDay(r.last) }}</dd></template>
             </dl>
-            <p v-if="repos.length && !hasHeads" class="text-sm text-neutral-500">This snapshot does not record the commit it read; scan again to pin it.</p>
+            <p v-if="repos.length && !hasHeads" class="text-sm text-neutral-500">{{ t('pages.snapshot.snapshotDoesNotRecord2') }}</p>
           </ReadingBand>
 
           <!-- 3. Manifests: the modules the build declares. -->
-          <ReadingBand v-if="manifests.length" title="Manifests" :lede="manifestLede">
+          <ReadingBand v-if="manifests.length" :title="t('pages.snapshot.manifests')" :lede="manifestLede">
             <dl class="ui-kv max-w-[360px]">
               <template v-for="m in manifestKinds" :key="m.kind"><dt>{{ m.kind }}</dt><dd>{{ fmt(m.count) }}</dd></template>
             </dl>
             <details class="mt-3">
-              <summary class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">All {{ manifests.length }} manifests</summary>
+              <summary class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">{{ t('pages.snapshot.allManifests', { manifestsLength: manifests.length }) }}</summary>
               <ul class="mt-2 flex flex-col gap-0.5">
-                <li v-for="m in manifests" :key="m.manifest" class="flex gap-3 text-sm"><span class="w-20 shrink-0 text-neutral-500">{{ m.kind }}</span><span class="min-w-0 truncate font-mono text-neutral-800" :title="m.manifest">{{ m.name || m.manifest }}</span><span class="ml-auto shrink-0 font-mono text-xs text-neutral-400">{{ fmt(m.files) }} files</span></li>
+                <li v-for="m in manifests" :key="m.manifest" class="flex gap-3 text-sm"><span class="w-20 shrink-0 text-neutral-500">{{ m.kind }}</span><span class="min-w-0 truncate font-mono text-neutral-800" :title="m.manifest">{{ m.name || m.manifest }}</span><span class="ml-auto shrink-0 font-mono text-xs text-neutral-400">{{ t('pages.snapshot.files2', { files: fmt(m.files) }) }}</span></li>
               </ul>
             </details>
           </ReadingBand>
 
           <!-- Declared owners: the file that was read, and what it leaves unowned. -->
-          <ReadingBand title="Declared owners" :lede="ownersLede" to="/views/dimensions?propose=1" link-label="Propose as a lens">
+          <ReadingBand :title="t('pages.snapshot.declaredOwners')" :lede="ownersLede" to="/views/dimensions?propose=1" :link-label="t('pages.snapshot.proposeLens')">
             <template v-if="owners.owned.value">
               <dl class="ui-kv max-w-[640px]">
                 <template v-for="o in owners.owned.value.sets.slice(0, 12)" :key="o.key">
                   <dt class="!whitespace-normal">{{ owners.ownersLabel(o.owners) }}</dt>
-                  <dd>{{ fmt(o.files.length) }} files <span class="text-neutral-400">· line {{ o.lines.join(", ") }}</span></dd>
+                  <dd><I18nT k="pages.snapshot.files3"><template #filesLength>{{ fmt(o.files.length) }}</template><template #value><span class="text-neutral-400">{{ t('pages.snapshot.line', { value: o.lines.join(", ") }) }}</span></template></I18nT></dd>
                 </template>
               </dl>
               <div v-if="owners.owned.value.unowned.length" class="mt-4">
                 <div class="flex items-baseline gap-3">
-                  <h4 class="ui-label">Unowned paths</h4>
-                  <span class="text-xs text-neutral-500">{{ fmt(owners.owned.value.unowned.length) }} files no rule matches</span>
-                  <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="unownedSel = allUnownedSelected ? new Set() : new Set(unownedShown)">{{ allUnownedSelected ? "Clear" : "Select all shown" }}</button>
+                  <h4 class="ui-label">{{ t('pages.snapshot.unownedPaths') }}</h4>
+                  <span class="text-xs text-neutral-500">{{ t('pages.snapshot.filesNoRuleMatches', { unownedLength: fmt(owners.owned.value.unowned.length) }) }}</span>
+                  <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="unownedSel = allUnownedSelected ? new Set() : new Set(unownedShown)">{{ allUnownedSelected ? t('pages.snapshot.clear') : t('pages.snapshot.selectAllShown') }}</button>
                 </div>
                 <ul class="mt-1 flex max-h-[320px] flex-col overflow-y-auto">
                   <li v-for="f in unownedShown" :key="f" class="flex h-7 items-center gap-2">
-                    <Checkbox :model-value="unownedSel.has(f)" :aria-label="`Select ${f}`" @update:model-value="toggleUnowned(f)"/>
+                    <Checkbox :model-value="unownedSel.has(f)" :aria-label="t('pages.snapshot.select', { f })" @update:model-value="toggleUnowned(f)"/>
                     <router-link :to="filePath(f)" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="f">{{ f }}</router-link>
                   </li>
                 </ul>
-                <p v-if="owners.owned.value.unowned.length > unownedShown.length" class="mt-1 text-xs text-neutral-500">First {{ fmt(unownedShown.length) }} shown.</p>
+                <p v-if="owners.owned.value.unowned.length > unownedShown.length" class="mt-1 text-xs text-neutral-500">{{ t('pages.snapshot.firstShown', { unownedShownLength: fmt(unownedShown.length) }) }}</p>
               </div>
             </template>
           </ReadingBand>
           <GroupActionBar v-if="unownedSel.size" :selected-items="[...unownedSel]" kind="file" @clear="unownedSel = new Set()" @created="unownedSel = new Set()"/>
 
           <!-- 4. Frameworks, one reading per language. -->
-          <ReadingBand title="Frameworks" lede="What the code's types and imports point to, read per language. Units and Connections use this to name lanes.">
-            <LoadingState v-if="frameworksLoading" text="Reading types…"/>
-            <p v-else-if="frameworks.length === 0" class="text-base text-neutral-600">No types or functions were recorded, so no framework could be read.</p>
+          <ReadingBand :title="t('pages.snapshot.frameworks')" :lede="t('pages.snapshot.whatCodeSTypes')">
+            <LoadingState v-if="frameworksLoading" :text="t('pages.snapshot.readingTypes')"/>
+            <p v-else-if="frameworks.length === 0" class="text-base text-neutral-600">{{ t('pages.snapshot.noTypesFunctionsWere') }}</p>
             <dl v-else class="ui-kv max-w-[720px]">
               <template v-for="f in frameworks" :key="f.language">
                 <dt>{{ f.language }}</dt>
@@ -118,10 +118,10 @@
 
           <!-- 5a. How much of the code the import graph covers. -->
           <div id="coverage"></div>
-          <ReadingBand title="Import coverage" :lede="coverageLede">
-            <LoadingState v-if="coverageLoading" text="Counting…"/>
+          <ReadingBand :title="t('pages.snapshot.importCoverage')" :lede="coverageLede">
+            <LoadingState v-if="coverageLoading" :text="t('pages.snapshot.counting')"/>
             <table v-else-if="coverage && coverage.byExtension.length" class="ui-table max-w-[640px]">
-              <thead><tr><th>Type</th><th class="text-right">Code files</th><th class="text-right">With import data</th><th class="text-right">Covered</th></tr></thead>
+              <thead><tr><th>{{ t('pages.snapshot.type') }}</th><th class="text-right">{{ t('pages.snapshot.codeFiles') }}</th><th class="text-right">{{ t('pages.snapshot.importData') }}</th><th class="text-right">{{ t('pages.snapshot.covered') }}</th></tr></thead>
               <tbody>
                 <tr v-for="r in coverage.byExtension" :key="r.extension">
                   <td class="font-mono text-sm text-neutral-800">.{{ r.extension }}</td>
@@ -131,53 +131,53 @@
                 </tr>
               </tbody>
             </table>
-            <p v-else class="text-base text-neutral-600">No code files in this snapshot.</p>
+            <p v-else class="text-base text-neutral-600">{{ t('pages.snapshot.noCodeFilesSnapshot') }}</p>
           </ReadingBand>
 
           <!-- 5. How dependencies were found. -->
           <div id="dependencies"></div>
-          <ReadingBand title="Dependency evidence" :lede="evidenceLede">
+          <ReadingBand :title="t('pages.snapshot.dependencyEvidence')" :lede="evidenceLede">
             <dl v-if="evidence" class="ui-kv max-w-[520px]">
-              <dt>By import</dt><dd>{{ fmt(evidence.importPairs) }} pairs</dd>
-              <dt>Only by runtime lookup</dt><dd>{{ fmt(evidence.dynamicOnly) }} pairs</dd>
-              <dt>Types only (left out of coupling)</dt><dd>{{ fmt(evidence.typeOnly) }} pairs</dd>
-              <dt>Lookups unresolved</dt><dd>{{ fmt(evidence.unresolved) }}</dd>
+              <dt>{{ t('pages.snapshot.import') }}</dt><dd>{{ t('pages.snapshot.pairs', { importPairs: fmt(evidence.importPairs) }) }}</dd>
+              <dt>{{ t('pages.snapshot.onlyRuntimeLookup') }}</dt><dd>{{ t('pages.snapshot.pairs2', { dynamicOnly: fmt(evidence.dynamicOnly) }) }}</dd>
+              <dt>{{ t('pages.snapshot.typesOnlyLeftOut') }}</dt><dd>{{ t('pages.snapshot.pairs3', { typeOnly: fmt(evidence.typeOnly) }) }}</dd>
+              <dt>{{ t('pages.snapshot.lookupsUnresolved') }}</dt><dd>{{ fmt(evidence.unresolved) }}</dd>
             </dl>
-            <p v-else class="text-base text-neutral-600">This snapshot records every dependency as an import.</p>
+            <p v-else class="text-base text-neutral-600">{{ t('pages.snapshot.snapshotRecordsEveryDependency') }}</p>
             <ul v-if="unresolvedByReason.length" class="mt-3 flex flex-col gap-1">
               <li v-for="u in unresolvedByReason" :key="u.reason" class="text-sm text-neutral-600"><span class="font-mono text-neutral-800">{{ fmt(u.n) }}</span> {{ u.reason }}</li>
             </ul>
           </ReadingBand>
 
           <!-- 6. What was not read, so no number above covers it. -->
-          <ReadingBand title="What the scan left out" :lede="leftOutLede">
+          <ReadingBand :title="t('pages.snapshot.whatScanLeftOut')" :lede="leftOutLede">
             <dl class="ui-kv max-w-[640px]">
-              <template v-if="ignored.files !== null"><dt>Ignored files</dt><dd>{{ fmt(ignored.files) }}</dd></template>
-              <template v-if="ignored.dirs !== null"><dt>Ignored directories</dt><dd>{{ fmt(ignored.dirs) }}</dd></template>
-              <template v-if="sweeping !== null"><dt>Sweeping commits</dt><dd :title="`Commits touching more than ${maxChanges ?? 100} files: renames, reformats and merges. Left out of co-change only; they count everywhere else.`">{{ fmt(sweeping) }} left out of co-change only</dd></template>
-              <dt>Third-party files</dt><dd>{{ fmt(roleFiles.third_party) }}</dd>
-              <dt>Generated files</dt><dd>{{ fmt(roleFiles.generated) }}</dd>
-              <dt>Not code</dt><dd>{{ fmt(roleFiles.non_code) }}</dd>
+              <template v-if="ignored.files !== null"><dt>{{ t('pages.snapshot.ignoredFiles') }}</dt><dd>{{ fmt(ignored.files) }}</dd></template>
+              <template v-if="ignored.dirs !== null"><dt>{{ t('pages.snapshot.ignoredDirectories') }}</dt><dd>{{ fmt(ignored.dirs) }}</dd></template>
+              <template v-if="sweeping !== null"><dt>{{ t('pages.snapshot.sweepingCommits') }}</dt><dd :title="t('pages.snapshot.commitsTouchingMoreThan', { value: maxChanges ?? 100 })">{{ t('pages.snapshot.leftOutCoChange', { sweeping: fmt(sweeping) }) }}</dd></template>
+              <dt>{{ t('pages.snapshot.thirdPartyFiles') }}</dt><dd>{{ fmt(roleFiles.third_party) }}</dd>
+              <dt>{{ t('pages.snapshot.generatedFiles') }}</dt><dd>{{ fmt(roleFiles.generated) }}</dd>
+              <dt>{{ t('pages.snapshot.notCode') }}</dt><dd>{{ fmt(roleFiles.non_code) }}</dd>
             </dl>
             <details v-if="ignored.top.length" class="mt-3">
-              <summary class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">What was ignored, by rule</summary>
+              <summary class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">{{ t('pages.snapshot.whatWasIgnoredRule') }}</summary>
               <ul class="mt-2 flex flex-col gap-0.5">
                 <li v-for="p in ignored.top" :key="p" class="font-mono text-sm text-neutral-700">{{ p }}</li>
               </ul>
             </details>
-            <p v-if="ignored.files === null" class="mt-2 text-sm text-neutral-500">This snapshot does not record what the walker skipped; scan again to see it.</p>
+            <p v-if="ignored.files === null" class="mt-2 text-sm text-neutral-500">{{ t('pages.snapshot.snapshotDoesNotRecord3') }}</p>
           </ReadingBand>
 
           <!-- 7. The analysis that wrote it. -->
-          <ReadingBand title="Analysis">
+          <ReadingBand :title="t('pages.snapshot.analysis')">
             <dl class="ui-kv max-w-[640px]">
-              <dt>Revision</dt><dd>{{ data._snapshotRevision ?? 0 }}<span v-if="data.snapshotOutdated" class="ml-2 text-amber-700">older than this build's {{ data._engineRevision }}</span></dd>
-              <template v-if="extensions"><dt>Language packs</dt><dd>{{ extensions }}</dd></template>
-              <template v-if="ignoreGlobs"><dt>Ignore patterns</dt><dd class="font-mono !whitespace-normal">{{ ignoreGlobs }}</dd></template>
-              <template v-if="basedOn"><dt>Windows count back from</dt><dd>{{ basedOn }}</dd></template>
-              <template v-if="duration"><dt>Scan took</dt><dd>{{ duration }}</dd></template>
-              <template v-if="scan?.startedAt"><dt>Scanned</dt><dd>{{ formatDay(scan.startedAt) }}</dd></template>
-              <dt>Archstats desktop</dt><dd class="font-mono">{{ provenance.appVersion }}</dd>
+              <dt>{{ t('pages.snapshot.revision') }}</dt><dd>{{ data._snapshotRevision ?? 0 }}<span v-if="data.snapshotOutdated" class="ml-2 text-amber-700">{{ t('pages.snapshot.olderThanBuildS', { _engineRevision: data._engineRevision }) }}</span></dd>
+              <template v-if="extensions"><dt>{{ t('pages.snapshot.languagePacks') }}</dt><dd>{{ extensions }}</dd></template>
+              <template v-if="ignoreGlobs"><dt>{{ t('pages.snapshot.ignorePatterns') }}</dt><dd class="font-mono !whitespace-normal">{{ ignoreGlobs }}</dd></template>
+              <template v-if="basedOn"><dt>{{ t('pages.snapshot.windowsCountBack') }}</dt><dd>{{ basedOn }}</dd></template>
+              <template v-if="duration"><dt>{{ t('pages.snapshot.scanTook') }}</dt><dd>{{ duration }}</dd></template>
+              <template v-if="scan?.startedAt"><dt>{{ t('pages.snapshot.scanned') }}</dt><dd>{{ formatDay(scan.startedAt) }}</dd></template>
+              <dt>{{ t('pages.snapshot.archstatsDesktop') }}</dt><dd class="font-mono">{{ provenance.appVersion }}</dd>
             </dl>
           </ReadingBand>
         </div>
@@ -204,9 +204,11 @@ import { useExportables, useTable } from "~/features/export/useExportables";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { detectFramework, languageOfFile } from "~/features/frameworks/frameworkProfiles";
-import { composition, ROLE_LABELS, type CompositionRow, type FileRole } from "~/features/snapshot/languages";
+import { composition, ROLE_LABELS, type CompositionRow, type FileRole, languageLabel } from "~/features/snapshot/languages";
 import { buildProvenance, provenanceMarkdown } from "~/features/export/provenance";
 import { loadUnits } from "~/features/units/units";
+import { t, intlLocale, dateLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 // Everything a report says before its first finding: what the code is made
 // of, which commit it was, what the scan left out and how dependencies were
@@ -220,15 +222,15 @@ const info = computed<Record<string, string>>(() => data.snapshotInfo ?? {});
 const provenance = computed(() => buildProvenance());
 const scanLabel = computed(() => provenance.value.snapshot);
 
-const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "—" : Math.round(n).toLocaleString("en-US"));
+const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "—" : Math.round(n).toLocaleString(intlLocale));
 const pct = (n: number, total: number) => {
   if (!total) return "—";
   const p = (n / total) * 100;
   if (p > 0 && p < 0.1) return "<0.1%";
-  return `${p.toLocaleString("en-US", { maximumFractionDigits: p < 1 ? 1 : 0 })}%`;
+  return `${p.toLocaleString(intlLocale, { maximumFractionDigits: p < 1 ? 1 : 0 })}%`;
 };
-const LANGUAGE_NAMES: Record<string, string> = { java: "Java", kotlin: "Kotlin", csharp: "C#", typescript: "TypeScript/JS", python: "Python", go: "Go", php: "PHP" };
-const formatDay = (v: string | number | Date | null | undefined) => (v ? new Date(v).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+const LANGUAGE_NAMES: Record<string, string> = { java: t("pages.snapshot.java"), kotlin: t("pages.snapshot.kotlin"), csharp: "C#", typescript: "TypeScript/JS", python: t("pages.snapshot.python"), go: t("pages.snapshot.go"), php: "PHP" };
+const formatDay = (v: string | number | Date | null | undefined) => (v ? new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 // ── Composition ─────────────────────────────────────────────────────────
 const ROLE_ORDER: FileRole[] = ["production", "test", "generated", "third_party", "non_code"];
@@ -274,16 +276,16 @@ const roleFiles = computed(() => {
   return t;
 });
 function roleTitle(r: CompositionRow): string {
-  return ROLE_ORDER.filter(k => r.roles[k]).map(k => `${ROLE_LABELS[k]}: ${fmt(r.roles[k])} lines`).join("\n");
+  return ROLE_ORDER.filter(k => r.roles[k]).map(k => t("pages.snapshot.lines4", { value: ROLE_LABELS[k], value2: fmt(r.roles[k]) })).join("\n");
 }
 const compositionLede = computed(() => {
   const rows = compositionRows.value;
   if (!rows.length) return "";
   const top = rows[0];
-  const lead = `${fmt(totalLines.value)} lines in ${fmt(fileRows.value.length)} files. ${top.language} is ${pct(top.lines, totalLines.value)} of the lines`;
+  const lead = t("pages.snapshot.linesFilesLines", { totalLines: fmt(totalLines.value), fileRowsLength: fmt(fileRows.value.length), language: top.language, lines: pct(top.lines, totalLines.value) });
   const nonCode = roleTotals.value.non_code;
   return nonCode / (totalLines.value || 1) > 0.25
-    ? `${lead}; ${pct(nonCode, totalLines.value)} of all lines are not code and get no health reading.`
+    ? t("pages.snapshot.allLinesNotCode", { lead, nonCode: pct(nonCode, totalLines.value) })
     : `${lead}.`;
 });
 
@@ -318,8 +320,8 @@ const repoLede = computed(() => {
   const r = repos.value;
   if (!r.length) return "";
   const shallow = r.some(x => x.shallow);
-  const base = r.length === 1 ? "One git repository." : `${r.length} git repositories.`;
-  return shallow ? `${base} Shallow: commit counts, contributors and ages cover only the fetched history.` : base;
+  const base = r.length === 1 ? t("pages.snapshot.oneGitRepository") : t("pages.snapshot.gitRepositories", { length: r.length });
+  return shallow ? t("pages.snapshot.shallowCommitCountsContributors", { base }) : base;
 });
 
 // ── Declared owners ─────────────────────────────────────────────────────
@@ -330,8 +332,8 @@ const ownersLede = computed(() => {
   const o = owners.owned.value!;
   const total = o.sets.reduce((n, x) => n + x.files.length, 0) + o.unowned.length;
   const rules = owners.parsed.value!.rules.length;
-  const single = owners.singleRule.value ? " One rule owns everything, so it names reviewers rather than dividing the code." : "";
-  return `Read from ${owners.found.value!.path}: ${fmt(rules)} ${rules === 1 ? "rule" : "rules"}, ${fmt(o.sets.length)} owner ${o.sets.length === 1 ? "set" : "sets"}, ${fmt(total - o.unowned.length)} of ${fmt(total)} files owned; the last matching line wins.${single}`;
+  const single = owners.singleRule.value ? t("pages.snapshot.oneRuleOwnsEverything") : "";
+  return t("pages.snapshot.readOwnerFilesOwned", { path: owners.found.value!.path, rules: t("common.count.rule", { count: rules }), setsLength: fmt(o.sets.length), sets: t("common.noun.set", { count: o.sets.length }), value: fmt(total - o.unowned.length), total: fmt(total), single });
 });
 const unownedShown = computed(() => owners.owned.value?.unowned.slice(0, 500) ?? []);
 const unownedSel = ref<Set<string>>(new Set());
@@ -349,7 +351,7 @@ const manifestKinds = computed(() => {
   for (const x of manifests.value) m.set(x.kind, (m.get(x.kind) ?? 0) + 1);
   return [...m.entries()].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count);
 });
-const manifestLede = computed(() => `${fmt(manifests.value.length)} build manifests: ${manifestKinds.value.map(k => `${fmt(k.count)} ${k.kind}`).join(", ")}.`);
+const manifestLede = computed(() => t("pages.snapshot.buildManifests", { manifestsLength: fmt(manifests.value.length), value: manifestKinds.value.map(k => `${fmt(k.count)} ${k.kind}`).join(", ") }));
 
 // ── Frameworks ──────────────────────────────────────────────────────────
 const { data: frameworks, loading: frameworksLoading } = useAsyncQuery<Array<{ language: string; label: string; reason: string }>>(
@@ -366,7 +368,7 @@ const { data: frameworks, loading: frameworksLoading } = useAsyncQuery<Array<{ l
       .map(([language, facts]) => {
         const d = detectFramework(facts, language as any);
         const best = d.candidates[0];
-        return { language: LANGUAGE_NAMES[language] ?? language, label: d.confident && best ? best.label : "No framework settled", reason: d.reason };
+        return { language: LANGUAGE_NAMES[language] ?? language, label: d.confident && best ? best.label : t("pages.snapshot.noFrameworkSettled"), reason: d.reason };
       });
   },
   [() => data.datasetKey],
@@ -394,11 +396,11 @@ const { data: unresolvedByReason } = useAsyncQuery<Array<{ reason: string; n: nu
 );
 const evidenceLede = computed(() => {
   const e = evidence.value;
-  if (!e) return "Every dependency here is an import that names its target.";
+  if (!e) return t("pages.snapshot.everyDependencyHereImport");
   const parts = [];
-  if (e.dynamicOnly) parts.push(`${fmt(e.dynamicOnly)} component pairs are joined only by a string naming a module at runtime; no import names them, so a rename breaks them silently`);
-  if (e.typeOnly) parts.push(`${fmt(e.typeOnly)} are joined only by types the compiler erases, and are left out of coupling`);
-  return parts.length ? parts.join("; ") + "." : "Every dependency here is an import that names its target.";
+  if (e.dynamicOnly) parts.push(t("pages.snapshot.componentPairsJoinedOnly", { dynamicOnly: fmt(e.dynamicOnly) }));
+  if (e.typeOnly) parts.push(t("pages.snapshot.joinedOnlyTypesCompiler", { typeOnly: fmt(e.typeOnly) }));
+  return parts.length ? parts.join("; ") + "." : t("pages.snapshot.everyDependencyHereImport");
 });
 
 // ── Left out ────────────────────────────────────────────────────────────
@@ -416,60 +418,60 @@ const sweeping = computed(() => (info.value.git_sweeping_commits !== undefined ?
 const maxChanges = computed(() => (info.value.git_max_changes_per_commit !== undefined ? Number(info.value.git_max_changes_per_commit) : null));
 const leftOutLede = computed(() => {
   const parts = [];
-  if (ignored.value.files !== null) parts.push(`${fmt(ignored.value.files)} files and ${fmt(ignored.value.dirs)} directories matched an ignore rule and were not read`);
+  if (ignored.value.files !== null) parts.push(t("pages.snapshot.filesDirectoriesMatchedIgnore", { files: fmt(ignored.value.files), dirs: fmt(ignored.value.dirs) }));
   const excluded = roleFiles.value.third_party + roleFiles.value.generated;
-  if (excluded) parts.push(`${fmt(excluded)} third-party or generated files are counted but never scored`);
+  if (excluded) parts.push(t("pages.snapshot.thirdPartyGeneratedFiles", { excluded: fmt(excluded) }));
   return parts.length ? parts.join("; ") + "." : "";
 });
 
 // ── Analysis ────────────────────────────────────────────────────────────
 const extensions = computed(() => (info.value.extensions || scan.value?.extensions || "").split(",").filter(Boolean).join(", "));
 const ignoreGlobs = computed(() => scan.value?.ignoreGlobs || "");
-const basedOn = computed(() => (info.value.git_based_on ? `the head commit, ${formatDay(info.value.git_based_on)}` : ""));
+const basedOn = computed(() => (info.value.git_based_on ? t("pages.snapshot.headCommit", { git_based_on: formatDay(info.value.git_based_on) }) : ""));
 const duration = computed(() => {
   const s = scan.value;
   if (!s?.startedAt || !s?.finishedAt) return "";
   const secs = Math.round((new Date(s.finishedAt).getTime() - new Date(s.startedAt).getTime()) / 1000);
-  return secs < 90 ? `${secs} s` : `${Math.round(secs / 60)} min`;
+  return secs < 90 ? `${secs} s` : t("pages.snapshot.min", { value: Math.round(secs / 60) });
 });
 
 // ── Methodology ─────────────────────────────────────────────────────────
 function methodology(): string {
   const p = provenance.value;
   const lines: string[] = ["## Method", ""];
-  lines.push(`The figures come from one Archstats snapshot of ${p.workspace}${p.commit ? `, read at ${p.branch ? p.branch + " " : ""}${p.commit.slice(0, 12)}` : ""}${p.uncommitted ? ` with ${p.uncommitted} uncommitted files` : ""}, analysis revision ${p.revision}.`);
+  lines.push(t("pages.snapshot.figuresComeOneArchstats", { workspace: p.workspace, value: p.commit ? t("pages.snapshot.read", { value: p.branch ? p.branch + " " : "", slice: p.commit.slice(0, 12) }) : "", value2: p.uncommitted ? t("pages.snapshot.uncommittedFiles2", { uncommitted: p.uncommitted }) : "", revision: p.revision }));
   if (compositionLede.value) lines.push("", compositionLede.value);
   const repo = repos.value[0];
-  if (repo?.first) lines.push("", `History covers ${formatDay(repo.first)} to ${formatDay(repo.last)}${repos.value.some(r => r.shallow) ? ", from a shallow clone, so only the fetched commits are counted" : ""}.`);
-  if (!repos.value.length) lines.push("", "The code is not a git checkout, so there are no history, author or co-change figures.");
+  if (repo?.first) lines.push("", t("pages.snapshot.historyCovers", { first: formatDay(repo.first), last: formatDay(repo.last), value: repos.value.some(r => r.shallow) ? t("pages.snapshot.shallowCloneSoOnly") : "" }));
+  if (!repos.value.length) lines.push("", t("pages.snapshot.codeNotGitCheckout"));
   const limits: string[] = [];
-  if (ignored.value.files) limits.push(`${fmt(ignored.value.files)} files matched an ignore rule and were not read.`);
-  if (sweeping.value) limits.push(`${fmt(sweeping.value)} commits touching more than ${maxChanges.value ?? 100} files are left out of co-change, and only there.`);
-  if (evidence.value?.dynamicOnly) limits.push(`${fmt(evidence.value.dynamicOnly)} component pairs are joined only by runtime lookups rather than imports.`);
-  if (evidence.value?.unresolved) limits.push(`${fmt(evidence.value.unresolved)} runtime lookups named modules outside the scan and count in no coupling figure.`);
-  if (evidence.value?.typeOnly) limits.push(`${fmt(evidence.value.typeOnly)} component pairs joined only by erased types are left out of coupling.`);
-  if (roleFiles.value.third_party || roleFiles.value.generated) limits.push(`Third-party (${fmt(roleFiles.value.third_party)}) and generated (${fmt(roleFiles.value.generated)}) files are counted in size but not scored for health or hotspots.`);
-  if (roleTotals.value.non_code) limits.push(`${fmt(roleTotals.value.non_code)} lines are not code and get no health reading.`);
-  if (limits.length) lines.push("", "### Limits of the evidence", "", ...limits.map(l => `- ${l}`));
-  lines.push("", "### Definitions", "", "Code health is 10 less three capped deductions (size over 500 lines, deepest nesting and average nesting over the language's thresholds), never below 1; a component's is the line-weighted mean of its files'. The hotspot score is log2(commits + 1) × lines, scaled so the hottest file in the snapshot reads 100.");
+  if (ignored.value.files) limits.push(t("pages.snapshot.filesMatchedIgnoreRule", { files: fmt(ignored.value.files) }));
+  if (sweeping.value) limits.push(t("pages.snapshot.commitsTouchingMoreThan2", { sweeping: fmt(sweeping.value), value: maxChanges.value ?? 100 }));
+  if (evidence.value?.dynamicOnly) limits.push(t("pages.snapshot.componentPairsJoinedOnly2", { dynamicOnly: fmt(evidence.value.dynamicOnly) }));
+  if (evidence.value?.unresolved) limits.push(t("pages.snapshot.runtimeLookupsNamedModules", { unresolved: fmt(evidence.value.unresolved) }));
+  if (evidence.value?.typeOnly) limits.push(t("pages.snapshot.componentPairsJoinedOnly3", { typeOnly: fmt(evidence.value.typeOnly) }));
+  if (roleFiles.value.third_party || roleFiles.value.generated) limits.push(t("pages.snapshot.thirdPartyGeneratedFiles2", { third_party: fmt(roleFiles.value.third_party), generated: fmt(roleFiles.value.generated) }));
+  if (roleTotals.value.non_code) limits.push(t("pages.snapshot.linesNotCodeGet", { non_code: fmt(roleTotals.value.non_code) }));
+  if (limits.length) lines.push("", t("pages.snapshot.limitsEvidence"), "", ...limits.map(l => `- ${l}`));
+  lines.push("", "### Definitions", "", t("pages.snapshot.codeHealth10Less"));
   lines.push("", "### Provenance", "", provenanceMarkdown(p), "");
   return lines.join("\n");
 }
 
-useExportables().register({ kind: "document", title: "About this snapshot", label: "Copy methodology", savable: true, markdown: methodology });
+useExportables().register({ kind: "document", title: t("pages.snapshot.aboutSnapshot"), label: t("pages.snapshot.copyMethodology"), savable: true, markdown: methodology });
 const compositionTable = useTable({
-  title: "Composition by language",
+  title: t("pages.snapshot.compositionLanguage"),
   rows: () => compositionRows.value.map(r => ({ language: r.language, files: r.files, lines: r.lines, ...Object.fromEntries(ROLE_ORDER.map(k => [`lines_${k}`, r.roles[k]])) })),
-  columns: () => [{ id: "language", label: "Language" }, { id: "files", label: "Files" }, { id: "lines", label: "Lines" }, ...ROLE_ORDER.map(k => ({ id: `lines_${k}`, label: `${ROLE_LABELS[k]} lines` }))],
+  columns: () => [{ id: "language", label: t("pages.snapshot.language") }, { id: "files", label: t("pages.snapshot.files") }, { id: "lines", label: t("pages.snapshot.lines") }, ...ROLE_ORDER.map(k => ({ id: `lines_${k}`, label: t("pages.snapshot.lines3", { value: ROLE_LABELS[k] }) }))],
 });
 
 // How much of the code the import graph covers, per file type.
 const { data: coverage, loading: coverageLoading } = useImportCoverage();
 const coverageLede = computed(() => {
   const c = coverage.value;
-  if (!c || !c.files) return "Which code files the import graph knows anything about.";
+  if (!c || !c.files) return t("pages.snapshot.whichCodeFilesImport");
   const missing = c.files - c.analysed;
-  if (!missing) return `Every one of the ${fmt(c.files)} production code files has import data.`;
-  return `${fmt(c.analysed)} of ${fmt(c.files)} production code files have import data. ${gapPhrase(c)} have none, so every dependency, cycle, rule and dead-code answer leaves them out.`;
+  if (!missing) return t("pages.snapshot.everyOneProductionCode", { files: fmt(c.files) });
+  return t("pages.snapshot.productionCodeFilesHave", { analysed: fmt(c.analysed), files: fmt(c.files), c: gapPhrase(c) });
 });
 </script>

@@ -3,6 +3,8 @@
 // what the chip reads back, and what + and - step through -- so nothing has
 // to string-edit a query to widen it by one hop.
 
+import { t } from "~/shared/i18n"
+
 /**
  * around / dependencies / dependents walk `depth` hops (null: all the way);
  * between keeps every route, path only the shortest; tangle is the cycle.
@@ -78,15 +80,15 @@ export function shortName(id: string, max = 28): string {
 /** What the chip says: "Around billing · 2 hops". */
 export function describeFocus(spec: FocusSpec | null, text: string, label: (id: string) => string = id => id): string {
   if (!spec) return text.split("\n").filter(Boolean).join(", ")
-  const names = (list: string[]) => (list.length <= 2 ? list.map(label).join(", ") : `${label(list[0])} and ${list.length - 1} more`)
-  const hops = spec.depth === null ? "all the way" : `${spec.depth} hop${spec.depth === 1 ? "" : "s"}`
+  const names = (list: string[]) => (list.length <= 2 ? list.map(label).join(", ") : t("navigation.focusSpec.more", { value: label(list[0]), value2: list.length - 1 }))
+  const hops = spec.depth === null ? t("navigation.focusSpec.allWay") : t("navigation.focusSpec.text", { hops: t("common.count.hop", { count: spec.depth }) })
   switch (spec.op) {
     case "only": return names(spec.anchors)
     case "around": return `Around ${names(spec.anchors)} · ${hops}`
-    case "dependencies": return spec.depth === null ? `Everything ${names(spec.anchors)} reaches` : `${names(spec.anchors)} and what it uses · ${hops}`
-    case "dependents": return spec.depth === null ? `Everything that reaches ${names(spec.anchors)}` : `${names(spec.anchors)} and what uses it · ${hops}`
-    case "between": return spec.to?.length ? `Between ${names(spec.anchors)} and ${names(spec.to)}` : `Between ${names(spec.anchors)}`
+    case "dependencies": return spec.depth === null ? t("navigation.focusSpec.everythingReaches", { anchors: names(spec.anchors) }) : t("navigation.focusSpec.whatUses", { anchors: names(spec.anchors), hops })
+    case "dependents": return spec.depth === null ? t("navigation.focusSpec.everythingReaches2", { anchors: names(spec.anchors) }) : t("navigation.focusSpec.whatUses2", { anchors: names(spec.anchors), hops })
+    case "between": return spec.to?.length ? t("navigation.focusSpec.between3", { anchors: names(spec.anchors), to: names(spec.to) }) : t("navigation.focusSpec.between4", { anchors: names(spec.anchors) })
     case "path": return `Path ${names(spec.anchors)} → ${names(spec.to ?? [])}`
-    case "tangle": return `Tangle of ${names(spec.anchors)}`
+    case "tangle": return t("navigation.focusSpec.tangle2", { anchors: names(spec.anchors) })
   }
 }

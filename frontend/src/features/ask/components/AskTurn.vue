@@ -3,7 +3,7 @@
     <!-- The question, and the view it was asked from. -->
     <div class="flex flex-col items-start gap-1">
       <p class="ask-q">{{ turn.question }}</p>
-      <span v-if="turn.context" class="ask-ctx" :title="`Asked from ${turn.context.route}`"><PanelTop :size="11" :stroke-width="1.75"/> from {{ turn.context.label }}<template v-if="turn.context.subject"> · {{ short(turn.context.subject.name) }}</template></span>
+      <span v-if="turn.context" class="ask-ctx" :title="t('ask.askTurn.asked', { route: turn.context.route })"><PanelTop :size="11" :stroke-width="1.75"/>{{ ' ' + t('ask.askTurn.from', { contextLabel: turn.context.label }) }}<template v-if="turn.context.subject"> · {{ short(turn.context.subject.name) }}</template></span>
     </div>
 
     <div class="mt-4">
@@ -14,7 +14,7 @@
         <span>{{ planSummary }}</span>
       </button>
       <div v-if="turn.plan.length && (running || planOpen)" class="ask-plan">
-        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> {{ running ? "Checking these hypotheses first" : "Hypotheses checked before answering" }}</p>
+        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> {{ running ? t('ask.askTurn.checkingTheseHypothesesFirst') : t('ask.askTurn.hypothesesCheckedBeforeAnswering') }}</p>
         <ol>
           <li v-for="(p, i) in turn.plan" :key="i">
             <span class="ask-plan-n">
@@ -47,12 +47,12 @@
                 <Check v-else :size="11" :stroke-width="2" class="text-neutral-400"/>
                 <span class="min-w-0 flex-1 truncate">{{ s.label }}</span>
                 <span v-for="id in s.evidenceIds" :key="id" class="ask-step-id">{{ id }}</span>
-                <span v-if="s.ms !== undefined" class="tabular-nums text-neutral-400">{{ s.ms }} ms</span>
+                <span v-if="s.ms !== undefined" class="tabular-nums text-neutral-400">{{ t('ask.askTurn.ms', { ms: s.ms }) }}</span>
               </summary>
               <pre>{{ s.text }}</pre>
             </details>
           </li>
-          <li v-if="running" class="ask-thinking"><span class="ask-dots"><i/><i/><i/></span><span class="min-w-0 flex-1 truncate">{{ turn.phase ?? "Working" }}</span><span class="tabular-nums text-neutral-400">{{ elapsed }} s</span></li>
+          <li v-if="running" class="ask-thinking"><span class="ask-dots"><i/><i/><i/></span><span class="min-w-0 flex-1 truncate">{{ turn.phase ?? t('ask.askTurn.working') }}</span><span class="tabular-nums text-neutral-400">{{ elapsed }} s</span></li>
         </ol>
       </div>
 
@@ -60,17 +60,17 @@
       <div v-if="!running && verdict.level !== 'none'" class="ask-vline" :class="`is-${verdict.level}`">
         <button type="button" :aria-expanded="groundOpen" :disabled="!verdict.flagged.length" @click="groundOpen = !groundOpen">
           <span class="ask-vdot" aria-hidden="true"/>
-          <span class="ask-vhead" title="Each sentence with a number or a name is checked against the facts it cites: the numbers must be in them, the things named must be what they are about.">{{ verdict.headline }}</span>
+          <span class="ask-vhead" :title="t('ask.askTurn.eachSentenceNumberName')">{{ verdict.headline }}</span>
           <span v-if="verdict.problems.length" class="ask-vprob">{{ verdict.problems.join(" · ") }}</span>
-          <span v-if="verdict.flagged.length" class="ask-vshow">{{ groundOpen ? "Hide" : folded ? "Show them" : "Show which" }}</span>
+          <span v-if="verdict.flagged.length" class="ask-vshow">{{ groundOpen ? t('ask.askTurn.hide') : folded ? t('ask.askTurn.showThem') : t('ask.askTurn.showWhich') }}</span>
         </button>
         <ul v-if="groundOpen && verdict.flagged.length">
           <li v-for="(c, i) in verdict.flagged" :key="i" :class="`ask-ground-${c.verdict}`"><span class="ask-ground-v" :title="VERDICT_WORDS[c.verdict]">{{ c.verdict }}</span> {{ c.sentence.replace(/\s*\[E[^\]]*\]/g, "") }} <span class="text-neutral-500">— {{ c.reasons.join("; ") }}</span></li>
         </ul>
         <!-- A way out of every doubt: the facts themselves, or the question asked again with every claim cited. -->
         <div v-if="verdict.level !== 'good'" class="ask-vacts">
-          <button v-if="turn.exhibits?.length" type="button" @click="$emit('inspect', turn.exhibits![0].id)">Show the facts</button>
-          <button v-if="last" type="button" title="Ask the same question again: every number and name must cite the fact that holds it, or be left out. This answer is kept." @click="ask.retry(turn.id, { strict: true })">Ask again, strictly</button>
+          <button v-if="turn.exhibits?.length" type="button" @click="$emit('inspect', turn.exhibits![0].id)">{{ t('ask.askTurn.showFacts') }}</button>
+          <button v-if="last" type="button" :title="t('ask.askTurn.askSameQuestionAgain')" @click="ask.retry(turn.id, { strict: true })">{{ t('ask.askTurn.askAgainStrictly') }}</button>
         </div>
       </div>
 
@@ -90,12 +90,12 @@
           />
         </template>
       </div>
-      <p v-else-if="turn.status === 'stopped'" class="mt-3 text-[12px] text-neutral-500">Stopped before an answer.</p>
+      <p v-else-if="turn.status === 'stopped'" class="mt-3 text-[12px] text-neutral-500">{{ t('ask.askTurn.stoppedBeforeAnswer') }}</p>
       <div v-if="turn.status === 'error'" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/><span>{{ turn.error }}</span></div>
 
       <!-- What it looked at but did not cite: offered, drawn when opened. -->
       <div v-if="!running && layout.unplaced.length" class="ask-also">
-        <span class="text-neutral-500">Also looked at</span>
+        <span class="text-neutral-500">{{ t('ask.askTurn.alsoLooked') }}</span>
         <button v-for="id in layout.unplaced" :key="id" type="button" class="ui-chip ask-also-chip" :class="{ 'is-active': opened.has(id) }" @click="toggle(id)">
           <span class="ask-step-id">{{ id }}</span> <span class="truncate">{{ exhibitById.get(id)?.title }}</span>
         </button>
@@ -136,35 +136,35 @@
 
       <div v-if="confirmReport" class="ask-confirm" role="alert">
         <AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/>
-        <span class="min-w-0 flex-1">{{ unsafe }} {{ unsafe === 1 ? "statement here is" : "statements here are" }} not backed by the facts it cites. The report gets {{ unsafe === 1 ? "it" : "them" }} listed under “Check before using”.</span>
-        <button type="button" class="ui-btn ui-btn-sm" @click="confirmReport = false">Cancel</button>
-        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="confirmReport = false; toReport()">Add anyway</button>
+        <span class="min-w-0 flex-1">{{ t('ask.askTurn.notBackedFactsCites', { statementsHereAre: t('common.count.statementHereIs', { count: unsafe }), them: t('common.noun.it', { count: unsafe }) }) }}</span>
+        <button type="button" class="ui-btn ui-btn-sm" @click="confirmReport = false">{{ t('ask.askTurn.cancel') }}</button>
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="confirmReport = false; toReport()">{{ t('ask.askTurn.addAnyway') }}</button>
       </div>
 
       <!-- Other answers to this question: a retry never loses the one it replaced. -->
       <p v-if="!running && turn.versions?.length" class="ask-versions">
         <History :size="12" :stroke-width="1.75"/>
-        <span>{{ turn.keptEarlier ? "The retry checked out worse, so this earlier answer stays." : `${turn.versions.length + 1} answers to this question.` }}</span>
-        <button type="button" @click="ask.swapVersion(turn.id, turn.versions.length - 1)">{{ turn.keptEarlier ? "Show the retry" : "Show the other" }}</button>
+        <span>{{ turn.keptEarlier ? t('ask.askTurn.retryCheckedOutWorse') : t('ask.askTurn.answersQuestion', { value: turn.versions.length + 1 }) }}</span>
+        <button type="button" @click="ask.swapVersion(turn.id, turn.versions.length - 1)">{{ turn.keptEarlier ? t('ask.askTurn.showRetry') : t('ask.askTurn.showOther') }}</button>
       </p>
 
       <!-- What can be done with the answer, and what made it: one row. -->
       <div v-if="!running && (turn.answer.trim() || turn.status !== 'error')" class="ask-foot">
         <div v-if="turn.answer.trim()" class="ask-actions">
-          <button type="button" :title="copied ? 'Copied' : 'Copy the answer'" @click="copy"><Check v-if="copied" :size="12" :stroke-width="2"/><Copy v-else :size="12" :stroke-width="1.75"/></button>
-          <button v-if="last" type="button" title="Ask again" @click="ask.retry(turn.id)"><RotateCw :size="12" :stroke-width="1.75"/></button>
-          <button v-if="last" type="button" title="Edit the question and ask again" @click="$emit('edit', turn.id)"><Pencil :size="12" :stroke-width="1.75"/></button>
-          <button type="button" title="Put this answer and its evidence into the conversation's report" @click="askToReport"><FilePlus2 :size="12" :stroke-width="1.75"/></button>
+          <button type="button" :title="copied ? t('ask.askTurn.copied') : t('ask.askTurn.copyAnswer')" @click="copy"><Check v-if="copied" :size="12" :stroke-width="2"/><Copy v-else :size="12" :stroke-width="1.75"/></button>
+          <button v-if="last" type="button" :title="t('ask.askTurn.askAgain')" @click="ask.retry(turn.id)"><RotateCw :size="12" :stroke-width="1.75"/></button>
+          <button v-if="last" type="button" :title="t('ask.askTurn.editQuestionAskAgain')" @click="$emit('edit', turn.id)"><Pencil :size="12" :stroke-width="1.75"/></button>
+          <button type="button" :title="t('ask.askTurn.putAnswerEvidenceConversation')" @click="askToReport"><FilePlus2 :size="12" :stroke-width="1.75"/></button>
           <span class="mx-0.5 h-3 w-px bg-neutral-200"/>
-          <button type="button" :class="{ 'ask-rated': turn.feedback === 'up' }" title="Good answer" @click="ask.rate(turn.id, 'up')"><ThumbsUp :size="12" :stroke-width="1.75"/></button>
-          <button type="button" :class="{ 'ask-rated': turn.feedback === 'down' }" title="Wrong or unhelpful: kept with the trace, for improving Ask" @click="ask.rate(turn.id, 'down')"><ThumbsDown :size="12" :stroke-width="1.75"/></button>
+          <button type="button" :class="{ 'ask-rated': turn.feedback === 'up' }" :title="t('ask.askTurn.goodAnswer')" @click="ask.rate(turn.id, 'up')"><ThumbsUp :size="12" :stroke-width="1.75"/></button>
+          <button type="button" :class="{ 'ask-rated': turn.feedback === 'down' }" :title="t('ask.askTurn.wrongUnhelpfulKeptTrace')" @click="ask.rate(turn.id, 'down')"><ThumbsDown :size="12" :stroke-width="1.75"/></button>
         </div>
         <p v-if="turn.status !== 'error'" class="ask-meta">
           <span>{{ turn.model }}</span>
-          <span>·</span><span class="tabular-nums">{{ (turn.tokens.ms / 1000).toFixed(1) }} s</span>
-          <span>·</span><span class="tabular-nums">{{ tokens }} tokens</span>
-          <template v-if="turn.repairs.length"><span>·</span><span :title="turn.repairs.join('\n')">revised after a check</span></template>
-          <span>·</span><button type="button" class="hover:text-neutral-800" @click="$emit('trace', turn.id)">Trace</button>
+          <span>·</span><span class="tabular-nums">{{ fixed((turn.tokens.ms / 1000), 1) }} s</span>
+          <span>·</span><span class="tabular-nums">{{ t('ask.askTurn.tokens', { tokens }) }}</span>
+          <template v-if="turn.repairs.length"><span>·</span><span :title="turn.repairs.join('\n')">{{ t('ask.askTurn.revisedAfterCheck') }}</span></template>
+          <span>·</span><button type="button" class="hover:text-neutral-800" @click="$emit('trace', turn.id)">{{ t('ask.askTurn.trace') }}</button>
         </p>
       </div>
     </div>
@@ -172,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import { fixed } from "~/shared/format"
 import { computed, onBeforeUnmount, ref, watch } from "vue"
 import { Check, ChevronRight, AlertCircle, Copy, CornerDownRight, FilePlus2, ListChecks, Loader2, PanelTop, Pencil, RotateCw, ThumbsDown, ThumbsUp, AlertTriangle, History } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
@@ -187,6 +188,7 @@ import "~/features/exhibit-catalog/app"
 import { highlightFor } from "~/features/exhibits/engine"
 import { layoutAnswer } from "../render/blocks"
 import { answerVerdict, brokenCitations, checkWords, foldsUnbacked, trustedText, untrusted, VERDICT_WORDS } from "../render/verdict"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   turn: Turn; last: boolean; ids: Set<string>; titles?: Map<string, string>; sources: string; selectedId: string | null; flashId: string | null
@@ -213,7 +215,7 @@ function askToReport() {
 }
 async function toReport() {
   const title = await ask.answerToReport(props.turn.id)
-  ask.flash(title ? `Added to “${title}”.` : "Could not add it to a report.")
+  ask.flash(title ? t("ask.askTurn.added", { title }) : t("ask.askTurn.couldNotAddReport"))
 }
 const verdictClass = (v?: string) => (v === "supported" ? "yes" : v === "refuted" ? "no" : "unk")
 const short = shortName
@@ -228,7 +230,7 @@ watch(running, on => {
 }, { immediate: true })
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 const elapsed = computed(() => Math.max(0, Math.round((now.value - new Date(props.turn.askedAt).getTime()) / 1000)))
-const turn_phase = () => props.turn.phase ?? "Working"
+const turn_phase = () => props.turn.phase ?? t("ask.askTurn.working")
 const stepsOpen = computed(() => stepsToggled.value ?? running.value)
 const own = computed(() => new Set((props.turn.exhibits ?? []).map(x => x.id)))
 const exhibitById = computed(() => new Map([...(props.earlier ?? new Map()), ...(props.turn.exhibits ?? []).map(x => [x.id, x] as const)]))
@@ -260,7 +262,7 @@ const planSummary = computed(() => {
   const vs = (props.turn.claims ?? []).map(c => c?.verdict).filter(Boolean) as string[]
   const n = (v: string) => vs.filter(x => x === v).length
   // Hypotheses, not claims: what was checked before answering, so it never reads as the answer's own verdict.
-  return [`Checked ${props.turn.plan.length} hypothes${props.turn.plan.length === 1 ? "is" : "es"} first`, n("supported") && `${n("supported")} held`, n("refuted") && `${n("refuted")} did not`, n("can't tell") && `${n("can't tell")} could not be told`].filter(Boolean).join(" · ")
+  return [t("ask.askTurn.checkedHypothesFirst", { planLength: props.turn.plan.length, es: t("common.noun.is2", { count: props.turn.plan.length }) }), n("supported") && t("ask.askTurn.held", { value: n("supported") }), n("refuted") && t("ask.askTurn.didNot", { value: n("refuted") }), n(t("ask.askTurn.canTTell")) && t("ask.askTurn.couldNotTold", { value: n(t("ask.askTurn.canTTell")) })].filter(Boolean).join(" · ")
 })
 const verdict = computed(() => answerVerdict(props.turn.grounding, { broken: brokenCitations(props.turn.answer, props.ids), failedChecks: failed.value.filter(c => c.id !== "topic").map(checkWords), wrongTopic: failed.value.find(c => c.id === "topic")?.detail.replace(/\s*\[E\d+\]$/, ""), folded: folded.value }))
 /** Each citation's worst verdict among the sentences that use it. */
@@ -277,7 +279,7 @@ async function addExhibit(id: string, highlight: string[]) {
   const x = exhibitById.value.get(id)
   if (!x) return
   const title = await ask.addExhibitToReport(x, highlight)
-  ask.flash(title ? `${id} added to “${title}”.` : "Could not add it to a report.")
+  ask.flash(title ? t("ask.askTurn.added2", { id, title }) : t("ask.askTurn.couldNotAddReport"))
 }
 const toggle = (id: string) => { const s = new Set(opened.value); if (s.has(id)) s.delete(id); else s.add(id); opened.value = s }
 const links = computed(() => props.turn.evidence.filter(e => e.kind === "link"))
@@ -286,9 +288,9 @@ const failed = computed(() => props.turn.checks.filter(c => !c.ok))
 const tokens = computed(() => { const n = props.turn.tokens.prompt + props.turn.tokens.output; return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) })
 const stepsSummary = computed(() => {
   const n = props.turn.steps.length
-  if (running.value) return `${turn_phase()}${n ? ` · ${n} step${n === 1 ? "" : "s"}` : ""} · ${elapsed.value} s`
+  if (running.value) return `${turn_phase()}${n ? t("ask.askTurn.text", { steps: t("common.count.step", { count: n }) }) : ""} · ${elapsed.value} s`
   const ms = props.turn.steps.reduce((s, x) => s + (x.ms ?? 0), 0)
-  return `Looked at ${n} thing${n === 1 ? "" : "s"}${ms ? ` · ${ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`} in the tools` : ""}`
+  return t("ask.askTurn.looked", { things: t("common.count.thing", { count: n }), value: ms ? t("ask.askTurn.tools", { value: ms < 1000 ? t("ask.askTurn.ms", { ms }) : `${(ms / 1000).toFixed(1)} s` }) : "" })
 })
 </script>
 

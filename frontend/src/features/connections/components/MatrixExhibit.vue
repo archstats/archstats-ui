@@ -13,7 +13,7 @@
         @select-pair="(f: string, t: string) => { pair = [f, t]; $emit('pick', `edge:${f}>${t}`) }"
         @hover="(id: string | null) => (hovered = id)"
     />
-    <p class="mx-note">Rows import columns; a darker cell carries more import references.<template v-if="more"> Showing {{ nodes.length }} of {{ nodes.length + more }}, the most connected first.</template></p>
+    <p class="mx-note">{{ t('connections.matrixExhibit.rowsImportColumnsDarker') }}<template v-if="more">{{ ' ' + t('connections.matrixExhibit.showingMostConnectedFirst', { nodesLength: nodes.length, value: nodes.length + more }) }}</template></p>
   </div>
 </template>
 
@@ -22,6 +22,7 @@ import { computed, ref, watch } from "vue"
 import type { CEdge, CNode } from "~/features/connections/connections"
 import { shortName } from "~/features/snapshot/names"
 import ConnectionsMatrix from "./ConnectionsMatrix.vue"
+import { t } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   nodes: string[]

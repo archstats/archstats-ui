@@ -1,10 +1,10 @@
 <template>
-  <div class="ui-popover mt-20 flex w-[720px] max-w-full flex-col overflow-hidden animate-in" role="dialog" aria-label="Choose a component">
+  <div class="ui-popover mt-20 flex w-[720px] max-w-full flex-col overflow-hidden animate-in" role="dialog" :aria-label="t('connections.selectComponentModal.chooseComponent')">
     <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
       <Icon icon="search" :size="14" class="text-neutral-400"/>
-      <input ref="inputRef" v-model="searchText" type="search" class="ui-input ui-input-sm grow" placeholder="Find a component" @keyup.esc="closeModal"/>
+      <input ref="inputRef" v-model="searchText" type="search" class="ui-input ui-input-sm grow" :placeholder="t('connections.selectComponentModal.findComponent')" @keyup.esc="closeModal"/>
       <span class="font-mono text-xs text-neutral-400">{{ filteredComponents.length }}</span>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="closeModal"><Icon icon="x" :size="13"/></button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('connections.selectComponentModal.close')" @click="closeModal"><Icon icon="x" :size="13"/></button>
     </div>
     <div class="max-h-[60vh] overflow-y-auto">
       <ElementTable
@@ -13,12 +13,13 @@
         :clickable-elements="true"
         :max-page-size="12"
         :only-show-columns="columns"
-        empty-text="No component matches."
+        :empty-text="t('connections.selectComponentModal.noComponentMatches')"
         @clicked-element="select"
       />
     </div>
   </div>
 </template>
+
 <script lang="ts" setup>
 import { computed, inject, onMounted, ref } from "vue";
 import { useDataStore } from "~/features/snapshot/data.store";
@@ -26,6 +27,7 @@ import { RawComponent } from "~/features/snapshot/components";
 import { closeModalKey } from "~/shared/ui/modal";
 import ElementTable from "~/features/metrics/components/ElementTable.vue";
 import Icon from "~/shared/ui/Icon.vue";
+import { t } from "~/shared/i18n";
 
 const store = useDataStore()
 const props = defineProps<{ components?: RawComponent[] }>()

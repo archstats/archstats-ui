@@ -1,8 +1,8 @@
 <template>
   <div class="flex min-h-0 flex-col" @keydown.esc="emit('close')">
     <div class="flex items-center gap-2 px-4 pb-2 pt-4">
-      <h3 class="ui-section-title">Commit</h3>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Back to contributors" title="Back to contributors (Esc)" @click="emit('close')"><Icon icon="x" :size="12"/></button>
+      <h3 class="ui-section-title">{{ t('git.commitFootprint.commit') }}</h3>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" :aria-label="t('git.commitFootprint.backContributors')" :title="t('git.commitFootprint.backContributorsEsc')" @click="emit('close')"><Icon icon="x" :size="12"/></button>
     </div>
     <div v-if="commit" class="flex flex-col gap-2 px-4">
       <p class="text-sm font-medium leading-5 text-neutral-900">{{ firstLine }}</p>
@@ -14,31 +14,30 @@
       </p>
       <router-link :to="authors.authorPath(commit.author_name)" class="text-sm text-neutral-700 hover:text-neutral-900 hover:underline">{{ authors.display(commit.author_name) }}</router-link>
       <p class="text-sm text-neutral-700">
-        {{ comps.length }} component{{ comps.length === 1 ? "" : "s" }} · {{ inSnapshot.length }} file{{ inSnapshot.length === 1 ? "" : "s" }}
-        <span v-if="isMerge" class="block text-xs text-neutral-500">Merge: the files resolved in the merge.</span>
+        <I18nT k="git.commitFootprint.componentFile"><template #components>{{ t('common.count.component', { count: comps.length }) }}</template><template #files>{{ t('common.count.file', { count: inSnapshot.length }) }}</template><template #span><span v-if="isMerge" class="block text-xs text-neutral-500">{{ t('git.commitFootprint.mergeFilesResolvedMerge') }}</span></template></I18nT>
       </p>
       <div class="flex flex-wrap gap-1.5 py-1">
-        <button type="button" class="ui-btn ui-btn-sm" :disabled="!comps.length" :title="`A group of the ${comps.length} components this commit touched`" @click="makeGroup">{{ made ? "Group created" : "Create group" }}</button>
-        <router-link :to="connectionsLink" class="ui-btn ui-btn-sm">Show in Connections</router-link>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="copyHash">{{ copied ? "Copied" : "Copy hash" }}</button>
+        <button type="button" class="ui-btn ui-btn-sm" :disabled="!comps.length" :title="t('git.commitFootprint.groupComponentsCommitTouched', { compsLength: comps.length })" @click="makeGroup">{{ made ? t('git.commitFootprint.groupCreated') : t('git.commitFootprint.createGroup') }}</button>
+        <router-link :to="connectionsLink" class="ui-btn ui-btn-sm">{{ t('git.commitFootprint.showConnections') }}</router-link>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="copyHash">{{ copied ? t('git.commitFootprint.copied') : t('git.commitFootprint.copyHash') }}</button>
       </div>
     </div>
-    <p v-else-if="!loading" class="px-4 text-sm text-neutral-500">This commit is not in the snapshot's history.</p>
+    <p v-else-if="!loading" class="px-4 text-sm text-neutral-500">{{ t('git.commitFootprint.commitNotSnapshotS') }}</p>
 
     <ul class="mt-2 flex flex-col pb-4">
       <li v-for="c in comps" :key="c.name" class="px-4 py-1.5 hairline-t">
         <router-link v-if="c.name" :to="componentPath(c.name)" class="block truncate font-mono text-sm text-neutral-900 hover:underline" :title="c.name">{{ c.name }}</router-link>
-        <span v-else class="block text-sm text-neutral-500">No component</span>
+        <span v-else class="block text-sm text-neutral-500">{{ t('git.commitFootprint.noComponent') }}</span>
         <ul class="mt-0.5 flex flex-col">
           <li v-for="f in c.files" :key="f.file" class="flex items-center gap-2">
             <router-link v-if="f.inSnapshot" :to="filePath(f.file)" class="min-w-0 flex-1 truncate font-mono text-xs text-neutral-600 hover:underline" :title="f.file">{{ f.file.split("/").pop() }}</router-link>
-            <span v-else class="min-w-0 flex-1 truncate font-mono text-xs text-neutral-400" :title="`${f.file}: not in this snapshot`">{{ f.file.split("/").pop() }}</span>
+            <span v-else class="min-w-0 flex-1 truncate font-mono text-xs text-neutral-400" :title="t('git.commitFootprint.notSnapshot', { file: f.file })">{{ f.file.split("/").pop() }}</span>
             <span class="font-mono text-[11px] tabular-nums text-neutral-400">{{ formatSigned(f.a) }} {{ formatSigned(-f.d) }}</span>
           </li>
         </ul>
       </li>
     </ul>
-    <p v-if="outside" class="px-4 pb-4 text-xs text-neutral-500">{{ outside }} file{{ outside === 1 ? "" : "s" }} not in this snapshot.</p>
+    <p v-if="outside" class="px-4 pb-4 text-xs text-neutral-500">{{ t('git.commitFootprint.notSnapshot2', { files: t('common.count.file', { count: outside }) }) }}</p>
   </div>
 </template>
 
@@ -54,6 +53,8 @@ import { formatSigned } from "~/shared/format";
 import { componentPath, filePath } from "~/features/navigation/routes";
 import { sqlLiteral } from "~/shared/sql";
 import { formatDate } from "~/shared/time";
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // One commit's architectural footprint: which components it touched, with
 // their files nested, and the ways out: a group of them, or the same set
@@ -94,7 +95,7 @@ const connectionsLink = computed(() => `/views/connections?level=components&hl=$
 
 function makeGroup() {
   if (!componentNames.value.length) return;
-  groups.createGroup(`Commit ${props.hash.slice(0, 7)}`, units("component", componentNames.value));
+  groups.createGroup(t("git.commitFootprint.commit2", { hash: props.hash.slice(0, 7) }), units("component", componentNames.value));
   made.value = true;
 }
 async function copyHash() {

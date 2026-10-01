@@ -7,7 +7,7 @@
         class="ui-popover absolute flex h-[392px] w-[640px] max-w-[calc(100vw-24px)] overflow-hidden animate-in"
         :style="{ left: `${pos.left}px`, top: `${pos.top}px` }"
         role="dialog"
-        aria-label="Insert"
+        :aria-label="t('reports.insertMenu.insert')"
       >
         <div class="flex w-[300px] shrink-0 flex-col hairline-r">
           <div class="flex items-center gap-2 px-3 hairline-b">
@@ -16,7 +16,7 @@
               ref="inputEl"
               v-model="query"
               class="h-10 min-w-0 flex-1 bg-transparent text-[13px] text-neutral-900 outline-none placeholder:text-neutral-400"
-              placeholder="Insert a pin, table, query or block"
+              :placeholder="t('reports.insertMenu.insertPinTableQuery')"
               role="combobox"
               aria-controls="insert-list"
               :aria-activedescendant="rows.length ? `ins-${active}` : undefined"
@@ -47,7 +47,7 @@
                 <kbd v-if="r.shortcut" class="shrink-0 font-mono text-[11px] text-neutral-400">{{ r.shortcut }}</kbd>
               </li>
             </template>
-            <li v-if="!rows.length" class="px-3 py-6 text-center text-sm text-neutral-500" role="presentation">Nothing called that. Pin it from a view first, or write a query.</li>
+            <li v-if="!rows.length" class="px-3 py-6 text-center text-sm text-neutral-500" role="presentation">{{ t('reports.insertMenu.nothingCalledPinView') }}</li>
           </ul>
         </div>
 
@@ -60,7 +60,7 @@
 
               <!-- A prose block shows how it is typed. -->
               <div v-if="current.kind === 'text'" class="mt-3 rounded-md bg-surface px-3 py-2.5 hairline">
-                <p class="text-xs text-neutral-500">Or type at the start of a line</p>
+                <p class="text-xs text-neutral-500">{{ t('reports.insertMenu.typeStartLine') }}</p>
                 <p class="mt-1 font-mono text-sm text-neutral-800">{{ current.shortcut }}<span class="text-neutral-400">{{ current.example }}</span></p>
               </div>
 
@@ -72,21 +72,21 @@
                 </dl>
                 <p v-if="current.pin.note" class="mt-3 text-xs leading-5 text-neutral-700">{{ current.pin.note }}</p>
                 <p class="mt-3 text-[11px] text-neutral-500">
-                  <template v-if="usage.length">Already in {{ usage.join(", ") }}.</template>
-                  <template v-else>Not in any report yet.</template>
+                  <template v-if="usage.length">{{ t('reports.insertMenu.already', { value: usage.join(", ") }) }}</template>
+                  <template v-else>{{ t('reports.insertMenu.notAnyReportYet') }}</template>
                 </p>
               </template>
 
               <!-- A table previewed on the report's snapshot. -->
               <template v-else-if="current.kind === 'table'">
                 <div class="mt-3 flex items-center gap-2">
-                  <span class="text-xs text-neutral-500">Rows</span>
-                  <div class="ui-segmented" role="group" aria-label="Rows">
+                  <span class="text-xs text-neutral-500">{{ t('reports.insertMenu.rows') }}</span>
+                  <div class="ui-segmented" role="group" :aria-label="t('reports.insertMenu.rows')">
                     <button v-for="n in [5, 10, 25, 50]" :key="n" type="button" :aria-pressed="limit === n" @click="limit = n; focusInput()">{{ n }}</button>
                   </div>
                 </div>
                 <p v-if="previewError" class="mt-3 font-mono text-xs text-red-700">{{ previewError }}</p>
-                <p v-else-if="!preview" class="mt-3 text-xs text-neutral-500">Reading {{ kernelLabel }}…</p>
+                <p v-else-if="!preview" class="mt-3 text-xs text-neutral-500">{{ t('reports.insertMenu.reading', { kernelLabel }) }}</p>
                 <table v-else class="mt-3 w-full text-[11.5px]">
                   <thead><tr><th v-for="(c, i) in preview.columns" :key="i" class="pb-1 font-medium text-neutral-500" :class="preview.align[i] === 'r' ? 'text-right' : 'text-left'">{{ c }}</th></tr></thead>
                   <tbody>
@@ -99,17 +99,17 @@
 
               <!-- A computed paragraph, counted on the report's snapshot. -->
               <template v-else-if="current.kind === 'reading'">
-                <p v-if="!readingPreview" class="mt-3 text-xs text-neutral-500">Counting on {{ kernelLabel }}…</p>
+                <p v-if="!readingPreview" class="mt-3 text-xs text-neutral-500">{{ t('reports.insertMenu.counting', { kernelLabel }) }}</p>
                 <p v-else class="ins-reading mt-3 rounded-md bg-surface px-3 py-2.5 text-[13px] leading-[1.6] hairline" :class="readingPreview.absent ? 'italic text-neutral-500' : 'text-neutral-800'" v-html="inlineHtml(readingPreview.text)"></p>
-                <p class="mt-2 text-[11px] leading-4 text-neutral-500">Facts only, counted as the views count them; what they mean stays yours to write.</p>
+                <p class="mt-2 text-[11px] leading-4 text-neutral-500">{{ t('reports.insertMenu.factsOnlyCountedViews') }}</p>
               </template>
 
               <pre v-else-if="current.kind === 'sql' && current.sql" class="mt-3 whitespace-pre-wrap rounded-md bg-surface px-3 py-2 font-mono text-[11.5px] leading-5 text-neutral-700 hairline">{{ current.sql }}</pre>
             </div>
             <div class="flex items-center gap-3 px-4 py-2 text-[11px] text-neutral-500 hairline-t">
-              <span><kbd class="font-mono">↑↓</kbd> choose</span>
-              <span><kbd class="font-mono">↵</kbd> insert</span>
-              <span class="ml-auto">Or drag a pin in from the pool</span>
+              <span><kbd class="font-mono">↑↓</kbd>{{ ' ' + t('reports.insertMenu.choose') }}</span>
+              <span><kbd class="font-mono">↵</kbd>{{ ' ' + t('reports.insertMenu.insert2') }}</span>
+              <span class="ml-auto">{{ t('reports.insertMenu.dragPinPool') }}</span>
             </div>
           </template>
         </div>
@@ -125,6 +125,7 @@ import { fuzzyScore } from "~/shared/fuzzy";
 import { displayTable, fmtValue, runCell, TABLE_PRESETS, type RunContext } from "~/features/reports/reportCells";
 import { inlineHtml, type CellSpec, type ReadingOutput, type TableSource, type TextKind } from "~/features/reports/reportDoc";
 import { READINGS, runReading } from "~/features/reports/readings";
+import { t } from "~/shared/i18n";
 
 export type InsertChoice =
   | { type: "text"; kind: TextKind; lang?: string }
@@ -168,32 +169,32 @@ interface Row {
 }
 
 const TEXT: Array<Omit<Row, "group" | "kind" | "key">> = [
-  { label: "Heading 1", icon: "heading", textKind: "h1", shortcut: "#", example: " Findings", detail: "A section of the report." },
-  { label: "Heading 2", icon: "heading", textKind: "h2", shortcut: "##", example: " Coupling", detail: "A part of a section." },
-  { label: "Heading 3", icon: "heading", textKind: "h3", shortcut: "###", example: " In detail" },
-  { label: "Bulleted list", icon: "list", textKind: "ul", shortcut: "-", example: " a finding" },
-  { label: "Numbered list", icon: "list-ordered", textKind: "ol", shortcut: "1.", example: " first step" },
-  { label: "Quote", icon: "quote", textKind: "quote", shortcut: ">", example: " what someone said" },
-  { label: "Code", icon: "code", textKind: "code", shortcut: "```", example: " then Enter" },
-  { label: "Table", icon: "table", textKind: "table", shortcut: "|", example: " a | b |", detail: "A table you type, in Markdown." },
-  { label: "Divider", icon: "minus", textKind: "hr", shortcut: "---", example: " then Enter" },
+  { label: t("reports.insertMenu.heading1"), icon: "heading", textKind: "h1", shortcut: "#", example: t("reports.insertMenu.findings"), detail: t("reports.insertMenu.sectionReport") },
+  { label: t("reports.insertMenu.heading2"), icon: "heading", textKind: "h2", shortcut: "##", example: t("reports.insertMenu.coupling"), detail: t("reports.insertMenu.partSection") },
+  { label: t("reports.insertMenu.heading3"), icon: "heading", textKind: "h3", shortcut: "###", example: t("reports.insertMenu.detail") },
+  { label: t("reports.insertMenu.bulletedList"), icon: "list", textKind: "ul", shortcut: "-", example: " a finding" },
+  { label: t("reports.insertMenu.numberedList"), icon: "list-ordered", textKind: "ol", shortcut: "1.", example: t("reports.insertMenu.firstStep") },
+  { label: t("reports.insertMenu.quote"), icon: "quote", textKind: "quote", shortcut: ">", example: t("reports.insertMenu.whatSomeoneSaid") },
+  { label: t("reports.insertMenu.code"), icon: "code", textKind: "code", shortcut: "```", example: t("reports.insertMenu.thenEnter") },
+  { label: t("reports.insertMenu.table"), icon: "table", textKind: "table", shortcut: "|", example: " a | b |", detail: t("reports.insertMenu.tableYouTypeMarkdown") },
+  { label: t("reports.insertMenu.divider"), icon: "minus", textKind: "hr", shortcut: "---", example: t("reports.insertMenu.thenEnter") },
 ];
 
 const all = computed<Row[]>(() => {
   const out: Row[] = [];
   for (const p of props.pins) {
-    out.push({ key: `pin:${p.id}`, kind: "pin", group: "Pins", label: p.title || "Untitled pin", hint: `${p.kind}${props.usage.get(p.id)?.length ? ` · in ${props.usage.get(p.id)!.length} report${props.usage.get(p.id)!.length === 1 ? "" : "s"}` : ""}`, icon: p.kind === "view" ? "image" : p.kind === "cycle" ? "refresh-cw" : "bookmark", pin: p, detail: "Its values as pinned and as they are now, with the note." });
+    out.push({ key: `pin:${p.id}`, kind: "pin", group: "Pins", label: p.title || t("reports.insertMenu.untitledPin"), hint: `${p.kind}${props.usage.get(p.id)?.length ? t("reports.insertMenu.in", { reports: t("common.count.report", { count: props.usage.get(p.id)!.length }) }) : ""}`, icon: p.kind === "view" ? "image" : p.kind === "cycle" ? "refresh-cw" : "bookmark", pin: p, detail: t("reports.insertMenu.valuesPinnedTheyNow") });
   }
   for (const r of READINGS) {
-    out.push({ key: `reading:${r.id}`, kind: "reading", group: "Facts, written out", label: r.label, hint: "A paragraph counted from the snapshot", icon: "file-text", reading: r.id, detail: r.describe });
+    out.push({ key: `reading:${r.id}`, kind: "reading", group: "Facts, written out", label: r.label, hint: t("reports.insertMenu.paragraphCountedSnapshot"), icon: "file-text", reading: r.id, detail: r.describe });
   }
-  for (const t of TABLE_PRESETS) {
-    const has = props.columns[t.source];
-    if (has.size && !has.has(t.sort)) continue;
-    out.push({ key: `table:${t.id}`, kind: "table", group: "Tables", label: t.label, hint: t.hint, icon: "table", preset: t, detail: `From the ${t.source} of ${props.kernelLabel}. Re-run it on a newer snapshot to see what moved.` });
+  for (const TABLE_PRESETS2 of TABLE_PRESETS) {
+    const has = props.columns[TABLE_PRESETS2.source];
+    if (has.size && !has.has(TABLE_PRESETS2.sort)) continue;
+    out.push({ key: `table:${TABLE_PRESETS2.id}`, kind: "table", group: "Tables", label: TABLE_PRESETS2.label, hint: TABLE_PRESETS2.hint, icon: "table", preset: TABLE_PRESETS2, detail: t("reports.insertMenu.reRunNewerSnapshot", { source: TABLE_PRESETS2.source, kernelLabel: props.kernelLabel }) });
   }
-  out.push({ key: "sql:new", kind: "sql", group: "Query", label: "SQL query", hint: "Write SQL and run it on the snapshot", icon: "terminal", detail: "A cell holding a read-only query; ⇧↵ runs it, like a notebook." });
-  for (const q of props.savedQueries) out.push({ key: `sql:${q.id}`, kind: "sql", group: "Query", label: q.name, hint: "Saved in the SQL console", icon: "terminal", sql: q.sql });
+  out.push({ key: "sql:new", kind: "sql", group: "Query", label: t("reports.insertMenu.sqlQuery"), hint: t("reports.insertMenu.writeSqlRunSnapshot"), icon: "terminal", detail: t("reports.insertMenu.cellHoldingReadOnly") });
+  for (const q of props.savedQueries) out.push({ key: `sql:${q.id}`, kind: "sql", group: "Query", label: q.name, hint: t("reports.insertMenu.savedSqlConsole"), icon: "terminal", sql: q.sql });
   for (const t of TEXT) out.push({ ...t, key: `text:${t.textKind}`, kind: "text", group: "Text" });
   return out;
 });

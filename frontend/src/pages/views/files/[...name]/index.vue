@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-0 grow overflow-y-auto">
-    <LoadingState v-if="loading" text="Reading file…"/>
-    <EmptyState v-else-if="error" title="Could not read file" :text="error" icon="alert"/>
-    <EmptyState v-else-if="!file" title="File not in this snapshot" :text="`${filePath} was not found in the open scan.`" icon="file-text"/>
+    <LoadingState v-if="loading" :text="t('pages.filesIndex.readingFile')"/>
+    <EmptyState v-else-if="error" :title="t('pages.filesIndex.couldNotReadFile')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="!file" :title="t('pages.filesIndex.fileNotSnapshot')" :text="t('pages.filesIndex.wasNotFoundOpen', { filePath })" icon="file-text"/>
     <div v-else class="mx-auto w-full max-w-[1040px] px-6 pb-10 pt-5">
       <!-- Stat strip: one hairline frame, six readings. -->
       <StatStrip :cells="strip"/>
@@ -15,8 +15,8 @@
       <!-- Metrics: the named readings this file has, grouped by family. Zeros
            and readings without a definition wait behind the disclosure. -->
       <section class="mt-5 pt-5 hairline-t">
-        <h2 class="ui-section-title">Metrics</h2>
-        <EmptyState v-if="metricGroups.shown.length === 0 && metricGroups.rest.length === 0" title="No metrics recorded" text="The engine stored no numeric columns for this file."/>
+        <h2 class="ui-section-title">{{ t('pages.filesIndex.metrics') }}</h2>
+        <EmptyState v-if="metricGroups.shown.length === 0 && metricGroups.rest.length === 0" :title="t('pages.filesIndex.noMetricsRecorded')" :text="t('pages.filesIndex.engineStoredNoNumeric')"/>
         <div v-else-if="metricGroups.shown.length" class="mt-3 grid gap-x-8 gap-y-5 md:grid-cols-2">
           <div v-for="group in metricGroups.shown" :key="group.id">
             <h3 class="ui-label mb-2">{{ group.label }}</h3>
@@ -30,7 +30,7 @@
         </div>
         <button v-if="metricGroups.rest.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mt-3" :aria-expanded="showRest" @click="showRest = !showRest">
           <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform" :class="{ 'rotate-90': showRest }"/>
-          <span>{{ showRest ? "Hide" : "Show" }} {{ metricGroups.rest.length }} more: zero or undocumented</span>
+          <span>{{ t('pages.filesIndex.moreZeroUndocumented', { value: showRest ? t('pages.filesIndex.hide') : t('pages.filesIndex.show'), restLength: metricGroups.rest.length }) }}</span>
         </button>
         <dl v-if="showRest" class="ui-kv mt-2 max-w-[520px]">
           <template v-for="m in metricGroups.rest" :key="m.key">
@@ -43,20 +43,20 @@
       <!-- Siblings: the other files in the same component. -->
       <section class="mt-5 pt-5 hairline-t">
         <div class="flex items-baseline gap-2">
-          <h2 class="ui-section-title">Siblings</h2>
+          <h2 class="ui-section-title">{{ t('pages.filesIndex.siblings') }}</h2>
           <span v-if="file.component" class="font-mono text-xs text-neutral-500">{{ file.component }}</span>
         </div>
-        <EmptyState v-if="!file.component" title="No component" text="This file is not assigned to a component, so it has no siblings."/>
-        <LoadingState v-else-if="siblingsLoading" text="Reading files…"/>
-        <EmptyState v-else-if="siblingsError" title="Could not read siblings" :text="siblingsError" icon="alert"/>
+        <EmptyState v-if="!file.component" :title="t('pages.filesIndex.noComponent')" :text="t('pages.filesIndex.fileNotAssignedComponent')"/>
+        <LoadingState v-else-if="siblingsLoading" :text="t('pages.filesIndex.readingFiles')"/>
+        <EmptyState v-else-if="siblingsError" :title="t('pages.filesIndex.couldNotReadSiblings')" :text="siblingsError" icon="alert"/>
         <div v-else class="mt-3 overflow-hidden rounded-lg hairline">
           <table class="ui-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th class="w-[90px] text-right">Lines</th>
-                <th class="w-[90px] text-right">Health</th>
-                <th class="w-[90px] text-right">Commits</th>
+                <th>{{ t('pages.filesIndex.name') }}</th>
+                <th class="w-[90px] text-right">{{ t('pages.filesIndex.lines') }}</th>
+                <th class="w-[90px] text-right">{{ t('pages.filesIndex.health') }}</th>
+                <th class="w-[90px] text-right">{{ t('pages.filesIndex.commits') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -96,6 +96,7 @@ import Icon from "~/shared/ui/Icon.vue"
 import { sqlLiteral } from "~/shared/sql"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 
 const store = useDataStore()
 const { filePath, escapedPath } = useFileRoute()
@@ -127,25 +128,25 @@ const strip = computed<{ label: string; value: string; level?: HealthLevel }[]>(
   const hotspot = num("codesmells__hotspot_score")
   const age = num("git__age_in_days")
   return [
-    { label: "Lines", value: formatNumber(num("complexity__lines")) },
-    { label: "Code health", value: formatHealth(health), level: healthLevel(health) },
-    { label: "Hotspot", value: formatHotspot(hotspot), level: hotspotLevel(hotspot) },
-    { label: "Commits", value: formatNumber(num("git__commits__total")) },
-    { label: "Authors", value: formatNumber(num("git__authors__total")) },
-    { label: "First commit", value: age === null ? "—" : `${formatDays(age)} ago` },
-    { label: "Last changed", value: lastChanged.value === null ? "—" : `${formatDays(lastChanged.value)} ago` },
-  ].filter(c => c.label !== "Authors" || lastChanged.value === null)
+    { label: t("pages.filesIndex.lines"), value: formatNumber(num("complexity__lines")) },
+    { label: t("pages.filesIndex.codeHealth"), value: formatHealth(health), level: healthLevel(health) },
+    { label: t("pages.filesIndex.hotspot"), value: formatHotspot(hotspot), level: hotspotLevel(hotspot) },
+    { label: t("pages.filesIndex.commits"), value: formatNumber(num("git__commits__total")) },
+    { label: t("pages.filesIndex.authors"), value: formatNumber(num("git__authors__total")) },
+    { label: t("pages.filesIndex.firstCommit"), value: age === null ? "—" : t("ui.time.ago", { span: formatDays(age) }) },
+    { label: t("pages.filesIndex.lastChanged"), value: lastChanged.value === null ? "—" : t("ui.time.ago", { span: formatDays(lastChanged.value) }) },
+  ].filter(c => c.label !== t("pages.filesIndex.authors") || lastChanged.value === null)
 })
 
 // Every numeric column of the row, grouped by the metric family prefix.
 const HIDDEN_COLUMNS = new Set(["report_id", "timestamp", "name", "directory", "component", "git__repository", "java_class", "java_full_class"])
 const FAMILIES: { id: string; label: string }[] = [
-  { id: "complexity", label: "Complexity" },
-  { id: "codesmells", label: "Code smells" },
-  { id: "modularity", label: "Modularity" },
-  { id: "git", label: "Git" },
-  { id: "java", label: "Java" },
-  { id: "other", label: "Other" },
+  { id: "complexity", label: t("pages.filesIndex.complexity") },
+  { id: "codesmells", label: t("pages.filesIndex.codeSmells") },
+  { id: "modularity", label: t("pages.filesIndex.modularity") },
+  { id: "git", label: t("pages.filesIndex.git") },
+  { id: "java", label: t("pages.filesIndex.java") },
+  { id: "other", label: t("pages.filesIndex.other") },
 ]
 
 function isNumericValue(v: unknown): boolean {
@@ -187,12 +188,12 @@ const metricGroups = computed(() => {
 // health reading. Older snapshots mark nothing and say nothing here.
 const nature = computed(() => {
   if (!file.value) return null
-  if (num("complexity__files__third_party") === 1) return { title: "Someone else's code.", text: "A vendored package, minified bundle or known library carried in the repository: counted in files and lines, never scored for health, and left out of hotspots." }
-  if (num("complexity__files__generated") === 1) return { title: "Written by a tool.", text: "Its header says it was generated, so it is counted but not scored: nobody here wrote it, and nobody should refactor it by hand." }
+  if (num("complexity__files__third_party") === 1) return { title: t("pages.filesIndex.someoneElseSCode"), text: t("pages.filesIndex.vendoredPackageMinifiedBundle") }
+  if (num("complexity__files__generated") === 1) return { title: t("pages.filesIndex.writtenTool"), text: t("pages.filesIndex.headerSaysWasGenerated") }
   const role = file.value.role ?? (store.fileRoleIndex.get(String(file.value.name)) ?? null)
-  if (role === "test") return { title: "Test code.", text: store.rolesRecorded ? "Counted with the tests: the Production switch leaves it out of every view." : "A test by its path; the Production switch leaves it out of every view." }
+  if (role === "test") return { title: t("pages.filesIndex.testCode"), text: store.rolesRecorded ? t("pages.filesIndex.countedTestsProductionSwitch") : t("pages.filesIndex.testPathProductionSwitch") }
   if (num("codesmells__code_health") === null && (num("complexity__lines") ?? 0) > 0 && store.snapshotOutdated === false) {
-    return { title: "Not code.", text: "Translations, stylesheets, data and documents get no health reading; one reads how code is shaped." }
+    return { title: t("pages.filesIndex.notCode"), text: t("pages.filesIndex.translationsStylesheetsDataDocuments") }
   }
   return null
 })

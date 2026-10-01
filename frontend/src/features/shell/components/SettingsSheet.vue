@@ -4,11 +4,12 @@
       <div v-if="open" class="settings-scrim fixed inset-0 z-[60] flex items-start justify-center pt-[8vh]" @click.self="close">
         <div ref="card" class="settings-card ui-popover flex max-h-[84vh] w-[640px] max-w-[94vw] flex-col outline-none" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabindex="-1">
           <header class="flex h-12 shrink-0 items-center gap-3 pl-5 pr-3 hairline-b">
-            <h2 id="settings-title" class="text-[15px] font-semibold leading-5 text-neutral-900">Settings</h2>
+            <h2 id="settings-title" class="text-[15px] font-semibold leading-5 text-neutral-900">{{ t('shell.settingsSheet.settings') }}</h2>
             <kbd class="font-mono text-xs text-neutral-400">{{ isMac ? "⌘," : "Ctrl+," }}</kbd>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Close settings" title="Close (Esc)" @click="close"><Icon icon="x" :size="14"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" :aria-label="t('shell.settingsSheet.closeSettings')" :title="t('shell.settingsSheet.closeEsc')" @click="close"><Icon icon="x" :size="14"/></button>
           </header>
-          <div class="min-h-0 grow overflow-y-auto px-5 pb-6 pt-5">
+          <div class="flex min-h-0 grow flex-col gap-6 overflow-y-auto px-5 pb-6 pt-5">
+            <LanguageSettings/>
             <AISettings/>
           </div>
         </div>
@@ -23,7 +24,9 @@
 import { nextTick, onBeforeUnmount, ref, watch } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import AISettings from "~/features/ai/components/AISettings.vue"
+import LanguageSettings from "./LanguageSettings.vue"
 import { usePlatform } from "~/platform/usePlatform"
+import { t } from "~/shared/i18n"
 
 const open = defineModel<boolean>({ default: false })
 const card = ref<HTMLElement | null>(null)

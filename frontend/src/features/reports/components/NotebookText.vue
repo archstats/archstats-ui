@@ -23,8 +23,8 @@
       v-else
       class="nb-rendered cursor-text"
       :class="[kindClass, !block.text.trim() ? 'nb-empty' : '', !block.text.trim() && block.prompt ? 'nb-prompt' : '']"
-      :data-placeholder="block.prompt || (isLast ? 'Write, or press / to add evidence' : '')"
-      :title="block.explain ? 'The template\'s explanation of the terms; double-click to edit it' : undefined"
+      :data-placeholder="block.prompt || (isLast ? t('reports.notebookText.writePressAddEvidence') : '')"
+      :title="block.explain ? t('reports.notebookText.templateSExplanationTerms') : undefined"
       @mousedown="onRenderedDown"
       @click="onRenderedClick"
       @dblclick="onRenderedDbl"
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { fromMarkdown, inlineHtml, shortcutFor, tableCells, type Block, type TextBlock, type TextKind } from "~/features/reports/reportDoc";
+import { t } from "~/shared/i18n";
 
 const props = defineProps<{
   block: TextBlock
@@ -67,10 +68,10 @@ const KIND_CLASS: Record<TextKind, string> = {
 // A template's explanation of its terms reads a shade softer than the findings around it.
 const kindClass = computed(() => `${KIND_CLASS[props.block.kind]}${props.block.explain ? " nb-explain" : ""}`);
 const placeholder = computed(() => props.block.prompt || ({
-  p: "Write, or press / to add evidence", h1: "Heading", h2: "Heading", h3: "Heading", ul: "List item", ol: "List item",
-  quote: "Quote", code: "Code", hr: "", table: "| a | b |",
+  p: t("reports.notebookText.writePressAddEvidence"), h1: t("reports.notebookText.heading"), h2: t("reports.notebookText.heading"), h3: t("reports.notebookText.heading"), ul: t("reports.notebookText.listItem"), ol: t("reports.notebookText.listItem"),
+  quote: t("reports.notebookText.quote"), code: t("reports.notebookText.code"), hr: "", table: "| a | b |",
 } as Record<TextKind, string>)[props.block.kind]);
-const ariaLabel = computed(() => ({ p: "Paragraph", h1: "Heading 1", h2: "Heading 2", h3: "Heading 3", ul: "List item", ol: "Numbered item", quote: "Quote", code: "Code", hr: "Divider", table: "Table" } as Record<TextKind, string>)[props.block.kind]);
+const ariaLabel = computed(() => ({ p: t("reports.notebookText.paragraph"), h1: "Heading 1", h2: "Heading 2", h3: "Heading 3", ul: t("reports.notebookText.listItem"), ol: t("reports.notebookText.numberedItem"), quote: t("reports.notebookText.quote"), code: t("reports.notebookText.code"), hr: t("reports.notebookText.divider"), table: "Table" } as Record<TextKind, string>)[props.block.kind]);
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const html = computed(() => {

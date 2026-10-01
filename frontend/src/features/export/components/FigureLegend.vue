@@ -1,7 +1,7 @@
 <template>
   <!-- A figure's legend in the app: the same entries, marks and notes an
        export draws under the figure, set in the window's type. -->
-  <div class="flex flex-col gap-1 text-xs leading-4 text-neutral-600" aria-label="Legend">
+  <div class="flex flex-col gap-1 text-xs leading-4 text-neutral-600" :aria-label="t('export.figureLegend.legend')">
     <ul v-if="legend.items?.length" class="flex flex-wrap items-center gap-x-3.5 gap-y-1">
       <li v-for="(item, i) in legend.items" :key="i" class="flex min-w-0 items-center gap-1.5" :title="item.title">
         <svg width="12" height="10" viewBox="0 0 12 10" class="shrink-0" aria-hidden="true">
@@ -15,7 +15,7 @@
           <rect v-else x="0" y="0" width="10" height="10" rx="2" :fill="item.color"/>
         </svg>
         <span class="truncate">{{ item.label }}</span>
-        <span v-if="item.count != null" class="font-mono text-neutral-500">{{ item.count.toLocaleString("en-US") }}</span>
+        <span v-if="item.count != null" class="font-mono text-neutral-500">{{ item.count.toLocaleString(intlLocale) }}</span>
       </li>
     </ul>
     <p v-for="(ramp, i) in legend.ramps ?? []" :key="`r${i}`" class="flex items-center gap-1.5">
@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import type { FigureLegend } from "~/features/export/figure";
+import { t, intlLocale } from "~/shared/i18n";
 
 defineProps<{ legend: FigureLegend }>();
 </script>

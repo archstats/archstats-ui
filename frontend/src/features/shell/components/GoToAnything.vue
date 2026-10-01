@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center bg-neutral-900/20 pt-[12vh]" @click.self="close">
-      <div class="ui-popover flex max-h-[70vh] w-[640px] max-w-[92vw] flex-col overflow-hidden animate-in" role="dialog" aria-modal="true" aria-label="Go to anything">
+      <div class="ui-popover flex max-h-[70vh] w-[640px] max-w-[92vw] flex-col overflow-hidden animate-in" role="dialog" aria-modal="true" :aria-label="t('shell.goToAnything.goAnything')">
         <div class="flex items-center gap-2 px-3 hairline-b">
           <Icon icon="search" :size="14" class="shrink-0 text-neutral-400"/>
           <input
@@ -11,7 +11,7 @@
             spellcheck="false"
             autocomplete="off"
             class="h-11 min-w-0 flex-1 bg-transparent font-mono text-base text-neutral-900 outline-none placeholder:font-sans placeholder:text-neutral-400"
-            placeholder="A component, file, unit, author, group, view or metric"
+            :placeholder="t('shell.goToAnything.componentFileUnitAuthor')"
             role="combobox"
             aria-controls="goto-results"
             :aria-activedescendant="rows.length ? `goto-${active}` : undefined"
@@ -22,10 +22,10 @@
             @keydown.enter.prevent="choose(rows[active], $event.metaKey || $event.ctrlKey)"
             @keydown.esc.prevent="close"
           >
-          <span v-if="preparing" class="shrink-0 text-sm text-neutral-400">Reading…</span>
+          <span v-if="preparing" class="shrink-0 text-sm text-neutral-400">{{ t('shell.goToAnything.reading') }}</span>
         </div>
         <ul id="goto-results" ref="listEl" class="min-h-0 flex-1 overflow-y-auto py-1" role="listbox">
-          <li v-if="!query.trim() && recentRows.length" class="ui-label px-3 pb-1 pt-2" role="presentation">Recent</li>
+          <li v-if="!query.trim() && recentRows.length" class="ui-label px-3 pb-1 pt-2" role="presentation">{{ t('shell.goToAnything.recent') }}</li>
           <template v-for="(row, i) in rows" :key="`${row.kind}:${row.key}`">
             <li v-if="row.heading" class="ui-label px-3 pb-1 pt-3" role="presentation">{{ row.heading }}</li>
             <li
@@ -39,7 +39,7 @@
             >
               <template v-if="row.kind === 'find'">
                 <Icon icon="search-code" :size="13" class="shrink-0 self-center text-neutral-400"/>
-                <span class="min-w-0 flex-1 truncate">Find <span class="font-mono">“{{ query.trim() }}”</span> in code</span>
+                <span class="min-w-0 flex-1 truncate"><I18nT k="shell.goToAnything.findCode"><template #query><span class="font-mono">“{{ query.trim() }}”</span></template></I18nT></span>
               </template>
               <template v-else>
                 <span class="min-w-0 truncate" :class="row.kind === 'view' || row.kind === 'metric' || row.kind === 'lens' || row.kind === 'group' ? '' : 'font-mono text-sm'">{{ row.label }}</span>
@@ -49,13 +49,13 @@
               </template>
             </li>
           </template>
-          <li v-if="query.trim() && rows.length === 1 && !preparing" class="px-3 pb-2 pt-1 text-sm text-neutral-500" role="presentation">Nothing by that name. Its text may still be in the code.</li>
+          <li v-if="query.trim() && rows.length === 1 && !preparing" class="px-3 pb-2 pt-1 text-sm text-neutral-500" role="presentation">{{ t('shell.goToAnything.nothingNameTextMay') }}</li>
         </ul>
         <div class="flex items-center gap-4 px-3 py-2 text-xs text-neutral-400 hairline-t">
-          <span><kbd class="font-mono">↑↓</kbd> move</span>
-          <span><kbd class="font-mono">↵</kbd> open</span>
-          <span v-if="rows[active]?.kind === 'group'"><kbd class="font-mono">{{ isMac ? "⌘" : "Ctrl" }}↵</kbd> open its page instead of scoping</span>
-          <span class="ml-auto"><kbd class="font-mono">Esc</kbd> close</span>
+          <span><kbd class="font-mono">↑↓</kbd>{{ ' ' + t('shell.goToAnything.move') }}</span>
+          <span><kbd class="font-mono">↵</kbd>{{ ' ' + t('shell.goToAnything.open') }}</span>
+          <span v-if="rows[active]?.kind === 'group'"><kbd class="font-mono">{{ isMac ? "⌘" : t('shell.goToAnything.ctrl') }}↵</kbd>{{ ' ' + t('shell.goToAnything.openPageInsteadScoping') }}</span>
+          <span class="ml-auto"><kbd class="font-mono">Esc</kbd>{{ ' ' + t('shell.goToAnything.close') }}</span>
         </div>
       </div>
     </div>
@@ -73,6 +73,8 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import { useStateStore } from "~/platform/state.store";
 import { registerCommand } from "~/platform/commands";
 import { searchPath } from "~/features/navigation/routes";
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // ⌘P: jump to anything by name. Kept apart from ⌘K, which only sets the
 // scope query. The last row is always a search of the code itself.

@@ -1,7 +1,7 @@
 <template>
   <ExhibitFrame :exhibit="figure">
     <div ref="host" class="relative h-[320px] w-full overflow-hidden bg-surface">
-      <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Classes that import this class and classes it imports"></svg>
+      <svg ref="svgRef" class="h-full w-full" role="img" :aria-label="t('java.classNeighbourhoodGraph.classesImportClassClasses')"></svg>
       <ZoomControls @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
     </div>
   </ExhibitFrame>
@@ -13,8 +13,9 @@ import { useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme"
-import { roleColor, roleLegend, type JavaRole } from "~/features/java/java"
+import { roleColor, roleLegend, roleName, type JavaRole } from "~/features/java/java"
 import ZoomControls from "~/shared/ui/ZoomControls.vue"
+import { t } from "~/shared/i18n"
 
 // One class and its direct neighbours in three columns: classes that import
 // it on the left, the class itself in the middle, classes it imports on the
@@ -126,8 +127,8 @@ function render() {
     .on("click", (_event, d) => { if (d.side !== "centre") emit("open", d.file) })
 
   node.append("title").text(d => {
-    const role = d.role ?? "Class"
-    return d.side === "centre" ? `${d.label}\n${role}\n${d.file}` : `${d.label}\n${role} in ${d.component}\n${d.file}`
+    const role = roleName(d.role)
+    return d.side === "centre" ? `${d.label}\n${role}\n${d.file}` : `${d.label}\n${t("java.roles.inComponent", { role, component: d.component })}\n${d.file}`
   })
 
   const label = g.append("g").selectAll<SVGTextElement, SimNode>("text")
@@ -221,17 +222,17 @@ onBeforeUnmount(() => {
 defineExpose({ resetZoom })
 
 const figure = useSvgFigure({
-  title: "Class neighbourhood",
+  title: t("java.classNeighbourhoodGraph.classNeighbourhood"),
   svg: () => svgRef.value,
   legend: () => {
-    const t = chartTheme()
+    const theme = chartTheme()
     return {
       items: [
         ...roleLegend([...props.incoming, ...props.outgoing].map(n => n.role)),
-        { label: `${props.centre.label}, this class`, color: roleColor(props.centre.role), mark: "ring" },
-        { label: "Imports", color: withAlpha(t.inkMuted, 0.6), mark: "line" },
+        { label: t("java.classNeighbourhoodGraph.class2", { centreLabel: props.centre.label }), color: roleColor(props.centre.role), mark: "ring" },
+        { label: t("java.classNeighbourhoodGraph.imports"), color: withAlpha(theme.inkMuted, 0.6), mark: "line" },
       ],
-      notes: ["Classes that import this one are on the left, classes it imports on the right. A line is thicker the more references it carries."],
+      notes: [t("java.classNeighbourhoodGraph.classesImportOneLeft")],
     }
   },
 })

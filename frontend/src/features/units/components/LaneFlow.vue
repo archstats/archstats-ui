@@ -15,7 +15,7 @@
                   class="grid w-full items-center gap-2.5 rounded-sm pr-2 text-left transition-colors duration-150"
                   :class="active(lane.id) ? 'bg-neutral-100' : 'hover:bg-neutral-50'"
                   :style="{ height: PITCH + 'px', gridTemplateColumns: 'minmax(3.5rem, 9rem) minmax(24px, 1fr) 2.75rem' }"
-                  :title="lane.count + ' modules in ' + lane.label"
+                  :title="t('units.laneFlow.modules', { laneCount: lane.count, laneLabel: lane.label })"
                   @mouseenter="hoveredLane = lane.id; $emit('hover', { lane: lane.id })" @mouseleave="hoveredLane = null; $emit('hover', null)"
                   @click="$emit('lane', lane.id)">
             <span class="flex min-w-0 items-center gap-2">
@@ -42,7 +42,7 @@
       <svg v-if="links.length" :width="GUTTER" :height="rows.length * PITCH"
            :viewBox="'0 0 ' + GUTTER + ' ' + (rows.length * PITCH)"
            class="shrink-0" role="img"
-           :aria-label="links.length + ' dependencies between lanes'">
+           :aria-label="t('units.laneFlow.dependenciesBetweenLanes', { linksLength: links.length })">
         <g v-for="link in links" :key="link.key"
            :opacity="dimmed(link) ? 0.12 : 1"
            class="transition-opacity duration-200">
@@ -103,6 +103,7 @@ import { computed, ref } from "vue"
 import { laneDotClass, laneShade, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "~/features/units/graph"
 import { useSvgFigure } from "~/features/export/useExportables"
+import { t } from "~/shared/i18n"
 
 const PITCH = 36
 const GUTTER = 124
@@ -129,15 +130,15 @@ const EXPORT_W = LABEL_W + BAR_W + 56 + GUTTER
 const exportSvg = ref<SVGSVGElement | null>(null)
 // A report slot asks for this when a boundary between two lanes has nothing crossing it.
 const figure = useSvgFigure({
-  title: "How the layers lean",
+  title: t("units.laneFlow.howLayersLean"),
   svg: () => (rows.value.length ? exportSvg.value : null),
   // The rows name and colour every lane; the arcs are what needs a key.
   legend: () => ({
     items: [
-      { label: "Dependencies between lanes", color: "rgb(var(--c-neutral-400))", mark: "line" },
-      { label: "Share running against the main direction", color: "rgb(var(--c-red-500))", mark: "line" },
+      { label: t("units.laneFlow.dependenciesBetweenLanes2"), color: "rgb(var(--c-neutral-400))", mark: "line" },
+      { label: t("units.laneFlow.shareRunningAgainstMain"), color: "rgb(var(--c-red-500))", mark: "line" },
     ],
-    notes: ["A bar is the modules in the lane; an arc's width is the dependencies between two lanes."],
+    notes: [t("units.laneFlow.barModulesLaneArc")],
   }),
 })
 
@@ -235,10 +236,9 @@ function describe(link: { a: string; b: string; ab: number; ba: number }) {
     ? [{ from: link.a, to: link.b, n: link.ab }, { n: link.ba }]
     : [{ from: link.b, to: link.a, n: link.ba }, { n: link.ab }]
   if (light.n === 0) {
-    return labelOf(heavy.from) + ' imports ' + labelOf(heavy.to) + ': ' + heavy.n + ' references, none back.'
+    return t("units.laneFlow.importsReferencesNoneBack", { from: labelOf(heavy.from), to: labelOf(heavy.to), n: heavy.n })
   }
   const share = Math.round((light.n / (heavy.n + light.n)) * 100)
-  return labelOf(heavy.from) + ' imports ' + labelOf(heavy.to) + ': ' +
-    heavy.n + ' references, ' + light.n + ' back — ' + share + '% against the grain.'
+  return t("units.laneFlow.importsReferencesBackAgainst", { from: labelOf(heavy.from), to: labelOf(heavy.to), n: heavy.n, n2: light.n, share })
 }
 </script>

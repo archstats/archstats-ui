@@ -3,6 +3,7 @@
 // at a glance, and the sentences to check.
 
 import type { Grounding } from "~/features/exhibits/grounding"
+import { t } from "~/shared/i18n"
 
 export type VerdictLevel = "good" | "warn" | "bad" | "none"
 
@@ -18,11 +19,11 @@ export interface AnswerVerdict {
 
 /** The verdict words, explained where they appear. */
 export const VERDICT_WORDS: Record<string, string> = {
-    verified: "Verified: its numbers and names are in the facts it cites.",
-    cited: "Cited: it cites facts, and states nothing those facts could contradict.",
-    partial: "Partly supported: its numbers are in the cited facts, but it names something they are not about.",
-    unsupported: "Unsupported: it states a number the facts it cites do not hold.",
-    uncited: "Uncited: it states a number without citing any fact.",
+    verified: t("ask.verdict.verifiedNumbersNamesFacts"),
+    cited: t("ask.verdict.citedCitesFactsStates"),
+    partial: t("ask.verdict.partlySupportedNumbersCited"),
+    unsupported: t("ask.verdict.unsupportedStatesNumberFacts"),
+    uncited: t("ask.verdict.uncitedStatesNumberWithout"),
 }
 
 const CITES = /\[((?:E\d+(?:\.\d+)?)(?:\s*,\s*E\d+(?:\.\d+)?)*)\]/g
@@ -79,12 +80,12 @@ export function foldsUnbacked(g: Grounding | null | undefined): boolean {
 /** A failed check in the reader's words, not the checker's. */
 export function checkWords(c: { id: string; detail: string }): string {
     switch (c.id) {
-        case "gave-up": return "Said it could not answer without looking it up"
-        case "menu": return "Offered a menu instead of answering"
-        case "uncited": return /ids no tool returned: (.*)/.exec(c.detail)?.[1] ? `Cites ${/ids no tool returned: (.*)/.exec(c.detail)![1]}, which Ask never showed` : /Made-up markers/.test(c.detail) ? "Cites sources that do not exist" : "States numbers without citing where they come from"
+        case "gave-up": return t("ask.verdict.saidCouldNotAnswer")
+        case "menu": return t("ask.verdict.offeredMenuInsteadAnswering")
+        case "uncited": return /ids no tool returned: (.*)/.exec(c.detail)?.[1] ? t("ask.verdict.citesWhichAskNever", { value: /ids no tool returned: (.*)/.exec(c.detail)![1] }) : /Made-up markers/.test(c.detail) ? t("ask.verdict.citesSourcesDoNot") : t("ask.verdict.statesNumbersWithoutCiting")
         case "invented": return c.detail.replace(/^Names no tool returned: /, "Names nothing it looked up: ")
         case "verdict": return c.detail.replace(/^Verdict word/, "Judges instead of showing:")
-        case "unfinished": return "Stops before its conclusion"
+        case "unfinished": return t("ask.verdict.stopsBeforeConclusion")
         default: return c.detail
     }
 }
@@ -98,10 +99,10 @@ export function answerVerdict(g: Grounding | null | undefined, opts: { broken?: 
     const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`
     const problems = [
         opts.wrongTopic,
-        broken.length && `${plural(broken.length, "citation")} to nothing (${broken.join(", ")})`,
-        c.unsupported && `${c.unsupported} unsupported`,
-        c.uncited && `${c.uncited} uncited`,
-        c.partial && `${c.partial} partly supported`,
+        broken.length && t("ask.verdict.nothing", { citations: t("common.count.citation", { count: broken.length }), value: broken.join(", ") }),
+        c.unsupported && t("ask.verdict.unsupported", { unsupported: c.unsupported }),
+        c.uncited && t("ask.verdict.uncited", { uncited: c.uncited }),
+        c.partial && t("ask.verdict.partlySupported", { partial: c.partial }),
         ...failedChecks,
     ].filter((x): x is string => !!x)
     const flagged = claims.filter(x => x.verdict !== "verified" && x.verdict !== "cited")
@@ -112,22 +113,22 @@ export function answerVerdict(g: Grounding | null | undefined, opts: { broken?: 
     if (opts.folded) {
         const left = c.unsupported + c.uncited
         const shown = claims.length - left
-        const rest = [opts.wrongTopic, broken.length && `${plural(broken.length, "citation")} to nothing (${broken.join(", ")})`, c.partial && `${c.partial} partly supported`, ...failedChecks].filter((x): x is string => !!x)
+        const rest = [opts.wrongTopic, broken.length && t("ask.verdict.nothing", { citations: t("common.count.citation", { count: broken.length }), value: broken.join(", ") }), c.partial && t("ask.verdict.partlySupported", { partial: c.partial }), ...failedChecks].filter((x): x is string => !!x)
         return {
             level: opts.wrongTopic || broken.length ? "bad" : "warn",
-            headline: opts.wrongTopic ? "The numbers are right, but they answer a different question" : shown === ok ? `All ${ok} claims shown check out against their facts` : `${ok} of ${plural(shown, "claim")} shown check out against their facts`,
-            problems: [`${plural(left, "statement")} left out: not backed by ${left === 1 ? "its" : "their"} facts`, ...rest],
+            headline: opts.wrongTopic ? t("ask.verdict.numbersRightButThey") : shown === ok ? t("ask.verdict.allClaimsShownCheck", { ok }) : t("ask.verdict.shownCheckOutAgainst", { ok, claims: t("common.count.claim", { count: shown }) }),
+            problems: [t("ask.verdict.leftOutNotBacked", { statements: t("common.count.statement", { count: left }), their: t("common.noun.its", { count: left }) }), ...rest],
             flagged,
         }
     }
     const level: VerdictLevel = c.unsupported || broken.length || opts.wrongTopic ? "bad" : c.uncited || c.partial || failedChecks.length ? "warn" : "good"
     const headline = !claims.length
-        ? "No number or name here rests on a fact Ask looked up"
+        ? t("ask.verdict.noNumberNameHere")
         : opts.wrongTopic && !c.unsupported && !broken.length
-            ? "The numbers are right, but they answer a different question"
+            ? t("ask.verdict.numbersRightButThey")
             : level === "good"
-                ? ok === 1 ? "Its one claim checks out against its facts" : `All ${ok} claims check out against their facts`
-                : `${ok} of ${plural(claims.length, "claim")} check out against their facts`
+                ? ok === 1 ? t("ask.verdict.oneClaimChecksOut") : t("ask.verdict.allClaimsCheckOut", { ok })
+                : t("ask.verdict.checkOutAgainstTheir", { ok, claims: t("common.count.claim", { count: claims.length }) })
     return { level, headline, problems, flagged }
 }
 

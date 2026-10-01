@@ -6,6 +6,7 @@
 // only the files it holds by hand as a list.
 
 import type { Declaration } from "~/features/groups/groups.store"
+import { t } from "~/shared/i18n"
 
 export interface RuleGroup {
     id: string
@@ -19,7 +20,7 @@ export interface RuleGroup {
 }
 
 const lit = (s: string) => `'${s.replace(/'/g, "''")}'`
-const depth = (col: string, sep: string) => `(length(${col}) - length(replace(${col}, ${lit(sep)}, '')))`
+const depth = (col: string, sep: string) => t("rules.rulesAsCode.lengthLengthReplace", { col, col2: col, sep: lit(sep) })
 
 /**
  * A pattern as a SQL condition on one column. SQLite's GLOB lets * cross a
@@ -115,17 +116,7 @@ export function rulesYaml(lens: string, groups: RuleGroup[], d: Declaration, sep
     const q = crossingSql(groups, d, sep).split("\n").map(l => "      " + l).join("\n")
     const order = d.layers.map(id => groups.find(g => g.id === id)?.name).filter(Boolean).join(" > ")
     const yamlStr = (s: string) => JSON.stringify(s)
-    return `# ${lens}: the dependencies declared on this lens, as a build check.
-# Exported from Archstats (${origin}).
-#   archstats assert --rules archstats-rules.yml -f .
-# Fails, listing file and line, when an import crosses the declaration.
-assertions:
-  - name: ${yamlStr(`${lens}: declared dependencies`)}
-    description: ${yamlStr(order ? `Layers, top first: ${order}. ${d.pairs.length} pair rule(s); anything else ${d.unset === "forbidden" ? "forbidden" : "not judged"}.` : `${d.pairs.length} pair rule(s); anything else ${d.unset === "forbidden" ? "forbidden" : "not judged"}.`)}
-    expect: 0
-    query: |
-${q}
-`
+    return t("rules.rulesAsCode.dependenciesDeclaredLensBuild", { lens, origin, value: yamlStr(t("rules.rulesAsCode.declaredDependencies", { lens })), value2: yamlStr(order ? t("rules.rulesAsCode.layersTopFirstPair", { order, pairsLength: d.pairs.length, value: d.unset === "forbidden" ? t("rules.rulesAsCode.forbidden") : t("rules.rulesAsCode.notJudged") }) : t("rules.rulesAsCode.pairRuleSAnything", { pairsLength: d.pairs.length, value: d.unset === "forbidden" ? t("rules.rulesAsCode.forbidden") : t("rules.rulesAsCode.notJudged") })), q })
 }
 
 /**
@@ -149,16 +140,4 @@ export function ruleGroup(
 }
 
 /** A CI step that runs the exported rules. */
-export const CI_SNIPPET = `# .github/workflows/architecture.yml
-name: Architecture
-on: [pull_request]
-jobs:
-  rules:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "1.24" }
-      - run: go install github.com/archstats/archstats@latest
-      - run: archstats assert --rules archstats-rules.yml -f .
-`
+export const CI_SNIPPET = t("rules.rulesAsCode.githubWorkflowsArchitectureYml")

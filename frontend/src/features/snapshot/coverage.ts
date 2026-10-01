@@ -6,6 +6,8 @@
 // graph; the views then answer confidently about half a codebase. This says
 // how much is missing, per extension, so a view can say so too.
 
+import { t, intlLocale } from "~/shared/i18n"
+
 /** Extensions that hold code someone would expect to see in a dependency graph. */
 export const CODE_EXTENSIONS = new Set([
     "ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs", "vue", "svelte",
@@ -62,11 +64,11 @@ export function coverageGapMatters(c: ImportCoverage): boolean {
 /** "217 .vue files" or "217 .vue and 12 .svelte files": the extensions behind the gap, largest first. */
 export function gapPhrase(c: ImportCoverage, max = 2): string {
     const gaps = c.byExtension.filter(r => r.files > r.analysed).slice(0, max)
-    const parts = gaps.map(r => `${(r.files - r.analysed).toLocaleString("en-US")} .${r.extension}`)
+    const parts = gaps.map(r => `${(r.files - r.analysed).toLocaleString(intlLocale)} .${r.extension}`)
     if (!parts.length) return ""
-    const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+    const joined = parts.length === 1 ? parts[0] : t("snapshot.coverage.and", { parts: parts.slice(0, -1).join(", "), value: parts[parts.length - 1] })
     const rest = c.byExtension.filter(r => r.files > r.analysed).length - gaps.length
-    return `${joined} file${gaps.reduce((n, r) => n + r.files - r.analysed, 0) === 1 ? "" : "s"}${rest > 0 ? ` (and ${rest} more type${rest === 1 ? "" : "s"})` : ""}`
+    return t("snapshot.coverage.text", { joined, files: t("common.noun.file", { count: gaps.reduce((n, r) => n + r.files - r.analysed, 0) }), value: rest > 0 ? t("snapshot.coverage.more", { rest, types: t("common.noun.type", { count: rest }) }) : "" })
 }
 
 type Query = (sql: string) => Promise<any[]>

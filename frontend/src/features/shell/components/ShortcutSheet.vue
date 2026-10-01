@@ -3,8 +3,8 @@
     <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center bg-neutral-900/20 pt-[12vh]" @click.self="close">
       <div class="ui-popover w-[680px] max-w-[92vw] p-5 animate-in" role="dialog" aria-modal="true" aria-labelledby="shortcut-title">
         <div class="mb-4 flex items-center justify-between">
-          <h2 id="shortcut-title" class="text-base font-semibold text-neutral-900">Keyboard shortcuts</h2>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="close"><Icon icon="x" :size="13"/></button>
+          <h2 id="shortcut-title" class="text-base font-semibold text-neutral-900">{{ t('shell.shortcutSheet.keyboardShortcuts') }}</h2>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('shell.shortcutSheet.close')" @click="close"><Icon icon="x" :size="13"/></button>
         </div>
         <div class="grid gap-x-8 gap-y-5 sm:grid-cols-2">
           <section v-for="area in areas" :key="area.name">
@@ -20,8 +20,8 @@
           </section>
         </div>
         <div class="mt-5 flex items-center justify-between hairline-t pt-3 text-sm text-neutral-500">
-          <span>What every number means lives in the metric reference.</span>
-          <button type="button" class="ui-btn ui-btn-sm" @click="openReference">Metric reference</button>
+          <span>{{ t('shell.shortcutSheet.whatEveryNumberMeans') }}</span>
+          <button type="button" class="ui-btn ui-btn-sm" @click="openReference">{{ t('shell.shortcutSheet.metricReference') }}</button>
         </div>
       </div>
     </div>
@@ -35,13 +35,14 @@ import { SHORTCUTS, keyLabel } from "~/features/shell/shortcuts";
 import { usePlatform } from "~/platform/usePlatform";
 import { runCommand } from "~/platform/commands";
 import { useAIStore } from "~/features/ai/ai.store";
+import { t } from "~/shared/i18n";
 
 const open = defineModel<boolean>({ default: false });
 const { isMac } = usePlatform();
 const ai = useAIStore();
 
 const areas = computed(() => {
-  const order = ["App", "Views", "Focus", "Selection", "Lens builder"] as const;
+  const order = ["App", "Views", "Focus", "Selection", t("shell.shortcutSheet.lensBuilder")] as const;
   // ⌘J belongs to Ask, which exists only while AI features are on.
   return order.map(name => ({ name, items: SHORTCUTS.filter(s => s.area === name && (s.command !== "ask:open" || ai.enabled)) }));
 });

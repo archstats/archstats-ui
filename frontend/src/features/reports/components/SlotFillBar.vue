@@ -11,12 +11,12 @@
     <Loader2 v-if="waiting" :size="13" class="shrink-0 animate-spin text-accent-700"/>
     <img v-else-if="ready && preview" :src="preview" alt="" class="h-8 max-w-[96px] shrink-0 rounded-sm bg-white object-contain hairline" :title="reports.importing?.title">
     <Icon v-else :icon="fill.kind === 'figure' ? 'image' : 'table'" :size="13" class="shrink-0" :class="failed ? 'text-amber-700' : 'text-accent-700'"/>
-    <p class="min-w-0 max-w-[36%] shrink truncate text-neutral-900" :title="`${fill.number} of “${fill.reportTitle}”`">
-      <span class="font-medium">{{ fill.number }}</span><template v-if="fill.title">, {{ fill.title }}</template><template v-if="queue && queue.ids.length > 1"><span class="text-neutral-500"> · {{ queue.at + 1 }} of {{ queue.ids.length }}</span></template>
+    <p class="min-w-0 max-w-[36%] shrink truncate text-neutral-900" :title="t('reports.slotFillBar.of', { number: fill.number, reportTitle: fill.reportTitle })">
+      <span class="font-medium">{{ fill.number }}</span><template v-if="fill.title">, {{ fill.title }}</template><template v-if="queue && queue.ids.length > 1"><span class="text-neutral-500">{{ ' ' + t('reports.slotFillBar.of2', { value: queue.at + 1, idsLength: queue.ids.length }) }}</span></template>
     </p>
     <!-- The ask, as the view's own settings; a setting the take does not match is marked. -->
-    <ul class="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden" aria-label="Asked for">
-      <li v-for="r in chips" :key="r.label" class="flex shrink-0 items-baseline gap-1 rounded px-1.5 py-[1px] text-[11.5px] hairline" :class="r.ok ? 'bg-surface' : 'bg-amber-50 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-300))]'" :title="r.ok ? '' : `Asked for ${r.asked}; the view shows ${r.got ?? 'something else'}`">
+    <ul class="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden" :aria-label="t('reports.slotFillBar.asked')">
+      <li v-for="r in chips" :key="r.label" class="flex shrink-0 items-baseline gap-1 rounded px-1.5 py-[1px] text-[11.5px] hairline" :class="r.ok ? 'bg-surface' : 'bg-amber-50 shadow-[inset_0_0_0_1px_rgb(var(--c-amber-300))]'" :title="r.ok ? '' : t('reports.slotFillBar.askedViewShows', { asked: r.asked, value: r.got ?? t('reports.slotFillBar.somethingElse') })">
         <span class="text-neutral-500">{{ r.label }}</span><span class="text-neutral-900">{{ r.asked }}</span>
       </li>
     </ul>
@@ -24,22 +24,22 @@
 
     <template v-if="queue">
       <template v-if="ready">
-        <button v-if="mismatch" type="button" class="ui-btn ui-btn-sm shrink-0" :title="`Open ${fill.view} again, set as the template asks`" @click="taking.retake()">Set as asked</button>
-        <button type="button" class="ui-btn ui-btn-sm shrink-0" title="Trim it, write around it, or choose where it lands" @click="reports.adjusting = true">Adjust…</button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" title="Into the report, then the next one (↵)" @click="taking.take()">Take</button>
+        <button v-if="mismatch" type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('reports.slotFillBar.openAgainSetTemplate', { view: fill.view })" @click="taking.retake()">{{ t('reports.slotFillBar.setAsked') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('reports.slotFillBar.trimWriteAroundChoose')" @click="reports.adjusting = true">{{ t('reports.slotFillBar.adjust') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" :title="t('reports.slotFillBar.reportThenNextOne')" @click="taking.take()">{{ t('reports.slotFillBar.take') }}</button>
       </template>
       <template v-else-if="failed || paused">
-        <button v-if="paused" type="button" class="ui-btn ui-btn-sm shrink-0" :title="`Open ${fill.view} again, set as the template asks`" @click="taking.retake()">Resume</button>
-        <button v-if="canAdd" type="button" class="ui-btn ui-btn-sm shrink-0" :title="`What ${fill.view} shows now, into ${fill.number}`" @click="add">Take what is shown</button>
+        <button v-if="paused" type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('reports.slotFillBar.openAgainSetTemplate', { view: fill.view })" @click="taking.retake()">{{ t('reports.slotFillBar.resume') }}</button>
+        <button v-if="canAdd" type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('reports.slotFillBar.whatShowsNow', { view: fill.view, number: fill.number })" @click="add">{{ t('reports.slotFillBar.takeWhatShown') }}</button>
       </template>
-      <button type="button" class="ui-btn ui-btn-sm shrink-0" title="Leave this one for later and go on" @click="taking.skip()">Skip</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" title="End the run and go back to the report; the slots left stay in it" @click="taking.stop()">Stop</button>
+      <button type="button" class="ui-btn ui-btn-sm shrink-0" :title="t('reports.slotFillBar.leaveOneLaterGo')" @click="taking.skip()">{{ t('reports.slotFillBar.skip') }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="t('reports.slotFillBar.endRunGoBack')" @click="taking.stop()">{{ t('reports.slotFillBar.stop') }}</button>
     </template>
     <template v-else>
-      <button v-if="!onView" type="button" class="ui-btn ui-btn-sm shrink-0" @click="goToView">Open {{ fill.view }}</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" :disabled="!canAdd" :title="canAdd ? `What ${fill.view} shows, into ${fill.number}` : 'Set the view so it draws something, then add it'" @click="add">Add this view</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="back">Back to report</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Stop filling" title="Stop filling; the slot stays in the report" @click="taking.stop()">
+      <button v-if="!onView" type="button" class="ui-btn ui-btn-sm shrink-0" @click="goToView">{{ t('reports.slotFillBar.open', { view: fill.view }) }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" :disabled="!canAdd" :title="canAdd ? t('reports.slotFillBar.whatShows', { view: fill.view, number: fill.number }) : t('reports.slotFillBar.setViewSoDraws')" @click="add">{{ t('reports.slotFillBar.addView') }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="back">{{ t('reports.slotFillBar.backReport') }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :aria-label="t('reports.slotFillBar.stopFilling')" :title="t('reports.slotFillBar.stopFillingSlotStays')" @click="taking.stop()">
         <Icon icon="x" :size="13"/>
       </button>
     </template>
@@ -56,6 +56,7 @@ import { useSlotTaking } from "~/features/reports/useSlotTaking";
 import { useReportsStore } from "~/features/reports/reports.store";
 import { runCommand } from "~/platform/commands";
 import { askedSettings, compareSettings } from "~/features/reports/slotSettings";
+import { t } from "~/shared/i18n";
 
 const reports = useReportsStore();
 const route = useRoute();
@@ -76,20 +77,20 @@ const chips = computed(() => {
   const f = fill.value;
   if (!f) return [];
   const draft = ready.value ? reports.importing : null;
-  if (draft) return compareSettings(f.route, draft.route).filter(r => r.label !== "View");
-  return askedSettings(f.route).filter(r => r.label !== "View").map(r => ({ ...r, ok: true }));
+  if (draft) return compareSettings(f.route, draft.route).filter(r => r.label !== t("reports.slotSettings.view2"));
+  return askedSettings(f.route).filter(r => r.label !== t("reports.slotSettings.view2")).map(r => ({ ...r, ok: true }));
 });
 const mismatch = computed(() => ready.value && chips.value.some(r => !r.ok));
 const note = computed(() => {
   const f = fill.value;
-  if (!f || !queue.value) return !canAdd.value && onView.value ? "Nothing drawn here to add yet" : "";
-  if (reports.taking === "waiting") return `Opening ${f.view}, set as the report asks…`;
-  if (reports.taking === "failed") return reports.takeWhy || `${f.view} drew nothing to take`;
-  if (reports.taking === "paused") return "Paused";
+  if (!f || !queue.value) return !canAdd.value && onView.value ? t("reports.slotFillBar.nothingDrawnHereAdd") : "";
+  if (reports.taking === "waiting") return t("reports.slotFillBar.openingSetReportAsks", { view: f.view });
+  if (reports.taking === "failed") return reports.takeWhy || t("reports.slotFillBar.drewNothingTake", { view: f.view });
+  if (reports.taking === "paused") return t("reports.slotFillBar.paused");
   if (ready.value) {
-    const t = reports.importing?.table;
-    const what = t ? `Takes ${t.rows.length <= 25 ? t.rows.length : 10} of ${t.total > 0 ? t.total : t.rows.length} rows, ${t.columns.length} columns` : `Takes “${reports.importing?.title ?? f.view}”`;
-    return mismatch.value ? `${what} · not quite as asked` : what;
+    const table2 = reports.importing?.table;
+    const what = table2 ? t("reports.slotFillBar.takesRowsColumns", { value: table2.rows.length <= 25 ? table2.rows.length : 10, value2: table2.total > 0 ? table2.total : table2.rows.length, columnsLength: table2.columns.length }) : t("reports.slotFillBar.takes", { value: reports.importing?.title ?? f.view });
+    return mismatch.value ? t("reports.slotFillBar.notQuiteAsked", { what }) : what;
   }
   return "";
 });

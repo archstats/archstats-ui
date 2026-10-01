@@ -5,16 +5,16 @@
       <span class="ui-label">{{ title }}</span>
       <span class="font-mono text-xs text-neutral-400">{{ rows.length }}</span>
       <span class="ml-auto font-mono text-xs text-neutral-400">{{ formatNumber(total, 0) }} {{ unit }}</span>
-      <TableExportMenu class="-my-1 self-center" :title="title" :columns="[{ id: 'id', label: 'Name' }, { id: 'kind', label: 'Kind' }, { id: 'value', label: unit }, { id: 'inCycle', label: 'In a cycle with it' }]" :rows="rows as any"/>
+      <TableExportMenu class="-my-1 self-center" :title="title" :columns="[{ id: 'id', label: t('connections.partnerList.name') }, { id: 'kind', label: t('connections.partnerList.kind') }, { id: 'value', label: unit }, { id: 'inCycle', label: t('connections.partnerList.cycle') }]" :rows="rows as any"/>
     </div>
     <ul class="flex flex-col">
       <li v-for="r in shown" :key="r.id" class="flex h-6 items-center gap-2">
-        <KindMark :kind="r.kind" :color="r.color" :title="`${r.kind}${r.inCycle ? ' · in the same cycle' : ''}`"/>
+        <KindMark :kind="r.kind" :color="r.color" :title="`${r.kind}${r.inCycle ? t('connections.partnerList.sameCycle') : ''}`"/>
         <button
           type="button"
           class="min-w-0 truncate text-left font-mono text-sm hover:underline"
           :class="r.inCycle ? 'text-red-700' : 'text-neutral-800'"
-          :title="r.inCycle ? `${r.id} · closes a cycle with this one` : r.id"
+          :title="r.inCycle ? t('connections.partnerList.closesCycleOne', { id: r.id }) : r.id"
           @click="emit('select', r.id)"
         >{{ r.label }}</button>
         <span class="ml-auto h-1 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-100" :title="`${formatNumber(r.value, 0)} ${unit}`">
@@ -24,7 +24,7 @@
       </li>
     </ul>
     <button v-if="rows.length > LIMIT" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="expanded = !expanded">
-      {{ expanded ? 'Show fewer' : `Show all ${rows.length}` }}
+      {{ expanded ? t('connections.partnerList.showFewer') : t('connections.partnerList.showAll', { rowsLength: rows.length }) }}
     </button>
   </div>
 </template>
@@ -35,6 +35,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import KindMark from "./KindMark.vue";
 import TableExportMenu from "~/features/export/components/TableExportMenu.vue";
 import { formatNumber } from "~/shared/format";
+import { t } from "~/shared/i18n";
 
 // One direction of a node's dependencies, strongest first: who it is, how
 // much of the total weight it carries, and whether it closes a cycle with

@@ -3,6 +3,8 @@
 // a verdict: "holds", "was 14, now 3", "gone", or why the two cannot be
 // compared.
 
+import { t, intlLocale } from "~/shared/i18n"
+
 export type PinKind = "component" | "file" | "cycle" | "rule" | "pair" | "view" | "heading"
 
 export type PinValues = Record<string, number>
@@ -24,20 +26,20 @@ export interface StatusInput {
     label?: (id: string) => string
 }
 
-const fmt = (v: number) => (Number.isInteger(v) ? v.toLocaleString("en-US") : v.toLocaleString("en-US", { maximumFractionDigits: 2 }))
+const fmt = (v: number) => (Number.isInteger(v) ? v.toLocaleString(intlLocale) : v.toLocaleString(intlLocale, { maximumFractionDigits: 2 }))
 
 export function pinStatus(i: StatusInput): PinStatus {
-    if (i.deleted) return { kind: "deleted", text: "snapshot deleted, values as pinned" }
-    if (i.blocked) return { kind: "incomparable", text: `not comparable: ${i.blocked}` }
-    if (i.now === null) return { kind: "gone", text: "gone" }
+    if (i.deleted) return { kind: "deleted", text: t("reports.evidence.snapshotDeletedValuesPinned") }
+    if (i.blocked) return { kind: "incomparable", text: t("reports.evidence.notComparable", { blocked: i.blocked }) }
+    if (i.now === null) return { kind: "gone", text: t("reports.evidence.gone") }
     const keys = Object.keys(i.pinned)
     if (keys.length === 0) return { kind: "none", text: "" }
     const moved = keys.filter(k => i.now![k] !== undefined && Math.abs(i.now![k] - i.pinned[k]) > 1e-9)
-    if (moved.length === 0) return { kind: "holds", text: "holds" }
+    if (moved.length === 0) return { kind: "holds", text: t("reports.evidence.holds") }
     const k = moved[0]
     const name = i.label ? i.label(k) : k
-    const rest = moved.length > 1 ? ` (and ${moved.length - 1} more)` : ""
-    return { kind: "moved", text: `${keys.length > 1 ? name + " " : ""}was ${fmt(i.pinned[k])}, now ${fmt(i.now[k])}${rest}` }
+    const rest = moved.length > 1 ? t("reports.evidence.more", { value: moved.length - 1 }) : ""
+    return { kind: "moved", text: t("reports.evidence.wasNow", { value: keys.length > 1 ? name + " " : "", value2: fmt(i.pinned[k]), value3: fmt(i.now[k]), rest }) }
 }
 
 /** A cycle holds while its members still sit in one strongly connected group. */

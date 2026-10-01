@@ -1,7 +1,7 @@
 <template>
-  <ViewWorkspaceLayout :queryable="false" title="Ask">
+  <ViewWorkspaceLayout :queryable="false" :title="t('pages.ask.ask')">
     <template #stats>
-      <span class="inline-flex items-center gap-1.5" :title="`Answers read the open snapshot: ${snapshotLabel}`">
+      <span class="inline-flex items-center gap-1.5" :title="t('pages.ask.answersReadOpenSnapshot', { snapshotLabel })">
         <span class="h-1.5 w-1.5 rounded-full" :class="ask.model ? 'bg-green-500' : ask.modelsError ? 'bg-red-500' : 'bg-neutral-300'"/>
         <span class="text-neutral-800">{{ snapshotLabel }}</span>
       </span>
@@ -11,27 +11,27 @@
           class="ui-input ui-input-sm max-w-[220px]"
           :value="ask.modelId"
           :disabled="ask.running"
-          :title="ask.model ? `${ask.model.label}: ${ask.model.remote ? 'questions leave this machine' : 'runs on this machine'}` : 'The model that answers'"
-          aria-label="Model"
+          :title="ask.model ? `${ask.model.label}: ${ask.model.remote ? t('pages.ask.questionsLeaveMachine') : t('pages.ask.runsMachine')}` : t('pages.ask.modelAnswers')"
+          :aria-label="t('pages.ask.model')"
           @change="pickModel($event.target as HTMLSelectElement)"
       >
-        <option v-if="!ask.models.length" value="">{{ ask.loadingModels ? "Finding models…" : "No models" }}</option>
+        <option v-if="!ask.models.length" value="">{{ ask.loadingModels ? t('pages.ask.findingModels') : t('pages.ask.noModels') }}</option>
         <optgroup v-for="g in modelGroups" :key="g.provider" :label="g.label">
-          <option v-for="m in g.models" :key="m.id" :value="m.id" :disabled="!m.tools">{{ m.label }}{{ m.remote && g.provider === 'ollama' ? " · cloud" : "" }}{{ m.tools ? "" : " · no tools" }}</option>
+          <option v-for="m in g.models" :key="m.id" :value="m.id" :disabled="!m.tools">{{ m.label }}{{ m.remote && g.provider === 'ollama' ? t('pages.ask.cloud') : "" }}{{ m.tools ? "" : t('pages.ask.noTools') }}</option>
         </optgroup>
-        <option value="__settings">Model settings…</option>
+        <option value="__settings">{{ t('pages.ask.modelSettings') }}</option>
       </select>
-      <label v-if="ask.model?.think" class="flex items-center gap-1.5 text-[12px] text-neutral-600" title="Let the model reason before each step: slower, sometimes better on broad questions">
-        <input type="checkbox" class="ui-check" :checked="ask.think" :disabled="ask.running" @change="ask.setThink(($event.target as HTMLInputElement).checked)"> Think
+      <label v-if="ask.model?.think" class="flex items-center gap-1.5 text-[12px] text-neutral-600" :title="t('pages.ask.letModelReasonBefore')">
+        <input type="checkbox" class="ui-check" :checked="ask.think" :disabled="ask.running" @change="ask.setThink(($event.target as HTMLInputElement).checked)">{{ ' ' + t('pages.ask.think') }}
       </label>
     </template>
     <template #actions>
-      <button type="button" class="ui-btn ui-btn-sm" :disabled="!canWriteUp || ask.writing" :title="'Write a report from this conversation: pick a template, and every section is written from its evidence'" @click="ask.openWriteUp()">
-        <FileText :size="13" :stroke-width="1.75"/> {{ ask.writing ? "Writing…" : "Write up" }}
+      <button type="button" class="ui-btn ui-btn-sm" :disabled="!canWriteUp || ask.writing" :title="t('pages.ask.writeReportConversationPick')" @click="ask.openWriteUp()">
+        <FileText :size="13" :stroke-width="1.75"/> {{ ask.writing ? t('pages.ask.writing') : t('pages.ask.writeUp') }}
       </button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" title="New conversation" aria-label="New conversation" @click="fresh"><Plus :size="14" :stroke-width="1.75"/></button>
-      <button v-if="tight" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :class="{ 'is-active': threadsOpen }" :title="threadsOpen ? 'Hide conversations' : 'Show conversations'" aria-label="Conversations" @click="threadsOpen = !threadsOpen"><PanelLeft :size="14" :stroke-width="1.75"/></button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :class="{ 'is-active': ask.inspector.open }" :title="ask.inspector.open ? 'Hide the inspector' : 'Show the inspector'" aria-label="Inspector" @click="ask.inspector.open = !ask.inspector.open">
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :title="t('pages.ask.newConversation')" :aria-label="t('pages.ask.newConversation')" @click="fresh"><Plus :size="14" :stroke-width="1.75"/></button>
+      <button v-if="tight" type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :class="{ 'is-active': threadsOpen }" :title="threadsOpen ? t('pages.ask.hideConversations') : t('pages.ask.showConversations')" :aria-label="t('pages.ask.conversations')" @click="threadsOpen = !threadsOpen"><PanelLeft :size="14" :stroke-width="1.75"/></button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :class="{ 'is-active': ask.inspector.open }" :title="ask.inspector.open ? t('pages.ask.hideInspector') : t('pages.ask.showInspector')" :aria-label="t('pages.ask.inspector')" @click="ask.inspector.open = !ask.inspector.open">
         <PanelRight :size="14" :stroke-width="1.75"/>
       </button>
     </template>
@@ -40,11 +40,11 @@
       <!-- AI off (a link or a stale tab can still land here): say so, and where to turn it on. -->
       <div v-if="ai.loaded && !ai.enabled" class="flex min-h-0 grow items-start justify-center px-8 pt-[14vh]">
         <div class="max-w-[440px]">
-          <h1 class="text-lg font-semibold text-neutral-900">Ask is off</h1>
+          <h1 class="text-lg font-semibold text-neutral-900">{{ t('pages.ask.askOff') }}</h1>
           <p class="mt-1.5 text-base text-neutral-600">
-            {{ ai.status.locked ? `AI features are held off here: ${ai.status.policy}.` : "AI features are off, so Archstats sends nothing to any model. Turn them on and pick a model provider in Settings." }}
+            {{ ai.status.locked ? t('pages.ask.aiFeaturesHeldOff', { policy: ai.status.policy }) : t('pages.ask.aiFeaturesOffSo') }}
           </p>
-          <button v-if="!ai.status.locked" type="button" class="ui-btn ui-btn-primary mt-4" @click="runCommand('settings:open')">Open settings</button>
+          <button v-if="!ai.status.locked" type="button" class="ui-btn ui-btn-primary mt-4" @click="runCommand('settings:open')">{{ t('pages.ask.openSettings') }}</button>
         </div>
       </div>
       <div v-else ref="shell" class="ask-shell relative flex min-h-0 grow">
@@ -52,31 +52,30 @@
           <AskThreads @new="fresh"/>
         </div>
 
-        <main class="relative flex min-w-[360px] grow flex-col" aria-label="Conversation">
+        <main class="relative flex min-w-[360px] grow flex-col" :aria-label="t('pages.ask.conversation')">
           <div ref="scroller" class="min-h-0 grow overflow-y-auto" @scroll.passive="onScroll">
             <div class="mx-auto w-full max-w-[780px] pb-6" :class="tight ? 'px-4' : 'px-8'">
               <!-- A conversation about another snapshot: readable, but not continued. -->
               <div v-if="ask.stale" class="ask-banner">
                 <History :size="13" :stroke-width="1.75"/>
-                <span class="flex-1">This conversation is about snapshot {{ ask.current?.snapshot }}. The open snapshot is different, so a new question starts a new conversation.</span>
-                <button type="button" class="ui-btn ui-btn-sm" @click="fresh">New conversation</button>
+                <span class="flex-1">{{ t('pages.ask.conversationAboutSnapshotOpen', { snapshot: ask.current?.snapshot }) }}</span>
+                <button type="button" class="ui-btn ui-btn-sm" @click="fresh">{{ t('pages.ask.newConversation') }}</button>
               </div>
 
               <!-- Nothing asked yet. -->
               <section v-if="!ask.current?.turns.length" class="ask-welcome">
-                <h1>What do you want to know about {{ workspaceName }}?</h1>
+                <h1>{{ t('pages.ask.whatDoYouWant', { workspaceName }) }}</h1>
                 <p class="ask-sub">
-                  Answers come from the open snapshot, through the code the views use. Every number cites its evidence; every piece of evidence opens in its view, pins, or goes into a report.
-                  <span class="text-neutral-400">{{ ask.model ? `${ask.model.label}, ${ask.model.remote ? "in the cloud: questions leave this machine" : "on this machine"}.` : "" }}</span>
+{{ t('pages.ask.answersComeOpenSnapshot') }} <span class="text-neutral-400">{{ ask.model ? `${ask.model.label}, ${ask.model.remote ? t('pages.ask.cloudQuestionsLeaveMachine') : t('pages.ask.machine')}.` : "" }}</span>
                 </p>
                 <!-- How to read an answer, said once, where it is needed. -->
                 <ul class="ask-howto">
-                  <li><span class="ask-howto-k">Checked</span> Each answer opens with how many of its claims check out against the facts they cite, and which to doubt.</li>
-                  <li><span class="ask-howto-k mono">E3.4</span> A badge after a sentence is the fact it rests on: click it to see that fact lit in its figure.</li>
-                  <li><span class="ask-howto-k">This view</span> Come here from any view and "this" means that view.</li>
+                  <li><span class="ask-howto-k">{{ t('pages.ask.checked') }}</span>{{ ' ' + t('pages.ask.eachAnswerOpensHow') }}</li>
+                  <li><span class="ask-howto-k mono">E3.4</span>{{ ' ' + t('pages.ask.badgeAfterSentenceFact') }}</li>
+                  <li><span class="ask-howto-k">{{ t('pages.ask.view') }}</span>{{ ' ' + t('pages.ask.comeHereAnyView') }}</li>
                 </ul>
-                <button type="button" class="ask-howto-more" @click="ask.inspector.open = true; ask.inspector.tab = 'context'">What can Ask answer, and what not?</button>
-                <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">Try again</button> <button type="button" class="underline" @click="runCommand('settings:open')">Settings</button></p>
+                <button type="button" class="ask-howto-more" @click="ask.inspector.open = true; ask.inspector.tab = 'context'">{{ t('pages.ask.whatCanAskAnswer') }}</button>
+                <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">{{ t('pages.ask.tryAgain') }}</button> <button type="button" class="underline" @click="runCommand('settings:open')">{{ t('pages.ask.settings') }}</button></p>
                 <p v-else-if="ask.problems.length" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.problems.map(p => `${p.label}: ${p.message}`).join(" · ") }}</p>
                 <div class="ask-starters">
                   <button v-for="s in starters" :key="s.q" type="button" class="ask-starter" @click="send(s.q)">
@@ -88,9 +87,9 @@
               </section>
 
               <AskTurn
-                  v-for="(t, i) in ask.current?.turns ?? []"
-                  :key="t.id"
-                  :turn="t"
+                  v-for="(turn2, i) in ask.current?.turns ?? []"
+                  :key="turn2.id"
+                  :turn="turn2"
                   :last="i === (ask.current?.turns.length ?? 0) - 1"
                   :ids="ids"
                   :titles="titles"
@@ -110,11 +109,11 @@
             </div>
           </div>
 
-          <button v-if="awayFromEnd" type="button" class="ask-latest" @click="scrollToEnd(true)"><ArrowDown :size="12" :stroke-width="2"/> Latest</button>
+          <button v-if="awayFromEnd" type="button" class="ask-latest" @click="scrollToEnd(true)"><ArrowDown :size="12" :stroke-width="2"/>{{ ' ' + t('pages.ask.latest') }}</button>
           <div class="shrink-0 pb-5 pt-2" :class="tight ? 'px-4' : 'px-8'">
             <div class="mx-auto w-full max-w-[780px]">
               <Transition name="ask-toast"><p v-if="ask.notice" class="ask-toast" role="status">{{ ask.notice }}</p></Transition>
-              <p v-if="queued" class="ask-queued"><Loader2 :size="11" class="animate-spin"/> Asks next, when this answer is done: “{{ queued.length > 90 ? `${queued.slice(0, 90)}…` : queued }}” <button type="button" @click="queued = null">Cancel</button></p>
+              <p v-if="queued" class="ask-queued"><Loader2 :size="11" class="animate-spin"/>{{ ' ' + t('pages.ask.asksNextWhenAnswer', { value: queued.length > 90 ? `${queued.slice(0, 90)}…` : queued }) }} <button type="button" @click="queued = null">{{ t('pages.ask.cancel') }}</button></p>
               <!-- A selection made in a figure, ready to group: in the flow, so the composer moves up instead of being covered. -->
               <GroupActionBar v-if="picked.size" docked :selected-items="[...picked]" :kind="pickedKind" :show-in-except="[]" @replace="picked = new Set($event)" @clear="picked = new Set()" @created="picked = new Set()"/>
               <AskComposer ref="composer" @send="send"/>
@@ -152,6 +151,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { useAIStore } from "~/features/ai/ai.store"
 import { runCommand } from "~/platform/commands"
 import type { AskModel } from "~/features/ask/app/models"
+import { t } from "~/shared/i18n"
 
 const ask = useAskStore()
 const ai = useAIStore()
@@ -207,13 +207,13 @@ watch(narrow, n => { if (n) ask.inspector.open = false })
 // Picking a conversation from the rail when it is a drawer closes the drawer.
 watch(() => ask.currentId, () => { if (tight.value) threadsOpen.value = false })
 
-const workspaceName = computed(() => ws.active?.name ?? "this codebase")
+const workspaceName = computed(() => ws.active?.name ?? t("pages.ask.codebase"))
 const snapshotLabel = computed(() => {
   const info = data.snapshotInfo as Record<string, string>
   const scan = (ws.scans as any[]).find(s => s.id === data._openScanId)
   const commit = String(info.git_head_commit || scan?.headCommit || "").slice(0, 7)
   const rev = info.analysis_revision ?? scan?.analysisRevision
-  return `${commit || "snapshot"} · rev ${rev ?? "?"}`
+  return t("pages.ask.rev", { value: commit || "snapshot", value2: rev ?? "?" })
 })
 
 watch(() => ws.active?.id, id => { if (id) ask.load(id) }, { immediate: true })
@@ -279,15 +279,15 @@ const largest = computed(() => {
 })
 const starters = computed(() => {
   const s = [
-    { icon: Compass, title: "Get my bearings", q: "What is this codebase made of, and where is its mass?" },
-    { icon: RefreshCw, title: "Tangles", q: "Where are the tangles, and what would untangle the largest one?" },
-    { icon: Flame, title: "Risk", q: "Which files are risky to change: complex and changed often?" },
-    { icon: Network, title: "Blast radius", q: largest.value ? `What depends on ${largest.value}, all the way up?` : "Which components does everything depend on?" },
-    { icon: Users, title: "Knowledge", q: largest.value ? `Who knows ${largest.value}, and is that knowledge thin?` : "Who are the most active authors?" },
-    { icon: Braces, title: "Inside", q: largest.value ? `What are the biggest files in ${largest.value}, and what do they do?` : "Which files are the largest?" },
+    { icon: Compass, title: t("pages.ask.getMyBearings"), q: t("pages.ask.whatCodebaseMadeWhere") },
+    { icon: RefreshCw, title: t("pages.ask.tangles"), q: t("pages.ask.whereTanglesWhatWould") },
+    { icon: Flame, title: t("pages.ask.risk"), q: t("pages.ask.whichFilesRiskyChange") },
+    { icon: Network, title: t("pages.ask.blastRadius"), q: largest.value ? t("pages.ask.whatDependsAllWay", { largest: largest.value }) : t("pages.ask.whichComponentsDoesEverything") },
+    { icon: Users, title: t("pages.ask.knowledge"), q: largest.value ? t("pages.ask.whoKnowsKnowledgeThin", { largest: largest.value }) : t("pages.ask.whoMostActiveAuthors") },
+    { icon: Braces, title: t("pages.ask.inside"), q: largest.value ? t("pages.ask.whatBiggestFilesWhat", { largest: largest.value }) : t("pages.ask.whichFilesLargest") },
   ]
   const c = ask.pendingContext
-  if (c) s.unshift({ icon: Sparkles, title: `About ${c.label}`, q: c.subject ? `Explain ${shortName(c.subject.name)}: what depends on it, and what is fragile?` : `Explain what ${c.label} is showing me.` })
+  if (c) s.unshift({ icon: Sparkles, title: t("pages.ask.about", { label: c.label }), q: c.subject ? t("pages.ask.explainWhatDependsWhat", { subjectName: shortName(c.subject.name) }) : t("pages.ask.explainWhatShowingMe", { label: c.label }) })
   return s.slice(0, 6)
 })
 

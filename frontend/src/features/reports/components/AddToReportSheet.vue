@@ -12,18 +12,18 @@
         @keydown="onKey"
       >
         <header class="flex shrink-0 items-baseline gap-3 px-5 pb-3 pt-4 hairline-b">
-          <h2 id="atr-title" class="text-[15px] font-semibold text-neutral-900">{{ inQueue ? `Taking ${queue!.at + 1} of ${queue!.ids.length}` : "Add to report" }}</h2>
+          <h2 id="atr-title" class="text-[15px] font-semibold text-neutral-900">{{ inQueue ? t('reports.addToReportSheet.taking', { value: queue!.at + 1, idsLength: queue!.ids.length }) : t('reports.addToReportSheet.addReport') }}</h2>
           <ol v-if="inQueue && queue!.ids.length > 1" class="flex shrink-0 items-center gap-1 self-center" aria-hidden="true">
             <li v-for="(_, i) in queue!.ids" :key="i" class="h-[3px] w-4 rounded-full" :class="i < queue!.at ? 'bg-accent-500' : i === queue!.at ? 'bg-accent-300' : 'bg-neutral-200'"></li>
           </ol>
           <p class="min-w-0 truncate font-mono text-[11.5px] text-neutral-500" :title="sourceLine">{{ sourceLine }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" aria-label="Close" @click="close"><Icon icon="x" :size="13"/></button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-auto" :aria-label="t('reports.addToReportSheet.close')" @click="close"><Icon icon="x" :size="13"/></button>
         </header>
 
         <div class="flex min-h-0 flex-1">
           <!-- Where it goes. -->
-          <aside class="flex w-[252px] shrink-0 flex-col overflow-y-auto bg-ground hairline-r" aria-label="Where it lands">
-            <h3 class="ui-label px-4 pb-1 pt-3.5">Report</h3>
+          <aside class="flex w-[252px] shrink-0 flex-col overflow-y-auto bg-ground hairline-r" :aria-label="t('reports.addToReportSheet.whereLands')">
+            <h3 class="ui-label px-4 pb-1 pt-3.5">{{ t('reports.addToReportSheet.report') }}</h3>
             <ul class="px-2">
               <li v-for="r in reports.list" :key="r.id">
                 <button
@@ -34,7 +34,7 @@
                   @click="pickReport(r.id)"
                 >
                   <Icon icon="file-text" :size="13" class="shrink-0" :class="target === r.id ? 'text-accent-600' : 'text-neutral-400'"/>
-                  <span class="min-w-0 flex-1 truncate text-[13px] text-neutral-900">{{ r.title || "Untitled report" }}</span>
+                  <span class="min-w-0 flex-1 truncate text-[13px] text-neutral-900">{{ r.title || t('reports.addToReportSheet.untitledReport') }}</span>
                 </button>
               </li>
               <li>
@@ -46,22 +46,22 @@
                   @click="pickReport(NEW)"
                 >
                   <Icon icon="plus" :size="13" class="shrink-0 text-neutral-400"/>
-                  <span class="text-[13px] text-neutral-700">New report</span>
+                  <span class="text-[13px] text-neutral-700">{{ t('reports.addToReportSheet.newReport') }}</span>
                 </button>
                 <input
                   v-if="target === NEW"
                   ref="newTitleEl"
                   v-model="newTitle"
                   class="ui-input ui-input-sm mx-2 mb-1 mt-1 w-[calc(100%-16px)]"
-                  placeholder="Report name"
-                  aria-label="New report name"
+                  :placeholder="t('reports.addToReportSheet.reportName')"
+                  :aria-label="t('reports.addToReportSheet.newReportName')"
                 >
               </li>
             </ul>
 
             <template v-if="target !== NEW">
-              <h3 class="ui-label px-4 pb-1 pt-4">Place</h3>
-              <ol class="px-2 pb-4" aria-label="Where in the report">
+              <h3 class="ui-label px-4 pb-1 pt-4">{{ t('reports.addToReportSheet.place') }}</h3>
+              <ol class="px-2 pb-4" :aria-label="t('reports.addToReportSheet.whereReport')">
                 <li v-for="o in places" :key="o.key">
                   <button
                     type="button"
@@ -77,7 +77,7 @@
                   <!-- The landing spot sits after the row it follows. -->
                   <div v-if="place === o.value" class="relative my-1 ml-2 mr-2 h-[18px]" aria-hidden="true">
                     <span class="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-accent-500"></span>
-                    <span class="absolute left-2 top-0 bg-ground px-1 text-[10.5px] font-medium leading-[18px] text-accent-700">{{ o.slot ? "Fills this slot" : "Lands here" }}</span>
+                    <span class="absolute left-2 top-0 bg-ground px-1 text-[10.5px] font-medium leading-[18px] text-accent-700">{{ o.slot ? t('reports.addToReportSheet.fillsSlot') : t('reports.addToReportSheet.landsHere') }}</span>
                   </div>
                 </li>
               </ol>
@@ -87,11 +87,11 @@
           <!-- What it will read like, in place. -->
           <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-surface" @wheel.passive="holdUntil = 0" @keydown="holdUntil = 0">
             <div ref="column" class="mx-auto max-w-[620px] px-10 pb-16 pt-8">
-              <p v-if="target === NEW" class="text-[24px] font-semibold tracking-[-0.015em] text-neutral-950">{{ newTitle || "Untitled report" }}</p>
+              <p v-if="target === NEW" class="text-[24px] font-semibold tracking-[-0.015em] text-neutral-950">{{ newTitle || t('reports.addToReportSheet.untitledReport') }}</p>
               <p v-else-if="!before.length" class="text-[24px] font-semibold tracking-[-0.015em] text-neutral-400">{{ targetTitle }}</p>
 
               <!-- The report before the spot, as it reads. -->
-              <div v-if="beforeHidden" class="mb-1 text-[11px] text-neutral-400">⋯ {{ beforeHidden }} more above</div>
+              <div v-if="beforeHidden" class="mb-1 text-[11px] text-neutral-400">{{ t('reports.addToReportSheet.moreAbove', { beforeHidden }) }}</div>
               <div class="pointer-events-none select-none opacity-55" aria-hidden="true">
                 <template v-for="b in before" :key="b.id">
                   <NotebookText v-if="!isCell(b)" :block="b" :editing="false" :number="ctxNumbers.get(b.id)"/>
@@ -102,9 +102,9 @@
               </div>
 
               <!-- What is being added: editable, marked as new. -->
-              <section ref="addingEl" class="relative my-4 -ml-5 rounded-md pb-1 pl-5 pr-1 pt-3 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]" aria-label="What is added">
-                <span class="absolute -top-2 left-3 bg-surface px-1.5 text-[10.5px] font-medium text-accent-700">Adding</span>
-                <button v-if="!hasProseAbove" type="button" class="nb-ghost" @click="writeAbove"><Icon icon="plus" :size="12"/> Write above</button>
+              <section ref="addingEl" class="relative my-4 -ml-5 rounded-md pb-1 pl-5 pr-1 pt-3 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]" :aria-label="t('reports.addToReportSheet.whatAdded')">
+                <span class="absolute -top-2 left-3 bg-surface px-1.5 text-[10.5px] font-medium text-accent-700">{{ t('reports.addToReportSheet.adding') }}</span>
+                <button v-if="!hasProseAbove" type="button" class="nb-ghost" @click="writeAbove"><Icon icon="plus" :size="12"/>{{ ' ' + t('reports.addToReportSheet.writeAbove') }}</button>
                 <template v-for="(b, i) in draft" :key="b.id">
                   <NotebookText
                     v-if="!isCell(b)"
@@ -138,7 +138,7 @@
                     @patch="p => patchCell(b.id, p)"
                   />
                 </template>
-                <button v-if="!hasProseBelow" type="button" class="nb-ghost" @click="writeBelow"><Icon icon="plus" :size="12"/> Write below</button>
+                <button v-if="!hasProseBelow" type="button" class="nb-ghost" @click="writeBelow"><Icon icon="plus" :size="12"/>{{ ' ' + t('reports.addToReportSheet.writeBelow') }}</button>
               </section>
 
               <!-- And what follows it. -->
@@ -150,16 +150,16 @@
                   <NotebookCell v-else :cell="b.cell" :number="numbers.get(b.id) ?? ''" :selected="false" :running="false" :stale="false" :kernel-label="''" :figure="figureOf(b)" :workspace="workspace" :label="label" :gutter="false"/>
                 </template>
               </div>
-              <div v-if="afterHidden" class="mt-1 text-[11px] text-neutral-400">⋯ {{ afterHidden }} more below</div>
+              <div v-if="afterHidden" class="mt-1 text-[11px] text-neutral-400">{{ t('reports.addToReportSheet.moreBelow', { afterHidden }) }}</div>
             </div>
           </div>
 
           <!-- What to keep of it. -->
-          <aside class="flex w-[248px] shrink-0 flex-col gap-5 overflow-y-auto bg-ground px-4 py-3.5 hairline-l" aria-label="Trim">
+          <aside class="flex w-[248px] shrink-0 flex-col gap-5 overflow-y-auto bg-ground px-4 py-3.5 hairline-l" :aria-label="t('reports.addToReportSheet.trim')">
             <!-- What the template asks of this slot, checked against what was taken. -->
-            <section v-if="slotBlock" aria-label="What the template asks for">
+            <section v-if="slotBlock" :aria-label="t('reports.addToReportSheet.whatTemplateAsks')">
               <div class="mb-1 flex items-baseline gap-2">
-                <h3 class="ui-label flex-1">Asked for</h3>
+                <h3 class="ui-label flex-1">{{ t('reports.addToReportSheet.asked') }}</h3>
                 <span class="font-mono text-[11px] text-neutral-500">{{ numbers.get(draft.find(isCell)?.id ?? "") ?? "" }}</span>
               </div>
               <p class="text-[12.5px] font-medium leading-5 text-neutral-900">{{ slotBlock.cell.title || slotView }}</p>
@@ -169,43 +169,43 @@
                   <dt class="w-[74px] shrink-0 text-neutral-500">{{ r.label }}</dt>
                   <dd class="min-w-0 flex-1 text-neutral-900">
                     {{ r.asked }}
-                    <span v-if="!r.ok" class="block text-[11.5px] text-accent-800">taken as {{ r.got }}</span>
+                    <span v-if="!r.ok" class="block text-[11.5px] text-accent-800">{{ t('reports.addToReportSheet.taken', { got: r.got }) }}</span>
                   </dd>
                 </div>
               </dl>
               <template v-if="mismatch">
-                <p class="mt-2 text-[11px] leading-4 text-neutral-600">Taken with other settings than the template asks; the words around it may not fit what it shows.</p>
+                <p class="mt-2 text-[11px] leading-4 text-neutral-600">{{ t('reports.addToReportSheet.takenOtherSettingsThan') }}</p>
                 <button type="button" class="ui-btn ui-btn-sm mt-2" :disabled="adding" @click="taking.retake(slotBlock.id)">
-                  <Icon icon="refresh" :size="12" class="text-neutral-500"/><span>Take it as asked</span>
+                  <Icon icon="refresh" :size="12" class="text-neutral-500"/><span>{{ t('reports.addToReportSheet.takeAsked') }}</span>
                 </button>
               </template>
-              <p v-else class="mt-2 text-[11px] leading-4 text-neutral-500">Taken as the template asks.</p>
+              <p v-else class="mt-2 text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.takenTemplateAsks') }}</p>
             </section>
             <template v-if="src.kind === 'table' && src.table">
               <section>
-                <h3 class="ui-label mb-1.5">Rows</h3>
-                <div class="ui-segmented" role="group" aria-label="Rows">
-                  <button v-for="n in rowOptions" :key="n" type="button" :aria-pressed="rows === n" @click="rows = n">{{ n === src.table.rows.length ? "All" : n }}</button>
+                <h3 class="ui-label mb-1.5">{{ t('reports.addToReportSheet.rows') }}</h3>
+                <div class="ui-segmented" role="group" :aria-label="t('reports.addToReportSheet.rows')">
+                  <button v-for="n in rowOptions" :key="n" type="button" :aria-pressed="rows === n" @click="rows = n">{{ n === src.table.rows.length ? t('reports.addToReportSheet.all') : n }}</button>
                 </div>
-                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ rows.toLocaleString("en-US") }} of {{ src.table.total.toLocaleString("en-US") }} in the {{ src.sql ? "query's" : "view's" }} order<template v-if="src.table.total > src.table.rows.length">; the first {{ src.table.rows.length }} can be kept</template>.</p>
+                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.order', { value: rows.toLocaleString(intlLocale), value2: src.table.total.toLocaleString(intlLocale), value3: src.sql ? "query's" : "view's" }) }}<template v-if="src.table.total > src.table.rows.length">{{ t('reports.addToReportSheet.firstCanKept', { rowsLength: src.table.rows.length }) }}</template>.</p>
               </section>
               <section v-if="src.sql">
-                <h3 class="ui-label mb-1.5">Live query</h3>
-                <p class="text-[11px] leading-4 text-neutral-500">The report keeps the SQL, not a copy of the rows: it runs again on the report's snapshot, and a newer scan says what moved. Edit it in the report, or open it in the console from there.</p>
+                <h3 class="ui-label mb-1.5">{{ t('reports.addToReportSheet.liveQuery') }}</h3>
+                <p class="text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.reportKeepsSqlNot') }}</p>
                 <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-surface px-2 py-1.5 font-mono text-[11px] leading-4 text-neutral-700 hairline">{{ src.sql }}</pre>
               </section>
               <section v-else>
                 <div class="mb-1.5 flex items-baseline">
-                  <h3 class="ui-label flex-1">Columns</h3>
-                  <span class="font-mono text-[11px] text-neutral-500">{{ columns.size }} of {{ src.table.columns.length }}</span>
+                  <h3 class="ui-label flex-1">{{ t('reports.addToReportSheet.columns') }}</h3>
+                  <span class="font-mono text-[11px] text-neutral-500">{{ t('reports.addToReportSheet.of', { columnsSize: columns.size, columnsLength: src.table.columns.length }) }}</span>
                 </div>
-                <p v-if="columns.size < src.table.columns.length" class="mb-1.5 text-[11px] leading-4 text-neutral-500">{{ src.table.columns.length - columns.size }} {{ src.table.columns.length - columns.size === 1 ? "column is" : "columns are" }} left out of the report. Tick a column to keep it.</p>
+                <p v-if="columns.size < src.table.columns.length" class="mb-1.5 text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.leftOutReportTick', { columnsAre: t('common.count.columnIs', { count: src.table.columns.length - columns.size }) }) }}</p>
                 <ul class="-mx-1 flex flex-col">
                   <li v-for="(c, i) in src.table.columns" :key="c.id">
                     <label class="flex cursor-default items-center gap-2 rounded px-1 py-1 hover:bg-neutral-200/60">
                       <Checkbox :model-value="columns.has(c.id)" :disabled="i === 0" :aria-label="c.label" @update:model-value="toggleColumn(c.id)"/>
                       <span class="min-w-0 flex-1 truncate text-[12.5px]" :class="columns.has(c.id) ? 'text-neutral-900' : 'text-neutral-500'">{{ c.label }}</span>
-                      <span v-if="i === 0" class="text-[10.5px] text-neutral-400">names</span>
+                      <span v-if="i === 0" class="text-[10.5px] text-neutral-400">{{ t('reports.addToReportSheet.names') }}</span>
                     </label>
                   </li>
                 </ul>
@@ -213,29 +213,29 @@
             </template>
             <template v-else-if="src.kind === 'figure'">
               <section>
-                <h3 class="ui-label mb-1.5">Appearance</h3>
-                <div class="ui-segmented" role="group" aria-label="Appearance">
-                  <button type="button" :aria-pressed="light" @click="setLight(true)">Light</button>
-                  <button type="button" :aria-pressed="!light" @click="setLight(false)">As shown</button>
+                <h3 class="ui-label mb-1.5">{{ t('reports.addToReportSheet.appearance') }}</h3>
+                <div class="ui-segmented" role="group" :aria-label="t('reports.addToReportSheet.appearance')">
+                  <button type="button" :aria-pressed="light" @click="setLight(true)">{{ t('reports.addToReportSheet.light') }}</button>
+                  <button type="button" :aria-pressed="!light" @click="setLight(false)">{{ t('reports.addToReportSheet.shown') }}</button>
                 </div>
-                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">Light prints well and reads on paper; as shown keeps the app's current look.</p>
+                <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.lightPrintsWellReads') }}</p>
               </section>
             </template>
             <template v-else>
               <section>
-                <h3 class="ui-label mb-1.5">Text</h3>
-                <p class="text-[12px] leading-5 text-neutral-600">It comes in as prose you can edit here and in the report.</p>
+                <h3 class="ui-label mb-1.5">{{ t('reports.addToReportSheet.text') }}</h3>
+                <p class="text-[12px] leading-5 text-neutral-600">{{ t('reports.addToReportSheet.comesProseYouCan') }}</p>
               </section>
             </template>
             <section>
-              <h3 class="ui-label mb-1.5">Kept with it</h3>
+              <h3 class="ui-label mb-1.5">{{ t('reports.addToReportSheet.kept') }}</h3>
               <dl class="ui-kv text-[11.5px]">
-                <dt>Snapshot</dt><dd>{{ src.ranOn.label }}</dd>
-                <template v-if="src.ranOn.commit"><dt>Commit</dt><dd>{{ src.ranOn.commit.slice(0, 7) }}</dd></template>
-                <template v-if="src.ranOn.lens"><dt>Lens</dt><dd>{{ src.ranOn.lens }}</dd></template>
-                <template v-if="src.ranOn.scope"><dt>Scope</dt><dd class="!whitespace-normal">{{ src.ranOn.scope }}</dd></template>
+                <dt>{{ t('reports.addToReportSheet.snapshot') }}</dt><dd>{{ src.ranOn.label }}</dd>
+                <template v-if="src.ranOn.commit"><dt>{{ t('reports.addToReportSheet.commit') }}</dt><dd>{{ src.ranOn.commit.slice(0, 7) }}</dd></template>
+                <template v-if="src.ranOn.lens"><dt>{{ t('reports.addToReportSheet.lens') }}</dt><dd>{{ src.ranOn.lens }}</dd></template>
+                <template v-if="src.ranOn.scope"><dt>{{ t('reports.addToReportSheet.scope') }}</dt><dd class="!whitespace-normal">{{ src.ranOn.scope }}</dd></template>
               </dl>
-              <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">A capture keeps what {{ src.view }} showed; open the view again to bring it up to date.</p>
+              <p class="mt-1.5 text-[11px] leading-4 text-neutral-500">{{ t('reports.addToReportSheet.captureKeepsWhatShowed', { view: src.view }) }}</p>
             </section>
           </aside>
         </div>
@@ -243,18 +243,18 @@
         <footer class="flex shrink-0 items-center gap-3 px-5 py-3 hairline-t">
           <p class="min-w-0 truncate text-[12.5px] text-neutral-600">{{ summary }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :title="inQueue ? 'Stop taking; the slots left stay in the report' : ''" @click="inQueue ? stopTaking() : close()">{{ inQueue ? "Stop" : "Cancel" }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :title="inQueue ? t('reports.addToReportSheet.stopTakingSlotsLeft') : ''" @click="inQueue ? stopTaking() : close()">{{ inQueue ? t('reports.addToReportSheet.stop') : t('reports.addToReportSheet.cancel') }}</button>
           <template v-if="inQueue">
-            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" title="Leave this slot for later" @click="taking.skip()">Skip</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? "Filling…" : queue!.at + 1 < queue!.ids.length ? "Fill and next" : "Fill and finish" }}</button>
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" :title="t('reports.addToReportSheet.leaveSlotLater')" @click="taking.skip()">{{ t('reports.addToReportSheet.skip') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? t('reports.addToReportSheet.filling') : queue!.at + 1 < queue!.ids.length ? t('reports.addToReportSheet.fillNext') : t('reports.addToReportSheet.fillFinish') }}</button>
           </template>
           <template v-else-if="fillMode">
-            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(false)">Fill</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? "Filling…" : "Fill and return" }}</button>
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(false)">{{ t('reports.addToReportSheet.fill') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(true)">{{ adding ? t('reports.addToReportSheet.filling') : t('reports.addToReportSheet.fillReturn') }}</button>
           </template>
           <template v-else>
-            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(true)">Add and open</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(false)">{{ adding ? "Adding…" : slotPlace ? "Fill" : "Add" }}</button>
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="adding" @click="add(true)">{{ t('reports.addToReportSheet.addOpen') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="adding" title="⌘↵" @click="add(false)">{{ adding ? t('reports.addToReportSheet.adding2') : slotPlace ? t('reports.addToReportSheet.fill') : t('reports.addToReportSheet.add') }}</button>
           </template>
         </footer>
       </div>
@@ -278,6 +278,7 @@ import { useReportsStore, type ImportDraft } from "~/features/reports/reports.st
 import { compareSettings, viewName } from "~/features/reports/slotSettings";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { cellNumbers, fromMarkdown, isCell, newId, parseDoc, plainText, type Block, type Cell, type CellBlock, type TextKind } from "~/features/reports/reportDoc";
+import { t, intlLocale } from "~/shared/i18n";
 
 const reports = useReportsStore();
 const data = useDataStore();
@@ -301,7 +302,7 @@ function pickReport(id: string) {
   if (id === NEW) void nextTick(() => newTitleEl.value?.focus());
 }
 const targetRecord = computed(() => reports.list.find(r => r.id === target.value) ?? null);
-const targetTitle = computed(() => targetRecord.value?.title || "Untitled report");
+const targetTitle = computed(() => targetRecord.value?.title || t("reports.addToReportSheet.untitledReport"));
 const targetBlocks = computed<Block[]>(() => {
   const r = targetRecord.value;
   if (!r) return [];
@@ -310,12 +311,12 @@ const targetBlocks = computed<Block[]>(() => {
 
 interface Place { key: string; value: string | null; label: string; indent: number; heading?: boolean; icon?: string; slot?: boolean }
 const places = computed<Place[]>(() => {
-  const out: Place[] = [{ key: "top", value: null, label: "At the top", indent: 0, icon: "arrow-up-right" }];
+  const out: Place[] = [{ key: "top", value: null, label: t("reports.addToReportSheet.top"), indent: 0, icon: "arrow-up-right" }];
   const nums = cellNumbers(targetBlocks.value);
   let depth = 0;
   for (const b of targetBlocks.value) {
     if (isCell(b) && b.cell.spec.type === "slot") {
-      out.push({ key: b.id, value: `slot:${b.id}`, label: `Fill ${nums.get(b.id)} · ${b.cell.title || b.cell.spec.view}`, indent: depth, icon: b.cell.spec.kind === "figure" ? "image" : "table", slot: true });
+      out.push({ key: b.id, value: `slot:${b.id}`, label: t("reports.addToReportSheet.fill2", { bId: nums.get(b.id), value: b.cell.title || b.cell.spec.view }), indent: depth, icon: b.cell.spec.kind === "figure" ? "image" : "table", slot: true });
     } else if (isCell(b) && b.cell.spec.type === "reading") {
       continue;
     } else if (isCell(b)) {
@@ -324,10 +325,10 @@ const places = computed<Place[]>(() => {
     } else if (b.kind === "h1" || b.kind === "h2" || b.kind === "h3") {
       const level = Number(b.kind[1]) - 1;
       depth = level + 1;
-      out.push({ key: b.id, value: b.id, label: plainText(b.text) || "Heading", indent: level, heading: true });
+      out.push({ key: b.id, value: b.id, label: plainText(b.text) || t("reports.addToReportSheet.heading"), indent: level, heading: true });
     }
   }
-  out.push({ key: "end", value: "end", label: "At the end", indent: 0 });
+  out.push({ key: "end", value: "end", label: t("reports.addToReportSheet.end"), indent: 0 });
   return out;
 });
 
@@ -583,19 +584,19 @@ const newNumber = computed(() => { const c = draft.value.find(isCell); return c 
 const placeLabel = computed(() => {
   if (target.value === NEW) return "";
   if (slotBlock.value) return "";
-  if (place.value === null) return " at the top";
-  if (place.value === "end") return " at the end";
+  if (place.value === null) return t("reports.addToReportSheet.top2");
+  if (place.value === "end") return t("reports.addToReportSheet.end2");
   const p = places.value.find(o => o.value === place.value);
-  return p?.heading ? ` under “${p.label}”` : ` after ${p?.label.split(" · ")[0] ?? "it"}`;
+  return p?.heading ? t("reports.addToReportSheet.under", { label: p.label }) : t("reports.addToReportSheet.after", { value: p?.label.split(" · ")[0] ?? "it" });
 });
 const summary = computed(() => {
-  const what = newNumber.value ?? (src.value?.kind === "document" ? "The text" : "It");
-  const where = target.value === NEW ? `a new report, “${newTitle.value || "Untitled report"}”` : `“${targetTitle.value}”`;
+  const what = newNumber.value ?? (src.value?.kind === "document" ? t("reports.addToReportSheet.text2") : t("reports.addToReportSheet.it"));
+  const where = target.value === NEW ? t("reports.addToReportSheet.newReport2", { value: newTitle.value || t("reports.addToReportSheet.untitledReport") }) : `“${targetTitle.value}”`;
   const words = draft.value.filter(b => !isCell(b) && b.text.trim()).length;
-  if (slotBlock.value) return `Fills ${newNumber.value ?? "the slot"}${slotBlock.value.cell.title ? `, “${slotBlock.value.cell.title}”,` : ""} in ${where}${words && src.value?.kind !== "document" ? `, with ${words} ${words === 1 ? "paragraph" : "paragraphs"} of yours` : ""}.`;
-  return `Adds ${what}${placeLabel.value} in ${where}${words && src.value?.kind !== "document" ? `, with ${words} ${words === 1 ? "paragraph" : "paragraphs"} of yours` : ""}.`;
+  if (slotBlock.value) return t("reports.addToReportSheet.fills", { value: newNumber.value ?? t("reports.addToReportSheet.slot"), value2: slotBlock.value.cell.title ? `, “${slotBlock.value.cell.title}”,` : "", where, value3: words && src.value?.kind !== "document" ? t("reports.addToReportSheet.yours", { paragraphs: t("common.count.paragraph", { count: words }) }) : "" });
+  return t("reports.addToReportSheet.adds", { what, placeLabel: placeLabel.value, where, value: words && src.value?.kind !== "document" ? t("reports.addToReportSheet.yours", { paragraphs: t("common.count.paragraph", { count: words }) }) : "" });
 });
-const sourceLine = computed(() => (src.value ? [src.value.view, src.value.title !== src.value.view ? src.value.title : "", `snapshot ${src.value.ranOn.label}`, src.value.ranOn.commit ? src.value.ranOn.commit.slice(0, 7) : "", `analysis r${src.value.ranOn.revision}`].filter(Boolean).join(" · ") : ""));
+const sourceLine = computed(() => (src.value ? [src.value.view, src.value.title !== src.value.view ? src.value.title : "", t("reports.addToReportSheet.snapshot2", { ranOnLabel: src.value.ranOn.label }), src.value.ranOn.commit ? src.value.ranOn.commit.slice(0, 7) : "", t("reports.addToReportSheet.analysisR", { revision: src.value.ranOn.revision })].filter(Boolean).join(" · ") : ""));
 
 async function add(open: boolean) {
   if (adding.value || !src.value) return;
@@ -609,13 +610,13 @@ async function add(open: boolean) {
       if (src.value.kind === "figure") output = { figure: await reports.keepFigure(figureB64.value) };
       blocks.push({ id: newId(), kind: "cell", cell: { ...b.cell, output } });
     }
-    if (!blocks.length) { error.value = "Nothing to add."; adding.value = false; return; }
+    if (!blocks.length) { error.value = t("reports.addToReportSheet.nothingAdd"); adding.value = false; return; }
     const queued = inQueue.value;
     if (slotBlock.value && target.value !== NEW) {
       await reports.fillSlot(target.value, slotBlock.value.id, blocks);
       if (queued) { reports.importing = null; adding.value = false; await taking.advance(); return; }
     } else {
-      await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || "Untitled report");
+      await reports.insertInto(target.value === NEW ? null : target.value, target.value === NEW ? "end" : place.value, blocks, newTitle.value.trim() || t("reports.addToReportSheet.untitledReport"));
     }
     reports.importing = null;
     // Opened, the report lands on what was just added, as the sheet did.

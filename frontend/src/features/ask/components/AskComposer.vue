@@ -2,21 +2,17 @@
   <form class="ask-composer" :class="{ 'ask-composer-busy': ask.running }" @submit.prevent="submit">
     <div v-if="ask.pendingContext" class="mb-1.5 flex">
       <span class="ask-chip" :title="chipTitle">
-        <PanelTop :size="11" :stroke-width="1.75"/>
-        About {{ ask.pendingContext.label }}<template v-if="ask.pendingContext.subject"> · {{ short(ask.pendingContext.subject.name) }}</template>
-        <span v-if="ask.pendingContext.exhibits.length" class="text-neutral-400">· {{ ask.pendingContext.exhibits.length }} on screen</span>
-        <span v-if="ask.pendingContext.images?.length" class="text-neutral-400" :title="ask.model?.vision ? 'The model sees these figures' : 'This model cannot see pictures; it gets the figures as data'">· {{ ask.pendingContext.images.length }} picture{{ ask.pendingContext.images.length === 1 ? "" : "s" }}{{ ask.model?.vision ? "" : " (not seen)" }}</span>
-        <button type="button" class="ask-chip-x" aria-label="Ask without this view" title="Ask without this view" @click="ask.pendingContext = null"><X :size="11" :stroke-width="2"/></button>
+        <I18nT k="ask.askComposer.about"><template #icon><PanelTop :size="11" :stroke-width="1.75"/></template><template #pendingContextLabel>{{ ask.pendingContext.label }}</template><template #subjectName><template v-if="ask.pendingContext.subject"> · {{ short(ask.pendingContext.subject.name) }}</template></template><template #exhibitsLength><span v-if="ask.pendingContext.exhibits.length" class="text-neutral-400">{{ t('ask.askComposer.screen', { exhibitsLength: ask.pendingContext.exhibits.length }) }}</span></template><template #span><span v-if="ask.pendingContext.images?.length" class="text-neutral-400" :title="ask.model?.vision ? t('ask.askComposer.modelSeesTheseFigures') : t('ask.askComposer.modelCannotSeePictures')">{{ t('ask.askComposer.text', { pictures: t('common.count.picture', { count: ask.pendingContext.images.length }), value: ask.model?.vision ? "" : t('ask.askComposer.notSeen') }) }}</span></template><template #icon2><button type="button" class="ask-chip-x" :aria-label="t('ask.askComposer.askWithoutView')" :title="t('ask.askComposer.askWithoutView')" @click="ask.pendingContext = null"><X :size="11" :stroke-width="2"/></button></template></I18nT>
       </span>
     </div>
     <!-- The view they came from, offered: one click attaches it; a question saying "this" takes it anyway. -->
     <div v-else-if="ask.lastView" class="mb-1.5 flex">
       <span class="ask-chip ask-chip-offer">
-        <button type="button" class="inline-flex min-w-0 items-center gap-1.5" :title="`Attach what ${ask.lastView.label} shows to the next question`" @click="ask.pendingContext = ask.lastView; ask.lastView = null">
+        <button type="button" class="inline-flex min-w-0 items-center gap-1.5" :title="t('ask.askComposer.attachWhatShowsNext', { lastViewLabel: ask.lastView.label })" @click="ask.pendingContext = ask.lastView; ask.lastView = null">
           <Plus :size="11" :stroke-width="2"/>
-          <span class="truncate">Ask about {{ ask.lastView.label }}<template v-if="ask.lastView.subject"> · {{ short(ask.lastView.subject.name) }}</template></span>
+          <span class="truncate">{{ t('ask.askComposer.askAbout', { lastViewLabel: ask.lastView.label }) }}<template v-if="ask.lastView.subject"> · {{ short(ask.lastView.subject.name) }}</template></span>
         </button>
-        <button type="button" class="ask-chip-x" aria-label="Not about that view" title="Not about that view" @click="ask.lastView = null"><X :size="11" :stroke-width="2"/></button>
+        <button type="button" class="ask-chip-x" :aria-label="t('ask.askComposer.notAboutView')" :title="t('ask.askComposer.notAboutView')" @click="ask.lastView = null"><X :size="11" :stroke-width="2"/></button>
       </span>
     </div>
     <textarea
@@ -25,24 +21,24 @@
         rows="1"
         :placeholder="placeholder"
         class="block max-h-48 min-h-[24px] w-full resize-none bg-transparent text-[13.5px] leading-relaxed text-neutral-900 outline-none placeholder:text-neutral-400"
-        aria-label="Question"
+        :aria-label="t('ask.askComposer.question')"
         @keydown.enter.exact.prevent="submit"
         @keydown.esc="ask.running && ask.stop()"
         @input="grow"
     />
     <div class="mt-2 flex items-center gap-2">
       <span class="min-w-0 flex-1 truncate text-[11px] text-neutral-500">
-        <template v-if="ask.model">{{ ask.model.label }}{{ ask.model.remote ? " · cloud: leaves this machine" : " · on this machine" }}</template>
-        <template v-else-if="ask.loadingModels">Finding models…</template>
-        <template v-else>{{ ask.modelsError || "No model" }} <button type="button" class="underline decoration-neutral-300 hover:text-neutral-900" @click="runCommand('settings:open')">Settings</button></template>
-        · Enter to ask, Shift+Enter for a new line
+        <template v-if="ask.model">{{ ask.model.label }}{{ ask.model.remote ? t('ask.askComposer.cloudLeavesMachine') : t('ask.askComposer.machine') }}</template>
+        <template v-else-if="ask.loadingModels">{{ t('ask.askComposer.findingModels') }}</template>
+        <template v-else>{{ ask.modelsError || t('ask.askComposer.noModel') }} <button type="button" class="underline decoration-neutral-300 hover:text-neutral-900" @click="runCommand('settings:open')">{{ t('ask.askComposer.settings') }}</button></template>
+        {{ t('ask.askComposer.enterAskShiftEnter') }}
       </span>
       <template v-if="ask.running && busyElsewhere">
-        <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" title="The model answers one question at a time" @click="ask.runningThreadId && ask.select(ask.runningThreadId)">Answering elsewhere · show</button>
-        <button type="button" class="ui-btn ui-btn-sm" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/> Stop</button>
+        <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" :title="t('ask.askComposer.modelAnswersOneQuestion')" @click="ask.runningThreadId && ask.select(ask.runningThreadId)">{{ t('ask.askComposer.answeringElsewhereShow') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/>{{ ' ' + t('ask.askComposer.stop') }}</button>
       </template>
-      <button v-else-if="ask.running" type="button" class="ui-btn ui-btn-sm" title="Stop (Esc)" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/> Stop</button>
-      <button v-else type="submit" class="ui-btn ui-btn-primary ui-btn-sm" :disabled="!text.trim() || !ask.model"><ArrowUp :size="12" :stroke-width="2.25"/> Ask</button>
+      <button v-else-if="ask.running" type="button" class="ui-btn ui-btn-sm" :title="t('ask.askComposer.stopEsc')" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/>{{ ' ' + t('ask.askComposer.stop') }}</button>
+      <button v-else type="submit" class="ui-btn ui-btn-primary ui-btn-sm" :disabled="!text.trim() || !ask.model"><ArrowUp :size="12" :stroke-width="2.25"/>{{ ' ' + t('ask.askComposer.ask') }}</button>
     </div>
   </form>
 </template>
@@ -53,6 +49,8 @@ import { ArrowUp, PanelTop, Plus, Square, X } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
 import { runCommand } from "~/platform/commands"
 import { shortName } from "../tools/shared"
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const emit = defineEmits<{ (e: "send", q: string): void }>()
 const ask = useAskStore()
@@ -63,14 +61,14 @@ const short = shortName
 const busyElsewhere = computed(() => !!ask.runningThreadId && ask.runningThreadId !== ask.currentId)
 const placeholder = computed(() => {
   const c = ask.pendingContext
-  if (c?.subject) return `Ask about ${shortName(c.subject.name)}…`
-  if (c) return `Ask about ${c.label}…`
-  return ask.current?.turns.length ? "Ask a follow-up…" : "Ask about the architecture…"
+  if (c?.subject) return t("ask.askComposer.askAbout2", { subjectName: shortName(c.subject.name) })
+  if (c) return t("ask.askComposer.askAbout3", { label: c.label })
+  return ask.current?.turns.length ? t("ask.askComposer.askFollowUp") : t("ask.askComposer.askAboutArchitecture")
 })
 const chipTitle = computed(() => {
   const c = ask.pendingContext
   if (!c) return ""
-  return [`The next question carries what ${c.label} showed:`, ...c.exhibits.map(x => `· ${x.title}`), c.focus ? `· focus: ${c.focus}` : "", c.selection?.length ? `· ${c.selection.length} selected` : ""].filter(Boolean).join("\n")
+  return [t("ask.askComposer.nextQuestionCarriesWhat", { label: c.label }), ...c.exhibits.map(x => `· ${x.title}`), c.focus ? `· focus: ${c.focus}` : "", c.selection?.length ? t("ask.askComposer.selected", { selectionLength: c.selection.length }) : ""].filter(Boolean).join("\n")
 })
 
 function grow() {

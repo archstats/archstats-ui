@@ -15,7 +15,7 @@
                 class="mt-0.5 shrink-0 rounded p-0.5 text-neutral-500 transition-colors
                        duration-100 hover:bg-neutral-100 hover:text-neutral-900"
                 :aria-expanded="notesOpen"
-                :title="notesOpen ? 'Hide the notes and give the room to the diagram' : 'Show what is wrong at this boundary'"
+                :title="notesOpen ? t('units.relationshipView.hideNotesGiveRoom') : t('units.relationshipView.showWhatWrongBoundary')"
                 @click="notesOpen = !notesOpen">
           <Icon :icon="notesOpen ? 'chevron-down' : 'chevron-right'" :size="14"/>
         </button>
@@ -42,8 +42,8 @@
         </button>
 
         <p class="ml-auto mt-1 shrink-0 font-mono text-[11px] tabular-nums text-neutral-500">
-          {{ forwardCount.toLocaleString() }} across<template v-if="backwardCount"> ·
-            <span class="text-red-500">{{ backwardCount.toLocaleString() }} back</span></template>
+          {{ t('units.relationshipView.across', { forwardCount: forwardCount.toLocaleString(intlLocale) }) }}<template v-if="backwardCount"> ·
+            <span class="text-red-500">{{ t('units.relationshipView.back', { backwardCount: backwardCount.toLocaleString(intlLocale) }) }}</span></template>
         </p>
         <!-- The boundary's export button ends the strip that names what is wrong with it. -->
         <ExhibitButton/>
@@ -73,31 +73,30 @@
           <template v-if="notesOpen">
             <span class="flex items-center gap-1.5">
               <span class="h-2 w-5 shrink-0 rounded-sm bg-neutral-400" style="opacity:.5"/>
-              <span>{{ headLabel }} into {{ tailLabel }}</span>
+              <span>{{ t('units.relationshipView.into', { headLabel, tailLabel }) }}</span>
             </span>
             <span v-if="backwardCount" class="flex items-center gap-1.5">
               <span class="h-2 w-5 shrink-0 rounded-sm bg-red-500" style="opacity:.75"/>
-              <span>{{ tailLabel }} back into {{ headLabel }}</span>
+              <span>{{ t('units.relationshipView.back2', { tailLabel, headLabel }) }}</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="h-2 w-5 shrink-0 rounded-sm bg-accent-500" style="opacity:.85"/>
-              <span>in focus</span>
+              <span>{{ t('units.relationshipView.focus') }}</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="shrink-0 text-neutral-400"><Icon icon="info" :size="12"/></span>
-              <span>Thickness is references. A bar is red in proportion to what runs
-                the other way. Hover to trace, click to open, arrow keys to walk.</span>
+              <span>{{ t('units.relationshipView.thicknessReferencesBarRed') }}</span>
             </span>
           </template>
 
           <label v-if="flow.leftOmitted || flow.rightOmitted || named > SIZES[0]"
                  class="ml-auto flex shrink-0 items-center gap-2">
-            <span class="ui-label">Name</span>
-            <span class="ui-segmented" role="group" aria-label="Modules named">
+            <span class="ui-label">{{ t('units.relationshipView.name') }}</span>
+            <span class="ui-segmented" role="group" :aria-label="t('units.relationshipView.modulesNamed')">
               <button v-for="n in SIZES" :key="n" type="button"
                       :aria-pressed="named === n" @click="named = n">{{ n }}</button>
             </span>
-            <span>a side</span>
+            <span>{{ t('units.relationshipView.side') }}</span>
           </label>
         </div>
       </footer>
@@ -114,6 +113,7 @@ import BoundaryFlow from "./BoundaryFlow.vue"
 import { layoutBoundary } from "~/features/units/boundaryFlow"
 import type { LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { Anomaly, Relationship } from "~/features/units/relationship"
+import { t, intlLocale } from "~/shared/i18n"
 
 const SIZES = [12, 24, 48] as const
 
@@ -145,8 +145,8 @@ const warnCount = computed(() =>
   props.relationship.anomalies.filter((a) => a.tone === "warn").length)
 const summary = computed(() => {
   const n = warnCount.value
-  if (!n) return "Nothing wrong at this boundary"
-  return n === 1 ? "1 problem here" : `${n} problems here`
+  if (!n) return t("units.relationshipView.nothingWrongBoundary")
+  return n === 1 ? t("units.relationshipView.text1ProblemHere") : t("units.relationshipView.problemsHere", { n })
 })
 
 // The drawing fills the room it is given rather than sitting at its own

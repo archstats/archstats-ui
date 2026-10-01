@@ -1,11 +1,11 @@
 <template>
   <div v-if="state !== 'hidden'" class="mt-6">
-    <h4 class="ui-label">Used from outside</h4>
-    <p v-if="state === 'unrecorded'" class="mt-1.5 text-sm text-neutral-500">Unit references are not recorded for this language in this snapshot.</p>
+    <h4 class="ui-label">{{ t('metrics.usedSurface.usedOutside') }}</h4>
+    <p v-if="state === 'unrecorded'" class="mt-1.5 text-sm text-neutral-500">{{ t('metrics.usedSurface.unitReferencesNotRecorded') }}</p>
     <template v-else>
-      <p class="mt-1.5 text-base text-neutral-700">{{ rows.length.toLocaleString("en-US") }} of {{ total.toLocaleString("en-US") }} units are used from outside.</p>
+      <p class="mt-1.5 text-base text-neutral-700">{{ t('metrics.usedSurface.unitsUsedOutside', { value: rows.length.toLocaleString(intlLocale), value2: total.toLocaleString(intlLocale) }) }}</p>
       <table v-if="rows.length" class="ui-table mt-2">
-        <thead><tr><th>Unit</th><th class="w-24">Kind</th><th class="w-[110px] text-right">Components</th><th class="w-[90px] text-right">Units</th></tr></thead>
+        <thead><tr><th>{{ t('metrics.usedSurface.unit') }}</th><th class="w-24">{{ t('metrics.usedSurface.kind') }}</th><th class="w-[110px] text-right">{{ t('metrics.usedSurface.components') }}</th><th class="w-[90px] text-right">{{ t('metrics.usedSurface.units') }}</th></tr></thead>
         <tbody>
           <template v-for="r in rows.slice(0, shown)" :key="r.id">
             <tr class="is-clickable" @click="toggle(r.id)">
@@ -16,11 +16,11 @@
             </tr>
             <tr v-if="open === r.id">
               <td colspan="4" class="!py-2">
-                <p v-if="!callers.length" class="text-sm text-neutral-500">Reading callers…</p>
+                <p v-if="!callers.length" class="text-sm text-neutral-500">{{ t('metrics.usedSurface.readingCallers') }}</p>
                 <ul v-else class="flex flex-col gap-1.5">
                   <li v-for="c in callers" :key="c.component">
                     <router-link :to="componentPath(c.component)" class="font-mono text-sm text-neutral-800 hover:underline">{{ c.component }}</router-link>
-                    <span class="ml-2 font-mono text-xs text-neutral-500">{{ c.units.slice(0, 6).map(u => u.split(".").pop()).join(", ") }}{{ c.units.length > 6 ? ` and ${c.units.length - 6} more` : "" }}</span>
+                    <span class="ml-2 font-mono text-xs text-neutral-500">{{ c.units.slice(0, 6).map(u => u.split(".").pop()).join(", ") }}{{ c.units.length > 6 ? t('metrics.usedSurface.more', { value: c.units.length - 6 }) : "" }}</span>
                   </li>
                 </ul>
               </td>
@@ -28,8 +28,8 @@
           </template>
         </tbody>
       </table>
-      <button v-if="rows.length > shown" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mt-2" @click="shown += 50">Show {{ Math.min(50, rows.length - shown) }} more</button>
-      <p class="mt-2 text-sm text-neutral-500">{{ (total - rows.length).toLocaleString("en-US") }} units are used only inside.</p>
+      <button v-if="rows.length > shown" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mt-2" @click="shown += 50">{{ t('metrics.usedSurface.showMore', { min: Math.min(50, rows.length - shown) }) }}</button>
+      <p class="mt-2 text-sm text-neutral-500">{{ t('metrics.usedSurface.unitsUsedOnlyInside', { value: (total - rows.length).toLocaleString(intlLocale) }) }}</p>
     </template>
   </div>
 </template>
@@ -40,6 +40,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { componentPath } from "~/features/navigation/routes";
 import { sqlLiteral } from "~/shared/sql";
+import { t, intlLocale } from "~/shared/i18n";
 
 // How much of a component the rest of the code actually reaches: the units
 // (types, functions) referenced from other components, and who reaches them.

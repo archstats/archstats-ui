@@ -1,19 +1,19 @@
 <template>
   <section v-if="data.hasData" class="ui-panel mt-8 overflow-hidden" aria-labelledby="extremes-title">
     <div class="flex items-baseline gap-3 px-4 pb-2 pt-3 hairline-b">
-      <h2 id="extremes-title" class="ui-panel-title">Extremes in this snapshot</h2>
-      <span class="text-sm text-neutral-500">Sorted evidence, one sort per row. Where to look first; what it means is yours to judge.</span>
+      <h2 id="extremes-title" class="ui-panel-title">{{ t('overview.extremes.extremesSnapshot') }}</h2>
+      <span class="text-sm text-neutral-500">{{ t('overview.extremes.sortedEvidenceOneSort') }}</span>
       <span v-if="scope.isActive" class="ml-auto text-sm text-neutral-500">{{ scopeNote }}</span>
     </div>
     <ul>
       <li v-for="row in rows" :key="row.id" class="flex flex-col gap-1.5 px-4 py-3 hairline-b last:border-0 md:flex-row md:items-baseline md:gap-6">
         <div class="md:w-[300px] md:shrink-0">
           <p class="text-sm font-medium text-neutral-900">
-            <template v-if="row.id === 'ca'">Most depended on among components with I &gt;
-              <input v-model.number="caThreshold" type="number" min="0" max="1" step="0.05" class="ui-input ui-input-sm inline-block w-16 px-1 py-0 font-mono" aria-label="Instability threshold">
+            <template v-if="row.id === 'ca'">{{ t('overview.extremes.mostDependedAmongComponents') }}
+              <input v-model.number="caThreshold" type="number" min="0" max="1" step="0.05" class="ui-input ui-input-sm inline-block w-16 px-1 py-0 font-mono" :aria-label="t('overview.extremes.instabilityThreshold')">
             </template>
-            <template v-else-if="row.id === 'knowledge'">Fewest authors covering 80% of lines, among components with ≥
-              <input v-model.number="knowledgeFloor" type="number" min="0" step="500" class="ui-input ui-input-sm inline-block w-20 px-1 py-0 font-mono" aria-label="Lines added floor"> lines added
+            <template v-else-if="row.id === 'knowledge'">{{ t('overview.extremes.fewestAuthorsCovering80') }}
+              <input v-model.number="knowledgeFloor" type="number" min="0" step="500" class="ui-input ui-input-sm inline-block w-20 px-1 py-0 font-mono" :aria-label="t('overview.extremes.linesAddedFloor')">{{ ' ' + t('overview.extremes.linesAdded') }}
             </template>
             <template v-else>{{ row.title }}</template>
           </p>
@@ -25,7 +25,7 @@
             <router-link v-for="e in row.evidence" :key="e.to" :to="e.to" class="ui-chip max-w-[320px] truncate font-mono" :title="e.title">{{ e.label }}</router-link>
           </div>
         </div>
-        <router-link v-if="row.open" :to="row.open.to" class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900">Open in {{ row.open.label }} →</router-link>
+        <router-link v-if="row.open" :to="row.open.to" class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900">{{ t('overview.extremes.open', { openLabel: row.open.label }) }}</router-link>
       </li>
     </ul>
   </section>
@@ -42,6 +42,7 @@ import { looksLikeProductionCode } from "~/features/snapshot/fileRole";
 import { componentPath, filePath } from "~/features/navigation/routes";
 import { scopeLabel } from "~/features/groups/scopeSql";
 import { metricsPath } from "~/features/metrics/link";
+import { t, intlLocale } from "~/shared/i18n";
 
 const DEPENDENTS = "modularity__coupling__dependents";
 
@@ -52,8 +53,8 @@ const DEPENDENTS = "modularity__coupling__dependents";
 const data = useDataStore();
 const scope = useScopeStore();
 const caThreshold = ref(0.5);
-const scopeNote = computed(() => `Within ${scopeLabel()}`);
-const fmt = (n: number, d = 0) => n.toLocaleString("en-US", { maximumFractionDigits: d });
+const scopeNote = computed(() => t("overview.extremes.within", { scopeLabel: scopeLabel() }));
+const fmt = (n: number, d = 0) => n.toLocaleString(intlLocale, { maximumFractionDigits: d });
 
 interface Row { id: string; title: string; filter: string; sentence: string; evidence: Array<{ label: string; to: string; title: string }>; open?: { label: string; to: string } }
 
@@ -94,21 +95,21 @@ const rows = computed<Row[]>(() => {
   const prod = hotFiles.value.filter(f => (recorded ? (f.role ?? "production") === "production" : looksLikeProductionCode(f.name)) && scope.fileInScope(f.name, f.component)).slice(0, 3);
   out.push({
     id: "hotspot",
-    title: "Highest hotspot · production files",
-    filter: recorded ? "Tests, generated, third-party and non-code files left out" : "Tests, stylesheets, data and vendored libraries left out by path convention; scan again for recorded roles",
-    sentence: prod.length ? `${prod[0].name.split("/").pop()} scores ${fmt(prod[0].hotspot)} of 100: it changes most, weighted by its size.` : "No production file has a hotspot score here.",
-    evidence: prod.map(f => ({ label: f.name.split("/").pop() ?? f.name, to: filePath(f.name), title: `${f.name} · hotspot ${fmt(f.hotspot)}` })),
-    open: { label: "Hotspots", to: "/views/components/hotspots" },
+    title: t("overview.extremes.highestHotspotProductionFiles"),
+    filter: recorded ? t("overview.extremes.testsGeneratedThirdParty") : t("overview.extremes.testsStylesheetsDataVendored"),
+    sentence: prod.length ? t("overview.extremes.scores100ChangesMost", { pop: prod[0].name.split("/").pop(), hotspot: fmt(prod[0].hotspot) }) : t("overview.extremes.noProductionFileHas"),
+    evidence: prod.map(f => ({ label: f.name.split("/").pop() ?? f.name, to: filePath(f.name), title: t("overview.extremes.hotspot", { name: f.name, hotspot: fmt(f.hotspot) }) })),
+    open: { label: t("overview.extremes.hotspots"), to: "/views/components/hotspots" },
   });
 
-  const t = tangles.value.map(x => ({ ...x, list: String(x.members).split("\n") })).filter(x => x.list.some(m => scope.componentInScope(m)));
+  const item = tangles.value.map(x => ({ ...x, list: String(x.members).split("\n") })).filter(x => x.list.some(m => scope.componentInScope(m)));
   out.push({
     id: "tangle",
-    title: "Largest tangle",
-    filter: "Components that can each reach every other by imports",
-    sentence: t.length ? `${fmt(t[0].size)} components form one tangle${t.length > 1 ? `; ${fmt(t.length - 1)} smaller tangle${t.length === 2 ? "" : "s"} besides` : ""}.` : "No tangle: every dependency runs one way.",
-    evidence: t.length ? t[0].list.slice(0, 3).map(m => ({ label: m, to: componentPath(m, "cycles"), title: m })) : [],
-    open: { label: "Cycles", to: "/views/components/cycles" },
+    title: t("overview.extremes.largestTangle"),
+    filter: t("overview.extremes.componentsCanEachReach"),
+    sentence: item.length ? t("overview.extremes.componentsFormOneTangle", { size: fmt(item[0].size), value: item.length > 1 ? t("overview.extremes.smallerTangleBesides", { value: fmt(item.length - 1), value2: item.length === 2 ? "" : "s" }) : "" }) : t("overview.extremes.noTangleEveryDependency"),
+    evidence: item.length ? item[0].list.slice(0, 3).map(m => ({ label: m, to: componentPath(m, "cycles"), title: m })) : [],
+    open: { label: t("overview.extremes.cycles"), to: "/views/components/cycles" },
   });
 
   // Afferent coupling counts the files that import a component, not the
@@ -121,27 +122,27 @@ const rows = computed<Row[]>(() => {
     .sort((a, b) => Number(b[ca]) - Number(a[ca]))
     .slice(0, 3);
   const usedBy = (c: any) => byComponents
-    ? `is used by ${fmt(Number(c[ca]))} other component${Number(c[ca]) === 1 ? "" : "s"}`
-    : `is imported from ${fmt(Number(c[ca]))} file${Number(c[ca]) === 1 ? "" : "s"}`;
+    ? t("overview.extremes.usedOther", { value: fmt(Number(c[ca])), components: t("common.noun.component", { count: Number(c[ca]) }) })
+    : t("overview.extremes.imported", { files: t("common.count.file", { count: Number(c[ca]) }) });
   out.push({
     id: "ca",
     title: "",
-    filter: byComponents ? "Depended on by the most components while depending more than it is depended on" : "Imported from the most files while depending more than it is depended on",
-    sentence: unstable.length ? `${unstable[0].name} ${usedBy(unstable[0])} at instability ${Number(unstable[0].modularity__instability).toFixed(2)}.` : `No component above instability ${caThreshold.value} is depended on.`,
-    evidence: unstable.map(c => ({ label: c.name, to: componentPath(c.name), title: `${byComponents ? "Dependents" : "Ca"} ${c[ca]} · I ${Number(c.modularity__instability).toFixed(2)}` })),
+    filter: byComponents ? t("overview.extremes.dependedMostComponentsWhile") : t("overview.extremes.importedMostFilesWhile"),
+    sentence: unstable.length ? t("overview.extremes.instability", { name: unstable[0].name, value: usedBy(unstable[0]), value2: Number(unstable[0].modularity__instability).toFixed(2) }) : t("overview.extremes.noComponentAboveInstability", { caThreshold: caThreshold.value }),
+    evidence: unstable.map(c => ({ label: c.name, to: componentPath(c.name), title: `${byComponents ? t("overview.extremes.dependents") : t("overview.extremes.ca")} ${c[ca]} · I ${Number(c.modularity__instability).toFixed(2)}` })),
     // The same question, asked in Strips: instability brushed above the
     // threshold, ranked by what depends on it, these three picked out.
-    open: { label: "Metrics", to: metricsPath({ view: "strips", sort: ca, brushes: { modularity__instability: [caThreshold.value, 1] }, selected: unstable.map(c => c.name) }) },
+    open: { label: t("overview.extremes.metrics"), to: metricsPath({ view: "strips", sort: ca, brushes: { modularity__instability: [caThreshold.value, 1] }, selected: unstable.map(c => c.name) }) },
   });
 
   const rc = ruleCounts.value.filter(r => scope.componentInScope(r.component)).slice(0, 3);
   out.push({
     id: "rules",
-    title: "Most rule findings",
-    filter: "Imports a module rule forbids, by the component they start in",
-    sentence: !data.hasView("rules") ? "Rules were not checked in this snapshot." : rc.length ? `${rc[0].component} starts ${fmt(rc[0].n)} forbidden import${rc[0].n === 1 ? "" : "s"}.` : "No module rule is broken.",
-    evidence: rc.map(r => ({ label: r.component, to: componentPath(r.component), title: `${r.n} findings` })),
-    open: { label: "Rules", to: "/views/rules" },
+    title: t("overview.extremes.mostRuleFindings"),
+    filter: t("overview.extremes.importsModuleRuleForbids"),
+    sentence: !data.hasView("rules") ? t("overview.extremes.rulesWereNotChecked") : rc.length ? t("overview.extremes.startsForbidden", { component: rc[0].component, n: fmt(rc[0].n), imports: t("common.noun.import", { count: rc[0].n }) }) : t("overview.extremes.noModuleRuleBroken"),
+    evidence: rc.map(r => ({ label: r.component, to: componentPath(r.component), title: t("overview.extremes.findings", { n: r.n }) })),
+    open: { label: t("overview.extremes.rules"), to: "/views/rules" },
   });
 
   // Mostly production code: a vendored library committed by one person is concentrated by construction.
@@ -157,12 +158,12 @@ const rows = computed<Row[]>(() => {
   out.push({
     id: "knowledge",
     title: "",
-    filter: recorded ? "Mostly production files · lines added, not blame · bots hidden · aliases merged" : "Mostly production files by path convention · lines added, not blame · bots hidden · aliases merged",
-    sentence: !data.hasView("git_commits") ? "No git history in this snapshot." : k.length
-      ? `${k[0].component}: ${Number(k[0].cover80) === 1 ? `one author, ${authors.display(k[0].main)},` : `${fmt(Number(k[0].cover80))} of ${fmt(Number(k[0].authors))} authors`} added 80% of its ${fmt(Number(k[0].added))} lines.`
-      : `No component has ${fmt(knowledgeFloor.value)} lines added.`,
-    evidence: k.map(r => ({ label: r.component, to: componentPath(r.component), title: `${r.cover80} of ${r.authors} authors cover 80% of ${fmt(Number(r.added))} lines` })),
-    open: { label: "Authors", to: "/views/git/authors?grain=components" },
+    filter: recorded ? t("overview.extremes.mostlyProductionFilesLines") : t("overview.extremes.mostlyProductionFilesPath"),
+    sentence: !data.hasView("git_commits") ? t("overview.extremes.noGitHistorySnapshot") : k.length
+      ? t("overview.extremes.added80Lines", { component: k[0].component, value: Number(k[0].cover80) === 1 ? t("overview.extremes.oneAuthor", { main: authors.display(k[0].main) }) : t("overview.extremes.authors", { cover80: fmt(Number(k[0].cover80)), authors: fmt(Number(k[0].authors)) }), added: fmt(Number(k[0].added)) })
+      : t("overview.extremes.noComponentHasLines", { knowledgeFloor: fmt(knowledgeFloor.value) }),
+    evidence: k.map(r => ({ label: r.component, to: componentPath(r.component), title: t("overview.extremes.authorsCover80Lines", { cover80: r.cover80, authors: r.authors, added: fmt(Number(r.added)) }) })),
+    open: { label: t("overview.extremes.authors2"), to: "/views/git/authors?grain=components" },
   });
   return out;
 });

@@ -5,7 +5,7 @@
        tie a picked name's files together. A click on a file or a row puts it
        in the tray; a folder narrows the list to what sits under it. -->
   <div class="flex min-h-0 min-w-0 flex-1">
-    <section class="flex min-w-0 flex-1 flex-col" :aria-label="mode === 'reach' ? 'What the entry points reach' : 'Names written twice'">
+    <section class="flex min-w-0 flex-1 flex-col" :aria-label="mode === 'reach' ? t('units.evidenceMap.whatEntryPointsReach') : t('units.evidenceMap.namesWrittenTwice')">
       <ExhibitFrame header="custom" fill>
         <div class="flex h-9 shrink-0 items-center gap-1 px-3 hairline-b">
           <template v-if="mode === 'reach'">
@@ -21,12 +21,12 @@
             </button>
           </template>
           <template v-else>
-            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_NAME }"/>Declares a name another file declares</span>
-            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_FILE }"/>Shares its file name</span>
+            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_NAME }"/>{{ t('units.evidenceMap.declaresNameAnotherFile') }}</span>
+            <span class="flex items-center gap-1.5 px-2 text-xs text-neutral-600"><span class="h-2 w-2 rounded-sm" :style="{ background: DUP_FILE }"/>{{ t('units.evidenceMap.sharesFileName') }}</span>
           </template>
           <span v-if="folder" class="ml-auto flex min-w-0 items-center gap-1.5 text-xs text-neutral-600">
             <span class="min-w-0 truncate font-mono" :title="folder">{{ folder }}</span>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Show every folder" @click="folder = null"><Icon icon="x" :size="12"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('units.evidenceMap.showEveryFolder')" @click="folder = null"><Icon icon="x" :size="12"/></button>
           </span>
           <!-- The strip is the map's header: its export button ends it. -->
           <ExhibitButton :class="folder ? 'ml-1' : 'ml-auto'"/>
@@ -35,34 +35,33 @@
           <FolderMap
             :files="files" :lines="lines" :paint="paint" :highlight="highlight" :selected="folder" :echo="mode === 'dupes' ? picked?.files ?? null : null"
             :describe="describe" :links-of="linksOf"
-            :figure="mode === 'reach' ? 'What the entry points reach' : 'What is written twice'" :legend="mapLegend" :legend-in-ui="false"
-            :aria-label="mode === 'reach' ? 'Production files by folder, coloured by whether an entry point reaches them' : 'Production files by folder, marking names declared in more than one file'"
+            :figure="mode === 'reach' ? t('units.evidenceMap.whatEntryPointsReach') : t('units.evidenceMap.whatWrittenTwice')" :legend="mapLegend" :legend-in-ui="false"
+            :aria-label="mode === 'reach' ? t('units.evidenceMap.productionFilesFolderColoured') : t('units.evidenceMap.productionFilesFolderMarking')"
             @select="onMapSelect" @open="f => emit('open', f)"
           />
         </div>
       </ExhibitFrame>
     </section>
 
-    <aside class="flex w-[360px] shrink-0 flex-col gap-4 overflow-y-auto bg-ground p-4 hairline-l min-[1500px]:w-[420px]" aria-label="The files it names">
+    <aside class="flex w-[360px] shrink-0 flex-col gap-4 overflow-y-auto bg-ground p-4 hairline-l min-[1500px]:w-[420px]" :aria-label="t('units.evidenceMap.filesNames')">
       <template v-if="mode === 'reach'">
-        <FileGroups title="Reached by nothing" :files="under(reach.unreachable)" :lines="lines" :tray="traySet" @toggle="f => emit('toggle', f)" @take="fs => emit('tray', fs)" @open="f => emit('open', f)" @hover="hover = $event"/>
-        <FileGroups title="Reached only by tests" :files="under(reach.testOnly)" :lines="lines" :tray="traySet" @toggle="f => emit('toggle', f)" @take="fs => emit('tray', fs)" @open="f => emit('open', f)" @hover="hover = $event"/>
+        <FileGroups :title="t('units.evidenceMap.reachedNothing')" :files="under(reach.unreachable)" :lines="lines" :tray="traySet" @toggle="f => emit('toggle', f)" @take="fs => emit('tray', fs)" @open="f => emit('open', f)" @hover="hover = $event"/>
+        <FileGroups :title="t('units.evidenceMap.reachedOnlyTests')" :files="under(reach.testOnly)" :lines="lines" :tray="traySet" @toggle="f => emit('toggle', f)" @take="fs => emit('tray', fs)" @open="f => emit('open', f)" @hover="hover = $event"/>
         <details class="group">
           <summary class="flex h-7 cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900">
-            <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform group-open:rotate-90"/>
-            Entry points <span class="font-mono text-xs text-neutral-500">{{ fmt(reach.roots.size) }}</span>
+            <I18nT k="units.evidenceMap.entryPoints"><template #icon><Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform group-open:rotate-90"/></template><template #rootsSize><span class="font-mono text-xs text-neutral-500">{{ fmt(reach.roots.size) }}</span></template></I18nT>
           </summary>
           <ul class="mt-1 flex flex-col gap-1 text-sm text-neutral-700">
             <li v-for="r in reach.byRule" :key="r.rule.id" class="flex gap-3"><span class="w-10 shrink-0 text-right font-mono text-xs text-neutral-500">{{ fmt(r.files) }}</span><span>{{ r.rule.label }}</span></li>
-            <li v-if="!reach.byRule.length" class="text-neutral-500">None found. Add the files your framework calls below.</li>
+            <li v-if="!reach.byRule.length" class="text-neutral-500">{{ t('units.evidenceMap.noneFoundAddFiles') }}</li>
           </ul>
-          <label class="ui-label mt-3 block" for="extra-roots">More entry points, one glob per line</label>
+          <label class="ui-label mt-3 block" for="extra-roots">{{ t('units.evidenceMap.moreEntryPointsOne') }}</label>
           <textarea id="extra-roots" v-model="rootsDraft" rows="3" class="ui-input mt-1 h-auto min-h-[64px] w-full py-1.5 font-mono text-xs" placeholder="src/workers/**&#10;**/*.stories.ts" spellcheck="false" @blur="emit('roots', rootsDraft.trim())"/>
         </details>
       </template>
       <template v-else>
-        <DupList title="Declared in several files" :items="scope(dupNames)" :picked="picked" @pick="pick" @take="fs => emit('tray', fs)" @open="f => emit('open', f)"/>
-        <DupList title="Same file name, several folders" :items="scope(dupFiles)" :picked="picked" @pick="pick" @take="fs => emit('tray', fs)" @open="f => emit('open', f)"/>
+        <DupList :title="t('units.evidenceMap.declaredSeveralFiles')" :items="scope(dupNames)" :picked="picked" @pick="pick" @take="fs => emit('tray', fs)" @open="f => emit('open', f)"/>
+        <DupList :title="t('units.evidenceMap.sameFileNameSeveral')" :items="scope(dupFiles)" :picked="picked" @pick="pick" @take="fs => emit('tray', fs)" @open="f => emit('open', f)"/>
       </template>
     </aside>
   </div>
@@ -77,6 +76,8 @@ import Icon from "~/shared/ui/Icon.vue"
 import FolderMap from "~/features/checks/components/FolderMap.vue"
 import { filesUnder } from "~/features/checks/folderTree"
 import type { Duplicate, Reachability } from "~/features/checks/checks"
+import { t, intlLocale } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const props = defineProps<{
   mode: "reach" | "dupes"
@@ -101,7 +102,7 @@ const emit = defineEmits<{
   (e: "roots", globs: string): void
 }>()
 
-const fmt = (n: number) => n.toLocaleString("en-US")
+const fmt = (n: number) => n.toLocaleString(intlLocale)
 const dirOf = (f: string) => (f.includes("/") ? f.slice(0, f.lastIndexOf("/")) : ".")
 const baseOf = (f: string) => f.slice(f.lastIndexOf("/") + 1)
 const traySet = computed(() => new Set(props.tray))
@@ -120,13 +121,13 @@ watch(() => props.roots, r => { rootsDraft.value = r })
 // ── Reach ──
 type State = "root" | "reached" | "tests" | "none"
 const STATES: Array<{ id: State; label: string; title: string; color: string }> = [
-  { id: "root", label: "Entry point", title: "Called by a framework or a program's main, without an import", color: "rgb(var(--c-blue-500))" },
-  { id: "reached", label: "Reached", title: "Imported, directly or not, from an entry point", color: "rgb(var(--c-neutral-300))" },
-  { id: "tests", label: "Only tests", title: "Only tests import it: kept alive by its tests", color: "rgb(var(--c-amber-400))" },
-  { id: "none", label: "Reached by nothing", title: "No entry point and no test reaches it", color: "rgb(var(--c-red-500))" },
+  { id: "root", label: t("units.evidenceMap.entryPoint"), title: t("units.evidenceMap.calledFrameworkProgramS"), color: "rgb(var(--c-blue-500))" },
+  { id: "reached", label: t("units.evidenceMap.reached"), title: t("units.evidenceMap.importedDirectlyNotEntry"), color: "rgb(var(--c-neutral-300))" },
+  { id: "tests", label: t("units.evidenceMap.onlyTests"), title: t("units.evidenceMap.onlyTestsImportKept"), color: "rgb(var(--c-amber-400))" },
+  { id: "none", label: t("units.evidenceMap.reachedNothing"), title: t("units.evidenceMap.noEntryPointNo"), color: "rgb(var(--c-red-500))" },
 ]
 const COLOR = Object.fromEntries(STATES.map(x => [x.id, x.color])) as Record<State, string>
-const WORDS: Record<State, string> = { root: "an entry point", reached: "reached from an entry point", tests: "reached only by tests", none: "reached by nothing" }
+const WORDS: Record<State, string> = { root: t("units.evidenceMap.entryPoint2"), reached: t("units.evidenceMap.reachedEntryPoint"), tests: t("units.evidenceMap.reachedOnlyTests2"), none: t("units.evidenceMap.reachedNothing2") }
 const unreached = computed(() => new Set(props.reach.unreachable))
 const testOnly = computed(() => new Set(props.reach.testOnly))
 const stateOf = (f: string): State => (props.reach.roots.has(f) ? "root" : unreached.value.has(f) ? "none" : testOnly.value.has(f) ? "tests" : "reached")
@@ -143,7 +144,7 @@ const DUP_FILE = "rgb(var(--c-violet-200))"
 // The strip above the map keys it on screen; exports carry the same key as the figure's legend.
 const mapLegend = computed<FigureLegend>(() => props.mode === "reach"
   ? { items: STATES.map(st => ({ label: st.label, color: st.color, count: counts.value[st.id], title: st.title })) }
-  : { items: [{ label: "Declares a name another file declares", color: DUP_NAME }, { label: "Shares its file name", color: DUP_FILE }] })
+  : { items: [{ label: t("units.evidenceMap.declaresNameAnotherFile"), color: DUP_NAME }, { label: t("units.evidenceMap.sharesFileName"), color: DUP_FILE }] })
 const nameFiles = computed(() => new Set(props.dupNames.flatMap(d => d.files)))
 const fileFiles = computed(() => new Set(props.dupFiles.flatMap(d => d.files)))
 const namesByFile = computed(() => {
@@ -163,8 +164,8 @@ const paint = (f: string) => (props.mode === "reach"
 const describe = (f: string) => {
   if (props.mode === "reach") return WORDS[stateOf(f)]
   const ns = namesByFile.value.get(f)
-  if (ns?.length) return `declares ${ns.slice(0, 3).join(", ")}${ns.length > 3 ? ` +${ns.length - 3}` : ""} elsewhere too`
-  return fileFiles.value.has(f) ? "its file name is used in another folder" : "nothing repeated"
+  if (ns?.length) return t("units.evidenceMap.declaresElsewhereToo", { value: ns.slice(0, 3).join(", "), value2: ns.length > 3 ? ` +${ns.length - 3}` : "" })
+  return fileFiles.value.has(f) ? t("units.evidenceMap.fileNameUsedAnother") : t("units.evidenceMap.nothingRepeated")
 }
 const highlight = computed<Set<string> | null>(() => {
   if (hover.value) return new Set([hover.value])
@@ -193,7 +194,7 @@ const FileGroups = defineComponent({
       h("div", { class: "flex h-7 items-center gap-2" }, [
         h("h3", { class: "ui-section-title" }, p.title),
         h("span", { class: "font-mono text-xs text-neutral-500" }, fmt(p.files.length)),
-        p.files.length ? h("button", { type: "button", class: "ml-auto text-xs text-neutral-500 hover:text-neutral-900", onClick: () => out("take", p.files) }, "Select all") : null,
+        p.files.length ? h("button", { type: "button", class: "ml-auto text-xs text-neutral-500 hover:text-neutral-900", onClick: () => out("take", p.files) }, t("units.evidenceMap.selectAll")) : null,
       ]),
       !p.files.length ? h("p", { class: "text-sm text-neutral-500" }, "None.") : null,
       ...byDir.value.slice(0, limit.value).map(([d, fs]) => h("div", { key: d, class: "mt-1.5" }, [
@@ -201,7 +202,7 @@ const FileGroups = defineComponent({
         h("ul", {}, fs.map(f => h("li", {
           key: f,
           class: ["flex h-7 cursor-default items-center gap-2 rounded px-2", p.tray.has(f) ? "bg-accent-50" : "hover:bg-neutral-200/60"],
-          title: `${f} · double-click to open`,
+          title: t("units.evidenceMap.doubleClickOpen", { f }),
           onClick: () => out("toggle", f), onDblclick: () => out("open", f),
           onMouseenter: () => out("hover", f), onMouseleave: () => out("hover", null),
         }, [
@@ -209,7 +210,7 @@ const FileGroups = defineComponent({
           h("span", { class: "ml-auto shrink-0 font-mono text-[11px] text-neutral-500" }, fmt(p.lines.get(f) ?? 0)),
         ]))),
       ])),
-      byDir.value.length > limit.value ? h("button", { type: "button", class: "ui-btn ui-btn-sm ui-btn-quiet mt-1 self-start", onClick: () => { limit.value += 20 } }, `Show more folders · ${fmt(byDir.value.length - limit.value)} left`) : null,
+      byDir.value.length > limit.value ? h("button", { type: "button", class: "ui-btn ui-btn-sm ui-btn-quiet mt-1 self-start", onClick: () => { limit.value += 20 } }, t("units.evidenceMap.showMoreFoldersLeft", { value: fmt(byDir.value.length - limit.value) })) : null,
     ])
   },
 })
@@ -232,15 +233,15 @@ const DupList = defineComponent({
         return h("li", { key: d.name + d.files[0] }, [
           h("button", { type: "button", class: ["flex h-7 w-full items-center gap-2 rounded px-2 text-left", on ? "bg-accent-50" : "hover:bg-neutral-200/60"], "aria-expanded": on, onClick: () => out("pick", d) }, [
             h("span", { class: "min-w-0 truncate font-mono text-xs text-neutral-900" }, d.name),
-            h("span", { class: "ml-auto shrink-0 font-mono text-[11px] text-neutral-500" }, `${d.files.length} files`),
+            h("span", { class: "ml-auto shrink-0 font-mono text-[11px] text-neutral-500" }, t("units.evidenceMap.files", { filesLength: d.files.length })),
           ]),
           on ? h("div", { class: "mb-2 ml-2 flex flex-col border-l border-violet-300 pl-2" }, [
-            ...d.files.map(f => h("button", { type: "button", key: f, class: "truncate py-0.5 text-left font-mono text-[11px] text-neutral-700 hover:text-neutral-900 hover:underline", title: `${f} · double-click to open`, onDblclick: () => out("open", f) }, f)),
-            h("button", { type: "button", class: "ui-btn ui-btn-sm mt-1 self-start", onClick: () => out("take", d.files) }, "Select these files"),
+            ...d.files.map(f => h("button", { type: "button", key: f, class: "truncate py-0.5 text-left font-mono text-[11px] text-neutral-700 hover:text-neutral-900 hover:underline", title: t("units.evidenceMap.doubleClickOpen", { f }), onDblclick: () => out("open", f) }, f)),
+            h("button", { type: "button", class: "ui-btn ui-btn-sm mt-1 self-start", onClick: () => out("take", d.files) }, t("units.evidenceMap.selectTheseFiles")),
           ]) : null,
         ])
       })),
-      p.items.length > limit.value ? h("button", { type: "button", class: "ui-btn ui-btn-sm ui-btn-quiet mt-1 self-start", onClick: () => { limit.value += 50 } }, `Show more · ${fmt(p.items.length - limit.value)} left`) : null,
+      p.items.length > limit.value ? h("button", { type: "button", class: "ui-btn ui-btn-sm ui-btn-quiet mt-1 self-start", onClick: () => { limit.value += 50 } }, t("units.evidenceMap.showMoreLeft", { value: fmt(p.items.length - limit.value) })) : null,
     ])
   },
 })

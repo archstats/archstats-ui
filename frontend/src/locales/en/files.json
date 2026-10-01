@@ -1,0 +1,32 @@
+{
+  "fileCodeViewer": {
+    "lines": "{codeLinesLength} lines",
+    "copied": "Copied",
+    "copy": "Copy",
+    "noSourceStored": "No source stored",
+    "snapshotDoesNotInclude": "This snapshot does not include the file contents.",
+    "vueHtmlXml": "vue / html / xml",
+    "bashShell": "bash / shell",
+    "diffPatch": "diff / patch",
+    "iniToml": "ini / toml"
+  },
+  "openInEditor": {
+    "open": "Open {basename}{value} in {editorLabel}",
+    "line": " at line {line}",
+    "openEditor": "Open {file}{value} in an editor",
+    "didnTOpenChoose": "Didn't open? Choose another editor.",
+    "openFiles": "Open files in",
+    "revealFinder": "Reveal in Finder",
+    "showFolder": "Show in folder",
+    "visualStudioCode": "Visual Studio Code",
+    "cursor": "Cursor",
+    "jetbrainsIde": "JetBrains IDE",
+    "defaultAppNoLine": "Default app (no line)",
+    "editor": "an editor",
+    "notDiskAnyMore": "Not on disk any more.",
+    "pathOutsideWorkspaceFolder": "That path is outside the workspace folder.",
+    "changedSinceSnapshotLine": "Changed since this snapshot; the line may have moved.",
+    "couldNotOpen": "Could not open: {value}",
+    "couldNotReveal": "Could not reveal: {value}"
+  }
+}

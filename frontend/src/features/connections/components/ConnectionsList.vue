@@ -1,7 +1,7 @@
 <template>
   <!-- A table that fills its pane: a strip names it and ends in its export button. -->
   <ExhibitFrame :exhibit="listTable" fill header-class="h-9 shrink-0 px-3 hairline-b">
-    <template #aside>{{ rows.length.toLocaleString("en-US") }} {{ rows.length === 1 ? "pair" : "pairs" }}</template>
+    <template #aside>{{ rows.length.toLocaleString(intlLocale) }} {{t('common.noun.pair', { count: rows.length })}}</template>
     <div class="flex h-full min-h-0 flex-col bg-surface">
       <div class="min-h-0 grow overflow-auto">
         <table class="ui-table">
@@ -16,24 +16,24 @@
             <tr v-for="r in visible" :key="r.key" class="is-clickable" :class="{ 'is-selected': isSelected(r) }" @click="onRow($event, r)">
               <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.fromLabel">{{ r.fromLabel }}</td>
               <td class="max-w-[280px] truncate font-mono text-sm text-neutral-900" :title="r.toLabel">{{ r.toLabel }}</td>
-              <td class="is-num text-right">{{ fmt(r.references) }}<span v-if="r.dynamicRefs" class="ml-1 text-xs text-neutral-400" :title="`${r.dynamicRefs} by runtime lookup`">({{ r.dynamicRefs }})</span></td>
+              <td class="is-num text-right">{{ fmt(r.references) }}<span v-if="r.dynamicRefs" class="ml-1 text-xs text-neutral-400" :title="t('connections.connectionsList.runtimeLookup', { dynamicRefs: r.dynamicRefs })">({{ r.dynamicRefs }})</span></td>
               <td class="is-num text-right">{{ fmt(r.shared) }}</td>
               <td class="is-num text-right">{{ r.rate === null ? "—" : `${Math.round(r.rate * 100)}%` }}</td>
               <td class="is-num text-right">{{ r.hops === null ? (showHops ? "none" : "—") : r.hops }}</td>
               <td class="is-num text-right">{{ Math.round(r.weight * 100) }}%</td>
               <td class="text-sm text-neutral-600">{{ r.kinds }}</td>
-              <td><span v-if="r.inTangle" class="ui-tag text-red-700">tangle</span></td>
+              <td><span v-if="r.inTangle" class="ui-tag text-red-700">{{ t('connections.connectionsList.tangle') }}</span></td>
             </tr>
             <tr v-if="rows.length === 0"><td :colspan="columns.length" class="h-20 text-center text-neutral-500">{{ emptyText }}</td></tr>
           </tbody>
         </table>
         <div v-if="rows.length > limit" class="flex justify-center py-3">
-          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 200">Show more <span class="font-mono text-neutral-500">{{ fmt(rows.length - limit) }} left</span></button>
+          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 200">{{ t('connections.connectionsList.showMore') }} <span class="font-mono text-neutral-500">{{ t('connections.connectionsList.left', { value: fmt(rows.length - limit) }) }}</span></button>
         </div>
       </div>
       <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-sm text-neutral-500 hairline-t">
-        <span><span class="font-mono text-neutral-700">{{ fmt(rows.length) }}</span> pairs</span>
-        <span v-if="groupCounted" class="text-neutral-400">Shared commits between groups counted once per commit.</span>
+        <span><span class="font-mono text-neutral-700">{{ fmt(rows.length) }}</span>{{ ' ' + t('connections.connectionsList.pairs') }}</span>
+        <span v-if="groupCounted" class="text-neutral-400">{{ t('connections.connectionsList.sharedCommitsBetweenGroups') }}</span>
       </div>
     </div>
   </ExhibitFrame>
@@ -49,6 +49,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { edgeKey, type CEdge, type CNode } from "~/features/connections/connections";
 import { sqlLiteral } from "~/shared/sql";
+import { t, intlLocale } from "~/shared/i18n";
 
 // Every pair the other reps draw, as a table with no cap: the quotable form
 // of Connections, and the one hidden coupling is read in.
@@ -64,7 +65,7 @@ const props = withDefaults(defineProps<{
   /** Include pairs by co-change: shared commits are counted (per commit at group grain). */
   withHistory?: boolean
   emptyText?: string
-}>(), { withHistory: false, emptyText: "No pairs in view." });
+}>(), { withHistory: false, emptyText: t("connections.connectionsList.noPairsView") });
 
 const emit = defineEmits<{
   (e: "select-pair", from: string, to: string): void
@@ -167,15 +168,15 @@ const rows = computed<Row[]>(() => props.edges.map(e => {
 }).sort(compare));
 
 const columns = computed(() => [
-  { key: "fromLabel", label: props.directed ? "From" : "Between", title: "" },
-  { key: "toLabel", label: props.directed ? "To" : "And", title: "" },
-  { key: "references", label: "Refs", title: "Import references (runtime lookups in brackets)", num: true },
-  { key: "shared", label: "Shared", title: "Commits that touched both, sweeping commits left out", num: true },
-  { key: "rate", label: "Co-change", title: "Shared commits as a share of the smaller side's commits", num: true },
-  { key: "hops", label: "Hops", title: "Shortest dependency path length; none when no import path exists", num: true },
-  { key: "weight", label: "Weight", title: "The edge's weight in the other reps", num: true },
-  { key: "kinds", label: "Kinds", title: "How the imports were found" },
-  { key: "inTangle", label: "Tangle", title: "The pair sits in a dependency cycle" },
+  { key: "fromLabel", label: props.directed ? t("connections.connectionsList.from") : t("connections.connectionsList.between"), title: "" },
+  { key: "toLabel", label: props.directed ? t("connections.connectionsList.to") : t("connections.connectionsList.and"), title: "" },
+  { key: "references", label: t("connections.connectionsList.refs"), title: t("connections.connectionsList.importReferencesRuntimeLookups"), num: true },
+  { key: "shared", label: t("connections.connectionsList.shared"), title: t("connections.connectionsList.commitsTouchedBothSweeping"), num: true },
+  { key: "rate", label: t("connections.connectionsList.coChange"), title: t("connections.connectionsList.sharedCommitsShareSmaller"), num: true },
+  { key: "hops", label: t("connections.connectionsList.hops"), title: t("connections.connectionsList.shortestDependencyPathLength"), num: true },
+  { key: "weight", label: t("connections.connectionsList.weight"), title: t("connections.connectionsList.edgeSWeightOther"), num: true },
+  { key: "kinds", label: t("connections.connectionsList.kinds"), title: t("connections.connectionsList.howImportsWereFound") },
+  { key: "inTangle", label: t("connections.connectionsList.tangle2"), title: t("connections.connectionsList.pairSitsDependencyCycle") },
 ] as Array<{ key: keyof Row; label: string; title: string; num?: boolean }>);
 
 const sort = ref<{ key: keyof Row; asc: boolean }>({ key: "weight", asc: false });
@@ -191,7 +192,7 @@ function compare(a: Row, b: Row): number {
 const limit = ref(200);
 watch(() => props.edges, () => { limit.value = 200; });
 const visible = computed(() => rows.value.slice(0, limit.value));
-const fmt = (n: number) => (Number(n) || 0).toLocaleString("en-US");
+const fmt = (n: number) => (Number(n) || 0).toLocaleString(intlLocale);
 
 function isSelected(r: Row): boolean {
   const p = props.selectedPair;
@@ -207,7 +208,7 @@ function onRow(ev: MouseEvent, r: Row) {
 }
 
 const listTable = useTable({
-  title: "Connections list",
+  title: t("connections.connectionsList.connectionsList"),
   rows: () => rows.value.map(r => ({ from: r.fromLabel, to: r.toLabel, references: r.references, dynamic_references: r.dynamicRefs, shared_commits: r.shared, co_change: r.rate, hops: r.hops, weight: r.weight, kinds: r.kinds, in_tangle: r.inTangle })),
   columns: () => ["from", "to", "references", "dynamic_references", "shared_commits", "co_change", "hops", "weight", "kinds", "in_tangle"].map(id => ({ id, label: id.replace(/_/g, " ") })),
 });

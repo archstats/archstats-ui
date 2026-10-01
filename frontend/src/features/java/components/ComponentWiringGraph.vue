@@ -1,7 +1,7 @@
 <template>
   <ExhibitFrame :exhibit="figure">
     <div ref="host" class="relative h-[380px] w-full overflow-hidden bg-surface">
-      <svg ref="svgRef" class="h-full w-full" role="img" aria-label="Bean wiring inside the component"></svg>
+      <svg ref="svgRef" class="h-full w-full" role="img" :aria-label="t('java.componentWiringGraph.beanWiringInsideComponent')"></svg>
       <ZoomControls @zoom-in="zoomBy(1.4)" @zoom-out="zoomBy(1 / 1.4)" @reset="resetZoom"/>
     </div>
   </ExhibitFrame>
@@ -13,8 +13,9 @@ import { useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import { chartTheme, useChartTheme, withAlpha } from "~/shared/ui/useChartTheme"
-import { roleColor, roleLegend, type JavaRole, type WiringEdge, type WiringNode } from "~/features/java/java"
+import { roleColor, roleLegend, roleName, type JavaRole, type WiringEdge, type WiringNode } from "~/features/java/java"
 import ZoomControls from "~/shared/ui/ZoomControls.vue"
+import { t } from "~/shared/i18n"
 
 // The force graph of beans and entities inside one component: nodes are
 // classes, edges are recorded imports, columns follow the layer order
@@ -140,8 +141,8 @@ function render() {
     .on("click", (_event, d) => emit("select", d.id))
 
   nodeSel.append("title").text(d => {
-    const role = d.role ?? "Class"
-    return d.external ? `${d.label}\n${role} in ${d.component}\n${d.file}` : `${d.label}\n${role}\n${d.file}`
+    const role = roleName(d.role)
+    return d.external ? `${d.label}\n${t("java.roles.inComponent", { role, component: d.component })}\n${d.file}` : `${d.label}\n${role}\n${d.file}`
   })
 
   const degree = new Map<string, number>()
@@ -272,13 +273,13 @@ onBeforeUnmount(() => {
 })
 
 const figure = useSvgFigure({
-  title: "Bean wiring",
+  title: t("java.componentWiringGraph.beanWiring"),
   svg: () => svgRef.value,
   legend: () => {
-    const t = chartTheme()
-    const items = [...roleLegend(props.nodes.map(n => n.role)), { label: "Imports", color: withAlpha(t.inkMuted, 0.6), mark: "line" as const }]
-    if (props.nodes.some(n => n.external)) items.push({ label: "A class in another component, and the wiring to it", color: t.inkMuted, mark: "dashed" })
-    return { items, notes: ["Columns follow the layers: controllers, services, repositories, entities. A line is thicker the more references it carries."] }
+    const theme = chartTheme()
+    const items = [...roleLegend(props.nodes.map(n => n.role)), { label: t("java.componentWiringGraph.imports"), color: withAlpha(theme.inkMuted, 0.6), mark: "line" as const }]
+    if (props.nodes.some(n => n.external)) items.push({ label: t("java.componentWiringGraph.classAnotherComponentWiring"), color: theme.inkMuted, mark: "dashed" })
+    return { items, notes: [t("java.componentWiringGraph.columnsFollowLayersControllers")] }
   },
 })
 </script>

@@ -13,7 +13,9 @@
     "check": "node scripts/dev-check.mjs",
     "capture": "node scripts/capture.mjs",
     "bench": "vitest run --config vitest.bench.config.ts",
-    "check:figures": "node scripts/figure-check.mjs"
+    "check:figures": "node scripts/figure-check.mjs",
+    "i18n:check": "node scripts/i18n-extract.mjs check",
+    "i18n:definitions": "node scripts/i18n-definitions.mjs"
   },
   "dependencies": {
     "@nuxt/image": "^1.0.0-rc.3",

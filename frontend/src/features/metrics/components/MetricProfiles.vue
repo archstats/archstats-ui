@@ -20,16 +20,16 @@
           :style="{ left: `${axis.x + (moving?.key === axis.key ? moving.dx : 0)}px`, top: '6px', width: `${titleWidth}px` }"
           @pointerdown="startMove($event, axis.key)"
       >
-        <span class="line-clamp-2 text-xs font-medium leading-4" :class="brushes[axis.key] ? 'text-blue-700' : 'text-neutral-800'" :title="`${niceName(axis.key)} · drag to reorder`">{{ niceName(axis.key) }}</span>
+        <span class="line-clamp-2 text-xs font-medium leading-4" :class="brushes[axis.key] ? 'text-blue-700' : 'text-neutral-800'" :title="t('metrics.metricProfiles.dragReorder', { key: niceName(axis.key) })">{{ niceName(axis.key) }}</span>
         <span class="flex items-center gap-1 font-mono text-[11px] leading-4 text-neutral-500">
-          <template v-if="axis.scale.log">log</template>
+          <template v-if="axis.scale.log">{{ t('metrics.metricProfiles.log') }}</template>
           <button type="button" class="rounded px-0.5 text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-800 focus-visible:opacity-100 group-hover:opacity-100"
                   :class="{ 'opacity-100 text-neutral-700': flipped.has(axis.key) }"
-                  :aria-label="`Flip ${niceName(axis.key)}`" :title="flipped.has(axis.key) ? 'Unflip: largest at the top' : 'Flip: largest at the bottom'"
+                  :aria-label="t('metrics.metricProfiles.flip', { key: niceName(axis.key) })" :title="flipped.has(axis.key) ? t('metrics.metricProfiles.unflipLargestTop') : t('metrics.metricProfiles.flipLargestBottom')"
                   @pointerdown.stop @click.stop="flip(axis.key)">
             <Icon icon="arrow-up-down" :size="11"/>
           </button>
-          <button v-if="brushes[axis.key]" type="button" class="rounded px-0.5 text-blue-700 hover:bg-neutral-100" :aria-label="`Clear the ${niceName(axis.key)} brush`" title="Clear this brush" @pointerdown.stop @click.stop="clearBrush(axis.key)">
+          <button v-if="brushes[axis.key]" type="button" class="rounded px-0.5 text-blue-700 hover:bg-neutral-100" :aria-label="t('metrics.metricProfiles.clearBrush', { key: niceName(axis.key) })" :title="t('metrics.metricProfiles.clearBrush2')" @pointerdown.stop @click.stop="clearBrush(axis.key)">
             <Icon icon="x" :size="11"/>
           </button>
         </span>
@@ -55,6 +55,7 @@ import { useFigure } from "~/features/export/useExportables";
 import type { FigureOutput } from "~/features/export/figure";
 import { PRINT_W, printCanvas, printTheme, wrapText } from "~/features/metrics/printCanvas";
 import type { LegendItem, LegendRamp } from "~/features/export/figure";
+import { t } from "~/shared/i18n";
 
 // Every row as one line across a vertical axis per metric: its shape is its
 // profile. Lines take the heat of their hotspot score. Drag along an axis to
@@ -90,26 +91,26 @@ const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { size, context, local } = useCanvas(box, canvas);
 const figure = useFigure({
-  title: "Metrics profiles",
+  title: t("metrics.metricProfiles.metricsProfiles"),
   // Drawn for the page, not captured from the window: see printProfiles.
   ready: () => !!canvas.value && props.rows.length > 0 && props.metrics.length > 1,
   render: (opts) => printProfiles(opts.light),
   svg: false,
   legend: () => {
-    const t = theme.value;
+    const theme2 = theme.value;
     const key = props.colorKey;
     const values = key ? props.domainRows.map((r) => metricValue(r, key)).filter(Number.isFinite) : [];
     const ramps: LegendRamp[] = key && values.length
-      ? [{ label: niceName(key), colors: /code_health/.test(key) ? [...t.heat].reverse() : t.heat, low: formatReading(Math.min(...values)), high: formatReading(Math.max(...values)) }]
+      ? [{ label: niceName(key), colors: /code_health/.test(key) ? [...theme2.heat].reverse() : theme2.heat, low: formatReading(Math.min(...values)), high: formatReading(Math.max(...values)) }]
       : [];
-    const items: LegendItem[] = props.selected.length ? [{ label: "Selected", color: t.blue, mark: "line" }] : [];
-    if (Object.keys(props.brushes).length) items.push({ label: "Outside a brushed range", color: withAlpha(t.inkMuted, 0.3), mark: "line" });
+    const items: LegendItem[] = props.selected.length ? [{ label: t("metrics.metricProfiles.selected"), color: theme2.blue, mark: "line" }] : [];
+    if (Object.keys(props.brushes).length) items.push({ label: t("metrics.metricProfiles.outsideBrushedRange"), color: withAlpha(theme2.inkMuted, 0.3), mark: "line" });
     return {
       items,
       ramps,
       notes: [
-        `One line per ${props.grain}, crossing each metric's axis at its reading. Each axis runs from its lowest reading at the bottom to its highest at the top, unless marked flipped; a tick marks its median.`,
-        ...(props.selected.length ? [`The selected ${props.grain === "file" ? "files" : "components"} are drawn over the rest, which recede.`] : []),
+        t("metrics.metricProfiles.oneLinePerCrossing", { grain: props.grain }),
+        ...(props.selected.length ? [t("metrics.metricProfiles.selectedDrawnOverRest", { value: props.grain === "file" ? t("metrics.metricProfiles.files") : t("metrics.metricProfiles.components") })] : []),
       ],
     };
   },

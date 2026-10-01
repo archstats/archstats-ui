@@ -4,6 +4,7 @@
 
 import type { FileEdge } from "~/features/checks/checks"
 import { tanglesOf } from "~/features/cycles/untangle"
+import { t } from "~/shared/i18n"
 
 export interface Evaluation {
     /** "a>b" (group ids) → the file imports behind it. */
@@ -54,11 +55,11 @@ const inCycles = (e: Evaluation) => e.tangles.reduce((n, t) => n + t.length, 0)
 
 export function compareStructure(base: Evaluation, head: Evaluation, unplaced: [number, number]): StructureDiff {
     const rows: StructureRow[] = [
-        { label: "Group dependencies", why: "Ordered group pairs with at least one import", before: base.pairs.size, after: head.pairs.size, better: "none" },
-        { label: "Imports crossing a group edge", why: "File imports whose two ends sit in different groups", before: base.crossing, after: head.crossing, better: "lower" },
-        { label: "Group pairs that import each other", why: "Two groups each importing the other", before: base.mutual.length, after: head.mutual.length, better: "lower" },
-        { label: "Groups caught in cycles", why: "Groups in a strongly connected set", before: inCycles(base), after: inCycles(head), better: "lower" },
-        { label: "Files no group takes", why: "Production code files outside every group", before: unplaced[0], after: unplaced[1], better: "lower" },
+        { label: t("trends.structureCompare.groupDependencies"), why: t("trends.structureCompare.orderedGroupPairsLeast"), before: base.pairs.size, after: head.pairs.size, better: "none" },
+        { label: t("trends.structureCompare.importsCrossingGroupEdge"), why: t("trends.structureCompare.fileImportsWhoseTwo"), before: base.crossing, after: head.crossing, better: "lower" },
+        { label: t("trends.structureCompare.groupPairsImportEach"), why: t("trends.structureCompare.twoGroupsEachImporting"), before: base.mutual.length, after: head.mutual.length, better: "lower" },
+        { label: t("trends.structureCompare.groupsCaughtCycles"), why: t("trends.structureCompare.groupsStronglyConnectedSet"), before: inCycles(base), after: inCycles(head), better: "lower" },
+        { label: t("trends.structureCompare.filesNoGroupTakes"), why: t("trends.structureCompare.productionCodeFilesOutside"), before: unplaced[0], after: unplaced[1], better: "lower" },
     ]
     const deps = (e: Evaluation) => new Map([...e.pairs].map(([k, v]) => [k, v.length]))
     const b = deps(base), h = deps(head)

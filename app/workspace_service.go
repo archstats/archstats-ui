@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/locale"
 	"os"
 
 	"github.com/archstats/archstats-ui/app/clone"
@@ -53,7 +54,7 @@ func (w *WorkspaceService) SelectFolder() (*FolderPick, error) {
 		return nil, errors.New("folder picker unavailable before startup")
 	}
 	path, err := runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
-		Title:                "Choose a folder to analyze",
+		Title:                locale.T("chooseFolder"),
 		CanCreateDirectories: false,
 	})
 	if err != nil {

@@ -3,12 +3,12 @@
        Hovering one lights their parts of the map; clicking keeps it lit. -->
   <div class="flex min-h-0 flex-col">
     <div class="flex flex-col gap-1 px-4 pb-3 pt-4">
-      <h3 class="ui-section-title">Active contributors</h3>
+      <h3 class="ui-section-title">{{ t('git.knowledgePeople.activeContributors') }}</h3>
       <p v-if="people.length" class="text-sm leading-5 text-neutral-600">
-        <template v-if="half <= 1">One person is</template><template v-else>{{ half }} people are</template>
-        the most active on half of the code that has an active contributor.
+        <template v-if="half <= 1">{{ t('git.knowledgePeople.onePerson') }}</template><template v-else>{{ t('git.knowledgePeople.people', { half }) }}</template>
+        {{ t('git.knowledgePeople.mostActiveHalfCode') }}
       </p>
-      <p v-else class="text-sm leading-5 text-neutral-500">No active contributor is the most active on any component.</p>
+      <p v-else class="text-sm leading-5 text-neutral-500">{{ t('git.knowledgePeople.noActiveContributorMost') }}</p>
     </div>
     <ul class="flex min-h-0 flex-col overflow-y-auto pb-2" @mouseleave="emit('hover', null)">
       <li v-for="p in people" :key="p.author">
@@ -26,7 +26,7 @@
               <span v-for="st in KNOWN" :key="st" class="h-full" :style="{ width: `${(p.byState[st] / p.lines) * 100}%`, background: palette.fill[st] }"></span>
             </span>
             <span class="text-xs text-neutral-500">
-              {{ pct(p.lines / known) }} of that code<template v-if="p.only"> · sole active contributor on {{ p.only }}</template>
+              {{ t('git.knowledgePeople.code', { value: pct(p.lines / known) }) }}<template v-if="p.only">{{ ' ' + t('git.knowledgePeople.soleActiveContributor', { only: p.only }) }}</template>
             </span>
           </span>
         </button>
@@ -41,6 +41,7 @@ import { useAuthorsStore } from "../authors.store"
 import type { PersonToAsk } from "../knowledgeLeft"
 import Monogram from "./Monogram.vue"
 import { useKnowledgePalette } from "./knowledgeColors"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ people: PersonToAsk[]; known: number; half: number; pinned: string | null }>()
 const emit = defineEmits<{ (e: "hover", author: string | null): void; (e: "pin", author: string | null): void }>()

@@ -6,6 +6,7 @@
 
 import type { Duplicate } from "~/features/checks/checks"
 import type { Finding } from "./findings"
+import { t, intlLocale, listOf } from "~/shared/i18n"
 
 export interface ReachInput {
     unreachable: string[]
@@ -13,7 +14,7 @@ export interface ReachInput {
     roots: ReadonlySet<string>
 }
 
-const n = (x: number) => x.toLocaleString("en-US")
+const n = (x: number) => x.toLocaleString(intlLocale)
 const s = (x: number, one: string, many = one + "s") => `${n(x)} ${x === 1 ? one : many}`
 
 /** Code no entry point reaches, and code only tests keep alive. Null when there is none of either. */
@@ -21,23 +22,22 @@ export function reachFinding(r: ReachInput, lines: ReadonlyMap<string, number>):
     if (!r.unreachable.length && !r.testOnly.length) return null
     const sum = (fs: string[]) => fs.reduce((t, f) => t + (lines.get(f) ?? 0), 0)
     const headline = r.unreachable.length
-        ? `${s(r.unreachable.length, "file is", "files are")} reached by nothing.`
-        : `${s(r.testOnly.length, "file is", "files are")} kept alive only by tests.`
-    const detail = (r.unreachable.length ? `${n(sum(r.unreachable))} lines no entry point imports` : "Nothing is unreached")
-        + (r.unreachable.length && r.testOnly.length ? `, and ${s(r.testOnly.length, "more file")} only tests import. ` : ". ")
-        + `Walked from ${s(r.roots.size, "entry point")} the framework calls; reflection, string lookups and config wiring are invisible to it.`
+        ? t("units.checkFindings.reachedNothing", { s: s(r.unreachable.length, t("units.checkFindings.file"), t("units.checkFindings.files")) })
+        : t("units.checkFindings.keptAliveOnlyTests", { s: s(r.testOnly.length, t("units.checkFindings.file"), t("units.checkFindings.files")) })
+    const detail = t("units.checkFindings.walkedFrameworkCallsReflection", { value: (r.unreachable.length ? t("units.checkFindings.linesNoEntryPoint", { unreachable: n(sum(r.unreachable)) }) : t("units.checkFindings.nothingUnreached"))
+        + (r.unreachable.length && r.testOnly.length ? t("units.checkFindings.onlyTestsImport", { s: s(r.testOnly.length, t("units.checkFindings.moreFile")) }) : ". "), s: s(r.roots.size, t("units.checkFindings.entryPoint")) })
     return {
         id: "unreached",
         headline,
         detail,
         tone: "neutral",
-        action: "See where they are",
+        action: t("units.checkFindings.seeWhereThey"),
         region: {
             id: "unreached",
-            label: "Reached by nothing",
+            label: t("units.checkFindings.reachedNothing2"),
             paths: [...r.unreachable, ...r.testOnly],
             map: "reach",
-            note: "Every production file, coloured by whether an entry point reaches it.",
+            note: t("units.checkFindings.everyProductionFileColoured"),
             claim: { headline, detail, tone: "neutral" },
         },
     }
@@ -48,23 +48,21 @@ export function duplicateFinding(names: Duplicate[], files: Duplicate[]): Findin
     if (!names.length && !files.length) return null
     const top = [...names].sort((a, b) => b.files.length - a.files.length || a.name.localeCompare(b.name)).slice(0, 2)
     const headline = names.length
-        ? `${s(names.length, "name is", "names are")} declared in more than one file.`
-        : `${s(files.length, "file name is", "file names are")} used in more than one folder.`
-    const detail = (top.length ? `Most often ${top.map(d => `${d.name} (${d.files.length} files)`).join(" and ")}. ` : "")
-        + "A rule written twice, or two things that deserve different names."
-        + (names.length && files.length ? ` ${s(files.length, "file name")} also repeat across folders.` : "")
+        ? t("units.checkFindings.declaredMoreThanOne", { s: s(names.length, t("units.checkFindings.name"), t("units.checkFindings.names")) })
+        : t("units.checkFindings.usedMoreThanOne", { s: s(files.length, t("units.checkFindings.fileName"), t("units.checkFindings.fileNames")) })
+    const detail = t("units.checkFindings.ruleWrittenTwiceTwo", { value: top.length ? t("units.checkFindings.mostOften", { value: listOf(top.map(d => `${d.name} (${d.files.length} files)`)) }) : "", value2: names.length && files.length ? t("units.checkFindings.alsoRepeatAcrossFolders", { s: s(files.length, t("units.checkFindings.fileName2")) }) : "" })
     return {
         id: "twice",
         headline,
         detail,
         tone: "neutral",
-        action: "Tie them together on the map",
+        action: t("units.checkFindings.tieThemTogetherMap"),
         region: {
             id: "twice",
-            label: "Written twice",
+            label: t("units.checkFindings.writtenTwice"),
             paths: [...new Set([...names, ...files].flatMap(d => d.files))],
             map: "dupes",
-            note: "Files that declare a name another file declares, or share a file name.",
+            note: t("units.checkFindings.filesDeclareNameAnother"),
             claim: { headline, detail, tone: "neutral" },
         },
     }

@@ -12,18 +12,18 @@
         class="ui-popover pointer-events-auto flex select-none items-center gap-2 py-1.5 pl-3 pr-2 text-neutral-900"
         :class="docked ? 'w-full flex-wrap gap-y-1.5' : 'max-w-[calc(100vw-2rem)]'"
         role="toolbar"
-        aria-label="Selection"
+        :aria-label="t('groups.groupActionBar.selection')"
       >
         <div class="flex items-center gap-2 pr-3 hairline-r">
           <span class="ui-tag">{{ selectedItems.length }}</span>
-          <span class="whitespace-nowrap text-base font-medium">{{ noun }} selected</span>
+          <span class="whitespace-nowrap text-base font-medium">{{ t('groups.groupActionBar.selected', { noun }) }}</span>
         </div>
 
         <!-- Create is the primary act: one click, a prefilled name, Enter. -->
         <template v-if="!naming">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" title="Create a group from the selection (⌘G)" @click="startCreate()">
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :title="t('groups.groupActionBar.createGroupSelectionG')" @click="startCreate()">
             <Icon icon="users" :size="13"/>
-            <span>Create group</span>
+            <span>{{ t('groups.groupActionBar.createGroup') }}</span>
           </button>
         </template>
         <form v-else class="flex items-center gap-1.5" @submit.prevent="create">
@@ -32,15 +32,15 @@
             v-model="name"
             type="text"
             class="ui-input ui-input-sm w-44"
-            aria-label="Group name"
-            placeholder="Group name"
+            :aria-label="t('groups.groupActionBar.groupName')"
+            :placeholder="t('groups.groupActionBar.groupName')"
             @keydown.esc.stop.prevent="cancel"
             @mousedown="keepSuggestion"
           />
-          <span class="text-xs text-neutral-400">in</span>
-          <select v-if="!newDimension" class="ui-input ui-input-sm w-32" aria-label="Lens" :value="dimension" @change="onDimensionPick(($event.target as HTMLSelectElement).value)">
+          <span class="text-xs text-neutral-400">{{ t('groups.groupActionBar.in') }}</span>
+          <select v-if="!newDimension" class="ui-input ui-input-sm w-32" :aria-label="t('groups.groupActionBar.lens')" :value="dimension" @change="onDimensionPick(($event.target as HTMLSelectElement).value)">
             <option v-for="d in dimensions" :key="d" :value="d">{{ d }}</option>
-            <option value="__new__">New lens…</option>
+            <option value="__new__">{{ t('groups.groupActionBar.newLens') }}</option>
           </select>
           <input
             v-else
@@ -48,12 +48,12 @@
             v-model="dimension"
             type="text"
             class="ui-input ui-input-sm w-32"
-            aria-label="New lens"
-            placeholder="Domain, Layer…"
+            :aria-label="t('groups.groupActionBar.newLens2')"
+            :placeholder="t('groups.groupActionBar.domainLayer')"
             @keydown.esc.stop.prevent="newDimension = false; dimension = startDimension()"
           />
-          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!name.trim()">Create</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="cancel">Cancel</button>
+          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!name.trim()">{{ t('groups.groupActionBar.create') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="cancel">{{ t('groups.groupActionBar.cancel') }}</button>
         </form>
 
         <!-- What the selection would be if it were said rather than listed.
@@ -75,8 +75,8 @@
         </button>
 
         <div v-if="!naming" class="relative">
-          <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="addOpen" :disabled="groups.length === 0" :title="groups.length ? 'Add the selection to an existing group' : 'No groups yet'" @click.stop="addOpen = !addOpen">
-            <span>Add to</span>
+          <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="addOpen" :disabled="groups.length === 0" :title="groups.length ? t('groups.groupActionBar.addSelectionExistingGroup') : t('groups.groupActionBar.noGroupsYet')" @click.stop="addOpen = !addOpen">
+            <span>{{ t('groups.groupActionBar.add') }}</span>
             <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
           </button>
           <div v-if="addOpen" class="fixed inset-0 z-40" @click="addOpen = false"></div>
@@ -94,8 +94,8 @@
           </div>
         </div>
 
-        <button v-if="!naming && inAnyGroup" type="button" class="ui-btn ui-btn-sm ui-btn-quiet whitespace-nowrap" title="Remove the selection from every group" @click="removeFromAll">
-          Remove from groups
+        <button v-if="!naming && inAnyGroup" type="button" class="ui-btn ui-btn-sm ui-btn-quiet whitespace-nowrap" :title="t('groups.groupActionBar.removeSelectionEveryGroup')" @click="removeFromAll">
+          {{ t('groups.groupActionBar.removeGroups') }}
         </button>
 
         <template v-if="!naming && kind === 'component'">
@@ -103,9 +103,9 @@
           <!-- Grow: the selection widened along the imports, so "this and
                everything that uses it" is two clicks from any view. -->
           <div v-if="onReplace" class="relative">
-            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="growOpen" title="Widen the selection along the imports" @click.stop="growOpen = !growOpen; focusOpen = false">
+            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="growOpen" :title="t('groups.groupActionBar.widenSelectionAlongImports')" @click.stop="growOpen = !growOpen; focusOpen = false">
               <Icon icon="waypoints" :size="13" class="text-neutral-500"/>
-              <span>Grow</span>
+              <span>{{ t('groups.groupActionBar.grow') }}</span>
               <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
             </button>
             <div v-if="growOpen" class="fixed inset-0 z-40" @click="growOpen = false"></div>
@@ -117,32 +117,32 @@
               <template v-if="universe?.length">
                 <div class="my-1 hairline-b"></div>
                 <button type="button" class="ui-menu-item" role="menuitem" @click="invert">
-                  <span class="flex-1">Invert</span>
-                  <span class="font-mono text-xs text-neutral-400">{{ (universe.length - selectedInUniverse).toLocaleString("en-US") }}</span>
+                  <span class="flex-1">{{ t('groups.groupActionBar.invert') }}</span>
+                  <span class="font-mono text-xs text-neutral-400">{{ (universe.length - selectedInUniverse).toLocaleString(intlLocale) }}</span>
                 </button>
               </template>
             </div>
           </div>
           <div class="relative">
-            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="focusOpen" title="Show only this part of the codebase, in every view" @click.stop="focusOpen = !focusOpen; growOpen = false">
+            <button type="button" class="ui-btn ui-btn-sm" :aria-expanded="focusOpen" :title="t('groups.groupActionBar.showOnlyPartCodebase')" @click.stop="focusOpen = !focusOpen; growOpen = false">
               <Icon icon="focus" :size="13" class="text-neutral-500"/>
-              <span>Focus</span>
+              <span>{{ t('groups.groupActionBar.focus') }}</span>
               <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
             </button>
             <div v-if="focusOpen" class="fixed inset-0 z-40" @click="focusOpen = false"></div>
             <div v-if="focusOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 animate-in" role="menu">
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('only')">Only the selection</button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('around')">The selection and its neighbours</button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependents')">The selection and what uses it</button>
-              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependencies')">The selection and what it uses</button>
-              <button v-if="selectedItems.length > 1" type="button" class="ui-menu-item" role="menuitem" @click="focusOn('between')">Every route between them</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('only')">{{ t('groups.groupActionBar.onlySelection') }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('around')">{{ t('groups.groupActionBar.selectionNeighbours') }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependents')">{{ t('groups.groupActionBar.selectionWhatUses') }}</button>
+              <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependencies')">{{ t('groups.groupActionBar.selectionWhatUses2') }}</button>
+              <button v-if="selectedItems.length > 1" type="button" class="ui-menu-item" role="menuitem" @click="focusOn('between')">{{ t('groups.groupActionBar.everyRouteBetweenThem') }}</button>
             </div>
           </div>
         </template>
         <ShowInMenu v-if="!naming" :kind="kind === 'file' ? 'file' : 'component'" :ids="selectedItems" :except="showInExcept" up/>
 
         <span class="ui-toolbar-sep"></span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Clear selection" title="Clear selection (Esc)" @click="emit('clear')">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('groups.groupActionBar.clearSelection')" :title="t('groups.groupActionBar.clearSelectionEsc')" @click="emit('clear')">
           <Icon icon="x" :size="13"/>
         </button>
       </div>
@@ -164,6 +164,7 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import ShowInMenu from "~/features/groups/components/ShowInMenu.vue";
 import { adjacency, between, reach, tangleOf } from "~/features/navigation/focus";
 import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
+import { t, intlLocale } from "~/shared/i18n";
 
 // Module-level so every tray on every view shares the last used dimension;
 // the lens wins while it exists, so a quick group lands where you are looking.
@@ -255,7 +256,7 @@ function nextName(): string {
   const taken = new Set(groups.value.map(g => g.name));
   let n = groups.value.length + 1;
   while (taken.has(`Group ${n}`)) n++;
-  return `Group ${n}`;
+  return t("groups.groupActionBar.group", { n });
 }
 
 /** The name offered when naming starts: a click into it keeps it selected, so typing replaces it rather than landing inside it. */
@@ -335,12 +336,12 @@ function grown(id: GrowId): Set<string> {
 const growOptions = computed(() => {
   if (!growOpen.value) return [];
   const list: Array<{ id: GrowId; label: string }> = [
-    { id: "dependents", label: "Add what uses them" },
-    { id: "dependencies", label: "Add what they use" },
-    { id: "around", label: "Add both, one hop" },
-    { id: "tangle", label: "Add their tangles" },
+    { id: "dependents", label: t("groups.groupActionBar.addWhatUsesThem") },
+    { id: "dependencies", label: t("groups.groupActionBar.addWhatTheyUse") },
+    { id: "around", label: t("groups.groupActionBar.addBothOneHop") },
+    { id: "tangle", label: t("groups.groupActionBar.addTheirTangles") },
   ];
-  if (props.selectedItems.length > 1) list.push({ id: "between", label: "Add what sits between them" });
+  if (props.selectedItems.length > 1) list.push({ id: "between", label: t("groups.groupActionBar.addWhatSitsBetween") });
   return list.map(o => ({ ...o, adds: grown(o.id).size - props.selectedItems.length }));
 });
 const selectedInUniverse = computed(() => {

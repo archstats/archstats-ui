@@ -6,13 +6,13 @@
   >
     <Icon icon="alert" :size="13" class="shrink-0 text-amber-700"/>
     <p class="min-w-0 flex-1 truncate" :title="added.map(e => `${e.file}${e.line ? ':' + e.line : ''}: ${groupName(e.fromGroup)} → ${groupName(e.toGroup)}`).join('\n')">
-      <span class="font-medium text-neutral-900">{{ added.length.toLocaleString("en-US") }} new import{{ added.length === 1 ? "" : "s" }} cross{{ added.length === 1 ? "es" : "" }} {{ lens.active }}'s declared order</span>
-      <span class="text-neutral-600"> since {{ since }}.</span>
+      <span class="font-medium text-neutral-900">{{ t('rules.driftBar.newCrossSDeclared', { value: added.length.toLocaleString(intlLocale), imports: t('common.noun.import', { count: added.length }), item: t('common.noun.es', { count: added.length }), active: lens.active }) }}</span>
+      <span class="text-neutral-600">{{ ' ' + t('rules.driftBar.since', { since }) }}</span>
     </p>
-    <router-link :to="`/views/changes?base=${prevId}&head=${openId}`" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0">What changed</router-link>
-    <router-link to="/views/rules#lens" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0">Rules</router-link>
-    <PinButton icon kind="rule" :entity-key="`drift|${lens.active}|${prevId}|${openId}`" :title="`${added.length} new crossings of ${lens.active} since ${since}`" :values="{ findings: added.length }"/>
-    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" aria-label="Dismiss for this scan" title="Dismiss for this scan" @click="dismiss">
+    <router-link :to="`/views/changes?base=${prevId}&head=${openId}`" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0">{{ t('rules.driftBar.whatChanged') }}</router-link>
+    <router-link to="/views/rules#lens" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0">{{ t('rules.driftBar.rules') }}</router-link>
+    <PinButton icon kind="rule" :entity-key="`drift|${lens.active}|${prevId}|${openId}`" :title="t('rules.driftBar.newCrossingsSince', { addedLength: added.length, active: lens.active, since })" :values="{ findings: added.length }"/>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :aria-label="t('rules.driftBar.dismissScan')" :title="t('rules.driftBar.dismissScan')" @click="dismiss">
       <Icon icon="x" :size="13"/>
     </button>
   </div>
@@ -34,6 +34,7 @@ import type { GroupEdge } from "~/features/groups/groupEdges";
 import { formatScanTime } from "~/shared/time";
 import { checkLens } from "../useLensFindings";
 import { newCrossings, previousOf } from "../drift";
+import { t, intlLocale } from "~/shared/i18n";
 
 // Drift, said when it happens: a rescan that brings new imports across the
 // active lens's declared order says so above every view, against the scan

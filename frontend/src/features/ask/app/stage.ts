@@ -4,6 +4,7 @@
 
 import { STAGE_SCAN } from "~/platform/stage"
 import type { StageTake } from "./stageHost"
+import { t } from "~/shared/i18n"
 
 interface StageApi { ready: () => boolean; take: (route: string, opts: { focus?: string; take?: string; figures?: number; vision?: boolean; report?: boolean }) => Promise<StageTake> }
 
@@ -42,9 +43,9 @@ function boot(scanId: string): Promise<StageApi> {
             const api = (f.contentWindow as any)?.__askStage as StageApi | undefined
             if (api?.ready()) return resolve(api)
             if (Date.now() - t0 > 30000) {
-                let why = "the hidden view did not load"
-                try { const w = f.contentWindow as any; why = !w ? "no frame" : !w.go ? "no connection to the app" : w.__askStage ? "the snapshot did not open" : "the app did not finish starting" } catch { why = "the frame is not reachable" }
-                return reject(new Error(`The preview could not start (${why}).`))
+                let why = t("ask.stage.hiddenViewDidNot")
+                try { const w = f.contentWindow as any; why = !w ? t("ask.stage.noFrame") : !w.go ? t("ask.stage.noConnectionApp") : w.__askStage ? t("ask.stage.snapshotDidNotOpen") : t("ask.stage.appDidNotFinish") } catch { why = t("ask.stage.frameNotReachable") }
+                return reject(new Error(t("ask.stage.previewCouldNotStart", { why })))
             }
             setTimeout(poll, 250)
         }
@@ -56,7 +57,7 @@ function boot(scanId: string): Promise<StageApi> {
 
 /** A view's figures and tables, drawn out of sight on the given snapshot. */
 export function takeView(scanId: string, route: string, opts: { focus?: string; take?: string; figures?: number; vision?: boolean; report?: boolean } = {}): Promise<StageTake> {
-    if (STAGE_SCAN) return Promise.reject(new Error("no stage inside the stage"))
+    if (STAGE_SCAN) return Promise.reject(new Error(t("ask.stage.noStageInsideStage")))
     const key = `${scanId}|${route}|${opts.focus ?? ""}|${opts.take ?? ""}|${opts.figures ?? 2}|${opts.vision ? 1 : 0}|${opts.report ? 1 : 0}`
     const hit = cache.get(key)
     if (hit) return hit
@@ -65,7 +66,7 @@ export function takeView(scanId: string, route: string, opts: { focus?: string; 
         const api = await boot(scanId)
         const out = await Promise.race([
             api.take(route, opts),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("The view took too long to draw.")), 30000)),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(t("ask.stage.viewTookTooLong"))), 30000)),
         ])
         idle = setTimeout(teardown, IDLE_MS)
         return out

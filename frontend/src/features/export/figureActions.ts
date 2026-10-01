@@ -4,6 +4,7 @@ import { exportFileName } from "./export"
 import { pngBase64, svgDocument, type ExportOptions, type FigureOutput } from "./figure"
 import { buildProvenance, provenanceShort } from "./provenance"
 import type { FigureExportable, TableExportable } from "./useExportables"
+import { t } from "~/shared/i18n"
 
 // What an exhibit's own button does. Saving happens here; adding to a report
 // and pinning belong to the reports feature, which hands its two actions in
@@ -34,7 +35,7 @@ export const exportOptions = (f: FigureExportable, choice: FigureChoice): Export
 
 async function drawn(f: FigureExportable, choice: FigureChoice): Promise<FigureOutput> {
     const out = await f.render({ light: choice.light })
-    if (!out) throw new Error("the chart has nothing drawn yet")
+    if (!out) throw new Error(t("export.figureActions.chartHasNothingDrawn"))
     return out
 }
 
@@ -48,11 +49,11 @@ export async function figurePng(f: FigureExportable, choice: FigureChoice, withC
 /** Resolves to "Saved", or null when the dialog was cancelled. */
 export async function saveFigurePng(f: FigureExportable, choice: FigureChoice): Promise<string | null> {
     const b64 = await figurePng(f, choice)
-    return (await saveBase64(exportFileName(f.title, "png"), b64, [FILTERS.png], "Save PNG")) ? "Saved" : null
+    return (await saveBase64(exportFileName(f.title, "png"), b64, [FILTERS.png], t("export.figureActions.savePng"))) ? t("export.figureActions.saved") : null
 }
 
 export async function saveFigureSvg(f: FigureExportable, choice: FigureChoice): Promise<string | null> {
     const out = await drawn(f, choice)
-    if (out.kind !== "svg") throw new Error("this chart is drawn on a canvas; save it as PNG")
-    return (await saveText(exportFileName(f.title, "svg"), svgDocument(out, caption(), exportOptions(f, choice)), [FILTERS.svg], "Save SVG")) ? "Saved" : null
+    if (out.kind !== "svg") throw new Error(t("export.figureActions.chartDrawnCanvasSave"))
+    return (await saveText(exportFileName(f.title, "svg"), svgDocument(out, caption(), exportOptions(f, choice)), [FILTERS.svg], t("export.figureActions.saveSvg"))) ? t("export.figureActions.saved") : null
 }

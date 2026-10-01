@@ -9,6 +9,7 @@ import { fuzzyScore } from "~/shared/fuzzy"
 import { componentLabel, componentPath, filePath, groupPath, VIEWS } from "~/features/navigation/routes"
 import { useAIStore } from "~/features/ai/ai.store"
 import { detectSeparator } from "~/features/snapshot/names"
+import { t, intlLocale } from "~/shared/i18n"
 
 // What Go to anything searches: views, metric definitions, components, files,
 // units, authors, groups and lenses. The snapshot's parts are read once per
@@ -36,13 +37,13 @@ export interface GoItem {
 }
 
 export const KIND_LABEL: Record<GoKind, string> = {
-    view: "View", metric: "Metric", component: "Component", file: "File",
-    unit: "Unit", author: "Author", group: "Group", lens: "Lens",
+    view: t("shell.useGoToIndex.view"), metric: "Metric", component: t("shell.useGoToIndex.component"), file: "File",
+    unit: "Unit", author: t("shell.useGoToIndex.author"), group: "Group", lens: t("shell.useGoToIndex.lens"),
 }
 
 export const KIND_HEADING: Record<GoKind, string> = {
-    view: "Views", metric: "Metric reference", component: "Components", file: "Files",
-    unit: "Units", author: "Authors", group: "Groups", lens: "Lenses",
+    view: t("shell.useGoToIndex.views"), metric: "Metric reference", component: t("shell.useGoToIndex.components"), file: "Files",
+    unit: "Units", author: t("shell.useGoToIndex.authors"), group: "Groups", lens: t("shell.useGoToIndex.lenses"),
 }
 
 interface SnapshotIndex { key: string; items: GoItem[] }
@@ -92,7 +93,7 @@ async function authorItems(): Promise<GoItem[]> {
     // Pseudonymised, the label is all there is to match: real names are not searchable.
     return [...byName].map(([name, n]) => {
         const label = authors.display(name)
-        return { kind: "author" as const, key: label, label, detail: `${n.toLocaleString("en-US")} commits`, to: authors.authorPath(name) }
+        return { kind: "author" as const, key: label, label, detail: t("shell.useGoToIndex.commits", { value: n.toLocaleString(intlLocale) }), to: authors.authorPath(name) }
     })
 }
 
@@ -105,7 +106,7 @@ function liveItems(): GoItem[] {
     for (const e of referenceEntries(data.definitions.values())) {
         out.push({ kind: "metric", key: e.id, label: e.name, text: `${e.name} ${e.id}`, tail: -1, detail: e.category, to: `/views/reference?m=${encodeURIComponent(e.id)}` })
     }
-    for (const d of groups.dimensions) out.push({ kind: "lens", key: d, label: d, tail: -1, detail: "Colour every view by this lens", lens: d })
+    for (const d of groups.dimensions) out.push({ kind: "lens", key: d, label: d, tail: -1, detail: t("shell.useGoToIndex.colourEveryViewLens"), lens: d })
     for (const g of groups.groups) out.push({ kind: "group", key: g.id, label: g.name, tail: -1, detail: g.dimension, group: g.id, to: groupPath(g.id) })
     return out
 }

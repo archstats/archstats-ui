@@ -1,5 +1,5 @@
 <template>
-  <section class="px-2" aria-label="Snapshots">
+  <section class="px-2" :aria-label="t('workspace.scanPanel.snapshots')">
     <!-- The open snapshot (a select over the history) and the one action that makes a new one. -->
     <div class="flex items-center gap-1.5">
       <button
@@ -9,16 +9,16 @@
           :disabled="!scans.length"
           :aria-expanded="open"
           aria-haspopup="dialog"
-          :aria-label="openScan ? `Snapshot: ${titleOf(openScan)}. Show history` : 'Snapshot history'"
+          :aria-label="openScan ? t('workspace.scanPanel.snapshotShowHistory', { openScan: titleOf(openScan) }) : t('workspace.scanPanel.snapshotHistory')"
           :title="openScan ? tooltipOf(openScan) : undefined"
           @click="toggle"
       >
         <template v-if="openScan">
           <span class="min-w-0 truncate text-neutral-900">{{ titleOf(openScan) }}</span>
           <span v-if="shortCommit(openScan)" class="shrink-0 font-mono text-xs text-neutral-500">{{ shortCommit(openScan) }}</span>
-          <Flag v-if="openScan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" aria-label="Baseline"/>
+          <Flag v-if="openScan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" :aria-label="t('workspace.scanPanel.baseline')"/>
         </template>
-        <span v-else class="min-w-0 truncate text-neutral-500">{{ scans.length ? "No snapshot open" : "No snapshots yet" }}</span>
+        <span v-else class="min-w-0 truncate text-neutral-500">{{ scans.length ? t('workspace.scanPanel.noSnapshotOpen') : t('workspace.scanPanel.noSnapshotsYet') }}</span>
         <ChevronDown :size="14" :stroke-width="1.75" class="ml-auto shrink-0 text-neutral-400" aria-hidden="true"/>
       </button>
 
@@ -42,7 +42,7 @@
         </template>
         <template v-else>
           <Play :size="11" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>
-          <span>Scan</span>
+          <span>{{ t('workspace.scanPanel.scan') }}</span>
         </template>
       </button>
     </div>
@@ -58,23 +58,23 @@
     <div v-else-if="failed" class="mt-1.5 px-1 text-xs leading-4" role="alert">
       <div class="flex items-center gap-1.5">
         <AlertTriangle :size="12" class="shrink-0 text-red-600" aria-hidden="true"/>
-        <span class="text-red-700">The scan failed.</span>
-        <button type="button" class="font-medium text-neutral-600 hover:text-neutral-900" :aria-expanded="failureOpen" @click="failureOpen = !failureOpen">{{ failureOpen ? "Hide" : "Why" }}</button>
-        <button type="button" class="ml-auto text-neutral-400 hover:text-neutral-700" aria-label="Dismiss" @click="store.dismissFailed()"><X :size="12"/></button>
+        <span class="text-red-700">{{ t('workspace.scanPanel.scanFailed') }}</span>
+        <button type="button" class="font-medium text-neutral-600 hover:text-neutral-900" :aria-expanded="failureOpen" @click="failureOpen = !failureOpen">{{ failureOpen ? t('workspace.scanPanel.hide') : t('workspace.scanPanel.why') }}</button>
+        <button type="button" class="ml-auto text-neutral-400 hover:text-neutral-700" :aria-label="t('workspace.scanPanel.dismiss')" @click="store.dismissFailed()"><X :size="12"/></button>
       </div>
-      <p v-if="failureOpen" class="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words rounded bg-red-50 px-2 py-1.5 font-mono text-[11px] leading-4 text-red-800">{{ failed.error || "No reason was recorded." }}</p>
+      <p v-if="failureOpen" class="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words rounded bg-red-50 px-2 py-1.5 font-mono text-[11px] leading-4 text-red-800">{{ failed.error || t('workspace.scanPanel.noReasonWasRecorded') }}</p>
     </div>
     <div v-else-if="ready" class="mt-1.5 flex items-center gap-1.5 px-1 text-xs leading-4 text-neutral-600" role="status">
       <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" aria-hidden="true"/>
-      <span>A new snapshot is ready.</span>
-      <button type="button" class="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500" @click="store.openSnapshot(ready.scanId)">Open it</button>
-      <button type="button" class="ml-auto text-neutral-400 hover:text-neutral-700" aria-label="Dismiss" @click="store.dismissReady()"><X :size="12"/></button>
+      <span>{{ t('workspace.scanPanel.newSnapshotReady') }}</span>
+      <button type="button" class="font-medium text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500" @click="store.openSnapshot(ready.scanId)">{{ t('workspace.scanPanel.open') }}</button>
+      <button type="button" class="ml-auto text-neutral-400 hover:text-neutral-700" :aria-label="t('workspace.scanPanel.dismiss')" @click="store.dismissReady()"><X :size="12"/></button>
     </div>
 
     <p v-if="store.error" class="mt-1.5 flex items-start gap-1.5 px-1 text-xs leading-4 text-red-700" role="alert">
       <AlertTriangle :size="12" class="mt-0.5 shrink-0" aria-hidden="true"/>
       <span class="min-w-0 break-words">{{ store.error }}</span>
-      <button type="button" class="ml-auto shrink-0 text-neutral-400 hover:text-neutral-700" aria-label="Dismiss" @click="store.clearError()"><X :size="12"/></button>
+      <button type="button" class="ml-auto shrink-0 text-neutral-400 hover:text-neutral-700" :aria-label="t('workspace.scanPanel.dismiss')" @click="store.clearError()"><X :size="12"/></button>
     </p>
 
     <BackfillQueue/>
@@ -88,14 +88,14 @@
             class="ui-popover w-[320px] overflow-hidden text-neutral-900"
             :style="{ ...panelStyle, zIndex: '900' }"
             role="dialog"
-            aria-label="Snapshots"
+            :aria-label="t('workspace.scanPanel.snapshots')"
             @keydown.down.prevent="move(1)"
             @keydown.up.prevent="move(-1)"
         >
           <!-- What a scan would read now: the row above the history. -->
           <div class="px-3 pb-2.5 pt-2.5 hairline-b">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-medium text-neutral-500">{{ active?.managed ? "Clone" : "Working copy" }}</span>
+              <span class="text-xs font-medium text-neutral-500">{{ active?.managed ? t('workspace.scanPanel.clone') : t('workspace.scanPanel.workingCopy') }}</span>
               <button
                   v-if="!progress"
                   type="button"
@@ -103,7 +103,7 @@
                   :class="upToDate ? '' : 'ui-btn-primary'"
                   @click="close(false); store.startScan()"
               >
-                <Play :size="10" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>Scan
+                <Play :size="10" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>{{ t('workspace.scanPanel.scan') }}
               </button>
               <span v-else class="ml-auto text-xs text-neutral-500">{{ statusLine }}</span>
             </div>
@@ -113,13 +113,13 @@
             <p class="mt-0.5 text-xs leading-4" :class="wc?.status === 'missing-folder' ? 'text-red-700' : 'text-neutral-600'">{{ freshness }}</p>
           </div>
 
-          <ol class="overflow-y-auto p-1" :style="{ maxHeight: `${Math.min(440, space - 160)}px` }" aria-label="Snapshot history">
+          <ol class="overflow-y-auto p-1" :style="{ maxHeight: `${Math.min(440, space - 160)}px` }" :aria-label="t('workspace.scanPanel.snapshotHistory')">
             <li v-for="(scan, i) in history" :key="scan.id" class="group/scan relative">
               <div v-if="confirmingId === scan.id" class="rounded bg-neutral-50 px-2 py-2">
-                <p class="text-base leading-5 text-neutral-900">Delete the snapshot from {{ formatScanTime(scan.startedAt, now) }}?</p>
+                <p class="text-base leading-5 text-neutral-900">{{ t('workspace.scanPanel.deleteSnapshot', { formatScanTime: formatScanTime(scan.startedAt, now) }) }}</p>
                 <div class="mt-2 flex gap-2">
-                  <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete(scan.id)">Delete</button>
-                  <button type="button" class="ui-btn ui-btn-sm" :ref="(el) => focusOnMount(el)" @click="confirmingId = null">Keep</button>
+                  <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete(scan.id)">{{ t('workspace.scanPanel.delete') }}</button>
+                  <button type="button" class="ui-btn ui-btn-sm" :ref="(el) => focusOnMount(el)" @click="confirmingId = null">{{ t('workspace.scanPanel.keep') }}</button>
                 </div>
               </div>
               <form v-else-if="renamingId === scan.id" class="px-1 py-1" @submit.prevent="saveLabel(scan.id)">
@@ -127,8 +127,8 @@
                     ref="renameInput"
                     v-model="labelDraft"
                     class="ui-input ui-input-sm w-full"
-                    placeholder="Label, e.g. before the split"
-                    aria-label="Snapshot label"
+                    :placeholder="t('workspace.scanPanel.labelEGBefore')"
+                    :aria-label="t('workspace.scanPanel.snapshotLabel')"
                     @keydown.esc.prevent.stop="renamingId = null"
                     @blur="saveLabel(scan.id)"
                 />
@@ -153,11 +153,11 @@
                   <span class="min-w-0 flex-1">
                     <span class="flex min-w-0 items-center gap-1.5">
                       <span class="truncate text-base leading-4" :class="scan.status === 'failed' ? 'text-neutral-500' : scan.id === openId ? 'font-medium text-neutral-900' : 'text-neutral-800'">
-                        {{ scan.status === 'failed' ? `Failed · ${formatScanTime(scan.startedAt, now)}` : titleOf(scan) }}
+                        {{ scan.status === 'failed' ? t('workspace.scanPanel.failed', { formatScanTime: formatScanTime(scan.startedAt, now) }) : titleOf(scan) }}
                       </span>
-                      <Flag v-if="scan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" aria-label="Baseline"/>
-                      <span v-if="scan.origin === 'import'" class="ui-tag h-4 shrink-0 !text-[10px]">imported</span>
-                      <span v-if="scan.origin === 'backfill'" class="ui-tag h-4 shrink-0 !text-[10px]" :title="`Rebuilt from ${tagOf(scan) ? `tag ${scan.revisionRef}` : `commit ${scan.revisionRef}`} in a clean clone`">rescan</span>
+                      <Flag v-if="scan.id === baselineId" :size="11" class="shrink-0 text-neutral-500" :aria-label="t('workspace.scanPanel.baseline')"/>
+                      <span v-if="scan.origin === 'import'" class="ui-tag h-4 shrink-0 !text-[10px]">{{ t('workspace.scanPanel.imported') }}</span>
+                      <span v-if="scan.origin === 'backfill'" class="ui-tag h-4 shrink-0 !text-[10px]" :title="t('workspace.scanPanel.rebuiltCleanClone', { value: tagOf(scan) ? t('workspace.scanPanel.tag', { revisionRef: scan.revisionRef }) : t('workspace.scanPanel.commit', { revisionRef: scan.revisionRef }) })">{{ t('workspace.scanPanel.rescan') }}</span>
                     </span>
                     <span v-if="identityOf(scan)" class="mt-0.5 block truncate font-mono text-[11px] leading-4 text-neutral-500" :title="scan.headCommit">{{ identityOf(scan) }}</span>
                   </span>
@@ -172,7 +172,7 @@
                     type="button"
                     class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet absolute right-1.5 top-1.5 opacity-0 focus-visible:opacity-100 group-hover/scan:opacity-100"
                     :class="{ '!opacity-100 bg-neutral-100': menuId === scan.id }"
-                    :aria-label="`Actions for the snapshot from ${formatScanTime(scan.startedAt, now)}`"
+                    :aria-label="t('workspace.scanPanel.actionsSnapshot', { formatScanTime: formatScanTime(scan.startedAt, now) })"
                     aria-haspopup="menu"
                     :aria-expanded="menuId === scan.id"
                     tabindex="-1"
@@ -186,15 +186,15 @@
 
           <div class="p-1 hairline-t">
             <p v-if="completeCount" class="flex h-6 items-center px-2 font-mono text-[11px] text-neutral-500">
-              {{ completeCount }} snapshot{{ completeCount === 1 ? "" : "s" }} · {{ formatBytes(totalBytes) }}
+              {{ t('workspace.scanPanel.text', { snapshots: t('common.count.snapshot', { count: completeCount }), totalBytes: formatBytes(totalBytes) }) }}
             </p>
-            <button type="button" class="ui-menu-item" title="Scan the repository's tags, each in a clean clone, to fill in history" @click="open = false; tagsOpen = true">
+            <button type="button" class="ui-menu-item" :title="t('workspace.scanPanel.scanRepositorySTags')" @click="open = false; tagsOpen = true">
               <span class="flex w-5 justify-center text-neutral-500" aria-hidden="true"><History :size="14" :stroke-width="1.75"/></span>
-              Scan tags…
+              {{ t('workspace.scanPanel.scanTags') }}
             </button>
             <button type="button" class="ui-menu-item" @click="open = false; storageOpen = true">
               <span class="flex w-5 justify-center text-neutral-500" aria-hidden="true"><HardDrive :size="14" :stroke-width="1.75"/></span>
-              Manage storage…
+              {{ t('workspace.scanPanel.manageStorage') }}
             </button>
           </div>
         </div>
@@ -210,19 +210,19 @@
           @keydown.esc.prevent.stop="closeMenu"
       >
         <template v-if="menuScan.status === 'complete'">
-          <button type="button" class="ui-menu-item" role="menuitem" @click="startRename(menuScan)">Rename…</button>
-          <button v-if="menuScan.id !== baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(menuScan!.id))">Set as baseline</button>
-          <button v-else type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(null))">Clear baseline</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="startRename(menuScan)">{{ t('workspace.scanPanel.rename') }}</button>
+          <button v-if="menuScan.id !== baselineId" type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(menuScan!.id))">{{ t('workspace.scanPanel.setBaseline') }}</button>
+          <button v-else type="button" class="ui-menu-item" role="menuitem" @click="act(() => store.setBaseline(null))">{{ t('workspace.scanPanel.clearBaseline') }}</button>
           <div class="my-1 hairline-b"></div>
-          <button type="button" class="ui-menu-item" role="menuitem" :title="menuScan.headCommit ? `Scan commit ${menuScan.headCommit.slice(0, 7)} again with this build's analysis` : 'Scan the commit HEAD was at when this scan ran'" @click="rescan(menuScan.id)">Rescan this commit…</button>
+          <button type="button" class="ui-menu-item" role="menuitem" :title="menuScan.headCommit ? t('workspace.scanPanel.scanCommitAgainBuild', { slice: menuScan.headCommit.slice(0, 7) }) : t('workspace.scanPanel.scanCommitHeadWas')" @click="rescan(menuScan.id)">{{ t('workspace.scanPanel.rescanCommit') }}</button>
           <div class="my-1 hairline-b"></div>
-          <button type="button" class="ui-menu-item" role="menuitem" @click="act(() => RevealSnapshot(menuScan!.id))">Reveal in {{ fileManager }}</button>
-          <button type="button" class="ui-menu-item" role="menuitem" @click="act(copyPath(menuScan.id))">Copy path</button>
-          <button type="button" class="ui-menu-item" role="menuitem" :title="sourceNote" @click="act(() => SaveSnapshotCopy(menuScan!.id, true))">Save a copy…</button>
-          <button type="button" class="ui-menu-item" role="menuitem" title="The same snapshot without the stored text of every file" @click="act(() => SaveSnapshotCopy(menuScan!.id, false))">Save a copy without source…</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="act(() => RevealSnapshot(menuScan!.id))">{{ t('workspace.scanPanel.reveal', { fileManager }) }}</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="act(copyPath(menuScan.id))">{{ t('workspace.scanPanel.copyPath') }}</button>
+          <button type="button" class="ui-menu-item" role="menuitem" :title="sourceNote" @click="act(() => SaveSnapshotCopy(menuScan!.id, true))">{{ t('workspace.scanPanel.saveCopy') }}</button>
+          <button type="button" class="ui-menu-item" role="menuitem" :title="t('workspace.scanPanel.sameSnapshotWithoutStored')" @click="act(() => SaveSnapshotCopy(menuScan!.id, false))">{{ t('workspace.scanPanel.saveCopyWithoutSource') }}</button>
           <div class="my-1 hairline-b"></div>
         </template>
-        <button type="button" class="ui-menu-item text-red-700" role="menuitem" @click="confirmingId = menuScan.id; closeMenu()">Delete…</button>
+        <button type="button" class="ui-menu-item text-red-700" role="menuitem" @click="confirmingId = menuScan.id; closeMenu()">{{ t('workspace.scanPanel.delete2') }}</button>
       </div>
     </Teleport>
     <StorageSheet v-model="storageOpen"/>
@@ -245,6 +245,7 @@ import type { store as models } from "wailsjs/go/models";
 import { useWorkspacesStore, type ScanPhase } from "~/features/workspace/workspaces.store";
 import { refLabel, scanEta } from "~/features/workspace/scanFlow";
 import { formatElapsed, formatScanTime, relativeAge } from "~/shared/time";
+import { t, intlLocale, dateLocale, listOf } from "~/shared/i18n";
 
 const store = useWorkspacesStore();
 
@@ -268,8 +269,8 @@ const completeCount = computed(() => scans.value.filter((s) => s.status === "com
 const totalBytes = computed(() => scans.value.reduce((sum, s: any) => sum + (Number(s.sizeBytes) || 0), 0));
 
 const { isMac, isWindows } = usePlatform();
-const fileManager = computed(() => (isMac.value ? "Finder" : isWindows.value ? "Explorer" : "file manager"));
-const sourceNote = "The copy holds the stored text of every file, import lines, commit subjects and author emails.";
+const fileManager = computed(() => (isMac.value ? t("workspace.scanPanel.finder") : isWindows.value ? t("workspace.scanPanel.explorer") : t("workspace.scanPanel.fileManager")));
+const sourceNote = t("workspace.scanPanel.copyHoldsStoredText");
 
 // ── Progress ────────────────────────────────────────────
 const elapsed = computed(() => (progress.value ? formatElapsed(progress.value.startedAt, now.value) : ""));
@@ -284,7 +285,7 @@ const eta = computed(() => {
 const wc = computed(() => store.workingCopy);
 const hasOwnSnapshot = computed(() => scans.value.some((s: any) => s.status === "complete" && s.origin !== "backfill" && s.origin !== "import"));
 function plural(n: number, one: string, many: string): string {
-  return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+  return `${n.toLocaleString(intlLocale)} ${n === 1 ? one : many}`;
 }
 // Nothing new is the one case worth saying quietly: the Scan button steps
 // down from primary. A clone may have news upstream, so it never does.
@@ -296,36 +297,36 @@ const freshness = computed(() => {
   const w = wc.value;
   const host = (active.value as any)?.slug?.split("/")[0];
   if (!w) return "";
-  if (w.status === "missing-folder") return "The folder is gone. Move it back, or delete this workspace.";
-  if (w.status === "no-git") return "Not a git checkout: a scan reads the folder as it is, with no history.";
-  const lead = active.value?.managed ? `Scan fetches the latest from ${host || "origin"} first.` : "";
-  if (!hasOwnSnapshot.value) return lead || "Not scanned yet.";
-  if (!store.comparedCommit) return lead || "The snapshots here did not record their commit; the next scan will.";
-  if (w.ahead < 0) return [lead, "HEAD is on a commit the newest snapshot's history does not reach."].filter(Boolean).join(" ");
+  if (w.status === "missing-folder") return t("workspace.scanPanel.folderGoneMoveBack");
+  if (w.status === "no-git") return t("workspace.scanPanel.notGitCheckoutScan");
+  const lead = active.value?.managed ? t("workspace.scanPanel.scanFetchesLatestFirst", { value: host || "origin" }) : "";
+  if (!hasOwnSnapshot.value) return lead || t("workspace.scanPanel.notScannedYet");
+  if (!store.comparedCommit) return lead || t("workspace.scanPanel.snapshotsHereDidNot");
+  if (w.ahead < 0) return [lead, t("workspace.scanPanel.headCommitNewestSnapshot")].filter(Boolean).join(" ");
   const news = [
-    w.ahead > 0 ? plural(w.ahead, "new commit", "new commits") : "",
-    w.dirty > 0 ? plural(w.dirty, "edited file", "edited files") : "",
+    w.ahead > 0 ? t("common.count.newCommit", { count: w.ahead }) : "",
+    w.dirty > 0 ? t("common.count.editedFile", { count: w.dirty }) : "",
   ].filter(Boolean);
-  if (!news.length) return lead || "Nothing new since the newest snapshot.";
-  return [lead, `${news.join(" and ")} since the newest snapshot.`].filter(Boolean).join(" ");
+  if (!news.length) return lead || t("workspace.scanPanel.nothingNewSinceNewest");
+  return [lead, t("workspace.scanPanel.sinceNewestSnapshot", { value: listOf(news) })].filter(Boolean).join(" ");
 });
-const scanHint = computed(() => (upToDate.value ? "Nothing new since the newest snapshot; scan anyway" : freshness.value ? `Scan: ${freshness.value.replace(/\.$/, "")}` : "Scan the working copy"));
+const scanHint = computed(() => (upToDate.value ? t("workspace.scanPanel.nothingNewSinceNewest2") : freshness.value ? t("workspace.scanPanel.scan2", { replace: freshness.value.replace(/\.$/, "") }) : t("workspace.scanPanel.scanWorkingCopy")));
 
 const PHASES: Record<ScanPhase, string> = {
-  starting: "Starting",
-  updating: "Fetching the latest",
-  detecting: "Detecting languages",
-  analyzing: "Analyzing files",
-  rendering: "Rendering views",
-  saving: "Saving snapshot",
-  running: "Scanning",
+  starting: t("workspace.scanPanel.starting"),
+  updating: t("workspace.scanPanel.fetchingLatest"),
+  detecting: t("workspace.scanPanel.detectingLanguages"),
+  analyzing: t("workspace.scanPanel.analyzingFiles"),
+  rendering: t("workspace.scanPanel.renderingViews"),
+  saving: t("workspace.scanPanel.savingSnapshot"),
+  running: t("workspace.scanPanel.scanning"),
 };
 // A rescan says so, and names what it reads: it is not the user's scan.
 const statusLine = computed(() => {
   const p = progress.value;
   if (!p) return "";
-  const phase = PHASES[p.phase] ?? "Scanning";
-  return p.ref ? `Rescanning ${refLabel(p.ref)} · ${phase.toLowerCase()}…` : `${phase}…`;
+  const phase = PHASES[p.phase] ?? t("workspace.scanPanel.scanning");
+  return p.ref ? t("workspace.scanPanel.rescanning", { ref: refLabel(p.ref), phase: phase.toLowerCase() }) : `${phase}…`;
 });
 
 // ── Naming a snapshot ───────────────────────────────────
@@ -333,7 +334,7 @@ const statusLine = computed(() => {
 function tagOf(scan: models.Scan): string {
   const s: any = scan;
   if (s.origin !== "backfill" || !s.revisionRef || /^[0-9a-f]{40}$/.test(s.revisionRef)) return "";
-  const t = s.headTime ? new Date(s.headTime).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const t = s.headTime ? new Date(s.headTime).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }) : "";
   return t ? `${s.revisionRef} · ${t}` : s.revisionRef;
 }
 
@@ -355,18 +356,18 @@ function identityOf(scan: models.Scan): string {
 }
 
 function tooltipOf(scan: models.Scan): string {
-  const lines = [`Scanned ${formatScanTime(scan.startedAt, now.value)}`];
+  const lines = [t("workspace.scanPanel.scanned", { formatScanTime: formatScanTime(scan.startedAt, now.value) })];
   const id = identityOf(scan);
   if (id) lines.push(id);
-  if (scan.id === baselineId.value) lines.push("Baseline for Changes");
+  if (scan.id === baselineId.value) lines.push(t("workspace.scanPanel.baselineChanges"));
   return lines.join("\n");
 }
 
 function rowLabel(scan: models.Scan): string {
   const when = formatScanTime(scan.startedAt, now.value);
-  if (scan.status === "failed") return `Failed scan from ${when}. Show error`;
+  if (scan.status === "failed") return t("workspace.scanPanel.failedScanShowError", { when });
   const size = scan.sizeBytes ? `, ${formatBytes(scan.sizeBytes)}` : "";
-  return scan.id === openId.value ? `Snapshot from ${when}, open${size}` : `Open snapshot from ${when}${size}`;
+  return scan.id === openId.value ? t("workspace.scanPanel.snapshotOpen", { when, size }) : t("workspace.scanPanel.openSnapshot", { when, size });
 }
 
 // ── History popover ─────────────────────────────────────

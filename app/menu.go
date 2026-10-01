@@ -37,7 +37,7 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	root := menu.NewMenu()
 	root.Append(menu.AppMenu())
 
-	file := root.AddSubmenu("File")
+	file := m.submenu(root, "menu:file", "File")
 	m.add(file, "workspace:new", "Add Folder…", keys.CmdOrCtrl("n"))
 	m.add(file, "workspace:clone", "Clone Repository…", keys.Combo("n", keys.CmdOrCtrlKey, keys.ShiftKey))
 	file.AddSeparator()
@@ -53,7 +53,7 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 
 	root.Append(menu.EditMenu())
 
-	view := root.AddSubmenu("View")
+	view := m.submenu(root, "menu:view", "View")
 	m.add(view, "goto", "Go to Anything…", keys.CmdOrCtrl("p"))
 	view.AddSeparator()
 	m.add(view, "nav:back", "Back", keys.CmdOrCtrl("["))
@@ -61,12 +61,19 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 
 	root.Append(menu.WindowMenu())
 
-	help := root.AddSubmenu("Help")
+	help := m.submenu(root, "menu:help", "Help")
 	m.add(help, "help:shortcuts", "Keyboard Shortcuts", nil)
 	m.add(help, "help:metrics", "Metric Reference", nil)
 
 	m.menu = root
 	return root
+}
+
+// submenu adds a submenu whose title the frontend can relabel, like an item.
+func (m *MenuService) submenu(root *menu.Menu, id, label string) *menu.Menu {
+	sub := root.AddSubmenu(label)
+	m.items[id] = root.Items[len(root.Items)-1]
+	return sub
 }
 
 func (m *MenuService) add(parent *menu.Menu, id, label string, accel *keys.Accelerator) {
@@ -84,6 +91,8 @@ type MenuState struct {
 	HasSnapshot  bool `json:"hasSnapshot"`
 	Scanning     bool `json:"scanning"`
 	CanExport    bool `json:"canExport"`
+	// Labels names the custom items and submenus in the app's language, by id.
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // SetState enables and disables items to match the app: no Scan Again
@@ -102,6 +111,12 @@ func (m *MenuService) SetState(state MenuState) {
 		"goto":            state.HasSnapshot,
 	}
 	changed := false
+	for id, label := range state.Labels {
+		if item, ok := m.items[id]; ok && label != "" && item.Label != label {
+			item.Label = label
+			changed = true
+		}
+	}
 	for id, on := range want {
 		if item, ok := m.items[id]; ok && item.Disabled == on {
 			item.Disabled = !on

@@ -21,6 +21,8 @@ import { layoutAnswer } from "../render/blocks"
 import { trustedText } from "../render/verdict"
 import { stableKey } from "~/features/exhibits/schema"
 import type { ExhibitPart } from "~/features/exhibits/types"
+import { t, dateLocale } from "~/shared/i18n"
+import { answerLanguage } from "../engine/language"
 
 export interface TemplateSuggestion { id: string; name: string; audience: string; summary: string; why: string; recommended: boolean }
 
@@ -64,8 +66,8 @@ export async function suggestTemplates(thread: Thread, embed?: Embed, model?: Mo
                 .map((x, i) => ({ id: x.t!.id, name: x.t!.name, audience: x.t!.audience, summary: x.t!.summary, why: x.p.reason, recommended: i === 0 }))
             if (out.length) {
                 if (!out.some(o => o.id === "architecture-review")) {
-                    const t = ALL().find(x => x.id === "architecture-review")!
-                    out.push({ id: t.id, name: t.name, audience: t.audience, summary: t.summary, why: "the full review, whatever was asked", recommended: false })
+                    const ALL2 = ALL().find(x => x.id === "architecture-review")!
+                    out.push({ id: ALL2.id, name: ALL2.name, audience: ALL2.audience, summary: ALL2.summary, why: t("ask.writer.fullReviewWhateverWas"), recommended: false })
                 }
                 return out
             }
@@ -89,13 +91,13 @@ async function searchTemplates(thread: Thread, embed?: Embed): Promise<TemplateS
     }
     const out: TemplateSuggestion[] = hits.map(h => {
         const q = closest(h.item)
-        return { id: h.item.id, name: h.item.name, audience: h.item.audience, summary: h.item.summary, why: q ? `covers “${q.replace(/\?$/, "")}”` : "close in meaning to the conversation", recommended: false }
+        return { id: h.item.id, name: h.item.name, audience: h.item.audience, summary: h.item.summary, why: q ? t("ask.writer.covers", { replace: q.replace(/\?$/, "") }) : t("ask.writer.closeMeaningConversation"), recommended: false }
     })
     // The codebase's own framework review, and the general review, are always on offer.
     if (snap) {
         for (const id of [bestTemplate(snap.facts, snap.ecos), "architecture-review"]) {
-            const t = ALL().find(x => x.id === id)
-            if (t && !out.some(o => o.id === t.id)) out.push({ id: t.id, name: t.name, audience: t.audience, summary: t.summary, why: t.ecosystem ? "made for this codebase's framework" : "the full review, whatever was asked", recommended: false })
+            const ALL2 = ALL().find(x => x.id === id)
+            if (ALL2 && !out.some(o => o.id === ALL2.id)) out.push({ id: ALL2.id, name: ALL2.name, audience: ALL2.audience, summary: ALL2.summary, why: ALL2.ecosystem ? t("ask.writer.madeCodebaseSFramework") : t("ask.writer.fullReviewWhateverWas"), recommended: false })
         }
     }
     if (out[0]) out[0].recommended = true
@@ -116,7 +118,7 @@ Voice:
 - Never make "the evidence", "the data", "the scan" or "the table" the subject of a sentence. Vary sentence openings; do not repeat one pattern for every item of a list.
 - No citations, no brackets, no "[E1]", no "[Snapshot]", no offers to show things, no questions to the reader, no headings.
 - Refer to a figure or table as "the figure" or "the table" in this section, never by an id ("Figure E5"): the report numbers its figures itself.
-Write Markdown: paragraphs and lists only. Keep it under 180 words unless the brief asks for more.`
+Write Markdown: paragraphs and lists only. Keep it under 180 words unless the brief asks for more.${answerLanguage()}`
 
 /** Loaded words a report must not use: they judge instead of describing. */
 export const LOADED = /\b(the (evidence|data|scan) (does|do|shows?|indicates?|suggests?|reveals?|names?|identif\w+|specif\w+|states?)\b|severe(ly)?|degradation|degraded|bad design|poorly|a mess|messy|spaghetti|terrible|awful|well[- ]designed|not well[- ]layered|clean architecture|velocity|violat(e|es|ing|ion|ions)|intended \w+|should (stay|be kept) separate|lack of (oversight|discipline)|technical debt crisis)\b/i
@@ -149,7 +151,7 @@ async function write(model: ModelClient, brief: string, evidence: string, signal
     const ask = async (extra = "") => (await model.chat({
         messages: [
             { role: "system", content: VOICE },
-            { role: "user", content: `Brief:\n${brief}\n\nEvidence (the only source of facts and numbers):\n${evidence.slice(0, 14000)}${extra}` },
+            { role: "user", content: t("ask.writer.briefEvidenceOnlySource", { brief, evidence: evidence.slice(0, 14000), extra }) },
         ],
         think: false,
     }, () => {}, signal)).content.trim()
@@ -160,7 +162,7 @@ async function write(model: ModelClient, brief: string, evidence: string, signal
     // Spelled-out numbers slip past the number check; they must be digits.
     const spelled = [...new Set([...text.matchAll(SPELLED)].map(m => m[0]))]
     if ((bad.length || loaded.length || spelled.length) && !signal.aborted) {
-        const why = [bad.length ? `numbers that are not in the evidence: ${bad.join(", ")}` : "", loaded.length ? `judging words instead of describing: ${loaded.join(", ")}` : "", spelled.length ? `numbers spelled as words (${spelled.slice(0, 4).join(", ")}); write them as digits` : ""].filter(Boolean).join("; and ")
+        const why = [bad.length ? t("ask.writer.numbersNotEvidence", { bad: bad.join(", ") }) : "", loaded.length ? t("ask.writer.judgingWordsInsteadDescribing", { loaded: loaded.join(", ") }) : "", spelled.length ? t("ask.writer.numbersSpelledWordsWrite", { spelled: spelled.slice(0, 4).join(", ") }) : ""].filter(Boolean).join("; and ")
         text = digitize(clean(await ask(`\n\nYour previous draft used ${why}. Write it again without them: describe what the imports and numbers show.\n\nPrevious draft:\n${text}`)))
         // Checked again: what is still not in the evidence does not print.
         text = dropUnsourced(text, evidence).text
@@ -177,7 +179,7 @@ export function clean(md: string): string {
         .replace(/\s*\((?:see\s+)?(?:Figure|Fig\.|Table|Exhibit)s?\s+E\d+(?:\.\d+)?(?:\s*(?:,|and)\s*E?\d+(?:\.\d+)?)*\)/gi, "")
         .replace(/\b(Figure|Fig\.|Table|Exhibit)\s+E\d+(?:\.\d+)?\b/gi, (_m, k: string, at: number, all: string) => {
             const word = /^t/i.test(k) ? "table" : "figure"
-            return `${at === 0 || /[.!?:]\s*$/.test(all.slice(0, at)) ? "The" : "the"} ${word}`
+            return `${at === 0 || /[.!?:]\s*$/.test(all.slice(0, at)) ? t("ask.writer.the") : "the"} ${word}`
         })
         .replace(/^#{1,6}\s.*\n+/, "")
         .replace(/\n{3,}/g, "\n\n")
@@ -200,7 +202,7 @@ async function findingsFor(topic: string, thread: Thread, embed?: Embed): Promis
     const done = thread.turns.filter(t => t.status === "done" && (t.answer.trim() || t.evidence.length || t.exhibits?.length))
     const hits = await hybridSearch(topic, done, t => `${t.question}\n${trustedText(t.answer, t.grounding).slice(0, 800)}`, { embed, limit: 2 })
     const turns = hits.filter(h => h.score > 0.25).map(h => h.item)
-    const text = turns.map(t => `Question asked: ${t.question}\nWhat was found: ${trustedText(t.answer, t.grounding)}\n${t.steps.map(s => s.text ?? "").join("\n").slice(0, 3500)}`).join("\n\n")
+    const text = turns.map(turn => t("ask.writer.questionAskedWhatWas", { question: turn.question, trustedText: trustedText(turn.answer, turn.grounding), value: turn.steps.map(s => s.text ?? "").join("\n").slice(0, 3500) })).join("\n\n")
     return { text, turns }
 }
 
@@ -226,7 +228,7 @@ async function cellEvidence(blocks: Block[], ctx: ReadingContext): Promise<Map<s
                 if (def) { const r = await def.run(ctx, s.params ?? {}); if (!r.instruction && !r.absent) out.set(key, `${b.cell.title || def.label}:\n${r.text}`) }
             } else if (s.type === "sql") {
                 const rows = await ctx.query(`SELECT * FROM (${s.sql}) LIMIT 15`)
-                if (rows.length) out.set(key, `${b.cell.title || "Table"}:\n${Object.keys(rows[0]).join(" | ")}\n${rows.map(r => Object.values(r).map(v => (v === null ? "" : String(v).slice(0, 60))).join(" | ")).join("\n")}`)
+                if (rows.length) out.set(key, `${b.cell.title || t("ask.writer.table")}:\n${Object.keys(rows[0]).join(" | ")}\n${rows.map(r => Object.values(r).map(v => (v === null ? "" : String(v).slice(0, 60))).join(" | ")).join("\n")}`)
             }
         } catch { /* a cell that cannot run here is left to the report */ }
     }
@@ -267,7 +269,7 @@ interface Section { heading: string; blocks: Block[] }
 function sectionsOf(blocks: Block[]): Section[] {
     const out: Section[] = []
     // What comes before the first heading is the introduction.
-    let cur: Section | null = { heading: "Introduction", blocks: [] }
+    let cur: Section | null = { heading: t("ask.writer.introduction"), blocks: [] }
     for (const b of blocks) {
         if (!isCell(b) && (b.kind === "h1" || b.kind === "h2")) {
             if (cur) out.push(cur)
@@ -275,7 +277,7 @@ function sectionsOf(blocks: Block[]): Section[] {
         } else if (cur) cur.blocks.push(b)
     }
     if (cur) out.push(cur)
-    return out.filter(x => x.heading !== "Introduction" || x.blocks.length)
+    return out.filter(x => x.heading !== t("ask.writer.introduction") || x.blocks.length)
 }
 
 export async function writeReport(opts: {
@@ -291,11 +293,11 @@ export async function writeReport(opts: {
     const { thread, model, embed, signal } = opts
     const reports = useReportsStore()
     const ws = useWorkspacesStore()
-    if (!ws.active) throw new Error("No workspace is open.")
+    if (!ws.active) throw new Error(t("ask.writer.noWorkspaceOpen"))
     if (reports.workspace !== ws.active.id) await reports.load(ws.active.id)
     const snap = await snapshotFacts()
-    if (!snap) throw new Error("No snapshot to write the report on.")
-    const state: WriteProgress = { phase: "planning", sections: [], message: "Laying out the report" }
+    if (!snap) throw new Error(t("ask.writer.noSnapshotWriteReport"))
+    const state: WriteProgress = { phase: "planning", sections: [], message: t("ask.writer.layingOutReport") }
     const tell = () => opts.progress({ ...state, sections: state.sections.map(s => ({ ...s })) })
     tell()
 
@@ -308,18 +310,18 @@ export async function writeReport(opts: {
 
     if (opts.templateId) {
         // A template: its own sections, readings, queries and figure slots.
-        const t = ALL().find(x => x.id === opts.templateId) as ReportTemplate | undefined
-        if (!t) throw new Error(`No template ${opts.templateId}.`)
+        const ALL2 = ALL().find(x => x.id === opts.templateId) as ReportTemplate | undefined
+        if (!ALL2) throw new Error(t("ask.writer.noTemplate", { templateId: opts.templateId }))
         const params: Record<string, string> = {}
-        for (const p of t.params ?? []) if (p.kind === "component") params[p.id] = opts.params?.[p.id] || mostDiscussedComponent(thread) || (await biggestHotspot()) || ""
-        blocks = buildTemplate(t, { facts: snap.facts, ecosystems: snap.ecos, params, explain: true }).blocks
-        title = t.title(ws.active.name, params)
+        for (const p of ALL2.params ?? []) if (p.kind === "component") params[p.id] = opts.params?.[p.id] || mostDiscussedComponent(thread) || (await biggestHotspot()) || ""
+        blocks = buildTemplate(ALL2, { facts: snap.facts, ecosystems: snap.ecos, params, explain: true }).blocks
+        title = ALL2.title(ws.active.name, params)
     } else {
         // Free form: an outline of the conversation, related questions merged, chatter dropped.
         const done = thread.turns.filter(x => x.status === "done" && (x.evidence.some(reportable) || shownExhibits(x).length))
         const reply = await model.chat({
             messages: [
-                { role: "system", content: "You organise an architecture conversation into a short report. Group related questions into 2 to 5 sections with plain, specific headings (not the questions themselves). Drop questions that found nothing (requests for visualisations, small talk). Reply as JSON." },
+                { role: "system", content: "You organise an architecture conversation into a short report. Group related questions into 2 to 5 sections with plain, specific headings (not the questions themselves). Drop questions that found nothing (requests for visualisations, small talk). Reply as JSON." + answerLanguage() },
                 { role: "user", content: done.map((x, i) => `#${i} ${x.question}\n${trustedText(x.answer, x.grounding).slice(0, 300)}`).join("\n\n") },
             ],
             format: { type: "object", properties: { title: { type: "string" }, sections: { type: "array", items: { type: "object", properties: { heading: { type: "string" }, questions: { type: "array", items: { type: "number" } } }, required: ["heading", "questions"] } } }, required: ["title", "sections"] },
@@ -332,14 +334,14 @@ export async function writeReport(opts: {
             const turns = (s.questions ?? []).map(i => done[i]).filter(Boolean)
             if (!turns.length) continue
             blocks.push({ id: newId(), kind: "h2", text: s.heading })
-            blocks.push({ id: newId(), kind: "p", text: "", prompt: `Write what the conversation found about: ${s.heading}.`, })
+            blocks.push({ id: newId(), kind: "p", text: "", prompt: t("ask.writer.writeWhatConversationFound", { heading: s.heading }), })
             for (const t of turns) {
                 for (const e of t.evidence.filter(reportable)) { if (!used.has(e.id) && !seen.has(evidenceKey(e))) { used.add(e.id); seen.add(evidenceKey(e)); blocks.push(...evidenceBlocks(e)) } }
                 for (const x of shownExhibits(t)) { if (!seen.has(exhibitKey(x))) { seen.add(exhibitKey(x)); blocks.push(exhibitBlock(x)) } }
             }
         }
-        blocks.push({ id: newId(), kind: "h2", text: "What this cannot show" })
-        blocks.push({ id: newId(), kind: "p", text: "", prompt: "Name what the scan leaves out (ignored folders, tests, generated code) and any question the evidence could not answer." })
+        blocks.push({ id: newId(), kind: "h2", text: t("ask.writer.whatCannotShow") })
+        blocks.push({ id: newId(), kind: "p", text: "", prompt: t("ask.writer.nameWhatScanLeaves") })
         title = outline.title?.trim() || thread.title
     }
 
@@ -348,7 +350,7 @@ export async function writeReport(opts: {
     try { declaredRules = Number((await snap.ctx.query("SELECT count(*) AS n FROM rules WHERE status <> 'not_applicable'"))[0]?.n ?? 0) > 0 } catch { declaredRules = false }
 
     // What each section's cells say, computed now.
-    state.phase = "reading"; state.message = "Reading the evidence"; tell()
+    state.phase = "reading"; state.message = t("ask.writer.readingEvidence"); tell()
     const cells = await cellEvidence(blocks, snap.ctx)
 
     // Write every section that asks for words.
@@ -360,13 +362,13 @@ export async function writeReport(opts: {
     const after = new Map<string, Block[]>()
     const allWritten: string[] = []
     for (const [i, s] of sections.entries()) {
-        if (signal.aborted) throw new Error("Stopped.")
-        state.sections[i].status = "writing"; state.message = `Writing “${s.heading}”`; tell()
+        if (signal.aborted) throw new Error(t("ask.writer.stopped"))
+        state.sections[i].status = "writing"; state.message = t("ask.writer.writing", { heading: s.heading }); tell()
         try {
             const prompts = s.blocks.filter(b => !isCell(b) && b.prompt && !b.text.trim())
             const intro = s.blocks.filter(b => !isCell(b) && b.text.trim() && b.kind === "p").map(b => (b as any).text).join("\n").slice(0, 1500)
             const cellText = s.blocks.map(readingKeyText).map(k => cells.get(k)).filter(Boolean).join("\n\n")
-            const isIntro = s.heading === "Introduction"
+            const isIntro = s.heading === t("ask.writer.introduction")
             const synthesis = !isIntro && /summary|finding|recommend|conclusion|next step|takeaway|what to do|verdict|overall/i.test(`${s.heading} ${prompts.map(p => (p as any).prompt).join(" ")}`)
             if (isIntro) {
                 const asked = thread.turns.filter(t => t.status === "done").map(t => `- ${t.question}`).join("\n")
@@ -378,7 +380,7 @@ export async function writeReport(opts: {
             const found = synthesis
                 ? { text: thread.turns.filter(t => t.status === "done").map(t => `Question asked: ${t.question}\nWhat was found: ${trustedText(t.answer, t.grounding)}`).join("\n\n").slice(0, 7000), turns: [] as Turn[] }
                 : await findingsFor(`${s.heading}\n${prompts.map(p => (p as any).prompt).join("\n")}`, thread, embed)
-            const earlier = synthesis && allWritten.length ? `What the report says so far:\n${allWritten.join("\n\n").slice(0, 6000)}` : ""
+            const earlier = synthesis && allWritten.length ? t("ask.writer.whatReportSaysSo", { allWritten: allWritten.join("\n\n").slice(0, 6000) }) : ""
             // Conversation evidence that belongs here, when the template did not bring its own.
             if (opts.templateId && !synthesis) {
                 const anchor = [...s.blocks].reverse().find(isCell)?.id ?? prompts[prompts.length - 1]?.id
@@ -429,17 +431,17 @@ export async function writeReport(opts: {
     // A summary on top, from what was written.
     let summary: Block[] = []
     if (allWritten.length && !signal.aborted) {
-        state.phase = "summary"; state.message = "Writing the summary"; tell()
+        state.phase = "summary"; state.message = t("ask.writer.writingSummary"); tell()
         const s = await write(model, `Section: Summary\nThe three to five things a reader must take away from this report, most important first, as a short lead sentence and a bulleted list. The report is titled "${title}".`, allWritten.join("\n\n"), signal)
-        if (s.text) summary = [{ id: newId(), kind: "h2", text: "Summary" }, ...fromMarkdown(s.text).filter(b => isCell(b) || b.text.trim())]
+        if (s.text) summary = [{ id: newId(), kind: "h2", text: t("ask.writer.summary") }, ...fromMarkdown(s.text).filter(b => isCell(b) || b.text.trim())]
     }
 
-    state.phase = "saving"; state.message = "Saving the report"; tell()
-    const note: Block = { id: newId(), kind: "p", text: "", prompt: `Written by Ask (${model.name}) on ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })} from the conversation “${thread.title}”${opts.templateId ? `, on the “${ALL().find(x => x.id === opts.templateId)?.name}” template` : ""}. The numbers come from the cells; the words are the model's. Read it through before sharing it.` }
+    state.phase = "saving"; state.message = t("ask.writer.savingReport"); tell()
+    const note: Block = { id: newId(), kind: "p", text: "", prompt: t("ask.writer.writtenAskConversationNumbers", { modelName: model.name, toLocaleDateString: new Date().toLocaleDateString(dateLocale, { day: "numeric", month: "short" }), threadTitle: thread.title, value: opts.templateId ? t("ask.writer.template", { name: ALL().find(x => x.id === opts.templateId)?.name }) : "" }) }
     const firstSection = final.findIndex(b => !isCell(b) && (b.kind === "h1" || b.kind === "h2"))
     const doc = firstSection > 0 ? [note, ...final.slice(0, firstSection), ...summary, ...final.slice(firstSection)] : [note, ...summary, ...final]
     const rec = await reports.create(title, doc)
-    if (!rec) throw new Error("The report could not be saved.")
+    if (!rec) throw new Error(t("ask.writer.reportCouldNotSaved"))
     void reports.runAll()
 
     // Every figure the template asks for, taken from its view out of sight, the way "Take" would.
@@ -453,7 +455,7 @@ export async function writeReport(opts: {
         for (const [i, b] of slots.entries()) {
             if (signal.aborted) break
             const spec = b.cell.spec as Extract<Cell["spec"], { type: "slot" }>
-            state.message = `Taking “${b.cell.title || spec.view}” from ${spec.view} (${i + 1} of ${slots.length})`; tell()
+            state.message = t("ask.writer.taking", { value: b.cell.title || spec.view, view: spec.view, value2: i + 1, slotsLength: slots.length }); tell()
             try {
                 const got = await takeView(kernel.id, spec.route, { take: spec.take, figures: 1, report: true })
                 let cell: Cell | null = null
@@ -465,15 +467,15 @@ export async function writeReport(opts: {
                     cell = { spec: { type: "capture", kind: "table", route: spec.route, view: spec.view }, title: b.cell.title || t.title, caption: "", output: { table: { columns: t.columns.map((c, k) => ({ id: `c${k}`, label: c, numeric: t.rows.every(r => r[k] === "" || !Number.isNaN(Number(r[k]))) })), rows: t.rows.slice(0, 25).map(r => Object.fromEntries(r.map((v, k) => [`c${k}`, v]))), total: t.total } }, ranOn }
                 }
                 if (cell) { await reports.fillSlot(rec.id, b.id, [{ id: newId(), kind: "cell", cell }]); filled++ }
-                else reports.setCell(b.id, { spec: { ...spec, hint: `Ask could not take this: ${spec.view} drew nothing for this snapshot (it may need a lens, a newer scan, or data this codebase lacks). ${spec.hint}` } })
+                else reports.setCell(b.id, { spec: { ...spec, hint: t("ask.writer.askCouldNotTake", { view: spec.view, hint: spec.hint }) } })
             } catch (e) {
                 console.error(`Ask could not take “${b.cell.title}”`, e)
-                reports.setCell(b.id, { spec: { ...spec, hint: `Ask could not take this (${String((e as Error)?.message ?? e)}). ${spec.hint}` } })
+                reports.setCell(b.id, { spec: { ...spec, hint: t("ask.writer.askCouldNotTake2", { value: String((e as Error)?.message ?? e), hint: spec.hint }) } })
             }
         }
     }
     state.phase = "done"
-    state.message = slots.length ? `Written · ${slots.length - slotsLeft()} of ${slots.length} figures and tables taken from their views` : "Written"
+    state.message = slots.length ? t("ask.writer.writtenFiguresTablesTaken", { value: slots.length - slotsLeft(), slotsLength: slots.length }) : t("ask.writer.written")
     tell()
     return { reportId: rec.id, title }
 }

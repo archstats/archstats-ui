@@ -1,0 +1,280 @@
+{
+  "about": "Text in code that stays English on purpose. `npm run i18n:check` fails on any other string a person could read that is not a message. An entry names a file (glob) and, optionally, the exact text; `why` says what would break if it were translated.",
+  "files": [
+    {
+      "files": "src/features/ask/tools/**",
+      "why": "Tool descriptions and results for the model. Ask answers in the app's language (engine/language.ts); the tools stay in the language they were tuned in."
+    },
+    {
+      "files": "src/features/ask/knowledge/**",
+      "why": "Capability cards and playbooks the model reads."
+    },
+    {
+      "files": "src/features/ask/intents/**",
+      "why": "Intent descriptions and routing for the model."
+    },
+    {
+      "files": "src/features/ask/engine/**",
+      "why": "System prompts and repair instructions to the model. The check labels people see are messages."
+    },
+    {
+      "files": "src/features/snapshot/languages.ts",
+      "why": "Language names are lookup keys elsewhere, and proper nouns in any language."
+    },
+    {
+      "files": "src/features/navigation/focusSpec.ts",
+      "why": "graphLine() writes query-language text that the parser reads back."
+    },
+    {
+      "files": "src/features/libraries/libraries.ts",
+      "why": "Standard-library module names."
+    }
+  ],
+  "texts": [
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Controller",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Service",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Repository",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Component",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Configuration",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Entity",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Interface",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Record",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/java/java.ts",
+      "text": "Class",
+      "why": "Java roles are data compared across the app; roleName() shows them translated."
+    },
+    {
+      "file": "src/features/ask/app/ask.store.ts",
+      "text": "Workspace {workspace}; snapshot of commit {value} (analysis revision {revision}). They are in the Ask view.",
+      "why": "Context for the model."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "You choose report templates for an architecture conversation. Pick the 3 templates whose purpose best matches what the conversation investigated and what its reader would need. Give each a reason of at most 12 words that names what in the conversation it fits. Reply as JSON.",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Conversation questions:\n{value}\n\nTemplates:\n{value2}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "{tName}. {summary} {value} For {audience}.",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "You write one section of an architecture report about a codebase, for readers who do not read code all day.\nVoice:\n- The code is the subject, never a tool: \"checkout depends on 12 components\", never \"Archstats shows\" or \"the scan finds\" or \"the evidence\".\n- One idea per sentence. Plain words; name a metric the first time it appears (\"dependents: how many components import it\").\n- More than two parallel things: a lead sentence, then a bulleted list.\n- Shorten long package paths in prose to their last two parts; tables keep full names.\n- Say what the evidence shows and what it would cost or risk, in numbers where the evidence has them. No verdicts or loaded words (\"bad\", \"a mess\", \"severe\", \"degradation\", \"not well layered\", \"well designed\", \"velocity\"), no guesses about people, intent or skill.\n- Never assume an intended architecture (\"intended layering\", \"should stay separate\", \"violates\") unless declared rules are in the evidence. Describe the direction the imports actually run.\n- Write every number as digits (61, not sixty-one), exactly as the evidence has it; every number must appear in the evidence given. If the evidence cannot answer part of the brief, say so once, in one sentence, for the whole section; never repeat a limitation per item.\n- Never make \"the evidence\", \"the data\", \"the scan\" or \"the table\" the subject of a sentence. Vary sentence openings; do not repeat one pattern for every item of a list.\n- No citations, no brackets, no \"[E1]\", no \"[Snapshot]\", no offers to show things, no questions to the reader, no headings.\n- Refer to a figure or table as \"the figure\" or \"the table\" in this section, never by an id (\"Figure E5\"): the report numbers its figures itself.\nWrite Markdown: paragraphs and lists only. Keep it under 180 words unless the brief asks for more.{answerLanguage}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "\n\nYour previous draft used {why}. Write it again without them: describe what the imports and numbers show.\n\nPrevious draft:\n{text}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "You organise an architecture conversation into a short report. Group related questions into 2 to 5 sections with plain, specific headings (not the questions themselves). Drop questions that found nothing (requests for visualisations, small talk). Reply as JSON.{answerLanguage}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Section: Introduction\nTwo or three sentences: what this report looks at and why, from the questions that were asked below. Do not invent who asked, deadlines or decisions; if the reason is not in the questions, describe what the report covers instead. The report is titled \"{title}\".",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Questions asked about {wsName}:\n{asked}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Question asked: {question}\nWhat was found: {trustedText}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Section introduction already written:\n{intro}",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Section: {heading}\nWhat the writer is asked to cover:\n{value}\nThe report is titled \"{title}\".",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ask/app/writer.ts",
+      "text": "Section: Summary\nThe three to five things a reader must take away from this report, most important first, as a short lead sentence and a bulleted list. The report is titled \"{title}\".",
+      "why": "The writer's prompts to the model; the report text it produces follows the app's language."
+    },
+    {
+      "file": "src/features/ai/components/AISettings.vue",
+      "text": "ARCHSTATS_AI=off",
+      "why": "An environment variable."
+    },
+    {
+      "file": "src/features/connections/neighbours.ts",
+      "text": "Ungrouped",
+      "why": "A group id compared elsewhere."
+    },
+    {
+      "file": "src/features/export/figure.ts",
+      "text": "path, rect, circle, ellipse, line, polyline, polygon, text, image, use",
+      "why": "An SVG selector."
+    },
+    {
+      "file": "src/features/frameworks/frameworkProfiles.ts",
+      "text": "Interface",
+      "why": "A class-name suffix to strip."
+    },
+    {
+      "file": "src/features/git/authors.ts",
+      "text": "Author {value}",
+      "why": "A pseudonym the route carries and the store parses back."
+    },
+    {
+      "file": "src/features/git/cochange.ts",
+      "text": "percentage_of_all_commits_pair_1 > 0 AND percentage_of_all_commits_pair_2 > 0",
+      "why": "SQL."
+    },
+    {
+      "file": "src/features/groups/groups.store.ts",
+      "text": "Groups",
+      "why": "The legacy default lens name, compared with stored names."
+    },
+    {
+      "file": "src/features/groups/groups.store.ts",
+      "text": "Group",
+      "why": "The stored default name of an unnamed group."
+    },
+    {
+      "file": "src/features/groups/queryAssist.ts",
+      "text": "components where …",
+      "why": "Query-language syntax."
+    },
+    {
+      "file": "src/features/metrics/components/DirectoryTree.vue",
+      "text": "rollup {k}",
+      "why": "A rule id in an export's notes."
+    },
+    {
+      "file": "src/features/metrics/exhibits/ranking.ts",
+      "text": "most depended on",
+      "why": "Sample measures the ranking exhibit parses as input."
+    },
+    {
+      "file": "src/features/metrics/exhibits/ranking.ts",
+      "text": "least healthy",
+      "why": "Sample measures the ranking exhibit parses as input."
+    },
+    {
+      "file": "src/features/metrics/exhibits/ranking.ts",
+      "text": "no such measure",
+      "why": "Sample measures the ranking exhibit parses as input."
+    },
+    {
+      "file": "src/pages/views/components/[name]/connections.vue",
+      "text": "depends on",
+      "why": "A Relationship value compared in code."
+    },
+    {
+      "file": "src/pages/views/components/[name]/connections.vue",
+      "text": "is depended on by",
+      "why": "A Relationship value compared in code."
+    },
+    {
+      "file": "src/pages/views/evidence.vue",
+      "text": "{title}.md",
+      "why": "A file name."
+    },
+    {
+      "file": "src/features/reports/components/PdfPreviewSheet.vue",
+      "text": "Letter",
+      "why": "A paper size value."
+    },
+    {
+      "file": "src/features/reports/ecosystemTemplates.ts",
+      "text": "u.name GLOB 'use[A-Z]*'",
+      "why": "SQL fragments (GLOB, IN)."
+    },
+    {
+      "file": "src/features/reports/ecosystemTemplates.ts",
+      "text": "u.id IN {marked}",
+      "why": "SQL fragments (GLOB, IN)."
+    },
+    {
+      "file": "src/features/reports/readings.ts",
+      "text": "NOT ((coalesce({a}directory, '') || '/x') GLOB '{value}')",
+      "why": "SQL."
+    },
+    {
+      "file": "src/features/reports/readings.ts",
+      "text": "{count} models | {count} abstract_models",
+      "why": "Django model keys."
+    },
+    {
+      "file": "src/features/reports/readings.ts",
+      "text": "{count} views | {count} viewss",
+      "why": "Django keys."
+    },
+    {
+      "file": "src/features/reports/readings.ts",
+      "text": "{count} forms | {count} formss",
+      "why": "Django keys."
+    },
+    {
+      "file": "src/features/reports/reportTemplates.ts",
+      "text": "git__last_change_age_in_days DESC NULLS LAST, ",
+      "why": "An SQL ORDER BY fragment."
+    },
+    {
+      "file": "src/features/sql/sqlLang.ts",
+      "text": "WITH",
+      "why": "An SQL keyword."
+    },
+    {
+      "file": "src/features/reports/components/AddToReportSheet.vue",
+      "text": "pending",
+      "why": "A figure's state while it renders, not text."
+    },
+    {
+      "file": "src/pages/views/search.vue",
+      "text": "(no component)",
+      "why": "The row key for files outside every component; the label is a message."
+    }
+  ]
+}

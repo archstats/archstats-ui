@@ -29,6 +29,7 @@ import { metricScale, passes, spearman, strengthWord, type Brushes, type MetricS
 import { useCanvas } from "~/features/metrics/useCanvas";
 import { useCanvasFigure } from "~/features/export/useExportables";
 import type { LegendItem } from "~/features/export/figure";
+import { t } from "~/shared/i18n";
 
 // Every pair of the overview's metrics at once. Below the diagonal, a small
 // scatter per pair; on it, each metric's spread; above it, the rank
@@ -64,25 +65,25 @@ const emit = defineEmits<{
 
 const store = useDataStore();
 const niceName = (k: string) => store.statNiceName(k) || k;
-const noun = computed(() => (props.grain === "file" ? "files" : "components"));
+const noun = computed(() => (props.grain === "file" ? t("common.noun.file", { count: 2 }) : t("common.noun.component", { count: 2 })));
 const { theme, version } = useChartTheme();
 
 const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { size, context, local } = useCanvas(box, canvas);
 const figure = useCanvasFigure({
-  title: "Metrics matrix",
+  title: t("metrics.metricMatrix.metricsMatrix"),
   canvas: () => canvas.value,
   legend: () => {
-    const t = theme.value;
-    const items: LegendItem[] = [{ label: `A ${props.grain}`, color: withAlpha(t.inkSecondary, 0.8), mark: "dot" }];
-    if (props.selected.length) items.push({ label: "Selected", color: t.blue, mark: "dot" });
-    items.push({ label: "Rise together (positive ρ)", color: withAlpha(t.blue, 0.5) }, { label: "One rises as the other falls (negative ρ)", color: withAlpha(t.violet, 0.5) });
+    const theme2 = theme.value;
+    const items: LegendItem[] = [{ label: `A ${props.grain}`, color: withAlpha(theme2.inkSecondary, 0.8), mark: "dot" }];
+    if (props.selected.length) items.push({ label: t("metrics.metricMatrix.selected"), color: theme2.blue, mark: "dot" });
+    items.push({ label: t("metrics.metricMatrix.riseTogetherPositive"), color: withAlpha(theme2.blue, 0.5) }, { label: t("metrics.metricMatrix.oneRisesOtherFalls"), color: withAlpha(theme2.violet, 0.5) });
     return {
       items,
       notes: [
-        "Below the diagonal: one metric against another. On the diagonal: how each metric spreads.",
-        "Above the diagonal: Spearman's rank correlation, deeper the stronger it is.",
+        t("metrics.metricMatrix.belowDiagonalOneMetric"),
+        t("metrics.metricMatrix.aboveDiagonalSpearmanS"),
       ],
     };
   },
@@ -339,12 +340,12 @@ function setHover(h: Hover | null, e: MouseEvent) {
     const [a, b] = pairOf(h.cell);
     const q = rho.value.get(`${h.cell.r}:${h.cell.c}`);
     const text = !q || !Number.isFinite(q.rho)
-      ? `${niceName(a)} and ${niceName(b)}: too few ${noun.value} with both readings.`
-      : `${niceName(a)} and ${niceName(b)}: ${strengthWord(q.rho)}${Math.abs(q.rho) >= 0.2 ? (q.rho > 0 ? ", rising together" : ", one falls as the other rises") : ""} (ρ ${q.rho.toFixed(2)} by rank, ${q.n} ${noun.value}). Click to plot.`;
+      ? t("metrics.metricMatrix.tooFewBothReadings", { a: niceName(a), b: niceName(b), noun: noun.value })
+      : t("metrics.metricMatrix.rankClickPlot", { a: niceName(a), b: niceName(b), rho: strengthWord(q.rho), value: Math.abs(q.rho) >= 0.2 ? (q.rho > 0 ? t("metrics.metricMatrix.risingTogether") : t("metrics.metricMatrix.oneFallsOtherRises")) : "", value2: q.rho.toFixed(2), n: q.n, noun: noun.value });
     tip.value = { x: e.clientX, y: e.clientY, mono: false, text };
   } else {
     const [a, b] = pairOf(h.cell);
-    tip.value = { x: e.clientX, y: e.clientY, mono: false, text: `${niceName(a)} × ${niceName(b)} · click to plot, drag to brush` };
+    tip.value = { x: e.clientX, y: e.clientY, mono: false, text: t("metrics.metricMatrix.clickPlotDragBrush", { a: niceName(a), b: niceName(b) }) };
   }
 }
 

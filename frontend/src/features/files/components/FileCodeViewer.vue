@@ -6,15 +6,15 @@
       <span class="truncate font-mono text-sm text-neutral-900" :title="filePath">{{ fileBasename }}</span>
       <span v-if="detectedLanguageLabel" class="ui-tag">{{ detectedLanguageLabel }}</span>
       <span v-if="highlightStart > 0" class="ui-tag">L{{ highlightStart === highlightEnd ? highlightStart : `${highlightStart}–${highlightEnd}` }}</span>
-      <span class="ml-auto font-mono text-xs text-neutral-400">{{ codeLines.length }} lines</span>
+      <span class="ml-auto font-mono text-xs text-neutral-400">{{ t('files.fileCodeViewer.lines', { codeLinesLength: codeLines.length }) }}</span>
       <OpenInEditor :file="filePath" :line="highlightStart > 0 ? highlightStart : undefined"/>
       <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!fileContents" @click="copyToClipboard">
         <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/>
-        <span>{{ copied ? 'Copied' : 'Copy' }}</span>
+        <span>{{ copied ? t('files.fileCodeViewer.copied') : t('files.fileCodeViewer.copy') }}</span>
       </button>
     </div>
 
-    <EmptyState v-if="!fileContents" title="No source stored" text="This snapshot does not include the file contents." icon="file-text" class="grow"/>
+    <EmptyState v-if="!fileContents" :title="t('files.fileCodeViewer.noSourceStored')" :text="t('files.fileCodeViewer.snapshotDoesNotInclude')" icon="file-text" class="grow"/>
     <div v-else ref="scrollContainerRef" class="code-scroll relative flex min-h-0 grow items-start overflow-auto" :class="fill ? '' : 'max-h-[600px]'">
       <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 pl-3 pr-2 font-mono text-xs leading-5 text-neutral-400 hairline-r">
         <span v-for="line in codeLines" :key="'num-' + line.number" :ref="line.isHighlighted ? 'highlightedLineRef' : undefined" class="block text-right" :class="line.isHighlighted ? 'text-neutral-900' : ''">{{ line.number }}</span>
@@ -33,6 +33,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import Icon from "~/shared/ui/Icon.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import hljs from "highlight.js"
+import { t } from "~/shared/i18n"
 
 const props = defineProps({
   filePath: {
@@ -144,7 +145,7 @@ const detectedLanguageLabel = computed(() => {
   const lang = detectedLang.value
   if (!lang) return 'text'
   const labels: Record<string, string> = {
-    'xml': 'vue / html / xml',
+    'xml': t("files.fileCodeViewer.vueHtmlXml"),
     'javascript': 'javascript',
     'typescript': 'typescript',
     'java': 'java',
@@ -152,7 +153,7 @@ const detectedLanguageLabel = computed(() => {
     'go': 'go',
     'sql': 'sql',
     'yaml': 'yaml',
-    'bash': 'bash / shell',
+    'bash': t("files.fileCodeViewer.bashShell"),
     'cpp': 'c++',
     'c': 'c',
     'csharp': 'c#',
@@ -165,10 +166,10 @@ const detectedLanguageLabel = computed(() => {
     'css': 'css',
     'scss': 'scss',
     'less': 'less',
-    'diff': 'diff / patch',
+    'diff': t("files.fileCodeViewer.diffPatch"),
     'dockerfile': 'dockerfile',
     'makefile': 'makefile',
-    'ini': 'ini / toml',
+    'ini': t("files.fileCodeViewer.iniToml"),
     'protobuf': 'protobuf',
     'graphql': 'graphql',
     'perl': 'perl',

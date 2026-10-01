@@ -15,7 +15,7 @@
           <template v-for="key in tooltipKeys" :key="key">
             <dt class="truncate text-neutral-500" :title="niceName(key)">{{ niceName(key) }}</dt>
             <dd class="text-right font-mono tabular-nums text-neutral-900">{{ Number.isFinite(metricValue(hovered.row, key)) ? formatReading(hovered.row[key]) : "—" }}</dd>
-            <dd class="text-right font-mono text-xs leading-[18px] tabular-nums text-neutral-400" :title="`Rank among ${domainRows.length}`">{{ rankOf(key, hovered.row) }}</dd>
+            <dd class="text-right font-mono text-xs leading-[18px] tabular-nums text-neutral-400" :title="t('metrics.componentPlotterDiagram.rankAmong', { domainRowsLength: domainRows.length })">{{ rankOf(key, hovered.row) }}</dd>
           </template>
         </dl>
         <p v-if="cellOf(hovered.row.name)" class="mt-2 pt-2 text-xs text-neutral-500 hairline-t">{{ cellOf(hovered.row.name) }}</p>
@@ -51,11 +51,11 @@
 
         <text :x="-margin.left + 12" :y="height / 2" :transform="`rotate(-90, ${-margin.left + 12}, ${height / 2})`" text-anchor="middle" dominant-baseline="central"
               :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-          {{ niceName(yAxisProperty) }}<tspan v-if="yLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
+          {{ niceName(yAxisProperty) }}<tspan v-if="yLog" :fill="theme.inkMuted" font-weight="400">{{ ' ' + t('metrics.componentPlotterDiagram.log') }}</tspan>
         </text>
         <text :x="width / 2" :y="height + 44" text-anchor="middle" dominant-baseline="central"
               :fill="theme.inkSecondary" font-size="11" font-weight="500" :font-family="theme.fontSans">
-          {{ niceName(xAxisProperty) }}<tspan v-if="xLog" :fill="theme.inkMuted" font-weight="400"> · log</tspan>
+          {{ niceName(xAxisProperty) }}<tspan v-if="xLog" :fill="theme.inkMuted" font-weight="400">{{ ' ' + t('metrics.componentPlotterDiagram.log') }}</tspan>
         </text>
 
         <!-- Where the marks pile up along each axis; the selection overlays in blue. -->
@@ -81,7 +81,7 @@
             <polygon :points="zonePoints([[1, 1], [0.5, 1], [1, 0.5]])" :fill="withAlpha(theme.inkMuted, hoveredCell === 'useless' ? 0.2 : 0.09)"/>
             <line :x1="xz(0)" :y1="yz(1)" :x2="xz(1)" :y2="yz(0)" :stroke="theme.inkMuted" stroke-width="1" stroke-dasharray="4 3"/>
             <text :transform="`rotate(${mainSequenceAngle}, ${xz(0.5)}, ${yz(0.5)})`" :x="xz(0.5)" :y="yz(0.5)" text-anchor="middle" dy="-6"
-                  font-size="10" :fill="theme.inkMuted" :font-family="theme.fontSans">Main sequence</text>
+                  font-size="10" :fill="theme.inkMuted" :font-family="theme.fontSans">{{ t('metrics.componentPlotterDiagram.mainSequence') }}</text>
           </g>
           <g v-else-if="reading?.kind === 'medians'">
             <line :x1="xz(reading.mx)" :x2="xz(reading.mx)" :y1="0" :y2="height" :stroke="theme.hairlineStrong" stroke-dasharray="3 3"/>
@@ -151,15 +151,15 @@
 
         <!-- Median values, said once at the end of each line. -->
         <g v-if="reading?.kind === 'medians'" class="pointer-events-none" :font-family="theme.fontMono" font-size="10" :fill="theme.inkMuted">
-          <text v-if="inRange(xz(reading.mx), width)" :x="xz(reading.mx) + 4" :y="-10 - marginMax" dominant-baseline="auto">median {{ formatReading(reading.mx) }}</text>
-          <text v-if="inRange(yz(reading.my), height)" :x="4" :y="yz(reading.my) - 5" :stroke="theme.surface" stroke-width="3" paint-order="stroke" stroke-linejoin="round">median {{ formatReading(reading.my) }}</text>
+          <text v-if="inRange(xz(reading.mx), width)" :x="xz(reading.mx) + 4" :y="-10 - marginMax" dominant-baseline="auto">{{ t('metrics.componentPlotterDiagram.median', { mx: formatReading(reading.mx) }) }}</text>
+          <text v-if="inRange(yz(reading.my), height)" :x="4" :y="yz(reading.my) - 5" :stroke="theme.surface" stroke-width="3" paint-order="stroke" stroke-linejoin="round">{{ t('metrics.componentPlotterDiagram.median2', { my: formatReading(reading.my) }) }}</text>
         </g>
 
         <!-- The reading in each corner: how many marks, and what the corner means. Click selects them. -->
         <g v-for="cell in cellLabels" :key="cell.id"
            class="cell-label cursor-pointer outline-none"
            role="button" tabindex="0"
-           :aria-label="`Select ${cell.count}: ${cell.text}`"
+           :aria-label="t('metrics.componentPlotterDiagram.select', { cellCount: cell.count, text: cell.text })"
            @mousedown.stop
            @click.stop="selectCell(cell.id, $event)"
            @keydown.enter.prevent="selectCell(cell.id, $event)"
@@ -192,6 +192,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
 import { formatReading } from "~/shared/format";
 import { distinctTails, logTicks, metricValue, placeLabels, type Box, type PlotReading } from "~/features/metrics/plotReading";
+import { t } from "~/shared/i18n";
 
 // Scatter plot over any rows that carry a `name` and numeric columns:
 // components or files. It fills its pane, reads itself (medians and named
@@ -842,17 +843,17 @@ function markClicked(event: MouseEvent, row: Row) {
 
 // ─── Legend: what colour, size and the guides mean ───
 const figure = useSvgFigure({
-  title: "Metrics plot",
+  title: t("metrics.componentPlotterDiagram.metricsPlot"),
   svg: () => svg.value,
   legend: () => {
-    const t = theme.value;
+    const theme2 = theme.value;
     const items: LegendItem[] = [];
     const ramps: LegendRamp[] = [];
     const notes: string[] = [];
     const ck = colorKey.value;
     if (ck && props.colorProperty) {
       for (const sw of ck.swatches) items.push({ label: sw.range, color: sw.color, mark: "dot" });
-      notes.push(`Colour is ${niceName(props.colorProperty)}, in fifths of the marks.`);
+      notes.push(t("metrics.componentPlotterDiagram.colourFifthsMarks", { colorProperty: niceName(props.colorProperty) }));
     } else {
       const counts = new Map<string, { name: string; color: string; n: number }>();
       let none = 0;
@@ -867,22 +868,22 @@ const figure = useSvgFigure({
       }
       const ranked = [...counts.values()].sort((a, b) => b.n - a.n);
       for (const g of ranked.slice(0, 12)) items.push({ label: g.name, color: g.color, mark: "dot", count: g.n });
-      if (ranked.length > 12) notes.push(`${ranked.length - 12} more groups are drawn in their own colours.`);
-      if (none && ranked.length) items.push({ label: "In no group", color: withAlpha(t.inkMuted, 0.55), mark: "dot", count: none });
-      if (ranked.length && props.rows.some(r => visibleGroupsOf(r.name).length > 1)) notes.push("A mark in several groups is split between their colours.");
+      if (ranked.length > 12) notes.push(t("metrics.componentPlotterDiagram.moreGroupsDrawnTheir", { value: ranked.length - 12 }));
+      if (none && ranked.length) items.push({ label: t("metrics.componentPlotterDiagram.noGroup"), color: withAlpha(theme2.inkMuted, 0.55), mark: "dot", count: none });
+      if (ranked.length && props.rows.some(r => visibleGroupsOf(r.name).length > 1)) notes.push(t("metrics.componentPlotterDiagram.markSeveralGroupsSplit"));
     }
     if (props.reading?.kind === "main-sequence") {
       items.push(
-        { label: "Main sequence", color: t.inkMuted, mark: "dashed" },
-        { label: "Zone of pain", color: withAlpha(t.red, 0.35) },
-        { label: "Zone of uselessness", color: withAlpha(t.inkMuted, 0.35) },
+        { label: t("metrics.componentPlotterDiagram.mainSequence"), color: theme2.inkMuted, mark: "dashed" },
+        { label: t("metrics.componentPlotterDiagram.zonePain"), color: withAlpha(theme2.red, 0.35) },
+        { label: t("metrics.componentPlotterDiagram.zoneUselessness"), color: withAlpha(theme2.inkMuted, 0.35) },
       );
     } else if (props.reading?.kind === "medians") {
-      items.push({ label: "Medians", color: t.hairlineStrong, mark: "dashed" });
+      items.push({ label: t("metrics.componentPlotterDiagram.medians"), color: theme2.hairlineStrong, mark: "dashed" });
     }
     const sk = sizeKey.value;
-    if (props.radiusProperty && sk) notes.push(`Size is ${niceName(props.radiusProperty)}, from ${sk.v0} to ${sk.v1}.`);
-    notes.push(`Across: ${niceName(props.xAxisProperty)}${props.xLog ? " (log)" : ""}. Up: ${niceName(props.yAxisProperty)}${props.yLog ? " (log)" : ""}. One mark per ${props.grain}.`);
+    if (props.radiusProperty && sk) notes.push(t("metrics.componentPlotterDiagram.size", { radiusProperty: niceName(props.radiusProperty), v0: sk.v0, v1: sk.v1 }));
+    notes.push(t("metrics.componentPlotterDiagram.acrossUpOneMark", { xAxisProperty: niceName(props.xAxisProperty), value: props.xLog ? t("metrics.componentPlotterDiagram.log2") : "", yAxisProperty: niceName(props.yAxisProperty), value2: props.yLog ? t("metrics.componentPlotterDiagram.log2") : "", grain: props.grain }));
     return { items, ramps, notes };
   },
 })

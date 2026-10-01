@@ -1,22 +1,22 @@
 <template>
   <ViewWorkspaceLayout
-    title="Find in code"
+    :title="t('pages.search.findCode')"
     :queryable="true"
-    :tabs="[{ id: 'hits', label: 'Hits' }]"
+    :tabs="[{ id: 'hits', label: t('pages.search.hits') }]"
     active-tab="hits"
     :is-sidebar-open="!!inspected"
   >
     <template #stats>
       <template v-if="result && !error">
-        <span><span class="text-neutral-800">{{ totalHits.toLocaleString("en-US") }}</span> hits in <span class="text-neutral-800">{{ fileRows.length.toLocaleString("en-US") }}</span> of {{ result.searched.toLocaleString("en-US") }} files</span>
+        <span><I18nT k="pages.search.hitsFiles"><template #intlLocale><span class="text-neutral-800">{{ totalHits.toLocaleString(intlLocale) }}</span></template><template #intlLocale2><span class="text-neutral-800">{{ fileRows.length.toLocaleString(intlLocale) }}</span></template><template #intlLocale3>{{ result.searched.toLocaleString(intlLocale) }}</template></I18nT></span>
         <span class="text-neutral-400">·</span>
-        <span>{{ result.elapsedMs }} ms</span>
-        <span v-if="result.truncated" class="text-amber-700" :title="`Only the ${FILE_CAP.toLocaleString('en-US')} files with the most hits are listed`">· first {{ FILE_CAP.toLocaleString("en-US") }} files</span>
-        <span v-if="outOfScope" class="text-neutral-500" title="Files the scope or the Files switch leaves out">· {{ outOfScope.toLocaleString("en-US") }} out of scope</span>
+        <span>{{ t('pages.search.ms', { elapsedMs: result.elapsedMs }) }}</span>
+        <span v-if="result.truncated" class="text-amber-700" :title="t('pages.search.onlyFilesMostHits', { value: FILE_CAP.toLocaleString(intlLocale) })">{{ t('pages.search.firstFiles', { value: FILE_CAP.toLocaleString(intlLocale) }) }}</span>
+        <span v-if="outOfScope" class="text-neutral-500" :title="t('pages.search.filesScopeFilesSwitch')">{{ t('pages.search.outScope', { value: outOfScope.toLocaleString(intlLocale) }) }}</span>
       </template>
     </template>
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Roll up by">
+      <div class="ui-segmented" role="group" :aria-label="t('pages.search.rollUp')">
         <button v-for="g in GRAINS" :key="g.id" type="button" :aria-pressed="grain === g.id" @click="setRoute({ grain: g.id === 'components' ? undefined : g.id })">{{ g.label }}</button>
       </div>
     </template>
@@ -25,11 +25,11 @@
         type="button"
         class="ui-btn ui-btn-sm"
         :disabled="!canKeep"
-        :title="canKeep ? `A live group of everything that contains “${needle}”, re-answered on every scan` : 'A live group keeps a plain text: turn off .* and whole word'"
+        :title="canKeep ? t('pages.search.liveGroupEverythingContains', { needle }) : t('pages.search.liveGroupKeepsPlain')"
         @click="keepLive"
       >
         <Icon icon="layers" :size="13" class="text-neutral-500"/>
-        <span>Keep as live group</span>
+        <span>{{ t('pages.search.keepLiveGroup') }}</span>
       </button>
     </template>
 
@@ -46,35 +46,35 @@
               autocomplete="off"
               class="ui-input h-8 w-full pl-8 font-mono"
               :class="error ? '!border-red-400' : ''"
-              placeholder="Text in the code: a class, a call, a table name, a string"
-              aria-label="Text to find"
+              :placeholder="t('pages.search.textCodeClassCall')"
+              :aria-label="t('pages.search.textFind')"
               :aria-invalid="!!error"
               @input="typed = ($event.target as HTMLInputElement).value"
               @keydown.enter="commit"
             >
           </label>
-          <div class="ui-segmented" role="group" aria-label="Match options">
-            <button type="button" :aria-pressed="opts.caseSensitive" title="Match case" class="font-mono" @click="setRoute({ case: opts.caseSensitive ? undefined : '1' })">Aa</button>
-            <button type="button" :aria-pressed="opts.word" title="Whole word" class="font-mono" @click="setRoute({ word: opts.word ? undefined : '1' })">W</button>
-            <button type="button" :aria-pressed="opts.regex" title="Regular expression (RE2)" class="font-mono" @click="setRoute({ regex: opts.regex ? undefined : '1' })">.*</button>
+          <div class="ui-segmented" role="group" :aria-label="t('pages.search.matchOptions')">
+            <button type="button" :aria-pressed="opts.caseSensitive" :title="t('pages.search.matchCase')" class="font-mono" @click="setRoute({ case: opts.caseSensitive ? undefined : '1' })">{{ t('pages.search.aa') }}</button>
+            <button type="button" :aria-pressed="opts.word" :title="t('pages.search.wholeWord')" class="font-mono" @click="setRoute({ word: opts.word ? undefined : '1' })">W</button>
+            <button type="button" :aria-pressed="opts.regex" :title="t('pages.search.regularExpressionRe2')" class="font-mono" @click="setRoute({ regex: opts.regex ? undefined : '1' })">.*</button>
           </div>
         </div>
         <p v-if="error" class="font-mono text-sm text-red-700" role="alert">{{ error }}</p>
-        <p v-else-if="!hasSource" class="text-sm text-neutral-500">This snapshot kept no source, so there is nothing to search. Scans keep it by default; scan again.</p>
+        <p v-else-if="!hasSource" class="text-sm text-neutral-500">{{ t('pages.search.snapshotKeptNoSource') }}</p>
       </div>
 
       <!-- Hits are an exhibit: a strip names them and ends in their export button. -->
       <ExhibitFrame v-if="needle && rows.length && !(loading && !result) && !(grain === 'groups' && !lens.active)"
                     :exhibit="hitTable" class="grow" fill header-class="h-9 shrink-0 px-4 hairline-b">
-        <template #aside>{{ rows.length.toLocaleString("en-US") }} {{ grain === "files" ? "files" : grain === "groups" ? "groups" : "components" }}</template>
+        <template #aside>{{ rows.length.toLocaleString(intlLocale) }} {{ grain === "files" ? "files" : grain === "groups" ? "groups" : "components" }}</template>
         <div class="absolute inset-0 overflow-y-auto">
           <table class="ui-table w-full">
             <thead>
               <tr>
-                <th v-if="selectable" class="w-8"><Checkbox :model-value="allSelected" aria-label="Select all" @update:model-value="toggleAll"/></th>
-                <th class="text-left">{{ grain === 'files' ? 'File' : grain === 'groups' ? 'Group' : 'Component' }}</th>
-                <th v-if="grain !== 'files'" class="w-20 text-right">Files</th>
-                <th class="w-20 text-right">Hits</th>
+                <th v-if="selectable" class="w-8"><Checkbox :model-value="allSelected" :aria-label="t('pages.search.selectAll')" @update:model-value="toggleAll"/></th>
+                <th class="text-left">{{ grain === 'files' ? t('pages.search.file') : grain === 'groups' ? t('pages.search.group') : t('pages.search.component') }}</th>
+                <th v-if="grain !== 'files'" class="w-20 text-right">{{ t('pages.search.files') }}</th>
+                <th class="w-20 text-right">{{ t('pages.search.hits') }}</th>
                 <th class="w-40"></th>
               </tr>
             </thead>
@@ -86,24 +86,24 @@
                 :class="inspected?.key === r.key ? 'bg-accent-50' : ''"
                 @click="inspect(r)"
               >
-                <td v-if="selectable" @click.stop><Checkbox :model-value="selected.has(r.key)" :aria-label="`Select ${r.label}`" @update:model-value="toggle(r.key)"/></td>
+                <td v-if="selectable" @click.stop><Checkbox :model-value="selected.has(r.key)" :aria-label="t('pages.search.select', { label: r.label })" @update:model-value="toggle(r.key)"/></td>
                 <td class="max-w-0 truncate font-mono text-sm" :title="r.key">
                   <span v-if="r.color" class="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" :style="{ background: r.color }" aria-hidden="true"></span>{{ r.label }}
                 </td>
-                <td v-if="grain !== 'files'" class="text-right font-mono text-sm tabular-nums">{{ r.files.length.toLocaleString("en-US") }}</td>
-                <td class="text-right font-mono text-sm tabular-nums">{{ r.hits.toLocaleString("en-US") }}</td>
+                <td v-if="grain !== 'files'" class="text-right font-mono text-sm tabular-nums">{{ r.files.length.toLocaleString(intlLocale) }}</td>
+                <td class="text-right font-mono text-sm tabular-nums">{{ r.hits.toLocaleString(intlLocale) }}</td>
                 <td><span class="block h-1.5 rounded-sm bg-accent-400/70" :style="{ width: `${Math.max(2, (r.hits / maxHits) * 100)}%` }"></span></td>
               </tr>
             </tbody>
           </table>
-          <button v-if="rows.length > shownRows.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 500">Show {{ Math.min(500, rows.length - shownRows.length) }} more of {{ (rows.length - shownRows.length).toLocaleString("en-US") }}</button>
+          <button v-if="rows.length > shownRows.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 my-3" @click="limit += 500">{{ t('pages.search.showMore', { min: Math.min(500, rows.length - shownRows.length), value: (rows.length - shownRows.length).toLocaleString(intlLocale) }) }}</button>
         </div>
       </ExhibitFrame>
       <div v-else class="min-h-0 grow overflow-y-auto">
-        <EmptyState v-if="!needle" class="h-full" title="Find text in the code" text="Where the payment gateway is called, which components write raw SQL, who still reads a retired flag. Rolled up by component, by the groups of the lens, or by file." icon="search"/>
+        <EmptyState v-if="!needle" class="h-full" :title="t('pages.search.findTextCode')" :text="t('pages.search.wherePaymentGatewayCalled')" icon="search"/>
         <LoadingState v-else-if="loading && !result" class="h-full"/>
-        <EmptyState v-else-if="result && !rows.length && !error" class="h-full" :title="`No “${needle}” in scope`" :text="outOfScope ? `${outOfScope.toLocaleString('en-US')} files outside the scope hold it.` : 'Not in any file this snapshot kept.'" icon="search"/>
-        <EmptyState v-else-if="grain === 'groups' && !lens.active" class="h-full" title="Pick a lens" text="Hits roll up by the groups of the active lens. Choose one in the sidebar." icon="layers"/>
+        <EmptyState v-else-if="result && !rows.length && !error" class="h-full" :title="t('pages.search.noScope', { needle })" :text="outOfScope ? t('pages.search.filesOutsideScopeHold', { value: outOfScope.toLocaleString(intlLocale) }) : t('pages.search.notAnyFileSnapshot')" icon="search"/>
+        <EmptyState v-else-if="grain === 'groups' && !lens.active" class="h-full" :title="t('pages.search.pickLens')" :text="t('pages.search.hitsRollUpGroups')" icon="layers"/>
       </div>
       <GroupActionBar v-if="selectable && selected.size" :selected-items="[...selected]" :kind="grain === 'files' ? 'file' : 'component'" :show-in-except="['search']" @replace="selected = new Set($event)" @clear="selected = new Set()" @created="selected = new Set()"/>
     </template>
@@ -112,9 +112,9 @@
       <template v-if="inspected">
         <div class="flex items-baseline gap-2">
           <h2 class="min-w-0 flex-1 truncate font-mono text-base font-medium text-neutral-900" :title="inspected.key">{{ inspected.label }}</h2>
-          <router-link v-if="inspected.to" :to="inspected.to" class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900">Open</router-link>
+          <router-link v-if="inspected.to" :to="inspected.to" class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900">{{ t('pages.search.open') }}</router-link>
         </div>
-        <p class="text-sm text-neutral-500">{{ inspected.hits.toLocaleString("en-US") }} hits in {{ inspected.files.length.toLocaleString("en-US") }} {{ inspected.files.length === 1 ? 'file' : 'files' }}</p>
+        <p class="text-sm text-neutral-500">{{ t('pages.search.hits2', { value: inspected.hits.toLocaleString(intlLocale), files: t('common.count.file', { count: inspected.files.length }) }) }}</p>
         <section v-for="f in inspectedFiles" :key="f.file" class="flex flex-col gap-1">
           <div class="flex items-baseline gap-2">
             <router-link :to="filePath(f.file, 'source')" class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-800 hover:text-neutral-950" :title="f.file">{{ basename(f.file) }}</router-link>
@@ -132,9 +132,9 @@
             </template>
           </ol>
           <p v-else-if="lineErrors[f.file]" class="text-xs text-neutral-500">{{ lineErrors[f.file] }}</p>
-          <p v-else class="text-xs text-neutral-400">Reading…</p>
+          <p v-else class="text-xs text-neutral-400">{{ t('pages.search.reading') }}</p>
         </section>
-        <p v-if="inspected.files.length > inspectedFiles.length" class="text-sm text-neutral-500">And {{ (inspected.files.length - inspectedFiles.length).toLocaleString("en-US") }} more files; choose Files above to see them all.</p>
+        <p v-if="inspected.files.length > inspectedFiles.length" class="text-sm text-neutral-500">{{ t('pages.search.moreFilesChooseFiles', { value: (inspected.files.length - inspectedFiles.length).toLocaleString(intlLocale) }) }}</p>
       </template>
     </template>
   </ViewWorkspaceLayout>
@@ -158,6 +158,8 @@ import { useScopeStore } from "~/features/groups/scope.store";
 import { findInCode, findLines, type FindOptions, type FindResult, type HitLine } from "~/features/files/codeSearch";
 import { componentLabel, componentPath, filePath, groupPath } from "~/features/navigation/routes";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { t, intlLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 // Where a text lives in the code, rolled up the way the architect slices it:
 // by component, by the groups of the lens, or file by file. Reached from ⌘P's
@@ -166,7 +168,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 interface Row { key: string; label: string; files: Array<{ file: string; hits: number }>; hits: number; to?: string; color?: string | null }
 
 const FILE_CAP = 5000;
-const GRAINS = [{ id: "components", label: "Components" }, { id: "groups", label: "Groups" }, { id: "files", label: "Files" }] as const;
+const GRAINS = [{ id: "components", label: t("pages.search.components") }, { id: "groups", label: t("pages.search.groups") }, { id: "files", label: t("pages.search.files") }] as const;
 
 const route = useRoute();
 const router = useRouter();
@@ -269,12 +271,12 @@ const rows = computed<Row[]>(() => {
         const ids = lensGroups.value.filter(x => x.files.has(file) || (!!c && x.components.has(c))).map(x => x.g.id);
         return ids.length ? ids : [NO_GROUP];
       },
-      k => (k === NO_GROUP ? "In no group" : byId.get(k)?.name ?? k),
+      k => (k === NO_GROUP ? t("pages.search.noGroup") : byId.get(k)?.name ?? k),
       k => (k === NO_GROUP ? undefined : groupPath(k)),
       k => (k === NO_GROUP ? null : byId.get(k)?.color ?? null),
     );
   }
-  return rollup(file => [comp.get(file) ?? "(no component)"], k => componentLabel(k, project), k => (k === "(no component)" ? undefined : componentPath(k)));
+  return rollup(file => [comp.get(file) ?? "(no component)"], k => (k === "(no component)" ? t("pages.search.noComponent") : componentLabel(k, project)), k => (k === "(no component)" ? undefined : componentPath(k)));
 });
 const shownRows = computed(() => rows.value.slice(0, limit.value));
 const maxHits = computed(() => rows.value[0]?.hits || 1);
@@ -291,7 +293,7 @@ const canKeep = computed(() => !!needle.value && !opts.value.regex && !opts.valu
 function keepLive() {
   if (!canKeep.value) return;
   const g = groups.createGroup(needle.value, [], lens.active ?? DEFAULT_DIMENSION);
-  groups.setQuery(g.id, `contains "${needle.value}"`, "live");
+  groups.setQuery(g.id, t("pages.search.contains", { needle: needle.value }), "live");
   void router.push(groupPath(g.id));
 }
 
@@ -325,13 +327,13 @@ const basename = (f: string) => f.slice(f.lastIndexOf("/") + 1);
 
 // ── Export ──────────────────────────────────────────────────────────────
 const hitTable = useTable({
-  get title() { return `Find ${needle.value} by ${grain.value}`; },
+  get title() { return t("pages.search.find", { needle: needle.value, grain: grain.value }); },
   rows: () => rows.value.map(r => ({ [grain.value === "files" ? "file" : grain.value === "groups" ? "group" : "component"]: r.label, files: r.files.length, hits: r.hits })),
   columns: () => [
-    { id: grain.value === "files" ? "file" : grain.value === "groups" ? "group" : "component", label: grain.value === "files" ? "File" : grain.value === "groups" ? "Group" : "Component" },
-    { id: "files", label: "Files" },
-    { id: "hits", label: "Hits" },
+    { id: grain.value === "files" ? "file" : grain.value === "groups" ? "group" : "component", label: grain.value === "files" ? t("pages.search.file") : grain.value === "groups" ? t("pages.search.group") : t("pages.search.component") },
+    { id: "files", label: t("pages.search.files") },
+    { id: "hits", label: t("pages.search.hits") },
   ],
-  disabledReason: () => (!rows.value.length ? "Nothing found yet." : null),
+  disabledReason: () => (!rows.value.length ? t("pages.search.nothingFoundYet") : null),
 });
 </script>

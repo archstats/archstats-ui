@@ -1,7 +1,7 @@
 <template>
   <!-- A table with an export title is an exhibit: its caption row names it and ends in its export button. -->
   <ExhibitFrame :exhibit="table">
-    <template #aside>{{ elements.length.toLocaleString("en-US") }} {{ nameColumn.toLowerCase() }}{{ elements.length === 1 ? "" : "s" }}</template>
+    <template #aside>{{ elements.length.toLocaleString(intlLocale) }} {{ nameColumn.toLowerCase() }}{{ elements.length === 1 ? "" : "s" }}</template>
     <div class="flex flex-col">
       <div class="w-full overflow-x-auto">
         <table class="ui-table">
@@ -9,12 +9,12 @@
           <tr>
             <th class="w-8" v-if="selectableElements">
               <Checkbox :model-value="selectedElements && selectedElements.length === limitedElements.length"
-                        @update:model-value="toggleSelectAll" aria-label="Select all"/>
+                        @update:model-value="toggleSelectAll" :aria-label="t('metrics.elementTable.selectAll')"/>
             </th>
             <th class="cursor-pointer select-none hover:text-neutral-900" @click="toggleSort('name')">
               <span class="inline-flex items-center gap-1">{{ nameColumn }}<Icon v-if="sortSettings.column === 'name'" :icon="sortSettings.ascending ? 'chevron-up' : 'chevron-down'" :size="12"/></span>
             </th>
-            <th v-if="showGroups">Groups</th>
+            <th v-if="showGroups">{{ t('metrics.elementTable.groups') }}</th>
             <th v-for="column in columns" :key="column.name"
                 class="cursor-pointer select-none text-right hover:text-neutral-900"
                 :class="[instrumented ? 'is-instrumented' : '', sortSettings.column === column.name ? 'text-neutral-900' : '']"
@@ -65,11 +65,11 @@
         </table>
       </div>
       <div v-if="totalPages > 1" class="mt-3 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage <= 1" aria-label="Previous page" @click="goToPage(currentPage - 1)">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage <= 1" :aria-label="t('metrics.elementTable.previousPage')" @click="goToPage(currentPage - 1)">
           <Icon :size="14" icon="chevron-left"/>
         </button>
         <span class="font-mono tabular-nums">{{ currentPage }} / {{ totalPages }}</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage >= totalPages" aria-label="Next page" @click="goToPage(currentPage + 1)">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="currentPage >= totalPages" :aria-label="t('metrics.elementTable.nextPage')" @click="goToPage(currentPage + 1)">
           <Icon :size="14" icon="chevron-right"/>
         </button>
       </div>
@@ -89,6 +89,7 @@ import {useDataStore} from "~/features/snapshot/data.store";
 import { useTable } from "~/features/export/useExportables";
 import {binOf, histogram, metricValue, splitName} from "~/features/metrics/plotReading";
 import {healthLevel, hotspotLevel, levelDotClass, type HealthLevel} from "~/features/metrics/useHealth";
+import { t, intlLocale } from "~/shared/i18n";
 
 const dataStore = useDataStore()
 function niceName(column: string): string {
@@ -106,7 +107,7 @@ interface Element {
 const props = defineProps({
   nameColumn: {
     type: String,
-    default: "Name"
+    default: t("metrics.elementTable.name")
   },
   limit: {
     type: Number,
@@ -141,7 +142,7 @@ const props = defineProps({
   },
   emptyText: {
     type: String,
-    default: "Nothing matches.",
+    default: t("metrics.elementTable.nothingMatches"),
   },
   /** The column the table opens sorted by, largest first; the name column sorts A to Z. */
   initialSort: {
@@ -315,7 +316,7 @@ const table = props.exportTitle
       }),
       columns: () => [
         { id: "name", label: props.nameColumn },
-        ...(props.showGroups ? [{ id: "groups", label: "Groups" }] : []),
+        ...(props.showGroups ? [{ id: "groups", label: t("metrics.elementTable.groups") }] : []),
         ...columns.value.map(c => ({ id: c.name, label: niceName(c.name) })),
       ],
     })
@@ -344,7 +345,7 @@ const stats = computed(() => {
 function spreadTitle(column: string): string {
   const s = stats.value.get(column)
   if (!s) return ""
-  return `${s.count} values · median ${formatReading(s.median)} · largest ${formatReading(s.max)}`
+  return t("metrics.elementTable.valuesMedianLargest", { count: s.count, median: formatReading(s.median), max: formatReading(s.max) })
 }
 
 function hoveredBin(column: string): number | null {

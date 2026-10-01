@@ -11,6 +11,7 @@ import { highlightFor } from "~/features/exhibits/engine"
 import { layoutAnswer } from "../render/blocks"
 import { untrusted } from "../render/verdict"
 import type { Grounding } from "~/features/exhibits/grounding"
+import { t } from "~/shared/i18n"
 
 function ranOnOf(r: RanOn): ReportRanOn {
     return { scanId: r.scanId, label: r.workspace, commit: r.commit, revision: r.revision, at: new Date().toISOString() }
@@ -21,7 +22,7 @@ function live(spec: CellSpec, title: string): Block {
 }
 
 function capture(title: string, table: TableOutput, r: RanOn, route = ""): Block {
-    return { id: newId(), kind: "cell", cell: { spec: { type: "capture", kind: "table", route, view: "Ask" }, title, caption: "", output: { table }, ranOn: ranOnOf(r) } }
+    return { id: newId(), kind: "cell", cell: { spec: { type: "capture", kind: "table", route, view: t("ask.toReport.ask") }, title, caption: "", output: { table }, ranOn: ranOnOf(r) } }
 }
 
 const col = (id: string, label: string, numeric = false) => ({ id, label, numeric })
@@ -32,7 +33,7 @@ export function reportable(e: Evidence): boolean {
 
 /** A view's figure in a report: a slot the report fills from the view itself, the way templates ask for figures. */
 function viewSlot(title: string, route: string, take?: string): Block {
-    return { id: newId(), kind: "cell", cell: { spec: { type: "slot", kind: "figure", route, view: title, hint: "Asked for in an Ask conversation", ...(take ? { take } : {}) }, title, caption: "", output: null, ranOn: null } }
+    return { id: newId(), kind: "cell", cell: { spec: { type: "slot", kind: "figure", route, view: title, hint: t("ask.toReport.askedAskConversation"), ...(take ? { take } : {}) }, title, caption: "", output: null, ranOn: null } }
 }
 
 /** The report blocks a piece of evidence becomes (usually one cell). */
@@ -45,31 +46,31 @@ export function evidenceBlocks(e: Evidence): Block[] {
             if (e.sql) return [live({ type: "sql", sql: e.sql, limit: Math.max(20, Math.min(200, e.rows.length)) }, e.title)]
             return [capture(e.title, { columns: e.columns.map((c, i) => col(`c${i}`, c, typeof e.rows[0]?.[i] === "number")), rows: e.rows.map(r => Object.fromEntries(r.map((v, i) => [`c${i}`, v]))), total: e.total, note: e.note }, e.ranOn, e.open?.route)]
         case "component":
-            return [live({ type: "reading", reading: "focus", params: { component: e.name } }, `One component: ${e.name}`)]
+            return [live({ type: "reading", reading: t("ask.toReport.focus"), params: { component: e.name } }, t("ask.toReport.oneComponent", { name: e.name }))]
         case "graph":
-            return [capture(`${e.title}: the components`, { columns: [col("name", "Component"), col("uses", "Imports among these", true)], rows: e.nodes.map(n => ({ name: n, uses: e.edges.filter(x => x.from === n).length })), total: e.nodes.length, note: `Walked with "${e.query}".` }, e.ranOn, e.open?.route)]
+            return [capture(t("ask.toReport.components", { title: e.title }), { columns: [col("name", "Component"), col("uses", "Imports among these", true)], rows: e.nodes.map(n => ({ name: n, uses: e.edges.filter(x => x.from === n).length })), total: e.nodes.length, note: t("ask.toReport.walked", { query: e.query }) }, e.ranOn, e.open?.route)]
         case "tangle":
             return [capture(e.title, {
                 columns: [col("cut", "Import to cut"), col("imports", "Import references", true), col("freed", "Components freed", true), col("tangled", "Still tangled", true), col("files", "Carried by")],
                 rows: e.steps.map(s => ({ cut: `${s.from} → ${s.to}`, imports: s.imports, freed: s.freed, tangled: s.tangled, files: s.carriers.join(", ") })),
-                total: e.steps.length, note: `A tangle of ${e.members.length} components; cuts in the order that untangles most first.`,
+                total: e.steps.length, note: t("ask.toReport.tangleComponentsCutsOrder", { membersLength: e.members.length }),
             }, e.ranOn, e.open?.route)]
         case "file":
-            return [capture(`${e.path}`, { columns: [col("measure", "Measure"), col("value", "Value", true)], rows: e.values.map(v => ({ measure: v.label, value: v.value })), total: e.values.length, note: `Component ${e.component}; role ${e.role}.` }, e.ranOn, e.open?.route)]
+            return [capture(`${e.path}`, { columns: [col("measure", "Measure"), col("value", "Value", true)], rows: e.values.map(v => ({ measure: v.label, value: v.value })), total: e.values.length, note: t("ask.toReport.componentRole", { component: e.component, role: e.role }) }, e.ranOn, e.open?.route)]
         case "code":
-            return [{ id: newId(), kind: "p", text: `${e.path}, lines ${e.from}–${e.from + e.lines.length - 1}:` }, { id: newId(), kind: "code", text: e.lines.join("\n"), lang: e.path.split(".").pop() }]
+            return [{ id: newId(), kind: "p", text: t("ask.toReport.lines", { path: e.path, from: e.from, value: e.from + e.lines.length - 1 }) }, { id: newId(), kind: "code", text: e.lines.join("\n"), lang: e.path.split(".").pop() }]
         case "timeline":
             if (e.sql) return [live({ type: "sql", sql: e.sql, limit: e.points.length }, e.title)]
             return [capture(e.title, { columns: [col("period", "Month"), col("value", e.unit, true)], rows: e.points.map(p => ({ period: p.label, value: p.value })), total: e.points.length }, e.ranOn, e.open?.route)]
         case "layers":
-            return [capture(e.title, { columns: [col("floor", "Layer, top to bottom"), col("sub", "Size"), col("up", "Imports pointing back up", true)], rows: e.floors.map(f => ({ floor: f.label, sub: f.sub, up: e.flows.filter(x => x.bad && x.from === f.id).reduce((s, x) => s + x.count, 0) })), total: e.floors.length, note: `Floors are ${e.grouping}.` }, e.ranOn, e.open?.route)]
+            return [capture(e.title, { columns: [col("floor", "Layer, top to bottom"), col("sub", "Size"), col("up", "Imports pointing back up", true)], rows: e.floors.map(f => ({ floor: f.label, sub: f.sub, up: e.flows.filter(x => x.bad && x.from === f.id).reduce((s, x) => s + x.count, 0) })), total: e.floors.length, note: t("ask.toReport.floors", { grouping: e.grouping }) }, e.ranOn, e.open?.route)]
         case "folders": {
             const by = new Map<string, number>()
             e.files.forEach((f, i) => { const k = f.split("/").slice(0, 2).join("/"); by.set(k, (by.get(k) ?? 0) + e.lines[i]) })
             return [capture(e.title, { columns: [col("folder", "Folder"), col("lines", "Lines", true)], rows: [...by].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([folder, lines]) => ({ folder, lines })), total: by.size }, e.ranOn, e.open?.route)]
         }
         case "knowledge":
-            return [capture(e.title, { columns: [col("component", "Component"), col("lines", "Lines", true), col("state", "Knowledge"), col("ask", "Person to ask")], rows: [...e.rows].sort((a, b) => b.lines - a.lines).slice(0, 40).map(r => ({ component: r.component, lines: r.lines, state: r.state, ask: r.ask ?? "" })), total: e.rows.length, note: `Over ${e.windowWords}.` }, e.ranOn, e.open?.route)]
+            return [capture(e.title, { columns: [col("component", "Component"), col("lines", "Lines", true), col("state", "Knowledge"), col("ask", "Person to ask")], rows: [...e.rows].sort((a, b) => b.lines - a.lines).slice(0, 40).map(r => ({ component: r.component, lines: r.lines, state: r.state, ask: r.ask ?? "" })), total: e.rows.length, note: t("ask.toReport.over", { windowWords: e.windowWords }) }, e.ranOn, e.open?.route)]
         case "view": {
             const out: Block[] = e.figures.slice(0, 1).map(f => viewSlot(f.title, e.route, f.title))
             const t = e.tables[0]
@@ -84,7 +85,7 @@ export function evidenceBlocks(e: Evidence): Block[] {
 /** The prose of an answer as a writer's prompt: a draft that never prints until rewritten. */
 export function draftPrompt(answer: string): string {
     const draft = answer.replace(/\s*\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g, "").trim()
-    return draft ? `Draft from Ask (rewrite in your own words, or delete): ${draft}` : "Your reading of the evidence below."
+    return draft ? t("ask.toReport.draftAskRewriteYour", { draft }) : t("ask.toReport.yourReadingEvidenceBelow")
 }
 
 /** An exhibit as a report cell: its spec, run again on the report's snapshot; lit as it was beside its sentence. */
@@ -117,8 +118,8 @@ export function checkBlocks(g: Grounding | null | undefined, broken: string[] = 
     const strip = (t: string) => t.replace(/\s*\[E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*\]/g, "").trim()
     const lines = [
         ...untrusted(g).map(c => `- ${strip(c.sentence)} (${c.verdict}: ${c.reasons.join("; ")})`),
-        ...(broken.length ? [`- The answer cited ${broken.join(", ")}, which Ask never showed.`] : []),
+        ...(broken.length ? [t("ask.toReport.answerCitedWhichAsk", { value: broken.join(", ") })] : []),
     ]
     if (!lines.length) return []
-    return [{ id: newId(), kind: "quote", text: `Check before using: Ask could not back these with the facts it cited.\n${lines.join("\n")}` }]
+    return [{ id: newId(), kind: "quote", text: t("ask.toReport.checkBeforeUsingAsk", { value: lines.join("\n") }) }]
 }

@@ -31,6 +31,7 @@
 import { detectSeparator } from "~/features/snapshot/names"
 import { adjacency, between, reach, shortestPath, tangleOf, type Adjacency, type GraphEdge } from "~/features/navigation/focus"
 import type { FocusSpec, GraphOp } from "~/features/navigation/focusSpec"
+import { t } from "~/shared/i18n"
 
 export type UnitKind = "component" | "file"
 export type Op = ">" | ">=" | "<" | "<=" | "=" | "!="
@@ -100,19 +101,19 @@ export function parseQuery(text: string): Query {
     const exclude = trimmed.startsWith("!")
     const body = (exclude ? trimmed.slice(1) : trimmed).trim()
     if (!body) {
-      errors.push({ no, raw, message: "nothing to exclude" })
+      errors.push({ no, raw, message: t("groups.query.nothingExclude") })
       return
     }
 
     const [head, ...rest] = splitKeyword(body, "where")
     if (rest.length > 1) {
-      errors.push({ no, raw, message: "only one `where` per line" })
+      errors.push({ no, raw, message: t("groups.query.onlyOneWherePer") })
       return
     }
 
     const source = parseSource(head.trim())
     if (!source) {
-      errors.push({ no, raw, message: `\`${head.trim()}\` is not a pattern` })
+      errors.push({ no, raw, message: t("groups.query.notPattern", { head: head.trim() }) })
       return
     }
 
@@ -122,7 +123,7 @@ export function parseQuery(text: string): Query {
       for (const clause of clauses) {
         const cond = parseCond(clause.trim())
         if (!cond) {
-          errors.push({ no, raw, message: `\`${clause.trim()}\` is not a condition` })
+          errors.push({ no, raw, message: t("groups.query.notCondition", { clause: clause.trim() }) })
           return
         }
         conds.push(cond)

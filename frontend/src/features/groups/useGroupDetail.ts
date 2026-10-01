@@ -5,6 +5,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import { useGroupsStore } from "./groups.store"
 import { sqlLiteral } from "~/shared/sql"
 import type { GroupEdge, LensGroup } from "./groupEdges"
+import { t } from "~/shared/i18n"
 
 // One group read as a unit: its files, how it depends on the rest of the
 // code and the rest on it, with the rest of the code being the other groups
@@ -34,7 +35,7 @@ export function useGroupDetail(id: Ref<string>) {
             if (!g) return []
             const lens = lensGroups(g.dimension)
             const held = new Set(lens.flatMap(x => [...x.files]))
-            const outside: LensGroup = { id: OUTSIDE, name: "Outside any group", files: new Set<string>(), components: new Map() }
+            const outside: LensGroup = { id: OUTSIDE, name: t("groups.useGroupDetail.outsideAnyGroup"), files: new Set<string>(), components: new Map() }
             for (const f of data.fileComponentIndex.keys()) if (!held.has(f)) outside.files.add(f)
             const covered = new Map<string, number>()
             for (const x of lens) for (const [c] of x.components) covered.set(c, (covered.get(c) ?? 0) + 1)

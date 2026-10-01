@@ -5,7 +5,7 @@
   <div
     class="nb-reading group/rd relative -ml-3 rounded-sm pl-3 transition-colors"
     :class="selected ? 'nb-reading-on bg-accent-50/40' : ''"
-    :aria-label="`Computed: ${def?.label ?? cell.spec.type}`"
+    :aria-label="t('reports.notebookReading.computed', { value: def?.label ?? cell.spec.type })"
     @mousedown="$emit('select')"
   >
     <div v-if="gutter" class="absolute -left-[92px] top-[5px] flex w-[58px] flex-col items-end gap-1 text-right">
@@ -13,8 +13,8 @@
         type="button"
         class="flex h-6 w-6 items-center justify-center rounded-full transition-colors"
         :class="stale ? 'bg-accent-500 text-white hover:bg-accent-600' : 'text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-800 focus-visible:opacity-100 group-hover/rd:opacity-100'"
-        :aria-label="stale ? `Run on ${kernelLabel}` : 'Run again'"
-        :title="stale ? `Ran on ${cell.ranOn?.label ?? 'nothing yet'}; run on ${kernelLabel} (⇧↵)` : `Run again on ${kernelLabel} (⇧↵)`"
+        :aria-label="stale ? t('reports.notebookReading.run', { kernelLabel }) : t('reports.notebookReading.runAgain')"
+        :title="stale ? t('reports.notebookReading.ranRun', { value: cell.ranOn?.label ?? t('reports.notebookReading.nothingYet'), kernelLabel }) : t('reports.notebookReading.runAgain2', { kernelLabel })"
         :disabled="running"
         @mousedown.stop
         @click.stop="$emit('run')"
@@ -22,8 +22,8 @@
         <Loader2 v-if="running" :size="12" class="animate-spin"/>
         <Play v-else :size="10" :stroke-width="2.4" fill="currentColor" class="translate-x-[1px]"/>
       </button>
-      <span class="font-mono text-[10px] leading-3 text-neutral-400" :title="cell.ranOn ? `Counted on the snapshot of ${cell.ranOn.label}` : 'Not counted yet'">computed</span>
-      <span v-if="changeText" class="font-mono text-[10px] leading-3 text-accent-700" :title="changeText">moved</span>
+      <span class="font-mono text-[10px] leading-3 text-neutral-400" :title="cell.ranOn ? t('reports.notebookReading.countedSnapshot', { ranOnLabel: cell.ranOn.label }) : t('reports.notebookReading.notCountedYet')">{{ t('reports.notebookReading.computed2') }}</span>
+      <span v-if="changeText" class="font-mono text-[10px] leading-3 text-accent-700" :title="changeText">{{ t('reports.notebookReading.moved') }}</span>
     </div>
 
     <p v-if="!out" class="nb-rd-text doc-prose" aria-busy="true">
@@ -47,6 +47,7 @@ import { Loader2, Play } from "lucide-vue-next";
 import { describeChange } from "~/features/reports/reportCells";
 import { inlineHtml, plainText, readingBlocks, type Cell } from "~/features/reports/reportDoc";
 import { readingDef } from "~/features/reports/readings";
+import { t } from "~/shared/i18n";
 
 const props = withDefaults(defineProps<{
   cell: Cell

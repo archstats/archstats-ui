@@ -1,12 +1,12 @@
 <template>
-  <ViewWorkspaceLayout :queryable="false" title="SQL console">
+  <ViewWorkspaceLayout :queryable="false" :title="t('pages.query.sqlConsole')">
     <template #switches>
       <SingleSelect :model-value="scanOption" :options="scanOptions" @update:model-value="(o: any) => (scanId = o?.id ?? scanId)"/>
     </template>
     <template #visualizer>
       <div ref="rootEl" class="flex min-h-0 grow" @keydown="onKey">
         <!-- Explorer -->
-        <aside class="flex shrink-0 flex-col" :style="{ width: `${explorerW}px` }" aria-label="Explorer">
+        <aside class="flex shrink-0 flex-col" :style="{ width: `${explorerW}px` }" :aria-label="t('pages.query.explorer')">
           <SchemaExplorer
             ref="explorer"
             :scan-id="scanId"
@@ -23,50 +23,50 @@
             @reference="openReference"
           />
         </aside>
-        <div class="qc-split qc-split-v" role="separator" aria-orientation="vertical" aria-label="Resize the explorer" @mousedown.prevent="dragExplorer"></div>
+        <div class="qc-split qc-split-v" role="separator" aria-orientation="vertical" :aria-label="t('pages.query.resizeExplorer')" @mousedown.prevent="dragExplorer"></div>
 
-        <main class="flex min-w-0 grow flex-col" aria-label="Console">
+        <main class="flex min-w-0 grow flex-col" :aria-label="t('pages.query.console')">
           <!-- Tabs, like an IDE's open editors. -->
-          <div class="qc-tabs hairline-b" role="tablist" aria-label="Queries">
+          <div class="qc-tabs hairline-b" role="tablist" :aria-label="t('pages.query.queries')">
             <div class="flex min-w-0 flex-1 items-stretch overflow-x-auto">
               <div
-                v-for="t in con.tabs"
-                :key="t.id"
+                v-for="tab2 in con.tabs"
+                :key="tab2.id"
                 class="qc-tab group/tab"
-                :class="{ 'qc-tab-on': t.id === con.activeId, 'qc-tab-drop': dropOn === t.id }"
+                :class="{ 'qc-tab-on': tab2.id === con.activeId, 'qc-tab-drop': dropOn === tab2.id }"
                 role="tab"
-                :aria-selected="t.id === con.activeId"
-                :title="tabTitle(t)"
+                :aria-selected="tab2.id === con.activeId"
+                :title="tabTitle(tab2)"
                 draggable="true"
-                @mousedown="e => { if (e.button === 0) con.activate(t.id) }"
-                @mouseup.middle.prevent="con.close(t.id)"
-                @dblclick="startRename(t)"
-                @contextmenu.prevent="openMenu($event, t)"
-                @dragstart="dragTab = t.id"
-                @dragover.prevent="dropOn = t.id"
+                @mousedown="e => { if (e.button === 0) con.activate(tab2.id) }"
+                @mouseup.middle.prevent="con.close(tab2.id)"
+                @dblclick="startRename(tab2)"
+                @contextmenu.prevent="openMenu($event, tab2)"
+                @dragstart="dragTab = tab2.id"
+                @dragover.prevent="dropOn = tab2.id"
                 @dragleave="dropOn = null"
-                @drop.prevent="dropTab(t.id)"
+                @drop.prevent="dropTab(tab2.id)"
                 @dragend="dragTab = null; dropOn = null"
               >
-                <component :is="t.cell ? FileText : t.savedId ? Bookmark : TerminalSquare" :size="12" class="shrink-0 text-neutral-400"/>
+                <component :is="tab2.cell ? FileText : tab2.savedId ? Bookmark : TerminalSquare" :size="12" class="shrink-0 text-neutral-400"/>
                 <input
-                  v-if="renaming === t.id"
+                  v-if="renaming === tab2.id"
                   v-model="renameText"
                   class="qc-rename"
-                  aria-label="Tab name"
+                  :aria-label="t('pages.query.tabName')"
                   v-select-on-mount
                   @keydown.enter.prevent="endRename(true)"
                   @keydown.esc.prevent="endRename(false)"
                   @blur="endRename(true)"
                   @mousedown.stop
                 >
-                <span v-else class="min-w-0 truncate">{{ t.name }}</span>
-                <span v-if="changed(t)" class="qc-dirty" :title="t.cell ? 'Changed since it came from the report' : 'Changed since it was saved'" aria-label="changed"></span>
-                <Loader2 v-if="con.runs[t.id]?.running" :size="11" class="shrink-0 animate-spin text-neutral-500"/>
-                <button type="button" class="qc-tab-x" :aria-label="`Close ${t.name}`" @mousedown.stop @click.stop="con.close(t.id)"><X :size="11"/></button>
+                <span v-else class="min-w-0 truncate">{{ tab2.name }}</span>
+                <span v-if="changed(tab2)" class="qc-dirty" :title="tab2.cell ? t('pages.query.changedSinceCameReport') : t('pages.query.changedSinceWasSaved')" :aria-label="t('pages.query.changed')"></span>
+                <Loader2 v-if="con.runs[tab2.id]?.running" :size="11" class="shrink-0 animate-spin text-neutral-500"/>
+                <button type="button" class="qc-tab-x" :aria-label="t('pages.query.close', { tab2Name: tab2.name })" @mousedown.stop @click.stop="con.close(tab2.id)"><X :size="11"/></button>
               </div>
             </div>
-            <button type="button" class="qc-tab-add" title="New query (⌘T)" aria-label="New query" @click="newTab()"><Plus :size="14"/></button>
+            <button type="button" class="qc-tab-add" :title="t('pages.query.newQueryT')" :aria-label="t('pages.query.newQuery')" @click="newTab()"><Plus :size="14"/></button>
           </div>
 
           <!-- What this tab can do. -->
@@ -74,32 +74,32 @@
             <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!canRun" :title="runTitle" @click="run()">
               <Play :size="10" fill="currentColor"/> {{ runLabel }} <span class="font-mono text-[10.5px] opacity-70">⌘↵</span>
             </button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!canRun" title="How SQLite will read the tables for this statement: which it scans in full and which it searches by index" @click="explain()"><ListTree :size="13" class="text-neutral-500"/> Explain</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!tab?.sql.trim()" title="Reformat: one clause per line, long lists one item per line (⌥⌘L)" @click="format()"><AlignLeft :size="13" class="text-neutral-500"/> Format</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!canRun" :title="t('pages.query.howSqliteWillRead')" @click="explain()"><ListTree :size="13" class="text-neutral-500"/>{{ ' ' + t('pages.query.explain') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!tab?.sql.trim()" :title="t('pages.query.reformatOneClausePer')" @click="format()"><AlignLeft :size="13" class="text-neutral-500"/>{{ ' ' + t('pages.query.format') }}</button>
             <span class="qc-sep" aria-hidden="true"></span>
             <template v-if="savingName !== null">
-              <input ref="saveEl" v-model="savingName" class="ui-input ui-input-sm w-52" placeholder="Name this query" aria-label="Query name" @keydown.enter.prevent="saveQuery" @keydown.esc="savingName = null">
-              <button type="button" class="ui-btn ui-btn-sm" :disabled="!savingName.trim()" @click="saveQuery">Save</button>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="savingName = null">Cancel</button>
+              <input ref="saveEl" v-model="savingName" class="ui-input ui-input-sm w-52" :placeholder="t('pages.query.nameQuery')" :aria-label="t('pages.query.queryName')" @keydown.enter.prevent="saveQuery" @keydown.esc="savingName = null">
+              <button type="button" class="ui-btn ui-btn-sm" :disabled="!savingName.trim()" @click="saveQuery">{{ t('pages.query.save') }}</button>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="savingName = null">{{ t('pages.query.cancel') }}</button>
             </template>
-            <button v-else type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!tab?.sql.trim()" :title="savedOf(tab) ? `Save changes to “${savedOf(tab)!.name}” (⌘S)` : 'Keep this query with the workspace; reports can insert it too (⌘S)'" @click="save()">
-              <Bookmark :size="13" class="text-neutral-500"/> {{ savedOf(tab) ? (changed(tab!) ? "Save" : "Saved") : "Save…" }}
+            <button v-else type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!tab?.sql.trim()" :title="savedOf(tab) ? t('pages.query.saveChangesS', { name: savedOf(tab)!.name }) : t('pages.query.keepQueryWorkspaceReports')" @click="save()">
+              <Bookmark :size="13" class="text-neutral-500"/> {{ savedOf(tab) ? (changed(tab!) ? t('pages.query.save') : t('pages.query.saved')) : t('pages.query.save2') }}
             </button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!result" :title="result ? 'Put this query in a report as a live table: it runs again on the report’s snapshot' : 'Run a query first'" @click="addToReport"><FilePlus2 :size="13" class="text-neutral-500"/> Add to report</button>
-            <span class="ml-auto truncate font-mono text-[11px] text-neutral-400" title="The console reads the snapshot and never writes to it. One statement at a time; the first 5,000 rows; stopped after 10 seconds.">read-only · 5,000 rows · 10 s</span>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="!result" :title="result ? t('pages.query.putQueryReportLive') : t('pages.query.runQueryFirst')" @click="addToReport"><FilePlus2 :size="13" class="text-neutral-500"/>{{ ' ' + t('pages.query.addReport') }}</button>
+            <span class="ml-auto truncate font-mono text-[11px] text-neutral-400" :title="t('pages.query.consoleReadsSnapshotNever')">{{ t('pages.query.readOnly5000') }}</span>
           </div>
 
           <!-- A tab opened from a report's cell writes back to it. -->
           <div v-if="tab?.cell" class="qc-link hairline-b">
             <FileText :size="13" class="shrink-0 text-neutral-500"/>
-            <span class="min-w-0 truncate"><span class="font-medium text-neutral-900">{{ tab.cell.label }}</span> in <button type="button" class="font-medium text-neutral-900 hover:underline" @click="openReport(tab.cell.reportId)">{{ tab.cell.report }}</button></span>
+            <span class="min-w-0 truncate"><I18nT k="pages.query.in"><template #cellLabel><span class="font-medium text-neutral-900">{{ tab.cell.label }}</span></template><template #report><button type="button" class="font-medium text-neutral-900 hover:underline" @click="openReport(tab.cell.reportId)">{{ tab.cell.report }}</button></template></I18nT></span>
             <span class="shrink-0 text-neutral-500">{{ linkNote }}</span>
-            <button type="button" class="ui-btn ui-btn-sm ml-auto" :disabled="!changed(tab) || updating" :title="changed(tab) ? 'Write this SQL into the report’s cell and run it on the report’s snapshot' : 'Nothing changed since it came from the report'" @click="updateCell">{{ updating ? "Updating…" : "Update cell" }}</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Keep this tab, without the link to the report" @click="con.patch(tab.id, { cell: undefined })">Unlink</button>
+            <button type="button" class="ui-btn ui-btn-sm ml-auto" :disabled="!changed(tab) || updating" :title="changed(tab) ? t('pages.query.writeSqlReportS') : t('pages.query.nothingChangedSinceCame')" @click="updateCell">{{ updating ? t('pages.query.updating') : t('pages.query.updateCell') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.query.keepTabWithoutLink')" @click="con.patch(tab.id, { cell: undefined })">{{ t('pages.query.unlink') }}</button>
           </div>
 
           <!-- The query's :parameters, filled here and written in as literals when it runs. -->
-          <div v-if="tab && params.length" class="qc-params hairline-b" aria-label="Parameters">
+          <div v-if="tab && params.length" class="qc-params hairline-b" :aria-label="t('pages.query.parameters')">
             <Braces :size="13" class="shrink-0 text-neutral-500"/>
             <label v-for="p in params" :key="p.name" class="qc-param" :class="{ 'qc-param-missing': missing.includes(p.name) }">
               <span class="font-mono text-[11.5px] text-neutral-600">{{ p.written }}</span>
@@ -109,7 +109,7 @@
                 class="ui-input ui-input-sm ui-input-mono w-48"
                 :list="`qp-${tab.id}-${p.name}`"
                 :placeholder="paramHint(p)"
-                :aria-label="`Value of ${p.written}`"
+                :aria-label="t('pages.query.value', { written: p.written })"
                 autocomplete="off"
                 spellcheck="false"
                 @input="e => onParam(p, (e.target as HTMLInputElement).value)"
@@ -118,7 +118,7 @@
               >
               <datalist :id="`qp-${tab.id}-${p.name}`"><option v-for="v in paramValues[p.name] ?? []" :key="v" :value="v"></option></datalist>
             </label>
-            <span class="ml-auto hidden shrink-0 text-[11px] text-neutral-500 xl:inline">Written into the SQL as values when it runs; ↵ runs</span>
+            <span class="ml-auto hidden shrink-0 text-[11px] text-neutral-500 xl:inline">{{ t('pages.query.writtenSqlValuesWhen') }}</span>
           </div>
 
           <!-- Editor over results. -->
@@ -134,7 +134,7 @@
                 fill
                 line-numbers
                 placeholder="select name, complexity__lines from components order by 2 desc"
-                aria-label="SQL query"
+                :aria-label="t('pages.query.sqlQuery')"
                 @update:model-value="v => con.setSql(tab!.id, v)"
                 @run="run()"
                 @format="format()"
@@ -142,65 +142,65 @@
               />
             </div>
 
-            <div v-if="resultsOpen" class="qc-split qc-split-h" role="separator" aria-orientation="horizontal" aria-label="Resize the results" @mousedown.prevent="dragResults"></div>
+            <div v-if="resultsOpen" class="qc-split qc-split-h" role="separator" aria-orientation="horizontal" :aria-label="t('pages.query.resizeResults')" @mousedown.prevent="dragResults"></div>
 
             <!-- Results, plan and history. -->
-            <section class="flex min-h-0 flex-col" :class="resultsOpen ? 'flex-1' : 'shrink-0'" aria-label="Output">
+            <section class="flex min-h-0 flex-col" :class="resultsOpen ? 'flex-1' : 'shrink-0'" :aria-label="t('pages.query.output')">
               <div class="qc-out-head" :class="{ 'hairline-t': !resultsOpen }">
-                <div class="ui-segmented" role="tablist" aria-label="Output">
-                  <button type="button" role="tab" :aria-pressed="pane === 'result'" :aria-selected="pane === 'result'" @click="showPane('result')">Result</button>
-                  <button type="button" role="tab" :aria-pressed="pane === 'chart'" :aria-selected="pane === 'chart'" :disabled="!result" @click="showPane('chart')">Chart</button>
-                  <button type="button" role="tab" :aria-pressed="pane === 'plan'" :aria-selected="pane === 'plan'" @click="showPane('plan')">Plan</button>
-                  <button type="button" role="tab" :aria-pressed="pane === 'history'" :aria-selected="pane === 'history'" @click="showPane('history')">History <span class="font-mono text-[10.5px] text-neutral-400">{{ con.history.length }}</span></button>
+                <div class="ui-segmented" role="tablist" :aria-label="t('pages.query.output')">
+                  <button type="button" role="tab" :aria-pressed="pane === 'result'" :aria-selected="pane === 'result'" @click="showPane('result')">{{ t('pages.query.result') }}</button>
+                  <button type="button" role="tab" :aria-pressed="pane === 'chart'" :aria-selected="pane === 'chart'" :disabled="!result" @click="showPane('chart')">{{ t('pages.query.chart') }}</button>
+                  <button type="button" role="tab" :aria-pressed="pane === 'plan'" :aria-selected="pane === 'plan'" @click="showPane('plan')">{{ t('pages.query.plan') }}</button>
+                  <button type="button" role="tab" :aria-pressed="pane === 'history'" :aria-selected="pane === 'history'" @click="showPane('history')">{{ t('pages.query.history') }} <span class="font-mono text-[10.5px] text-neutral-400">{{ con.history.length }}</span></button>
                 </div>
                 <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                 <template v-if="pane === 'result' && result && resultsOpen">
                   <label class="relative ml-1 flex shrink-0 items-center">
                     <Filter :size="12" class="pointer-events-none absolute left-2 text-neutral-400"/>
-                    <input v-model="rowFilter" type="search" class="ui-input ui-input-sm w-40 pl-6" placeholder="Filter loaded rows" aria-label="Filter loaded rows">
+                    <input v-model="rowFilter" type="search" class="ui-input ui-input-sm w-40 pl-6" :placeholder="t('pages.query.filterLoadedRows')" :aria-label="t('pages.query.filterLoadedRows')">
                   </label>
                   <span class="qc-meta" :title="resultTitle">
-                    <template v-if="rowFilter.trim()">{{ fmt(viewRows.length) }} of </template>{{ fmt(result.rows.length) }}{{ result.truncated ? "+" : "" }} rows · {{ fmt(result.elapsedMs) }} ms · <span class="font-mono">{{ result.scan }}</span>
+                    <I18nT k="pages.query.rowsMs"><template #of><template v-if="rowFilter.trim()">{{ t('pages.query.of', { viewRowsLength: fmt(viewRows.length) }) + ' ' }} </template></template><template #rowsLength>{{ fmt(result.rows.length) }}</template><template #value>{{ result.truncated ? "+" : "" }}</template><template #elapsedMs>{{ fmt(result.elapsedMs) }}</template><template #scan><span class="font-mono">{{ result.scan }}</span></template></I18nT>
                   </span>
                   <span v-if="diff" class="qc-diff" :title="diffTitle">
                     <span class="qc-diff-add">+{{ fmt(diff.counts.added) }}</span>
                     <span class="qc-diff-del">−{{ fmt(diff.counts.removed) }}</span>
                     <span class="qc-diff-chg">~{{ fmt(diff.counts.changed) }}</span>
-                    <span class="text-neutral-500">{{ fmt(diff.counts.same) }} same</span>
+                    <span class="text-neutral-500">{{ t('pages.query.same', { same: fmt(diff.counts.same) }) }}</span>
                   </span>
-                  <label v-if="diff" class="qc-check"><Checkbox v-model="changesOnly" aria-label="Changes only"/> Changes only</label>
-                  <span v-if="result.truncated" class="ui-tag shrink-0" title="The console keeps the first 5,000 rows. Narrow the query with WHERE, LIMIT or an aggregate to see the rest.">first 5,000</span>
-                  <span v-if="stale" class="ui-tag shrink-0" :title="`This result came from ${result.scan}; the console now reads ${scanOption?.name}. Run again to read it.`">other snapshot</span>
+                  <label v-if="diff" class="qc-check"><Checkbox v-model="changesOnly" :aria-label="t('pages.query.changesOnly')"/>{{ ' ' + t('pages.query.changesOnly') }}</label>
+                  <span v-if="result.truncated" class="ui-tag shrink-0" title="The console keeps the first 5,000 rows. Narrow the query with WHERE, LIMIT or an aggregate to see the rest.">{{ t('pages.query.first5000') }}</span>
+                  <span v-if="stale" class="ui-tag shrink-0" :title="t('pages.query.resultCameConsoleNow', { scan: result.scan, scanOptionName: scanOption?.name })">{{ t('pages.query.otherSnapshot') }}</span>
                 </template>
                 <span v-else-if="pane === 'plan' && run$.plan" class="qc-meta truncate font-mono">{{ oneLine(run$.plan.sql) }}</span>
                 </div>
                 <div class="flex shrink-0 items-center gap-1">
-                  <label v-if="(pane === 'result' || pane === 'chart') && resultsOpen && compareOptions.length" class="qc-compare" :class="{ 'qc-compare-on': compareId }" title="Run the same statement on another snapshot of this workspace and mark what was added, removed and changed">
+                  <label v-if="(pane === 'result' || pane === 'chart') && resultsOpen && compareOptions.length" class="qc-compare" :class="{ 'qc-compare-on': compareId }" :title="t('pages.query.runSameStatementAnother')">
                     <GitCompare :size="13" class="shrink-0"/>
-                    <span class="hidden xl:inline">Compare with</span>
-                    <select v-model="compareId" class="qc-compare-select" aria-label="Compare with">
-                      <option :value="null">no snapshot</option>
+                    <span class="hidden xl:inline">{{ t('pages.query.compare') }}</span>
+                    <select v-model="compareId" class="qc-compare-select" :aria-label="t('pages.query.compare')">
+                      <option :value="null">{{ t('pages.query.noSnapshot') }}</option>
                       <option v-for="o in compareOptions" :key="o.id" :value="o.id">{{ o.name }}</option>
                     </select>
                     <Loader2 v-if="run$.baseline?.running" :size="11" class="animate-spin"/>
                   </label>
                   <template v-if="pane === 'result' && result && resultsOpen">
                     <div class="relative">
-                      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-expanded="copyOpen" @click="copyOpen = !copyOpen"><Copy :size="12" class="text-neutral-500"/> Copy as <ChevronDown :size="11" class="text-neutral-400"/></button>
+                      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-expanded="copyOpen" @click="copyOpen = !copyOpen"><Copy :size="12" class="text-neutral-500"/>{{ ' ' + t('pages.query.copy') }} <ChevronDown :size="11" class="text-neutral-400"/></button>
                       <div v-if="copyOpen" class="fixed inset-0 z-40" @click="copyOpen = false"></div>
                       <div v-if="copyOpen" class="ui-menu absolute right-0 z-50 mt-1 w-60 p-1 animate-in" role="menu">
-                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('tsv')">Tab-separated, for a spreadsheet</button>
-                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('csv')">CSV</button>
-                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('md')">Markdown table</button>
-                        <button type="button" class="ui-menu-item" role="menuitem" :disabled="!unitColumn" @click="copyAs('in')">SQL list of the {{ unitColumn?.kind ?? "name" }}s</button>
+                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('tsv')">{{ t('pages.query.tabSeparatedSpreadsheet') }}</button>
+                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('csv')">{{ t('pages.query.csv') }}</button>
+                        <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('md')">{{ t('pages.query.markdownTable') }}</button>
+                        <button type="button" class="ui-menu-item" role="menuitem" :disabled="!unitColumn" @click="copyAs('in')">{{ t('pages.query.sqlListS', { value: unitColumn?.kind ?? "name" }) }}</button>
                       </div>
                     </div>
-                    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-pressed="metricNames" :class="{ 'qc-on': metricNames }" :disabled="!hasMetrics" :title="hasMetrics ? (metricNames ? 'Headers read the metrics’ ids' : 'Headers read the metrics’ names; hover one for its definition') : 'No column here is a defined metric'" aria-label="Metric names in headers" @click="metricNames = !metricNames"><CaseSensitive :size="14"/></button>
-                    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-pressed="viewer" :class="{ 'qc-on': viewer }" title="Show the selected value in full" aria-label="Value pane" @click="viewer = !viewer"><PanelRight :size="13"/></button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-pressed="metricNames" :class="{ 'qc-on': metricNames }" :disabled="!hasMetrics" :title="hasMetrics ? (metricNames ? t('pages.query.headersReadMetricsIds') : t('pages.query.headersReadMetricsNames')) : t('pages.query.noColumnHereDefined')" :aria-label="t('pages.query.metricNamesHeaders')" @click="metricNames = !metricNames"><CaseSensitive :size="14"/></button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-pressed="viewer" :class="{ 'qc-on': viewer }" :title="t('pages.query.showSelectedValueFull')" :aria-label="t('pages.query.valuePane')" @click="viewer = !viewer"><PanelRight :size="13"/></button>
                     <ExhibitButton :exhibit="resultTable"/>
                   </template>
-                  <button v-if="pane === 'history' && con.history.length && resultsOpen" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="con.clearHistory()">Clear history</button>
-                  <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :title="resultsOpen ? 'Hide the output' : 'Show the output'" :aria-label="resultsOpen ? 'Hide the output' : 'Show the output'" @click="resultsOpen = !resultsOpen">
+                  <button v-if="pane === 'history' && con.history.length && resultsOpen" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="con.clearHistory()">{{ t('pages.query.clearHistory') }}</button>
+                  <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :title="resultsOpen ? t('pages.query.hideOutput') : t('pages.query.showOutput')" :aria-label="resultsOpen ? t('pages.query.hideOutput') : t('pages.query.showOutput')" @click="resultsOpen = !resultsOpen">
                     <ChevronDown v-if="resultsOpen" :size="13"/><ChevronUp v-else :size="13"/>
                   </button>
                 </div>
@@ -217,7 +217,7 @@
                       <p class="mt-1 text-xs text-neutral-600">{{ errorHint }}</p>
                     </div>
                   </div>
-                  <p v-if="!run$.error && result && run$.baseline?.error && compareId" class="qc-warn" role="status"><AlertTriangle :size="13" class="shrink-0"/><span class="min-w-0 truncate">The baseline, {{ compareName }}, could not run it: <span class="font-mono">{{ run$.baseline.error }}</span></span></p>
+                  <p v-if="!run$.error && result && run$.baseline?.error && compareId" class="qc-warn" role="status"><AlertTriangle :size="13" class="shrink-0"/><span class="min-w-0 truncate"><I18nT k="pages.query.baselineCouldNotRun"><template #compareName>{{ compareName }}</template><template #error><span class="font-mono">{{ run$.baseline.error }}</span></template></I18nT></span></p>
                   <ResultGrid
                     v-if="!run$.error && result"
                     v-model:viewer="viewer"
@@ -230,7 +230,7 @@
                     :diff="gridDiff"
                     :define="define"
                     :names="metricNames"
-                    :empty-text="rowFilter.trim() ? `No loaded row holds “${rowFilter.trim()}”.` : 'The query ran and returned no rows.'"
+                    :empty-text="rowFilter.trim() ? t('pages.query.noLoadedRowHolds', { rowFilter: rowFilter.trim() }) : t('pages.query.queryRanReturnedNo')"
                     @sort="toggleSort"
                     @toggle-unit="toggleUnit"
                     @set-units="v => (selectedUnits = new Set(v))"
@@ -238,8 +238,8 @@
                     @reference="openReference"
                   />
                   <div v-if="!run$.error && !result" class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                    <p class="text-[13px] text-neutral-700">Write a query and press <kbd class="qc-kbd">⌘↵</kbd>. With several statements, the one under the caret runs; a selection runs as it is.</p>
-                    <h3 class="ui-section-title mt-5">Start from</h3>
+                    <p class="text-[13px] text-neutral-700"><I18nT k="pages.query.writeQueryPressSeveral"><template #icon><kbd class="qc-kbd">⌘↵</kbd></template></I18nT></p>
+                    <h3 class="ui-section-title mt-5">{{ t('pages.query.start') }}</h3>
                     <ul class="mt-1.5 flex max-w-[860px] flex-col">
                       <li v-for="ex in EXAMPLES" :key="ex.sql">
                         <button type="button" class="qc-example" @click="useExample(ex)">
@@ -248,15 +248,15 @@
                         </button>
                       </li>
                     </ul>
-                    <h3 class="ui-section-title mt-5">Keys</h3>
+                    <h3 class="ui-section-title mt-5">{{ t('pages.query.keys') }}</h3>
                     <dl class="qc-keys">
-                      <dt>⌘↵</dt><dd>Run the statement at the caret, or the selection</dd>
-                      <dt>⌃Space</dt><dd>Suggest tables, columns, metrics and values</dd>
-                      <dt>⌥⌘L</dt><dd>Reformat</dd>
-                      <dt>⌘/</dt><dd>Comment the line</dd>
-                      <dt>⌘T · ⇧⌘[ ⇧⌘]</dt><dd>New tab · previous and next tab</dd>
-                      <dt>⌘S</dt><dd>Save the query</dd>
-                      <dt>:name</dt><dd>A parameter: fill it in above the editor, with the snapshot's values offered</dd>
+                      <dt>⌘↵</dt><dd>{{ t('pages.query.runStatementCaretSelection') }}</dd>
+                      <dt>{{ t('pages.query.space') }}</dt><dd>{{ t('pages.query.suggestTablesColumnsMetrics') }}</dd>
+                      <dt>⌥⌘L</dt><dd>{{ t('pages.query.reformat') }}</dd>
+                      <dt>⌘/</dt><dd>{{ t('pages.query.commentLine') }}</dd>
+                      <dt>⌘T · ⇧⌘[ ⇧⌘]</dt><dd>{{ t('pages.query.newTabPreviousNext') }}</dd>
+                      <dt>⌘S</dt><dd>{{ t('pages.query.saveQuery') }}</dd>
+                      <dt>{{ t('pages.query.name') }}</dt><dd>{{ t('pages.query.parameterFillAboveEditor') }}</dd>
                     </dl>
                   </div>
                 </template>
@@ -272,34 +272,34 @@
                     :scan="result.scan"
                     :define="define"
                   />
-                  <p v-else class="px-4 py-3 text-[13px] text-neutral-600">Run a query to draw it: a name and a number make ranked bars, two numbers a scatter.</p>
+                  <p v-else class="px-4 py-3 text-[13px] text-neutral-600">{{ t('pages.query.runQueryDrawName') }}</p>
                 </template>
 
                 <!-- Plan -->
                 <div v-else-if="pane === 'plan'" class="min-h-0 flex-1 overflow-auto px-4 py-3">
-                  <p v-if="!run$.plan" class="text-[13px] text-neutral-600">Explain shows how SQLite will read the tables for the statement at the caret: a <span class="font-mono">SCAN</span> reads every row, a <span class="font-mono">SEARCH</span> goes straight to the rows it needs.</p>
+                  <p v-if="!run$.plan" class="text-[13px] text-neutral-600"><I18nT k="pages.query.explainShowsHowSqlite"><template #span><span class="font-mono">{{ t('pages.query.scan') }}</span></template><template #span2><span class="font-mono">{{ t('pages.query.search') }}</span></template></I18nT></p>
                   <p v-else-if="run$.plan.error" class="qc-error !m-0" role="alert"><AlertTriangle :size="14" class="mt-0.5 shrink-0"/><span class="font-mono text-[12px]">{{ run$.plan.error }}</span></p>
                   <ul v-else class="qc-plan">
                     <li v-for="p in planRows" :key="p.id" :style="{ paddingLeft: `${p.depth * 18}px` }">
                       <span class="qc-plan-mark" :class="p.kind" aria-hidden="true"></span>
                       <span class="font-mono">{{ p.detail }}</span>
-                      <span v-if="p.kind === 'scan'" class="ui-tag">reads every row</span>
+                      <span v-if="p.kind === 'scan'" class="ui-tag">{{ t('pages.query.readsEveryRow') }}</span>
                     </li>
                   </ul>
                 </div>
 
                 <!-- History -->
                 <div v-else class="min-h-0 flex-1 overflow-y-auto">
-                  <p v-if="!con.history.length" class="px-4 py-3 text-[13px] text-neutral-600">Every statement run here is kept for this workspace, newest first.</p>
+                  <p v-if="!con.history.length" class="px-4 py-3 text-[13px] text-neutral-600">{{ t('pages.query.everyStatementRunHere') }}</p>
                   <ul v-else>
                     <li v-for="h in con.history" :key="h.id" class="qc-hist group/h" :title="h.sql" @dblclick="con.open({ sql: h.sql })">
                       <span class="qc-hist-time">{{ histTime(h.at) }}</span>
-                      <span class="qc-hist-stat" :class="{ 'text-red-700': h.error }">{{ h.error ? "failed" : `${fmt(h.rows ?? 0)} rows` }}</span>
+                      <span class="qc-hist-stat" :class="{ 'text-red-700': h.error }">{{ h.error ? "failed" : t('pages.query.rows', { value: fmt(h.rows ?? 0) }) }}</span>
                       <code class="qc-hist-sql">{{ oneLine(h.sql) }}</code>
                       <span class="qc-hist-scan">{{ h.scan }}</span>
                       <span class="flex shrink-0 gap-1 opacity-0 group-hover/h:opacity-100 focus-within:opacity-100">
-                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Put it at the caret in this tab" @click="insert(h.sql)">Insert</button>
-                        <button type="button" class="ui-btn ui-btn-sm" title="Open it in a new tab (double-click)" @click="con.open({ sql: h.sql })">Open</button>
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.query.putCaretTab')" @click="insert(h.sql)">{{ t('pages.query.insert') }}</button>
+                        <button type="button" class="ui-btn ui-btn-sm" :title="t('pages.query.openNewTabDouble')" @click="con.open({ sql: h.sql })">{{ t('pages.query.open') }}</button>
                       </span>
                     </li>
                   </ul>
@@ -314,12 +314,12 @@
       <template v-if="menu">
         <div class="fixed inset-0 z-40" @mousedown="menu = null" @contextmenu.prevent="menu = null"></div>
         <div class="ui-menu fixed z-50 w-52 p-1 animate-in" role="menu" :style="{ left: `${menu.x}px`, top: `${menu.y}px` }">
-          <button type="button" class="ui-menu-item" role="menuitem" @click="startRename(menu.tab); menu = null">Rename</button>
-          <button type="button" class="ui-menu-item" role="menuitem" @click="con.open({ name: `${menu.tab.name} copy`, sql: menu.tab.sql }); menu = null">Duplicate</button>
-          <button v-if="menu.tab.cell" type="button" class="ui-menu-item" role="menuitem" @click="openReport(menu.tab.cell.reportId); menu = null">Open the report</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="startRename(menu.tab); menu = null">{{ t('pages.query.rename') }}</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="con.open({ name: t('pages.query.copy2', { tabName: menu.tab.name }), sql: menu.tab.sql }); menu = null">{{ t('pages.query.duplicate') }}</button>
+          <button v-if="menu.tab.cell" type="button" class="ui-menu-item" role="menuitem" @click="openReport(menu.tab.cell.reportId); menu = null">{{ t('pages.query.openReport') }}</button>
           <div class="my-1 h-px bg-neutral-200" role="separator"></div>
-          <button type="button" class="ui-menu-item" role="menuitem" @click="con.close(menu.tab.id); menu = null">Close</button>
-          <button type="button" class="ui-menu-item" role="menuitem" :disabled="con.tabs.length < 2" @click="con.closeOthers(menu.tab.id); menu = null">Close others</button>
+          <button type="button" class="ui-menu-item" role="menuitem" @click="con.close(menu.tab.id); menu = null">{{ t('pages.query.close2') }}</button>
+          <button type="button" class="ui-menu-item" role="menuitem" :disabled="con.tabs.length < 2" @click="con.closeOthers(menu.tab.id); menu = null">{{ t('pages.query.closeOthers') }}</button>
         </div>
       </template>
 
@@ -359,6 +359,8 @@ import { detailRoute } from "~/features/connections/connections";
 import { newestFirst } from "~/features/workspace/scanOrder";
 import { snapshotName } from "~/features/workspace/snapshotName";
 import { formatScanTime } from "~/shared/time";
+import { t, intlLocale, dateLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 // For the question no view asks: read-only SQL against any snapshot of the
 // workspace, laid out like a database IDE. Tabs and history stay with the
@@ -373,10 +375,10 @@ const con = useConsoleStore();
 const router = useRouter();
 
 const EXAMPLES = [
-  { label: "Largest components", sql: "select name, complexity__lines, codesmells__code_health\nfrom components\norder by 2 desc\nlimit 20" },
-  { label: "Files changed most in the last 90 days", sql: "select name, git__commits__last_90_days\nfrom files\norder by 2 desc\nlimit 20" },
-  { label: "Who touched a component, by commits", sql: "select author_name, count(distinct commit_hash) as commits\nfrom git_commits\nwhere component = :component\ngroup by 1\norder by 2 desc" },
-  { label: "What each metric means", sql: "select *\nfrom _metric_definitions" },
+  { label: t("pages.query.largestComponents"), sql: "select name, complexity__lines, codesmells__code_health\nfrom components\norder by 2 desc\nlimit 20" },
+  { label: t("pages.query.filesChangedMostLast"), sql: "select name, git__commits__last_90_days\nfrom files\norder by 2 desc\nlimit 20" },
+  { label: t("pages.query.whoTouchedComponentCommits"), sql: "select author_name, count(distinct commit_hash) as commits\nfrom git_commits\nwhere component = :component\ngroup by 1\norder by 2 desc" },
+  { label: t("pages.query.whatEachMetricMeans"), sql: "select *\nfrom _metric_definitions" },
 ];
 
 // ── Snapshot ──────────────────────────────────────────────────────────
@@ -386,7 +388,7 @@ const scanOptions = computed(() => {
   // The same commit scanned twice reads the same; the scan's own time tells them apart.
   const count = new Map<string, number>();
   for (const o of base) count.set(o.name, (count.get(o.name) ?? 0) + 1);
-  return base.map(o => ({ id: o.id, name: (count.get(o.name) ?? 0) > 1 ? `${o.name} · scanned ${o.scanned}` : o.name }));
+  return base.map(o => ({ id: o.id, name: (count.get(o.name) ?? 0) > 1 ? t("pages.query.scanned", { name: o.name, scanned: o.scanned }) : o.name }));
 });
 const scanId = ref<string>(workspaces.openScanId ?? "");
 watch(() => workspaces.openScanId, id => { if (id && !scanId.value) scanId.value = id; });
@@ -415,10 +417,10 @@ function changed(t: ConsoleTab) {
   const s = savedOf(t);
   return !!s && s.sql.trim() !== t.sql.trim();
 }
-function tabTitle(t: ConsoleTab) {
-  if (t.cell) return `${t.cell.label} in ${t.cell.report}. Double-click to rename.`;
-  if (t.savedId) return `Saved query “${savedOf(t)?.name ?? t.name}”. Double-click to rename.`;
-  return "Double-click to rename; right-click for more.";
+function tabTitle(consoleTab: ConsoleTab) {
+  if (consoleTab.cell) return t("pages.query.doubleClickRename", { cellLabel: consoleTab.cell.label, report: consoleTab.cell.report });
+  if (consoleTab.savedId) return t("pages.query.savedQueryDoubleClick", { value: savedOf(consoleTab)?.name ?? consoleTab.name });
+  return t("pages.query.doubleClickRenameRight");
 }
 const renaming = ref<string | null>(null);
 const renameText = ref("");
@@ -456,23 +458,23 @@ function target(): string {
   return (statementAt(t.sql, sel?.caret ?? caret.value)?.text ?? "").trim();
 }
 const multi = computed(() => !!tab.value && /;\s*\S/.test(tab.value.sql.replace(/'[^']*'/g, "")));
-const runLabel = computed(() => (run$.value.running ? "Running…" : multi.value ? "Run statement" : "Run"));
-const runTitle = computed(() => (multi.value ? "Run the statement at the caret, or the selection (⌘↵)" : "Run (⌘↵)"));
+const runLabel = computed(() => (run$.value.running ? t("pages.query.running") : multi.value ? t("pages.query.runStatement") : t("pages.query.run")));
+const runTitle = computed(() => (multi.value ? t("pages.query.runStatementCaretSelection2") : t("pages.query.run2")));
 const canRun = computed(() => !!tab.value?.sql.trim() && !!scanId.value && !run$.value.running);
 
 async function run() {
-  const t = tab.value;
+  const tab2 = tab.value;
   const stmt = target();
-  if (!t || !stmt || !scanId.value || con.runs[t.id]?.running) return;
-  const bound = bindParams(stmt, t.params ?? {});
+  if (!tab2 || !stmt || !scanId.value || con.runs[tab2.id]?.running) return;
+  const bound = bindParams(stmt, tab2.params ?? {});
   missing.value = bound.missing;
   if (bound.missing.length) {
-    flash(`Fill in :${bound.missing[0]} first.`);
+    flash(t("pages.query.fillFirst", { value: bound.missing[0] }));
     void nextTick(() => paramEls.value[bound.missing[0]]?.focus());
     return;
   }
   const sql = bound.sql;
-  const r = con.run(t.id);
+  const r = con.run(tab2.id);
   r.running = true;
   pane.value = "result";
   resultsOpen.value = true;
@@ -482,17 +484,17 @@ async function run() {
   // Named as the snapshot picker names it, so the result and the toolbar agree.
   const label = scanOption.value?.name ?? (scan.value ? snapshotName(scan.value) : "");
   const on = scanId.value;
-  const other = compareId.value ? runBaseline(t.id, sql) : null;
+  const other = compareId.value ? runBaseline(tab2.id, sql) : null;
   if (!compareId.value) r.baseline = null;
   try {
     const res: any = await Console(on, sql);
-    con.setResult(t.id, { columns: res?.columns ?? [], rows: res?.rows ?? [], truncated: !!res?.truncated, elapsedMs: Number(res?.elapsedMs) || 0, sql, scanId: on, scan: label, at: new Date().toISOString() });
+    con.setResult(tab2.id, { columns: res?.columns ?? [], rows: res?.rows ?? [], truncated: !!res?.truncated, elapsedMs: Number(res?.elapsedMs) || 0, sql, scanId: on, scan: label, at: new Date().toISOString() });
     con.record({ sql, scanId: on, scan: label, rows: res?.rows?.length ?? 0, ms: Number(res?.elapsedMs) || 0 });
-    const s = savedOf(t);
+    const s = savedOf(tab2);
     if (s) setSaved(saved.value.map(q => (q.id === s.id ? { ...q, lastRun: { snapshot: label, rows: res?.rows?.length ?? 0 } } : q)));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    con.setResult(t.id, null, msg);
+    con.setResult(tab2.id, null, msg);
     con.record({ sql, scanId: on, scan: label, rows: null, ms: null, error: msg });
   } finally {
     r.running = false;
@@ -501,12 +503,12 @@ async function run() {
 }
 const errorHint = computed(() => {
   const e = run$.value.error.toLowerCase();
-  if (e.includes("no such table")) return "The explorer on the left lists every table and view this snapshot has.";
-  if (e.includes("no such column")) return "Expand the table in the explorer to see its columns, or press ⌃Space after a dot.";
-  if (e.includes("one statement")) return "Put the caret in the statement to run, or select it; ⌘↵ runs only that.";
+  if (e.includes("no such table")) return t("pages.query.explorerLeftListsEvery");
+  if (e.includes("no such column")) return t("pages.query.expandTableExplorerSee");
+  if (e.includes("one statement")) return t("pages.query.putCaretStatementRun");
   if (e.includes("stopped after") || e.includes("interrupt")) return "Narrow it with WHERE or LIMIT, or aggregate before joining.";
   if (e.includes("not authorized") || e.includes("read-only")) return "The console only reads: SELECT, WITH and EXPLAIN.";
-  return "The underline in the editor marks where SQLite stopped reading.";
+  return t("pages.query.underlineEditorMarksWhere");
 });
 
 async function explain() {
@@ -560,7 +562,7 @@ const paramCols = computed(() => {
 });
 function paramHint(p: SqlParam) {
   const c = paramCols.value[p.name];
-  return c ? `a ${c.column} in ${c.table}` : "a value";
+  return c ? t("pages.query.aIn", { column: c.column, table: c.table }) : "a value";
 }
 let suggestTimer: ReturnType<typeof setTimeout> | null = null;
 function suggest(p: SqlParam, prefix: string) {
@@ -603,22 +605,22 @@ const savingName = ref<string | null>(null);
 const saveEl = ref<HTMLInputElement | null>(null);
 function setSaved(list: SavedQuery[]) { state.set("queries.saved", list.length ? list : null); }
 function save() {
-  const t = tab.value;
-  if (!t?.sql.trim()) return;
-  const s = savedOf(t);
-  if (s) { setSaved(saved.value.map(q => (q.id === s.id ? { ...q, sql: t.sql.trim() } : q))); flash(`Saved “${s.name}”.`); return; }
-  savingName.value = /^Query \d+$/.test(t.name) ? "" : t.name;
+  const tab2 = tab.value;
+  if (!tab2?.sql.trim()) return;
+  const s = savedOf(tab2);
+  if (s) { setSaved(saved.value.map(q => (q.id === s.id ? { ...q, sql: tab2.sql.trim() } : q))); flash(t("pages.query.saved2", { name: s.name })); return; }
+  savingName.value = /^Query \d+$/.test(tab2.name) ? "" : tab2.name;
   void nextTick(() => saveEl.value?.focus());
 }
 function saveQuery() {
-  const t = tab.value;
+  const tab2 = tab.value;
   const name = (savingName.value ?? "").trim();
-  if (!t || !name) return;
+  if (!tab2 || !name) return;
   const id = Date.now().toString(36);
-  setSaved([...saved.value, { id, name, sql: t.sql.trim() }]);
-  con.patch(t.id, { savedId: id, name });
+  setSaved([...saved.value, { id, name, sql: tab2.sql.trim() }]);
+  con.patch(tab2.id, { savedId: id, name });
   savingName.value = null;
-  flash(`Saved “${name}”. Reports can insert it from their Query menu.`);
+  flash(t("pages.query.savedReportsCanInsert", { name }));
 }
 function removeSaved(id: string) {
   setSaved(saved.value.filter(q => q.id !== id));
@@ -638,32 +640,32 @@ function openReport(reportId: string) {
 const updating = ref(false);
 const updatedAt = ref<string | null>(null);
 async function updateCell() {
-  const t = tab.value;
-  if (!t?.cell || updating.value) return;
+  const tab2 = tab.value;
+  if (!tab2?.cell || updating.value) return;
   updating.value = true;
   try {
-    const ok = await reports.updateSqlCell(t.cell.reportId, t.cell.cellId, t.sql.trim());
-    if (!ok) { flash("That cell is no longer in the report; Unlink keeps the tab as it is."); return; }
-    con.patch(t.id, { cell: { ...t.cell, sql: t.sql.trim() } });
-    updatedAt.value = t.id;
+    const ok = await reports.updateSqlCell(tab2.cell.reportId, tab2.cell.cellId, tab2.sql.trim());
+    if (!ok) { flash(t("pages.query.cellNoLongerReport")); return; }
+    con.patch(tab2.id, { cell: { ...tab2.cell, sql: tab2.sql.trim() } });
+    updatedAt.value = tab2.id;
     const k = reports.kernel;
-    flash(`Updated ${t.cell.label} in “${t.cell.report}”${k ? ` and ran it on ${k.label}` : ""}.`);
+    flash(t("pages.query.updated", { cellLabel: tab2.cell.label, report: tab2.cell.report, value: k ? t("pages.query.ran", { kLabel: k.label }) : "" }));
   } finally {
     updating.value = false;
   }
 }
-const linkNote = computed(() => (tab.value && changed(tab.value) ? "· edited here; the report still has the old SQL" : "· same SQL as the report"));
+const linkNote = computed(() => (tab.value && changed(tab.value) ? t("pages.query.editedHereReportStill") : t("pages.query.sameSqlReport")));
 function addToReport() {
   const r = result.value;
-  const t = tab.value;
-  if (!r || !t) return;
+  const tab2 = tab.value;
+  if (!r || !tab2) return;
   const s = complete.value.find(x => x.id === r.scanId);
   const rows = r.rows.slice(0, 500).map(row => Object.fromEntries(r.columns.map((c, i) => [c, row[i]])));
   const numeric = (i: number) => r.rows.slice(0, 300).some(row => typeof row[i] === "number") && r.rows.slice(0, 300).every(row => row[i] === null || typeof row[i] === "number");
   void reports.beginImport({
     kind: "table",
-    title: /^Query \d+$/.test(t.name) ? "" : t.name,
-    view: "SQL console",
+    title: /^Query \d+$/.test(tab2.name) ? "" : tab2.name,
+    view: t("pages.query.sqlConsole"),
     route: "/views/query",
     ranOn: { scanId: r.scanId, label: s ? snapshotName(s) : r.scan, commit: s?.headCommit ?? "", committed: s?.headTime ? formatScanTime(s.headTime) : undefined, revision: Number(s?.analysisRevision) || 0, at: r.at },
     table: { columns: r.columns.map((c, i) => ({ id: c, label: define(c)?.name || headerCase(c), numeric: numeric(i) })), rows, total: r.rows.length, ...(metricsNote(r.columns, define) ? { note: metricsNote(r.columns, define) } : {}) },
@@ -713,13 +715,13 @@ const viewRows = computed(() => viewEntries.value.map(e => e.row));
 const gridDiff = computed(() => (diff.value ? viewEntries.value : null));
 /** What the chart draws: the rows this snapshot has, as they are shown. */
 const chartRows = computed(() => viewEntries.value.filter(e => e.status !== "removed").map(e => e.row));
-const figureTitle = computed(() => (tab.value && !/^Query \d+$/.test(tab.value.name) ? tab.value.name : "SQL console result"));
+const figureTitle = computed(() => (tab.value && !/^Query \d+$/.test(tab.value.name) ? tab.value.name : t("pages.query.sqlConsoleResult")));
 
 // ── Compare with another snapshot ───────────────────────────────────────
 const compareId = ref<string | null>(null);
 const baselineId = computed(() => (workspaces.active as any)?.baselineScanId ?? null);
 const compareOptions = computed(() => {
-  const opts = scanOptions.value.filter(o => o.id !== scanId.value).map(o => ({ id: o.id, name: o.id === baselineId.value ? `${o.name} · baseline` : o.name }));
+  const opts = scanOptions.value.filter(o => o.id !== scanId.value).map(o => ({ id: o.id, name: o.id === baselineId.value ? t("pages.query.baseline", { name: o.name }) : o.name }));
   return [...opts.filter(o => o.id === baselineId.value), ...opts.filter(o => o.id !== baselineId.value)];
 });
 const compareName = computed(() => scanOptions.value.find(o => o.id === compareId.value)?.name ?? "");
@@ -746,17 +748,17 @@ watch(compareId, id => {
 const diffTitle = computed(() => {
   const d = diff.value;
   if (!d) return "";
-  const how = d.key.length ? `Rows are matched on ${d.key.join(", ")}` : "Rows are matched by position (the result has no text column)";
-  return `${how}; ${compareName.value} is the baseline.${d.missing.length ? ` It has no ${d.missing.join(", ")}.` : ""}${d.ambiguous ? " Some names repeat, so repeats are matched in order." : ""}`;
+  const how = d.key.length ? t("pages.query.rowsMatched", { value: d.key.join(", ") }) : t("pages.query.rowsMatchedPositionResult");
+  return t("pages.query.baseline2", { how, compareName: compareName.value, value: d.missing.length ? t("pages.query.hasNo", { value: d.missing.join(", ") }) : "", value2: d.ambiguous ? t("pages.query.someNamesRepeatSo") : "" });
 });
 
-const resultTitle = computed(() => (result.value ? `${oneLine(result.value.sql)}\nRan on ${result.value.scan} at ${new Date(result.value.at).toLocaleTimeString()}. Sorting and the filter work on the loaded rows.` : ""));
-const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 4 }));
+const resultTitle = computed(() => (result.value ? t("pages.query.ranSortingFilterWork", { sql: oneLine(result.value.sql), scan: result.value.scan, dateLocale: new Date(result.value.at).toLocaleTimeString(dateLocale) }) : ""));
+const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(intlLocale) : n.toLocaleString(intlLocale, { maximumFractionDigits: 4 }));
 const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
 function histTime(at: string) {
   const d = new Date(at);
   const today = new Date().toDateString() === d.toDateString();
-  return today ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return today ? d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString(dateLocale, { day: "numeric", month: "short" });
 }
 
 async function copyAs(kind: "tsv" | "csv" | "md" | "in") {
@@ -770,7 +772,7 @@ async function copyAs(kind: "tsv" | "csv" | "md" | "in") {
   else if (kind === "csv") text = [r.columns, ...rows].map(row => row.map(v => { const s = cell(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(",")).join("\n");
   else if (kind === "md") text = [`| ${r.columns.join(" | ")} |`, `| ${r.columns.map((_, i) => (rows.some(row => typeof row[i] === "number") ? "---:" : "---")).join(" | ")} |`, ...rows.map(row => `| ${row.map(v => cell(v).replace(/\|/g, "\\|").replace(/\n/g, " ")).join(" | ")} |`)].join("\n");
   else if (unitColumn.value) text = `(${[...new Set(rows.map(row => cell(row[unitColumn.value!.index])))].map(v => `'${v.replace(/'/g, "''")}'`).join(", ")})`;
-  try { await navigator.clipboard.writeText(text); flash(`Copied ${fmt(rows.length)} rows.`); } catch { flash("The clipboard refused the copy."); }
+  try { await navigator.clipboard.writeText(text); flash(t("pages.query.copiedRows", { rowsLength: fmt(rows.length) })); } catch { flash(t("pages.query.clipboardRefusedCopy")); }
 }
 
 // ── A column of names becomes a group; a name opens ───────────────────
@@ -855,11 +857,11 @@ onBeforeUnmount(() => { if (noticeTimer) clearTimeout(noticeTimer); });
 // The result is the view's table: the share button in the output header copies
 // and saves it, and adds it to a report as its query (a live cell), not as a copy.
 const resultTable = useTable({
-  get title() { return tab.value && !/^Query \d+$/.test(tab.value.name) ? tab.value.name : "SQL console result"; },
+  get title() { return tab.value && !/^Query \d+$/.test(tab.value.name) ? tab.value.name : t("pages.query.sqlConsoleResult"); },
   rows: () => (result.value ? viewEntries.value.map(e => ({ ...(diff.value ? { change: e.status } : {}), ...Object.fromEntries(result.value!.columns.map((c, i) => [c, e.row[i]])) })) : []),
-  columns: () => [...(diff.value ? [{ id: "change", label: "Change" }] : []), ...(result.value?.columns ?? []).map(c => ({ id: c, label: c }))],
-  notes: () => (result.value ? [["Query", oneLine(result.value.sql)], ["Snapshot", result.value.scan], ...(diff.value ? [["Compared with", compareName.value] as [string, string]] : [])] : []),
-  disabledReason: () => (result.value ? null : "Run a query first."),
+  columns: () => [...(diff.value ? [{ id: "change", label: t("pages.query.change") }] : []), ...(result.value?.columns ?? []).map(c => ({ id: c, label: c }))],
+  notes: () => (result.value ? [["Query", oneLine(result.value.sql)], ["Snapshot", result.value.scan], ...(diff.value ? [[t("pages.query.compared"), compareName.value] as [string, string]] : [])] : []),
+  disabledReason: () => (result.value ? null : t("pages.query.runQueryFirst2")),
   addToReport,
 } as any);
 </script>

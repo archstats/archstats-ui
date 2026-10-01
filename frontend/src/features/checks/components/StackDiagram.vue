@@ -13,7 +13,7 @@
           <marker :id="`${uid}-bad`" viewBox="0 0 8 8" refX="6.5" refY="4" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" class="fill-red-500"/></marker>
         </defs>
 
-        <text :x="2" :y="11" class="fill-neutral-400 text-[11px]">uses below</text>
+        <text :x="2" :y="11" class="fill-neutral-400 text-[11px]">{{ t('checks.stackDiagram.usesBelow') }}</text>
         <text :x="w - 2" :y="11" text-anchor="end" class="fill-neutral-400 text-[11px]">{{ upLabel }}</text>
 
         <!-- Arcs: a wide invisible stroke to aim at, then the line itself. -->
@@ -70,6 +70,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useSvgFigure } from "~/features/export/useExportables"
 import type { LegendItem } from "~/features/export/figure"
 import { chartTheme } from "~/shared/ui/useChartTheme"
+import { t, intlLocale } from "~/shared/i18n"
 
 export interface Floor { id: string; label: string; sub: string; weight: number; color?: string }
 export interface Flow { key: string; from: string; to: string; count: number; bad?: boolean; title?: string }
@@ -84,7 +85,7 @@ const props = withDefaults(defineProps<{
   ariaLabel: string
   /** When set, the diagram is offered to reports and exports under this title. */
   figure?: string
-}>(), { selected: null, upLabel: "points up", figure: "" })
+}>(), { selected: null, upLabel: t("checks.stackDiagram.pointsUp"), figure: "" })
 
 const emit = defineEmits<{
   (e: "select", s: StackSelection): void
@@ -98,15 +99,15 @@ const figure = props.figure
       title: props.figure,
       svg: () => (props.floors.length ? svgEl.value : null),
       legend: () => {
-        const t = chartTheme()
+        const theme = chartTheme()
         const items: LegendItem[] = [
-          { label: "Imports down the stack", color: t.hairlineStrong, mark: "line" },
-          { label: `Imports up the stack (${props.upLabel})`, color: t.inkMuted, mark: "dashed" },
+          { label: t("checks.stackDiagram.importsDownStack"), color: theme.hairlineStrong, mark: "line" },
+          { label: t("checks.stackDiagram.importsUpStack", { upLabel: props.upLabel }), color: theme.inkMuted, mark: "dashed" },
         ]
-        if (props.flows.some(f => f.bad)) items.push({ label: "Breaks the rule: an inversion, a mutual pair or a cycle", color: t.red, mark: "line" })
+        if (props.flows.some(f => f.bad)) items.push({ label: t("checks.stackDiagram.breaksRuleInversionMutual"), color: theme.red, mark: "line" })
         return {
           items,
-          notes: ["Each floor uses the floors below it. Line width is imports, on a square-root scale; the bar under a floor is its share of the files."],
+          notes: [t("checks.stackDiagram.eachFloorUsesFloors")],
         }
       },
     })
@@ -201,7 +202,7 @@ const arcs = computed(() => {
       width: 0.75 + 4 * Math.sqrt(f.count / maxCount.value),
       lx: up ? gx + reach * 0.75 : gx - reach * 0.75,
       ly: (y1 + y2) / 2,
-      title: f.title ?? `${f.count} import${f.count === 1 ? "" : "s"}`,
+      title: f.title ?? t("checks.stackDiagram.text", { imports: t("common.count.import", { count: f.count }) }),
       from: f.from, to: f.to,
     }
   })
@@ -225,6 +226,6 @@ const dimmedFloor = (id: string) => {
   const f = props.flows.find(x => x.key === s.id)
   return !!f && f.from !== id && f.to !== id
 }
-const fmt = (x: number) => x.toLocaleString("en-US")
+const fmt = (x: number) => x.toLocaleString(intlLocale)
 const pillW = (x: number) => 12 + 7 * fmt(x).length
 </script>

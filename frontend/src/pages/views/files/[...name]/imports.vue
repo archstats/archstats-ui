@@ -3,18 +3,18 @@
     <!-- Outgoing: what this file imports. -->
     <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
       <div class="flex h-9 shrink-0 items-center gap-2 px-4 hairline-b">
-        <h2 class="ui-section-title">Imports</h2>
+        <h2 class="ui-section-title">{{ t('pages.filesImports.imports') }}</h2>
         <span class="font-mono text-xs text-neutral-400">{{ formatNumber(outgoing.length) }}</span>
       </div>
-      <LoadingState v-if="outgoingLoading" text="Reading imports…"/>
-      <EmptyState v-else-if="outgoingError" title="Could not read imports" :text="outgoingError" icon="alert"/>
-      <EmptyState v-else-if="outgoing.length === 0" title="No imports" text="The snapshot recorded no import statements in this file." icon="arrow-up-right"/>
+      <LoadingState v-if="outgoingLoading" :text="t('pages.filesImports.readingImports')"/>
+      <EmptyState v-else-if="outgoingError" :title="t('pages.filesImports.couldNotReadImports')" :text="outgoingError" icon="alert"/>
+      <EmptyState v-else-if="outgoing.length === 0" :title="t('pages.filesImports.noImports')" :text="t('pages.filesImports.snapshotRecordedNoImport')" icon="arrow-up-right"/>
       <div v-else class="min-h-0 grow overflow-y-auto">
         <table class="ui-table">
           <thead>
             <tr>
-              <th>Target</th>
-              <th class="w-[70px] text-right">Count</th>
+              <th>{{ t('pages.filesImports.target') }}</th>
+              <th class="w-[70px] text-right">{{ t('pages.filesImports.count') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -33,21 +33,21 @@
     <!-- Incoming: which files import this one. -->
     <section class="flex min-w-0 flex-1 flex-col overflow-hidden hairline-l">
       <div class="flex h-9 shrink-0 items-center gap-2 px-4 hairline-b">
-        <h2 class="ui-section-title">Imported by</h2>
+        <h2 class="ui-section-title">{{ t('pages.filesImports.imported') }}</h2>
         <span class="font-mono text-xs text-neutral-400">{{ formatNumber(incoming.length) }}</span>
       </div>
-      <LoadingState v-if="incomingLoading" text="Reading references…"/>
-      <EmptyState v-else-if="incomingError" title="Could not read references" :text="incomingError" icon="alert"/>
-      <EmptyState v-else-if="!hasResolvedEdges" title="Not recorded" text="This snapshot predates the engine's resolved references, so which files use this one is not known. A new scan records them." icon="arrow-left">
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="workspaces.isScanning" @click="workspaces.startScan()">{{ workspaces.isScanning ? "Scanning…" : "Scan again" }}</button>
+      <LoadingState v-if="incomingLoading" :text="t('pages.filesImports.readingReferences')"/>
+      <EmptyState v-else-if="incomingError" :title="t('pages.filesImports.couldNotReadReferences')" :text="incomingError" icon="alert"/>
+      <EmptyState v-else-if="!hasResolvedEdges" :title="t('pages.filesImports.notRecorded')" :text="t('pages.filesImports.snapshotPredatesEngineS')" icon="arrow-left">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="workspaces.isScanning" @click="workspaces.startScan()">{{ workspaces.isScanning ? t('pages.filesImports.scanning') : t('pages.filesImports.scanAgain') }}</button>
       </EmptyState>
-      <EmptyState v-else-if="incoming.length === 0" title="Not imported" :text="`No other file in the snapshot uses anything declared in ${fileBasename}.`" icon="arrow-left"/>
+      <EmptyState v-else-if="incoming.length === 0" :title="t('pages.filesImports.notImported')" :text="t('pages.filesImports.noOtherFileSnapshot', { fileBasename })" icon="arrow-left"/>
       <div v-else class="min-h-0 grow overflow-y-auto">
         <table class="ui-table">
           <thead>
             <tr>
-              <th>File</th>
-              <th class="w-[90px] text-right" title="References from that file to what this one declares">References</th>
+              <th>{{ t('pages.filesImports.file') }}</th>
+              <th class="w-[90px] text-right" :title="t('pages.filesImports.referencesFileWhatOne')">{{ t('pages.filesImports.references') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -76,6 +76,7 @@ import { useFileRoute } from "~/features/files/useFileRoute"
 import { formatNumber } from "~/shared/format"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 
 const store = useDataStore()
 const workspaces = useWorkspacesStore()

@@ -26,6 +26,7 @@ import {
   buildTreeNodes, cycleEdgeKeys, directedReferenceEdges, levelOf, normalizeEdges, presetOpenIds,
   reindexEdges, stronglyConnectedSets, treeResolver, undirectedSharedCommitEdges,
 } from "./connections";
+import { t } from "~/shared/i18n";
 
 // The picture is one tree: groups of the roll-up dimension hold components,
 // components hold files, and each node is open or closed. Raw rows load once
@@ -76,7 +77,7 @@ export function useConnectionsModel(opts: {
       store.query<ComponentRow>(`select name, complexity__lines as lines, codesmells__code_health as health, codesmells__hotspot_score as hotspot from components`),
       store.query<{ component: string; n: number }>(`select component, count(*) as n from files group by component`),
       store.query<{ name: string; lines: number | null }>(`select name, complexity__lines as lines from files`),
-      store.query<{ from: string; to: string; references: number; dynamicRefs: number | null }>(`select "from", "to", sum(reference_count) as "references"${store.hasColumn("component_connections_direct", "kind") ? `, sum(case when kind = 'dynamic' then reference_count else 0 end) as dynamicRefs` : ""} from ${store.runtimeComponentEdges} group by "from", "to"`),
+      store.query<{ from: string; to: string; references: number; dynamicRefs: number | null }>(`select "from", "to", sum(reference_count) as "references"${store.hasColumn("component_connections_direct", "kind") ? t("connections.useConnectionsModel.sumCaseWhenKind") : ""} from ${store.runtimeComponentEdges} group by "from", "to"`),
       hasGit.value ? store.query<{ from: string; to: string; sharedCommits: number; rate: number | null }>((() => {
         // The smaller side's share is the larger of the two percentages.
         const sfx = opts.period && opts.period.value !== "all" ? `__last_${opts.period.value}_days` : "";

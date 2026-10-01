@@ -23,23 +23,23 @@
       <template v-if="entry">
         <p class="text-base font-semibold leading-5 text-neutral-900">{{ entry.name }}</p>
         <p class="mt-0.5 break-all font-mono text-xs text-neutral-500">{{ entry.id }}</p>
-        <p v-if="entry.derived" class="mt-1"><span class="ui-tag">Computed by the app</span></p>
-        <p class="mt-2 text-sm font-normal leading-5 text-neutral-700">{{ entry.short || "No short description." }}</p>
+        <p v-if="entry.derived" class="mt-1"><span class="ui-tag">{{ t('snapshot.metricHint.computedApp') }}</span></p>
+        <p class="mt-2 text-sm font-normal leading-5 text-neutral-700">{{ entry.short || t('snapshot.metricHint.noShortDescription') }}</p>
         <template v-if="entry.long && entry.long !== entry.short">
           <p v-if="expanded" class="mt-2 whitespace-pre-line text-sm font-normal leading-5 text-neutral-600">{{ entry.long }}</p>
-          <button v-else type="button" class="mt-1 text-sm font-normal text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @click="expanded = true">More</button>
+          <button v-else type="button" class="mt-1 text-sm font-normal text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline" @click="expanded = true">{{ t('snapshot.metricHint.more') }}</button>
         </template>
       </template>
       <template v-else>
         <p class="break-all font-mono text-sm text-neutral-900">{{ id }}</p>
-        <p class="mt-1 text-sm font-normal text-neutral-500">Not defined in this snapshot.</p>
+        <p class="mt-1 text-sm font-normal text-neutral-500">{{ t('snapshot.metricHint.notDefinedSnapshot') }}</p>
       </template>
       <div class="mt-3 flex items-center gap-2 pt-2 hairline-t">
         <button v-if="entry" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="copy">
-          <Icon :icon="copied ? 'check' : 'copy'" :size="12" class="text-neutral-500"/><span>{{ copied ? "Copied" : "Copy definition" }}</span>
+          <Icon :icon="copied ? 'check' : 'copy'" :size="12" class="text-neutral-500"/><span>{{ copied ? t('snapshot.metricHint.copied') : t('snapshot.metricHint.copyDefinition') }}</span>
         </button>
         <router-link :to="{ path: '/views/reference', query: { m: id } }" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="hide">
-          <span>Open in reference</span><Icon icon="arrow-up-right" :size="12" class="text-neutral-500"/>
+          <span>{{ t('snapshot.metricHint.openReference') }}</span><Icon icon="arrow-up-right" :size="12" class="text-neutral-500"/>
         </router-link>
       </div>
     </div>
@@ -54,6 +54,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { definitionMarkdown } from "~/features/snapshot/definition";
 import { derivedMetric } from "~/features/snapshot/derivedMetrics";
 import { copyText } from "~/platform/files";
+import { t } from "~/shared/i18n";
 
 // A metric's definition where its number is read: name, id, what it means,
 // and a way to the full reference. It opens after a moment's hover or on

@@ -8,17 +8,18 @@
           type="button"
           class="xt-col"
           :class="{ 'xt-on': lit.has(`period:${p.label}`) }"
-          :title="`${p.label}: ${p.value.toLocaleString('en-US')} ${unit}`"
+          :title="`${p.label}: ${p.value.toLocaleString(intlLocale)} ${unit}`"
           @click="$emit('select', p.label)"
       ><span class="xt-bar" :style="{ height: `${Math.max(2, (p.value / max) * 100)}%` }"/></button>
     </div>
     <div class="xt-axis"><span>{{ points[0]?.label }}</span><span>{{ points[points.length - 1]?.label }}</span></div>
-    <p class="xt-legend"><span class="xt-swatch"/> column height = {{ unit }} per {{ period }}<template v-if="note"> · {{ note }}</template></p>
+    <p class="xt-legend"><span class="xt-swatch"/>{{ ' ' + t('exhibits.exTimeline.columnHeightPer', { unit, period }) }}<template v-if="note"> · {{ note }}</template></p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   points: Array<{ label: string; value: number }>

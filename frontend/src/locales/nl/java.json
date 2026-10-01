@@ -1,0 +1,77 @@
+{
+  "classNeighbourhoodGraph": {
+    "classesImportClassClasses": "Klassen die deze klasse importeren en klassen die hij importeert",
+    "classNeighbourhood": "Omgeving van de klasse",
+    "class2": "{centreLabel}, deze klasse",
+    "imports": "Imports",
+    "classesImportOneLeft": "Klassen die deze importeren staan links, klassen die hij importeert rechts. Een lijn is dikker naarmate er meer references over lopen."
+  },
+  "componentWiring": {
+    "structuralFlags": "Structurele flags",
+    "rule": "Regel",
+    "from": "Van",
+    "to": "Naar",
+    "detail": "Detail",
+    "wiring": "Wiring",
+    "busiestClassesNamedHover": "Drukste klassen met naam · hover over een node",
+    "includeExternalWiring": "Externe wiring meenemen",
+    "noImportsBetweenThese": "Geen imports tussen deze klassen",
+    "snapshotRecordsNoImport": "Het snapshot kent geen import tussen deze {nodesLength} klassen, binnen de component of daarbuiten.",
+    "snapshotRecordsNoImport2": "Het snapshot kent geen import van een eigen klasse van deze component naar een andere. Neem externe wiring mee om te zien wat ze buiten de component bereiken.",
+    "noBeanSelected": "Geen bean geselecteerd",
+    "clickNodeSeeWhat": "Klik op een node om te zien wat hij importeert en wat hem importeert.",
+    "imports": "Imports",
+    "importsNothingGraph": "Importeert niets in de graph.",
+    "imported": "Geïmporteerd door",
+    "nothingGraphImports": "Niets in de graph importeert hem."
+  },
+  "componentWiringGraph": {
+    "beanWiringInsideComponent": "Bean-wiring binnen de component",
+    "beanWiring": "Bean-wiring",
+    "imports": "Imports",
+    "classAnotherComponentWiring": "Een klasse in een andere component, en de wiring ernaartoe",
+    "columnsFollowLayersControllers": "De kolommen volgen de lagen: controllers, services, repositories, entities. Een lijn is dikker naarmate er meer references over lopen."
+  },
+  "java": {
+    "other": "Overig",
+    "controllerImportsRepository": "Controller importeert repository",
+    "bypassesServiceLayer": "{refs}; slaat de service-laag over",
+    "serviceImportsController": "Service importeert controller",
+    "reachesBackWebLayer": "{refs}; grijpt terug naar de weblaag",
+    "repositoryImports": "Repository importeert {layer}",
+    "persistenceDependsLayerAbove": "{refs}; persistence hangt af van een laag erboven",
+    "singletonManyFields": "Singleton met veel fields",
+    "declaresFields": "declareert {fields} fields",
+    "imports": "{references} imports"
+  },
+  "useComponentJava": {
+    "classes": "Klassen",
+    "methods": "Methods",
+    "fields": "Fields",
+    "springBeans": "Spring beans",
+    "controllers": "Controllers",
+    "services": "Services",
+    "repositories": "Repositories",
+    "jpaEntities": "JPA-entities"
+  },
+  "roles": {
+    "controller": "Controller",
+    "service": "Service",
+    "repository": "Repository",
+    "component": "Component",
+    "configuration": "Configuratie",
+    "entity": "Entity",
+    "interface": "Interface",
+    "record": "Record",
+    "class": "Klasse",
+    "inComponent": "{role} in {component}"
+  },
+  "useJavaMetrics": {
+    "springController": "Spring Controller",
+    "springService": "Spring Service",
+    "springRepository": "Spring Repository",
+    "springComponent": "Spring Component",
+    "springConfiguration": "Spring Configuration",
+    "jpaEntity": "JPA Entity"
+  }
+}

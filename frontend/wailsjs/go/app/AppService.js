@@ -13,3 +13,7 @@ export function TakePendingSnapshots() {
 export function Version() {
   return window['go']['app']['AppService']['Version']();
 }
+
+export function SetLocale(arg1) {
+  return window['go']['app']['AppService']['SetLocale'](arg1);
+}

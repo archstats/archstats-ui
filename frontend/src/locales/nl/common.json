@@ -1,0 +1,598 @@
+{
+  "count": {
+    "cycle": {
+      "one": "{count} cycle",
+      "other": "{count} cycles"
+    },
+    "ref": {
+      "one": "{count} ref",
+      "other": "{count} refs"
+    },
+    "import": {
+      "one": "{count} import",
+      "other": "{count} imports"
+    },
+    "file": {
+      "one": "{count} bestand",
+      "other": "{count} bestanden"
+    },
+    "distinctShortestCycle": {
+      "one": "{count} unieke kortste cycle",
+      "other": "{count} unieke kortste cycles"
+    },
+    "component": {
+      "one": "{count} component",
+      "other": "{count} componenten"
+    },
+    "tangle": {
+      "one": "{count} tangle",
+      "other": "{count} tangles"
+    },
+    "level": {
+      "one": "{count} level",
+      "other": "{count} levels"
+    },
+    "importReference": {
+      "one": "{count} import-referentie",
+      "other": "{count} import-referenties"
+    },
+    "line": {
+      "one": "{count} regel",
+      "other": "{count} regels"
+    },
+    "commit": {
+      "one": "{count} commit",
+      "other": "{count} commits"
+    },
+    "floor": {
+      "one": "{count} laag",
+      "other": "{count} lagen"
+    },
+    "link": {
+      "one": "{count} link",
+      "other": "{count} links"
+    },
+    "hop": {
+      "one": "{count} hop",
+      "other": "{count} hops"
+    },
+    "module": {
+      "one": "{count} module",
+      "other": "{count} modules"
+    },
+    "reference": {
+      "one": "{count} referentie",
+      "other": "{count} referenties"
+    },
+    "rule": {
+      "one": "{count} regel",
+      "other": "{count} regels"
+    },
+    "is": {
+      "one": "{count} is",
+      "other": "{count} zijn"
+    },
+    "time": {
+      "one": "{count} keer",
+      "other": "{count} keer"
+    },
+    "match": {
+      "one": "{count} match",
+      "other": "{count} matches"
+    },
+    "connection": {
+      "one": "{count} verbinding",
+      "other": "{count} verbindingen"
+    },
+    "name": {
+      "one": "{count} naam",
+      "other": "{count} namen"
+    },
+    "componentItNamesIs": {
+      "one": "{count} genoemd component zit",
+      "other": "{count} genoemde componenten zitten"
+    },
+    "group": {
+      "one": "{count} groep",
+      "other": "{count} groepen"
+    },
+    "lineMatches": {
+      "one": "{count} regel matcht",
+      "other": "{count} regels matchen"
+    },
+    "pipeline": {
+      "one": "{count} pipeline",
+      "other": "{count} pipelines"
+    },
+    "deployable": {
+      "one": "{count} deployable",
+      "other": "{count} deployables"
+    },
+    "month": {
+      "one": "{count} maand",
+      "other": "{count} maanden"
+    },
+    "day": {
+      "one": "{count} dag",
+      "other": "{count} dagen"
+    },
+    "author": {
+      "one": "{count} auteur",
+      "other": "{count} auteurs"
+    },
+    "sharedCommit": {
+      "one": "{count} gedeelde commit",
+      "other": "{count} gedeelde commits"
+    },
+    "memberExchanges": {
+      "one": "{count} lid heeft",
+      "other": "{count} leden hebben"
+    },
+    "groupHolds": {
+      "one": "{count} groep bevat",
+      "other": "{count} groepen bevatten"
+    },
+    "part": {
+      "one": "{count} deel",
+      "other": "{count} delen"
+    },
+    "componentImports": {
+      "one": "{count} component importeert",
+      "other": "{count} componenten importeren"
+    },
+    "shown": {
+      "one": "{count} getoond",
+      "other": "{count} getoond"
+    },
+    "moduleIs": {
+      "one": "{count} module is",
+      "other": "{count} modules zijn"
+    },
+    "referenceRuns": {
+      "one": "{count} referentie loopt",
+      "other": "{count} referenties lopen"
+    },
+    "snapshot": {
+      "one": "{count} snapshot",
+      "other": "{count} snapshots"
+    },
+    "newCommit": {
+      "one": "{count} nieuwe commit",
+      "other": "{count} nieuwe commits"
+    },
+    "editedFile": {
+      "one": "{count} bewerkt bestand",
+      "other": "{count} bewerkte bestanden"
+    },
+    "class": {
+      "one": "{count} class",
+      "other": "{count} classes"
+    },
+    "other": {
+      "one": "{count} ander",
+      "other": "{count} andere"
+    },
+    "cut": {
+      "one": "{count} cut",
+      "other": "{count} cuts"
+    },
+    "fileThatIs": {
+      "one": "{count} bestand is",
+      "other": "{count} bestanden zijn"
+    },
+    "row": {
+      "one": "{count} rij",
+      "other": "{count} rijen"
+    },
+    "prompt": {
+      "one": "{count} prompt",
+      "other": "{count} prompts"
+    },
+    "cell": {
+      "one": "{count} cel",
+      "other": "{count} cellen"
+    },
+    "topic": {
+      "one": "{count} onderwerp",
+      "other": "{count} onderwerpen"
+    },
+    "test": {
+      "one": "{count} test",
+      "other": "{count} tests"
+    },
+    "section": {
+      "one": "{count} sectie",
+      "other": "{count} secties"
+    },
+    "statementHereIs": {
+      "one": "{count} bewering hier is",
+      "other": "{count} beweringen hier zijn"
+    },
+    "thing": {
+      "one": "{count} ding",
+      "other": "{count} dingen"
+    },
+    "statement": {
+      "one": "{count} bewering",
+      "other": "{count} beweringen"
+    },
+    "citation": {
+      "one": "{count} verwijzing",
+      "other": "{count} verwijzingen"
+    },
+    "claim": {
+      "one": "{count} bewering",
+      "other": "{count} beweringen"
+    },
+    "referenceGoes": {
+      "one": "{count} referentie gaat",
+      "other": "{count} referenties gaan"
+    },
+    "columnIs": {
+      "one": "{count} kolom is",
+      "other": "{count} kolommen zijn"
+    },
+    "paragraph": {
+      "one": "{count} alinea",
+      "other": "{count} alinea's"
+    },
+    "report": {
+      "one": "{count} rapport",
+      "other": "{count} rapporten"
+    },
+    "springBean": {
+      "one": "{count} Spring bean",
+      "other": "{count} Spring beans"
+    },
+    "jpaEntity": {
+      "one": "{count} JPA-entity",
+      "other": "{count} JPA-entities"
+    },
+    "reactComponent": {
+      "one": "{count} React-component",
+      "other": "{count} React-componenten"
+    },
+    "vueComponent": {
+      "one": "{count} Vue-component",
+      "other": "{count} Vue-componenten"
+    },
+    "app": {
+      "one": "{count} app",
+      "other": "{count} apps"
+    },
+    "androidApplicationModule": {
+      "one": "{count} Android-applicatiemodule",
+      "other": "{count} Android-applicatiemodules"
+    },
+    "multiplatformModule": {
+      "one": "{count} multiplatform-module",
+      "other": "{count} multiplatform-modules"
+    },
+    "testFolder": {
+      "one": "{count} testmap",
+      "other": "{count} testmappen"
+    },
+    "productionComponent": {
+      "one": "{count} productiecomponent",
+      "other": "{count} productiecomponenten"
+    },
+    "library": {
+      "one": "{count} library",
+      "other": "{count} libraries"
+    },
+    "otherComponent": {
+      "one": "{count} ander component",
+      "other": "{count} andere componenten"
+    },
+    "person": {
+      "one": "{count} persoon",
+      "other": "{count} mensen"
+    },
+    "bean": {
+      "one": "{count} bean",
+      "other": "{count} beans"
+    },
+    "request": {
+      "one": "{count} request",
+      "other": "{count} requests"
+    },
+    "jaxRsResource": {
+      "one": "{count} JAX-RS-resource",
+      "other": "{count} JAX-RS-resources"
+    },
+    "modelClass": {
+      "one": "{count} model-class",
+      "other": "{count} model-classes"
+    },
+    "view": {
+      "one": "{count} view",
+      "other": "{count} views"
+    },
+    "form": {
+      "one": "{count} formulier",
+      "other": "{count} formulieren"
+    },
+    "package": {
+      "one": "{count} package",
+      "other": "{count} packages"
+    },
+    "namespace": {
+      "one": "{count} namespace",
+      "other": "{count} namespaces"
+    },
+    "mobileApp": {
+      "one": "{count} mobiele app",
+      "other": "{count} mobiele apps"
+    },
+    "applicationModule": {
+      "one": "{count} applicatiemodule",
+      "other": "{count} applicatiemodules"
+    },
+    "libraryModule": {
+      "one": "{count} library-module",
+      "other": "{count} library-modules"
+    },
+    "permission": {
+      "one": "{count} permissie",
+      "other": "{count} permissies"
+    },
+    "composable": {
+      "one": "{count} composable",
+      "other": "{count} composables"
+    },
+    "fragment": {
+      "one": "{count} Fragment",
+      "other": "{count} Fragments"
+    },
+    "swiftuiView": {
+      "one": "{count} SwiftUI-view",
+      "other": "{count} SwiftUI-views"
+    },
+    "widget": {
+      "one": "{count} widget",
+      "other": "{count} widgets"
+    },
+    "expectDeclaration": {
+      "one": "{count} expect-declaratie",
+      "other": "{count} expect-declaraties"
+    },
+    "picture": {
+      "one": "{count} afbeelding",
+      "other": "{count} afbeeldingen"
+    },
+    "step": {
+      "one": "{count} stap",
+      "other": "{count} stappen"
+    },
+    "lane": {
+      "one": "{count} lane",
+      "other": "{count} lanes"
+    },
+    "scan": {
+      "one": "{count} scan",
+      "other": "{count} scans"
+    },
+    "sampleApp": {
+      "one": "{count} sample-, demo- of preview-app",
+      "other": "{count} sample-, demo- of preview-apps"
+    },
+    "otherApp": {
+      "one": "{count} andere app",
+      "other": "{count} andere apps"
+    },
+    "lens": {
+      "one": "{count} lens",
+      "other": "{count} lenses"
+    },
+    "arrangement": {
+      "one": "{count} indeling",
+      "other": "{count} indelingen"
+    },
+    "heading": {
+      "one": "{count} kop",
+      "other": "{count} koppen"
+    },
+    "explanation": {
+      "one": "{count} uitleg",
+      "other": "{count} uitleggen"
+    },
+    "block": {
+      "one": "{count} blok",
+      "other": "{count} blokken"
+    },
+    "table": {
+      "one": "{count} tabel",
+      "other": "{count} tabellen"
+    },
+    "figure": {
+      "one": "{count} figuur",
+      "other": "{count} figuren"
+    }
+  },
+  "noun": {
+    "cut": {
+      "one": "cut",
+      "other": "cuts"
+    },
+    "component": {
+      "one": "component",
+      "other": "componenten"
+    },
+    "import": {
+      "one": "import",
+      "other": "imports"
+    },
+    "es": {
+      "one": "doorbreekt",
+      "other": "doorbreken"
+    },
+    "reference": {
+      "one": "referentie",
+      "other": "referenties"
+    },
+    "it": {
+      "one": "hem",
+      "other": "ze"
+    },
+    "line": {
+      "one": "regel",
+      "other": "regels"
+    },
+    "s": {
+      "one": "",
+      "other": ""
+    },
+    "group": {
+      "one": "groep",
+      "other": "groepen"
+    },
+    "type": {
+      "one": "type",
+      "other": "types"
+    },
+    "cell": {
+      "one": "cel",
+      "other": "cellen"
+    },
+    "imports": {
+      "one": "importeert",
+      "other": "importeren"
+    },
+    "tag": {
+      "one": "tag",
+      "other": "tags"
+    },
+    "file": {
+      "one": "bestand",
+      "other": "bestanden"
+    },
+    "itCalls": {
+      "one": "doet het calls naar",
+      "other": "doen ze calls naar"
+    },
+    "cycle": {
+      "one": "cycle",
+      "other": "cycles"
+    },
+    "fixture": {
+      "one": "fixture",
+      "other": "fixtures"
+    },
+    "part": {
+      "one": "ander deel",
+      "other": "andere delen"
+    },
+    "is": {
+      "one": "is",
+      "other": "zijn"
+    },
+    "its": {
+      "one": "zijn",
+      "other": "hun"
+    },
+    "set": {
+      "one": "set",
+      "other": "sets"
+    },
+    "is2": {
+      "one": "",
+      "other": "s"
+    },
+    "itCites": {
+      "one": "het noemt",
+      "other": "ze noemen"
+    },
+    "call": {
+      "one": "call",
+      "other": "calls"
+    },
+    "lives": {
+      "one": "zit",
+      "other": "zitten allemaal"
+    },
+    "itLives": {
+      "one": "Het zit",
+      "other": "Ze zitten allemaal"
+    },
+    "this": {
+      "one": "dit",
+      "other": "deze"
+    },
+    "itsView": {
+      "one": "zijn view",
+      "other": "hun views"
+    },
+    "ratesBelow4ItHolds": {
+      "one": "scoort onder de 4; het beslaat",
+      "other": "scoren onder de 4; samen beslaan ze"
+    },
+    "componentImports": {
+      "one": "component importeert",
+      "other": "componenten importeren"
+    },
+    "answers": {
+      "one": "beantwoordt",
+      "other": "beantwoorden"
+    },
+    "breaks": {
+      "one": "doorbreekt",
+      "other": "doorbreken"
+    },
+    "item": {
+      "one": "item",
+      "other": "items"
+    },
+    "itWas": {
+      "one": "hij was",
+      "other": "ze waren"
+    },
+    "pair": {
+      "one": "paar",
+      "other": "paren"
+    },
+    "lens": {
+      "one": "lens",
+      "other": "lenses"
+    },
+    "directory": {
+      "one": "map",
+      "other": "mappen"
+    },
+    "ref": {
+      "one": "ref",
+      "other": "refs"
+    },
+    "author": {
+      "one": "auteur",
+      "other": "auteurs"
+    },
+    "library": {
+      "one": "library",
+      "other": "libraries"
+    },
+    "brush": {
+      "one": "brush",
+      "other": "brushes"
+    },
+    "page": {
+      "one": "pagina",
+      "other": "pagina's"
+    },
+    "module": {
+      "one": "module",
+      "other": "modules"
+    },
+    "hop": {
+      "one": "hop",
+      "other": "hops"
+    },
+    "commit": {
+      "one": "commit",
+      "other": "commits"
+    },
+    "lookup": {
+      "one": "lookup",
+      "other": "lookups"
+    }
+  }
+}

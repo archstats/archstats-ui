@@ -13,6 +13,8 @@
 //
 // Every answer is only as complete as the graph; the view says so.
 
+import { t } from "~/shared/i18n"
+
 export interface FileEdge { from: string; to: string; names: string[]; inferred?: boolean }
 
 // ── 1. Layers ─────────────────────────────────────────────────────────────
@@ -21,13 +23,13 @@ export interface Layer { id: string; label: string; rank: number; folders: RegEx
 
 /** Higher rank may use lower; the reverse is an inversion. Conventions shared by most stacks. */
 export const LAYERS: Layer[] = [
-    { id: "entry", label: "Entry points (pages, views, controllers)", rank: 70, folders: /^(pages|views|screens|routes|layouts|controllers?|endpoints|handlers|web|rest|cli|cmd)$/i, suffix: /(Controller|Resource|Endpoint|Handler|Page|View|Screen)$/ },
-    { id: "components", label: "UI components", rank: 60, folders: /^(components|widgets|ui|templates|partials)$/i, suffix: /(Component|Widget)$/ },
-    { id: "composables", label: "Composables and hooks", rank: 50, folders: /^(composables|hooks|containers)$/i },
-    { id: "application", label: "State and services", rank: 40, folders: /^(stores?|state|slices|reducers|services?|application|usecases|use_cases|facades?|workflows?)$/i, suffix: /(Service|ServiceImpl|Store|UseCase|Facade|Workflow)$/ },
-    { id: "infrastructure", label: "Persistence and infrastructure", rank: 30, folders: /^(repositor(y|ies)|daos?|persistence|infrastructure|adapters?|clients?|gateways?|db|database)$/i, suffix: /(Repository|RepositoryImpl|Dao|DaoImpl|Client|Gateway|Adapter)$/ },
-    { id: "domain", label: "Domain and model", rank: 20, folders: /^(domain|models?|entit(y|ies)|dto|dtos|types)$/i, suffix: /(Entity|Dto|DTO|Model)$/ },
-    { id: "utilities", label: "Utilities", rank: 10, folders: /^(utils?|helpers?|lib|libs|common|shared|support|tools)$/i, suffix: /(Utils?|Helpers?|Support)$/ },
+    { id: "entry", label: t("checks.checks.entryPointsPagesViews"), rank: 70, folders: /^(pages|views|screens|routes|layouts|controllers?|endpoints|handlers|web|rest|cli|cmd)$/i, suffix: /(Controller|Resource|Endpoint|Handler|Page|View|Screen)$/ },
+    { id: "components", label: t("checks.checks.uiComponents"), rank: 60, folders: /^(components|widgets|ui|templates|partials)$/i, suffix: /(Component|Widget)$/ },
+    { id: "composables", label: t("checks.checks.composablesHooks"), rank: 50, folders: /^(composables|hooks|containers)$/i },
+    { id: "application", label: t("checks.checks.stateServices"), rank: 40, folders: /^(stores?|state|slices|reducers|services?|application|usecases|use_cases|facades?|workflows?)$/i, suffix: /(Service|ServiceImpl|Store|UseCase|Facade|Workflow)$/ },
+    { id: "infrastructure", label: t("checks.checks.persistenceInfrastructure"), rank: 30, folders: /^(repositor(y|ies)|daos?|persistence|infrastructure|adapters?|clients?|gateways?|db|database)$/i, suffix: /(Repository|RepositoryImpl|Dao|DaoImpl|Client|Gateway|Adapter)$/ },
+    { id: "domain", label: t("checks.checks.domainModel"), rank: 20, folders: /^(domain|models?|entit(y|ies)|dto|dtos|types)$/i, suffix: /(Entity|Dto|DTO|Model)$/ },
+    { id: "utilities", label: t("checks.checks.utilities"), rank: 10, folders: /^(utils?|helpers?|lib|libs|common|shared|support|tools)$/i, suffix: /(Utils?|Helpers?|Support)$/ },
 ]
 
 /** The layer a file announces: its class-name suffix first, then the deepest folder that names one. */
@@ -70,16 +72,16 @@ const base = (p: string) => p.slice(p.lastIndexOf("/") + 1)
 
 /** What frameworks call without an import. A file matching any rule is an entry point. */
 export const ROOT_RULES: RootRule[] = [
-    { id: "nuxt", label: "Nuxt and Next routing: pages/, layouts/, plugins/, middleware/, server/, app.vue", test: p => seg(p, /^(pages|layouts|plugins|middleware|server)$/) || /^(app|error)\.vue$/.test(base(p)) || /^(page|layout|route|loading|error|not-found)\.(t|j)sx?$/.test(base(p)) && seg(p, /^app$/) },
-    { id: "main", label: "Program entry: main.*, index.* at a source root, cmd/, bin/, scripts/, benchmarks", test: p => /^(main|index|app|server|cli)\.(ts|tsx|js|jsx|mjs|cjs|go|py|rs)$/.test(base(p)) && (p.split("/").length <= 3 || /\/(src|cmd|bin)\/[^/]+$/.test(p)) || seg(p, /^(cmd|bin|scripts|bench|benchmarks)$/) || /\.bench\.[cm]?[jt]s$/.test(base(p)) },
-    { id: "generated", label: "Generated code and declarations (wailsjs/, generated/, *.d.ts, *_pb2.py)", test: p => /(^|\/)(wailsjs|generated|__generated__)\//.test(p) || /\.d\.ts$|\.(gen|generated|pb)\.[a-z]+$|_pb2(_grpc)?\.py$/.test(p) },
-    { id: "workers", label: "Workers and service workers (*.worker.*, sw.*)", test: p => /\.worker\.[cm]?[jt]s$|^(sw|service-worker)\.[jt]s$/.test(base(p)) },
-    { id: "config", label: "Build and tool configuration (*.config.*, gradle, vite, nuxt)", test: p => /\.config\.(ts|js|mjs|cjs)$/.test(base(p)) || /^(vite|nuxt|webpack|rollup|tailwind|vitest|jest|babel|eslint)\./.test(base(p)) },
-    { id: "spring", label: "Spring and JPA managed classes (@Component, @Service, @Controller, @Entity …)", test: (_p, m) => [...m].some(x => SPRING.has(x)) },
-    { id: "django", label: "Django conventions: urls, apps, admin, settings, migrations, management commands, templatetags, signals", test: p => /^(urls|apps|admin|settings[\w-]*|wsgi|asgi|manage|conftest|signals|tasks|receivers)\.py$/.test(base(p)) || seg(p, /^(migrations|management|templatetags)$/) },
-    { id: "dotnet", label: ".NET hosts: Program.cs, Startup.cs, controllers", test: p => /^(Program|Startup)\.cs$/.test(base(p)) || /Controller\.cs$/.test(base(p)) },
-    { id: "php", label: "PHP front controllers and config: public/index.php, bin/console, config/, Kernel", test: p => /public\/index\.php$/.test(p) || /bin\/console$/.test(p) || seg(p, /^config$/) || /Kernel\.php$/.test(base(p)) },
-    { id: "go-main", label: "Go main packages (every file next to a main.go)", test: () => false },
+    { id: "nuxt", label: t("checks.checks.nuxtNextRoutingPages"), test: p => seg(p, /^(pages|layouts|plugins|middleware|server)$/) || /^(app|error)\.vue$/.test(base(p)) || /^(page|layout|route|loading|error|not-found)\.(t|j)sx?$/.test(base(p)) && seg(p, /^app$/) },
+    { id: "main", label: t("checks.checks.programEntryMainIndex"), test: p => /^(main|index|app|server|cli)\.(ts|tsx|js|jsx|mjs|cjs|go|py|rs)$/.test(base(p)) && (p.split("/").length <= 3 || /\/(src|cmd|bin)\/[^/]+$/.test(p)) || seg(p, /^(cmd|bin|scripts|bench|benchmarks)$/) || /\.bench\.[cm]?[jt]s$/.test(base(p)) },
+    { id: "generated", label: t("checks.checks.generatedCodeDeclarationsWailsjs"), test: p => /(^|\/)(wailsjs|generated|__generated__)\//.test(p) || /\.d\.ts$|\.(gen|generated|pb)\.[a-z]+$|_pb2(_grpc)?\.py$/.test(p) },
+    { id: "workers", label: t("checks.checks.workersServiceWorkersWorker"), test: p => /\.worker\.[cm]?[jt]s$|^(sw|service-worker)\.[jt]s$/.test(base(p)) },
+    { id: "config", label: t("checks.checks.buildToolConfigurationConfig"), test: p => /\.config\.(ts|js|mjs|cjs)$/.test(base(p)) || /^(vite|nuxt|webpack|rollup|tailwind|vitest|jest|babel|eslint)\./.test(base(p)) },
+    { id: "spring", label: t("checks.checks.springJpaManagedClasses"), test: (_p, m) => [...m].some(x => SPRING.has(x)) },
+    { id: "django", label: t("checks.checks.djangoConventionsUrlsApps"), test: p => /^(urls|apps|admin|settings[\w-]*|wsgi|asgi|manage|conftest|signals|tasks|receivers)\.py$/.test(base(p)) || seg(p, /^(migrations|management|templatetags)$/) },
+    { id: "dotnet", label: t("checks.checks.netHostsProgramCs"), test: p => /^(Program|Startup)\.cs$/.test(base(p)) || /Controller\.cs$/.test(base(p)) },
+    { id: "php", label: t("checks.checks.phpFrontControllersConfig"), test: p => /public\/index\.php$/.test(p) || /bin\/console$/.test(p) || seg(p, /^config$/) || /Kernel\.php$/.test(base(p)) },
+    { id: "go-main", label: t("checks.checks.goMainPackagesEvery"), test: () => false },
 ]
 
 export interface Reachability {

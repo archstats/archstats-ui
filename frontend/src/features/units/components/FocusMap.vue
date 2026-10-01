@@ -4,25 +4,25 @@
        folder holding the whole region, so a folder or a module arrives
        zoomed in and a lane spread over the codebase arrives whole. A folder
        zooms further; a file is picked for the inspector beside it. -->
-  <section class="flex min-w-0 flex-1 flex-col" :aria-label="`${label} on the folder map`">
+  <section class="flex min-w-0 flex-1 flex-col" :aria-label="t('units.focusMap.folderMap', { label })">
     <ExhibitFrame header="custom" fill>
       <div class="flex h-9 shrink-0 items-center gap-3 px-3 hairline-b">
         <div class="flex min-w-0 flex-1 items-center gap-x-3 overflow-hidden text-xs text-neutral-600">
           <span v-for="k in legend" :key="k.label" class="flex shrink-0 items-center gap-1.5">
-            <span class="h-2 w-2 rounded-sm" :style="{ background: k.color }"/>{{ k.label }}<span v-if="k.count != null" class="font-mono text-neutral-500">{{ k.count.toLocaleString() }}</span>
+            <span class="h-2 w-2 rounded-sm" :style="{ background: k.color }"/>{{ k.label }}<span v-if="k.count != null" class="font-mono text-neutral-500">{{ k.count.toLocaleString(intlLocale) }}</span>
           </span>
         </div>
         <span v-if="zoom" class="flex min-w-0 shrink items-center gap-1 text-xs text-neutral-600">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="`Up to ${parentLabel}`" :title="`Up to ${parentLabel}`" @click="zoomOut">
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('units.focusMap.up', { parentLabel })" :title="t('units.focusMap.up', { parentLabel })" @click="zoomOut">
             <Icon icon="chevron-up" :size="12"/>
           </button>
           <span class="min-w-0 truncate font-mono" :title="zoom">{{ zoom }}/</span>
         </span>
         <button type="button" class="ui-btn ui-btn-sm shrink-0" :disabled="!focus.length"
-                :title="`Collect the ${focus.length.toLocaleString()} lit modules into the group tray`"
+                :title="t('units.focusMap.collectLitModulesGroup', { focusLength: focus.length.toLocaleString(intlLocale) })"
                 @click="$emit('collect', focus)">
           <Icon icon="plus" :size="12"/>
-          <span>Collect {{ focus.length.toLocaleString() }}</span>
+          <span>{{ t('units.focusMap.collect', { focusLength: focus.length.toLocaleString(intlLocale) }) }}</span>
         </button>
         <ExhibitButton/>
       </div>
@@ -31,7 +31,7 @@
           :files="shown" :lines="lines" :paint="paint" :highlight="lit" :selected="selectedPath"
           :describe="describe" :links-of="linksOf" :bad-link="badLink"
           :figure="label" :legend="{ items: legend }" :legend-in-ui="false"
-          :aria-label="`Modules by folder, with ${label} lit`"
+          :aria-label="t('units.focusMap.modulesFolderLit', { label })"
           @select="onSelect" @open="(f) => $emit('open', f)"
         />
       </div>
@@ -46,6 +46,7 @@ import ExhibitButton from "~/features/export/components/ExhibitButton.vue"
 import Icon from "~/shared/ui/Icon.vue"
 import FolderMap from "~/features/checks/components/FolderMap.vue"
 import { filesUnder } from "~/features/checks/folderTree"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = defineProps<{
   /** What the region is called, for the figure and its label. */
@@ -92,7 +93,7 @@ watch(home, (h) => { zoom.value = h })
 
 const shown = computed(() => (zoom.value ? filesUnder(zoom.value, props.files) : props.files))
 const lit = computed(() => (props.pointed ? new Set([props.pointed]) : new Set(props.focus)))
-const parentLabel = computed(() => dirOf(zoom.value) ? dirOf(zoom.value) + "/" : "the whole codebase")
+const parentLabel = computed(() => dirOf(zoom.value) ? dirOf(zoom.value) + "/" : t("units.focusMap.wholeCodebase"))
 
 function zoomOut() { zoom.value = dirOf(zoom.value) }
 

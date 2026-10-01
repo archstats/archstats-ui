@@ -6,3 +6,5 @@ export function QueueSnapshots(arg1:Array<string>,arg2:string):Promise<boolean>;
 export function TakePendingSnapshots():Promise<Array<string>>;
 
 export function Version():Promise<string>;
+
+export function SetLocale(arg1:string):Promise<void>;

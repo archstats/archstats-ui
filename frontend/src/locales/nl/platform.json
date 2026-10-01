@@ -1,0 +1,16 @@
+{
+  "files": {
+    "csvTable": "CSV-tabel",
+    "markdown": "Markdown",
+    "pngImage": "PNG-afbeelding",
+    "svgImage": "SVG-afbeelding",
+    "json": "JSON",
+    "archstatsSnapshot": "Archstats-snapshot",
+    "pdfDocument": "PDF-document",
+    "save": "Opslaan"
+  },
+  "dbWorker": {
+    "databaseNotInitialized": "Database niet geïnitialiseerd",
+    "unknownMessageType": "Onbekend berichttype: {type}"
+  }
+}

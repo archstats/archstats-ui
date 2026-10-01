@@ -5,6 +5,8 @@
 // next segment until the areas say something: one floor holding the whole
 // backend makes every layering look clean.
 
+import { t } from "~/shared/i18n"
+
 export interface Areas {
     /** Component → area key. */
     of: Map<string, string>
@@ -77,12 +79,12 @@ export function areasOf(names: string[], linesOf: (n: string) => number, opts: {
     const ranked = [...f.keys()].sort((a, b) => lines.get(b)! - lines.get(a)!)
     const kept = new Set(ranked.filter((k, i) => i < max - 1 && lines.get(k)! >= 0.02))
     const rest = ranked.filter(k => !kept.has(k))
-    const OTHER = rest.length > 1 ? `(${rest.length} other areas)` : rest[0]
+    const OTHER = rest.length > 1 ? t("snapshot.areas.otherAreas", { restLength: rest.length }) : rest[0]
     const of = new Map<string, string>()
     for (const [k, ms] of f) for (const n of ms) of.set(n, kept.has(k) ? k : OTHER!)
     const keys = [...ranked.filter(k => kept.has(k)), ...(rest.length ? [OTHER!] : [])]
     const how = styles > 1
-        ? "areas cut from each naming style separately (packages and folders), split until no area holds most of the code"
-        : "areas cut by name, split until no area holds most of the code"
+        ? t("snapshot.areas.areasCutEachNaming")
+        : t("snapshot.areas.areasCutNameSplit")
     return { of, keys, how }
 }

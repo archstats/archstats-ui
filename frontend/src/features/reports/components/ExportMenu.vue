@@ -7,11 +7,11 @@
       class="ui-btn ui-btn-sm"
       :aria-expanded="open"
       aria-haspopup="menu"
-      title="Export (⌘E)"
+      :title="t('reports.exportMenu.exportE')"
       @click="toggle"
     >
       <Icon :icon="status ? 'check' : 'download'" :size="13" :class="status ? 'text-green-600' : 'text-neutral-500'"/>
-      <span>{{ status || "Export" }}</span>
+      <span>{{ status || t('reports.exportMenu.export') }}</span>
     </button>
 
     <template v-if="open">
@@ -20,10 +20,10 @@
         ref="menuEl"
         class="ui-menu absolute right-0 z-50 mt-1 flex max-h-[70vh] w-72 flex-col overflow-y-auto animate-in"
         role="menu"
-        aria-label="Export"
+        :aria-label="t('reports.exportMenu.export')"
         @keydown.esc.stop="close"
       >
-        <p v-if="items.length === 0" class="px-2 py-2 text-sm text-neutral-500">Figures and tables export from the button beside each one.</p>
+        <p v-if="items.length === 0" class="px-2 py-2 text-sm text-neutral-500">{{ t('reports.exportMenu.figuresTablesExportButton') }}</p>
         <template v-for="(item, i) in items" :key="i">
           <div v-if="i > 0" class="my-1 h-px bg-neutral-100" role="separator"></div>
           <p class="ui-menu-title truncate normal-case tracking-normal" :title="item.title">{{ item.title }}</p>
@@ -35,7 +35,7 @@
                 <Icon icon="file-text" :size="12" class="text-neutral-500"/><span>{{ item.label }}</span>
               </button>
               <button v-if="item.savable" type="button" class="ui-menu-item" role="menuitem" @click="saveDocument(item)">
-                <Icon icon="download" :size="12" class="text-neutral-500"/><span>{{ item.saveLabel ?? "Save Markdown…" }}</span>
+                <Icon icon="download" :size="12" class="text-neutral-500"/><span>{{ item.saveLabel ?? t('reports.exportMenu.saveMarkdown') }}</span>
               </button>
             </template>
           </template>
@@ -45,21 +45,21 @@
             type="button"
             class="ui-menu-item"
             role="menuitem"
-            title="Preview it in a report, write around it, then add it"
+            :title="t('reports.exportMenu.previewReportWriteAround')"
             @click="addToReport(item)"
           >
-            <Icon icon="file-text" :size="12" class="text-neutral-500"/><span>Add to report…</span>
+            <Icon icon="file-text" :size="12" class="text-neutral-500"/><span>{{ t('reports.exportMenu.addReport') }}</span>
           </button>
         </template>
 
         <div class="my-1 h-px bg-neutral-100" role="separator"></div>
-        <button type="button" class="ui-menu-item" role="menuitem" title="Keep this view, with a figure of it, on the evidence board" @click="pinView">
-          <Icon icon="bookmark" :size="12" class="text-neutral-500"/><span>Pin this view</span>
+        <button type="button" class="ui-menu-item" role="menuitem" :title="t('reports.exportMenu.keepViewFigureEvidence')" @click="pinView">
+          <Icon icon="bookmark" :size="12" class="text-neutral-500"/><span>{{ t('reports.exportMenu.pinView') }}</span>
         </button>
         <template v-if="lastExport">
           <div class="my-1 h-px bg-neutral-100" role="separator"></div>
           <button type="button" class="ui-menu-item" role="menuitem" @click="revealLast">
-            <Icon icon="folder" :size="12" class="text-neutral-500"/><span>Reveal last export</span>
+            <Icon icon="folder" :size="12" class="text-neutral-500"/><span>{{ t('reports.exportMenu.revealLastExport') }}</span>
           </button>
         </template>
       </div>
@@ -87,6 +87,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import type { RanOn } from "~/features/reports/reportDoc";
 import { formatScanTime } from "~/shared/time";
 import { snapshotName } from "~/features/workspace/snapshotName";
+import { t } from "~/shared/i18n";
 
 // The Export menu for a view's documents (a methodology, a report's
 // Markdown), and Pin this view. In a view's toolbar it is a button, shown
@@ -123,14 +124,14 @@ function fail(what: string, e: unknown) {
 }
 
 async function copyDocument(d: DocumentExportable) {
-  try { await copyText(await d.markdown()); done("Copied"); } catch (e) { fail("Copy", e); }
+  try { await copyText(await d.markdown()); done("Copied"); } catch (e) { fail(t("reports.exportMenu.copy"), e); }
 }
 async function saveDocument(d: DocumentExportable) {
   close();
   try {
-    const path = d.save ? await d.save() : await saveText(exportFileName(d.title, "md"), await d.markdown(), [FILTERS.md], "Save Markdown");
+    const path = d.save ? await d.save() : await saveText(exportFileName(d.title, "md"), await d.markdown(), [FILTERS.md], t("reports.exportMenu.saveMarkdown2"));
     if (path) done("Saved");
-  } catch (e) { fail("Save", e); }
+  } catch (e) { fail(t("reports.exportMenu.save"), e); }
 }
 
 // A view pin keeps the route and a figure of the view's first chart.
@@ -138,10 +139,10 @@ async function pinView() {
   close();
   try {
     const f = exportables.value.find((i): i is FigureExportable => i.kind === "figure" && i.ready());
-    const title = (typeof document !== "undefined" ? document.querySelector(".ui-toolbar-title")?.textContent?.trim() : "") || "View";
+    const title = (typeof document !== "undefined" ? document.querySelector(".ui-toolbar-title")?.textContent?.trim() : "") || t("reports.exportMenu.view");
     await pinWith(title, f ? await figurePng(f, { light: true, legend: true }) : null);
     done("Pinned");
-  } catch (e) { fail("Pin", e); }
+  } catch (e) { fail(t("reports.exportMenu.pin"), e); }
 }
 
 function pinWith(title: string, figure: string | null) {
@@ -181,12 +182,12 @@ async function addToReport(item: Exportable, choice: FigureChoice = { light: tru
     } else {
       await reportsStore.beginImport({ ...base, kind: "document", markdown: await item.markdown() });
     }
-  } catch (e) { fail("Add to report", e); }
+  } catch (e) { fail(t("reports.exportMenu.addReport2"), e); }
 }
 
 async function revealLast() {
   close();
-  if (lastExport.value) { try { await reveal(lastExport.value); } catch (e) { fail("Reveal", e); } }
+  if (lastExport.value) { try { await reveal(lastExport.value); } catch (e) { fail(t("reports.exportMenu.reveal"), e); } }
 }
 
 let off: (() => void) | null = null;
@@ -208,7 +209,7 @@ onMounted(() => {
     // the report's own Markdown and fill the slot with the whole report (P1-13).
     if (isReportView.value || !reportsStore.filling) return;
     const item = pickFor(reportsStore.filling.kind, reportsStore.filling.take);
-    if (!item) { fail("Add to report", new Error("this view has nothing to add yet")); return; }
+    if (!item) { fail(t("reports.exportMenu.addReport2"), new Error(t("reports.exportMenu.viewHasNothingAdd"))); return; }
     await addToReport(item);
   });
 });

@@ -1,9 +1,9 @@
 <template>
   <section v-if="data.hasData && findings.length" class="ui-panel mt-8 overflow-hidden" aria-labelledby="metrics-glance-title">
     <div class="flex items-baseline gap-3 px-4 pb-2 pt-3 hairline-b">
-      <h2 id="metrics-glance-title" class="ui-panel-title">What the metrics say</h2>
-      <span class="min-w-0 truncate text-sm text-neutral-500">{{ rows.length.toLocaleString("en-US") }} components, {{ metrics.length }} metrics<template v-if="scope.isActive"> · within {{ scopeLabel() }}</template>. Facts about the numbers; what they mean is yours to judge.</span>
-      <router-link to="/views/metrics" class="ml-auto shrink-0 text-sm text-neutral-500 hover:text-neutral-900">Open Metrics →</router-link>
+      <h2 id="metrics-glance-title" class="ui-panel-title">{{ t('overview.metricsGlance.whatMetricsSay') }}</h2>
+      <span class="min-w-0 truncate text-sm text-neutral-500">{{ t('overview.metricsGlance.componentsMetrics', { value: rows.length.toLocaleString(intlLocale), metricsLength: metrics.length }) }}<template v-if="scope.isActive">{{ ' ' + t('overview.metricsGlance.within', { scopeLabel: scopeLabel() }) }}</template>{{ t('overview.metricsGlance.factsAboutNumbersWhat') }}</span>
+      <router-link to="/views/metrics" class="ml-auto shrink-0 text-sm text-neutral-500 hover:text-neutral-900">{{ t('overview.metricsGlance.openMetrics') }}</router-link>
     </div>
     <MetricFindings :rows="rows" :findings="findings" @go="router.push(metricsPath($event))" @open="router.push(componentPath($event))"/>
   </section>
@@ -20,6 +20,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { scopeLabel } from "~/features/groups/scopeSql";
 import { componentPath } from "~/features/navigation/routes";
+import { t, intlLocale } from "~/shared/i18n";
 
 // The Metrics summary's findings over the components, on the Overview. Each
 // one opens Metrics already set up for it, the same as it does from there.
@@ -45,5 +46,5 @@ const metrics = computed(() => {
 });
 
 const niceName = (k: string) => data.statNiceName(k) || k;
-const findings = computed(() => summarize(rows.value, metrics.value, { niceName, noun: "components", one: "component" }));
+const findings = computed(() => summarize(rows.value, metrics.value, { niceName, noun: t("common.noun.component", { count: 2 }), one: t("common.noun.component", { count: 1 }) }));
 </script>

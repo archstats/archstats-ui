@@ -12,6 +12,7 @@
 // something. Lines are lines added, not blame, as everywhere authors are counted.
 
 import { canonicalAuthorSql, NOT_BOT_SQL, type AliasMap } from "./authors"
+import { t } from "~/shared/i18n"
 
 export const HERE_WINDOWS = [
     { id: "180", label: "180 d", days: 180 },
@@ -25,10 +26,10 @@ export const WROTE = 0.25
 const SWEEP_FILES = 100
 
 export const STATES = [
-    { id: "wrote", label: "Written by active contributors", short: "Written" },
-    { id: "works", label: "Changed by active contributors", short: "Changed" },
-    { id: "once", label: "Changed once", short: "Changed once" },
-    { id: "nobody", label: "No active contributor", short: "None" },
+    { id: "wrote", label: t("git.knowledgeLeft.writtenActiveContributors"), short: t("git.knowledgeLeft.written") },
+    { id: "works", label: t("git.knowledgeLeft.changedActiveContributors"), short: t("git.knowledgeLeft.changed") },
+    { id: "once", label: t("git.knowledgeLeft.changedOnce"), short: t("git.knowledgeLeft.changedOnce") },
+    { id: "nobody", label: t("git.knowledgeLeft.noActiveContributor"), short: t("git.knowledgeLeft.none") },
 ] as const
 export type StateId = (typeof STATES)[number]["id"]
 
@@ -222,7 +223,7 @@ export function knowledgeTree(rows: KnowledgeRow[]): TreeNode {
         let cur = b
         while (!cur.row && cur.kids.size === 1) cur = [...cur.kids.values()][0]
         const kids = [...cur.kids.values()].map(k => finish(k))
-        if (cur.row && kids.length) kids.unshift({ path: cur.path, label: "(own files)", children: [], row: cur.row })
+        if (cur.row && kids.length) kids.unshift({ path: cur.path, label: t("git.knowledgeLeft.ownFiles"), children: [], row: cur.row })
         return { path: cur.path, label: cur.path.slice(from), children: kids, row: kids.length ? undefined : cur.row }
     }
     // Fold away a prefix that holds four fifths of the code or more.
@@ -236,7 +237,7 @@ export function knowledgeTree(rows: KnowledgeRow[]): TreeNode {
         top = big
     }
     const groups = [...top.kids.values()].map(k => finish(k)).concat(others.map(k => finish(k, 0)))
-    if (top.row) groups.unshift({ path: top.path, label: "(own files)", children: [], row: top.row })
+    if (top.row) groups.unshift({ path: top.path, label: t("git.knowledgeLeft.ownFiles"), children: [], row: top.row })
     return { path: top.path, label: top.path, children: groups }
 }
 

@@ -24,6 +24,7 @@ export interface SubjectWorld {
 }
 
 import { detectSeparator } from "~/features/snapshot/names"
+import { t } from "~/shared/i18n"
 
 export { detectSeparator }
 
@@ -306,11 +307,11 @@ export function subjectOf(key: string): string | null {
 
 /** What to tell someone about a group the subject reading made. */
 export function subjectReason(s: Subject, members: number): string {
-  if (members === 1) return `named for ${s.word}`
-  const said = [`all named ${s.word}`]
-  if (s.places > 1) said.push(`in ${s.places} different places in the tree`)
-  if (s.inside >= 0.15) said.push(`${Math.round(s.inside * 100)}% of their references stay inside`)
-  else if (s.moves >= 0.15) said.push(`${Math.round(s.moves * 100)}% of their changes land together`)
+  if (members === 1) return t("lens-builder.subject.named", { word: s.word })
+  const said = [t("lens-builder.subject.allNamed", { word: s.word })]
+  if (s.places > 1) said.push(t("lens-builder.subject.differentPlacesTree", { places: s.places }))
+  if (s.inside >= 0.15) said.push(t("lens-builder.subject.theirReferencesStayInside", { value: Math.round(s.inside * 100) }))
+  else if (s.moves >= 0.15) said.push(t("lens-builder.subject.theirChangesLandTogether", { value: Math.round(s.moves * 100) }))
   return said.join(", ")
 }
 

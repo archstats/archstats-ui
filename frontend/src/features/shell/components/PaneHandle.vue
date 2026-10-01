@@ -10,7 +10,7 @@
     class="pane-handle absolute inset-y-0 z-10 w-[7px] cursor-col-resize outline-none"
     :class="side === 'left' ? '-left-[3px]' : '-right-[3px]'"
     :data-active="active || undefined"
-    :title="`Drag to resize, double-click to reset`"
+    :title="t('shell.paneHandle.dragResizeDoubleClick')"
     @pointerdown="onDown"
     @pointermove="onMove"
     @pointerup="onUp"
@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { t } from "~/shared/i18n";
 
 // A hairline you can grab. `side` names which edge of the pane the handle sits
 // on: a handle on the pane's right edge grows the pane when dragged right; one
@@ -33,7 +34,7 @@ const props = withDefaults(defineProps<{
   max: number
   side?: "left" | "right"
   label?: string
-}>(), { side: "right", label: "Resize pane" });
+}>(), { side: "right", label: t("shell.paneHandle.resizePane") });
 
 const emit = defineEmits<{
   (e: "update:modelValue", width: number): void

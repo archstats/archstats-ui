@@ -4,6 +4,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { t } from "~/shared/i18n";
 
 // The Kind Rule in HTML, matching the marks the graph draws: a group is a
 // filled box, a component a solid disc, a file a hollow ring. Colour still
@@ -15,7 +16,7 @@ const props = withDefaults(defineProps<{
   title?: string
 }>(), { color: null, title: undefined });
 
-const WORD: Record<string, string> = { group: "Group", component: "Component", file: "File" };
+const WORD: Record<string, string> = { group: "Group", component: t("connections.kindMark.component"), file: "File" };
 const FALLBACK = "rgb(var(--c-neutral-300))";
 
 const shapeClass = computed(() => (props.kind === "group" ? "h-2.5 w-2.5 rounded-[3px]" : "h-2 w-2 rounded-full"));

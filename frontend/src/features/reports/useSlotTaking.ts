@@ -11,6 +11,7 @@ import { runCommand } from "~/platform/commands"
 import { cellNumbers, isCell } from "./reportDoc"
 import { useScopeStore } from "~/features/groups/scope.store"
 import type { RoleFacet } from "~/features/snapshot/fileRole"
+import { t } from "~/shared/i18n"
 
 /** The newest take wins; an older one still waiting stops where it is. */
 let token = 0
@@ -92,7 +93,7 @@ export function useSlotTaking() {
         if (mine !== token) return
         if (!drawn()) {
             const why = blocked()
-            reports.takeWhy = why ? `${b.cell.spec.view} has nothing to take: ${why}` : `${b.cell.spec.view} drew nothing to take in ${PATIENCE / 1000} seconds. Set the view so it draws something and add it, or skip this one.`
+            reports.takeWhy = why ? t("reports.useSlotTaking.hasNothingTake", { view: b.cell.spec.view, why }) : t("reports.useSlotTaking.drewNothingTakeSeconds", { view: b.cell.spec.view, value: PATIENCE / 1000 })
             reports.taking = "failed"
             return
         }
@@ -120,7 +121,7 @@ export function useSlotTaking() {
 
     async function skip() {
         token++
-        const why = reports.taking === "failed" ? reports.takeWhy : "skipped"
+        const why = reports.taking === "failed" ? reports.takeWhy : t("reports.useSlotTaking.skipped")
         reports.importing = null
         reports.adjusting = false
         reports.filling = null

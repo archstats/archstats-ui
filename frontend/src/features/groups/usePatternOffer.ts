@@ -2,6 +2,7 @@ import { computed, type Ref } from "vue";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { generalise } from "./query";
 import { detectSeparator } from "~/features/snapshot/names";
+import { t } from "~/shared/i18n";
 
 // The selection, offered back as the thing it appears to be.
 //
@@ -52,7 +53,7 @@ export function usePatternOffer(ids: Ref<string[]>, kind: Ref<"component" | "fil
       text: out.text,
       lead: out.terms[0],
       extra: lines - 1,
-      title: `Say it instead of listing ${picked.length} names:\n\n${out.text}\n\nIt keeps matching as the code moves, and says so when it stops.`,
+      title: t("groups.usePatternOffer.sayInsteadListingNames", { pickedLength: picked.length, text: out.text }),
     };
   });
 }

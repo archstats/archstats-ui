@@ -1,0 +1,70 @@
+{
+  "changes": {
+    "ruleFinding": "regelbevinding",
+    "ruleFindings": "regelbevindingen",
+    "noStructuralChanges": "Geen structurele wijzigingen",
+    "componentsAdded": "Toegevoegde componenten",
+    "componentsRemoved": "Verwijderde componenten",
+    "dependenciesAdded": "Toegevoegde dependencies",
+    "runtimeLookupOnly": ", alleen runtime-lookup",
+    "dependenciesRemoved": "Verwijderde dependencies",
+    "newRuleFindings": "Nieuwe regelbevindingen",
+    "ruleFindingsGone": "Verdwenen regelbevindingen",
+    "changed": ", {tanglesChanged} gewijzigd",
+    "at": "{rule}: `{from}` → `{to}` bij `{file}:{line}`",
+    "tangles": "{value}{tangles} tangles{value2}"
+  },
+  "comparability": {
+    "oneScansPredatesAnalysis": "Een van de scans is ouder dan de analyse-revisies, dus het is onbekend wat hij heeft gemeten. Scan opnieuw om te vergelijken.",
+    "scansWereReadDifferent": "De scans zijn met verschillende analyses gelezen (revisie {ra} en {rb}); hun getallen betekenen niet hetzelfde.",
+    "scansIgnoredDifferentPaths": "De scans negeerden verschillende paden, dus ze lazen niet dezelfde code.",
+    "differentLanguagePacksRan": "Er draaiden verschillende language packs ({extensions} en {extensions2}); tellingen die ervan afhangen kunnen verschuiven."
+  },
+  "comparabilityGate": {
+    "theseTwoSnapshotsWere": "Deze twee snapshots zijn niet op dezelfde manier gelezen",
+    "differencesBetweenThemMay": "Verschillen ertussen kunnen uit de scan komen, niet uit de code. Bouw de baseline opnieuw op bij zijn eigen commit met de analyse van deze build, dan zijn de twee getal voor getal te vergelijken.",
+    "rescanBaselineCommit": "Baseline-commit {slice} opnieuw scannen",
+    "rescanBaselineSCommit": "Commit van de baseline opnieuw scannen…",
+    "r": " op r{revision}",
+    "compareAnyway": "Toch vergelijken",
+    "scanRunningGateClears": "Er loopt een scan; de blokkade verdwijnt zodra de nieuwe scan klaar is."
+  },
+  "trendRows": {
+    "readingsSnapshotsOverTime": "Metingen van {pointsLength} snapshots in de tijd",
+    "commitTime": "op commit-tijd",
+    "scanTime": "op scan-tijd",
+    "noChange": "geen wijziging",
+    "notMeasured": "niet gemeten",
+    "analysisR": "analyse r{analysisRevision}"
+  },
+  "delta": {
+    "notBaselineSnapshot": "Niet in het baseline-snapshot",
+    "was": "Was {baseline}"
+  },
+  "structureCompare": {
+    "groupDependencies": "Groeps-dependencies",
+    "orderedGroupPairsLeast": "Geordende groepsparen met minstens één import",
+    "importsCrossingGroupEdge": "Imports over een groepsgrens",
+    "fileImportsWhoseTwo": "Bestandsimports waarvan de twee uiteinden in verschillende groepen zitten",
+    "groupPairsImportEach": "Groepsparen die elkaar importeren",
+    "twoGroupsEachImporting": "Twee groepen die elkaar allebei importeren",
+    "groupsCaughtCycles": "Groepen in cycles",
+    "groupsStronglyConnectedSet": "Groepen in een sterk samenhangende verzameling",
+    "filesNoGroupTakes": "Bestanden zonder groep",
+    "productionCodeFilesOutside": "Productiecodebestanden buiten elke groep"
+  },
+  "trends": {
+    "components": "Componenten",
+    "componentsTangles": "Componenten in tangles",
+    "linesTangles": "Regels in tangles",
+    "largestTangle": "Grootste tangle",
+    "componentDependencies": "Component-dependencies",
+    "propagationCost": "Propagation cost",
+    "dependencyLevels": "Dependency-niveaus",
+    "ruleFindings": "Regelbevindingen",
+    "medianInstability": "Mediane instabiliteit",
+    "medianDistance": "Mediane afstand",
+    "analysisR": "analyse r{analysisRevision}",
+    "ignoreRulesChanged": "negeerregels gewijzigd"
+  }
+}

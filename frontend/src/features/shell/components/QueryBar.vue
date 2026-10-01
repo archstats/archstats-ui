@@ -6,7 +6,7 @@
       :class="open ? 'w-72' : scope.query ? 'w-56' : 'w-40 xl:w-56'"
       :aria-expanded="open"
       aria-haspopup="dialog"
-      :title="scope.query ? scope.query : 'Narrow every view to what a pattern matches (⌘K)'"
+      :title="scope.query ? scope.query : t('shell.queryBar.narrowEveryViewWhat')"
       @click="toggle()"
     >
       <Icon icon="braces" :size="12" class="shrink-0 text-neutral-400"/>
@@ -23,8 +23,8 @@
       v-if="scope.query"
       type="button"
       class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet ml-1 shrink-0"
-      aria-label="Clear the query"
-      title="Clear the query"
+      :aria-label="t('shell.queryBar.clearQuery')"
+      :title="t('shell.queryBar.clearQuery')"
       @click="clear"
     >
       <Icon icon="x" :size="12"/>
@@ -44,8 +44,8 @@
         :placeholder="placeholder"
         :matched="found"
         :matched-files="foundFiles"
-        :keep-label="intoDraft ? 'Keep as group' : 'Keep'"
-        :keep-into="intoDraft ? draft.dimension || 'the lens you are building' : undefined"
+        :keep-label="intoDraft ? t('shell.queryBar.keepGroup') : t('shell.queryBar.keep')"
+        :keep-into="intoDraft ? draft.dimension || t('shell.queryBar.lensYouBuilding') : undefined"
         @update:model-value="scope.setQuery($event)"
         @keep="keep()"
         @close="close()"
@@ -79,6 +79,7 @@ import { isBlankQuery, parseQuery, SEARCH_SEED, SEARCH_SEED_CARET, type QueryWor
 import type { AssistWorld } from "~/features/groups/queryAssist";
 import { nameForQuery, pathStyle } from "~/features/lens-builder/studio";
 import { detectSeparator } from "~/features/snapshot/names";
+import { t } from "~/shared/i18n";
 
 // Asking a question of whatever view you are already looking at.
 //
@@ -222,7 +223,7 @@ function keep() {
   if (!found.value || broken.value) return;
   if (intoDraft.value) {
     const ids = Array.from(matches.value?.components ?? []);
-    draft.keepQuery(suggestedName.value || "New group", ids, scope.query);
+    draft.keepQuery(suggestedName.value || t("shell.queryBar.newGroup"), ids, scope.query);
     scope.remember(scope.query);
     // The finding is now a group on the board, so the view should show the
     // board rather than stay narrowed to the question that found it.

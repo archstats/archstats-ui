@@ -11,7 +11,7 @@
             <MonthlyChangesChart :commits="gitCommits" :height="96"/>
           </ExhibitFrame>
         </template>
-        <p v-else class="py-6 text-sm text-neutral-500">No git history in this snapshot.</p>
+        <p v-else class="py-6 text-sm text-neutral-500">{{ t('pages.index.noGitHistorySnapshot') }}</p>
       </template>
     </SummarySection>
 
@@ -23,7 +23,7 @@
     <UnitsGlance v-if="store.hasView('units') || isJavaProject"/>
 
     <section class="mt-8" aria-labelledby="views-title">
-      <h2 id="views-title" class="text-lg font-semibold text-neutral-900">Views</h2>
+      <h2 id="views-title" class="text-lg font-semibold text-neutral-900">{{ t('pages.index.views') }}</h2>
       <div class="mt-3 grid gap-5 lg:grid-cols-2">
         <div v-for="family in families" :key="family.title" class="ui-panel overflow-hidden">
           <h3 class="ui-section-title px-3 pb-1.5 pt-2.5 hairline-b">{{ family.title }}</h3>
@@ -50,6 +50,7 @@ import GitActivityChart from "~/features/git/components/GitActivityChart.vue";
 import MonthlyChangesChart from "~/features/git/components/MonthlyChangesChart.vue";
 import { computed, ref, watch } from "vue";
 import { useJavaMetrics } from "~/features/java/useJavaMetrics";
+import { t } from "~/shared/i18n";
 
 const store = useDataStore();
 const gitCommits = ref<GitCommit[]>([]);
@@ -87,26 +88,26 @@ watch(
 const { isJavaProject } = useJavaMetrics();
 const families = computed(() => [
   {
-    title: "Components",
+    title: t("pages.index.components"),
     views: [
-      { name: "Metrics", path: "/views/metrics", image: "/img/views/table.png", description: "Every metric for every component or file, as a table or a plot." },
-      { name: "Connections", path: "/views/connections", image: "/img/views/connections.png", description: "Component, file or group coupling as a matrix, a chord diagram or a force graph." },
-      { name: "Hotspots", path: "/views/components/hotspots", image: "/img/views/hotspots.png", description: "Units packed by size and heat, at component, directory or file grain." },
-      { name: "Cycles", path: "/views/components/cycles", image: "/img/views/cycles.png", description: "Cyclic dependencies ranked by severity and co-change." },
+      { name: t("pages.index.metrics"), path: "/views/metrics", image: "/img/views/table.png", description: t("pages.index.everyMetricEveryComponent") },
+      { name: t("pages.index.connections"), path: "/views/connections", image: "/img/views/connections.png", description: t("pages.index.componentFileGroupCoupling") },
+      { name: t("pages.index.hotspots"), path: "/views/components/hotspots", image: "/img/views/hotspots.png", description: t("pages.index.unitsPackedSizeHeat") },
+      { name: t("pages.index.cycles"), path: "/views/components/cycles", image: "/img/views/cycles.png", description: t("pages.index.cyclicDependenciesRankedSeverity") },
     ],
   },
   {
-    title: "Git",
+    title: t("pages.index.git"),
     views: [
-      { name: "Activity", path: "/views/git/activity", image: "/img/views/git-timeline.png", description: "Where the work is going now, whether changes are getting wider, and every commit." },
-      { name: "Authors", path: "/views/git/authors", image: "/img/views/git-authors.png", description: "Where knowledge has left: code written by people no longer here, and who could take it over." },
+      { name: t("pages.index.activity"), path: "/views/git/activity", image: "/img/views/git-timeline.png", description: t("pages.index.whereWorkGoingNow") },
+      { name: t("pages.index.authors"), path: "/views/git/authors", image: "/img/views/git-authors.png", description: t("pages.index.whereKnowledgeHasLeft") },
     ],
   },
   // Every language declares units now, not only Java.
   ...(store.hasView("units") || isJavaProject.value ? [{
-    title: "Code",
+    title: t("pages.index.code"),
     views: [
-      { name: "Units", path: "/views/units", image: "/img/views/java-classes.png", description: "Every named thing in the codebase — types, functions, modules — with role lanes, seed-and-expand and a path tracer." },
+      { name: t("pages.index.units"), path: "/views/units", image: "/img/views/java-classes.png", description: t("pages.index.everyNamedThingCodebase") },
     ],
   }] : []),
 ]);

@@ -2,6 +2,8 @@
 // XMLHttpRequest, WebSocket and importScripts are removed before the script
 // runs), a time limit, and the API reached only by message.
 
+import { t } from "~/shared/i18n"
+
 export interface CodeResult { value: unknown; logs: string[]; error?: string }
 
 const WORKER = `
@@ -27,7 +29,7 @@ export function runInWorker(code: string, api: Record<string, (...a: any[]) => P
         const url = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }))
         const w = new Worker(url)
         const finish = (r: CodeResult) => { clearTimeout(timer); w.terminate(); URL.revokeObjectURL(url); resolve(r) }
-        const timer = setTimeout(() => finish({ value: null, logs: [], error: `the script ran longer than ${timeoutMs / 1000} s` }), timeoutMs)
+        const timer = setTimeout(() => finish({ value: null, logs: [], error: t("ask.codeRunner.scriptRanLongerThan", { value: timeoutMs / 1000 }) }), timeoutMs)
         w.onmessage = async ev => {
             const m = ev.data
             if (m.type === "call") {

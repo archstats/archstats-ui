@@ -5,14 +5,15 @@
 // bad) must agree with where that value ranks among all components.
 
 import type { Snapshot } from "~/features/snapshot/snapshot"
+import { t, ordinal } from "~/shared/i18n"
 
 /** Measures with a better end: +1 when higher is better, -1 when higher is worse. */
 const POLARITY: Record<string, { sign: 1 | -1; words: string; named: RegExp }> = {
-    codesmells__code_health: { sign: 1, words: "code health", named: /health/i },
-    codesmells__hotspot_score: { sign: -1, words: "hotspot score", named: /hotspot/i },
+    codesmells__code_health: { sign: 1, words: t("ask.judgement.codeHealth"), named: /health/i },
+    codesmells__hotspot_score: { sign: -1, words: t("ask.judgement.hotspotScore"), named: /hotspot/i },
     codesmells__static_complexity_score: { sign: -1, words: "complexity", named: /complex/i },
     git__commits__total: { sign: -1, words: "churn", named: /churn|commits?\b|changed/i },
-    modularity__distance_main_sequence: { sign: -1, words: "distance from the main sequence", named: /main sequence|distance/i },
+    modularity__distance_main_sequence: { sign: -1, words: t("ask.judgement.distanceMainSequence"), named: /main sequence|distance/i },
 }
 
 const GOOD = /\b(?:good|healthy|fine|solid|clean|low[- ]risk|safe|strong|decent|acceptable|in good shape|not (?:a )?(?:concern|problem|risk))\b/i
@@ -21,7 +22,6 @@ const NUMBER = /(?<![\w.])(\d+(?:\.\d+)?)(?![\w])/g
 
 export interface Misjudged { sentence: string; detail: string; fix: string }
 
-const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`
 
 export function misjudged(answer: string, snap: Snapshot): Misjudged[] {
     const comps = snap.components().filter(c => c.name !== ".")
@@ -59,9 +59,9 @@ export function misjudged(answer: string, snap: Snapshot): Misjudged[] {
                 const share = worse / all.length
                 if (good && share < 0.2) {
                     const rank = better + 1
-                    out.push({ sentence, detail: `Calls ${name}'s ${words} (${v}) good; it is the ${ordinal(all.length - rank + 1)} worst of ${all.length}`, fix: `${name}'s ${words} is ${v}, the ${ordinal(all.length - rank + 1)} worst of ${all.length} components: say that, not that it is good.` })
+                    out.push({ sentence, detail: t("ask.judgement.callsSGoodWorst", { name, words, v, value: ordinal(all.length - rank + 1), allLength: all.length }), fix: t("ask.judgement.sWorstComponentsSay", { name, words, v, value: ordinal(all.length - rank + 1), allLength: all.length }) })
                 } else if (bad && share > 0.8) {
-                    out.push({ sentence, detail: `Calls ${name}'s ${words} (${v}) bad; it is better than ${Math.round(share * 100)}% of components`, fix: `${name}'s ${words} is ${v}, better than ${Math.round(share * 100)}% of components: say that, not that it is bad.` })
+                    out.push({ sentence, detail: t("ask.judgement.callsSBadBetter", { name, words, v, value: Math.round(share * 100) }), fix: t("ask.judgement.sBetterThanComponents", { name, words, v, value: Math.round(share * 100) }) })
                 }
             }
         }

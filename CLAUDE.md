@@ -29,6 +29,7 @@ Groups are a first-class concept: they are how the architect or developer cuts t
 
 - Code is organised by feature: `src/features/<feature>/` holds a feature's logic, composables (`use*.ts`), stores (`*.store.ts`) and `components/`; `src/shared/` is product-agnostic helpers and the UI kit; `src/platform/` is the Wails/OS seam. There is no `utils/` folder. Layout and rules: `frontend/src/README.md`, checked by `src/architecture.test.ts`. Every dependency is an explicit import (Nuxt auto-scan of our folders is off).
 - `.ui-*` classes in `src/assets/index.css` are the vocabulary; hairlines are plain `hairline`, `hairline-t/b/l/r`; active-row marker is an inset shadow, not `border-l-2`. Colours come from token ramps, never hex in components. Charts read `chartTheme()`.
+- Text a person reads is a message, never a literal: `t("<namespace>.<area>.<name>")` from `~/shared/i18n`, `<I18nT>` for a sentence with markup, `listOf()` for lists, `intlLocale`/`fixed()` for numbers. Add the key to `src/locales/en/` and its Dutch to `src/locales/nl/` (developer Dutch, see `src/locales/GLOSSARY.md`). `npm test` and `npm run i18n:check` enforce it; details in `frontend/src/locales/README.md`.
 - SQL against the snapshot goes through `sqlLiteral`/`sqlIn`/`sqlLikeLiteral` in `src/shared/sql.ts`. `component_connections_indirect.shortest_path_length` counts nodes (hops = length − 1).
 - `grep` on this machine is ugrep; use `/usr/bin/grep`. Quote zsh globs.
 - No commits or pushes unless asked. Never add AI attribution anywhere.

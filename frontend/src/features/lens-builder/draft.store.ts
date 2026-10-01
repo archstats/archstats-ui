@@ -5,6 +5,7 @@ import { generalise } from "~/features/groups/query";
 import { detectSeparator } from "./studio";
 import type { Suggestion } from "./suggest";
 import type { Grain, Way } from "./studio";
+import { t } from "~/shared/i18n";
 
 // A draft of one dimension: groups being built before they exist. Suggest
 // fills it, "Edit dimension" loads real groups into it, and the architect
@@ -287,7 +288,7 @@ export const useDraftStore = defineStore("draft", {
     },
 
     /** An empty draft of a new dimension; the builder's Start from fills it. */
-    startNew(dimension = "New dimension") {
+    startNew(dimension = t("lens-builder.draftStore.newDimension")) {
       this.groups = []
       this.dimension = dimension
       this.origin = "suggest"
@@ -300,7 +301,7 @@ export const useDraftStore = defineStore("draft", {
     copyDimension(dimension: string) {
       this.fromDimension(dimension)
       this.groups = this.groups.map(g => ({ ...g, key: "d:" + Date.now().toString(36) + "-" + nextKey++, sourceId: null }))
-      this.dimension = `${dimension} copy`
+      this.dimension = t("lens-builder.draftStore.copy", { dimension })
       this.origin = "suggest"
       this.removedIds = []
       this.dirty = true
@@ -455,7 +456,7 @@ export const useDraftStore = defineStore("draft", {
     setDimension(name: string) { this.dimension = name.trim() || this.dimension; this.dirty = true; this._persist(); },
     /** Two groups with one name is always a mistake; the second takes a number. */
     uniqueName(name: string, exceptKey?: string): string {
-      const base = name.trim() || "New group";
+      const base = name.trim() || t("lens-builder.draftStore.newGroup");
       const taken = new Set(this.groups.filter(g => g.key !== exceptKey).map(g => g.name));
       let label = base;
       let n = 2;
@@ -474,7 +475,7 @@ export const useDraftStore = defineStore("draft", {
     addGroup(name?: string): string {
       const key = "d:" + Date.now().toString(36) + "-" + nextKey++;
       this._snapshot();
-      this.groups.push({ key, name: this.uniqueName(name ?? "New group"), parts: [], locked: false, reasons: [], sourceId: null });
+      this.groups.push({ key, name: this.uniqueName(name ?? t("lens-builder.draftStore.newGroup")), parts: [], locked: false, reasons: [], sourceId: null });
       this.dirty = true;
       this._persist();
       return key;

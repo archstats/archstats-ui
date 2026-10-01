@@ -1,23 +1,24 @@
 <template>
   <div class="mx-auto flex max-w-[640px] flex-col gap-4 px-6 py-16">
-    <h2 class="text-lg font-semibold text-neutral-900">These two snapshots were not read the same way</h2>
+    <h2 class="text-lg font-semibold text-neutral-900">{{ t('trends.comparabilityGate.theseTwoSnapshotsWere') }}</h2>
     <ul class="flex list-disc flex-col gap-1.5 pl-5 text-base text-neutral-700">
       <li v-for="r in reasons" :key="r">{{ r }}</li>
     </ul>
-    <p class="text-base text-neutral-600">Differences between them may come from the scan, not the code. Rebuild the baseline at its own commit with this build's analysis, and the two compare number for number.</p>
+    <p class="text-base text-neutral-600">{{ t('trends.comparabilityGate.differencesBetweenThemMay') }}</p>
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" class="ui-btn ui-btn-primary" :disabled="workspaces.isScanning" @click="workspaces.requestRescan(baseId)">
-        {{ baseCommit ? `Rescan baseline commit ${baseCommit.slice(0, 7)}` : "Rescan the baseline's commit…" }}{{ revision ? ` at r${revision}` : "" }}
+        {{ baseCommit ? t('trends.comparabilityGate.rescanBaselineCommit', { slice: baseCommit.slice(0, 7) }) : t('trends.comparabilityGate.rescanBaselineSCommit') }}{{ revision ? t('trends.comparabilityGate.r', { revision }) : "" }}
       </button>
-      <button type="button" class="ui-btn" @click="emit('anyway')">Compare anyway</button>
+      <button type="button" class="ui-btn" @click="emit('anyway')">{{ t('trends.comparabilityGate.compareAnyway') }}</button>
     </div>
-    <p v-if="workspaces.isScanning" class="text-sm text-neutral-500">A scan is running; the gate clears when the rescan is done.</p>
+    <p v-if="workspaces.isScanning" class="text-sm text-neutral-500">{{ t('trends.comparabilityGate.scanRunningGateClears') }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { t } from "~/shared/i18n";
 
 // Shown instead of a comparison whose differences would mostly be the
 // analysis's: a different revision, different ignore rules. The way through

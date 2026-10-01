@@ -32,6 +32,7 @@ import Icon from "./Icon.vue";
 import {onMounted, onUnmounted, ref} from 'vue';
 import {PropType} from "@vue/runtime-core";
 import { useAnchoredPanel } from "./useAnchoredPanel";
+import { t } from "~/shared/i18n";
 
 type Option = {
   name: string,
@@ -57,7 +58,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Select an option'
+    default: t("ui.singleSelect.selectOption")
   }
 });
 

@@ -3,7 +3,7 @@
     <button type="button" class="ui-btn w-full justify-between font-normal" @click="open">
       <span class="flex items-center gap-2">
         <Icon icon="layers" :size="14" class="text-neutral-500"/>
-        <span>Groups</span>
+        <span>{{ t('groups.groupsManager.groups') }}</span>
       </span>
       <span v-if="groupsStore.groups.length > 0" class="ui-tag">{{ groupsStore.groups.length }}</span>
     </button>
@@ -14,40 +14,38 @@
       <Transition name="modal">
         <div v-if="isOpen" class="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6" @keydown.escape="close">
           <div class="absolute inset-0 bg-neutral-950/40" @click="close"/>
-          <div class="ui-popover animate-modal-in relative flex h-[min(720px,85vh)] w-full max-w-[980px] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Groups" @click.stop>
+          <div class="ui-popover animate-modal-in relative flex h-[min(720px,85vh)] w-full max-w-[980px] flex-col overflow-hidden" role="dialog" aria-modal="true" :aria-label="t('groups.groupsManager.groups')" @click.stop>
             <header class="flex shrink-0 items-center gap-3 px-5 py-3 hairline-b">
               <Icon icon="layers" :size="16" class="text-neutral-500"/>
-              <h2 class="text-base font-semibold text-neutral-900">Groups</h2>
-              <span class="text-sm text-neutral-500">{{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? '' : 's' }} · {{ groupsStore.dimensions.length }} {{ groupsStore.dimensions.length === 1 ? 'lens' : 'lenses' }}</span>
+              <h2 class="text-base font-semibold text-neutral-900">{{ t('groups.groupsManager.groups') }}</h2>
+              <span class="text-sm text-neutral-500">{{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? '' : 's' }} · {{ groupsStore.dimensions.length }} {{t('common.noun.lens', { count: groupsStore.dimensions.length })}}</span>
               <div class="ml-auto flex items-center gap-1.5">
-                <button type="button" class="ui-btn ui-btn-sm" title="Import a workspace config or groups export" @click="fileInputRef?.click()">
-                  <Icon icon="folder" :size="13" class="text-neutral-500"/><span>Import…</span>
+                <button type="button" class="ui-btn ui-btn-sm" :title="t('groups.groupsManager.importWorkspaceConfigGroups')" @click="fileInputRef?.click()">
+                  <Icon icon="folder" :size="13" class="text-neutral-500"/><span>{{ t('groups.groupsManager.import') }}</span>
                 </button>
-                <button type="button" class="ui-btn ui-btn-sm" :disabled="groupsStore.groups.length === 0" title="Groups, lenses, author merges and arrangements, as one file" @click="handleExport">
-                  <Icon :icon="exportStatus ? 'check' : 'download'" :size="13" :class="exportStatus ? 'text-green-600' : 'text-neutral-500'"/><span>{{ exportStatus || "Export config…" }}</span>
+                <button type="button" class="ui-btn ui-btn-sm" :disabled="groupsStore.groups.length === 0" :title="t('groups.groupsManager.groupsLensesAuthorMerges')" @click="handleExport">
+                  <Icon :icon="exportStatus ? 'check' : 'download'" :size="13" :class="exportStatus ? 'text-green-600' : 'text-neutral-500'"/><span>{{ exportStatus || t('groups.groupsManager.exportConfig') }}</span>
                 </button>
                 <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden" @change="handleImport"/>
                 <span class="ui-toolbar-sep"></span>
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" @click="close"><Icon icon="x" :size="14"/></button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('groups.groupsManager.close')" @click="close"><Icon icon="x" :size="14"/></button>
               </div>
             </header>
             <!-- What an import holds, and whether it adds to this workspace or replaces it. -->
-            <div v-if="pendingImport" class="flex flex-col gap-3 bg-accent-50 px-5 py-3 hairline-b" role="dialog" aria-label="Import workspace config">
+            <div v-if="pendingImport" class="flex flex-col gap-3 bg-accent-50 px-5 py-3 hairline-b" role="dialog" :aria-label="t('groups.groupsManager.importWorkspaceConfig')">
               <p class="text-base text-neutral-900">
-                <span class="font-medium">{{ pendingImport.name }}</span> holds
-                {{ importSummary }}.
-              </p>
+                <I18nT k="groups.groupsManager.holds"><template #pendingImportName><span class="font-medium">{{ pendingImport.name }}</span></template><template #importSummary>{{ importSummary }}</template></I18nT> </p>
               <div class="flex items-center gap-2">
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" title="Add what is new; keep everything here" @click="applyImport('merge')">Merge</button>
-                <button type="button" class="ui-btn ui-btn-sm" title="Replace this workspace's groups, lenses, merges and arrangements with the file's" @click="applyImport('replace')">Replace</button>
-                <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pendingImport = null">Cancel</button>
-                <span class="ml-auto text-sm text-neutral-500">Replace removes {{ groupsStore.groups.length }} group{{ groupsStore.groups.length === 1 ? "" : "s" }} here.</span>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :title="t('groups.groupsManager.addWhatNewKeep')" @click="applyImport('merge')">{{ t('groups.groupsManager.merge') }}</button>
+                <button type="button" class="ui-btn ui-btn-sm" :title="t('groups.groupsManager.replaceWorkspaceSGroups')" @click="applyImport('replace')">{{ t('groups.groupsManager.replace') }}</button>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="pendingImport = null">{{ t('groups.groupsManager.cancel') }}</button>
+                <span class="ml-auto text-sm text-neutral-500">{{ t('groups.groupsManager.replaceRemovesHere', { groups: t('common.count.group', { count: groupsStore.groups.length }) }) }}</span>
               </div>
             </div>
 
             <p v-if="importError" class="flex items-center gap-2 px-5 py-2 text-sm text-red-700 hairline-b" role="alert">
               <Icon icon="alert" :size="13"/><span>{{ importError }}</span>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="importError = null">Dismiss</button>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="importError = null">{{ t('groups.groupsManager.dismiss') }}</button>
             </p>
             <!-- What the selected group's lens is worth right now. Every
                  number here is drift that would otherwise surface months
@@ -63,19 +61,19 @@
                 <div class="flex items-center gap-2 p-3 hairline-b">
                   <label class="relative flex min-w-0 grow items-center">
                     <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
-                    <input v-model="groupSearch" type="search" class="ui-input ui-input-sm w-full pl-7" placeholder="Find a group" aria-label="Find a group"/>
+                    <input v-model="groupSearch" type="search" class="ui-input ui-input-sm w-full pl-7" :placeholder="t('groups.groupsManager.findGroup')" :aria-label="t('groups.groupsManager.findGroup')"/>
                   </label>
                   <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="startCreate">
-                    <Icon icon="plus" :size="13"/><span>New</span>
+                    <Icon icon="plus" :size="13"/><span>{{ t('groups.groupsManager.new') }}</span>
                   </button>
                 </div>
 
                 <div class="min-h-0 grow overflow-y-auto py-2">
                   <div v-if="groupsStore.groups.length === 0" class="flex flex-col gap-1 px-4 py-8 text-center">
-                    <span class="text-sm font-medium text-neutral-800">No groups yet</span>
-                    <span class="text-sm text-neutral-500">Select components, files or classes in any view and press ⌘G, or create one here.</span>
+                    <span class="text-sm font-medium text-neutral-800">{{ t('groups.groupsManager.noGroupsYet') }}</span>
+                    <span class="text-sm text-neutral-500">{{ t('groups.groupsManager.selectComponentsFilesClasses') }}</span>
                   </div>
-                  <div v-else-if="filteredBuckets.length === 0" class="px-4 py-8 text-center text-sm text-neutral-500">No group matches “{{ groupSearch }}”.</div>
+                  <div v-else-if="filteredBuckets.length === 0" class="px-4 py-8 text-center text-sm text-neutral-500">{{ t('groups.groupsManager.noGroupMatches', { groupSearch }) }}</div>
                   <template v-for="bucket in filteredBuckets" :key="bucket.dimension">
                     <div class="ui-section-title px-4 pb-1 pt-2">{{ bucket.dimension }}</div>
                     <button
@@ -98,30 +96,30 @@
               <section class="flex min-w-0 grow flex-col overflow-hidden">
                 <!-- New group form -->
                 <form v-if="creating" class="flex flex-col gap-4 p-6" @submit.prevent="confirmCreate">
-                  <h3 class="text-base font-semibold text-neutral-900">New group</h3>
+                  <h3 class="text-base font-semibold text-neutral-900">{{ t('groups.groupsManager.newGroup') }}</h3>
                   <div class="flex flex-wrap items-end gap-3">
                     <label class="flex flex-col gap-1">
-                      <span class="ui-label">Name</span>
-                      <input ref="createNameRef" v-model="newName" type="text" class="ui-input w-64" placeholder="Audits, Controllers, Billing…" required/>
+                      <span class="ui-label">{{ t('groups.groupsManager.name') }}</span>
+                      <input ref="createNameRef" v-model="newName" type="text" class="ui-input w-64" :placeholder="t('groups.groupsManager.auditsControllersBilling')" required/>
                     </label>
                     <label class="flex flex-col gap-1">
-                      <span class="ui-label">Lens</span>
-                      <input v-model="newDimension" type="text" class="ui-input w-44" list="groups-dimensions" placeholder="Domain, Layer…"/>
+                      <span class="ui-label">{{ t('groups.groupsManager.lens') }}</span>
+                      <input v-model="newDimension" type="text" class="ui-input w-44" list="groups-dimensions" :placeholder="t('groups.groupsManager.domainLayer')"/>
                     </label>
                     <datalist id="groups-dimensions"><option v-for="d in groupsStore.dimensions" :key="d" :value="d"/></datalist>
                   </div>
                   <div class="flex items-center gap-2">
-                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!newName.trim()">Create</button>
-                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="creating = false">Cancel</button>
-                    <span class="text-sm text-neutral-500">Members are added next, or from any view's selection.</span>
+                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!newName.trim()">{{ t('groups.groupsManager.create') }}</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="creating = false">{{ t('groups.groupsManager.cancel') }}</button>
+                    <span class="text-sm text-neutral-500">{{ t('groups.groupsManager.membersAddedNextAny') }}</span>
                   </div>
                 </form>
 
                 <!-- Nothing selected -->
                 <div v-else-if="!selected" class="flex grow flex-col items-center justify-center gap-2 p-8 text-center">
                   <Icon icon="layers" :size="28" class="text-neutral-300"/>
-                  <span class="text-sm font-medium text-neutral-800">Pick a group to edit it</span>
-                  <span class="max-w-sm text-sm text-neutral-500">A group is any set of components and files. Whole components follow the code; single files pin exactly what you chose.</span>
+                  <span class="text-sm font-medium text-neutral-800">{{ t('groups.groupsManager.pickGroupEdit') }}</span>
+                  <span class="max-w-sm text-sm text-neutral-500">{{ t('groups.groupsManager.groupAnySetComponents') }}</span>
                 </div>
 
                 <!-- Selected group -->
@@ -133,33 +131,33 @@
                         v-model="editName"
                         type="text"
                         class="ui-input min-w-0 grow text-base font-semibold"
-                        aria-label="Group name"
+                        :aria-label="t('groups.groupsManager.groupName')"
                         @blur="saveName"
                         @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
                       />
-                      <button type="button" class="ui-btn ui-btn-sm" :title="`Edit the ${selected.dimension} lens in the builder`" @click="editInBuilder(selected.dimension)">
-                        <Icon icon="pencil" :size="13" class="text-neutral-500"/><span>Edit in builder</span>
+                      <button type="button" class="ui-btn ui-btn-sm" :title="t('groups.groupsManager.editLensBuilder', { dimension: selected.dimension })" @click="editInBuilder(selected.dimension)">
+                        <Icon icon="pencil" :size="13" class="text-neutral-500"/><span>{{ t('groups.groupsManager.editBuilder') }}</span>
                       </button>
-                      <button type="button" class="ui-btn ui-btn-sm" :class="{ 'is-active': scope.groupIds.includes(selected.id) }" :aria-pressed="scope.groupIds.includes(selected.id)" title="Filter every view to this group" @click="scope.toggleGroup(selected.id)">
-                        <Icon icon="scale" :size="13" class="text-neutral-500"/><span>{{ scope.groupIds.includes(selected.id) ? 'Scoped' : 'Scope' }}</span>
+                      <button type="button" class="ui-btn ui-btn-sm" :class="{ 'is-active': scope.groupIds.includes(selected.id) }" :aria-pressed="scope.groupIds.includes(selected.id)" :title="t('groups.groupsManager.filterEveryViewGroup')" @click="scope.toggleGroup(selected.id)">
+                        <Icon icon="scale" :size="13" class="text-neutral-500"/><span>{{ scope.groupIds.includes(selected.id) ? t('groups.groupsManager.scoped') : t('groups.groupsManager.scope') }}</span>
                       </button>
-                      <button v-if="!deleteConfirming" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Delete this group" @click="deleteConfirming = true">
+                      <button v-if="!deleteConfirming" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('groups.groupsManager.deleteGroup')" @click="deleteConfirming = true">
                         <Icon icon="trash" :size="13"/>
                       </button>
                       <template v-else>
-                        <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete">Delete {{ selected.name }}</button>
-                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="deleteConfirming = false">Keep</button>
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-danger" @click="confirmDelete">{{ t('groups.groupsManager.delete', { selectedName: selected.name }) }}</button>
+                        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="deleteConfirming = false">{{ t('groups.groupsManager.keep') }}</button>
                       </template>
                     </div>
                     <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
                       <label class="flex items-center gap-2">
-                        <span class="ui-label">Lens</span>
-                        <input :value="selected.dimension" type="text" class="ui-input ui-input-sm w-40" list="groups-dimensions" aria-label="Lens" @change="saveDimension(($event.target as HTMLInputElement).value)"/>
+                        <span class="ui-label">{{ t('groups.groupsManager.lens') }}</span>
+                        <input :value="selected.dimension" type="text" class="ui-input ui-input-sm w-40" list="groups-dimensions" :aria-label="t('groups.groupsManager.lens')" @change="saveDimension(($event.target as HTMLInputElement).value)"/>
                         <datalist id="groups-dimensions"><option v-for="d in groupsStore.dimensions" :key="d" :value="d"/></datalist>
                       </label>
                       <div class="flex items-center gap-2">
-                        <span class="ui-label">Colour</span>
-                        <div class="flex items-center gap-1" role="radiogroup" aria-label="Colour">
+                        <span class="ui-label">{{ t('groups.groupsManager.colour') }}</span>
+                        <div class="flex items-center gap-1" role="radiogroup" :aria-label="t('groups.groupsManager.colour')">
                           <button
                             v-for="c in GROUP_COLOR_PALETTE"
                             :key="c"
@@ -195,17 +193,17 @@
                     <!-- Members as a tree: component, then the files that put it there -->
                     <div class="flex min-w-0 grow flex-col">
                       <div class="flex shrink-0 items-center gap-2 px-6 pb-2 pt-3">
-                        <h3 class="ui-section-title">Members</h3>
+                        <h3 class="ui-section-title">{{ t('groups.groupsManager.members') }}</h3>
                         <span class="font-mono text-xs text-neutral-400">{{ summary(selected) }}</span>
                         <label v-if="tree.length > 6" class="relative ml-auto flex items-center">
                           <Icon icon="search" :size="12" class="pointer-events-none absolute left-2 text-neutral-400"/>
-                          <input v-model="memberSearch" type="search" class="ui-input ui-input-sm w-44 pl-6" placeholder="Filter members" aria-label="Filter members"/>
+                          <input v-model="memberSearch" type="search" class="ui-input ui-input-sm w-44 pl-6" :placeholder="t('groups.groupsManager.filterMembers')" :aria-label="t('groups.groupsManager.filterMembers')"/>
                         </label>
                       </div>
                       <div class="min-h-0 grow overflow-y-auto px-4 pb-4">
                         <div v-if="tree.length === 0" class="flex flex-col gap-1 px-2 py-8 text-center">
-                          <span class="text-sm font-medium text-neutral-800">Empty group</span>
-                          <span class="text-sm text-neutral-500">Edit it in the builder, or select things in any view and choose “Add to”.</span>
+                          <span class="text-sm font-medium text-neutral-800">{{ t('groups.groupsManager.emptyGroup') }}</span>
+                          <span class="text-sm text-neutral-500">{{ t('groups.groupsManager.editBuilderSelectThings') }}</span>
                         </div>
                         <ul v-else class="flex flex-col">
                           <li v-for="row in visibleTree" :key="row.key" class="flex flex-col">
@@ -250,6 +248,8 @@ import { useAuthorsStore } from '~/features/git/authors.store'
 import { useStateStore } from '~/platform/state.store'
 import { useWorkspacesStore } from '~/features/workspace/workspaces.store'
 import { buildConfig, countsOf, isLayoutKey, parseConfig, type WorkspaceConfig } from '~/features/workspace/workspaceConfig'
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const groupsStore = useGroupsStore()
 const dataStore = useDataStore()
@@ -361,8 +361,8 @@ function summary(g: SavedGroup): string {
   const c = members.filter(m => m.kind === 'component').length
   const f = members.filter(m => m.kind === 'file').length
   const parts: string[] = []
-  if (c) parts.push(`${c} component${c === 1 ? '' : 's'}`)
-  if (f) parts.push(`${f} file${f === 1 ? '' : 's'}`)
+  if (c) parts.push(t("groups.groupsManager.text", { components: t("common.count.component", { count: c }) }))
+  if (f) parts.push(t("groups.groupsManager.text2", { files: t("common.count.file", { count: f }) }))
   return parts.join(' · ') || 'empty'
 }
 
@@ -410,13 +410,13 @@ const tree = computed<TreeRow[]>(() => {
   for (const c of Array.from(names).sort()) {
     const total = (dataStore.componentFilesIndex.get(c) ?? []).length
     if (whole.has(c)) {
-      rows.push({ key: 'c:' + c, kind: 'component', name: c, label: c, note: total ? `all ${total} files` : 'whole component', files: [] })
+      rows.push({ key: 'c:' + c, kind: 'component', name: c, label: c, note: total ? t("groups.groupsManager.allFiles", { total }) : t("groups.groupsManager.wholeComponent"), files: [] })
     } else {
       const files = (byComponent.get(c) ?? []).sort()
-      rows.push({ key: 'p:' + c, kind: 'component', name: c, label: c, note: `${files.length} of ${total || '?'} files`, files })
+      rows.push({ key: 'p:' + c, kind: 'component', name: c, label: c, note: t("groups.groupsManager.files", { filesLength: files.length, value: total || '?' }), files })
     }
   }
-  for (const f of loose.sort()) rows.push({ key: 'f:' + f, kind: 'file', name: f, label: fileLabel(f), note: 'no component', files: [] })
+  for (const f of loose.sort()) rows.push({ key: 'f:' + f, kind: 'file', name: f, label: fileLabel(f), note: t("groups.groupsManager.noComponent"), files: [] })
   return rows
 })
 
@@ -462,7 +462,7 @@ const importSummary = computed(() => {
   if (!pendingImport.value) return ""
   const c = countsOf(pendingImport.value.config)
   const n = (v: number, one: string, many: string) => `${v} ${v === 1 ? one : many}`
-  return [n(c.groups, "group", "groups"), n(c.lenses, "lens", "lenses"), n(c.aliases, "author merge", "author merges"), n(c.layouts, "arrangement", "arrangements"), ...(c.queries ? [n(c.queries, "saved query", "saved queries")] : [])].join(", ")
+  return [t("common.count.group", { count: c.groups }), t("common.count.lens", { count: c.lenses }), n(c.aliases, t("groups.groupsManager.authorMerge"), t("groups.groupsManager.authorMerges")), t("common.count.arrangement", { count: c.layouts }), ...(c.queries ? [n(c.queries, t("groups.groupsManager.savedQuery"), t("groups.groupsManager.savedQueries"))] : [])].join(", ")
 })
 
 function handleImport(event: Event) {
@@ -475,7 +475,7 @@ function handleImport(event: Event) {
       pendingImport.value = { name: file.name, config: parseConfig(reader.result as string) }
       importError.value = null
     } catch (e) {
-      importError.value = `${e instanceof Error ? e.message : String(e)} Nothing was imported.`
+      importError.value = t("groups.groupsManager.nothingWasImported", { value: e instanceof Error ? e.message : String(e) })
     }
   }
   reader.readAsText(file)
@@ -501,10 +501,10 @@ async function handleExport() {
   try {
     const cfg = buildConfig(groupsStore.groups, groupsStore.dimensionRecords, authorsStore.aliases, stateStore.values)
     const slug = (workspaces.active?.name ?? 'workspace').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const path = await saveText(`${slug}.archstats.json`, JSON.stringify(cfg, null, 2), [FILTERS.json], 'Export workspace config')
-    if (path) { exportStatus.value = "Saved"; setTimeout(() => { exportStatus.value = "" }, 1600) }
+    const path = await saveText(`${slug}.archstats.json`, JSON.stringify(cfg, null, 2), [FILTERS.json], t("groups.groupsManager.exportWorkspaceConfig"))
+    if (path) { exportStatus.value = t("groups.groupsManager.saved"); setTimeout(() => { exportStatus.value = "" }, 1600) }
   } catch (e) {
-    importError.value = `Could not save the config: ${e instanceof Error ? e.message : String(e)}`
+    importError.value = t("groups.groupsManager.couldNotSaveConfig", { value: e instanceof Error ? e.message : String(e) })
   }
 }
 </script>

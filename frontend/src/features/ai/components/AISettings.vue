@@ -4,16 +4,16 @@
     <div class="ai-panel flex items-start gap-4 px-4 py-3.5">
       <Sparkles :size="16" :stroke-width="1.75" class="mt-px shrink-0 text-neutral-400" aria-hidden="true"/>
       <div class="min-w-0 grow">
-        <h3 id="ai-title" class="text-base font-semibold text-neutral-900">AI features</h3>
+        <h3 id="ai-title" class="text-base font-semibold text-neutral-900">{{ t('ai.aisettings.aiFeatures') }}</h3>
         <p class="mt-0.5 max-w-[58ch] text-sm leading-[18px] text-neutral-600">
-          Ask, and any AI feature added later. While this is off, Archstats sends nothing to any model and Ask is hidden.
+          {{ t('ai.aisettings.askAnyAiFeature') }}
         </p>
         <p v-if="ai.status.policy" class="mt-2 flex items-center gap-1.5 text-sm text-neutral-800">
           <Lock :size="12" :stroke-width="2" class="shrink-0 text-neutral-500" aria-hidden="true"/>
-          <span>{{ ai.status.locked ? (ai.status.policy || "Held off by your organisation") : ai.status.policy }}</span>
+          <span>{{ ai.status.locked ? (ai.status.policy || t('ai.aisettings.heldOffYourOrganisation')) : ai.status.policy }}</span>
         </p>
         <p v-else-if="ai.status.switch && !ai.ready.length" class="mt-2 flex items-center gap-1.5 text-sm text-neutral-800">
-          <span class="ai-dot is-waiting" aria-hidden="true"/> On, but no provider is ready yet. Turn one on below.
+          <span class="ai-dot is-waiting" aria-hidden="true"/>{{ ' ' + t('ai.aisettings.butNoProviderReady') }}
         </p>
       </div>
       <Switch
@@ -29,8 +29,8 @@
     <!-- The providers: one row each, on or off at a glance; details open beneath. -->
     <div>
       <div class="mb-2 flex items-baseline justify-between">
-        <h4 class="ui-section-title">Providers</h4>
-        <span class="font-mono text-xs text-neutral-500">{{ ai.ready.length }} of {{ ai.status.providers.length }} ready</span>
+        <h4 class="ui-section-title">{{ t('ai.aisettings.providers') }}</h4>
+        <span class="font-mono text-xs text-neutral-500">{{ t('ai.aisettings.ready', { readyLength: ai.ready.length, providersLength: ai.status.providers.length }) }}</span>
       </div>
       <ul class="ai-panel overflow-hidden">
         <li v-for="p in ai.status.providers" :key="p.id" class="ai-row" :class="{ 'is-open': open === p.id }">
@@ -47,10 +47,10 @@
               <span class="min-w-0 grow">
                 <span class="block truncate text-base font-medium leading-[18px] text-neutral-900">{{ nameOf(p) }}</span>
                 <span class="block truncate text-xs leading-4 text-neutral-500">
-                  <template v-if="p.local">On this machine · <span class="font-mono">{{ hostOf(p.baseUrl) }}</span></template>
-                  <template v-else-if="p.cloud">Cloud · questions leave this machine</template>
-                  <template v-else-if="p.baseUrl">Your server · <span class="font-mono">{{ hostOf(p.baseUrl) }}</span></template>
-                  <template v-else>LM Studio, vLLM, llama.cpp, OpenRouter…</template>
+                  <template v-if="p.local">{{ t('ai.aisettings.machine') }} <span class="font-mono">{{ hostOf(p.baseUrl) }}</span></template>
+                  <template v-else-if="p.cloud">{{ t('ai.aisettings.cloudQuestionsLeaveMachine') }}</template>
+                  <template v-else-if="p.baseUrl">{{ t('ai.aisettings.yourServer') }} <span class="font-mono">{{ hostOf(p.baseUrl) }}</span></template>
+                  <template v-else>{{ t('ai.aisettings.lmStudioVllmLlama') }}</template>
                 </span>
               </span>
               <span class="flex shrink-0 items-center gap-1.5 text-sm" :class="stateOf(p).ink">
@@ -60,7 +60,7 @@
             <Switch
                 :model-value="p.on"
                 :disabled="!p.allowed"
-                :aria-label="`Use ${nameOf(p)}`"
+                :aria-label="t('ai.aisettings.use', { p: nameOf(p) })"
                 @update:model-value="v => setOn(p, v)"
             />
           </div>
@@ -69,17 +69,17 @@
             <div class="min-h-0 overflow-hidden">
               <dl class="ai-form">
                 <template v-if="!p.allowed">
-                  <dt>Policy</dt>
-                  <dd class="text-sm text-neutral-800">Not allowed here: {{ ai.status.policy }}</dd>
+                  <dt>{{ t('ai.aisettings.policy') }}</dt>
+                  <dd class="text-sm text-neutral-800">{{ t('ai.aisettings.notAllowedHere', { policy: ai.status.policy }) }}</dd>
                 </template>
 
                 <template v-if="p.id === 'openai-compatible'">
-                  <dt><label :for="`ai-name-${p.id}`">Name</label></dt>
-                  <dd><input :id="`ai-name-${p.id}`" v-model="draftOf(p).name" type="text" class="ui-input w-full" placeholder="LM Studio" @change="save(p)"></dd>
+                  <dt><label :for="`ai-name-${p.id}`">{{ t('ai.aisettings.name') }}</label></dt>
+                  <dd><input :id="`ai-name-${p.id}`" v-model="draftOf(p).name" type="text" class="ui-input w-full" :placeholder="t('ai.aisettings.lmStudio')" @change="save(p)"></dd>
                 </template>
 
                 <template v-if="p.id === 'ollama' || p.id === 'openai-compatible'">
-                  <dt><label :for="`ai-url-${p.id}`">Address</label></dt>
+                  <dt><label :for="`ai-url-${p.id}`">{{ t('ai.aisettings.address') }}</label></dt>
                   <dd>
                     <input
                         :id="`ai-url-${p.id}`"
@@ -91,21 +91,21 @@
                         @change="save(p)"
                         @keydown.enter.prevent="save(p)"
                     >
-                    <p v-if="p.id === 'openai-compatible'" class="ai-hint">Where its chat API lives: the part before <span class="font-mono">/chat/completions</span>. Plain http only on this machine or your own network.</p>
+                    <p v-if="p.id === 'openai-compatible'" class="ai-hint"><I18nT k="ai.aisettings.whereChatApiLives"><template #icon><span class="font-mono">/chat/completions</span></template></I18nT></p>
                   </dd>
                 </template>
 
                 <template v-if="p.takesKey">
-                  <dt><label :for="`ai-key-${p.id}`">API key</label></dt>
+                  <dt><label :for="`ai-key-${p.id}`">{{ t('ai.aisettings.apiKey') }}</label></dt>
                   <dd>
                     <!-- Saved: shown by its last four, never read back. -->
                     <div v-if="p.keySource === 'keychain' && replacing !== p.id" class="flex items-center gap-2">
-                      <span class="ai-secret" :title="`Kept in the ${keychainName}`">
+                      <span class="ai-secret" :title="t('ai.aisettings.kept', { keychainName })">
                         <KeyRound :size="12" :stroke-width="1.75" class="shrink-0 text-neutral-400" aria-hidden="true"/>
                         <span class="font-mono tracking-[0.08em]">••••••••{{ p.keyHint || "••••" }}</span>
                       </span>
-                      <button type="button" class="ui-btn ui-btn-sm" @click="startReplace(p)">Replace</button>
-                      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="busy[p.id] === 'key'" @click="removeKey(p)">Remove</button>
+                      <button type="button" class="ui-btn ui-btn-sm" @click="startReplace(p)">{{ t('ai.aisettings.replace') }}</button>
+                      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :disabled="busy[p.id] === 'key'" @click="removeKey(p)">{{ t('ai.aisettings.remove') }}</button>
                     </div>
                     <form v-else class="flex items-center gap-2" @submit.prevent="saveKey(p)">
                       <input
@@ -113,36 +113,36 @@
                           v-model="draftOf(p).key"
                           type="password"
                           class="ui-input ui-input-mono min-w-0 grow"
-                          :placeholder="envKeyed(p) ? `Using ${p.keySource}` : p.needsKey ? 'Paste the key' : 'Only if the server asks for one'"
+                          :placeholder="envKeyed(p) ? t('ai.aisettings.using', { keySource: p.keySource }) : p.needsKey ? t('ai.aisettings.pasteKey') : t('ai.aisettings.onlyIfServerAsks')"
                           autocomplete="off"
                           spellcheck="false"
                       >
-                      <button type="submit" class="ui-btn" :disabled="!draftOf(p).key.trim() || busy[p.id] === 'key'">{{ busy[p.id] === "key" ? "Saving…" : "Save key" }}</button>
-                      <button v-if="replacing === p.id" type="button" class="ui-btn ui-btn-quiet" @click="replacing = null; draftOf(p).key = ''">Cancel</button>
+                      <button type="submit" class="ui-btn" :disabled="!draftOf(p).key.trim() || busy[p.id] === 'key'">{{ busy[p.id] === "key" ? t('ai.aisettings.saving') : t('ai.aisettings.saveKey') }}</button>
+                      <button v-if="replacing === p.id" type="button" class="ui-btn ui-btn-quiet" @click="replacing = null; draftOf(p).key = ''">{{ t('ai.aisettings.cancel') }}</button>
                     </form>
                     <p class="ai-hint">
-                      <template v-if="envKeyed(p)">Read from <span class="font-mono text-neutral-700">{{ p.keySource }}</span>. A key saved here takes its place.</template>
-                      <template v-else>Kept in the {{ keychainName }} and sent only to {{ p.cloud ? p.label : sentTo(p) }}. It is never shown again.</template>
-                      <button v-if="p.keyUrl" type="button" class="ai-link" @click="openUrl(p.keyUrl)">Get a key<ArrowUpRight :size="11" :stroke-width="2" aria-hidden="true"/></button>
+                      <template v-if="envKeyed(p)"><I18nT k="ai.aisettings.readKeySavedHere"><template #keySource><span class="font-mono text-neutral-700">{{ p.keySource }}</span></template></I18nT></template>
+                      <template v-else>{{ t('ai.aisettings.keptSentOnlyNever', { keychainName, value: p.cloud ? p.label : sentTo(p) }) }}</template>
+                      <button v-if="p.keyUrl" type="button" class="ai-link" @click="openUrl(p.keyUrl)">{{ t('ai.aisettings.getKey') }}<ArrowUpRight :size="11" :stroke-width="2" aria-hidden="true"/></button>
                     </p>
                   </dd>
                 </template>
 
-                <dt class="is-inline">Source code</dt>
+                <dt class="is-inline">{{ t('ai.aisettings.sourceCode') }}</dt>
                 <dd>
-                  <Checkbox :model-value="draftOf(p).shareCode" @update:model-value="v => { draftOf(p).shareCode = v; save(p) }">Ask may read lines of code</Checkbox>
+                  <Checkbox :model-value="draftOf(p).shareCode" @update:model-value="v => { draftOf(p).shareCode = v; save(p) }">{{ t('ai.aisettings.askMayReadLines') }}</Checkbox>
                   <p class="ai-hint">
                     {{ draftOf(p).shareCode
-                      ? `The lines Ask reads to answer are sent to ${sentTo(p)}.`
-                      : `Ask answers from names, measures and structure; no line of code goes to ${sentTo(p)}.` }}
+                      ? t('ai.aisettings.linesAskReadsAnswer', { p: sentTo(p) })
+                      : t('ai.aisettings.askAnswersNamesMeasures', { p: sentTo(p) }) }}
                   </p>
                 </dd>
 
-                <dt>Connection</dt>
+                <dt>{{ t('ai.aisettings.connection') }}</dt>
                 <dd class="flex min-h-7 items-center gap-3">
                   <button type="button" class="ui-btn ui-btn-sm" :disabled="busy[p.id] === 'test' || (p.needsKey && !p.hasKey) || (p.needsUrl && !p.baseUrl)" @click="test(p)">
                     <Loader2 v-if="busy[p.id] === 'test'" :size="12" class="animate-spin" aria-hidden="true"/>
-                    {{ busy[p.id] === "test" ? "Checking" : "Check connection" }}
+                    {{ busy[p.id] === "test" ? t('ai.aisettings.checking') : t('ai.aisettings.checkConnection') }}
                   </button>
                   <span v-if="results[p.id]" class="flex min-w-0 items-center gap-1.5 text-sm" :class="results[p.id]!.ok ? 'text-neutral-800' : 'text-red-700'" role="status">
                     <span class="ai-dot" :class="results[p.id]!.ok ? 'is-ready' : 'is-error'" aria-hidden="true"/>
@@ -151,7 +151,7 @@
                 </dd>
 
                 <template v-if="errors[p.id]">
-                  <dt class="sr-only">Error</dt>
+                  <dt class="sr-only">{{ t('ai.aisettings.error') }}</dt>
                   <dd class="text-sm text-red-700" role="alert">{{ errors[p.id] }}</dd>
                 </template>
               </dl>
@@ -163,16 +163,16 @@
 
     <!-- What leaves the machine, said plainly, once. -->
     <div>
-      <h4 class="ui-section-title mb-2">What a question sends</h4>
+      <h4 class="ui-section-title mb-2">{{ t('ai.aisettings.whatQuestionSends') }}</h4>
       <dl class="ai-sent">
-        <dt>Always</dt>
-        <dd>The question, and the names, paths, measures and structure it needs from the open snapshot, with any figures you bring along with ⌘J.</dd>
-        <dt>With source code</dt>
-        <dd>The lines of code Ask reads to answer.</dd>
-        <dt>Never</dt>
-        <dd>API keys (they stay in the {{ keychainName }} and go only to their own provider), other snapshots, other workspaces.</dd>
-        <dt>Policy</dt>
-        <dd>An administrator can hold AI off with <span class="font-mono text-neutral-700">ARCHSTATS_AI=off</span> or a policy file at <span class="font-mono text-neutral-700 [overflow-wrap:anywhere]">{{ ai.status.policyPath }}</span>.</dd>
+        <dt>{{ t('ai.aisettings.always') }}</dt>
+        <dd>{{ t('ai.aisettings.questionNamesPathsMeasures') }}</dd>
+        <dt>{{ t('ai.aisettings.sourceCode2') }}</dt>
+        <dd>{{ t('ai.aisettings.linesCodeAskReads') }}</dd>
+        <dt>{{ t('ai.aisettings.never') }}</dt>
+        <dd>{{ t('ai.aisettings.apiKeysTheyStay', { keychainName }) }}</dd>
+        <dt>{{ t('ai.aisettings.policy') }}</dt>
+        <dd><I18nT k="ai.aisettings.administratorCanHoldAi"><template #span><span class="font-mono text-neutral-700">ARCHSTATS_AI=off</span></template><template #policyPath><span class="font-mono text-neutral-700 [overflow-wrap:anywhere]">{{ ai.status.policyPath }}</span></template></I18nT></dd>
       </dl>
     </div>
   </section>
@@ -186,10 +186,12 @@ import Checkbox from "~/shared/ui/Checkbox.vue"
 import Switch from "~/shared/ui/Switch.vue"
 import { usePlatform } from "~/platform/usePlatform"
 import { useAIStore, type ProviderId, type ProviderStatus } from "../ai.store"
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const ai = useAIStore()
 const { isMac, isWindows } = usePlatform()
-const keychainName = computed(() => (isMac.value ? "macOS Keychain" : isWindows.value ? "Windows Credential Manager" : "system keyring"))
+const keychainName = computed(() => (isMac.value ? t("ai.aisettings.macosKeychain") : isWindows.value ? t("ai.aisettings.windowsCredentialManager") : t("ai.aisettings.systemKeyring")))
 
 interface Draft { baseUrl: string; name: string; shareCode: boolean; key: string }
 
@@ -278,7 +280,7 @@ async function test(p: ProviderStatus) {
   try {
     const r = await ai.test(p.id as ProviderId)
     // It answers: that is the provider the person wants to use.
-    if (r.ok && !p.on) { await saveInput(p, true); r.message = `${r.message}, now on` }
+    if (r.ok && !p.on) { await saveInput(p, true); r.message = t("ai.aisettings.now", { message: r.message }) }
     results[p.id] = r
   } finally { busy[p.id] = "" }
 }
@@ -290,18 +292,18 @@ function openUrl(url: string) {
 const envKeyed = (p: ProviderStatus) => !!p.keySource && p.keySource !== "keychain"
 const nameOf = (p: ProviderStatus) => (p.id === "openai-compatible" && p.name ? p.name : p.label)
 const iconOf = (p: ProviderStatus) => (p.local ? Laptop : p.cloud ? Cloud : Server)
-const sentTo = (p: ProviderStatus) => (p.local ? "the model on this machine" : p.id === "openai-compatible" ? (p.name || "that server") : p.label)
+const sentTo = (p: ProviderStatus) => (p.local ? t("ai.aisettings.modelMachine") : p.id === "openai-compatible" ? (p.name || t("ai.aisettings.server")) : p.label)
 
 function hostOf(url: string): string {
   try { const u = new URL(url); return u.host + (u.pathname === "/" ? "" : u.pathname) } catch { return url }
 }
 
 function stateOf(p: ProviderStatus): { text: string; dot: string; ink: string } {
-  if (!p.allowed) return { text: "Not allowed", dot: "is-off", ink: "text-neutral-500" }
-  if (p.ready) return { text: "Ready", dot: "is-ready", ink: "text-neutral-800" }
-  if (p.on && p.needsKey && !p.hasKey) return { text: "Needs a key", dot: "is-waiting", ink: "text-neutral-800" }
-  if (p.on && p.needsUrl && !p.baseUrl) return { text: "Needs an address", dot: "is-waiting", ink: "text-neutral-800" }
-  return { text: "Off", dot: "is-off", ink: "text-neutral-500" }
+  if (!p.allowed) return { text: t("ai.aisettings.notAllowed"), dot: "is-off", ink: "text-neutral-500" }
+  if (p.ready) return { text: t("ai.aisettings.ready2"), dot: "is-ready", ink: "text-neutral-800" }
+  if (p.on && p.needsKey && !p.hasKey) return { text: t("ai.aisettings.needsKey"), dot: "is-waiting", ink: "text-neutral-800" }
+  if (p.on && p.needsUrl && !p.baseUrl) return { text: t("ai.aisettings.needsAddress"), dot: "is-waiting", ink: "text-neutral-800" }
+  return { text: t("ai.aisettings.off"), dot: "is-off", ink: "text-neutral-500" }
 }
 </script>
 

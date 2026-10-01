@@ -4,6 +4,8 @@
 // is by imports first, because a project's package imports say what it is
 // built on far more reliably than any one annotation.
 
+import { t } from "~/shared/i18n"
+
 type LaneHue = "blue" | "green" | "amber" | "violet" | "red" | "neutral"
 /**
  * Each kind of role has a hue. A profile with two roles of one kind gives the
@@ -178,20 +180,20 @@ export const SPRING: FrameworkProfile = {
   // annotations on data classes and interfaces.
   language: ["java", "kotlin"],
   id: "spring",
-  label: "Spring",
+  label: t("frameworks.frameworkProfiles.spring"),
   detect: { imports: ["org.springframework.boot", "org.springframework.web", "org.springframework.stereotype", "org.springframework.data", "org.springframework.context"], weakImports: ["org.springframework"], annotations: ["SpringBootApplication"], legacy: ["java__spring__bean"] },
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice", "Path"], legacy: ["java__spring__controller"], hint: "Web entry points, JAX-RS resources among them" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllers"), color: "blue", annotations: ["Controller", "RestController", "ControllerAdvice", "RestControllerAdvice", "Path"], legacy: ["java__spring__controller"], hint: t("frameworks.frameworkProfiles.webEntryPointsJax") },
     // `@Component` is a bean of no particular role, so it is read after the
     // imports: a component listening to Kafka is messaging, one holding a
     // JdbcTemplate is data access. `@Service` is the architect's word.
-    { id: "services", label: "Services & Other", color: "green", annotations: ["Service"], rule: anyAnnotation(["Component"]), legacy: ["java__spring__service", "java__spring__component"], hint: "Services, plain components and everything unclassified" },
+    { id: "services", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", annotations: ["Service"], rule: anyAnnotation(["Component"]), legacy: ["java__spring__service", "java__spring__component"], hint: t("frameworks.frameworkProfiles.servicesPlainComponentsEverything") },
     // Wiring sits beside the layers, not in them: a configuration class
     // creating beans reaches into every layer, and that is its job.
-    { id: "config", label: "Configuration", color: "neutral-deep", annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: "Configuration classes and the application" },
-    { id: "messaging", label: "Messaging", color: "red", annotations: ["KafkaListener", "RabbitListener", "JmsListener", "SqsListener"], supertypes: ["MessageListener"], imports: ["org.springframework.kafka", "org.springframework.amqp", "org.springframework.jms", "org.springframework.cloud.stream", "org.springframework.integration", "org.springframework.messaging"], hint: "Listeners and channels: entry points that are not requests" },
-    { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "ListCrudRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository", "JpaSpecificationExecutor"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository", "org.springframework.jdbc", "org.springframework.r2dbc"], hint: "Data access" },
-    { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: "Persistent models" },
+    { id: "config", label: t("frameworks.frameworkProfiles.configuration"), color: "neutral-deep", annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: t("frameworks.frameworkProfiles.configurationClassesApplication") },
+    { id: "messaging", label: t("frameworks.frameworkProfiles.messaging"), color: "red", annotations: ["KafkaListener", "RabbitListener", "JmsListener", "SqsListener"], supertypes: ["MessageListener"], imports: ["org.springframework.kafka", "org.springframework.amqp", "org.springframework.jms", "org.springframework.cloud.stream", "org.springframework.integration", "org.springframework.messaging"], hint: t("frameworks.frameworkProfiles.listenersChannelsEntryPoints") },
+    { id: "repositories", label: t("frameworks.frameworkProfiles.repositories"), color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "ListCrudRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository", "JpaSpecificationExecutor"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository", "org.springframework.jdbc", "org.springframework.r2dbc"], hint: t("frameworks.frameworkProfiles.dataAccess") },
+    { id: "entities", label: t("frameworks.frameworkProfiles.entities"), color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: t("frameworks.frameworkProfiles.persistentModels") },
   ],
   fallback: "services",
 }
@@ -199,16 +201,16 @@ export const SPRING: FrameworkProfile = {
 export const JAKARTA: FrameworkProfile = {
   language: "java",
   id: "jakarta",
-  label: "Jakarta EE",
+  label: t("frameworks.frameworkProfiles.jakartaEe"),
   detect: { imports: [...JAXRS, "jakarta.ejb", "javax.ejb", "jakarta.servlet", "javax.servlet", "jakarta.faces", "javax.faces", "jakarta.websocket", "javax.websocket"], weakImports: ["jakarta.enterprise", "javax.enterprise", "jakarta.inject", "javax.inject"], supertypes: ["HttpServlet"] },
   lanes: [
-    { id: "endpoints", label: "Endpoints", color: "blue", annotations: ["Path", "WebServlet", "ServerEndpoint", "WebFilter", "WebListener", "ApplicationPath"], supertypes: ["HttpServlet", "HttpFilter", "Application"], hint: "JAX-RS, servlets, filters, sockets" },
+    { id: "endpoints", label: t("frameworks.frameworkProfiles.endpoints"), color: "blue", annotations: ["Path", "WebServlet", "ServerEndpoint", "WebFilter", "WebListener", "ApplicationPath"], supertypes: ["HttpServlet", "HttpFilter", "Application"], hint: t("frameworks.frameworkProfiles.jaxRsServletsFilters") },
     // A Java EE DAO is a `@Stateless` bean holding an EntityManager; the
     // scope is read after the imports so that it is data access.
-    { id: "beans", label: "Beans & Other", color: "green", rule: anyAnnotation(["Stateless", "Stateful", "Singleton", "ApplicationScoped", "RequestScoped", "SessionScoped", "ConversationScoped", "Dependent", "Named", "Startup", "Interceptor", "Decorator"]), hint: "EJBs, CDI beans and everything unclassified" },
-    { id: "messaging", label: "Messaging", color: "red", annotations: ["MessageDriven", "JMSDestinationDefinition"], supertypes: ["MessageListener"], imports: ["jakarta.jms", "javax.jms"], hint: "Message-driven beans" },
-    { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository"], imports: ["jakarta.persistence.EntityManager", "javax.persistence.EntityManager", "jakarta.data.repository"], nameSuffixes: ["Repository", "Dao", "DAO"], hint: "Data access" },
-    { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: "Persistent models" },
+    { id: "beans", label: t("frameworks.frameworkProfiles.beansOther"), color: "green", rule: anyAnnotation(["Stateless", "Stateful", "Singleton", "ApplicationScoped", "RequestScoped", "SessionScoped", "ConversationScoped", "Dependent", "Named", "Startup", "Interceptor", "Decorator"]), hint: t("frameworks.frameworkProfiles.ejbsCdiBeansEverything") },
+    { id: "messaging", label: t("frameworks.frameworkProfiles.messaging"), color: "red", annotations: ["MessageDriven", "JMSDestinationDefinition"], supertypes: ["MessageListener"], imports: ["jakarta.jms", "javax.jms"], hint: t("frameworks.frameworkProfiles.messageDrivenBeans") },
+    { id: "repositories", label: t("frameworks.frameworkProfiles.repositories"), color: "amber", annotations: ["Repository"], imports: ["jakarta.persistence.EntityManager", "javax.persistence.EntityManager", "jakarta.data.repository"], nameSuffixes: ["Repository", "Dao", "DAO"], hint: t("frameworks.frameworkProfiles.dataAccess") },
+    { id: "entities", label: t("frameworks.frameworkProfiles.entities"), color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: t("frameworks.frameworkProfiles.persistentModels") },
   ],
   fallback: "beans",
 }
@@ -220,17 +222,17 @@ const isJaxrsResource = (f: ClassFacts) => f.annotations.has("Path") && !f.annot
 export const QUARKUS: FrameworkProfile = {
   language: ["java", "kotlin"],
   id: "quarkus",
-  label: "Quarkus",
+  label: t("frameworks.frameworkProfiles.quarkus"),
   detect: { imports: ["io.quarkus"], weakImports: ["io.smallrye", "org.eclipse.microprofile"] },
   weight: 4,
   lanes: [
-    { id: "resources", label: "Resources", color: "blue", annotations: ["WebSocket", "GraphQLApi", "GrpcService", "WebSocketServer"], rule: isJaxrsResource, ruleFirst: true, imports: JAXRS, hint: "REST, GraphQL, gRPC, sockets" },
+    { id: "resources", label: t("frameworks.frameworkProfiles.resources"), color: "blue", annotations: ["WebSocket", "GraphQLApi", "GrpcService", "WebSocketServer"], rule: isJaxrsResource, ruleFirst: true, imports: JAXRS, hint: t("frameworks.frameworkProfiles.restGraphqlGrpcSockets") },
     // Every Panache repository is @ApplicationScoped; the scope is read
     // after its supertype and imports so that it is a repository.
-    { id: "beans", label: "Beans & Other", color: "green", rule: anyAnnotation(["ApplicationScoped", "Singleton", "RequestScoped", "Dependent", "Startup", "QuarkusMain"]), hint: "CDI beans and everything unclassified" },
-    { id: "messaging", label: "Messaging & Scheduling", color: "red", annotations: ["Incoming", "Outgoing", "ConsumeEvent", "Scheduled", "Channel"], imports: ["org.eclipse.microprofile.reactive.messaging", "io.smallrye.reactive.messaging", "io.quarkus.scheduler"], hint: "Channels, event bus, schedules" },
-    { id: "data", label: "Repositories & Clients", color: "amber", annotations: ["RegisterRestClient"], supertypes: ["PanacheRepository", "PanacheRepositoryBase", "PanacheMongoRepository", "PanacheMongoRepositoryBase"], imports: ["io.quarkus.hibernate.orm.panache", "io.quarkus.mongodb.panache", "org.eclipse.microprofile.rest.client", "io.quarkus.hibernate.reactive"], hint: "Panache repositories, REST clients" },
-    { id: "entities", label: "Entities", color: "violet", annotations: ENTITY_ANNOTATIONS, supertypes: ["PanacheEntity", "PanacheEntityBase", "PanacheMongoEntity", "PanacheMongoEntityBase"], legacy: ["java__jpa__entity"], hint: "Persistent models" },
+    { id: "beans", label: t("frameworks.frameworkProfiles.beansOther"), color: "green", rule: anyAnnotation(["ApplicationScoped", "Singleton", "RequestScoped", "Dependent", "Startup", "QuarkusMain"]), hint: t("frameworks.frameworkProfiles.cdiBeansEverythingUnclassified") },
+    { id: "messaging", label: t("frameworks.frameworkProfiles.messagingScheduling"), color: "red", annotations: ["Incoming", "Outgoing", "ConsumeEvent", "Scheduled", "Channel"], imports: ["org.eclipse.microprofile.reactive.messaging", "io.smallrye.reactive.messaging", "io.quarkus.scheduler"], hint: t("frameworks.frameworkProfiles.channelsEventBusSchedules") },
+    { id: "data", label: t("frameworks.frameworkProfiles.repositoriesClients"), color: "amber", annotations: ["RegisterRestClient"], supertypes: ["PanacheRepository", "PanacheRepositoryBase", "PanacheMongoRepository", "PanacheMongoRepositoryBase"], imports: ["io.quarkus.hibernate.orm.panache", "io.quarkus.mongodb.panache", "org.eclipse.microprofile.rest.client", "io.quarkus.hibernate.reactive"], hint: t("frameworks.frameworkProfiles.panacheRepositoriesRestClients") },
+    { id: "entities", label: t("frameworks.frameworkProfiles.entities"), color: "violet", annotations: ENTITY_ANNOTATIONS, supertypes: ["PanacheEntity", "PanacheEntityBase", "PanacheMongoEntity", "PanacheMongoEntityBase"], legacy: ["java__jpa__entity"], hint: t("frameworks.frameworkProfiles.persistentModels") },
   ],
   fallback: "beans",
 }
@@ -238,15 +240,15 @@ export const QUARKUS: FrameworkProfile = {
 export const MICRONAUT: FrameworkProfile = {
   language: ["java", "kotlin"],
   id: "micronaut",
-  label: "Micronaut",
+  label: t("frameworks.frameworkProfiles.micronaut"),
   detect: { imports: ["io.micronaut"] },
   weight: 4,
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller"], imports: ["io.micronaut.http.annotation.Controller"], hint: "HTTP entry points" },
-    { id: "beans", label: "Beans & Other", color: "green", rule: anyAnnotation(["Singleton", "Prototype", "RequestScope", "Factory", "Bean", "Context", "ConfigurationProperties", "EachProperty"]), hint: "Beans and everything unclassified" },
-    { id: "clients", label: "Clients & Messaging", color: "red", annotations: ["Client", "KafkaListener", "KafkaClient", "RabbitListener", "RabbitClient", "JMSListener"], imports: ["io.micronaut.http.client", "io.micronaut.configuration.kafka", "io.micronaut.rabbitmq", "io.micronaut.jms"], hint: "Declarative clients and listeners" },
-    { id: "repositories", label: "Repositories", color: "amber", annotations: ["Repository", "JdbcRepository", "MongoRepository", "R2dbcRepository"], supertypes: ["CrudRepository", "PageableRepository", "GenericRepository", "ReactiveStreamsCrudRepository", "ReactorCrudRepository"], imports: ["io.micronaut.data.repository"], hint: "Micronaut Data" },
-    { id: "entities", label: "Entities", color: "violet", annotations: ["MappedEntity", "Entity", "Embeddable"], hint: "Persistent models" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllers"), color: "blue", annotations: ["Controller"], imports: ["io.micronaut.http.annotation.Controller"], hint: t("frameworks.frameworkProfiles.httpEntryPoints") },
+    { id: "beans", label: t("frameworks.frameworkProfiles.beansOther"), color: "green", rule: anyAnnotation(["Singleton", "Prototype", "RequestScope", "Factory", "Bean", "Context", "ConfigurationProperties", "EachProperty"]), hint: t("frameworks.frameworkProfiles.beansEverythingUnclassified") },
+    { id: "clients", label: t("frameworks.frameworkProfiles.clientsMessaging"), color: "red", annotations: ["Client", "KafkaListener", "KafkaClient", "RabbitListener", "RabbitClient", "JMSListener"], imports: ["io.micronaut.http.client", "io.micronaut.configuration.kafka", "io.micronaut.rabbitmq", "io.micronaut.jms"], hint: t("frameworks.frameworkProfiles.declarativeClientsListeners") },
+    { id: "repositories", label: t("frameworks.frameworkProfiles.repositories"), color: "amber", annotations: ["Repository", "JdbcRepository", "MongoRepository", "R2dbcRepository"], supertypes: ["CrudRepository", "PageableRepository", "GenericRepository", "ReactiveStreamsCrudRepository", "ReactorCrudRepository"], imports: ["io.micronaut.data.repository"], hint: t("frameworks.frameworkProfiles.micronautData") },
+    { id: "entities", label: t("frameworks.frameworkProfiles.entities"), color: "violet", annotations: ["MappedEntity", "Entity", "Embeddable"], hint: t("frameworks.frameworkProfiles.persistentModels") },
   ],
   fallback: "beans",
 }
@@ -254,15 +256,15 @@ export const MICRONAUT: FrameworkProfile = {
 export const VERTX: FrameworkProfile = {
   language: ["java", "kotlin"],
   id: "vertx",
-  label: "Vert.x",
+  label: t("frameworks.frameworkProfiles.vertX"),
   detect: { imports: ["io.vertx"], supertypes: ["AbstractVerticle"] },
   weight: 2,
   lanes: [
-    { id: "verticles", label: "Verticles", color: "blue", supertypes: ["AbstractVerticle", "Verticle", "Launcher"], hint: "Deployable units" },
-    { id: "handlers", label: "Handlers & Other", color: "green", supertypes: ["Handler"], hint: "Request handling and everything unclassified" },
-    { id: "eventbus", label: "Event bus & Messaging", color: "red", imports: ["io.vertx.core.eventbus", "io.vertx.kafka", "io.vertx.amqp", "io.vertx.rabbitmq", "io.vertx.mqtt"], hint: "Messages between verticles and brokers" },
-    { id: "clients", label: "Clients & Data", color: "amber", imports: ["io.vertx.ext.web.client", "io.vertx.sqlclient", "io.vertx.jdbcclient", "io.vertx.pgclient", "io.vertx.mysqlclient", "io.vertx.ext.mongo", "io.vertx.redis", "io.vertx.cassandra"], hint: "Outbound calls and stores" },
-    { id: "models", label: "Codecs & Models", color: "violet", supertypes: ["MessageCodec"], annotations: ["DataObject"], rule: looksLikeModel, hint: "Data shapes and how they travel" },
+    { id: "verticles", label: t("frameworks.frameworkProfiles.verticles"), color: "blue", supertypes: ["AbstractVerticle", "Verticle", "Launcher"], hint: t("frameworks.frameworkProfiles.deployableUnits") },
+    { id: "handlers", label: t("frameworks.frameworkProfiles.handlersOther"), color: "green", supertypes: ["Handler"], hint: t("frameworks.frameworkProfiles.requestHandlingEverythingUnclassified") },
+    { id: "eventbus", label: t("frameworks.frameworkProfiles.eventBusMessaging"), color: "red", imports: ["io.vertx.core.eventbus", "io.vertx.kafka", "io.vertx.amqp", "io.vertx.rabbitmq", "io.vertx.mqtt"], hint: t("frameworks.frameworkProfiles.messagesBetweenVerticlesBrokers") },
+    { id: "clients", label: t("frameworks.frameworkProfiles.clientsData"), color: "amber", imports: ["io.vertx.ext.web.client", "io.vertx.sqlclient", "io.vertx.jdbcclient", "io.vertx.pgclient", "io.vertx.mysqlclient", "io.vertx.ext.mongo", "io.vertx.redis", "io.vertx.cassandra"], hint: t("frameworks.frameworkProfiles.outboundCallsStores") },
+    { id: "models", label: t("frameworks.frameworkProfiles.codecsModels"), color: "violet", supertypes: ["MessageCodec"], annotations: ["DataObject"], rule: looksLikeModel, hint: t("frameworks.frameworkProfiles.dataShapesHowThey") },
   ],
   fallback: "handlers",
 }
@@ -270,16 +272,16 @@ export const VERTX: FrameworkProfile = {
 export const DROPWIZARD: FrameworkProfile = {
   language: "java",
   id: "dropwizard",
-  label: "Dropwizard",
+  label: t("frameworks.frameworkProfiles.dropwizard"),
   detect: { imports: ["io.dropwizard"] },
   weight: 4,
   lanes: [
-    { id: "resources", label: "Resources", color: "blue", annotations: ["Path"], imports: JAXRS, hint: "JAX-RS entry points" },
-    { id: "app", label: "Application & Other", color: "green", supertypes: ["Application", "Bundle", "ConfiguredBundle", "Command", "ConfiguredCommand", "EnvironmentCommand", "Managed", "HealthCheck", "Task"], hint: "Bootstrap, lifecycle and everything unclassified" },
-    { id: "data", label: "Data access", color: "amber", supertypes: ["AbstractDAO"], imports: ["org.jdbi", "io.dropwizard.hibernate", "io.dropwizard.jdbi3", "io.dropwizard.db", ...DATA_IMPORTS], hint: "DAOs and clients" },
+    { id: "resources", label: t("frameworks.frameworkProfiles.resources"), color: "blue", annotations: ["Path"], imports: JAXRS, hint: t("frameworks.frameworkProfiles.jaxRsEntryPoints") },
+    { id: "app", label: t("frameworks.frameworkProfiles.applicationOther"), color: "green", supertypes: ["Application", "Bundle", "ConfiguredBundle", "Command", "ConfiguredCommand", "EnvironmentCommand", "Managed", "HealthCheck", "Task"], hint: t("frameworks.frameworkProfiles.bootstrapLifecycleEverythingUnclassified") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", supertypes: ["AbstractDAO"], imports: ["org.jdbi", "io.dropwizard.hibernate", "io.dropwizard.jdbi3", "io.dropwizard.db", ...DATA_IMPORTS], hint: t("frameworks.frameworkProfiles.daosClients") },
     // dropwizard-hibernate entities are JPA entities; the profile had no
     // lane for them, so every @Entity in a Dropwizard app was unclassified.
-    { id: "models", label: "Configuration & Models", color: "violet", annotations: ENTITY_ANNOTATIONS, supertypes: ["Configuration"], rule: looksLikeModel, hint: "Config, entities and data shapes" },
+    { id: "models", label: t("frameworks.frameworkProfiles.configurationModels"), color: "violet", annotations: ENTITY_ANNOTATIONS, supertypes: ["Configuration"], rule: looksLikeModel, hint: t("frameworks.frameworkProfiles.configEntitiesDataShapes") },
   ],
   fallback: "app",
 }
@@ -294,19 +296,19 @@ export const isComposeScreen = (f: ClassFacts) => isComposable(f) && /(Screen|Ro
 export const ANDROID: FrameworkProfile = {
   language: ["java", "kotlin"],
   id: "android",
-  label: "Android",
+  label: t("frameworks.frameworkProfiles.android"),
   detect: { imports: ["android.", "androidx."], annotations: ["activity", "HiltAndroidApp", "AndroidEntryPoint", "Composable"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue-deep", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: "Activities, fragments and composables named for a screen" },
-    { id: "ui", label: "UI components", color: "blue", annotations: ["Composable"], supertypes: ["View", "ViewGroup", "FrameLayout", "LinearLayout", "ConstraintLayout", "RecyclerView", "Adapter", "ViewHolder", "ListAdapter"], hint: "Composables and Views below the screen" },
-    { id: "viewmodels", label: "ViewModels & Other", color: "green", annotations: ["HiltViewModel"], supertypes: ["ViewModel", "AndroidViewModel"], nameSuffixes: ["ViewModel", "Presenter"], hint: "State holders and everything unclassified" },
-    { id: "di", label: "Dependency injection", color: "neutral-deep", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: "Hilt, Dagger and Koin modules, the Application" },
-    { id: "background", label: "Services & Receivers", color: "red", annotations: ["service", "receiver", "provider", "HiltWorker"], supertypes: ["Service", "IntentService", "JobIntentService", "LifecycleService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: "Work off the screen" },
-    { id: "data", label: "Data", color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "io.ktor.client", "androidx.datastore", "android.database", "app.cash.sqldelight", "io.realm"], nameSuffixes: ["Repository", "DataSource", "Dao", "Api", "Service", "Client"], hint: "Room, network, storage" },
+    { id: "screens", label: t("frameworks.frameworkProfiles.screens"), color: "blue-deep", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: t("frameworks.frameworkProfiles.activitiesFragmentsComposablesNamed") },
+    { id: "ui", label: t("frameworks.frameworkProfiles.uiComponents"), color: "blue", annotations: ["Composable"], supertypes: ["View", "ViewGroup", "FrameLayout", "LinearLayout", "ConstraintLayout", "RecyclerView", "Adapter", "ViewHolder", "ListAdapter"], hint: t("frameworks.frameworkProfiles.composablesViewsBelowScreen") },
+    { id: "viewmodels", label: t("frameworks.frameworkProfiles.viewmodelsOther"), color: "green", annotations: ["HiltViewModel"], supertypes: ["ViewModel", "AndroidViewModel"], nameSuffixes: ["ViewModel", "Presenter"], hint: t("frameworks.frameworkProfiles.stateHoldersEverythingUnclassified") },
+    { id: "di", label: t("frameworks.frameworkProfiles.dependencyInjection"), color: "neutral-deep", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: t("frameworks.frameworkProfiles.hiltDaggerKoinModules") },
+    { id: "background", label: t("frameworks.frameworkProfiles.servicesReceivers"), color: "red", annotations: ["service", "receiver", "provider", "HiltWorker"], supertypes: ["Service", "IntentService", "JobIntentService", "LifecycleService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: t("frameworks.frameworkProfiles.workOffScreen") },
+    { id: "data", label: t("frameworks.frameworkProfiles.data"), color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "io.ktor.client", "androidx.datastore", "android.database", "app.cash.sqldelight", "io.realm"], nameSuffixes: ["Repository", "DataSource", "Dao", "Api", "Service", "Client"], hint: t("frameworks.frameworkProfiles.roomNetworkStorage") },
     // A Kotlin `data class` is a data shape by declaration; the engine records
     // the keyword. The unit loader knows no field counts, so looksLikeModel
     // alone never fired for one.
-    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Parcelize", "Serializable", "Immutable", "Stable", "data"], supertypes: ["Parcelable"], rule: looksLikeModel, hint: "Data shapes" },
+    { id: "models", label: t("frameworks.frameworkProfiles.entitiesModels"), color: "violet", annotations: ["Entity", "Parcelize", "Serializable", "Immutable", "Stable", "data"], supertypes: ["Parcelable"], rule: looksLikeModel, hint: t("frameworks.frameworkProfiles.dataShapes") },
   ],
   fallback: "viewmodels",
 }
@@ -314,17 +316,17 @@ export const ANDROID: FrameworkProfile = {
 export const BEAM: FrameworkProfile = {
   language: "java",
   id: "beam",
-  label: "Apache Beam",
+  label: t("frameworks.frameworkProfiles.apacheBeam"),
   detect: { imports: ["org.apache.beam"], supertypes: ["PTransform", "DoFn", "PipelineOptions", "CombineFn", "Coder", "SimpleFunction"] },
   weight: 2,
   lanes: [
-    { id: "pipelines", label: "Pipelines & Options", color: "blue", supertypes: ["PipelineOptions", "DataflowPipelineOptions", "GcpOptions"], rule: (f) => isMain(f), nameSuffixes: ["Pipeline", "Job", "Runner"], hint: "Entry points and their options" },
-    { id: "transforms", label: "Transforms", color: "green", supertypes: ["PTransform"], hint: "Composite steps" },
-    { id: "fns", label: "DoFns", color: "amber", supertypes: ["DoFn", "SimpleFunction", "CombineFn", "SerializableFunction", "ProcessFunction", "InferableFunction", "PartitionFn", "WindowFn", "Trigger"], hint: "Per-element logic" },
+    { id: "pipelines", label: t("frameworks.frameworkProfiles.pipelinesOptions"), color: "blue", supertypes: ["PipelineOptions", "DataflowPipelineOptions", "GcpOptions"], rule: (f) => isMain(f), nameSuffixes: ["Pipeline", "Job", "Runner"], hint: t("frameworks.frameworkProfiles.entryPointsTheirOptions") },
+    { id: "transforms", label: t("frameworks.frameworkProfiles.transforms"), color: "green", supertypes: ["PTransform"], hint: t("frameworks.frameworkProfiles.compositeSteps") },
+    { id: "fns", label: t("frameworks.frameworkProfiles.dofns"), color: "amber", supertypes: ["DoFn", "SimpleFunction", "CombineFn", "SerializableFunction", "ProcessFunction", "InferableFunction", "PartitionFn", "WindowFn", "Trigger"], hint: t("frameworks.frameworkProfiles.perElementLogic") },
     // By supertype only: every pipeline imports TextIO or BigQueryIO to read
     // its input, and importing an IO is using one, not being one.
-    { id: "io", label: "IO & Coders", color: "violet", supertypes: ["Coder", "CustomCoder", "AtomicCoder", "StructuredCoder", "BoundedSource", "UnboundedSource", "FileBasedSource", "FileBasedSink", "BoundedReader", "UnboundedReader"], hint: "Sources, sinks and encodings" },
-    { id: "other", label: "Other", color: "neutral-deep", hint: "Models, utilities, tests" },
+    { id: "io", label: t("frameworks.frameworkProfiles.ioCoders"), color: "violet", supertypes: ["Coder", "CustomCoder", "AtomicCoder", "StructuredCoder", "BoundedSource", "UnboundedSource", "FileBasedSource", "FileBasedSink", "BoundedReader", "UnboundedReader"], hint: t("frameworks.frameworkProfiles.sourcesSinksEncodings") },
+    { id: "other", label: t("frameworks.frameworkProfiles.other"), color: "neutral-deep", hint: t("frameworks.frameworkProfiles.modelsUtilitiesTests") },
   ],
   fallback: "other",
 }
@@ -349,24 +351,24 @@ const inFolder = (f: ClassFacts, dirs: string) => !!f.file && new RegExp(`(^|/)(
 export const NESTJS: FrameworkProfile = {
   language: "typescript",
   id: "nestjs",
-  label: "NestJS",
+  label: t("frameworks.frameworkProfiles.nestjs"),
   // `Injectable` is no vote: Angular services carry it too, and an Angular
   // app with more injectables than components read as a NestJS tie.
   detect: { imports: ["@nestjs/"], annotations: ["Module", "Controller"] },
   weight: 4,
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", annotations: ["Controller", "Resolver", "WebSocketGateway"], hint: "HTTP, GraphQL and socket entry points" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllers"), color: "blue", annotations: ["Controller", "Resolver", "WebSocketGateway"], hint: t("frameworks.frameworkProfiles.httpGraphqlSocketEntry") },
     // Everything below is @Injectable() like every service, so the decorator
     // is read last: what a class implements, imports or is called decides.
-    { id: "pipeline", label: "Guards, Pipes & Filters", color: "red", annotations: ["Catch"], supertypes: ["CanActivate", "PipeTransform", "NestInterceptor", "ExceptionFilter", "NestMiddleware"], rule: (f) => /(Guard|Pipe|Filter|Interceptor|Middleware)$/.test(f.name), nameSuffixes: ["Guard", "Pipe", "Filter", "Interceptor", "Middleware"], hint: "What every request passes through" },
-    { id: "data", label: "Repositories & Clients", color: "amber", supertypes: ["Repository"], imports: ["typeorm", "@nestjs/typeorm", "@nestjs/mongoose", "prisma", "@prisma/client"], rule: (f) => /(Repository|Store|Client|Gateway|Dao)$/.test(f.name), nameSuffixes: ["Repository", "Store", "Client", "Gateway", "Dao"], hint: "Data access and outbound calls" },
-    { id: "models", label: "DTOs & Entities", color: "violet", annotations: ["Entity", "Schema", "ObjectType", "InputType"], supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Dto", "DTO", "Entity", "Schema", "Model"], hint: "Shapes crossing the boundary" },
+    { id: "pipeline", label: t("frameworks.frameworkProfiles.guardsPipesFilters"), color: "red", annotations: ["Catch"], supertypes: ["CanActivate", "PipeTransform", "NestInterceptor", "ExceptionFilter", "NestMiddleware"], rule: (f) => /(Guard|Pipe|Filter|Interceptor|Middleware)$/.test(f.name), nameSuffixes: ["Guard", "Pipe", "Filter", "Interceptor", "Middleware"], hint: t("frameworks.frameworkProfiles.whatEveryRequestPasses") },
+    { id: "data", label: t("frameworks.frameworkProfiles.repositoriesClients"), color: "amber", supertypes: ["Repository"], imports: ["typeorm", "@nestjs/typeorm", "@nestjs/mongoose", "prisma", "@prisma/client"], rule: (f) => /(Repository|Store|Client|Gateway|Dao)$/.test(f.name), nameSuffixes: ["Repository", "Store", "Client", "Gateway", "Dao"], hint: t("frameworks.frameworkProfiles.dataAccessOutboundCalls") },
+    { id: "models", label: t("frameworks.frameworkProfiles.dtosEntities"), color: "violet", annotations: ["Entity", "Schema", "ObjectType", "InputType"], supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Dto", "DTO", "Entity", "Schema", "Model"], hint: t("frameworks.frameworkProfiles.shapesCrossingBoundary") },
     // A service that injects Repository<T> itself is still a service, so a
     // name ending in Service wins over the typeorm import.
-    { id: "providers", label: "Providers & Other", color: "green", rule: (f) => isInjectable(f) && !/(Guard|Pipe|Filter|Interceptor|Middleware|Repository|Store|Client|Gateway|Dao)$/.test(f.name), ruleFirst: true, hint: "Services and everything unclassified" },
+    { id: "providers", label: t("frameworks.frameworkProfiles.providersOther"), color: "green", rule: (f) => isInjectable(f) && !/(Guard|Pipe|Filter|Interceptor|Middleware|Repository|Store|Client|Gateway|Dao)$/.test(f.name), ruleFirst: true, hint: t("frameworks.frameworkProfiles.servicesEverythingUnclassified") },
     // Wiring sits beside the layers, not in them: a module names its
     // controllers and providers alike.
-    { id: "modules", label: "Modules", color: "neutral-deep", annotations: ["Module"], hint: "What each module imports, provides and exports" },
+    { id: "modules", label: t("frameworks.frameworkProfiles.modules"), color: "neutral-deep", annotations: ["Module"], hint: t("frameworks.frameworkProfiles.whatEachModuleImports") },
   ],
   fallback: "providers",
 }
@@ -374,20 +376,20 @@ export const NESTJS: FrameworkProfile = {
 export const ANGULAR: FrameworkProfile = {
   language: "typescript",
   id: "angular",
-  label: "Angular",
+  label: t("frameworks.frameworkProfiles.angular"),
   detect: { imports: ["@angular/"], annotations: ["NgModule"] },
   weight: 4,
   lanes: [
-    { id: "components", label: "Components", color: "blue", annotations: ["Component"], nameSuffixes: ["Component", "Page", "View"], hint: "What the user sees" },
+    { id: "components", label: t("frameworks.frameworkProfiles.components"), color: "blue", annotations: ["Component"], nameSuffixes: ["Component", "Page", "View"], hint: t("frameworks.frameworkProfiles.whatUserSees") },
     // Guards, interceptors and resolvers are @Injectable() like every
     // service, and a functional guard is a plain function: what they
     // implement or are called decides before the decorator does.
-    { id: "pipeline", label: "Directives, Pipes & Guards", color: "red", annotations: ["Directive", "Pipe"], supertypes: ["PipeTransform", "HttpInterceptor", "CanActivate", "CanActivateChild", "CanDeactivate", "CanMatch", "Resolve"], rule: (f) => /(Directive|Pipe|Guard|Resolver|Interceptor)$/.test(f.name), nameSuffixes: ["Directive", "Pipe", "Guard", "Resolver", "Interceptor"], hint: "What wraps the view and the router" },
-    { id: "data", label: "Data access", color: "amber", imports: ["@angular/common/http", "rxjs/ajax", "@apollo/client", "@ngrx/"], nameSuffixes: ["Api", "Client", "Repository", "Gateway", "Adapter"], hint: "HTTP and state" },
+    { id: "pipeline", label: t("frameworks.frameworkProfiles.directivesPipesGuards"), color: "red", annotations: ["Directive", "Pipe"], supertypes: ["PipeTransform", "HttpInterceptor", "CanActivate", "CanActivateChild", "CanDeactivate", "CanMatch", "Resolve"], rule: (f) => /(Directive|Pipe|Guard|Resolver|Interceptor)$/.test(f.name), nameSuffixes: ["Directive", "Pipe", "Guard", "Resolver", "Interceptor"], hint: t("frameworks.frameworkProfiles.whatWrapsViewRouter") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", imports: ["@angular/common/http", "rxjs/ajax", "@apollo/client", "@ngrx/"], nameSuffixes: ["Api", "Client", "Repository", "Gateway", "Adapter"], hint: t("frameworks.frameworkProfiles.httpState") },
     // A service is a service even when it is the one holding HttpClient,
     // which in Angular it usually is; only a name saying Api or Client is data.
-    { id: "services", label: "Services & Other", color: "green", annotations: ["NgModule"], rule: (f) => isInjectable(f) && !/(Directive|Pipe|Guard|Resolver|Interceptor|Api|Client|Repository|Gateway|Adapter)$/.test(f.name), ruleFirst: true, nameSuffixes: ["Service", "Store", "Facade"], hint: "Injectables and everything unclassified" },
-    { id: "models", label: "Models", color: "violet", supertypes: TS_SHAPES, rule: (f, s) => isShape(f) || looksLikeModel(f, s), nameSuffixes: ["Model", "Dto", "DTO", "Entity", "State", "Config"], hint: "Data shapes" },
+    { id: "services", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", annotations: ["NgModule"], rule: (f) => isInjectable(f) && !/(Directive|Pipe|Guard|Resolver|Interceptor|Api|Client|Repository|Gateway|Adapter)$/.test(f.name), ruleFirst: true, nameSuffixes: ["Service", "Store", "Facade"], hint: t("frameworks.frameworkProfiles.injectablesEverythingUnclassified") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", supertypes: TS_SHAPES, rule: (f, s) => isShape(f) || looksLikeModel(f, s), nameSuffixes: ["Model", "Dto", "DTO", "Entity", "State", "Config"], hint: t("frameworks.frameworkProfiles.dataShapes") },
   ],
   fallback: "services",
 }
@@ -407,17 +409,17 @@ export const isReactPage = (f: ClassFacts) =>
 export const REACT: FrameworkProfile = {
   language: "typescript",
   id: "react",
-  label: "React",
+  label: t("frameworks.frameworkProfiles.react"),
   detect: { imports: ["react", "react-dom", "next/", "@remix-run/"], weakImports: ["@testing-library/react"] },
   lanes: [
-    { id: "pages", label: "Pages & Layouts", color: "blue-deep", rule: isReactPage, ruleFirst: true, hint: "Components Next.js routes to, under pages/ or as app/ page and layout files" },
-    { id: "components", label: "Components", color: "blue", rule: isReactComponent, ruleFirst: true, supertypes: ["Component", "PureComponent"], hint: "Named in Pascal case, in a .tsx or .jsx file" },
+    { id: "pages", label: t("frameworks.frameworkProfiles.pagesLayouts"), color: "blue-deep", rule: isReactPage, ruleFirst: true, hint: t("frameworks.frameworkProfiles.componentsNextJsRoutes") },
+    { id: "components", label: t("frameworks.frameworkProfiles.components"), color: "blue", rule: isReactComponent, ruleFirst: true, supertypes: ["Component", "PureComponent"], hint: t("frameworks.frameworkProfiles.namedPascalCaseTsx") },
     // A hook that wraps useQuery or swr is still the hook the components
     // call; the client it calls is the data layer.
-    { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic" },
-    { id: "data", label: "Data & Clients", color: "amber", supertypes: ["createApi", "createSlice", "createAsyncThunk", "createSelector"], imports: ["@tanstack/react-query", "swr", "axios", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Store", "Repository"], hint: "What talks to a server, and Redux state" },
-    { id: "models", label: "Types & Models", color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
+    { id: "hooks", label: t("frameworks.frameworkProfiles.hooks"), color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: t("frameworks.frameworkProfiles.reusableStatefulLogic") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataClients"), color: "amber", supertypes: ["createApi", "createSlice", "createAsyncThunk", "createSelector"], imports: ["@tanstack/react-query", "swr", "axios", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Store", "Repository"], hint: t("frameworks.frameworkProfiles.whatTalksServerRedux") },
+    { id: "models", label: t("frameworks.frameworkProfiles.typesModels"), color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: t("frameworks.frameworkProfiles.shapesRatherThanBehaviour") },
+    { id: "other", label: t("frameworks.frameworkProfiles.utilitiesOther"), color: "neutral-deep", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "other",
 }
@@ -434,19 +436,19 @@ export const isVuePage = (f: ClassFacts) =>
 export const VUE: FrameworkProfile = {
   language: "typescript",
   id: "vue",
-  label: "Vue",
+  label: t("frameworks.frameworkProfiles.vue"),
   detect: { imports: ["vue", "nuxt", "#app", "#imports", "vue-router", "pinia", "vuex", "@vue/"], annotations: ["vue_component"] },
   weight: 4,
   lanes: [
-    { id: "pages", label: "Pages & Layouts", color: "blue-deep", rule: isVuePage, ruleFirst: true, hint: "Components under pages/, layouts/ or views/, and the root App" },
-    { id: "components", label: "Components", color: "blue", annotations: ["vue_component"], supertypes: ["defineComponent"], hint: "Every other .vue file, and defineComponent() in a script" },
-    { id: "stores", label: "Stores", color: "green-deep", supertypes: ["defineStore"], imports: ["pinia", "vuex", "@pinia/"], nameSuffixes: ["Store"], hint: "Pinia and Vuex state" },
+    { id: "pages", label: t("frameworks.frameworkProfiles.pagesLayouts"), color: "blue-deep", rule: isVuePage, ruleFirst: true, hint: t("frameworks.frameworkProfiles.componentsUnderPagesLayouts") },
+    { id: "components", label: t("frameworks.frameworkProfiles.components"), color: "blue", annotations: ["vue_component"], supertypes: ["defineComponent"], hint: t("frameworks.frameworkProfiles.everyOtherVueFile") },
+    { id: "stores", label: t("frameworks.frameworkProfiles.stores"), color: "green-deep", supertypes: ["defineStore"], imports: ["pinia", "vuex", "@pinia/"], nameSuffixes: ["Store"], hint: t("frameworks.frameworkProfiles.piniaVuexState") },
     // A composable that wraps ofetch or vue-query is still the composable
     // the components call; a useXStore is a store, whatever made it.
-    { id: "composables", label: "Composables", color: "green", rule: (f) => /^use[A-Z]/.test(f.name) && !/Store$/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic, named use…" },
-    { id: "data", label: "Data & Clients", color: "amber", imports: ["axios", "ofetch", "@tanstack/vue-query", "@vue/apollo-composable", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: "What talks to a server" },
-    { id: "models", label: "Types & Models", color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
+    { id: "composables", label: t("frameworks.frameworkProfiles.composables"), color: "green", rule: (f) => /^use[A-Z]/.test(f.name) && !/Store$/.test(f.name), ruleFirst: true, hint: t("frameworks.frameworkProfiles.reusableStatefulLogicNamed") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataClients"), color: "amber", imports: ["axios", "ofetch", "@tanstack/vue-query", "@vue/apollo-composable", "@apollo/client", "graphql-request"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: t("frameworks.frameworkProfiles.whatTalksServer") },
+    { id: "models", label: t("frameworks.frameworkProfiles.typesModels"), color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: t("frameworks.frameworkProfiles.shapesRatherThanBehaviour") },
+    { id: "other", label: t("frameworks.frameworkProfiles.utilitiesOther"), color: "neutral-deep", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "other",
 }
@@ -454,18 +456,18 @@ export const VUE: FrameworkProfile = {
 export const EXPRESS: FrameworkProfile = {
   language: "typescript",
   id: "express",
-  label: "Express",
+  label: t("frameworks.frameworkProfiles.express"),
   detect: { imports: ["express", "koa", "@koa/", "fastify", "@fastify/", "@hapi/hapi"] },
   weight: 2,
   // Express has no decorators and its handlers are mostly plain functions
   // named for what they do, so the folder is the evidence, as it is for
   // Django: routes/, controllers/, middleware/, services/, repositories/.
   lanes: [
-    { id: "middleware", label: "Middleware", color: "red", rule: (f) => inFolder(f, "middlewares?") || /(Middleware|Auth|Validator)$/.test(f.name), ruleFirst: true, nameSuffixes: ["Middleware", "Guard", "Auth", "Validator"], hint: "What every request passes through" },
-    { id: "routes", label: "Routes & Handlers", color: "blue", imports: ["express", "koa", "@koa/", "fastify", "@hapi/hapi"], rule: (f) => inFolder(f, "routes?|controllers?|handlers?"), nameSuffixes: ["Route", "Routes", "Router", "Controller", "Handler", "Endpoint"], hint: "What answers a request: uses the framework's request and response, or lives under routes/ or controllers/" },
-    { id: "data", label: "Data access", color: "amber", imports: ["mongoose", "sequelize", "typeorm", "knex", "pg", "mysql2", "redis", "ioredis", "@prisma/client"], rule: (f) => inFolder(f, "repositories|repository|dal|db"), nameSuffixes: ["Model", "Repository", "Dao", "Store", "Client"], hint: "Databases and caches" },
-    { id: "services", label: "Services & Other", color: "green", rule: (f) => inFolder(f, "services?"), nameSuffixes: ["Service", "Manager", "Processor", "Job"], hint: "Everything unclassified" },
-    { id: "models", label: "Schemas", color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Schema", "Dto", "DTO", "Type", "Types"], hint: "Shapes crossing the boundary" },
+    { id: "middleware", label: t("frameworks.frameworkProfiles.middleware"), color: "red", rule: (f) => inFolder(f, "middlewares?") || /(Middleware|Auth|Validator)$/.test(f.name), ruleFirst: true, nameSuffixes: ["Middleware", "Guard", "Auth", "Validator"], hint: t("frameworks.frameworkProfiles.whatEveryRequestPasses") },
+    { id: "routes", label: t("frameworks.frameworkProfiles.routesHandlers"), color: "blue", imports: ["express", "koa", "@koa/", "fastify", "@hapi/hapi"], rule: (f) => inFolder(f, "routes?|controllers?|handlers?"), nameSuffixes: ["Route", "Routes", "Router", "Controller", "Handler", "Endpoint"], hint: t("frameworks.frameworkProfiles.whatAnswersRequestUses") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", imports: ["mongoose", "sequelize", "typeorm", "knex", "pg", "mysql2", "redis", "ioredis", "@prisma/client"], rule: (f) => inFolder(f, "repositories|repository|dal|db"), nameSuffixes: ["Model", "Repository", "Dao", "Store", "Client"], hint: t("frameworks.frameworkProfiles.databasesCaches") },
+    { id: "services", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", rule: (f) => inFolder(f, "services?"), nameSuffixes: ["Service", "Manager", "Processor", "Job"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
+    { id: "models", label: t("frameworks.frameworkProfiles.schemas"), color: "violet", supertypes: TS_SHAPES, rule: isShape, nameSuffixes: ["Schema", "Dto", "DTO", "Type", "Types"], hint: t("frameworks.frameworkProfiles.shapesCrossingBoundary") },
   ],
   fallback: "services",
 }
@@ -482,20 +484,20 @@ export const EXPRESS: FrameworkProfile = {
 export const DJANGO: FrameworkProfile = {
   language: "python",
   id: "django",
-  label: "Django",
+  label: t("frameworks.frameworkProfiles.django"),
   detect: { imports: ["django", "rest_framework", "oscar"], annotations: ["apps", "models", "views"], supertypes: ["AppConfig", "ModelAdmin", "ModelViewSet", "ModelSerializer"] },
   weight: 4,
   lanes: [
     // The filename is Django's evidence; the base class is what tells a
     // model in a `models/` package or a DRF viewset in `api.py` apart. Admin
     // classes render pages over the models, so they answer requests too.
-    { id: "views", label: "Views, URLs & Admin", color: "blue", annotations: ["views", "urls", "viewsets", "admin", "api_view"], supertypes: ["View", "TemplateView", "ListView", "DetailView", "CreateView", "UpdateView", "DeleteView", "FormView", "RedirectView", "APIView", "GenericAPIView", "ViewSet", "GenericViewSet", "ModelViewSet", "ReadOnlyModelViewSet", "ModelAdmin", "TabularInline", "StackedInline"], nameSuffixes: ["View", "ViewSet", "Api", "Admin"], hint: "What answers a request" },
-    { id: "forms", label: "Forms & Serializers", color: "amber", annotations: ["forms", "serializers"], supertypes: ["Form", "ModelForm", "BaseFormSet", "Widget", "Serializer", "ModelSerializer", "HyperlinkedModelSerializer", "ListSerializer"], nameSuffixes: ["Form", "Serializer"], hint: "What validates input" },
-    { id: "models", label: "Models & Managers", color: "violet", annotations: ["models", "abstract_models", "managers"], supertypes: ["Model", "AbstractUser", "AbstractBaseUser", "Manager", "QuerySet", "TextChoices", "IntegerChoices"], nameSuffixes: ["Model", "Manager", "QuerySet"], hint: "Persistent state" },
-    { id: "wiring", label: "Apps, Signals & Middleware", color: "red", annotations: ["apps", "signals", "receivers", "middleware", "settings", "receiver"], supertypes: ["AppConfig", "MiddlewareMixin"], hint: "Registration and cross-cutting" },
+    { id: "views", label: t("frameworks.frameworkProfiles.viewsUrlsAdmin"), color: "blue", annotations: ["views", "urls", "viewsets", "admin", "api_view"], supertypes: ["View", "TemplateView", "ListView", "DetailView", "CreateView", "UpdateView", "DeleteView", "FormView", "RedirectView", "APIView", "GenericAPIView", "ViewSet", "GenericViewSet", "ModelViewSet", "ReadOnlyModelViewSet", "ModelAdmin", "TabularInline", "StackedInline"], nameSuffixes: ["View", "ViewSet", "Api", "Admin"], hint: t("frameworks.frameworkProfiles.whatAnswersRequest") },
+    { id: "forms", label: t("frameworks.frameworkProfiles.formsSerializers"), color: "amber", annotations: ["forms", "serializers"], supertypes: ["Form", "ModelForm", "BaseFormSet", "Widget", "Serializer", "ModelSerializer", "HyperlinkedModelSerializer", "ListSerializer"], nameSuffixes: ["Form", "Serializer"], hint: t("frameworks.frameworkProfiles.whatValidatesInput") },
+    { id: "models", label: t("frameworks.frameworkProfiles.modelsManagers"), color: "violet", annotations: ["models", "abstract_models", "managers"], supertypes: ["Model", "AbstractUser", "AbstractBaseUser", "Manager", "QuerySet", "TextChoices", "IntegerChoices"], nameSuffixes: ["Model", "Manager", "QuerySet"], hint: t("frameworks.frameworkProfiles.persistentState") },
+    { id: "wiring", label: t("frameworks.frameworkProfiles.appsSignalsMiddleware"), color: "red", annotations: ["apps", "signals", "receivers", "middleware", "settings", "receiver"], supertypes: ["AppConfig", "MiddlewareMixin"], hint: t("frameworks.frameworkProfiles.registrationCrossCutting") },
     // Generated schema history: 182 classes in django-oscar, every one named Migration, which would otherwise swamp Unclassified.
-    { id: "migrations", label: "Migrations", color: "neutral-deep", annotations: ["migrations"], supertypes: ["Migration"], hint: "Generated schema history, counted apart" },
-    { id: "logic", label: "Logic & Other", color: "green", hint: "Everything unclassified" },
+    { id: "migrations", label: t("frameworks.frameworkProfiles.migrations"), color: "neutral-deep", annotations: ["migrations"], supertypes: ["Migration"], hint: t("frameworks.frameworkProfiles.generatedSchemaHistoryCounted") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.logicOther"), color: "green", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -503,18 +505,18 @@ export const DJANGO: FrameworkProfile = {
 export const FASTAPI: FrameworkProfile = {
   language: "python",
   id: "fastapi",
-  label: "FastAPI & Flask",
+  label: t("frameworks.frameworkProfiles.fastapiFlask"),
   detect: { imports: ["fastapi", "flask", "starlette", "pydantic"] },
   weight: 2,
   lanes: [
-    { id: "routes", label: "Routes", color: "blue", annotations: ["get", "post", "put", "delete", "patch", "options", "head", "websocket", "api_route", "route", "router"], supertypes: ["APIRouter", "MethodView", "Resource", "HTTPEndpoint"], nameSuffixes: ["Router", "Api", "Endpoint", "View"], hint: "Decorated request handlers" },
-    { id: "background", label: "Tasks", color: "red", imports: ["celery", "rq", "apscheduler", "arq", "dramatiq"], annotations: ["tasks", "task", "shared_task", "periodic_task", "job"], nameSuffixes: ["Task", "Job", "Worker"], hint: "Work off the request path" },
+    { id: "routes", label: t("frameworks.frameworkProfiles.routes"), color: "blue", annotations: ["get", "post", "put", "delete", "patch", "options", "head", "websocket", "api_route", "route", "router"], supertypes: ["APIRouter", "MethodView", "Resource", "HTTPEndpoint"], nameSuffixes: ["Router", "Api", "Endpoint", "View"], hint: t("frameworks.frameworkProfiles.decoratedRequestHandlers") },
+    { id: "background", label: t("frameworks.frameworkProfiles.tasks"), color: "red", imports: ["celery", "rq", "apscheduler", "arq", "dramatiq"], annotations: ["tasks", "task", "shared_task", "periodic_task", "job"], nameSuffixes: ["Task", "Job", "Worker"], hint: t("frameworks.frameworkProfiles.workOffRequestPath") },
     // Pydantic schemas, settings and dataclasses are shapes; a SQLAlchemy
     // model is one too, at the bottom. `Base` is the declarative base, and
     // a `models.py` in a FastAPI project holds the ORM models.
-    { id: "models", label: "Schemas & Models", color: "violet", annotations: ["dataclass", "models"], supertypes: ["BaseModel", "BaseSettings", "SQLModel", "Base", "DeclarativeBase", "TypedDict", "Enum"], nameSuffixes: ["Schema", "Model", "Request", "Response", "Settings"], hint: "Pydantic and dataclass shapes, ORM models" },
-    { id: "data", label: "Data access", color: "amber", imports: ["sqlalchemy", "sqlmodel", "databases", "motor", "pymongo", "redis", "asyncpg", "psycopg", "aiomysql", "httpx", "requests", "aiohttp", "boto3"], nameSuffixes: ["Repository", "Repo", "Dao", "Store", "Client", "Gateway"], hint: "Databases and outbound calls" },
-    { id: "logic", label: "Logic & Other", color: "green", hint: "Everything unclassified" },
+    { id: "models", label: t("frameworks.frameworkProfiles.schemasModels"), color: "violet", annotations: ["dataclass", "models"], supertypes: ["BaseModel", "BaseSettings", "SQLModel", "Base", "DeclarativeBase", "TypedDict", "Enum"], nameSuffixes: ["Schema", "Model", "Request", "Response", "Settings"], hint: t("frameworks.frameworkProfiles.pydanticDataclassShapesOrm") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", imports: ["sqlalchemy", "sqlmodel", "databases", "motor", "pymongo", "redis", "asyncpg", "psycopg", "aiomysql", "httpx", "requests", "aiohttp", "boto3"], nameSuffixes: ["Repository", "Repo", "Dao", "Store", "Client", "Gateway"], hint: t("frameworks.frameworkProfiles.databasesOutboundCalls") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.logicOther"), color: "green", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -530,14 +532,14 @@ export const FASTAPI: FrameworkProfile = {
 export const GO_HTTP: FrameworkProfile = {
   language: "go",
   id: "go-http",
-  label: "Go services",
+  label: t("frameworks.frameworkProfiles.goServices"),
   detect: { imports: ["net/http", "github.com/gin-gonic", "github.com/labstack/echo", "github.com/go-chi", "github.com/gorilla/mux", "google.golang.org/grpc"] },
   lanes: [
-    { id: "handlers", label: "Handlers & Routes", color: "blue", nameSuffixes: ["Handler", "Handlers", "Route", "Routes", "Server", "Controller", "Endpoint", "API"], hint: "What answers a request" },
-    { id: "middleware", label: "Middleware", color: "red", nameSuffixes: ["Middleware", "Interceptor", "Auth", "Recovery", "Logger"], hint: "What every request passes through" },
-    { id: "data", label: "Stores & Clients", color: "amber", imports: ["database/sql", "gorm.io", "github.com/jmoiron/sqlx", "go.mongodb.org", "github.com/redis", "github.com/jackc/pgx", "cloud.google.com/go", "github.com/aws/aws-sdk-go"], nameSuffixes: ["Repository", "Repo", "Store", "DAO", "Client", "Gateway", "Adapter"], hint: "Databases and outbound calls" },
-    { id: "models", label: "Models", color: "violet", annotations: ["json", "db", "gorm", "yaml", "form"], nameSuffixes: ["Model", "Entity", "DTO", "Request", "Response", "Config", "Options", "Params"], hint: "Carries struct tags, so it crosses a boundary" },
-    { id: "logic", label: "Logic & Other", color: "green", nameSuffixes: ["Service", "Manager", "Processor", "Worker", "Runner"], hint: "Everything unclassified" },
+    { id: "handlers", label: t("frameworks.frameworkProfiles.handlersRoutes"), color: "blue", nameSuffixes: ["Handler", "Handlers", "Route", "Routes", "Server", "Controller", "Endpoint", "API"], hint: t("frameworks.frameworkProfiles.whatAnswersRequest") },
+    { id: "middleware", label: t("frameworks.frameworkProfiles.middleware"), color: "red", nameSuffixes: ["Middleware", "Interceptor", "Auth", "Recovery", "Logger"], hint: t("frameworks.frameworkProfiles.whatEveryRequestPasses") },
+    { id: "data", label: t("frameworks.frameworkProfiles.storesClients"), color: "amber", imports: ["database/sql", "gorm.io", "github.com/jmoiron/sqlx", "go.mongodb.org", "github.com/redis", "github.com/jackc/pgx", "cloud.google.com/go", "github.com/aws/aws-sdk-go"], nameSuffixes: ["Repository", "Repo", "Store", "DAO", "Client", "Gateway", "Adapter"], hint: t("frameworks.frameworkProfiles.databasesOutboundCalls") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", annotations: ["json", "db", "gorm", "yaml", "form"], nameSuffixes: ["Model", "Entity", "DTO", "Request", "Response", "Config", "Options", "Params"], hint: t("frameworks.frameworkProfiles.carriesStructTagsSo") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.logicOther"), color: "green", nameSuffixes: ["Service", "Manager", "Processor", "Worker", "Runner"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -545,17 +547,17 @@ export const GO_HTTP: FrameworkProfile = {
 export const GO_CLI: FrameworkProfile = {
   language: "go",
   id: "go-cli",
-  label: "Go command line",
+  label: t("frameworks.frameworkProfiles.goCommandLine"),
   detect: { imports: ["github.com/spf13/cobra", "github.com/urfave/cli", "flag"] },
   weight: 2,
   lanes: [
-    { id: "commands", label: "Commands", color: "blue", nameSuffixes: ["Cmd", "Command"], rule: (f) => f.name === "main" || f.name === "Execute", hint: "What the user invokes" },
+    { id: "commands", label: t("frameworks.frameworkProfiles.commands"), color: "blue", nameSuffixes: ["Cmd", "Command"], rule: (f) => f.name === "main" || f.name === "Execute", hint: t("frameworks.frameworkProfiles.whatUserInvokes") },
     // Named the way the service profile names its logic, so the lane has a
     // rule and survives as the layer between commands and stores; with none
     // it was folded into Unclassified and every command-to-logic edge vanished.
-    { id: "logic", label: "Logic & Other", color: "green", nameSuffixes: ["Service", "Manager", "Processor", "Worker", "Runner", "Engine"], hint: "Everything unclassified" },
-    { id: "data", label: "Stores & Clients", color: "amber", imports: ["database/sql", "net/http", "os/exec"], nameSuffixes: ["Repository", "Store", "Client", "Reader", "Writer", "Loader"], hint: "What reaches outside the process" },
-    { id: "models", label: "Config & Models", color: "violet", annotations: ["json", "yaml", "toml", "mapstructure"], nameSuffixes: ["Config", "Options", "Settings", "Result", "Report"], hint: "Shapes and configuration" },
+    { id: "logic", label: t("frameworks.frameworkProfiles.logicOther"), color: "green", nameSuffixes: ["Service", "Manager", "Processor", "Worker", "Runner", "Engine"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
+    { id: "data", label: t("frameworks.frameworkProfiles.storesClients"), color: "amber", imports: ["database/sql", "net/http", "os/exec"], nameSuffixes: ["Repository", "Store", "Client", "Reader", "Writer", "Loader"], hint: t("frameworks.frameworkProfiles.whatReachesOutsideProcess") },
+    { id: "models", label: t("frameworks.frameworkProfiles.configModels"), color: "violet", annotations: ["json", "yaml", "toml", "mapstructure"], nameSuffixes: ["Config", "Options", "Settings", "Result", "Report"], hint: t("frameworks.frameworkProfiles.shapesConfiguration") },
   ],
   fallback: "logic",
 }
@@ -573,16 +575,16 @@ const isAspNetHost = (f: ClassFacts) => f.name === "Program" || f.name === "Star
 export const ASPNET: FrameworkProfile = {
   language: "csharp",
   id: "aspnet",
-  label: "ASP.NET Core",
+  label: t("frameworks.frameworkProfiles.aspNetCore"),
   detect: { imports: ["Microsoft.AspNetCore", "Microsoft.Extensions.DependencyInjection"], weakImports: ["Microsoft.EntityFrameworkCore", "Microsoft.Extensions"], supertypes: ["ControllerBase", "Controller", "PageModel", "Hub"] },
   lanes: [
-    { id: "controllers", label: "Controllers & Endpoints", color: "blue", annotations: ["ApiController", "Route", "HttpGet", "HttpPost", "HttpPut", "HttpDelete", "HttpPatch"], supertypes: ["ControllerBase", "Controller", "PageModel", "Hub", "Endpoint", "EndpointWithoutRequest", "ICarterModule"], rule: isAspNetHost, ruleFirst: true, nameSuffixes: ["Controller", "Endpoint", "Endpoints", "Hub"], hint: "Web entry points, Program and Startup among them" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllersEndpoints"), color: "blue", annotations: ["ApiController", "Route", "HttpGet", "HttpPost", "HttpPut", "HttpDelete", "HttpPatch"], supertypes: ["ControllerBase", "Controller", "PageModel", "Hub", "Endpoint", "EndpointWithoutRequest", "ICarterModule"], rule: isAspNetHost, ruleFirst: true, nameSuffixes: ["Controller", "Endpoint", "Endpoints", "Hub"], hint: t("frameworks.frameworkProfiles.webEntryPointsProgram") },
     // Before services, so an AuthorizationHandler is pipeline by its base and not a service by its name.
-    { id: "pipeline", label: "Middleware & Filters", color: "red", supertypes: ["IMiddleware", "IActionFilter", "IAsyncActionFilter", "IExceptionFilter", "IAsyncExceptionFilter", "IAuthorizationFilter", "IAsyncAuthorizationFilter", "IResultFilter", "IAsyncResultFilter", "IResourceFilter", "IEndpointFilter", "IExceptionHandler", "ActionFilterAttribute", "ExceptionFilterAttribute", "ResultFilterAttribute", "AuthorizeAttribute", "AuthorizationHandler", "IAuthorizationRequirement", "DelegatingHandler", "Attribute"], nameSuffixes: ["Middleware", "Filter", "Attribute", "Policy", "Requirement"], hint: "What every request passes through" },
-    { id: "services", label: "Services & Other", color: "green", supertypes: ["IRequestHandler", "INotificationHandler", "IHostedService", "BackgroundService", "AbstractValidator"], nameSuffixes: ["Service", "Manager", "Handler", "Factory", "Provider", "Processor", "Validator"], hint: "Everything unclassified" },
-    { id: "data", label: "Data access", color: "amber", supertypes: ["DbContext", "IdentityDbContext", "IEntityTypeConfiguration", "IRepository"], imports: ["Microsoft.EntityFrameworkCore", "Dapper", "MongoDB.Driver", "StackExchange.Redis", "Npgsql", "Microsoft.Data.SqlClient", "System.Data.SqlClient"], nameSuffixes: ["Repository", "DbContext", "Dao", "Store", "Client"], hint: "EF Core and clients" },
+    { id: "pipeline", label: t("frameworks.frameworkProfiles.middlewareFilters"), color: "red", supertypes: ["IMiddleware", "IActionFilter", "IAsyncActionFilter", "IExceptionFilter", "IAsyncExceptionFilter", "IAuthorizationFilter", "IAsyncAuthorizationFilter", "IResultFilter", "IAsyncResultFilter", "IResourceFilter", "IEndpointFilter", "IExceptionHandler", "ActionFilterAttribute", "ExceptionFilterAttribute", "ResultFilterAttribute", "AuthorizeAttribute", "AuthorizationHandler", "IAuthorizationRequirement", "DelegatingHandler", "Attribute"], nameSuffixes: ["Middleware", "Filter", "Attribute", "Policy", "Requirement"], hint: t("frameworks.frameworkProfiles.whatEveryRequestPasses") },
+    { id: "services", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", supertypes: ["IRequestHandler", "INotificationHandler", "IHostedService", "BackgroundService", "AbstractValidator"], nameSuffixes: ["Service", "Manager", "Handler", "Factory", "Provider", "Processor", "Validator"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", supertypes: ["DbContext", "IdentityDbContext", "IEntityTypeConfiguration", "IRepository"], imports: ["Microsoft.EntityFrameworkCore", "Dapper", "MongoDB.Driver", "StackExchange.Redis", "Npgsql", "Microsoft.Data.SqlClient", "System.Data.SqlClient"], nameSuffixes: ["Repository", "DbContext", "Dao", "Store", "Client"], hint: t("frameworks.frameworkProfiles.efCoreClients") },
     // A record, struct or enum is a shape by construction; the engine marks the keyword.
-    { id: "models", label: "Entities & DTOs", color: "violet", annotations: ["Table", "Key", "Owned", "Keyless", "JsonProperty", "JsonPropertyName", "DataContract", "record", "struct", "enum"], supertypes: ["IRequest", "INotification", "BaseEntity", "Entity", "IEntity", "AggregateRoot", "ValueObject", "IdentityUser", "IdentityRole"], nameSuffixes: ["Entity", "Model", "Dto", "DTO", "Request", "Response", "ViewModel", "Options", "Settings", "Command", "Query", "Event"], hint: "Shapes and persistent state" },
+    { id: "models", label: t("frameworks.frameworkProfiles.entitiesDtos"), color: "violet", annotations: ["Table", "Key", "Owned", "Keyless", "JsonProperty", "JsonPropertyName", "DataContract", "record", "struct", "enum"], supertypes: ["IRequest", "INotification", "BaseEntity", "Entity", "IEntity", "AggregateRoot", "ValueObject", "IdentityUser", "IdentityRole"], nameSuffixes: ["Entity", "Model", "Dto", "DTO", "Request", "Response", "ViewModel", "Options", "Settings", "Command", "Query", "Event"], hint: t("frameworks.frameworkProfiles.shapesPersistentState") },
   ],
   fallback: "services",
 }
@@ -599,18 +601,18 @@ const under = (...dirs: string[]) => (f: ClassFacts) => !!f.file && dirs.some(d 
 export const LARAVEL: FrameworkProfile = {
   language: "php",
   id: "laravel",
-  label: "Laravel",
+  label: t("frameworks.frameworkProfiles.laravel"),
   detect: { imports: ["Illuminate\\"], supertypes: ["Model", "Controller", "ServiceProvider", "FormRequest", "Seeder"] },
   weight: 4,
   lanes: [
-    { id: "controllers", label: "Controllers", color: "blue", supertypes: ["Controller", "BaseController"], rule: under("Http/Controllers"), nameSuffixes: ["Controller"], hint: "What answers a request" },
-    { id: "forms", label: "Requests & Resources", color: "amber", supertypes: ["FormRequest", "JsonResource", "ResourceCollection"], rule: under("Http/Requests", "Http/Resources"), nameSuffixes: ["Request", "Resource"], hint: "What validates input and shapes output" },
-    { id: "models", label: "Eloquent models", color: "violet", supertypes: ["Model", "Authenticatable", "Pivot", "MorphPivot"], rule: under("Models"), hint: "Persistent state" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllers"), color: "blue", supertypes: ["Controller", "BaseController"], rule: under("Http/Controllers"), nameSuffixes: ["Controller"], hint: t("frameworks.frameworkProfiles.whatAnswersRequest") },
+    { id: "forms", label: t("frameworks.frameworkProfiles.requestsResources"), color: "amber", supertypes: ["FormRequest", "JsonResource", "ResourceCollection"], rule: under("Http/Requests", "Http/Resources"), nameSuffixes: ["Request", "Resource"], hint: t("frameworks.frameworkProfiles.whatValidatesInputShapes") },
+    { id: "models", label: t("frameworks.frameworkProfiles.eloquentModels"), color: "violet", supertypes: ["Model", "Authenticatable", "Pivot", "MorphPivot"], rule: under("Models"), hint: t("frameworks.frameworkProfiles.persistentState") },
     // A job or command is an entry point the queue or the terminal calls, not data access; it used to sit in "Repositories & Jobs" below the logic it calls.
-    { id: "background", label: "Jobs, Events & Listeners", color: "red", supertypes: ["ShouldQueue", "ShouldBroadcast", "Command", "Mailable", "Notification"], rule: under("Jobs", "Console/Commands", "Listeners", "Events", "Mail", "Notifications", "Observers"), nameSuffixes: ["Job", "Command", "Listener", "Event", "Mail", "Notification", "Observer"], hint: "Queued work, console commands and what reacts to events" },
-    { id: "wiring", label: "Providers, Middleware & Policies", color: "neutral-deep", supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: "Registration and cross-cutting" },
-    { id: "data", label: "Repositories", color: "amber-deep", imports: ["Illuminate\\Support\\Facades\\DB", "Illuminate\\Support\\Facades\\Http", "Illuminate\\Database\\Query", "Illuminate\\Database\\ConnectionInterface"], rule: under("Repositories"), nameSuffixes: ["Repository", "Query", "Client", "Gateway"], hint: "Data access and outbound calls" },
-    { id: "logic", label: "Services & Other", color: "green", rule: under("Services", "Actions"), nameSuffixes: ["Service", "Action", "Manager", "Handler"], hint: "Everything unclassified" },
+    { id: "background", label: t("frameworks.frameworkProfiles.jobsEventsListeners"), color: "red", supertypes: ["ShouldQueue", "ShouldBroadcast", "Command", "Mailable", "Notification"], rule: under("Jobs", "Console/Commands", "Listeners", "Events", "Mail", "Notifications", "Observers"), nameSuffixes: ["Job", "Command", "Listener", "Event", "Mail", "Notification", "Observer"], hint: t("frameworks.frameworkProfiles.queuedWorkConsoleCommands") },
+    { id: "wiring", label: t("frameworks.frameworkProfiles.providersMiddlewarePolicies"), color: "neutral-deep", supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: t("frameworks.frameworkProfiles.registrationCrossCutting") },
+    { id: "data", label: t("frameworks.frameworkProfiles.repositories"), color: "amber-deep", imports: ["Illuminate\\Support\\Facades\\DB", "Illuminate\\Support\\Facades\\Http", "Illuminate\\Database\\Query", "Illuminate\\Database\\ConnectionInterface"], rule: under("Repositories"), nameSuffixes: ["Repository", "Query", "Client", "Gateway"], hint: t("frameworks.frameworkProfiles.dataAccessOutboundCalls") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", rule: under("Services", "Actions"), nameSuffixes: ["Service", "Action", "Manager", "Handler"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -618,22 +620,22 @@ export const LARAVEL: FrameworkProfile = {
 export const SYMFONY: FrameworkProfile = {
   language: "php",
   id: "symfony",
-  label: "Symfony",
+  label: t("frameworks.frameworkProfiles.symfony"),
   detect: { imports: ["Symfony\\Component", "Symfony\\Bundle", "Doctrine\\"], supertypes: ["AbstractController", "AbstractBundle", "Bundle", "ServiceEntityRepository"] },
   weight: 2,
   lanes: [
     // A message handler or console command is an entry point like a
     // controller: the bus or the terminal calls it, and it calls the
     // services. Read as wiring it sat beside the layers instead of on top.
-    { id: "controllers", label: "Controllers & Handlers", color: "blue", annotations: ["Route", "AsController", "AsMessageHandler", "AsCommand"], supertypes: ["AbstractController", "Controller", "MessageHandlerInterface", "Command"], rule: under("Controller"), nameSuffixes: ["Controller", "Action"], hint: "Controllers, message handlers and console commands" },
-    { id: "forms", label: "Forms & Validators", color: "amber", supertypes: ["AbstractType", "AbstractTypeExtension", "AbstractResourceType", "Constraint", "ConstraintValidator", "DataTransformerInterface", "NormalizerInterface", "DenormalizerInterface"], rule: under("Form", "Validator"), nameSuffixes: ["Type", "TypeExtension", "Validator", "Normalizer", "DataTransformer"], hint: "What validates input and shapes output" },
+    { id: "controllers", label: t("frameworks.frameworkProfiles.controllersHandlers"), color: "blue", annotations: ["Route", "AsController", "AsMessageHandler", "AsCommand"], supertypes: ["AbstractController", "Controller", "MessageHandlerInterface", "Command"], rule: under("Controller"), nameSuffixes: ["Controller", "Action"], hint: t("frameworks.frameworkProfiles.controllersMessageHandlersConsole") },
+    { id: "forms", label: t("frameworks.frameworkProfiles.formsValidators"), color: "amber", supertypes: ["AbstractType", "AbstractTypeExtension", "AbstractResourceType", "Constraint", "ConstraintValidator", "DataTransformerInterface", "NormalizerInterface", "DenormalizerInterface"], rule: under("Form", "Validator"), nameSuffixes: ["Type", "TypeExtension", "Validator", "Normalizer", "DataTransformer"], hint: t("frameworks.frameworkProfiles.whatValidatesInputShapes") },
     // Sylius-style models map to Doctrine in XML, not in attributes: they are
     // known by the resource interface or a Model folder, interfaces included,
     // since every type hint in that code names the interface.
-    { id: "models", label: "Entities & Models", color: "violet", annotations: ["Entity", "Embeddable", "MappedSuperclass", "Table"], supertypes: ["ResourceInterface", "TimestampableInterface", "Model", "Authenticatable", "UserInterface"], rule: under("Entity", "Model"), nameSuffixes: ["Entity"], hint: "Persistent state" },
-    { id: "data", label: "Repositories & Providers", color: "amber-deep", supertypes: ["ServiceEntityRepository", "EntityRepository", "RepositoryInterface", "ObjectRepository"], rule: under("Repository"), nameSuffixes: ["Repository", "RepositoryInterface", "Provider", "Loader", "Client"], hint: "Data access" },
-    { id: "wiring", label: "Bundles, Subscribers & Compiler passes", color: "red", annotations: ["AsEventListener", "AsDecorator"], supertypes: ["Bundle", "AbstractBundle", "AbstractResourceBundle", "Extension", "AbstractExtension", "AbstractResourceExtension", "CompilerPassInterface", "EventSubscriberInterface", "ConfigurationInterface", "Voter", "Kernel"], rule: under("DependencyInjection", "EventSubscriber", "EventListener"), nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Pass", "Voter", "Kernel"], hint: "Registration and events" },
-    { id: "logic", label: "Services & Other", color: "green", rule: under("Service", "Services"), nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver", "Processor", "Calculator", "Checker", "Applicator", "Generator", "Assigner", "Modifier"], hint: "Everything unclassified" },
+    { id: "models", label: t("frameworks.frameworkProfiles.entitiesModels"), color: "violet", annotations: ["Entity", "Embeddable", "MappedSuperclass", "Table"], supertypes: ["ResourceInterface", "TimestampableInterface", "Model", "Authenticatable", "UserInterface"], rule: under("Entity", "Model"), nameSuffixes: ["Entity"], hint: t("frameworks.frameworkProfiles.persistentState") },
+    { id: "data", label: t("frameworks.frameworkProfiles.repositoriesProviders"), color: "amber-deep", supertypes: ["ServiceEntityRepository", "EntityRepository", "RepositoryInterface", "ObjectRepository"], rule: under("Repository"), nameSuffixes: ["Repository", "RepositoryInterface", "Provider", "Loader", "Client"], hint: t("frameworks.frameworkProfiles.dataAccess") },
+    { id: "wiring", label: t("frameworks.frameworkProfiles.bundlesSubscribersCompilerPasses"), color: "red", annotations: ["AsEventListener", "AsDecorator"], supertypes: ["Bundle", "AbstractBundle", "AbstractResourceBundle", "Extension", "AbstractExtension", "AbstractResourceExtension", "CompilerPassInterface", "EventSubscriberInterface", "ConfigurationInterface", "Voter", "Kernel"], rule: under("DependencyInjection", "EventSubscriber", "EventListener"), nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Pass", "Voter", "Kernel"], hint: t("frameworks.frameworkProfiles.registrationEvents") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", rule: under("Service", "Services"), nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver", "Processor", "Calculator", "Checker", "Applicator", "Generator", "Assigner", "Modifier"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -649,17 +651,17 @@ export const SYMFONY: FrameworkProfile = {
 export const KTOR: FrameworkProfile = {
   language: "kotlin",
   id: "ktor",
-  label: "Ktor",
+  label: t("frameworks.frameworkProfiles.ktor"),
   // The server packages, not the client: an Android or multiplatform app
   // calling an API with io.ktor.client is not a Ktor application.
   detect: { imports: ["io.ktor.server", "io.ktor.application", "io.ktor.routing", "io.ktor.features"], weakImports: ["io.ktor"] },
   weight: 2,
   lanes: [
-    { id: "routes", label: "Routes & Modules", color: "blue", annotations: ["Route", "Routing", "Application"], rule: isMain, nameSuffixes: ["Route", "Routes", "Routing", "Api", "Controller"], hint: "What answers a request, and the modules that install it" },
-    { id: "plugins", label: "Plugins", color: "red", supertypes: ["BaseApplicationPlugin", "ApplicationPlugin", "BaseRouteScopedPlugin"], nameSuffixes: ["Plugin", "Feature", "Interceptor", "Auth"], hint: "What every request passes through" },
-    { id: "data", label: "Repositories & Clients", color: "amber", supertypes: ["Table", "IdTable", "IntIdTable", "LongIdTable", "UUIDTable", "CompositeIdTable"], imports: ["org.jetbrains.exposed", "io.ktor.client", "com.zaxxer.hikari", "org.jdbi", "org.ktorm", "app.cash.sqldelight"], nameSuffixes: ["Repository", "Dao", "Store", "Client", "Table"], hint: "Databases and outbound calls" },
-    { id: "models", label: "Models", color: "violet", annotations: ["Serializable", "data"], supertypes: ["IntEntity", "LongEntity", "UUIDEntity"], rule: looksLikeModel, nameSuffixes: ["Dto", "DTO", "Model", "Request", "Response", "Entity"], hint: "Data classes and Exposed entities" },
-    { id: "logic", label: "Services & Other", color: "green", nameSuffixes: ["Service", "UseCase", "Manager", "Processor", "Validator"], hint: "Services and everything unclassified" },
+    { id: "routes", label: t("frameworks.frameworkProfiles.routesModules"), color: "blue", annotations: ["Route", "Routing", "Application"], rule: isMain, nameSuffixes: ["Route", "Routes", "Routing", "Api", "Controller"], hint: t("frameworks.frameworkProfiles.whatAnswersRequestModules") },
+    { id: "plugins", label: t("frameworks.frameworkProfiles.plugins"), color: "red", supertypes: ["BaseApplicationPlugin", "ApplicationPlugin", "BaseRouteScopedPlugin"], nameSuffixes: ["Plugin", "Feature", "Interceptor", "Auth"], hint: t("frameworks.frameworkProfiles.whatEveryRequestPasses") },
+    { id: "data", label: t("frameworks.frameworkProfiles.repositoriesClients"), color: "amber", supertypes: ["Table", "IdTable", "IntIdTable", "LongIdTable", "UUIDTable", "CompositeIdTable"], imports: ["org.jetbrains.exposed", "io.ktor.client", "com.zaxxer.hikari", "org.jdbi", "org.ktorm", "app.cash.sqldelight"], nameSuffixes: ["Repository", "Dao", "Store", "Client", "Table"], hint: t("frameworks.frameworkProfiles.databasesOutboundCalls") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", annotations: ["Serializable", "data"], supertypes: ["IntEntity", "LongEntity", "UUIDEntity"], rule: looksLikeModel, nameSuffixes: ["Dto", "DTO", "Model", "Request", "Response", "Entity"], hint: t("frameworks.frameworkProfiles.dataClassesExposedEntities") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", nameSuffixes: ["Service", "UseCase", "Manager", "Processor", "Validator"], hint: t("frameworks.frameworkProfiles.servicesEverythingUnclassified") },
   ],
   fallback: "logic",
 }
@@ -692,15 +694,15 @@ const looksLikeAppleModel = (f: ClassFacts, s: ClassSignals) =>
 export const IOS: FrameworkProfile = {
   language: ["swift", "objc"],
   id: "ios",
-  label: "iOS (SwiftUI & UIKit)",
+  label: t("frameworks.frameworkProfiles.iosSwiftuiUikit"),
   detect: { imports: ["SwiftUI", "UIKit", "AppKit", "WidgetKit", "WatchKit"], weakImports: ["Foundation", "Combine", "Observation"], supertypes: ["UIApplicationDelegate", "App"] },
   lanes: [
-    { id: "app", label: "App & lifecycle", color: "neutral-deep", annotations: ["main", "UIApplicationMain", "NSApplicationMain"], supertypes: ["App", "UIApplicationDelegate", "UIWindowSceneDelegate", "UISceneDelegate", "WidgetBundle", "Widget"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
-    { id: "screens", label: "Screens", color: "blue-deep", supertypes: UIKIT_SCREENS, rule: isSwiftUIScreen, ruleFirst: true, nameSuffixes: ["ViewController"], hint: "View controllers, and SwiftUI views named for a screen" },
-    { id: "views", label: "Views", color: "blue", supertypes: [...SWIFTUI_VIEWS, ...UIKIT_VIEWS], nameSuffixes: ["View", "Cell"], hint: "SwiftUI views and UIKit views below the screen" },
-    { id: "state", label: "State & Logic", color: "green", annotations: ["Observable", "ObservableState", "Published", "MainActor"], supertypes: ["ObservableObject"], nameSuffixes: ["ViewModel", "Store", "Coordinator", "Router", "Presenter", "Interactor", "Manager"], hint: "View models, stores and coordinators" },
-    { id: "data", label: "Data & Networking", color: "amber", supertypes: ["Endpoint", "TargetType"], imports: ["Alamofire", "Moya", "CoreData", "SwiftData", "GRDB", "RealmSwift", "Apollo", "FirebaseFirestore"], nameSuffixes: ["Client", "Service", "API", "Api", "Repository", "Endpoint", "Request", "Cache"], hint: "Network clients, persistence, caches" },
-    { id: "models", label: "Models", color: "violet", annotations: ["Model"], supertypes: APPLE_RECORDS, rule: looksLikeAppleModel, hint: "Value types that cross boundaries, and the persistent records" },
+    { id: "app", label: t("frameworks.frameworkProfiles.appLifecycle"), color: "neutral-deep", annotations: ["main", "UIApplicationMain", "NSApplicationMain"], supertypes: ["App", "UIApplicationDelegate", "UIWindowSceneDelegate", "UISceneDelegate", "WidgetBundle", "Widget"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: t("frameworks.frameworkProfiles.whereAppStarts") },
+    { id: "screens", label: t("frameworks.frameworkProfiles.screens"), color: "blue-deep", supertypes: UIKIT_SCREENS, rule: isSwiftUIScreen, ruleFirst: true, nameSuffixes: ["ViewController"], hint: t("frameworks.frameworkProfiles.viewControllersSwiftuiViews") },
+    { id: "views", label: t("frameworks.frameworkProfiles.views"), color: "blue", supertypes: [...SWIFTUI_VIEWS, ...UIKIT_VIEWS], nameSuffixes: ["View", "Cell"], hint: t("frameworks.frameworkProfiles.swiftuiViewsUikitViews") },
+    { id: "state", label: t("frameworks.frameworkProfiles.stateLogic"), color: "green", annotations: ["Observable", "ObservableState", "Published", "MainActor"], supertypes: ["ObservableObject"], nameSuffixes: ["ViewModel", "Store", "Coordinator", "Router", "Presenter", "Interactor", "Manager"], hint: t("frameworks.frameworkProfiles.viewModelsStoresCoordinators") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataNetworking"), color: "amber", supertypes: ["Endpoint", "TargetType"], imports: ["Alamofire", "Moya", "CoreData", "SwiftData", "GRDB", "RealmSwift", "Apollo", "FirebaseFirestore"], nameSuffixes: ["Client", "Service", "API", "Api", "Repository", "Endpoint", "Request", "Cache"], hint: t("frameworks.frameworkProfiles.networkClientsPersistenceCaches") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", annotations: ["Model"], supertypes: APPLE_RECORDS, rule: looksLikeAppleModel, hint: t("frameworks.frameworkProfiles.valueTypesCrossBoundaries") },
   ],
   fallback: "state",
 }
@@ -709,19 +711,19 @@ export const IOS: FrameworkProfile = {
 export const TCA: FrameworkProfile = {
   language: ["swift"],
   id: "tca",
-  label: "The Composable Architecture",
+  label: t("frameworks.frameworkProfiles.composableArchitecture"),
   refines: "ios",
   weight: 4,
   detect: { imports: ["ComposableArchitecture"], annotations: ["Reducer", "DependencyClient"], supertypes: ["Reducer"] },
   lanes: [
-    { id: "features", label: "Reducers", color: "green", annotations: ["Reducer", "ObservableState"], supertypes: ["Reducer"], hint: "Features: state, actions and how one becomes the next" },
-    { id: "views", label: "Views", color: "blue", supertypes: SWIFTUI_VIEWS, nameSuffixes: ["View"], hint: "What renders a store" },
-    { id: "clients", label: "Dependencies", color: "amber", annotations: ["DependencyClient"], supertypes: ["DependencyKey", "TestDependencyKey"], nameSuffixes: ["Client"], hint: "Effects behind an interface: network, storage, clocks" },
-    { id: "models", label: "Models", color: "violet", annotations: ["Model"], supertypes: APPLE_RECORDS, rule: looksLikeAppleModel, hint: "Value types" },
-    { id: "app", label: "App & lifecycle", color: "neutral-deep", annotations: ["main"], supertypes: ["App", "UIApplicationDelegate"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: "Where the app starts" },
+    { id: "features", label: t("frameworks.frameworkProfiles.reducers"), color: "green", annotations: ["Reducer", "ObservableState"], supertypes: ["Reducer"], hint: t("frameworks.frameworkProfiles.featuresStateActionsHow") },
+    { id: "views", label: t("frameworks.frameworkProfiles.views"), color: "blue", supertypes: SWIFTUI_VIEWS, nameSuffixes: ["View"], hint: t("frameworks.frameworkProfiles.whatRendersStore") },
+    { id: "clients", label: t("frameworks.frameworkProfiles.dependencies"), color: "amber", annotations: ["DependencyClient"], supertypes: ["DependencyKey", "TestDependencyKey"], nameSuffixes: ["Client"], hint: t("frameworks.frameworkProfiles.effectsBehindInterfaceNetwork") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", annotations: ["Model"], supertypes: APPLE_RECORDS, rule: looksLikeAppleModel, hint: t("frameworks.frameworkProfiles.valueTypes") },
+    { id: "app", label: t("frameworks.frameworkProfiles.appLifecycle"), color: "neutral-deep", annotations: ["main"], supertypes: ["App", "UIApplicationDelegate"], nameSuffixes: ["AppDelegate", "SceneDelegate"], hint: t("frameworks.frameworkProfiles.whereAppStarts") },
     // Most TCA apps keep a corner of plain SwiftUI state; shown apart, since
     // it is what a migration has left to do.
-    { id: "state", label: "SwiftUI state", color: "green-deep", annotations: ["Observable", "Published"], supertypes: ["ObservableObject"], hint: "ObservableObjects beside the reducers" },
+    { id: "state", label: t("frameworks.frameworkProfiles.swiftuiState"), color: "green-deep", annotations: ["Observable", "Published"], supertypes: ["ObservableObject"], hint: t("frameworks.frameworkProfiles.observableobjectsBesideReducers") },
   ],
   fallback: "features",
 }
@@ -755,15 +757,15 @@ const isBlocShapeFile = (f: ClassFacts) => !!f.file && /_(event|state)\.dart$/.t
 export const FLUTTER: FrameworkProfile = {
   language: ["dart"],
   id: "flutter",
-  label: "Flutter",
+  label: t("frameworks.frameworkProfiles.flutter"),
   detect: { imports: ["flutter/", "flutter_riverpod/", "hooks_riverpod/", "flutter_bloc/", "get/"], supertypes: ["StatelessWidget", "StatefulWidget"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue-deep", annotations: ["RoutePage"], rule: isFlutterScreen, ruleFirst: true, hint: "Widgets named for a screen or page, with their State classes" },
-    { id: "widgets", label: "Widgets", color: "blue", supertypes: [...FLUTTER_WIDGETS, ...FLUTTER_STATES, "CustomPainter", "CustomClipper", "RenderBox", "SingleChildRenderObjectWidget", "InheritedWidget"], hint: "Everything else that builds UI" },
-    { id: "state", label: "State management", color: "green", annotations: ["riverpod", "Riverpod", "injectable", "singleton", "lazySingleton"], supertypes: ["Bloc", "Cubit", "HydratedBloc", "HydratedCubit", "ChangeNotifier", "StateNotifier", "Notifier", "AsyncNotifier", "StreamNotifier", "ValueNotifier", "GetxController", ...RIVERPOD_PROVIDERS], nameSuffixes: ["Bloc", "Cubit", "Notifier", "Controller", "Provider", "Store", "ViewModel", "Logic"], hint: "Bloc, Riverpod, Provider, GetX" },
-    { id: "data", label: "Data & Services", color: "amber", supertypes: ["Table", "DatabaseAccessor", "GeneratedDatabase", "GetxService"], imports: ["dio/", "http/", "drift/", "sqflite/", "isar/", "hive/", "shared_preferences/", "cloud_firestore/", "supabase_flutter/"], nameSuffixes: ["Repository", "Api", "Client", "Service", "Dao", "DataSource", "Database"], hint: "Network, storage, platform services" },
-    { id: "models", label: "Models", color: "violet", annotations: ["freezed", "Freezed", "JsonSerializable", "collection", "HiveType", "immutable"], supertypes: ["Equatable"], rule: (f, s) => looksLikeModel(f, s) || isBlocShapeFile(f), nameSuffixes: ["Model", "Entity", "Dto", "Event", "State"], hint: "Data shapes, Bloc events and states" },
-    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
+    { id: "screens", label: t("frameworks.frameworkProfiles.screens"), color: "blue-deep", annotations: ["RoutePage"], rule: isFlutterScreen, ruleFirst: true, hint: t("frameworks.frameworkProfiles.widgetsNamedScreenPage") },
+    { id: "widgets", label: t("frameworks.frameworkProfiles.widgets"), color: "blue", supertypes: [...FLUTTER_WIDGETS, ...FLUTTER_STATES, "CustomPainter", "CustomClipper", "RenderBox", "SingleChildRenderObjectWidget", "InheritedWidget"], hint: t("frameworks.frameworkProfiles.everythingElseBuildsUi") },
+    { id: "state", label: t("frameworks.frameworkProfiles.stateManagement"), color: "green", annotations: ["riverpod", "Riverpod", "injectable", "singleton", "lazySingleton"], supertypes: ["Bloc", "Cubit", "HydratedBloc", "HydratedCubit", "ChangeNotifier", "StateNotifier", "Notifier", "AsyncNotifier", "StreamNotifier", "ValueNotifier", "GetxController", ...RIVERPOD_PROVIDERS], nameSuffixes: ["Bloc", "Cubit", "Notifier", "Controller", "Provider", "Store", "ViewModel", "Logic"], hint: t("frameworks.frameworkProfiles.blocRiverpodProviderGetx") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataServices"), color: "amber", supertypes: ["Table", "DatabaseAccessor", "GeneratedDatabase", "GetxService"], imports: ["dio/", "http/", "drift/", "sqflite/", "isar/", "hive/", "shared_preferences/", "cloud_firestore/", "supabase_flutter/"], nameSuffixes: ["Repository", "Api", "Client", "Service", "Dao", "DataSource", "Database"], hint: t("frameworks.frameworkProfiles.networkStoragePlatformServices") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", annotations: ["freezed", "Freezed", "JsonSerializable", "collection", "HiveType", "immutable"], supertypes: ["Equatable"], rule: (f, s) => looksLikeModel(f, s) || isBlocShapeFile(f), nameSuffixes: ["Model", "Entity", "Dto", "Event", "State"], hint: t("frameworks.frameworkProfiles.dataShapesBlocEvents") },
+    { id: "other", label: t("frameworks.frameworkProfiles.utilitiesOther"), color: "neutral-deep", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "other",
 }
@@ -781,20 +783,20 @@ const isNativeSpec = (f: ClassFacts) => (f.isInterface && f.name === "Spec") || 
 export const REACT_NATIVE: FrameworkProfile = {
   language: "typescript",
   id: "react-native",
-  label: "React Native",
+  label: t("frameworks.frameworkProfiles.reactNative"),
   refines: "react",
   weight: 4,
   detect: { imports: ["react-native", "expo", "expo-", "@react-navigation/", "expo-router"] },
   lanes: [
-    { id: "screens", label: "Screens", color: "blue-deep", rule: isRNScreen, ruleFirst: true, hint: "Components named for a screen, and route files" },
-    { id: "components", label: "Components", color: "blue", rule: isRNComponent, ruleFirst: true, hint: "Named in Pascal case, in a .tsx or .jsx file" },
+    { id: "screens", label: t("frameworks.frameworkProfiles.screens"), color: "blue-deep", rule: isRNScreen, ruleFirst: true, hint: t("frameworks.frameworkProfiles.componentsNamedScreenRoute") },
+    { id: "components", label: t("frameworks.frameworkProfiles.components"), color: "blue", rule: isRNComponent, ruleFirst: true, hint: t("frameworks.frameworkProfiles.namedPascalCaseTsx") },
     // Before the imports: a hook that reads a Redux store or calls axios is a hook, as its name says.
-    { id: "hooks", label: "Hooks", color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: "Reusable stateful logic" },
-    { id: "state", label: "State", color: "green-deep", supertypes: ["createSlice"], imports: ["@reduxjs/toolkit", "react-redux", "zustand", "jotai", "mobx", "@tanstack/react-query", "recoil"], rule: (f) => /^select[A-Z]/.test(f.name), nameSuffixes: ["Store", "Slice", "Reducer", "Context"], hint: "Slices, stores, selectors and server state" },
-    { id: "native", label: "Native bridges", color: "red", imports: ["react-native/Libraries", "expo-modules-core"], rule: isNativeSpec, nameSuffixes: ["Module", "NativeModule", "Spec"], hint: "Where JavaScript calls native code" },
-    { id: "data", label: "Data & Clients", color: "amber", supertypes: ["createApi"], imports: ["axios", "@apollo/client", "graphql-request", "@atproto/api"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: "What talks to a server" },
-    { id: "models", label: "Types & Models", color: "violet", rule: (f) => f.isInterface, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: "Shapes rather than behaviour" },
-    { id: "other", label: "Utilities & Other", color: "neutral-deep", hint: "Everything unclassified" },
+    { id: "hooks", label: t("frameworks.frameworkProfiles.hooks"), color: "green", rule: (f) => /^use[A-Z]/.test(f.name), ruleFirst: true, hint: t("frameworks.frameworkProfiles.reusableStatefulLogic") },
+    { id: "state", label: t("frameworks.frameworkProfiles.state"), color: "green-deep", supertypes: ["createSlice"], imports: ["@reduxjs/toolkit", "react-redux", "zustand", "jotai", "mobx", "@tanstack/react-query", "recoil"], rule: (f) => /^select[A-Z]/.test(f.name), nameSuffixes: ["Store", "Slice", "Reducer", "Context"], hint: t("frameworks.frameworkProfiles.slicesStoresSelectorsServer") },
+    { id: "native", label: t("frameworks.frameworkProfiles.nativeBridges"), color: "red", imports: ["react-native/Libraries", "expo-modules-core"], rule: isNativeSpec, nameSuffixes: ["Module", "NativeModule", "Spec"], hint: t("frameworks.frameworkProfiles.whereJavascriptCallsNative") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataClients"), color: "amber", supertypes: ["createApi"], imports: ["axios", "@apollo/client", "graphql-request", "@atproto/api"], nameSuffixes: ["Api", "Client", "Service", "Repository"], hint: t("frameworks.frameworkProfiles.whatTalksServer") },
+    { id: "models", label: t("frameworks.frameworkProfiles.typesModels"), color: "violet", rule: (f) => f.isInterface, nameSuffixes: ["Type", "Types", "Model", "Schema", "Props", "State"], hint: t("frameworks.frameworkProfiles.shapesRatherThanBehaviour") },
+    { id: "other", label: t("frameworks.frameworkProfiles.utilitiesOther"), color: "neutral-deep", hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "other",
 }
@@ -818,13 +820,13 @@ const STRUCTURE_DATA_IMPORTS = [
 /** No framework: lanes from what the code does, with naming only as a tiebreaker. */
 export const STRUCTURE: FrameworkProfile = {
   id: "structure",
-  label: "By structure",
+  label: t("frameworks.frameworkProfiles.structure"),
   detect: {},
   lanes: [
-    { id: "entry", label: "Entry points", color: "blue", byReferences: true, rule: looksLikeEntry, nameSuffixes: ["Controller", "Resource", "Handler", "Endpoint", "Listener", "Main", "Application", "Command", "Cli", "Job", "Task", "Scheduler"], hint: "Has main, or nothing references it" },
-    { id: "logic", label: "Logic & Other", color: "green", nameSuffixes: ["Service", "Manager", "Processor", "UseCase", "Interactor", "Facade", "Engine", "Strategy", "Validator", "Factory", "Builder", "Helper", "Util", "Utils"], hint: "Everything unclassified" },
-    { id: "data", label: "Data access", color: "amber", imports: STRUCTURE_DATA_IMPORTS, nameSuffixes: ["Repository", "Dao", "DAO", "Store", "Client", "Gateway", "Adapter", "Connector", "Provider"], hint: "Imports a database, queue or HTTP client" },
-    { id: "models", label: "Models", color: "violet", rule: looksLikeModel, nameSuffixes: ["Entity", "Dto", "DTO", "Model", "Request", "Response", "Event", "Record", "Vo", "VO", "Pojo", "Config", "Properties", "Exception"], hint: "Records and field-heavy types" },
+    { id: "entry", label: t("frameworks.frameworkProfiles.entryPoints"), color: "blue", byReferences: true, rule: looksLikeEntry, nameSuffixes: ["Controller", "Resource", "Handler", "Endpoint", "Listener", "Main", "Application", "Command", "Cli", "Job", "Task", "Scheduler"], hint: t("frameworks.frameworkProfiles.hasMainNothingReferences") },
+    { id: "logic", label: t("frameworks.frameworkProfiles.logicOther"), color: "green", nameSuffixes: ["Service", "Manager", "Processor", "UseCase", "Interactor", "Facade", "Engine", "Strategy", "Validator", "Factory", "Builder", "Helper", "Util", "Utils"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
+    { id: "data", label: t("frameworks.frameworkProfiles.dataAccess"), color: "amber", imports: STRUCTURE_DATA_IMPORTS, nameSuffixes: ["Repository", "Dao", "DAO", "Store", "Client", "Gateway", "Adapter", "Connector", "Provider"], hint: t("frameworks.frameworkProfiles.importsDatabaseQueueHttp") },
+    { id: "models", label: t("frameworks.frameworkProfiles.models"), color: "violet", rule: looksLikeModel, nameSuffixes: ["Entity", "Dto", "DTO", "Model", "Request", "Response", "Event", "Record", "Vo", "VO", "Pojo", "Config", "Properties", "Exception"], hint: t("frameworks.frameworkProfiles.recordsFieldHeavyTypes") },
   ],
   fallback: "logic",
 }
@@ -851,7 +853,7 @@ export function withUnclassified(p: FrameworkProfile): FrameworkProfile {
     const hint = l.hint?.replace(/,?\s*(and\s+)?everything unclassified$/i, "").trim()
     return { ...l, label: l.label.replace(/\s*&\s*Other$/, ""), hint: hint || undefined }
   })
-  lanes.push({ id: UNCLASSIFIED, label: "Unclassified", color: "neutral", hint: "Matched none of this profile's rules" })
+  lanes.push({ id: UNCLASSIFIED, label: t("frameworks.frameworkProfiles.unclassified"), color: "neutral", hint: t("frameworks.frameworkProfiles.matchedNoneProfileS") })
   return { ...p, lanes, fallback: UNCLASSIFIED }
 }
 
@@ -956,7 +958,7 @@ export function detectFramework(facts: Iterable<ClassFacts>, language: Language 
   candidates.sort((a, b) => b.score - a.score || b.strong - a.strong)
   const best = candidates[0]
   const runnerUp = candidates.find(c => c !== best && !demoted.has(c.id))
-  if (!best) return { id: STRUCTURE.id, confident: true, candidates, total, reason: total ? "No framework packages are imported anywhere." : "" }
+  if (!best) return { id: STRUCTURE.id, confident: true, candidates, total, reason: total ? t("frameworks.frameworkProfiles.noFrameworkPackagesImported") : "" }
   const share = total ? (best.strong + best.weak) / total : 0
   const enoughStrong = best.strong >= 3
   // Ten strong classes carry a large codebase with a small share, but not a
@@ -965,11 +967,11 @@ export function detectFramework(facts: Iterable<ClassFacts>, language: Language 
   const enoughShare = share >= 0.03 || (best.strong >= 10 && share >= 0.01)
   const clearLead = !runnerUp || (best.strong >= runnerUp.strong * 2 && best.score >= runnerUp.score * 1.5)
   const confident = enoughStrong && enoughShare && clearLead
-  const evidence = `${best.label}: ${best.strong} class${best.strong === 1 ? "" : "es"} with strong signals, ${best.weak} with shared APIs only, of ${total}.`
+  const evidence = t("frameworks.frameworkProfiles.strongSignalsSharedApis", { bestLabel: best.label, classes: t("common.count.class", { count: best.strong }), weak: best.weak, total })
   let reason = evidence
-  if (!enoughStrong) reason = `${evidence} Shared APIs like injection or validation do not make an application.`
-  else if (!enoughShare) reason = `${evidence} Too small a share of the codebase to be sure.`
-  else if (!clearLead) reason = `${evidence} ${runnerUp!.label} is close behind.`
+  if (!enoughStrong) reason = t("frameworks.frameworkProfiles.sharedApisLikeInjection", { evidence })
+  else if (!enoughShare) reason = t("frameworks.frameworkProfiles.tooSmallShareCodebase", { evidence })
+  else if (!clearLead) reason = t("frameworks.frameworkProfiles.closeBehind", { evidence, label: runnerUp!.label })
   return { id: confident ? best.id : STRUCTURE.id, confident, candidates, total, reason }
 }
 

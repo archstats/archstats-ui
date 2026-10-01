@@ -4,19 +4,19 @@
          the same as having sorted everything: Sylius said "Everything is
          sorted" beside a coverage of 0/0 while it read 1,378 components. -->
     <template v-if="loading">
-      <span class="text-base font-medium text-neutral-900">Reading the components…</span>
-      <p class="text-sm leading-4 text-neutral-500">The first question comes once every component is measured.</p>
+      <span class="text-base font-medium text-neutral-900">{{ t('lens-builder.questionCard.readingComponents') }}</span>
+      <p class="text-sm leading-4 text-neutral-500">{{ t('lens-builder.questionCard.firstQuestionComesOnce') }}</p>
     </template>
     <template v-else-if="laterCount">
-      <span class="text-base font-medium text-neutral-900">Everything else is placed</span>
-      <p class="text-sm leading-4 text-neutral-500">{{ laterCount }} {{ laterCount === 1 ? 'is' : 'are' }} still set aside. Nothing new has landed since, so they are waiting rather than coming round again.</p>
+      <span class="text-base font-medium text-neutral-900">{{ t('lens-builder.questionCard.everythingElsePlaced') }}</span>
+      <p class="text-sm leading-4 text-neutral-500">{{ t('lens-builder.questionCard.stillSetAsideNothing', { are: t('common.count.is', { count: laterCount }) }) }}</p>
       <button type="button" class="ui-btn ui-btn-sm self-start" @click="emit('unpark-later')">
-        <Icon icon="history" :size="13" class="text-neutral-500"/><span>Bring {{ laterCount === 1 ? 'it' : 'them' }} back</span>
+        <Icon icon="history" :size="13" class="text-neutral-500"/><span>{{ t('lens-builder.questionCard.bringBack', { them: t('common.noun.it', { count: laterCount }) }) }}</span>
       </button>
     </template>
     <template v-else>
-      <span class="text-base font-medium text-neutral-900">Everything is sorted</span>
-      <p class="text-sm leading-4 text-neutral-500">Every component is in a group or out of this cut. Save the lens, or open a group to keep shaping it.</p>
+      <span class="text-base font-medium text-neutral-900">{{ t('lens-builder.questionCard.everythingSorted') }}</span>
+      <p class="text-sm leading-4 text-neutral-500">{{ t('lens-builder.questionCard.everyComponentGroupOut') }}</p>
     </template>
   </div>
   <div v-else class="flex flex-col gap-3">
@@ -26,18 +26,18 @@
     <p v-if="hint" class="text-xs leading-4 text-neutral-500">{{ hint }}</p>
     <div class="flex flex-col gap-1">
       <div class="flex items-baseline gap-2">
-        <span class="ui-label">Where does this belong?</span>
+        <span class="ui-label">{{ t('lens-builder.questionCard.whereDoesBelong') }}</span>
         <span class="ml-auto flex shrink-0 items-baseline gap-1 font-mono text-xs tabular-nums text-neutral-400">
-          <span v-if="round > 1" class="rounded bg-neutral-100 px-1 text-neutral-500" :title="`Everything you set aside came round again; this is lap ${round}`">Lap {{ round }}</span>
-          <span :title="`${queueTotal} questions left in this lap`">{{ queueTotal }} left</span>
-          <template v-if="laterCount"><span aria-hidden="true">·</span><span :title="`${laterCount} set aside; they come round again once the rest is placed`">{{ laterCount }} later</span></template>
+          <span v-if="round > 1" class="rounded bg-neutral-100 px-1 text-neutral-500" :title="t('lens-builder.questionCard.everythingYouSetAside', { round })">{{ t('lens-builder.questionCard.lap', { round }) }}</span>
+          <span :title="t('lens-builder.questionCard.questionsLeftLap', { queueTotal })">{{ t('lens-builder.questionCard.left', { queueTotal }) }}</span>
+          <template v-if="laterCount"><span aria-hidden="true">·</span><span :title="t('lens-builder.questionCard.setAsideTheyCome', { laterCount })">{{ t('lens-builder.questionCard.later', { laterCount }) }}</span></template>
         </span>
       </div>
       <div class="flex items-baseline gap-2">
         <span class="min-w-0 truncate text-base font-medium text-neutral-900" :title="bundle.prefix || bundle.name">{{ bundle.name }}</span>
         <span class="shrink-0 font-mono text-xs text-neutral-400">{{ bundle.members.length }}</span>
       </div>
-      <p class="text-xs leading-4 text-neutral-500">{{ bundle.reason }}<template v-if="bundle.lines"> · {{ formatNumber(bundle.lines, 0) }} lines</template></p>
+      <p class="text-xs leading-4 text-neutral-500">{{ bundle.reason }}<template v-if="bundle.lines">{{ ' ' + t('lens-builder.questionCard.lines', { lines: formatNumber(bundle.lines, 0) }) }}</template></p>
     </div>
 
     <!-- What is actually being asked about, above the places it could go:
@@ -48,14 +48,14 @@
          about something it never named. -->
     <div class="flex flex-col gap-1">
       <!-- The count is already on the title above; saying it twice is noise. -->
-      <span class="ui-label">{{ bundle.members.length > 1 ? 'What you are placing' : 'The component' }}</span>
+      <span class="ui-label">{{ bundle.members.length > 1 ? t('lens-builder.questionCard.whatYouPlacing') : t('lens-builder.questionCard.component') }}</span>
       <ul class="flex max-h-40 flex-col overflow-y-auto">
         <li v-for="id in bundle.members" :key="id" class="group flex h-6 items-center gap-2">
           <KindMark kind="component"/>
-          <button type="button" class="min-w-0 truncate text-left font-mono text-sm text-neutral-800 hover:text-accent-700" dir="rtl" :title="`${id} · show it in the map`" @click="emit('focus', id)">{{ id }}</button>
+          <button type="button" class="min-w-0 truncate text-left font-mono text-sm text-neutral-800 hover:text-accent-700" dir="rtl" :title="t('lens-builder.questionCard.showMap', { id })" @click="emit('focus', id)">{{ id }}</button>
           <span class="ml-auto flex shrink-0 items-center gap-1 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="`Park ${id} for later`" title="Park this one for later" @click="emit('park-one', id, 'later')"><Icon icon="history" :size="11"/></button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="`Drop ${id}`" title="Not in this lens" @click="emit('park-one', id, 'out')"><Icon icon="x" :size="11"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('lens-builder.questionCard.parkLater', { id })" :title="t('lens-builder.questionCard.parkOneLater')" @click="emit('park-one', id, 'later')"><Icon icon="history" :size="11"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('lens-builder.questionCard.drop', { id })" :title="t('lens-builder.questionCard.notLens')" @click="emit('park-one', id, 'out')"><Icon icon="x" :size="11"/></button>
           </span>
         </li>
       </ul>
@@ -66,8 +66,8 @@
          act below, so the two are never mistaken for each other. -->
     <div class="flex flex-col gap-1.5">
       <div class="flex items-baseline gap-2">
-        <span class="ui-label">Put <span class="text-neutral-700">{{ bundle.name }}</span> in</span>
-        <span v-if="sharedReason" class="min-w-0 truncate text-xs text-neutral-400">closest by {{ sharedReason }}</span>
+        <span class="ui-label"><I18nT k="lens-builder.questionCard.put2"><template #bundleName><span class="text-neutral-700">{{ bundle.name }}</span></template></I18nT></span>
+        <span v-if="sharedReason" class="min-w-0 truncate text-xs text-neutral-400">{{ t('lens-builder.questionCard.closest', { sharedReason }) }}</span>
       </div>
       <div v-if="guesses.length" class="flex flex-col gap-1">
         <button
@@ -76,7 +76,7 @@
           type="button"
           class="flex h-8 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors"
           :class="i === 0 ? 'bg-accent-600 text-white hover:bg-accent-700' : 'text-neutral-800 hover:bg-neutral-100'"
-          :title="`Put it in ${g.name} — closest by ${g.reason}${g.detail ? ' · ' + g.detail : ''}`"
+          :title="t('lens-builder.questionCard.putClosest', { gName: g.name, reason: g.reason, value: g.detail ? ' · ' + g.detail : '' })"
           @click="emit('assign', g.key)"
         >
           <Icon icon="arrow-right" :size="12" class="shrink-0" :class="i === 0 ? 'text-white/70' : 'text-neutral-400'"/>
@@ -87,7 +87,7 @@
             <span class="h-1 w-8 overflow-hidden rounded-full" :class="i === 0 ? 'bg-white/25' : 'bg-neutral-100'">
               <span class="block h-full rounded-full" :class="i === 0 ? 'bg-white' : 'bg-blue-500'" :style="{ width: share(g) + '%' }"></span>
             </span>
-            <span v-if="i === 0 || g.hotkey" class="rounded px-1 font-mono text-[10px] leading-4" :class="i === 0 ? 'bg-white/20' : 'bg-neutral-200 text-neutral-600'">{{ i === 0 ? 'Enter' : g.hotkey }}</span>
+            <span v-if="i === 0 || g.hotkey" class="rounded px-1 font-mono text-[10px] leading-4" :class="i === 0 ? 'bg-white/20' : 'bg-neutral-200 text-neutral-600'">{{ i === 0 ? t('lens-builder.questionCard.enter') : g.hotkey }}</span>
           </span>
         </button>
       </div>
@@ -95,13 +95,13 @@
       <!-- Every other group, one click away rather than only on a number key. -->
       <div v-if="others.length" class="flex flex-col gap-1">
         <button v-if="!open" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="showAll = true">
-          Show {{ others.length }} more {{ others.length === 1 ? 'group' : 'groups' }}
+          {{ t('lens-builder.questionCard.showMore', { othersLength: others.length, groups: t('common.noun.group', { count: others.length }) }) }}
         </button>
         <template v-else>
-          <input v-if="others.length > 8" v-model="filter" type="search" class="ui-input ui-input-sm w-full" placeholder="Find a group" aria-label="Find a group"/>
+          <input v-if="others.length > 8" v-model="filter" type="search" class="ui-input ui-input-sm w-full" :placeholder="t('lens-builder.questionCard.findGroup')" :aria-label="t('lens-builder.questionCard.findGroup')"/>
           <ul class="flex max-h-44 flex-col overflow-y-auto">
             <li v-for="g in filtered" :key="g.key">
-              <button type="button" class="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-neutral-800 hover:bg-neutral-100" :title="`Put ${bundle.name} in ${g.name}`" @click="emit('assign', g.key)">
+              <button type="button" class="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-neutral-800 hover:bg-neutral-100" :title="t('lens-builder.questionCard.put', { bundleName: bundle.name, gName: g.name })" @click="emit('assign', g.key)">
                 <Icon icon="arrow-right" :size="12" class="shrink-0 text-neutral-400"/>
                 <span class="h-2 w-2 shrink-0 rounded-[2px]" :style="{ backgroundColor: g.color }"></span>
                 <span class="min-w-0 truncate">{{ g.name }}</span>
@@ -112,31 +112,30 @@
         </template>
       </div>
 
-      <button type="button" class="ui-btn ui-btn-sm justify-start" title="Start a group from this (N)" @click="emit('new-group')">
+      <button type="button" class="ui-btn ui-btn-sm justify-start" :title="t('lens-builder.questionCard.startGroupN')" @click="emit('new-group')">
         <Icon icon="plus" :size="13" class="text-neutral-500"/>
-        <span class="min-w-0 truncate">New group “{{ bundle.name }}”</span>
+        <span class="min-w-0 truncate">{{ t('lens-builder.questionCard.newGroup', { bundleName: bundle.name }) }}</span>
         <span class="ml-auto shrink-0 rounded bg-neutral-200 px-1 font-mono text-[10px] leading-4 text-neutral-600">N</span>
       </button>
-      <p v-if="!guesses.length" class="text-xs leading-4 text-neutral-500">Nothing it clearly belongs to yet. Start a group from it, or set it aside.</p>
+      <p v-if="!guesses.length" class="text-xs leading-4 text-neutral-500">{{ t('lens-builder.questionCard.nothingClearlyBelongsYet') }}</p>
 
       <!-- Two ways not to answer, and they mean different things. -->
       <div class="flex flex-col gap-1 hairline-t pt-2">
         <div class="flex flex-wrap items-center gap-1.5">
-          <button v-if="canSplit" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Too coarse to answer? Ask about its branches instead (S)" @click="emit('split')">
-            <Icon icon="git-branch" :size="13" class="text-neutral-500"/><span>Split the question</span>
+          <button v-if="canSplit" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('lens-builder.questionCard.tooCoarseAnswerAsk')" @click="emit('split')">
+            <Icon icon="git-branch" :size="13" class="text-neutral-500"/><span>{{ t('lens-builder.questionCard.splitQuestion') }}</span>
           </button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Set it aside; it comes round again once the rest is placed (L)" @click="emit('park', 'later')">Later</button>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="It has no place in this lens at all (X)" @click="emit('park', 'out')">Not in this cut</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('lens-builder.questionCard.setAsideComesRound')" @click="emit('park', 'later')">{{ t('lens-builder.questionCard.later2') }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('lens-builder.questionCard.hasNoPlaceLens')" @click="emit('park', 'out')">{{ t('lens-builder.questionCard.notCut') }}</button>
         </div>
         <p class="text-xs leading-4 text-neutral-400">
-          <span class="text-neutral-500">Later</span> comes round again once everything else is placed. <span class="text-neutral-500">Not in this cut</span> means it has no place in this lens at all.
-        </p>
+          <I18nT k="lens-builder.questionCard.comesRoundAgainOnce"><template #span><span class="text-neutral-500">{{ t('lens-builder.questionCard.later2') }}</span></template><template #span2><span class="text-neutral-500">{{ t('lens-builder.questionCard.notCut') }}</span></template></I18nT> </p>
       </div>
     </div>
 
     <!-- The queue is finite, and showing the next few proves it. -->
     <p v-if="upNext.length" class="truncate text-xs leading-4 text-neutral-400">
-      Up next: <template v-for="(b, i) in upNext" :key="b.key"><span class="text-neutral-500">{{ b.name }}</span> {{ b.members.length }}<template v-if="i < upNext.length - 1"> · </template></template>
+      {{ t('lens-builder.questionCard.upNext') }} <template v-for="(b, i) in upNext" :key="b.key"><span class="text-neutral-500">{{ b.name }}</span> {{ b.members.length }}<template v-if="i < upNext.length - 1"> · </template></template>
     </p>
   </div>
 </template>
@@ -147,6 +146,8 @@ import Icon from "~/shared/ui/Icon.vue";
 import KindMark from "~/features/connections/components/KindMark.vue";
 import { formatNumber } from "~/shared/format";
 import type { Bundle } from "~/features/lens-builder/studio";
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // One question at a time, always the biggest one left, with the engine's
 // guess under the Enter key and every other answer one keystroke away.

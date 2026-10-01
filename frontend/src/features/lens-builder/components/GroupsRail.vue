@@ -9,21 +9,21 @@
          how much of the CODE is placed, and how much still sits outside. -->
     <div class="flex flex-col gap-2 px-3 pb-2.5 pt-3 hairline-b">
       <div class="flex items-baseline gap-2">
-        <span class="ui-section-title">Coverage</span>
+        <span class="ui-section-title">{{ t('lens-builder.groupsRail.coverage') }}</span>
         <span class="ml-auto font-mono text-sm tabular-nums text-neutral-700">{{ coverage.placed }}<span class="text-neutral-400">/{{ coverage.total }}</span></span>
       </div>
       <span
         class="flex h-1.5 overflow-hidden rounded-full bg-neutral-200"
-        :title="`${coverage.confirmed} confirmed · ${coverage.proposed} proposed · ${coverage.unplaced} left${coverage.split ? ` · ${coverage.split} divided between groups` : ''}`"
+        :title="t('lens-builder.groupsRail.confirmedProposedLeft', { confirmed: coverage.confirmed, proposed: coverage.proposed, unplaced: coverage.unplaced, value: coverage.split ? t('lens-builder.groupsRail.dividedBetweenGroups', { split: coverage.split }) : '' })"
       >
         <span class="bg-green-500" :style="{ width: pct(coverage.confirmed) }"></span>
         <span class="bg-green-300" :style="{ width: pct(coverage.proposed) }"></span>
       </span>
       <div class="flex items-baseline gap-2 text-xs leading-4">
-        <span v-if="coverage.linesTotal" class="text-neutral-500" title="Counting components alone flatters a cut: a third of them can be a twentieth of the code.">
-          {{ linesPct }}% of the code
+        <span v-if="coverage.linesTotal" class="text-neutral-500" :title="t('lens-builder.groupsRail.countingComponentsAloneFlatters')">
+          {{ t('lens-builder.groupsRail.code', { linesPct }) }}
         </span>
-        <span v-if="coverage.unplaced" class="ml-auto text-neutral-500">{{ coverage.unplaced }} left</span>
+        <span v-if="coverage.unplaced" class="ml-auto text-neutral-500">{{ t('lens-builder.groupsRail.left', { unplaced: coverage.unplaced }) }}</span>
       </div>
     </div>
 
@@ -35,12 +35,12 @@
          a verdict on lenses it cannot judge. -->
     <div v-if="quality.placed >= 2 && cut !== 'horizontal'" class="flex flex-col gap-1.5 px-3 py-2.5 hairline-b">
       <div class="flex items-baseline gap-2">
-        <span class="ui-section-title">Cohesion</span>
+        <span class="ui-section-title">{{ t('lens-builder.groupsRail.cohesion') }}</span>
         <span class="ml-auto flex items-baseline gap-1.5">
           <span
             class="font-mono text-sm tabular-nums"
             :class="TONE[quality.reading.tone]"
-            :title="`${Math.round(quality.kept * 100)}% of references between grouped components stay inside one; ${Math.round(quality.crossing)} cross a boundary. Modularity ${quality.modularity.toFixed(2)}.`"
+            :title="t('lens-builder.groupsRail.referencesBetweenGroupedComponents', { value: Math.round(quality.kept * 100), crossing: Math.round(quality.crossing), value2: quality.modularity.toFixed(2) })"
           >{{ Math.round(quality.kept * 100) }}%</span>
           <span class="text-xs leading-4" :class="TONE[quality.reading.tone]">{{ quality.reading.word }}</span>
         </span>
@@ -52,29 +52,27 @@
         v-if="lonely.length"
         type="button"
         class="text-left text-xs leading-4 text-amber-700 hover:underline"
-        :title="`Open ${lonely[0].name}${lonely.length > 1 ? ` — and ${lonely.length - 1} more holding one component` : ''}`"
+        :title="t('lens-builder.groupsRail.open', { name: lonely[0].name, value: lonely.length > 1 ? t('lens-builder.groupsRail.moreHoldingOneComponent', { value: lonely.length - 1 }) : '' })"
         @click="emit('activate', lonely[0].key)"
       >
-        {{ lonely.length }} {{ lonely.length === 1 ? 'group holds' : 'groups hold' }} one component
+        {{ t('lens-builder.groupsRail.oneComponent', { groupsHold: t('common.count.groupHolds', { count: lonely.length }) }) }}
       </button>
-      <span v-if="quality.biggest > 0.5" class="text-xs leading-4 text-amber-700">One group holds {{ Math.round(quality.biggest * 100) }}% of what is placed</span>
+      <span v-if="quality.biggest > 0.5" class="text-xs leading-4 text-amber-700">{{ t('lens-builder.groupsRail.oneGroupHoldsWhat', { value: Math.round(quality.biggest * 100) }) }}</span>
       <button
         v-if="weakest"
         type="button"
         class="text-left text-xs leading-4 text-neutral-500 hover:underline"
-        :title="`Open ${weakest.name} — ${readingFor(weakest.key).word}`"
+        :title="t('lens-builder.groupsRail.open2', { weakestName: weakest.name, word: readingFor(weakest.key).word })"
         @click="emit('activate', weakest.key)"
       >
-        Weakest <span class="text-neutral-700">{{ weakest.name }}</span> at {{ Math.round(weakest.kept * 100) }}%
-      </button>
+<I18nT k="lens-builder.groupsRail.weakest"><template #weakestName><span class="text-neutral-700">{{ weakest.name }}</span></template><template #value>{{ Math.round(weakest.kept * 100) }}</template></I18nT> </button>
     </div>
 
     <!-- A layer is not judged by what stays inside it, so it is not given a
          number that would read as a bad score for doing its job. -->
     <div v-else-if="quality.placed >= 2" class="px-3 py-2.5 hairline-b">
       <span class="text-xs leading-4 text-neutral-500">
-        A layer's members play the same role rather than lean on each other, so how much
-        referencing stays inside a band says nothing about whether the bands are right.
+        {{ t('lens-builder.groupsRail.layerSMembersPlay') }}
       </span>
     </div>
 
@@ -82,17 +80,17 @@
          the groups are and asks only which name to keep. -->
     <div v-if="picked.size > 1" class="flex flex-col gap-1 bg-accent-50 px-3 py-2 hairline-b">
       <div class="flex items-baseline gap-2">
-        <span class="ui-section-title text-accent-700">Merge {{ picked.size }}</span>
-        <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="clearPicked()">Cancel</button>
+        <span class="ui-section-title text-accent-700">{{ t('lens-builder.groupsRail.merge', { pickedSize: picked.size }) }}</span>
+        <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="clearPicked()">{{ t('lens-builder.groupsRail.cancel') }}</button>
       </div>
-      <span class="text-xs leading-4 text-neutral-600">Keep which name?</span>
+      <span class="text-xs leading-4 text-neutral-600">{{ t('lens-builder.groupsRail.keepWhichName') }}</span>
       <div class="flex flex-wrap gap-1">
         <button
           v-for="g in pickedGroups"
           :key="g.key"
           type="button"
           class="flex h-6 items-center gap-1.5 rounded border border-neutral-200 bg-surface px-1.5 text-xs text-neutral-800 transition-colors hover:border-accent-500 hover:bg-accent-100"
-          :title="`Merge the other ${picked.size - 1} into ${g.name}`"
+          :title="t('lens-builder.groupsRail.mergeOther', { value: picked.size - 1, gName: g.name })"
           @click="mergePicked(g.key)"
         >
           <span class="h-2 w-2 shrink-0 rounded-[2px]" :style="{ backgroundColor: colorOf(g.key) }"></span>
@@ -107,15 +105,12 @@
            faster than sorting your way to it, and it is worth saying so here
            rather than letting someone sort 611 components by hand first. -->
       <div v-if="!groups.length" class="flex flex-col gap-2 px-3 py-4">
-        <span class="text-sm font-medium text-neutral-800">Nothing grouped yet</span>
+        <span class="text-sm font-medium text-neutral-800">{{ t('lens-builder.groupsRail.nothingGroupedYet') }}</span>
         <span class="text-xs leading-4 text-neutral-500">
-          Propose a first pass and edit what comes back, or sort by hand from the right.
+          {{ t('lens-builder.groupsRail.proposeFirstPassEdit') }}
         </span>
         <span class="text-xs leading-4 text-neutral-500">
-          If you already know the shape, you do not need this room: type a pattern
-          like <span class="font-mono text-neutral-700">**.controller</span> into the
-          query box on any view and keep what it finds.
-        </span>
+{{ t('lens-builder.groupsRail.ifYouAlreadyKnow') }} <span class="font-mono text-neutral-700">**.controller</span>{{ ' ' + t('lens-builder.groupsRail.queryBoxAnyView') + ' ' }} </span>
       </div>
       <ul class="flex flex-col">
         <template v-for="(g, i) in groups" :key="g.key">
@@ -134,7 +129,7 @@
           <button
             type="button"
             class="flex min-w-0 grow items-center gap-2 self-stretch pl-3 text-left"
-            :title="`${g.name} — ${readingFor(g.key).word}. Click to open${i < 9 ? `, or press ${i + 1} to put the question here` : ''}. Shift-click to pick several, then merge.`"
+            :title="t('lens-builder.groupsRail.clickOpenShiftClick', { gName: g.name, word: readingFor(g.key).word, value: i < 9 ? t('lens-builder.groupsRail.pressPutQuestionHere', { value: i + 1 }) : '' })"
             @click="onPick(g.key, $event)"
           >
             <span class="h-2.5 w-2.5 shrink-0 rounded-[3px] transition-shadow" :class="{ 'ring-2 ring-accent-500 ring-offset-1 ring-offset-ground': picked.has(g.key) }" :style="{ backgroundColor: colorOf(g.key) }"></span>
@@ -145,7 +140,7 @@
                 :value="g.name"
                 type="text"
                 class="ui-input ui-input-sm w-full"
-                :aria-label="`Rename ${g.name}`"
+                :aria-label="t('lens-builder.groupsRail.rename', { gName: g.name })"
                 @click.stop
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 @keydown.esc="emit('rename-done', g.key, g.name)"
@@ -162,15 +157,15 @@
                   <span class="block h-full rounded-full" :class="BAR[readingFor(g.key).tone]" :style="{ width: Math.round(keptFor(g.key) * 100) + '%' }"></span>
                 </span>
                 <span v-if="cut !== 'horizontal'" class="font-mono text-2xs leading-3 tabular-nums" :class="TONE[readingFor(g.key).tone]">{{ Math.round(keptFor(g.key) * 100) }}%</span>
-                <span v-if="g.parts.length === 1" class="text-2xs leading-3 text-amber-700">alone</span>
+                <span v-if="g.parts.length === 1" class="text-2xs leading-3 text-amber-700">{{ t('lens-builder.groupsRail.alone') }}</span>
               </span>
             </span>
           </button>
           <span class="flex shrink-0 items-center gap-0.5 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
-            <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="`Rename ${g.name}`" title="Rename" @click.stop="emit('rename', g.key)">
+            <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900" :aria-label="t('lens-builder.groupsRail.rename', { gName: g.name })" :title="t('lens-builder.groupsRail.rename2')" @click.stop="emit('rename', g.key)">
               <Icon icon="pencil" :size="11"/>
             </button>
-            <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="`Delete ${g.name}`" :title="`Delete — its ${g.parts.length} members go back to the pool`" @click.stop="emit('drop', g.key)">
+            <button type="button" class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 hover:bg-red-100 hover:text-red-700" :aria-label="t('lens-builder.groupsRail.delete', { gName: g.name })" :title="t('lens-builder.groupsRail.deleteMembersGoBack', { partsLength: g.parts.length })" @click.stop="emit('drop', g.key)">
               <Icon icon="trash" :size="11"/>
             </button>
           </span>
@@ -181,16 +176,16 @@
           <span
             v-if="i < 9"
             class="hidden shrink-0 rounded bg-neutral-200 px-1 font-mono text-2xs leading-4 text-neutral-600 group-hover:inline"
-            :title="`Press ${i + 1} to put the open question here`"
+            :title="t('lens-builder.groupsRail.pressPutOpenQuestion', { value: i + 1 })"
           >{{ i + 1 }}</span>
-          <span class="shrink-0 text-right font-mono text-xs tabular-nums text-neutral-400" :title="`${partsOf(g).whole} whole${partsOf(g).parts ? ` and ${partsOf(g).parts} part${partsOf(g).parts === 1 ? '' : 's'} of one` : ''}`">
+          <span class="shrink-0 text-right font-mono text-xs tabular-nums text-neutral-400" :title="t('lens-builder.groupsRail.whole', { whole: partsOf(g).whole, value: partsOf(g).parts ? t('lens-builder.groupsRail.one', { parts: t('common.count.part', { count: partsOf(g).parts }) }) : '' })">
             {{ partsOf(g).whole }}<span v-if="partsOf(g).parts" class="text-neutral-500">+{{ partsOf(g).parts }}</span>
           </span>
         </li>
         </template>
       </ul>
-      <button type="button" class="flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900" title="New group (N)" @click="emit('new-group')">
-        <Icon icon="plus" :size="13"/><span>New group</span>
+      <button type="button" class="flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900" :title="t('lens-builder.groupsRail.newGroupN')" @click="emit('new-group')">
+        <Icon icon="plus" :size="13"/><span>{{ t('lens-builder.groupsRail.newGroup') }}</span>
         <span class="ml-auto rounded bg-neutral-200 px-1 font-mono text-2xs leading-4 text-neutral-600">N</span>
       </button>
     </div>
@@ -215,6 +210,8 @@ import { computed, ref } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import type { DraftGroup } from "~/features/lens-builder/draft.store";
 import { OUT_PILE } from "~/features/lens-builder/studio";
+import { t } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // The dimension so far: its groups with the number key that fills them, how
 // much of the codebase is covered, and the two piles that keep you moving.
@@ -270,11 +267,11 @@ const keptByKey = computed(() => new Map(props.quality.groups.map(g => [g.key, g
 const keptFor = (key: string) => keptByKey.value.get(key) ?? 0;
 function readingFor(key: string): { word: string; tone: string } {
   const g = props.groups.find(x => x.key === key);
-  if (g && g.parts.length < 2) return { word: "a group of one is not a module", tone: "poor" };
+  if (g && g.parts.length < 2) return { word: t("lens-builder.groupsRail.groupOneNotModule"), tone: "poor" };
   const k = keptFor(key);
-  if (k >= 0.5) return { word: `keeps ${Math.round(k * 100)}% of its references inside — a real unit`, tone: "good" };
-  if (k >= 0.25) return { word: `keeps ${Math.round(k * 100)}% inside — holds together, but reaches out a lot`, tone: "fair" };
-  return { word: `keeps ${Math.round(k * 100)}% inside — barely a unit`, tone: "poor" };
+  if (k >= 0.5) return { word: t("lens-builder.groupsRail.keepsReferencesInsideReal", { value: Math.round(k * 100) }), tone: "good" };
+  if (k >= 0.25) return { word: t("lens-builder.groupsRail.keepsInsideHoldsTogether", { value: Math.round(k * 100) }), tone: "fair" };
+  return { word: t("lens-builder.groupsRail.keepsInsideBarelyUnit", { value: Math.round(k * 100) }), tone: "poor" };
 }
 
 // ── Picking several, so they can be merged ───────────────────────────────
@@ -331,7 +328,7 @@ function onDrop(into: string) {
 // Later is a lap, not a place: it comes back on its own, so it has no row
 // here. Only a real destination does.
 const piles = computed(() => [
-  { id: OUT_PILE, label: "Not in this cut", count: props.coverage.out, icon: "eye-off", hotkey: "X", hint: "Outside this lens altogether" },
+  { id: OUT_PILE, label: t("lens-builder.groupsRail.notCut"), count: props.coverage.out, icon: "eye-off", hotkey: "X", hint: t("lens-builder.groupsRail.outsideLensAltogether") },
 ]);
 
 /** Whole components against shares of one: never added together. */

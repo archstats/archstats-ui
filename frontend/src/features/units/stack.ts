@@ -2,6 +2,7 @@ import type { Floor, Flow as StackFlow } from "~/features/checks/components/Stac
 import { stackOrder } from "~/features/checks/folderTree"
 import { laneShade, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow } from "./graph"
+import { t, intlLocale } from "~/shared/i18n"
 
 export interface LaneBand { id: string; label: string; color: LaneColor; count: number }
 
@@ -21,7 +22,7 @@ export function laneStack(lanes: LaneBand[], flows: LaneFlow[], notLayers: strin
   const ordered = [...stackOrder(layers.map((l) => l.id), pairs).map((id) => byId.get(id)!), ...lanes.filter((l) => outside.has(l.id))]
   const floors = ordered.map((l) => ({
     id: l.id, label: l.label, weight: l.count, color: laneShade(l.color),
-    sub: `${l.count.toLocaleString()} module${l.count === 1 ? "" : "s"}`,
+    sub: t("units.stack.text", { modules: t("common.count.module", { count: l.count }) }),
   }))
   const label = (id: string) => byId.get(id)?.label ?? id
   // laneFlows lists each direction once, carrying the other direction's
@@ -32,7 +33,7 @@ export function laneStack(lanes: LaneBand[], flows: LaneFlow[], notLayers: strin
     const bad = minority && !outside.has(f.from) && !outside.has(f.to)
     return {
       key: `${f.from}>${f.to}`, from: f.from, to: f.to, count: f.count, bad,
-      title: `${label(f.from)} uses ${label(f.to)}: ${f.count.toLocaleString()} reference${f.count === 1 ? "" : "s"}${bad ? ", against the grain" : ""}`,
+      title: t("units.stack.uses", { from: label(f.from), to: label(f.to), references: t("common.count.reference", { count: f.count }), value: bad ? t("units.stack.againstGrain") : "" }),
     }
   })
   return { floors, flows: links }

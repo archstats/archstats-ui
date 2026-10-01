@@ -3,6 +3,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { assignFiles, ecosystems, isFixture, parseModules, type BuildModule } from "./buildModules"
 import type { Suggestion } from "./suggest"
+import { t } from "~/shared/i18n"
 
 // The build's own modules as a proposed lens: one file-grain group per module,
 // test fixtures left out unless asked for.
@@ -39,7 +40,7 @@ export function useBuildModules() {
                 name: nameOf(m),
                 parts,
                 components: parts.filter(p => p.files.length * 2 >= p.total).map(p => p.component),
-                reasons: [{ signal: "path" as any, text: `${m.kind} module declared by ${m.manifest || m.directory}`, share: 1 }],
+                reasons: [{ signal: "path" as any, text: t("lens-builder.useBuildModules.moduleDeclared", { kind: m.kind, value: m.manifest || m.directory }), share: 1 }],
                 units: files.length,
                 split: parts.filter(p => p.files.length < p.total).length,
             }
@@ -47,10 +48,10 @@ export function useBuildModules() {
     })
 
     const reason = computed(() => {
-        if (loading.value) return "Reading…"
-        if (!data.hasView("modules")) return "This snapshot records no build modules; scan again to read the manifests."
-        if (!rows.value.length) return "No build modules; observed structure only."
-        if (modules.value.length === 1) return `Declares one module (${modules.value[0].name}), so there is nothing to divide.`
+        if (loading.value) return t("lens-builder.useBuildModules.reading")
+        if (!data.hasView("modules")) return t("lens-builder.useBuildModules.snapshotRecordsNoBuild")
+        if (!rows.value.length) return t("lens-builder.useBuildModules.noBuildModulesObserved")
+        if (modules.value.length === 1) return t("lens-builder.useBuildModules.declaresOneModuleSo", { modulesName: modules.value[0].name })
         return null
     })
 

@@ -5,12 +5,12 @@
         :floors="e.floors"
         :flows="e.flows"
         :selected="stackSel"
-        up-label="points back up"
+        :up-label="t('ask.evFigures.pointsBackUp')"
         :ariaLabel="e.title"
         @select="(s: any) => (stackSel = s)"
     />
-    <p class="ev-note">Floors: {{ e.grouping }}. Bands run downward with the imports; red ones point back up. Imports inside a floor are not drawn.</p>
-    <p v-if="stackSel?.kind === 'floor'" class="ev-note"><button type="button" class="ev-link" @click="$emit('ask', `What is in ${stackSel.id}, and what does it depend on?`)">Ask about {{ stackSel.id }}</button></p>
+    <p class="ev-note">{{ t('ask.evFigures.floorsBandsRunDownward', { grouping: e.grouping }) }}</p>
+    <p v-if="stackSel?.kind === 'floor'" class="ev-note"><button type="button" class="ev-link" @click="$emit('ask', t('ask.evFigures.whatWhatDoesDepend', { stackSelId: stackSel.id }))">{{ t('ask.evFigures.askAbout', { stackSelId: stackSel.id }) }}</button></p>
   </div>
 
   <!-- Where the code lives: the folder map, painted by the chosen measure. -->
@@ -22,7 +22,7 @@
         :describe="describe"
         :ariaLabel="e.title"
         :legend="legend"
-        @select="(f: string | null, kind: 'file' | 'folder') => f && $emit('ask', kind === 'file' ? `Outline ${f}` : `What is in the folder ${f}?`)"
+        @select="(f: string | null, kind: 'file' | 'folder') => f && $emit('ask', kind === 'file' ? t('ask.evFigures.outline', { f }) : t('ask.evFigures.whatFolder', { f }))"
     />
   </div>
 
@@ -36,7 +36,7 @@
         :only="null"
         :matching="null"
         :window-words="e.windowWords"
-        @pick="(c: string) => $emit('ask', `Who knows ${c}, and what happens if they leave?`)"
+        @pick="(c: string) => $emit('ask', t('ask.evFigures.whoKnowsWhatHappens', { c }))"
     />
   </div>
 </template>
@@ -50,6 +50,7 @@ import { knowledgeTree, type KnowledgeRow } from "~/features/git/knowledgeLeft"
 import type { FigureLegend } from "~/features/export/figure"
 import { chartTheme } from "~/shared/ui/useChartTheme"
 import type { Evidence } from "../engine/types"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = defineProps<{ e: Evidence }>()
 defineEmits<{ (ev: "ask", q: string): void }>()
@@ -61,34 +62,34 @@ const selectedSet = new Set<string>()
 // ── Folder map ──
 const lines = computed(() => new Map(props.e.kind === "folders" ? props.e.files.map((f, i) => [f, props.e.kind === "folders" ? props.e.lines[i] : 0]) : []))
 const valueOf = computed(() => new Map(props.e.kind === "folders" ? props.e.files.map((f, i) => [f, props.e.kind === "folders" ? props.e.values[i] : null]) : []))
-const t = chartTheme()
-const ROLE: Record<string, string> = { production: t.blue, test: t.green, generated: t.violet, third_party: t.amber, non_code: t.hairlineStrong }
+const theme = chartTheme()
+const ROLE: Record<string, string> = { production: theme.blue, test: theme.green, generated: theme.violet, third_party: theme.amber, non_code: theme.hairlineStrong }
 const categories = computed(() => {
   if (props.e.kind !== "folders" || (props.e.colorBy !== "component" && props.e.colorBy !== "role")) return new Map<string, string>()
   const byLines = new Map<string, number>()
   props.e.files.forEach((f, i) => { const k = String((props.e as any).values[i] ?? "unknown"); byLines.set(k, (byLines.get(k) ?? 0) + (props.e as any).lines[i]) })
-  const palette = [t.blue, t.green, t.violet, t.amber, t.red, t.accent, t.blueSoft, t.greenSoft, t.violetSoft, t.amberSoft]
+  const palette = [theme.blue, theme.green, theme.violet, theme.amber, theme.red, theme.accent, theme.blueSoft, theme.greenSoft, theme.violetSoft, theme.amberSoft]
   const keys = [...byLines].sort((a, b) => b[1] - a[1]).map(([k]) => k)
-  return new Map(keys.map((k, i) => [k, props.e.kind === "folders" && props.e.colorBy === "role" ? ROLE[k] ?? t.hairline : i < palette.length ? palette[i] : t.hairline]))
+  return new Map(keys.map((k, i) => [k, props.e.kind === "folders" && props.e.colorBy === "role" ? ROLE[k] ?? theme.hairline : i < palette.length ? palette[i] : theme.hairline]))
 })
 const maxChurn = computed(() => (props.e.kind === "folders" && props.e.colorBy === "churn" ? Math.max(1, ...props.e.values.map(v => Number(v) || 0)) : 1))
 function ramp(colors: string[], x: number) { return colors[Math.max(0, Math.min(colors.length - 1, Math.floor(x * colors.length)))] }
 const paint = (f: string) => {
-  if (props.e.kind !== "folders") return t.hairline
+  if (props.e.kind !== "folders") return theme.hairline
   const v = valueOf.value.get(f)
-  if (props.e.colorBy === "health") { const h = Number(v); return !h ? t.hairline : ramp([...t.heat].reverse(), (h - 1) / 9) }
-  if (props.e.colorBy === "churn") return ramp(t.heat, Math.sqrt((Number(v) || 0) / maxChurn.value))
-  return categories.value.get(String(v ?? "unknown")) ?? t.hairline
+  if (props.e.colorBy === "health") { const h = Number(v); return !h ? theme.hairline : ramp([...theme.heat].reverse(), (h - 1) / 9) }
+  if (props.e.colorBy === "churn") return ramp(theme.heat, Math.sqrt((Number(v) || 0) / maxChurn.value))
+  return categories.value.get(String(v ?? "unknown")) ?? theme.hairline
 }
 const describe = (f: string) => {
   if (props.e.kind !== "folders") return ""
   const v = valueOf.value.get(f)
-  return `${(lines.value.get(f) ?? 0).toLocaleString("en-US")} lines · ${props.e.colorBy} ${v ?? "–"}`
+  return t("ask.evFigures.lines", { value: (lines.value.get(f) ?? 0).toLocaleString(intlLocale), colorBy: props.e.colorBy, value2: v ?? "–" })
 }
 const legend = computed<FigureLegend>(() => {
   if (props.e.kind !== "folders") return {}
-  if (props.e.colorBy === "health") return { ramps: [{ label: "Code health", colors: [...t.heat].reverse(), low: "1 (worst)", high: "10 (best)" }], notes: ["Grey: not rated."] }
-  if (props.e.colorBy === "churn") return { ramps: [{ label: "Commits", colors: t.heat, low: "few", high: "most" }] }
+  if (props.e.colorBy === "health") return { ramps: [{ label: t("ask.evFigures.codeHealth"), colors: [...theme.heat].reverse(), low: "1 (worst)", high: "10 (best)" }], notes: [t("ask.evFigures.greyNotRated")] }
+  if (props.e.colorBy === "churn") return { ramps: [{ label: t("ask.evFigures.commits"), colors: theme.heat, low: "few", high: "most" }] }
   return { items: [...categories.value].slice(0, 10).map(([label, color]) => ({ label, color })) }
 })
 

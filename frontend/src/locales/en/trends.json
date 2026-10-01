@@ -1,0 +1,70 @@
+{
+  "changes": {
+    "ruleFinding": "rule finding",
+    "ruleFindings": "rule findings",
+    "noStructuralChanges": "No structural changes",
+    "componentsAdded": "Components added",
+    "componentsRemoved": "Components removed",
+    "dependenciesAdded": "Dependencies added",
+    "runtimeLookupOnly": ", runtime lookup only",
+    "dependenciesRemoved": "Dependencies removed",
+    "newRuleFindings": "New rule findings",
+    "ruleFindingsGone": "Rule findings gone",
+    "changed": ", {tanglesChanged} changed",
+    "at": "{rule}: `{from}` → `{to}` at `{file}:{line}`",
+    "tangles": "{value}{tangles} tangles{value2}"
+  },
+  "comparability": {
+    "oneScansPredatesAnalysis": "One of the scans predates analysis revisions, so what it measured is unknown. Scan it again to compare.",
+    "scansWereReadDifferent": "The scans were read by different analyses (revision {ra} and {rb}); their numbers mean different things.",
+    "scansIgnoredDifferentPaths": "The scans ignored different paths, so they did not read the same code.",
+    "differentLanguagePacksRan": "Different language packs ran ({extensions} and {extensions2}); counts that depend on them may shift."
+  },
+  "comparabilityGate": {
+    "theseTwoSnapshotsWere": "These two snapshots were not read the same way",
+    "differencesBetweenThemMay": "Differences between them may come from the scan, not the code. Rebuild the baseline at its own commit with this build's analysis, and the two compare number for number.",
+    "rescanBaselineCommit": "Rescan baseline commit {slice}",
+    "rescanBaselineSCommit": "Rescan the baseline's commit…",
+    "r": " at r{revision}",
+    "compareAnyway": "Compare anyway",
+    "scanRunningGateClears": "A scan is running; the gate clears when the rescan is done."
+  },
+  "trendRows": {
+    "readingsSnapshotsOverTime": "Readings of {pointsLength} snapshots over time",
+    "commitTime": "by commit time",
+    "scanTime": "by scan time",
+    "noChange": "no change",
+    "notMeasured": "not measured",
+    "analysisR": "analysis r{analysisRevision}"
+  },
+  "delta": {
+    "notBaselineSnapshot": "Not in the baseline snapshot",
+    "was": "Was {baseline}"
+  },
+  "structureCompare": {
+    "groupDependencies": "Group dependencies",
+    "orderedGroupPairsLeast": "Ordered group pairs with at least one import",
+    "importsCrossingGroupEdge": "Imports crossing a group edge",
+    "fileImportsWhoseTwo": "File imports whose two ends sit in different groups",
+    "groupPairsImportEach": "Group pairs that import each other",
+    "twoGroupsEachImporting": "Two groups each importing the other",
+    "groupsCaughtCycles": "Groups caught in cycles",
+    "groupsStronglyConnectedSet": "Groups in a strongly connected set",
+    "filesNoGroupTakes": "Files no group takes",
+    "productionCodeFilesOutside": "Production code files outside every group"
+  },
+  "trends": {
+    "components": "Components",
+    "componentsTangles": "Components in tangles",
+    "linesTangles": "Lines in tangles",
+    "largestTangle": "Largest tangle",
+    "componentDependencies": "Component dependencies",
+    "propagationCost": "Propagation cost",
+    "dependencyLevels": "Dependency levels",
+    "ruleFindings": "Rule findings",
+    "medianInstability": "Median instability",
+    "medianDistance": "Median distance",
+    "analysisR": "analysis r{analysisRevision}",
+    "ignoreRulesChanged": "ignore rules changed"
+  }
+}

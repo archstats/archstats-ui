@@ -5,6 +5,8 @@
 import type { World } from "../engine/types"
 import { foldEdges, tanglesOf } from "~/features/cycles/untangle"
 import { commonPrefix, separatorOf } from "~/features/snapshot/names"
+import { intlLocale } from "~/shared/i18n"
+import { t } from "~/shared/i18n"
 
 export { commonPrefix, separatorOf }
 
@@ -15,7 +17,7 @@ export interface SnapshotCard {
     has: { git: boolean; units: boolean; rules: boolean; health: boolean; modules: boolean; contents: boolean }
 }
 
-const n = (v: unknown) => Math.round(Number(v) || 0).toLocaleString("en-US")
+const n = (v: unknown) => Math.round(Number(v) || 0).toLocaleString(intlLocale)
 
 async function one<T = any>(world: World, sql: string): Promise<T | null> {
     try { return ((await world.query<T>(sql))[0] ?? null) } catch { return null }
@@ -71,7 +73,7 @@ export async function buildCard(world: World): Promise<SnapshotCard> {
     const ignore = info.walker_ignored_top ? (() => { try { return (JSON.parse(info.walker_ignored_top) as string[]).slice(0, 8).join(", ") } catch { return "" } })() : ""
 
     const out = [
-        `Project ${info.report_id ?? world.workspace} · commit ${String(info.git_head_commit ?? "").slice(0, 7) || "unknown"}${info.git_branch ? ` on ${info.git_branch}` : ""} · analysis revision ${info.analysis_revision ?? "?"} · scanned ${String(info.scanned_at ?? "").slice(0, 10)}`,
+        t("ask.card.projectCommitAnalysisRevision", { value: info.report_id ?? world.workspace, value2: String(info.git_head_commit ?? "").slice(0, 7) || "unknown", value3: info.git_branch ? ` on ${info.git_branch}` : "", value4: info.analysis_revision ?? "?", value5: String(info.scanned_at ?? "").slice(0, 10) }),
         `Read with: ${info.extensions ?? "?"}${ignore ? ` · ignored: ${ignore}` : ""}`,
         `Size: ${n(comps.length)} components · ${n(files?.n)} files · ${n(lines)} lines`,
         roles.length ? `Files by role: ${roles.map(r => `${r.role} ${n(r.n)} files / ${n(r.lines)} lines`).join(" · ")}` : "",
@@ -79,9 +81,9 @@ export async function buildCard(world: World): Promise<SnapshotCard> {
         `Top-level areas (by lines): ${topRoots.map(([k, v]) => `${k} (${n(v.count)} components, ${n(v.lines)} lines)`).join(", ")}`,
         `Largest components: ${largest.map(c => `${c.name} (${n(c.complexity__lines)} lines)`).join(", ")}`,
         `Tangles (sets of components that all reach each other): ${n(tangles.length)}${tangles.length ? `, holding ${n(inTangles)} components; the largest has ${n(tangles[0].length)}` : ""} · distinct shortest cycles: ${n(world.cycles().length)}`,
-        git ? `History: ${n(git.commits)} commits by ${n(authors?.n)} authors, ${String(git.first ?? "").slice(0, 10)} to ${String(git.last ?? "").slice(0, 10)}` : "",
+        git ? t("ask.card.historyCommitsAuthors", { commits: n(git.commits), n: n(authors?.n), value: String(git.first ?? "").slice(0, 10), value2: String(git.last ?? "").slice(0, 10) }) : "",
         units ? `Units (classes, functions…): ${n(units.n)}` : "",
-        absent.length ? `Not in this snapshot: ${absent.join("; ")}.` : "",
+        absent.length ? t("ask.card.notSnapshot", { absent: absent.join("; ") }) : "",
     ].filter(Boolean)
     const text = out.join("\n")
     return { text, numbers: text, has }

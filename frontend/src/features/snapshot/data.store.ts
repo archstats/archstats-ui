@@ -12,7 +12,7 @@ import {
     resizeConnectionsOnComponents
 } from "./components";
 
-import type {Definition} from "./definition";
+import { localized, type Definition } from "./definition";
 import {StatNameResolver, getNiceStatName} from "./statNames";
 import {WailsDb} from "~/platform/db";
 import { STAGE_SCAN } from "~/platform/stage";
@@ -309,7 +309,7 @@ export const useDataStore = defineStore('data', {
             try {
                 const defRows = await this.getView<any>("definitions");
                 this._definitions = defRows.reduce((acc: Map<string, Definition>, def: any) => {
-                    acc.set(def.id, {
+                    acc.set(def.id, localized({
                         id: def.id,
                         name: def.name,
                         short: def.short_description || def.short || "",
@@ -317,7 +317,7 @@ export const useDataStore = defineStore('data', {
                         short_description: def.short_description || def.short || "",
                         long_description: def.long_description || def.long || "",
                         category: def.category || ""
-                    } as Definition);
+                    } as Definition));
                     return acc;
                 }, new Map<string, Definition>());
             } catch {

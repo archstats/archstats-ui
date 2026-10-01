@@ -3,6 +3,7 @@ import { canonicalAuthor, maskPeople, pseudonymLabels, type AliasMap } from "./a
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useStateStore } from "~/platform/state.store"
 import { readDurable, writeDurable } from "~/platform/durable"
+import { t } from "~/shared/i18n"
 
 // The architect's corrections to the git history: which names are one person,
 // and whether machine accounts are counted. Merges belong to a workspace --
@@ -30,9 +31,9 @@ export const useAuthorsStore = defineStore("authors", {
             const labels = this.labels
             const aliases = this.aliases
             return (name) => {
-                if (!on) return name || "Unknown"
-                if (!name) return "Unknown"
-                return labels[canonicalAuthor(aliases, name)] ?? "Author"
+                if (!on) return name || t("git.authorsStore.unknown")
+                if (!name) return t("git.authorsStore.unknown")
+                return labels[canonicalAuthor(aliases, name)] ?? t("git.authorsStore.author")
             }
         },
         /** An email, or nothing when authors are pseudonymised. */

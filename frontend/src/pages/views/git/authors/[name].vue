@@ -2,7 +2,7 @@
   <DetailFrame
     :title="authorsStore.display(name)"
     kind="Author"
-    :crumbs="[{ label: 'Authors', to: '/views/git/authors' }]"
+    :crumbs="[{ label: t('pages.gitAuthors.authors'), to: '/views/git/authors' }]"
     :stats="stats"
     :tabs="tabs"
     fallback="/views/git/authors"
@@ -10,10 +10,10 @@
     <template #actions>
       <span v-if="authorsStore.displayEmail(author?.author_email)" class="ui-toolbar-meta hidden max-w-[260px] truncate xl:inline" :title="author?.author_email">{{ author?.author_email }}</span>
     </template>
-    <LoadingState v-if="loading" text="Reading author…"/>
-    <EmptyState v-else-if="error" title="Could not read author" :text="error" icon="alert"/>
-    <EmptyState v-else-if="store.hasData && !author" title="Author not in this snapshot" :text="`${authorsStore.display(name)} has no commits in the open scan.`" icon="user">
-      <router-link to="/views/git/authors" class="ui-btn ui-btn-sm">All authors</router-link>
+    <LoadingState v-if="loading" :text="t('pages.gitAuthors.readingAuthor')"/>
+    <EmptyState v-else-if="error" :title="t('pages.gitAuthors.couldNotReadAuthor')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="store.hasData && !author" :title="t('pages.gitAuthors.authorNotSnapshot')" :text="t('pages.gitAuthors.hasNoCommitsOpen', { name: authorsStore.display(name) })" icon="user">
+      <router-link to="/views/git/authors" class="ui-btn ui-btn-sm">{{ t('pages.gitAuthors.allAuthors') }}</router-link>
     </EmptyState>
     <NuxtPage v-else/>
   </DetailFrame>
@@ -33,6 +33,7 @@ import { formatNumber } from "~/shared/format"
 import DetailFrame, { type DetailTab } from "~/features/shell/components/DetailFrame.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 
 const route = useRoute()
 const store = useDataStore()
@@ -58,19 +59,19 @@ const total = computed(() => periodStats(author.value, "total"))
 const stats = computed(() => {
   if (!author.value) return []
   return [
-    { label: "Commits", value: formatNumber(total.value.commits) },
-    { label: "Files", value: formatNumber(total.value.files) },
-    { label: "Components", value: formatNumber(total.value.components) },
+    { label: t("pages.gitAuthors.commits"), value: formatNumber(total.value.commits) },
+    { label: t("pages.gitAuthors.files"), value: formatNumber(total.value.files) },
+    { label: t("pages.gitAuthors.components"), value: formatNumber(total.value.components) },
   ]
 })
 
 const tabs = computed<DetailTab[]>(() => {
   const base = authorsStore.authorPath(name.value)
   return [
-    { id: "overview", label: "Overview", to: base, exact: true },
-    { id: "components", label: "Components", to: `${base}/components`, count: total.value.components || undefined },
-    { id: "files", label: "Files", to: `${base}/files`, count: total.value.files || undefined },
-    { id: "history", label: "History", to: `${base}/history` },
+    { id: "overview", label: t("pages.gitAuthors.overview"), to: base, exact: true },
+    { id: "components", label: t("pages.gitAuthors.components"), to: `${base}/components`, count: total.value.components || undefined },
+    { id: "files", label: t("pages.gitAuthors.files"), to: `${base}/files`, count: total.value.files || undefined },
+    { id: "history", label: t("pages.gitAuthors.history"), to: `${base}/history` },
   ]
 })
 </script>

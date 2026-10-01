@@ -10,14 +10,14 @@
   <div class="relative flex flex-col">
   <div class="overflow-x-auto" @click.self="emit('select', null)">
     <div class="flex min-w-full" @click.self="emit('select', null)">
-      <svg ref="svgEl" :width="width" :height="height" class="mx-auto block shrink-0 select-none" role="img" :aria-label="`Map of ${nodes.length} deployables and what they talk to`" @click.self="emit('select', null)">
+      <svg ref="svgEl" :width="width" :height="height" class="mx-auto block shrink-0 select-none" role="img" :aria-label="t('deployables.systemMap.mapDeployablesWhatThey', { nodesLength: nodes.length })" @click.self="emit('select', null)">
         <defs>
           <marker v-for="k in MARKERS" :id="`${uid}-${k.id}`" :key="k.id" viewBox="0 0 8 8" refX="7" refY="4" markerUnits="userSpaceOnUse" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L8,4 L0,8 z" :class="k.cls"/>
           </marker>
         </defs>
 
-        <text v-for="(t, i) in columnTitles" :key="'h' + i" :x="xOf(i)" :y="18" class="fill-neutral-500 text-[11px] font-medium">{{ t }}</text>
+        <text v-for="(columnTitle, i) in columnTitles" :key="'h' + i" :x="xOf(i)" :y="18" class="fill-neutral-500 text-[11px] font-medium">{{ columnTitle }}</text>
 
         <g v-for="e in drawn" :key="e.key" :class="{ 'opacity-15': e.dim }">
           <path
@@ -60,6 +60,7 @@ import { useSvgFigure } from "~/features/export/useExportables"
 import type { LegendItem } from "~/features/export/figure"
 import { AppWindow, Box, Database, FunctionSquare, Globe, MessagesSquare, Smartphone } from "lucide-vue-next"
 import { arrangeMap, LINK_LABEL, RESOLUTION_LABEL, KIND_LABEL, type DeployableModel } from "../deployables"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   model: DeployableModel
@@ -84,13 +85,13 @@ const MARKERS = [
   { id: "msg", cls: "fill-violet-500" }, { id: "data", cls: "fill-blue-500" },
 ]
 const KEY = [
-  { label: "Calls", token: "neutral-500" },
-  { label: "Messages", token: "violet-500", dash: "6 4" },
-  { label: "Uses a datastore", token: "blue-500", dash: "1.5 3" },
+  { label: t("deployables.systemMap.calls"), token: "neutral-500" },
+  { label: t("deployables.systemMap.messages"), token: "violet-500", dash: "6 4" },
+  { label: t("deployables.systemMap.usesDatastore"), token: "blue-500", dash: "1.5 3" },
 ]
 const GLYPH: Record<string, Component> = { image: Box, app: AppWindow, function: FunctionSquare, mobile_app: Smartphone }
 const EXTERNAL_GLYPH: Record<string, Component> = { data: Database, broker: MessagesSquare, service: Globe }
-const EXTERNAL_WORDS: Record<string, string> = { data: "datastore, not built here", broker: "broker, not built here", service: "not built here" }
+const EXTERNAL_WORDS: Record<string, string> = { data: t("deployables.systemMap.datastoreNotBuiltHere"), broker: t("deployables.systemMap.brokerNotBuiltHere"), service: t("deployables.systemMap.notBuiltHere") }
 
 const svgEl = ref<SVGSVGElement | null>(null)
 
@@ -114,15 +115,15 @@ const runtimeOf = computed(() => new Map(runtimes.value.map(r => [r.family, r]))
 const legend = computed(() => {
   const items: LegendItem[] = [
     ...KEY.map(k => ({ label: k.label, color: `rgb(var(--c-${k.token}))`, mark: (k.dash ? "dashed" : "line") as LegendItem["mark"] })),
-    { label: "Joined by name only", color: "rgb(var(--c-neutral-300))", mark: "line", title: "The join rests on a name alone, so it is drawn faint" },
-    { label: "Not built here", color: "rgb(var(--c-neutral-400))", mark: "ring" },
+    { label: t("deployables.systemMap.joinedNameOnly"), color: "rgb(var(--c-neutral-300))", mark: "line", title: t("deployables.systemMap.joinRestsNameAlone") },
+    { label: t("deployables.systemMap.notBuiltHere2"), color: "rgb(var(--c-neutral-400))", mark: "ring" },
   ]
   if (props.mark === "runtime") {
-    for (const r of runtimes.value) items.push({ label: r.versions.length > 1 ? `${r.family}: ${r.versions.length} versions` : r.versions[0], color: `rgb(var(--c-${r.hue}-${r.hue === "neutral" ? 300 : 400}))`, count: r.count, title: r.versions.join(", ") })
+    for (const r of runtimes.value) items.push({ label: r.versions.length > 1 ? t("deployables.systemMap.versions", { family: r.family, versionsLength: r.versions.length }) : r.versions[0], color: `rgb(var(--c-${r.hue}-${r.hue === "neutral" ? 300 : 400}))`, count: r.count, title: r.versions.join(", ") })
   }
-  return { items, notes: ["Columns count call steps from what nothing calls; a bar under a name is the production code it carries, on a square-root scale. Links are what configuration names, not observed traffic."] }
+  return { items, notes: [t("deployables.systemMap.columnsCountCallSteps")] }
 })
-const figure = useSvgFigure({ title: "What it is configured to call", svg: () => svgEl.value, legend: () => legend.value })
+const figure = useSvgFigure({ title: t("deployables.systemMap.whatConfiguredCall"), svg: () => svgEl.value, legend: () => legend.value })
 
 const arranged = computed(() => arrangeMap(props.model, KINDS))
 const byId = computed(() => new Map(props.model.deployables.map(d => [d.id, d])))
@@ -133,8 +134,8 @@ const height = computed(() => TOP + tallest.value * ROW + PAD)
 const xOf = (col: number) => PAD + col * COL
 
 const columnTitles = computed(() => arranged.value.columns.map((col, i) => {
-  if (col.every(id => arranged.value.external.has(id))) return "Outside this workspace"
-  return i === 0 ? "Nothing calls these" : `${i} step${i > 1 ? "s" : ""} in`
+  if (col.every(id => arranged.value.external.has(id))) return t("deployables.systemMap.outsideWorkspace")
+  return i === 0 ? t("deployables.systemMap.nothingCallsThese") : t("deployables.systemMap.step", { i, value: i > 1 ? "s" : "" })
 }))
 
 const maxFiles = computed(() => Math.max(1, ...props.model.deployables.map(d => d.files)))
@@ -155,7 +156,7 @@ const placed = computed(() => arranged.value.columns.flatMap((col, c) => {
     const d = byId.value.get(id)
     const ext = arranged.value.external.get(id)
     const kind = d ? KIND_LABEL[d.kind] ?? d.kind : ""
-    const sub = ext ? EXTERNAL_WORDS[ext] : d!.files ? `${d!.runtime || kind} · ${d!.files.toLocaleString("en-US")} files` : `${d!.runtime || kind} · no code of its own`
+    const sub = ext ? EXTERNAL_WORDS[ext] : d!.files ? t("deployables.systemMap.files", { value: d!.runtime || kind, value2: d!.files.toLocaleString(intlLocale) }) : t("deployables.systemMap.noCodeOwn", { value: d!.runtime || kind })
     const rt = props.mark === "runtime" && d?.runtime ? runtimeOf.value.get(family(d.runtime)) : undefined
     return {
       id, x: xOf(c), y: TOP + offset + r * ROW,
@@ -166,7 +167,7 @@ const placed = computed(() => arranged.value.columns.flatMap((col, c) => {
       label: id.length > 22 ? id.slice(0, 21) + "…" : id,
       sub, share: d ? Math.sqrt(d.files / maxFiles.value) : 0,
       dim: isDim(id),
-      aria: ext ? `${id}: ${EXTERNAL_WORDS[ext]}` : `${id}: ${kind}${d!.runtime ? ", " + d!.runtime : ""}, ${d!.files} production files`,
+      aria: ext ? `${id}: ${EXTERNAL_WORDS[ext]}` : t("deployables.systemMap.productionFiles", { id, kind, value: d!.runtime ? ", " + d!.runtime : "", files: d!.files }),
     }
   })
 }))
@@ -212,7 +213,7 @@ const drawn = computed(() => {
       key, d, dim, lit, weak: e.weak, dash: style.dash,
       cls: lit && e.kind === "calls" ? "stroke-neutral-800" : style.cls,
       marker: lit && e.kind === "calls" ? "on" : style.marker,
-      title: `${e.from} ${(LINK_LABEL[e.kind] ?? e.kind).toLowerCase()} ${e.to} via ${e.link.via}\n${e.link.file}:${e.link.line}\n${RESOLUTION_LABEL[e.link.resolution] ?? e.link.resolution}`,
+      title: t("deployables.systemMap.via", { from: e.from, value: (LINK_LABEL[e.kind] ?? e.kind).toLowerCase(), to: e.to, via: e.link.via, file: e.link.file, line: e.link.line, value2: RESOLUTION_LABEL[e.link.resolution] ?? e.link.resolution }),
     }]
   })
 })

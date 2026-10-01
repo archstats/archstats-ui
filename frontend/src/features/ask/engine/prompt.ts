@@ -5,6 +5,7 @@
 
 import { FAMILIES } from "../knowledge/capabilities"
 import type { ViewContext } from "./types"
+import { answerLanguage } from "./language"
 
 export const TRAPS = [
     "modularity__coupling__afferent and __efferent count FILES that import, not components. For \"how many components depend on X\" use dependents / dependencies (the component and rank tools already do).",
@@ -44,7 +45,7 @@ The snapshot:
 ${opts.card}
 
 Where the person is:
-${opts.here}${screen ? `\n\n${screen}` : ""}${opts.plan?.length ? `\n\nYour plan for this question (test each, then answer each):\n${opts.plan.map((p, i) => `${i + 1}. ${p.claim} — test: ${p.test}`).join("\n")}` : ""}`
+${opts.here}${screen ? `\n\n${screen}` : ""}${opts.plan?.length ? `\n\nYour plan for this question (test each, then answer each):\n${opts.plan.map((p, i) => `${i + 1}. ${p.claim} — test: ${p.test}`).join("\n")}` : ""}${answerLanguage()}`
 }
 
 export function describeScreen(v: ViewContext): string {

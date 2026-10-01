@@ -1,0 +1,31 @@
+{
+  "time": {
+    "justNow": "just now",
+    "minAgo": "{minutes} min ago",
+    "moAgo": "{months} mo ago",
+    "hAgo": "{hours} h ago",
+    "dAgo": "{days} d ago",
+    "yAgo": "{years} y ago",
+    "ago": "{span} ago"
+  },
+  "loadingState": {
+    "loading": "Loading…"
+  },
+  "singleSelect": {
+    "selectOption": "Select an option"
+  },
+  "zoomControls": {
+    "zoom": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetView": "Reset view"
+  },
+  "useChartTheme": {
+    "interSystemUiSans": "\"Inter\", system-ui, sans-serif",
+    "jetbrainsMonoUiMonospace": "\"JetBrains Mono\", ui-monospace, monospace"
+  },
+  "format": {
+    "mo": "{value} mo",
+    "days": "{value} d",
+    "years": "{value} y"
+  }
+}

@@ -10,6 +10,7 @@ import { candidates, detectSeparator } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { plural } from "~/features/exhibits/words"
+import { t } from "~/shared/i18n"
 
 export interface NeighboursData {
     of: string
@@ -32,21 +33,21 @@ const quote = (x: string) => (/[\s,"]/.test(x) ? `"${x}"` : x)
 
 export const neighbours = exhibit<NeighboursData>()({
     kind: "neighbours", v: 1,
-    summary: "What a component uses and what uses it, how far a change ripples, and the route to a second component.",
+    summary: t("connections.neighbours.whatComponentUsesWhat"),
     params: s.object({
-        of: s.string().describe("The component."),
-        direction: s.enum(["both", "uses", "used by"]).default("both").describe("What it uses, what uses it, or both (default)."),
-        on: s.string().optional().describe("A second component: the route between the two, and the files that make each import."),
+        of: s.string().describe(t("connections.neighbours.component")),
+        direction: s.enum(["both", "uses", "used by"]).default("both").describe(t("connections.neighbours.whatUsesWhatUses")),
+        on: s.string().optional().describe(t("connections.neighbours.secondComponentRouteBetween")),
     }, { aliases: { component: "of", name: "of", to: "on", from: "of" } }),
 
-    title: (p, d) => (d?.on ? `From ${d.route?.from ?? d.of} to ${d.route?.to ?? d.on}` : `${d?.direction === "uses" ? "What" : d?.direction === "used by" ? "What uses" : "Around"} ${d?.of ?? p.of}${d?.direction === "uses" ? " uses" : ""}`),
+    title: (p, d) => (d?.on ? t("connections.neighbours.fromTo", { value: d.route?.from ?? d.of, value2: d.route?.to ?? d.on }) : `${d?.direction === "uses" ? t("connections.neighbours.what") : d?.direction === "used by" ? t("connections.neighbours.whatUses") : t("connections.neighbours.around")} ${d?.of ?? p.of}${d?.direction === "uses" ? " uses" : ""}`),
 
     async resolve(p, { snap }): Promise<NeighboursData | Absent> {
         const names = snap.components().map(c => String(c.name)).filter(x => x !== ".")
         const of = candidates(names, p.of)[0]
-        if (!of) return { absent: `No component matches "${p.of}".` }
+        if (!of) return { absent: t("connections.neighbours.noComponentMatches", { of: p.of }) }
         const on = p.on ? candidates(names, p.on)[0] ?? null : null
-        if (p.on && !on) return { absent: `No component matches "${p.on}".` }
+        if (p.on && !on) return { absent: t("connections.neighbours.noComponentMatches2", { on: p.on }) }
         const direction = (p.direction ?? "both") as NeighboursData["direction"]
         const edges = foldEdges(snap.connections())
         const ctx = { components: names, files: [], componentSep: detectSeparator(names), edges: edges.map(e => ({ from: e.from, to: e.to })) }
@@ -95,25 +96,25 @@ export const neighbours = exhibit<NeighboursData>()({
     facts(d) {
         const out: FactDraft[] = []
         if (d.on) {
-            if (!d.route) out.push({ kind: "absence", text: `No chain of imports connects ${d.of} and ${d.on}, in either direction.`, entities: [d.of, d.on], values: { route: 0 } })
+            if (!d.route) out.push({ kind: "absence", text: t("connections.neighbours.noChainImportsConnects", { of: d.of, on: d.on }), entities: [d.of, d.on], values: { route: 0 } })
             else {
                 const direct = d.route.via.length === 2
-                out.push({ kind: "row", text: `${d.route.from} reaches ${d.route.to} through imports${direct ? " directly" : `, through ${plural(d.route.via.length - 2, "component")} in between on the shortest routes (${d.route.via.slice(0, 10).join(", ")})`}${d.route.from !== d.of ? `; ${d.of} does not reach ${d.on}` : ""}.`, entities: [d.route.from, d.route.to], values: { between: d.route.via.length - 2 } })
+                out.push({ kind: "row", text: t("connections.neighbours.reachesThroughImports", { from: d.route.from, to: d.route.to, value: direct ? t("connections.neighbours.directly") : t("connections.neighbours.throughBetweenShortestRoutes", { components: t("common.count.component", { count: d.route.via.length - 2 }), value: d.route.via.slice(0, 10).join(", ") }), value2: d.route.from !== d.of ? t("connections.neighbours.doesNotReach", { of: d.of, on: d.on }) : "" }), entities: [d.route.from, d.route.to], values: { between: d.route.via.length - 2 } })
                 const hop = [...d.uses, ...d.usedBy].find(x => x.name === (d.route!.from === d.of ? d.on : d.of))
-                if (hop) out.push({ kind: "row", text: `The import ${d.route.from} → ${d.route.to} has ${plural(hop.references, "import reference")}${hop.files.length ? `, made in ${hop.files.join(", ")}` : ""}.`, entities: [d.route.from, d.route.to], values: { references: hop.references }, element: `edge:${d.route.from}>${d.route.to}` })
+                if (hop) out.push({ kind: "row", text: t("connections.neighbours.importHas", { from: d.route.from, to: d.route.to, importReferences: t("common.count.importReference", { count: hop.references }), value: hop.files.length ? t("connections.neighbours.made", { value: hop.files.join(", ") }) : "" }), entities: [d.route.from, d.route.to], values: { references: hop.references }, element: `edge:${d.route.from}>${d.route.to}` })
             }
             return out
         }
-        out.push({ kind: "total", text: `${d.of} uses ${plural(d.uses.length, "component")} directly and is used by ${plural(d.usedBy.length, "component")} directly.`, entities: [d.of], values: { uses: d.uses.length, used_by: d.usedBy.length } })
-        out.push({ kind: "total", text: `A change to ${d.of} can reach ${plural(d.reachUp, "component")} that depend on it through any chain of imports; it depends on ${plural(d.reachDown, "component")} that way.`, entities: [d.of], values: { reach_up: d.reachUp, reach_down: d.reachDown } })
+        out.push({ kind: "total", text: t("connections.neighbours.usesDirectlyUsedDirectly", { of: d.of, components: t("common.count.component", { count: d.uses.length }), components2: t("common.count.component", { count: d.usedBy.length }) }), entities: [d.of], values: { uses: d.uses.length, used_by: d.usedBy.length } })
+        out.push({ kind: "total", text: t("connections.neighbours.changeCanReachDepend", { of: d.of, components: t("common.count.component", { count: d.reachUp }), components2: t("common.count.component", { count: d.reachDown }) }), entities: [d.of], values: { reach_up: d.reachUp, reach_down: d.reachDown } })
         const side = (list: NeighboursData["uses"], verb: string, from: (x: string) => [string, string]) => list.slice(0, 8).map((x): FactDraft => {
             const [a, b] = from(x.name)
-            return { kind: "row", text: `${verb}: ${x.name}, ${plural(x.references, "import reference")}${x.files.length ? ` (in ${x.files.slice(0, 2).join(", ")})` : ""}.`, entities: [x.name], values: { references: x.references }, element: `edge:${a}>${b}` }
+            return { kind: "row", text: `${verb}: ${x.name}, ${t("common.count.importReference", { count: x.references })}${x.files.length ? ` (in ${x.files.slice(0, 2).join(", ")})` : ""}.`, entities: [x.name], values: { references: x.references }, element: `edge:${a}>${b}` }
         })
-        if (d.direction !== "used by") out.push(...side(d.uses, `${d.of} uses`, x => [d.of, x]))
-        if (d.direction !== "uses") out.push(...side(d.usedBy, `Used by`, x => [x, d.of]))
-        if (!d.uses.length && d.direction !== "used by") out.push({ kind: "absence", text: `${d.of} imports no other component.`, entities: [d.of], values: { uses: 0 } })
-        if (!d.usedBy.length && d.direction !== "uses") out.push({ kind: "absence", text: `No other component imports ${d.of}.`, entities: [d.of], values: { used_by: 0 } })
+        if (d.direction !== "used by") out.push(...side(d.uses, t("connections.exhibitsNeighbours.uses", { of: d.of }), x => [d.of, x]))
+        if (d.direction !== "uses") out.push(...side(d.usedBy, t("connections.neighbours.used"), x => [x, d.of]))
+        if (!d.uses.length && d.direction !== "used by") out.push({ kind: "absence", text: t("connections.neighbours.importsNoOtherComponent", { of: d.of }), entities: [d.of], values: { uses: 0 } })
+        if (!d.usedBy.length && d.direction !== "uses") out.push({ kind: "absence", text: t("connections.neighbours.noOtherComponentImports", { of: d.of }), entities: [d.of], values: { used_by: 0 } })
         return out
     },
 
@@ -127,7 +128,7 @@ export const neighbours = exhibit<NeighboursData>()({
     },
 
     table: d => ({
-        columns: [{ id: "name", label: "Component" }, { id: "direction", label: "Relation" }, { id: "references", label: "Import references", numeric: true }, { id: "files", label: "Made in" }],
+        columns: [{ id: "name", label: t("connections.neighbours.component2") }, { id: "direction", label: t("connections.neighbours.relation") }, { id: "references", label: t("connections.neighbours.importReferences"), numeric: true }, { id: "files", label: t("connections.neighbours.made2") }],
         rows: [...d.uses.map(x => ({ name: x.name, direction: `${d.of} uses it`, references: x.references, files: x.files.join(", ") })), ...d.usedBy.map(x => ({ name: x.name, direction: `uses ${d.of}`, references: x.references, files: x.files.join(", ") }))],
     }),
 
@@ -140,7 +141,7 @@ export const neighbours = exhibit<NeighboursData>()({
         picks: { pick: (element: string) => element },
     },
 
-    open: (_p, d) => (d ? { route: "/views/connections", focus: d.on ? `path from ${quote(d.of)} to ${quote(d.on)}` : `around ${quote(d.of)}`, label: "Open Connections" } : null),
+    open: (_p, d) => (d ? { route: "/views/connections", focus: d.on ? t("connections.neighbours.path", { of: quote(d.of), on: quote(d.on) }) : t("connections.neighbours.around2", { of: quote(d.of) }), label: t("connections.neighbours.openConnections") } : null),
 
     samples: snap => {
         const byDeps = [...snap.components()].filter(c => c.name !== ".").sort((a, b) => (Number(b.modularity__coupling__dependents) || 0) - (Number(a.modularity__coupling__dependents) || 0))

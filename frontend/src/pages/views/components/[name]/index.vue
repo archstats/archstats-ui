@@ -1,28 +1,28 @@
 <template>
   <div class="min-h-0 grow overflow-y-auto">
-    <LoadingState v-if="!store.hasData" text="Opening snapshot…"/>
+    <LoadingState v-if="!store.hasData" :text="t('pages.componentsIndex.openingSnapshot')"/>
     <div v-else-if="component" class="mx-auto w-full max-w-[1040px] px-6 pb-12 pt-5">
       <!-- Headline numbers, each carrying its change since the baseline scan. -->
       <StatStrip :cells="strip"/>
       <div class="mt-2 flex h-7 items-center gap-2 text-sm text-neutral-500">
         <template v-if="delta.hasBaseline.value">
-          <span>Compared with</span>
+          <span>{{ t('pages.componentsIndex.compared') }}</span>
           <SingleSelect :model-value="baselineOption" :options="baselineOptions" @update:model-value="pickBaseline"/>
-          <span v-if="delta.isNew.value" class="text-accent-700">Not in that scan</span>
-          <span v-if="!delta.comparable.value.ok" class="truncate" :title="delta.comparable.value.reasons.map(r => r.text).join(' ')">Not comparable: {{ delta.comparable.value.reasons[0]?.text }}</span>
+          <span v-if="delta.isNew.value" class="text-accent-700">{{ t('pages.componentsIndex.notScan') }}</span>
+          <span v-if="!delta.comparable.value.ok" class="truncate" :title="delta.comparable.value.reasons.map(r => r.text).join(' ')">{{ t('pages.componentsIndex.notComparable', { text: delta.comparable.value.reasons[0]?.text }) }}</span>
         </template>
-        <span v-else>No earlier scan to compare with.</span>
+        <span v-else>{{ t('pages.componentsIndex.noEarlierScanCompare') }}</span>
       </div>
       <p v-if="scoredFiles || hottestFile" class="text-sm text-neutral-500">
-        <template v-if="scoredFiles">Health is the line-weighted mean of {{ formatNumber(scoredFiles) }} scored file{{ scoredFiles === 1 ? "" : "s" }}.</template>
+        <template v-if="scoredFiles">{{ t('pages.componentsIndex.healthLineWeightedMean', { scoredFiles: formatNumber(scoredFiles), files: t('common.noun.file', { count: scoredFiles }) }) }}</template>
         <template v-if="hottestFile && Number(hottestFile.codesmells__hotspot_score) > 0">
-          Hottest file: <router-link :to="filePath(hottestFile.name)" class="font-mono text-neutral-800 underline-offset-2 hover:underline">{{ hottestFile.name.split("/").pop() }}</router-link>
-          ({{ formatHotspot(Number(hottestFile.codesmells__hotspot_score)) }} of 100), which sets the component's hotspot.
+          {{ t('pages.componentsIndex.hottestFile') }} <router-link :to="filePath(hottestFile.name)" class="font-mono text-neutral-800 underline-offset-2 hover:underline">{{ hottestFile.name.split("/").pop() }}</router-link>
+          {{ t('pages.componentsIndex.text100WhichSetsComponent', { codesmells__hotspot_score: formatHotspot(Number(hottestFile.codesmells__hotspot_score)) }) }}
         </template>
       </p>
 
       <!-- 1. What kind of thing is this. -->
-      <ReadingBand title="Shape" :lede="role.evidence" :to="`${base}/connections`" link-label="Connections">
+      <ReadingBand :title="t('pages.componentsIndex.shape')" :lede="role.evidence" :to="`${base}/connections`" :link-label="t('pages.componentsIndex.connections')">
         <div class="grid gap-8 md:grid-cols-[300px_minmax(0,1fr)]">
           <MainSequencePlot :points="plotPoints" :current="name"/>
           <div class="min-w-0">
@@ -44,19 +44,19 @@
       </ReadingBand>
 
       <!-- 2. Where it sits in the graph. -->
-      <ReadingBand title="Position" :lede="positionLede" :to="`${base}/connections`" link-label="Connections">
+      <ReadingBand :title="t('pages.componentsIndex.position')" :lede="positionLede" :to="`${base}/connections`" :link-label="t('pages.componentsIndex.connections')">
         <p v-if="testDependentsLine" class="-mt-2 mb-3 text-sm text-neutral-600">{{ testDependentsLine }}</p>
         <div v-if="leans.length" class="-mt-1 mb-4">
           <button type="button" class="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900" :aria-expanded="leansOpen" @click="leansOpen = !leansOpen">
             <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform" :class="{ 'rotate-90': leansOpen }"/>
-            <span>{{ leans.length }} of its {{ dependencyRows.length }} dependencies are less stable than it<template v-if="leansInTangle"> ({{ leansInTangle }} inside its tangle)</template>.</span>
+            <span>{{ t('pages.componentsIndex.dependenciesLessStableThan', { leansLength: leans.length, dependencyRowsLength: dependencyRows.length }) }}<template v-if="leansInTangle">{{ ' ' + t('pages.componentsIndex.insideTangle', { leansInTangle }) }}</template>.</span>
           </button>
           <table v-if="leansOpen" class="ui-table mt-2 max-w-[640px]">
-            <thead><tr><th>Dependency</th><th class="w-[120px] text-right">Instability</th><th class="w-16 text-right">Ca</th><th class="w-16 text-right">Ce</th></tr></thead>
+            <thead><tr><th>{{ t('pages.componentsIndex.dependency') }}</th><th class="w-[120px] text-right">{{ t('pages.componentsIndex.instability') }}</th><th class="w-16 text-right">{{ t('pages.componentsIndex.ca') }}</th><th class="w-16 text-right">{{ t('pages.componentsIndex.ce') }}</th></tr></thead>
             <tbody>
               <tr v-for="l in leans" :key="l.to.name">
-                <td class="max-w-0 truncate font-mono text-sm"><router-link :to="componentPath(l.to.name)" class="text-neutral-900 hover:underline" :title="l.to.name">{{ l.to.name }}</router-link><span v-if="l.inTangle" class="ui-tag ml-2">tangle</span></td>
-                <td class="is-num text-right">{{ l.from.instability?.toFixed(2) }} → {{ l.to.instability?.toFixed(2) }}</td>
+                <td class="max-w-0 truncate font-mono text-sm"><router-link :to="componentPath(l.to.name)" class="text-neutral-900 hover:underline" :title="l.to.name">{{ l.to.name }}</router-link><span v-if="l.inTangle" class="ui-tag ml-2">{{ t('pages.componentsIndex.tangle') }}</span></td>
+                <td class="is-num text-right">{{ fixed(l.from.instability, 2) }} → {{ fixed(l.to.instability, 2) }}</td>
                 <td class="is-num text-right">{{ l.to.afferent ?? "—" }}</td>
                 <td class="is-num text-right">{{ l.to.efferent ?? "—" }}</td>
               </tr>
@@ -73,19 +73,19 @@
         </dl>
 
         <div v-if="position.tangle" class="mt-5">
-          <h4 class="ui-label">Tangled with</h4>
+          <h4 class="ui-label">{{ t('pages.componentsIndex.tangled') }}</h4>
           <div class="mt-2 flex flex-wrap gap-1.5">
             <router-link v-for="member in visibleTangle" :key="member" :to="componentPath(member)" class="ui-chip font-mono" :title="member">
               {{ store.getComponentName(member) }}
             </router-link>
             <button v-if="!tangleExpanded && position.tangleMembers.length > TANGLE_PREVIEW" type="button" class="ui-chip" @click="tangleExpanded = true">
-              {{ position.tangleMembers.length - TANGLE_PREVIEW }} more
+              {{ t('pages.componentsIndex.more', { value: position.tangleMembers.length - TANGLE_PREVIEW }) }}
             </button>
           </div>
         </div>
 
         <div v-if="furthestPath.length > 1" class="mt-5">
-          <h4 class="ui-label">Furthest it reaches</h4>
+          <h4 class="ui-label">{{ t('pages.componentsIndex.furthestReaches') }}</h4>
           <div class="mt-2 flex flex-wrap items-center gap-1">
             <template v-for="(step, i) in furthestPath" :key="`${step}-${i}`">
               <Icon v-if="i > 0" icon="chevron-right" :size="12" class="shrink-0 text-neutral-300"/>
@@ -98,23 +98,23 @@
       </ReadingBand>
 
       <!-- 3. What follows if it changes. -->
-      <ReadingBand title="Blast radius" :lede="blastLede" :to="`${base}/connections`" link-label="Trace dependents">
+      <ReadingBand :title="t('pages.componentsIndex.blastRadius')" :lede="blastLede" :to="`${base}/connections`" :link-label="t('pages.componentsIndex.traceDependents')">
         <div class="grid gap-8 md:grid-cols-2">
           <div class="min-w-0">
-            <h4 class="ui-label">Depended on by</h4>
-            <p v-if="topDependents.length === 0" class="mt-2 text-base text-neutral-500">Nothing imports this component.</p>
+            <h4 class="ui-label">{{ t('pages.componentsIndex.depended') }}</h4>
+            <p v-if="topDependents.length === 0" class="mt-2 text-base text-neutral-500">{{ t('pages.componentsIndex.nothingImportsComponent') }}</p>
             <ul v-else class="mt-2 flex flex-col">
               <li v-for="d in topDependents" :key="d.name" class="flex h-7 items-center gap-3">
                 <router-link :to="componentPath(d.name)" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="d.name">
                   {{ store.getComponentName(d.name) }}
                 </router-link>
-                <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ formatNumber(d.references) }} refs</span>
+                <span class="ml-auto shrink-0 font-mono text-xs tabular-nums text-neutral-500">{{ t('pages.componentsIndex.refs', { references: formatNumber(d.references) }) }}</span>
               </li>
             </ul>
           </div>
           <div class="min-w-0">
-            <h4 class="ui-label">Files that reference it</h4>
-            <p v-if="incomingFiles.length === 0" class="mt-2 text-base text-neutral-500">No file outside this component names it.</p>
+            <h4 class="ui-label">{{ t('pages.componentsIndex.filesReference') }}</h4>
+            <p v-if="incomingFiles.length === 0" class="mt-2 text-base text-neutral-500">{{ t('pages.componentsIndex.noFileOutsideComponent') }}</p>
             <ul v-else class="mt-2 flex flex-col">
               <li v-for="f in incomingFiles" :key="f.file" class="flex h-7 items-center gap-3">
                 <router-link :to="`/views/files/${f.file}`" class="min-w-0 truncate font-mono text-sm text-neutral-800 hover:underline" :title="f.file">
@@ -131,7 +131,7 @@
       <WhoKnowsIt :name="name"/>
 
       <!-- 4. How it stands against every other component. -->
-      <ReadingBand title="Standing" :lede="standingLede" :to="`${base}/history`" link-label="History">
+      <ReadingBand :title="t('pages.componentsIndex.standing')" :lede="standingLede" :to="`${base}/history`" :link-label="t('pages.componentsIndex.history')">
         <PercentileStrip :rows="standing" :total="total"/>
         <p v-if="testLine" class="mt-3 text-sm text-neutral-600">{{ testLine }}</p>
         <div v-if="age.lines" class="mt-4 max-w-[520px]">
@@ -150,7 +150,7 @@
       </ReadingBand>
 
       <!-- 5. What it is made of. -->
-      <ReadingBand title="Composition" :lede="compositionLede" :to="`${base}/inside`" link-label="Inside">
+      <ReadingBand :title="t('pages.componentsIndex.composition')" :lede="compositionLede" :to="`${base}/inside`" :link-label="t('pages.componentsIndex.inside2')">
         <dl class="ui-kv grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-6 gap-y-1">
           <template v-for="cell in compositionCells" :key="cell.label">
             <div class="flex flex-col gap-0.5">
@@ -163,32 +163,32 @@
         <div v-if="cohesion || leak" class="mt-6 grid gap-6 md:grid-cols-2">
           <div v-if="cohesion">
             <div class="flex items-baseline justify-between gap-3">
-              <h4 class="ui-label">Co-change, inside vs outside</h4>
-              <span class="font-mono text-xs tabular-nums text-neutral-500">{{ cohesion.percent }}% inside</span>
+              <h4 class="ui-label">{{ t('pages.componentsIndex.coChangeInsideVs') }}</h4>
+              <span class="font-mono text-xs tabular-nums text-neutral-500">{{ t('pages.componentsIndex.inside', { percent: cohesion.percent }) }}</span>
             </div>
             <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
               <span class="block h-full rounded-full bg-accent-500" :style="{ width: `${cohesion.percent}%` }"></span>
             </div>
             <p class="mt-2 text-sm text-neutral-500">
-              {{ formatNumber(cohesion.internal) }} shared commits among its own files, {{ formatNumber(cohesion.external) }} with files elsewhere.
+              {{ t('pages.componentsIndex.sharedCommitsAmongOwn', { internal: formatNumber(cohesion.internal), external: formatNumber(cohesion.external) }) }}
             </p>
           </div>
           <div v-if="leak">
             <div class="flex items-baseline justify-between gap-3">
-              <h4 class="ui-label">Neighbours inside {{ leak.groupName }}</h4>
-              <span class="font-mono text-xs tabular-nums text-neutral-500">{{ leak.percent }}% inside</span>
+              <h4 class="ui-label">{{ t('pages.componentsIndex.neighboursInside', { groupName: leak.groupName }) }}</h4>
+              <span class="font-mono text-xs tabular-nums text-neutral-500">{{ t('pages.componentsIndex.inside', { percent: leak.percent }) }}</span>
             </div>
             <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
               <span class="block h-full rounded-full" :style="{ width: `${leak.percent}%`, backgroundColor: leak.color }"></span>
             </div>
             <p class="mt-2 text-sm text-neutral-500">
-              {{ formatNumber(leak.inside) }} of its {{ formatNumber(leak.total) }} connected components share the group.
+              {{ t('pages.componentsIndex.connectedComponentsShareGroup', { inside: formatNumber(leak.inside), leakTotal: formatNumber(leak.total) }) }}
             </p>
           </div>
         </div>
 
         <div v-if="healthSpread.total > 0" class="mt-6">
-          <h4 class="ui-label">File health</h4>
+          <h4 class="ui-label">{{ t('pages.componentsIndex.fileHealth') }}</h4>
           <div class="mt-2 flex h-1.5 gap-0.5 overflow-hidden rounded-full">
             <span
               v-for="part in healthSpread.parts"
@@ -207,16 +207,16 @@
 
       <!-- 6. What it ships in: the deployables that hold it, from the
            build, pipeline and deployment files (engine revision 5). -->
-      <ReadingBand v-if="deployablesKnown" title="Ships in" :lede="shipsLede" to="/views/deployables" link-label="Deployables">
+      <ReadingBand v-if="deployablesKnown" :title="t('pages.componentsIndex.ships')" :lede="shipsLede" to="/views/deployables" :link-label="t('pages.componentsIndex.deployables')">
         <ul v-if="ships.length" class="flex flex-col gap-1">
           <li v-for="s in ships" :key="s.deployable.id" class="flex items-baseline gap-3 text-sm">
             <span class="font-mono text-neutral-800">{{ s.deployable.id }}</span>
             <span class="text-neutral-500">{{ s.deployable.kind }}<template v-if="s.deployable.runtime"> · {{ s.deployable.runtime }}</template></span>
-            <span class="ml-auto tabular-nums text-neutral-500" :title="`${s.files} of this component's files are in it`">{{ formatNumber(s.files) }} files</span>
+            <span class="ml-auto tabular-nums text-neutral-500" :title="t('pages.componentsIndex.componentSFiles', { files: s.files })">{{ t('pages.componentsIndex.files', { files: formatNumber(s.files) }) }}</span>
           </li>
         </ul>
         <p v-if="shipCalls.length" class="mt-3 text-sm text-neutral-600">
-          At run time {{ ships.length === 1 ? "it calls" : "they call" }} {{ shipCalls.slice(0, 6).join(", ") }}<template v-if="shipCalls.length > 6"> and {{ shipCalls.length - 6 }} more</template>.
+          {{ t('pages.componentsIndex.runTime', { theyCall: t('common.noun.itCalls', { count: ships.length }), value: shipCalls.slice(0, 6).join(", ") }) }}<template v-if="shipCalls.length > 6">{{ ' ' + t('pages.componentsIndex.more2', { value: shipCalls.length - 6 }) }}</template>.
         </p>
       </ReadingBand>
 
@@ -224,7 +224,7 @@
       <details class="group mt-9 pt-5 hairline-t">
         <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900">
           <Icon icon="chevron-right" :size="12" class="text-neutral-400 transition-transform duration-200 group-open:rotate-90"/>
-          <span>All metrics</span>
+          <span>{{ t('pages.componentsIndex.allMetrics') }}</span>
           <span class="font-mono text-xs text-neutral-400">{{ metricCount }}</span>
         </summary>
         <div class="mt-4 grid gap-x-10 gap-y-6 md:grid-cols-2">
@@ -258,7 +258,7 @@ import { useComponentDelta } from "~/features/trends/useComponentDelta"
 import { useComponentPosition } from "~/features/metrics/useComponentPosition"
 import { componentRole, componentZone, rankOf } from "~/features/metrics/componentRole"
 import { cycleCountsByComponent, type CyclePath } from "~/features/cycles/cycles"
-import { formatNumber } from "~/shared/format"
+import { formatNumber, fixed } from "~/shared/format"
 import { formatScanTime } from "~/shared/time"
 import { NO_DELTA, type Delta } from "~/features/trends/delta"
 import { sqlLiteral } from "~/shared/sql"
@@ -275,6 +275,7 @@ import { shipsIn } from "~/features/deployables/deployables"
 import { hopsOf } from "~/features/snapshot/hops"
 import { fileCoChangeSql, sweepingLimit } from "~/features/snapshot/fileCoChange"
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction"
+import { t } from "~/shared/i18n"
 
 const route = useRoute()
 const store = useDataStore()
@@ -292,8 +293,8 @@ const shipCalls = computed(() => {
 })
 const shipsLede = computed(() => {
   if (!ships.value.length) return "No build file puts this component in a container, app or function."
-  if (ships.value.length === 1) return `It ships in ${ships.value[0].deployable.id}.`
-  return `It ships in ${ships.value.length} deployables; a change to it is a change to each.`
+  if (ships.value.length === 1) return t("pages.componentsIndex.ships2", { deployableId: ships.value[0].deployable.id })
+  return t("pages.componentsIndex.shipsDeployablesChangeChange", { shipsLength: ships.value.length })
 })
 const base = computed(() => componentPath(name.value))
 const component = computed<any>(() => store.allComponentsIndex.get(name.value))
@@ -331,9 +332,9 @@ const deltaOf = (key: string) => delta.deltaFor(key, raw(key))
 
 // ── The strip ──────────────────────────────────────────────────────
 const STRIP_LABELS: Record<string, string> = {
-  codesmells__code_health: "Code health", codesmells__hotspot_score: "Hotspot", complexity__lines: "Lines",
-  complexity__files: "Files", git__commits__total: "Commits", git__authors__total: "Authors",
-  modularity__instability: "Instability", modularity__coupling__dependents: "Dependents",
+  codesmells__code_health: t("pages.componentsIndex.codeHealth"), codesmells__hotspot_score: t("pages.componentsIndex.hotspot"), complexity__lines: t("pages.componentsIndex.lines"),
+  complexity__files: t("pages.componentsIndex.files2"), git__commits__total: t("pages.componentsIndex.commits"), git__authors__total: t("pages.componentsIndex.authors"),
+  modularity__instability: t("pages.componentsIndex.instability"), modularity__coupling__dependents: t("pages.componentsIndex.dependents"),
 }
 
 const strip = computed<StatCell[]>(() => {
@@ -434,7 +435,7 @@ const zone = computed(() => {
   if (lang) {
     return {
       id: "none", label: "",
-      evidence: `${lang} has no abstract types to count, so abstractness reads 0 whatever the design, and the zones and the distance from the main sequence say nothing here. Instability still holds.`,
+      evidence: t("pages.componentsIndex.hasNoAbstractTypes", { lang }),
     }
   }
   return componentZone(raw("modularity__abstractness"), raw("modularity__instability"))
@@ -453,13 +454,13 @@ const martin = computed(() => {
   }
   const abstract = raw("modularity__types__abstract")
   const types = raw("modularity__types__total")
-  add("modularity__coupling__dependents", "Dependents", n => formatNumber(n), "components import it")
-  add("modularity__coupling__dependencies", "Dependencies", n => formatNumber(n), "components it imports")
-  add("modularity__coupling__afferent", "Importing files", n => formatNumber(n), "files elsewhere that import it")
+  add("modularity__coupling__dependents", t("pages.componentsIndex.dependentsLabel"), n => formatNumber(n), t("pages.componentsIndex.dependentsHint"))
+  add("modularity__coupling__dependencies", t("pages.componentsIndex.dependenciesLabel"), n => formatNumber(n), t("pages.componentsIndex.dependenciesHint"))
+  add("modularity__coupling__afferent", t("pages.componentsIndex.importingFilesLabel"), n => formatNumber(n), t("pages.componentsIndex.importingFilesHint"))
   const lang = implicitLanguage.value
-  add("modularity__abstractness", "Abstractness", n => (lang ? "n/a" : n.toFixed(2)), lang ? `${lang} declares no abstract types` : types ? `${formatNumber(abstract ?? 0)} of ${formatNumber(types)} types abstract` : "")
-  add("modularity__instability", "Instability", n => n.toFixed(2), "0 stable, 1 unstable")
-  add("modularity__distance_main_sequence", "Distance from main sequence", n => (lang ? "n/a" : n.toFixed(2)), lang ? "needs abstractness" : "0 is on the line")
+  add("modularity__abstractness", t("pages.componentsIndex.abstractnessLabel"), n => (lang ? t("pages.componentsIndex.notApplicable") : fixed(n, 2)), lang ? t("pages.componentsIndex.noAbstractTypes", { lang }) : types ? t("pages.componentsIndex.typesAbstract", { abstract: formatNumber(abstract ?? 0), types: formatNumber(types) }) : "")
+  add("modularity__instability", t("pages.componentsIndex.instabilityLabel"), n => fixed(n, 2), t("pages.componentsIndex.instabilityHint"))
+  add("modularity__distance_main_sequence", t("pages.componentsIndex.distanceLabel"), n => (lang ? t("pages.componentsIndex.notApplicable") : fixed(n, 2)), lang ? t("pages.componentsIndex.needsAbstractness") : t("pages.componentsIndex.distanceHint"))
   return rows
 })
 
@@ -474,14 +475,14 @@ const visibleTangle = computed(() => tangleExpanded.value ? position.value.tangl
 const cyclesCount = computed(() => store.allCyclesExpanded.filter((c: any) => c.nodes.includes(name.value)).length)
 
 const positionLede = computed(() => {
-  const t = position.value.tangle
-  if (t) {
-    return `It sits in a strongly connected group of ${formatNumber(Number(t.group_size))} components: each one can reach every other, so none of them can be lifted out alone.`
+  const tangle2 = position.value.tangle
+  if (tangle2) {
+    return t("pages.componentsIndex.sitsStronglyConnectedGroup", { group_size: formatNumber(Number(tangle2.group_size)) })
   }
   if (cyclesCount.value > 0) {
-    return `It appears in ${formatNumber(cyclesCount.value)} dependency ${cyclesCount.value === 1 ? "cycle" : "cycles"}.`
+    return t("pages.componentsIndex.appearsDependency", { cyclesCount: formatNumber(cyclesCount.value), cycles: t("common.noun.cycle", { count: cyclesCount.value }) })
   }
-  return "No cycle runs through it; its dependencies flow one way."
+  return t("pages.componentsIndex.noCycleRunsThrough")
 })
 
 const positionCells = computed(() => {
@@ -489,27 +490,27 @@ const positionCells = computed(() => {
   const community = position.value.community
   if (community) {
     cells.push({
-      label: "Community",
+      label: t("pages.componentsIndex.community"),
       value: `${formatNumber(Number(community.community_size))} components`,
-      title: `Community ${community.community_nr} — the components it clusters with`,
+      title: t("pages.componentsIndex.communityComponentsClusters", { community_nr: community.community_nr }),
     })
   }
   cells.push({
-    label: "Strongly connected group",
+    label: t("pages.componentsIndex.stronglyConnectedGroup"),
     value: position.value.tangle ? `${formatNumber(Number(position.value.tangle.group_size))} components` : "On its own",
-    title: "Components that can all reach each other; none can be extracted alone",
+    title: t("pages.componentsIndex.componentsCanAllReach"),
   })
   cells.push({
-    label: "Cycles",
+    label: t("pages.componentsIndex.cycles"),
     value: cyclesCount.value ? formatNumber(cyclesCount.value) : "None",
-    title: "Shortest dependency cycles this component appears in",
+    title: t("pages.componentsIndex.shortestDependencyCyclesComponent"),
   })
   const furthest = position.value.furthest
   if (furthest) {
     cells.push({
-      label: "Furthest reach",
+      label: t("pages.componentsIndex.furthestReach"),
       value: `${formatNumber(hopsOf(furthest.furthest_component_shortest_path, furthest.furthest_component_distance))} hops`,
-      title: `The component furthest away that it still reaches: ${furthest.furthest_component}`,
+      title: t("pages.componentsIndex.componentFurthestAwayStill", { furthest_component: furthest.furthest_component }),
     })
   }
   return cells
@@ -551,8 +552,8 @@ const hotspotDelta = computed<Delta>(() => {
 const codeAge = useCodeAge()
 const age = computed(() => ageShares((loaded.value?.files ?? []).map(f => ({ lines: Number(f.complexity__lines) || 0, days: codeAge.byFile.value.get(f.name) }))))
 const pctOf = (v: number) => `${Math.round(v * 100)}%`
-const ageLine = computed(() => `${pctOf(age.value.over2)} of its lines are in files unchanged for more than 2 years; ${pctOf(age.value.over1)} for more than a year.`)
-const ageTitle = computed(() => `Lines in files unchanged for > 5 y: ${pctOf(age.value.over5)}, > 2 y: ${pctOf(age.value.over2)}, > 1 y: ${pctOf(age.value.over1)}`)
+const ageLine = computed(() => t("pages.componentsIndex.linesFilesUnchangedMore", { over2: pctOf(age.value.over2), over1: pctOf(age.value.over1) }))
+const ageTitle = computed(() => t("pages.componentsIndex.linesFilesUnchanged5", { over5: pctOf(age.value.over5), over2: pctOf(age.value.over2), over1: pctOf(age.value.over1) }))
 
 // ── Leaning on something more volatile (stable dependencies) ───────
 const stab = (n: string) => {
@@ -582,10 +583,10 @@ const testLine = computed(() => {
   const mine = (loaded.value?.files ?? []).filter(f => roles.get(f.name) === "test")
   const lines = mine.reduce((s, f) => s + (Number(f.complexity__lines) || 0), 0)
   const outside = new Set(importers.value.filter(i => roles.get(i.file) === "test").map(i => i.file)).size
-  if (!mine.length && !outside) return (loaded.value?.files.length ?? 0) > 0 ? "No test file is here or imports it." : ""
-  const parts = [mine.length ? `Tests: ${formatNumber(lines)} lines in ${formatNumber(mine.length)} file${mine.length === 1 ? "" : "s"} here` : "No test files here"]
-  parts.push(outside ? `${formatNumber(outside)} test file${outside === 1 ? "" : "s"} elsewhere import${outside === 1 ? "s" : ""} it` : "no test file elsewhere imports it")
-  return parts.join(" · ") + (store.rolesRecorded ? "." : " (tests found by path convention).")
+  if (!mine.length && !outside) return (loaded.value?.files.length ?? 0) > 0 ? t("pages.componentsIndex.noTestFileHere") : ""
+  const parts = [mine.length ? t("pages.componentsIndex.testsLinesHere", { lines: formatNumber(lines), files: t("common.count.file", { count: mine.length }) }) : t("pages.componentsIndex.noTestFilesHere")]
+  parts.push(outside ? t("pages.componentsIndex.testElsewhereImport", { outside: formatNumber(outside), files: t("common.noun.file", { count: outside }), item: t("common.noun.s", { count: outside }) }) : t("pages.componentsIndex.noTestFileElsewhere"))
+  return parts.join(" · ") + (store.rolesRecorded ? "." : t("pages.componentsIndex.testsFoundPathConvention"))
 })
 const testDependentsLine = computed(() => {
   const dependents = [...new Set(importers.value.map(i => i.from))]
@@ -593,7 +594,7 @@ const testDependentsLine = computed(() => {
   const roles = store.fileRoleIndex
   const files = store.componentFilesIndex
   const tests = dependents.filter(d => { const fs = files.get(d) ?? []; return fs.length > 0 && fs.every(f => roles.get(f) === "test") }).length
-  return tests ? `${formatNumber(tests)} of ${formatNumber(dependents.length)} dependents are test components.` : ""
+  return tests ? t("pages.componentsIndex.dependentsTestComponents", { tests: formatNumber(tests), dependentsLength: formatNumber(dependents.length) }) : ""
 })
 
 // ── Bands 3 and 5: one query for what the store does not hold ──────
@@ -663,10 +664,10 @@ const incomingFiles = computed(() => loaded.value.incomingFiles)
 
 const blastLede = computed(() => {
   const direct = coupling("dependents")
-  if (direct === 0) return "Nothing imports it, so changing it breaks nothing else in this snapshot."
+  if (direct === 0) return t("pages.componentsIndex.nothingImportsSoChanging")
   const reached = loaded.value.reachedBy
-  const importers = `${formatNumber(direct)} ${direct === 1 ? "component imports" : "components import"} it directly`
-  if (reached > direct) return `${importers}, and ${formatNumber(reached)} reach it once indirect paths are counted.`
+  const importers = t("pages.componentsIndex.directly", { componentsImport: t("common.count.componentImports", { count: direct }) })
+  if (reached > direct) return t("pages.componentsIndex.reachOnceIndirectPaths", { importers, reached: formatNumber(reached) })
   return `${importers}.`
 })
 
@@ -684,11 +685,11 @@ const cycleStanding = computed<StandingRow | null>(() => {
   const { rank, percentile } = rankOf(ours, sorted)
   return {
     key: "cycles__real__count",
-    label: "Cycles",
+    label: t("pages.componentsIndex.cycles"),
     value: formatNumber(ours),
     rank,
     percentile,
-    definition: "Distinct dependency cycles this component appears in",
+    definition: t("pages.componentsIndex.distinctDependencyCyclesComponent"),
     direction: "up-risk",
     decimals: 0,
   }
@@ -722,26 +723,26 @@ function healthStanding(health: number): string {
   const better = all.filter(v => v > health).length
   const worse = all.filter(v => v < health).length
   const tied = n - better - worse - 1
-  const of = `of the ${formatNumber(total.value)} components in this snapshot`
-  if (n <= 1) return "the only component with a reading"
-  if (better === 0) return tied > 0 ? `the best in this snapshot, shared with ${formatNumber(tied)} other${tied === 1 ? "" : "s"}` : "the best in this snapshot"
-  if (worse === 0) return tied > 0 ? `the lowest in this snapshot, shared with ${formatNumber(tied)} other${tied === 1 ? "" : "s"}` : "the lowest in this snapshot"
+  const of = t("pages.componentsIndex.componentsSnapshot", { total: formatNumber(total.value) })
+  if (n <= 1) return t("pages.componentsIndex.onlyComponentReading")
+  if (better === 0) return tied > 0 ? t("pages.componentsIndex.bestSnapshotShared", { others: t("common.count.other", { count: tied }) }) : t("pages.componentsIndex.bestSnapshot")
+  if (worse === 0) return tied > 0 ? t("pages.componentsIndex.lowestSnapshotShared", { others: t("common.count.other", { count: tied }) }) : t("pages.componentsIndex.lowestSnapshot")
   return worse >= better
-    ? `better than ${Math.floor((worse / n) * 100)}% ${of}`
-    : `worse than ${Math.floor((better / n) * 100)}% ${of}`
+    ? t("pages.componentsIndex.betterThan", { value: Math.floor((worse / n) * 100), of })
+    : t("pages.componentsIndex.worseThan", { value: Math.floor((better / n) * 100), of })
 }
 
 const standingLede = computed(() => {
   const health = raw("codesmells__code_health")
   if (health !== null) {
-    return `Code health ${formatHealth(health)}, ${healthStanding(health)}.`
+    return t("pages.componentsIndex.codeHealth2", { health: formatHealth(health), health2: healthStanding(health) })
   }
   const hotspot = raw("codesmells__hotspot_score")
   if (hotspot !== null) {
     const { rank } = rankOf(hotspot, sortedValues.value.get("codesmells__hotspot_score") ?? [])
-    return `Hotspot score ${formatHotspot(hotspot)}, ranked ${formatNumber(rank)} of ${formatNumber(total.value)}.`
+    return t("pages.componentsIndex.hotspotScoreRanked", { hotspot: formatHotspot(hotspot), rank: formatNumber(rank), total: formatNumber(total.value) })
   }
-  return `Ranked against the other ${formatNumber(Math.max(total.value - 1, 0))} components in this snapshot.`
+  return t("pages.componentsIndex.rankedAgainstOtherComponents", { max: formatNumber(Math.max(total.value - 1, 0)) })
 })
 
 // ── Band 5: Composition ────────────────────────────────────────────
@@ -750,18 +751,18 @@ const directories = computed(() => new Set(loaded.value.files.map(f => f.directo
 const compositionCells = computed(() => {
   const cells: Array<{ label: string; value: string; title: string }> = []
   const add = (labelText: string, value: string, title = "") => cells.push({ label: labelText, value, title })
-  add("Files", formatNumber(raw("complexity__files") ?? loaded.value.files.length))
-  add("Lines", formatNumber(raw("complexity__lines") ?? 0))
+  add(t("pages.componentsIndex.filesLabel"), formatNumber(raw("complexity__files") ?? loaded.value.files.length))
+  add(t("pages.componentsIndex.linesLabel"), formatNumber(raw("complexity__lines") ?? 0))
   const types = raw("modularity__types__total")
   if (types !== null) {
     const abstract = raw("modularity__types__abstract") ?? 0
-    add("Types", abstract ? `${formatNumber(types)} · ${formatNumber(abstract)} abstract` : formatNumber(types), definitionOf("modularity__types__total"))
+    add(t("pages.componentsIndex.typesLabel"), abstract ? t("pages.componentsIndex.typesWithAbstract", { types: formatNumber(types), abstract: formatNumber(abstract) }) : formatNumber(types), definitionOf("modularity__types__total"))
   }
   const methods = raw("java__method_declarations")
-  if (methods) add("Methods", formatNumber(methods), definitionOf("java__method_declarations"))
-  if (directories.value > 0) add("Directories", formatNumber(directories.value), "Folders its files are spread across")
+  if (methods) add(t("pages.componentsIndex.methodsLabel"), formatNumber(methods), definitionOf("java__method_declarations"))
+  if (directories.value > 0) add(t("pages.componentsIndex.directoriesLabel"), formatNumber(directories.value), t("pages.componentsIndex.directoriesHint"))
   const indentation = raw("complexity__indentation__avg")
-  if (indentation !== null) add("Average indentation", indentation.toFixed(2), definitionOf("complexity__indentation__avg"))
+  if (indentation !== null) add(t("pages.componentsIndex.indentationLabel"), fixed(indentation, 2), definitionOf("complexity__indentation__avg"))
   return cells
 })
 
@@ -807,9 +808,9 @@ const healthSpread = computed(() => {
     scored++
   }
   const parts = ([
-    { level: "good" as const, label: "healthy" },
-    { level: "warn" as const, label: "to watch" },
-    { level: "bad" as const, label: "alerting" },
+    { level: "good" as const, label: t("pages.componentsIndex.healthy") },
+    { level: "warn" as const, label: t("pages.componentsIndex.watch") },
+    { level: "bad" as const, label: t("pages.componentsIndex.alerting") },
   ]).filter(p => counts[p.level] > 0)
     .map(p => ({ ...p, count: counts[p.level], share: scored ? (counts[p.level] / scored) * 100 : 0 }))
   return { total: scored, parts }
@@ -818,18 +819,18 @@ const healthSpread = computed(() => {
 const compositionLede = computed(() => {
   const files = raw("complexity__files") ?? loaded.value.files.length
   const lines = raw("complexity__lines") ?? 0
-  const spread = directories.value > 1 ? ` across ${formatNumber(directories.value)} directories` : ""
+  const spread = directories.value > 1 ? t("pages.componentsIndex.acrossDirectories", { directories: formatNumber(directories.value) }) : ""
   const c = cohesion.value
-  const cohesionText = c ? ` ${c.percent}% of their shared commits stay inside the component.` : ""
-  return `${formatNumber(files)} ${files === 1 ? "file" : "files"}, ${formatNumber(lines)} lines${spread}.${cohesionText}`
+  const cohesionText = c ? t("pages.componentsIndex.theirSharedCommitsStay", { percent: c.percent }) : ""
+  return t("pages.componentsIndex.lines2", { files: t("common.count.file", { count: files }), lines: formatNumber(lines), spread, cohesionText })
 })
 
 // ── The reference dump, cleaned ────────────────────────────────────
 const IDENTITY = new Set(["name", "report_id", "timestamp", "connections", "git__repository", "java_class", "java_full_class"])
 const CORE_FAMILIES = new Set(["complexity", "codesmells", "modularity", "graph", "cycles", "git"])
 const FAMILY_LABELS: Record<string, string> = {
-  complexity: "Complexity", codesmells: "Code smells", modularity: "Modularity", graph: "Graph centrality",
-  cycles: "Cycles", git: "Git", java: "Java", js: "JavaScript",
+  complexity: t("pages.componentsIndex.complexity"), codesmells: t("pages.componentsIndex.codeSmells"), modularity: t("pages.componentsIndex.modularity"), graph: t("pages.componentsIndex.graphCentrality"),
+  cycles: t("pages.componentsIndex.cycles"), git: t("pages.componentsIndex.git"), java: t("pages.componentsIndex.java"), js: "JavaScript",
 }
 
 const families = computed(() => {

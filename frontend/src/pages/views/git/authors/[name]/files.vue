@@ -3,28 +3,28 @@
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
       <div class="relative flex items-center">
         <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
-        <input v-model="search" type="search" placeholder="Search files" class="ui-input ui-input-sm w-64 pl-7" aria-label="Search files">
+        <input v-model="search" type="search" :placeholder="t('pages.gitAuthorsFiles.searchFiles')" class="ui-input ui-input-sm w-64 pl-7" :aria-label="t('pages.gitAuthorsFiles.searchFiles')">
       </div>
       <span class="ui-toolbar-meta ml-auto">
-        <template v-if="search.trim()">{{ formatNumber(filtered.length) }} of {{ formatNumber(rows.length) }}</template>
-        <template v-else>{{ formatNumber(rows.length) }} files</template>
+        <template v-if="search.trim()">{{ t('pages.gitAuthorsFiles.of', { filteredLength: formatNumber(filtered.length), rowsLength: formatNumber(rows.length) }) }}</template>
+        <template v-else>{{ t('pages.gitAuthorsFiles.files', { rowsLength: formatNumber(rows.length) }) }}</template>
       </span>
       <div v-if="totalPages > 1" class="flex items-center gap-2 text-sm text-neutral-500">
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" aria-label="Previous page" @click="goToPage(page - 1)">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" :aria-label="t('pages.gitAuthorsFiles.previousPage')" @click="goToPage(page - 1)">
           <Icon :size="14" icon="chevron-left"/>
         </button>
         <span class="font-mono tabular-nums">{{ page }} / {{ totalPages }}</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page >= totalPages" aria-label="Next page" @click="goToPage(page + 1)">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page >= totalPages" :aria-label="t('pages.gitAuthorsFiles.nextPage')" @click="goToPage(page + 1)">
           <Icon :size="14" icon="chevron-right"/>
         </button>
       </div>
     </div>
 
-    <LoadingState v-if="loading" text="Reading files…"/>
-    <EmptyState v-else-if="error" title="Could not read files" :text="error" icon="alert"/>
-    <EmptyState v-else-if="rows.length === 0" title="No files recorded" :text="`${name} has no file changes in this snapshot.`" icon="file-code"/>
-    <EmptyState v-else-if="filtered.length === 0" title="No files match" :text="`0 of ${rows.length} match “${search.trim()}”.`" icon="search">
-      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">Clear search</button>
+    <LoadingState v-if="loading" :text="t('pages.gitAuthorsFiles.readingFiles')"/>
+    <EmptyState v-else-if="error" :title="t('pages.gitAuthorsFiles.couldNotReadFiles')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="rows.length === 0" :title="t('pages.gitAuthorsFiles.noFilesRecorded')" :text="t('pages.gitAuthorsFiles.hasNoFileChanges', { name })" icon="file-code"/>
+    <EmptyState v-else-if="filtered.length === 0" :title="t('pages.gitAuthorsFiles.noFilesMatch')" :text="t('pages.gitAuthorsFiles.text0Match', { rowsLength: rows.length, search: search.trim() })" icon="search">
+      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">{{ t('pages.gitAuthorsFiles.clearSearch') }}</button>
     </EmptyState>
     <div v-else class="min-h-0 grow overflow-y-auto">
       <table class="ui-table">
@@ -71,6 +71,7 @@ import { formatDate } from "~/shared/time"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { t } from "~/shared/i18n"
 
 const route = useRoute()
 const store = useDataStore()
@@ -127,11 +128,11 @@ const filtered = computed(() => {
 
 type SortKey = "file" | "component" | "commits" | "lines" | "last_commit"
 const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
-  { key: "file", label: "File" },
-  { key: "component", label: "Component", width: "w-[260px]" },
-  { key: "commits", label: "Commits", align: "right", width: "w-[90px]" },
-  { key: "lines", label: "Lines", align: "right", width: "w-[150px]" },
-  { key: "last_commit", label: "Last", align: "right", width: "w-[110px]" },
+  { key: "file", label: t("pages.gitAuthorsFiles.file") },
+  { key: "component", label: t("pages.gitAuthorsFiles.component"), width: "w-[260px]" },
+  { key: "commits", label: t("pages.gitAuthorsFiles.commits"), align: "right", width: "w-[90px]" },
+  { key: "lines", label: t("pages.gitAuthorsFiles.lines"), align: "right", width: "w-[150px]" },
+  { key: "last_commit", label: t("pages.gitAuthorsFiles.last"), align: "right", width: "w-[110px]" },
 ]
 
 const sortKey = ref<SortKey>("commits")

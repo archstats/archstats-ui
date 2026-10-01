@@ -15,8 +15,8 @@
       <div class="ui-popover flex w-72 flex-col overflow-hidden animate-in" :style="{ maxHeight: Math.min(400, space) + 'px' }">
         <div class="flex items-center gap-2 border-b border-neutral-200 px-2.5 py-2">
           <Icon icon="search" class="shrink-0 text-neutral-400" :size="14"/>
-          <input v-model="searchQuery" type="text" placeholder="Search metrics" class="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400" @click.stop/>
-          <button v-show="searchQuery" type="button" class="shrink-0 text-neutral-400 hover:text-neutral-700" aria-label="Clear" @click.stop="searchQuery = ''">
+          <input v-model="searchQuery" type="text" :placeholder="t('metrics.statSelectSingle.searchMetrics')" class="w-full bg-transparent text-base text-neutral-900 outline-none placeholder:text-neutral-400" @click.stop/>
+          <button v-show="searchQuery" type="button" class="shrink-0 text-neutral-400 hover:text-neutral-700" :aria-label="t('metrics.statSelectSingle.clear')" @click.stop="searchQuery = ''">
             <Icon icon="x" :size="12"/>
           </button>
         </div>
@@ -24,7 +24,7 @@
           <div v-if="stats.length > 0 && stats[0].children?.length">
             <StatSelectOptionNode :stat="stats[0]" :selected-stat="modelValue" :search-query="searchQuery" @select-stat="handleSelect($event)" @hover-stat="hoveredStat = $event"/>
           </div>
-          <div v-else class="px-3 py-8 text-center text-sm text-neutral-400">No matching metrics</div>
+          <div v-else class="px-3 py-8 text-center text-sm text-neutral-400">{{ t('metrics.statSelectSingle.noMatchingMetrics') }}</div>
         </div>
       </div>
 
@@ -35,7 +35,7 @@
           <div class="h-px w-full bg-neutral-200"></div>
           <p v-if="getStatDefinition(hoveredStat.fullName)?.short" class="text-base leading-5 text-neutral-700">{{ getStatDefinition(hoveredStat.fullName)?.short }}</p>
           <p v-if="getStatDefinition(hoveredStat.fullName)?.long" class="text-sm leading-4 text-neutral-500">{{ getStatDefinition(hoveredStat.fullName)?.long }}</p>
-          <p v-if="!getStatDefinition(hoveredStat.fullName)?.short && !getStatDefinition(hoveredStat.fullName)?.long" class="text-sm text-neutral-400">No description available for this metric.</p>
+          <p v-if="!getStatDefinition(hoveredStat.fullName)?.short && !getStatDefinition(hoveredStat.fullName)?.long" class="text-sm text-neutral-400">{{ t('metrics.statSelectSingle.noDescriptionAvailableMetric') }}</p>
         </div>
         <div class="mt-3 border-t border-neutral-200 pt-2">
           <span class="ui-tag select-all break-all">{{ hoveredStat.fullName }}</span>
@@ -56,6 +56,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 const store = useDataStore();
 
 import StatSelectOptionNode from "./StatSelectOptionNode.vue";
+import { t } from "~/shared/i18n";
 
 // Props
 const props = defineProps({
@@ -69,7 +70,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Select a stat'
+    default: t("metrics.statSelectSingle.selectStat")
   },
   alignRight: {
     type: Boolean,

@@ -9,6 +9,7 @@ import { pngBase64 } from "~/features/export/figure"
 import type { FigureLegend } from "~/features/export/figure"
 import { VIEWS } from "~/features/navigation/routes"
 import type { ViewContext } from "../engine/types"
+import { t } from "~/shared/i18n"
 
 function legendText(l: FigureLegend | null | undefined): string {
     if (!l) return ""
@@ -23,11 +24,11 @@ function viewLabel(route: RouteLocationNormalizedLoaded): string {
     const path = route.path
     const exact = VIEWS.find(v => v.to === path)
     if (exact) return exact.label
-    if (path.startsWith("/views/components/") && route.params.name) return `Component ${decodeURIComponent(String(route.params.name))}`
-    if (path.startsWith("/views/files/")) return `File ${path.replace("/views/files/", "")}`
-    if (path.startsWith("/views/groups/")) return "Group"
+    if (path.startsWith("/views/components/") && route.params.name) return t("ask.viewContext.component", { paramsName: decodeURIComponent(String(route.params.name)) })
+    if (path.startsWith("/views/files/")) return t("ask.viewContext.file", { replace: path.replace("/views/files/", "") })
+    if (path.startsWith("/views/groups/")) return t("ask.viewContext.group")
     const near = VIEWS.filter(v => v.to !== "/" && path.startsWith(v.to)).sort((a, b) => b.to.length - a.to.length)[0]
-    return near?.label ?? (path === "/" ? "Overview" : path.replace(/^\/views\//, ""))
+    return near?.label ?? (path === "/" ? t("ask.viewContext.overview") : path.replace(/^\/views\//, ""))
 }
 
 export function captureView(route: RouteLocationNormalizedLoaded, scope: { focus?: string }): ViewContext {

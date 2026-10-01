@@ -4,7 +4,7 @@
     class="ui-popover flex w-80 flex-col gap-2 p-2.5"
     tabindex="-1"
     role="dialog"
-    aria-label="Save to lens"
+    :aria-label="t('shell.saveToLens.saveLens')"
     @keydown.esc.stop.prevent="emit('cancel')"
   >
     <div class="flex items-center gap-1.5">
@@ -13,23 +13,23 @@
         v-model="name"
         type="text"
         class="ui-input ui-input-sm min-w-0 flex-1"
-        placeholder="Name this group"
-        aria-label="Group name"
+        :placeholder="t('shell.saveToLens.nameGroup')"
+        :aria-label="t('shell.saveToLens.groupName')"
         @keydown.enter.prevent="save()"
       />
-      <span class="shrink-0 text-xs text-neutral-400">in</span>
-      <select v-if="lens !== '__new'" class="ui-input ui-input-sm w-28 shrink-0" aria-label="Lens" :value="lens" @change="lens = ($event.target as HTMLSelectElement).value">
+      <span class="shrink-0 text-xs text-neutral-400">{{ t('shell.saveToLens.in') }}</span>
+      <select v-if="lens !== '__new'" class="ui-input ui-input-sm w-28 shrink-0" :aria-label="t('shell.saveToLens.lens')" :value="lens" @change="lens = ($event.target as HTMLSelectElement).value">
         <option v-for="d in lenses" :key="d" :value="d">{{ d }}</option>
-        <option value="__new">New lens…</option>
+        <option value="__new">{{ t('shell.saveToLens.newLens') }}</option>
       </select>
       <input
         v-else
         v-model="newLens"
         type="text"
         class="ui-input ui-input-sm w-28 shrink-0"
-        placeholder="Teams…"
-        aria-label="New lens name"
-        @keydown.esc.stop.prevent="lens = lenses[0] ?? 'Domain'"
+        :placeholder="t('shell.saveToLens.teams')"
+        :aria-label="t('shell.saveToLens.newLensName')"
+        @keydown.esc.stop.prevent="lens = lenses[0] ?? t('shell.saveToLens.domain')"
       />
     </div>
 
@@ -40,7 +40,7 @@
          says "matches nothing". -->
     <template v-if="asks">
       <p class="text-sm leading-4 text-neutral-600">
-        This query asks about measurements, so its answer changes as the code changes.
+        {{ t('shell.saveToLens.queryAsksAboutMeasurements') }}
       </p>
 
       <div class="flex flex-col gap-1">
@@ -61,8 +61,8 @@
 
     <div class="flex items-center gap-1.5">
       <span class="text-xs text-neutral-400">{{ summary }}</span>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('cancel')">Cancel</button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!canSave" @click="save()">Save</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('cancel')">{{ t('shell.saveToLens.cancel') }}</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!canSave" @click="save()">{{ t('shell.saveToLens.save') }}</button>
     </div>
   </div>
 </template>
@@ -71,6 +71,7 @@
 import { computed, nextTick, onMounted, ref } from "vue";
 import { useGroupsStore, type GroupMode } from "~/features/groups/groups.store";
 import { isLive, parseQuery } from "~/features/groups/query";
+import { t } from "~/shared/i18n";
 
 // Turning something you found into something you keep.
 //
@@ -97,15 +98,15 @@ const emit = defineEmits<{
 const CHOICES: Array<{ mode: GroupMode; title: (n: number) => string; hint: string }> = [
   {
     mode: "fixed",
-    title: n => `Keep these ${n} ${n === 1 ? "component" : "components"}`,
+    title: n => t("shell.saveToLens.keepThese", { components: t("common.count.component", { count: n }) }),
     // Said plainly, because without it people choose live out of loss
     // aversion: they assume fixed throws the query away.
-    hint: "The query is kept and re-checked. You'll be shown new matches to accept, never added silently.",
+    hint: t("shell.saveToLens.queryKeptReChecked"),
   },
   {
     mode: "live",
-    title: () => "Keep the query",
-    hint: "Re-run against every scan. Membership changes on its own.",
+    title: () => t("shell.saveToLens.keepQuery"),
+    hint: t("shell.saveToLens.reRunAgainstEvery"),
   },
 ];
 
@@ -122,7 +123,7 @@ const mode = ref<GroupMode>("fixed");
 
 const lenses = computed(() => (groups.dimensions.length ? groups.dimensions : ["Domain"]));
 const asks = computed(() => isLive(parseQuery(props.query)));
-const summary = computed(() => `${props.found} ${props.found === 1 ? "match" : "matches"}`);
+const summary = computed(() => t("common.count.match", { count: props.found }));
 const resolvedLens = computed(() => (lens.value === "__new" ? newLens.value.trim() : lens.value));
 const canSave = computed(() => !!name.value.trim() && !!resolvedLens.value);
 

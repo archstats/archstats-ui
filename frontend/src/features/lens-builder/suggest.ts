@@ -11,6 +11,7 @@ import { stronglyConnectedSets } from "~/features/connections/connections"
 export type SignalId = "references" | "cochange" | "entities" | "names" | "path" | "lanes" | "depth" | "cycles" | "authors"
 export type Weight = -2 | -1 | 0 | 1 | 2
 import { domainKeys, roleKeys, segmenterFor, subjectOf, type DomainBasis, type Ties } from "./subject"
+import { t } from "~/shared/i18n"
 
 export type Engine = "cluster" | "band" | "subject" | "role"
 export type BandBy = "lanes" | "depth"
@@ -20,15 +21,15 @@ export type Grain = "component" | "file"
 export interface SignalDef { id: SignalId; label: string; hint: string; needs?: "git" | "java" }
 
 export const SIGNALS: SignalDef[] = [
-  { id: "references", label: "References", hint: "Static references between them" },
-  { id: "cochange", label: "Co-change", hint: "Changed in the same commits", needs: "git" },
-  { id: "entities", label: "Shared domain types", hint: "Import the same entities and models", needs: "java" },
-  { id: "names", label: "Name tokens", hint: "Share a rare word in their names" },
-  { id: "path", label: "Package proximity", hint: "Live in the same package tree" },
-  { id: "lanes", label: "Same lane", hint: "Play the same framework role", needs: "java" },
-  { id: "depth", label: "Same depth", hint: "Sit at the same distance from the entry points" },
-  { id: "cycles", label: "Cycles", hint: "Depend on each other in a cycle" },
-  { id: "authors", label: "Same authors", hint: "Written by the same people", needs: "git" },
+  { id: "references", label: t("lens-builder.suggest.references"), hint: t("lens-builder.suggest.staticReferencesBetweenThem") },
+  { id: "cochange", label: t("lens-builder.suggest.coChange"), hint: t("lens-builder.suggest.changedSameCommits"), needs: "git" },
+  { id: "entities", label: t("lens-builder.suggest.sharedDomainTypes"), hint: t("lens-builder.suggest.importSameEntitiesModels"), needs: "java" },
+  { id: "names", label: t("lens-builder.suggest.nameTokens"), hint: t("lens-builder.suggest.shareRareWordTheir") },
+  { id: "path", label: t("lens-builder.suggest.packageProximity"), hint: t("lens-builder.suggest.liveSamePackageTree") },
+  { id: "lanes", label: t("lens-builder.suggest.sameLane"), hint: t("lens-builder.suggest.playSameFrameworkRole"), needs: "java" },
+  { id: "depth", label: t("lens-builder.suggest.sameDepth"), hint: t("lens-builder.suggest.sitSameDistanceEntry") },
+  { id: "cycles", label: t("lens-builder.suggest.cycles"), hint: t("lens-builder.suggest.dependEachOtherCycle") },
+  { id: "authors", label: t("lens-builder.suggest.sameAuthors"), hint: t("lens-builder.suggest.writtenSamePeople"), needs: "git" },
 ]
 
 export interface SuggestSettings {
@@ -89,58 +90,58 @@ export const PRESETS: Preset[] = [
   // made. "Domain" and "Layer" named the hoped-for result instead, and hid
   // the fact that a domain is found two opposite ways in two codebases.
   {
-    id: "tree", label: "Package tree", cut: "vertical",
-    hint: "Where each thing sits, cut at the depth that divides the tree best.",
-    settings: { engine: "subject", basis: "tree", bandBy: "lanes", weights: weightsOf({ path: 2, references: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: "Domain" },
+    id: "tree", label: t("lens-builder.suggest.packageTree"), cut: "vertical",
+    hint: t("lens-builder.suggest.whereEachThingSits"),
+    settings: { engine: "subject", basis: "tree", bandBy: "lanes", weights: weightsOf({ path: 2, references: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: t("lens-builder.suggest.domain") },
   },
   {
-    id: "subject", label: "Subject in the name", cut: "vertical",
-    hint: "The word that moves through the names: Catalog at any depth, in every layer.",
-    settings: { engine: "subject", basis: "subject", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 2, entities: 2, names: 1, path: 1, lanes: -1, cycles: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: "Domain" },
+    id: "subject", label: t("lens-builder.suggest.subjectName"), cut: "vertical",
+    hint: t("lens-builder.suggest.wordMovesThroughNames"),
+    settings: { engine: "subject", basis: "subject", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 2, entities: 2, names: 1, path: 1, lanes: -1, cycles: 1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: false, balance: false, dimension: t("lens-builder.suggest.domain") },
   },
   {
-    id: "role", label: "Role in the name", cut: "horizontal",
-    hint: "The word that fills the same slot in every name: everything ending in Controllers.",
-    settings: { engine: "role", bandBy: "lanes", weights: weightsOf({ names: 2, lanes: 1, references: -1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: true, balance: false, dimension: "Layer" },
+    id: "role", label: t("lens-builder.suggest.roleName"), cut: "horizontal",
+    hint: t("lens-builder.suggest.wordFillsSameSlot"),
+    settings: { engine: "role", bandBy: "lanes", weights: weightsOf({ names: 2, lanes: 1, references: -1 }), granularity: 0.5, minSize: 2, keepSharedApart: false, splitFiles: true, balance: false, dimension: t("lens-builder.suggest.layer") },
   },
   {
-    id: "references", label: "What references what", cut: "free",
-    hint: "Clusters in the reference graph. Reads no names at all, so a badly named codebase is no obstacle.",
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 2, path: 2, cycles: 2, cochange: 1, names: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Module" },
+    id: "references", label: t("lens-builder.suggest.whatReferencesWhat"), cut: "free",
+    hint: t("lens-builder.suggest.clustersReferenceGraphReads"),
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 2, path: 2, cycles: 2, cochange: 1, names: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: t("lens-builder.suggest.module") },
   },
   {
-    id: "depth", label: "Distance from the entry points", cut: "horizontal",
-    hint: "How many hops each thing sits from something that calls in.",
-    settings: { engine: "band", bandBy: "depth", weights: weightsOf({ depth: 2, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: "Layer" },
+    id: "depth", label: t("lens-builder.suggest.distanceEntryPoints"), cut: "horizontal",
+    hint: t("lens-builder.suggest.howManyHopsEach"),
+    settings: { engine: "band", bandBy: "depth", weights: weightsOf({ depth: 2, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: t("lens-builder.suggest.layer") },
   },
   {
-    id: "commits", label: "What changes together", cut: "free",
-    hint: "What gets edited in the same commits, whatever it is called or where it lives.",
+    id: "commits", label: t("lens-builder.suggest.whatChangesTogether"), cut: "free",
+    hint: t("lens-builder.suggest.whatGetsEditedSame"),
     // No minKept, and for the same reason the domain cut carries none:
     // `minKept` asks what share of a group's *references* stay inside, and
     // things edited in the same commit need not reference each other at all
     // -- that is the whole point of reading the history instead of the code.
     // Measured, the gate was throwing away most of the answer: Sakai placed
     // 318 of 1,271 with it and 1,228 without.
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ cochange: 2, cycles: 1, references: 0.8, path: 0.3 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: "Change" },
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ cochange: 2, cycles: 1, references: 0.8, path: 0.3 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: t("lens-builder.suggest.change") },
   },
   {
-    id: "authors", label: "Who works on it", cut: "vertical",
-    hint: "The hands in the commit history: the same people, the same commits.",
+    id: "authors", label: t("lens-builder.suggest.whoWorks"), cut: "vertical",
+    hint: t("lens-builder.suggest.handsCommitHistorySame"),
     // Same again: people who look after the same things do not have to make
     // those things reference each other. With the gate off, every component
     // gets an owner on all four codebases measured instead of four in five.
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ authors: 2, cochange: 2, path: 1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: "Team" },
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ authors: 2, cochange: 2, path: 1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: false, balance: true, dimension: t("lens-builder.suggest.team") },
   },
   {
-    id: "lanes", label: "What the framework makes it", cut: "horizontal",
-    hint: "Controller, repository, entity: the role the framework itself gives each file.",
-    settings: { engine: "band", bandBy: "lanes", weights: weightsOf({ lanes: 2, depth: 1, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: "Layer" },
+    id: "lanes", label: t("lens-builder.suggest.whatFrameworkMakes"), cut: "horizontal",
+    hint: t("lens-builder.suggest.controllerRepositoryEntityRole"),
+    settings: { engine: "band", bandBy: "lanes", weights: weightsOf({ lanes: 2, depth: 1, path: 1, references: -1 }), granularity: 0.5, minSize: 4, keepSharedApart: false, splitFiles: true, balance: true, dimension: t("lens-builder.suggest.layer") },
   },
   {
-    id: "blend", label: "Every signal at once", cut: "free",
-    hint: "All of the above counted together, with none of them leading.",
-    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 1, entities: 1, names: 1, path: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: "Dimension" },
+    id: "blend", label: t("lens-builder.suggest.everySignalOnce"), cut: "free",
+    hint: t("lens-builder.suggest.allAboveCountedTogether"),
+    settings: { engine: "cluster", bandBy: "lanes", weights: weightsOf({ references: 1, cochange: 1, entities: 1, names: 1, path: 1 }), granularity: 0.5, minSize: 4, minKept: 0.15, keepSharedApart: true, splitFiles: false, balance: true, dimension: t("lens-builder.suggest.dimension") },
   },
 ]
 
@@ -513,9 +514,9 @@ function bandKey(u: Unit, by: BandBy, maxDepth: number): { key: string; label: s
   }
   if (u.depth === null) return null
   const third = u.depth / Math.max(1, maxDepth)
-  if (third <= 0.34) return { key: "depth:0", label: "Entry points" }
-  if (third <= 0.67) return { key: "depth:1", label: "Middle" }
-  return { key: "depth:2", label: "Foundations" }
+  if (third <= 0.34) return { key: "depth:0", label: t("lens-builder.suggest.entryPoints") }
+  if (third <= 0.67) return { key: "depth:1", label: t("lens-builder.suggest.middle") }
+  return { key: "depth:2", label: t("lens-builder.suggest.foundations") }
 }
 
 
@@ -625,7 +626,7 @@ export function suggest(input: SuggestInput, settings: SuggestSettings, taken: R
     const resolution = 0.6 + Math.min(1, Math.max(0, settings.granularity)) * 1.6
     const initial = constraints ? new Map(Array.from(constraints.placed.entries()).filter(([id]) => !shared.has(id))) : undefined
     louvain(ids, edges, resolution, { initial, frozen: frozenUnits }).forEach((c, id) => clusterOf.set(id, "c:" + c))
-    if (shared.size) { shared.forEach(id => clusterOf.set(id, "shared")); labels.set("shared", "Shared") }
+    if (shared.size) { shared.forEach(id => clusterOf.set(id, "shared")); labels.set("shared", t("lens-builder.suggest.shared")) }
     const minUnits = input.grain === "file" ? Math.max(settings.minSize, 2) : settings.minSize
     const membersByCluster = () => { const m = new Map<string, string[]>(); clusterOf.forEach((c, id) => m.set(c, [...(m.get(c) ?? []), id])); return m }
     const medianSize = () => {
@@ -771,7 +772,7 @@ export function suggest(input: SuggestInput, settings: SuggestSettings, taken: R
     const cParts = parts.get(c)!
     const reasons = describe(c, members, contrib.get(c), rawSum.get(c), input, settings)
     let name = labels.get(c) ?? nameFor(members, input, settings, reasons)
-    if (!name) { do { name = `Group ${String.fromCharCode(65 + (letter % 26))}${letter >= 26 ? Math.floor(letter / 26) : ""}`; letter++ } while (usedNames.has(name)) }
+    if (!name) { do { name = t("lens-builder.suggest.group", { value: String.fromCharCode(65 + (letter % 26)), value2: letter >= 26 ? Math.floor(letter / 26) : "" }); letter++ } while (usedNames.has(name)) }
     const kept = keyOf.has(c) && labels.get(c) === name
     let unique = name, n = 2
     while (!kept && usedNames.has(unique)) unique = `${name} ${n++}`
@@ -873,12 +874,12 @@ export function worthProposing(
 }
 
 function describe(cluster: string, members: Unit[], contrib: Map<SignalId, number> | undefined, raw: Map<SignalId, number> | undefined, input: SuggestInput, settings: SuggestSettings): Reason[] {
-  if (cluster === "shared") return [{ signal: "references", text: "referenced from most of the codebase", share: 1 }]
+  if (cluster === "shared") return [{ signal: "references", text: t("lens-builder.suggest.referencedMostCodebase"), share: 1 }]
   if (settings.engine === "band") {
     const lane = topLane(members)
     return lane && settings.bandBy === "lanes"
-      ? [{ signal: "lanes", text: `same lane ${input.laneLabels[lane] ?? lane}`, share: 1 }]
-      : [{ signal: "depth", text: "same depth from the entry points", share: 1 }]
+      ? [{ signal: "lanes", text: t("lens-builder.suggest.sameLane2", { value: input.laneLabels[lane] ?? lane }), share: 1 }]
+      : [{ signal: "depth", text: t("lens-builder.suggest.sameDepthEntryPoints"), share: 1 }]
   }
   if (settings.engine === "subject") {
     // Said as it was arrived at: a word the names carry, or a branch of the
@@ -886,8 +887,8 @@ function describe(cluster: string, members: Unit[], contrib: Map<SignalId, numbe
     // none at all would leave the group with no answer to "why these".
     const word = subjectOf(cluster)
     return [word
-      ? { signal: "names", text: `all named ${word}`, share: 1 }
-      : { signal: "path", text: "same package tree", share: 1 }]
+      ? { signal: "names", text: t("lens-builder.suggest.allNamed", { word }), share: 1 }
+      : { signal: "path", text: t("lens-builder.suggest.samePackageTree"), share: 1 }]
   }
   if (!contrib) return []
   const total = Array.from(contrib.values()).reduce((s, x) => s + x, 0) || 1
@@ -897,20 +898,20 @@ function describe(cluster: string, members: Unit[], contrib: Map<SignalId, numbe
 
 function reasonText(signal: SignalId, members: Unit[], raw: number, input: SuggestInput): string {
   switch (signal) {
-    case "references": return `${Math.round(raw)} references between them`
-    case "cochange": return `co-changed ${Math.round(raw)} times`
+    case "references": return t("lens-builder.suggest.referencesBetweenThem", { raw: Math.round(raw) })
+    case "cochange": return t("lens-builder.suggest.coChangedTimes", { raw: Math.round(raw) })
     case "entities": {
       const count = new Map<string, number>()
       members.forEach(u => u.entities.forEach(e => count.set(e, (count.get(e) ?? 0) + 1)))
       const shared = Array.from(count.values()).filter(n => n >= 2).length
-      return `share ${shared} domain type${shared === 1 ? "" : "s"}`
+      return t("lens-builder.suggest.shareDomain", { shared, types: t("common.noun.type", { count: shared }) })
     }
-    case "names": { const t = topToken(members, input.idf); return t ? `name “${t}”` : "similar names" }
-    case "path": return "same package tree"
-    case "lanes": { const lane = topLane(members); return lane ? `same lane ${input.laneLabels[lane] ?? lane}` : "same lane" }
-    case "depth": return "same depth from the entry points"
-    case "cycles": return "in a cycle together"
-    case "authors": { const a = topAuthors(members, 2); return a.length ? `same authors: ${a.join(", ")}` : "same authors" }
+    case "names": { const item = topToken(members, input.idf); return item ? t("lens-builder.suggest.name", { item }) : t("lens-builder.suggest.similarNames") }
+    case "path": return t("lens-builder.suggest.samePackageTree")
+    case "lanes": { const lane = topLane(members); return lane ? t("lens-builder.suggest.sameLane2", { value: input.laneLabels[lane] ?? lane }) : t("lens-builder.suggest.sameLane3") }
+    case "depth": return t("lens-builder.suggest.sameDepthEntryPoints")
+    case "cycles": return t("lens-builder.suggest.cycleTogether")
+    case "authors": { const a = topAuthors(members, 2); return a.length ? t("lens-builder.suggest.sameAuthors2", { value: a.join(", ") }) : t("lens-builder.suggest.sameAuthors3") }
   }
 }
 
@@ -974,7 +975,7 @@ export function placeRest(input: SuggestInput, settings: SuggestSettings, placed
     if (!best || !bestBy) return
     const top = Array.from((bestBy as Map<SignalId, number>).entries()).sort((a, b) => b[1] - a[1])[0]
     const u = byId.get(id)
-    out.set(id, { key: best, score: bestW, reason: top && u ? reasonText(top[0], [u], 0, input).replace(/^0 references between them$/, "references") : "affinity" })
+    out.set(id, { key: best, score: bestW, reason: top && u ? reasonText(top[0], [u], 0, input).replace(/^0 references between them$/, "references") : t("lens-builder.suggest.affinity") })
   })
   return out
 }

@@ -3,6 +3,8 @@
 // so the architect sees the ask at a glance and the import preview can check
 // a capture against it.
 
+import { t } from "~/shared/i18n"
+
 export interface SettingDef {
     key: string
     label: string
@@ -17,53 +19,53 @@ interface ViewDef { name: string; settings: SettingDef[] }
 
 const VIEWS: Record<string, ViewDef> = {
     "/views/connections": {
-        name: "Connections",
+        name: t("reports.slotSettings.connections"),
         settings: [
-            { key: "rep", label: "Shown as", fallback: "graph", always: true, values: { graph: "Graph", matrix: "Matrix", chord: "Chord", list: "List", crosscut: "Crosscut" } },
-            { key: "level", label: "Level", fallback: "groups", always: true, values: { groups: "By group", components: "Components", files: "Files" } },
-            { key: "source", label: "Connections", fallback: "static", values: { static: "Imports", git: "Changed together", combined: "Imports and co-change" } },
-            { key: "order", label: "Order", fallback: "", values: { "": "As laid out", levels: "By levels", name: "By name" } },
-            { key: "relation", label: "Pairs", fallback: "all", values: { all: "All", "no-import": "Without an import" } },
-            { key: "sel", label: "Selected", fallback: "", values: {} },
+            { key: "rep", label: t("reports.slotSettings.shown"), fallback: "graph", always: true, values: { graph: t("reports.slotSettings.graph"), matrix: t("reports.slotSettings.matrix"), chord: t("reports.slotSettings.chord"), list: t("reports.slotSettings.list"), crosscut: t("reports.slotSettings.crosscut") } },
+            { key: "level", label: t("reports.slotSettings.level"), fallback: "groups", always: true, values: { groups: t("reports.slotSettings.group"), components: t("reports.slotSettings.components"), files: t("reports.slotSettings.files") } },
+            { key: "source", label: t("reports.slotSettings.connections"), fallback: "static", values: { static: t("reports.slotSettings.imports"), git: t("reports.slotSettings.changedTogether"), combined: t("reports.slotSettings.importsCoChange") } },
+            { key: "order", label: t("reports.slotSettings.order"), fallback: "", values: { "": t("reports.slotSettings.laidOut"), levels: t("reports.slotSettings.levels"), name: t("reports.slotSettings.name") } },
+            { key: "relation", label: t("reports.slotSettings.pairs"), fallback: "all", values: { all: t("reports.slotSettings.all"), "no-import": t("reports.slotSettings.withoutImport") } },
+            { key: "sel", label: t("reports.slotSettings.selected"), fallback: "", values: {} },
         ],
     },
     "/views/components/hotspots": {
-        name: "Hotspots",
+        name: t("reports.slotSettings.hotspots"),
         settings: [
-            { key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } },
-            { key: "layout", label: "Layout", fallback: "packed", values: { packed: "Packed", flat: "Flat" } },
-            { key: "preset", label: "Preset", fallback: "hotspots", values: { hotspots: "Hotspots", churn: "Churn against health", instability: "Instability", age: "Code age", nesting: "Nesting depth" } },
+            { key: "grain", label: t("reports.slotSettings.rows"), fallback: "components", always: true, values: { components: t("reports.slotSettings.components"), files: t("reports.slotSettings.files"), directories: t("reports.slotSettings.directories") } },
+            { key: "layout", label: t("reports.slotSettings.layout"), fallback: "packed", values: { packed: t("reports.slotSettings.packed"), flat: t("reports.slotSettings.flat") } },
+            { key: "preset", label: t("reports.slotSettings.preset"), fallback: "hotspots", values: { hotspots: t("reports.slotSettings.hotspots"), churn: t("reports.slotSettings.churnAgainstHealth"), instability: t("reports.slotSettings.instability"), age: t("reports.slotSettings.codeAge"), nesting: t("reports.slotSettings.nestingDepth") } },
         ],
     },
-    "/views/components/cycles": { name: "Cycles", settings: [{ key: "component", label: "Around", fallback: "", values: {} }] },
+    "/views/components/cycles": { name: t("reports.slotSettings.cycles"), settings: [{ key: "component", label: t("reports.slotSettings.around"), fallback: "", values: {} }] },
     "/views/git/authors": {
-        name: "Authors",
-        settings: [{ key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Knowledge", authors: "People" } }],
+        name: t("reports.slotSettings.authors"),
+        settings: [{ key: "grain", label: t("reports.slotSettings.rows"), fallback: "components", always: true, values: { components: t("reports.slotSettings.knowledge"), authors: t("reports.slotSettings.people") } }],
     },
     "/views/git/activity": {
-        name: "Activity",
-        settings: [{ key: "tab", label: "Tab", fallback: "now", always: true, values: { now: "Work now", breadth: "Breadth", effort: "Effort", commits: "Commits" } }],
+        name: t("reports.slotSettings.activity"),
+        settings: [{ key: "tab", label: t("reports.slotSettings.tab"), fallback: "now", always: true, values: { now: t("reports.slotSettings.workNow"), breadth: t("reports.slotSettings.breadth"), effort: t("reports.slotSettings.effort"), commits: t("reports.slotSettings.commits") } }],
     },
     "/views/metrics": {
-        name: "Metrics",
+        name: t("reports.slotSettings.metrics"),
         settings: [
-            { key: "grain", label: "Rows of", fallback: "components", always: true, values: { components: "Components", files: "Files", directories: "Directories" } },
-            { key: "view", label: "Shown as", fallback: "summary", values: { summary: "Summary", table: "Table", plot: "Plot", matrix: "Matrix", strips: "Strips", profiles: "Profiles" } },
-            { key: "preset", label: "Preset", fallback: "", values: { dms: "Distance to Main Sequence", "dms-changes": "DMS vs Code Changes", "churn-health": "Churn against health", "churn-complexity": "Churn against complexity", "authors-churn": "Authors vs Churn", "betweenness-churn": "Betweenness vs Churn", "age-churn-dms": "Age vs Churn vs DMS" } },
+            { key: "grain", label: t("reports.slotSettings.rows"), fallback: "components", always: true, values: { components: t("reports.slotSettings.components"), files: t("reports.slotSettings.files"), directories: t("reports.slotSettings.directories") } },
+            { key: "view", label: t("reports.slotSettings.shown"), fallback: "summary", values: { summary: t("reports.slotSettings.summary"), table: "Table", plot: t("reports.slotSettings.plot"), matrix: t("reports.slotSettings.matrix"), strips: t("reports.slotSettings.strips"), profiles: t("reports.slotSettings.profiles") } },
+            { key: "preset", label: t("reports.slotSettings.preset"), fallback: "", values: { dms: t("reports.slotSettings.distanceMainSequence"), "dms-changes": t("reports.slotSettings.dmsVsCodeChanges"), "churn-health": t("reports.slotSettings.churnAgainstHealth"), "churn-complexity": t("reports.slotSettings.churnAgainstComplexity"), "authors-churn": t("reports.slotSettings.authorsVsChurn"), "betweenness-churn": t("reports.slotSettings.betweennessVsChurn"), "age-churn-dms": t("reports.slotSettings.ageVsChurnVs") } },
         ],
     },
     "/views/units": {
-        name: "Units",
+        name: t("reports.slotSettings.units"),
         settings: [
-            { key: "flow", label: "Between", fallback: "", values: {} },
-            { key: "colour", label: "Map coloured by", fallback: "lane", values: { lane: "Lane", reach: "Reach", dupes: "Duplicates" } },
+            { key: "flow", label: t("reports.slotSettings.between"), fallback: "", values: {} },
+            { key: "colour", label: t("reports.slotSettings.mapColoured"), fallback: "lane", values: { lane: t("reports.slotSettings.lane"), reach: t("reports.slotSettings.reach"), dupes: t("reports.slotSettings.duplicates") } },
         ],
     },
-    "/views/changes": { name: "Changes", settings: [] },
-    "/": { name: "Overview", settings: [] },
-    "/views/libraries": { name: "Libraries", settings: [] },
-    "/views/rules": { name: "Rules", settings: [] },
-    "/views/trends": { name: "Trends", settings: [] },
+    "/views/changes": { name: t("reports.slotSettings.changes"), settings: [] },
+    "/": { name: t("reports.slotSettings.overview"), settings: [] },
+    "/views/libraries": { name: t("reports.slotSettings.libraries"), settings: [] },
+    "/views/rules": { name: t("reports.slotSettings.rules"), settings: [] },
+    "/views/trends": { name: t("reports.slotSettings.trends"), settings: [] },
 }
 
 function parse(route: string): { path: string; query: URLSearchParams } {
@@ -96,9 +98,9 @@ export function compareSettings(asked: string, got: string | null): SettingRow[]
     const g = got === null ? null : parse(got)
     const view = VIEWS[a.path]
     const rows: SettingRow[] = []
-    const viewName = view?.name ?? a.path.split("/").filter(Boolean).pop() ?? "the view"
+    const viewName = view?.name ?? a.path.split("/").filter(Boolean).pop() ?? t("reports.slotSettings.view")
     const gotView = g ? VIEWS[g.path]?.name ?? g.path.split("/").filter(Boolean).pop() ?? "" : undefined
-    rows.push({ label: "View", asked: viewName, got: gotView, ok: !g || g.path === a.path })
+    rows.push({ label: t("reports.slotSettings.view2"), asked: viewName, got: gotView, ok: !g || g.path === a.path })
     if (!view) return rows
     for (const d of view.settings) {
         const av = a.query.get(d.key) ?? d.fallback
@@ -109,12 +111,12 @@ export function compareSettings(asked: string, got: string | null): SettingRow[]
     }
     // The Files facet is a setting the run applies, not part of the view's address.
     const facet = a.query.get("facet")
-    if (facet) rows.push({ label: "Files", asked: facet === "test" ? "Tests" : facet === "production" ? "Production" : "All", ok: true })
+    if (facet) rows.push({ label: t("reports.slotSettings.files"), asked: facet === "test" ? t("reports.slotSettings.tests") : facet === "production" ? t("reports.slotSettings.production") : t("reports.slotSettings.all"), ok: true })
     return rows
 }
 
 /** The view a route opens, by its toolbar name. */
 export function viewName(route: string): string {
     const p = parse(route).path
-    return VIEWS[p]?.name ?? p.split("/").filter(Boolean).pop() ?? "the view"
+    return VIEWS[p]?.name ?? p.split("/").filter(Boolean).pop() ?? t("reports.slotSettings.view")
 }

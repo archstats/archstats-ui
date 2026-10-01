@@ -6,6 +6,7 @@
 
 import { prodFile, type SnapshotFacts } from "./readings"
 import { hotspots, lit, needs, SQL, structure, type ReportTemplate, type Writer } from "./templateKit"
+import { t } from "~/shared/i18n"
 
 
 const inList = (xs: string[]) => xs.map(lit).join(", ")
@@ -15,16 +16,16 @@ const markedWith = (source: string, keys: string[]) => `(SELECT unit FROM unit_m
 // What a library is for, from its name: enough to read a stack at a glance.
 const STACK_ROLES: Array<[string, string[]]> = [
     ["Testing", ["%junit%", "%mockk%", "%mockito%", "%espresso%", "%robolectric%", "%xctest%", "%snapshot%", "%jest%", "%test%", "%turbine%", "%mocktail%"]],
-    ["UI toolkit", ["%compose%", "%material%", "%appcompat%", "androidx.activity:%", "androidx.fragment:%", "%constraintlayout%", "%recyclerview%", "%swiftui%", "%snapkit%", "%flutter_svg%", "%flutter_animate%", "%react-native-reanimated%", "%react-native-gesture-handler%", "%react-native-screens%", "%react-native-svg%"]],
-    ["Dependency injection", ["%hilt%", "%dagger%", "%koin%", "%kodein%", "%swift-dependencies%", "%swinject%", "%resolver%", "%factory%", "get_it", "injectable", "%inversify%"]],
-    ["State management", ["%bloc%", "%riverpod%", "provider", "%redux%", "%zustand%", "%mobx%", "%jotai%", "%composable-architecture%", "%lifecycle-viewmodel%", "get", "%molecule%", "%orbit%", "%mvikotlin%"]],
+    [t("reports.mobileTemplates.uiToolkit"), ["%compose%", "%material%", "%appcompat%", "androidx.activity:%", "androidx.fragment:%", "%constraintlayout%", "%recyclerview%", "%swiftui%", "%snapkit%", "%flutter_svg%", "%flutter_animate%", "%react-native-reanimated%", "%react-native-gesture-handler%", "%react-native-screens%", "%react-native-svg%"]],
+    [t("reports.mobileTemplates.dependencyInjection"), ["%hilt%", "%dagger%", "%koin%", "%kodein%", "%swift-dependencies%", "%swinject%", "%resolver%", "%factory%", "get_it", "injectable", "%inversify%"]],
+    [t("reports.mobileTemplates.stateManagement"), ["%bloc%", "%riverpod%", "provider", "%redux%", "%zustand%", "%mobx%", "%jotai%", "%composable-architecture%", "%lifecycle-viewmodel%", "get", "%molecule%", "%orbit%", "%mvikotlin%"]],
     ["Networking", ["%retrofit%", "%okhttp%", "%ktor%", "%alamofire%", "%moya%", "%apollo%", "dio", "http", "%axios%", "%graphql%", "%grpc%", "%atproto%"]],
     ["Persistence", ["%room%", "%sqldelight%", "%realm%", "%grdb%", "%drift%", "%sqflite%", "%isar%", "%hive%", "%datastore%", "%firestore%", "%mmkv%", "%shared_preferences%", "%async-storage%", "%keychain%", "%sqlite%"]],
     ["Concurrency", ["%coroutines%", "%rxjava%", "%rxkotlin%", "%rxswift%", "%reactiveswift%", "%reactiveextensions%"]],
-    ["Images and media", ["%coil%", "%glide%", "%picasso%", "%kingfisher%", "%sdwebimage%", "%nuke%", "%cached_network_image%", "%fast-image%", "expo-image", "%exoplayer%", "%media3%", "%lottie%"]],
+    [t("reports.mobileTemplates.imagesMedia"), ["%coil%", "%glide%", "%picasso%", "%kingfisher%", "%sdwebimage%", "%nuke%", "%cached_network_image%", "%fast-image%", "expo-image", "%exoplayer%", "%media3%", "%lottie%"]],
     ["Navigation", ["%navigation%", "%auto_route%", "%go_router%", "%voyager%", "%decompose%", "%react-navigation%", "expo-router"]],
-    ["Analytics and crashes", ["%firebase%", "%crashlytics%", "%sentry%", "%analytics%", "%bugsnag%", "%datadog%", "%segment%", "%amplitude%"]],
-    ["Jetpack (other)", ["androidx.%"]],
+    [t("reports.mobileTemplates.analyticsCrashes"), ["%firebase%", "%crashlytics%", "%sentry%", "%analytics%", "%bugsnag%", "%datadog%", "%segment%", "%amplitude%"]],
+    [t("reports.mobileTemplates.jetpackOther"), ["androidx.%"]],
 ]
 const stackRole = (col: string) => `CASE WHEN dd.role = 'framework' THEN 'UI framework' ${STACK_ROLES.map(([label, ps]) => `WHEN ${likeAny(`lower(${col})`, ps)} THEN ${lit(label)}`).join(" ")} ELSE 'Other' END`
 const MOBILE_SQL = {
@@ -68,166 +69,166 @@ const MOBILE_SQL = {
 
 const hasTable = (f: SnapshotFacts, t: string, why: string): true | string => (f.tables.has(t) ? true : why)
 const mobileNeeds = {
-    apps: (f: SnapshotFacts): true | string => (f.mobileApps.length ? true : "the scan found no mobile app, or is older than mobile support; scan again to include it"),
-    units: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_markers") ? true : "the scan did not record classes and their markers"),
-    links: (f: SnapshotFacts): true | string => (f.tables.has("unit_connections") ? true : "the scan did not record which classes use which"),
-    declarations: (f: SnapshotFacts) => hasTable(f, "app_declarations", "this scan is older than app manifests; scan again to include them"),
+    apps: (f: SnapshotFacts): true | string => (f.mobileApps.length ? true : t("reports.mobileTemplates.scanFoundNoMobile")),
+    units: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_markers") ? true : t("reports.mobileTemplates.scanDidNotRecord")),
+    links: (f: SnapshotFacts): true | string => (f.tables.has("unit_connections") ? true : t("reports.mobileTemplates.scanDidNotRecord2")),
+    declarations: (f: SnapshotFacts) => hasTable(f, "app_declarations", t("reports.mobileTemplates.scanOlderThanApp")),
 }
 function stack(w: Writer) {
-    w.sql("The stack, by what each library is for", MOBILE_SQL.stackSummary, 40)
-    w.sql("SDK levels and toolchain", MOBILE_SQL.runtime, 20)
-    w.prompt("Which of these choices you would make again, and which libraries do the same job twice.")
+    w.sql(t("reports.mobileTemplates.stackWhatEachLibrary"), MOBILE_SQL.stackSummary, 40)
+    w.sql(t("reports.mobileTemplates.sdkLevelsToolchain"), MOBILE_SQL.runtime, 20)
+    w.prompt(t("reports.mobileTemplates.whichTheseChoicesYou"))
 }
 
 export const MOBILE: ReportTemplate[] = [
     {
         id: "android-review",
-        name: "Android app review",
-        audience: "An Android team or its architects",
-        summary: "Modules and how features depend on each other, screens in Compose and in Views, ViewModels that skip the data layer, what the manifest exposes, and the stack.",
-        when: "Use it before a modularisation push, when features have started reaching into each other, before moving the last screens to Compose, or when a new team takes the app over.",
+        name: t("reports.mobileTemplates.androidAppReview"),
+        audience: t("reports.mobileTemplates.androidTeamArchitects"),
+        summary: t("reports.mobileTemplates.modulesHowFeaturesDepend"),
+        when: t("reports.mobileTemplates.useBeforeModularisationPush"),
         ecosystem: "android",
-        title: ws => `Android review: ${ws}`,
+        title: ws => t("reports.mobileTemplates.androidReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the app does, who uses it, and what this review should settle.")
-            w.section("The app", true, () => { w.reading("mobile-apps"); w.reading("android"); w.reading("size") })
+            w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
+            w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("android"); w.reading("size") })
             w.section("Stack", mobileNeeds.apps(f), () => stack(w))
             w.section("Modules", needs.modules(f), () => {
-                w.sql("Gradle modules, apps first", MOBILE_SQL.gradleModules, 60)
-                w.sql("Features depending on other features", MOBILE_SQL.crossFeature, 30)
-                w.prompt("Whether features stay independent of each other, and which of the dependencies above are deliberate.")
+                w.sql(t("reports.mobileTemplates.gradleModulesAppsFirst"), MOBILE_SQL.gradleModules, 60)
+                w.sql(t("reports.mobileTemplates.featuresDependingOtherFeatures"), MOBILE_SQL.crossFeature, 30)
+                w.prompt(t("reports.mobileTemplates.whetherFeaturesStayIndependent"))
             })
-            w.section("Screens and UI", mobileNeeds.units(f), () => {
-                w.sql("Screens and UI by module", MOBILE_SQL.androidScreens(f), 40)
-                w.sql("XML layouts left", MOBILE_SQL.layouts, 20)
-                w.prompt("How far the move from Views to Compose has got, and which modules it has not reached.")
+            w.section(t("reports.mobileTemplates.screensUi"), mobileNeeds.units(f), () => {
+                w.sql(t("reports.mobileTemplates.screensUiModule"), MOBILE_SQL.androidScreens(f), 40)
+                w.sql(t("reports.mobileTemplates.xmlLayoutsLeft"), MOBILE_SQL.layouts, 20)
+                w.prompt(t("reports.mobileTemplates.howFarMoveViews"))
             })
-            w.section("ViewModels and the data layer", mobileNeeds.links(f), () => {
-                w.sql("ViewModels using data access directly", MOBILE_SQL.vmShortcuts, 30)
-                w.prompt("Whether these shortcuts past the repositories are tolerated, and where they should go through one.")
+            w.section(t("reports.mobileTemplates.viewmodelsDataLayer"), mobileNeeds.links(f), () => {
+                w.sql(t("reports.mobileTemplates.viewmodelsUsingDataAccess"), MOBILE_SQL.vmShortcuts, 30)
+                w.prompt(t("reports.mobileTemplates.whetherTheseShortcutsPast"))
             })
-            w.section("What the manifest exposes", mobileNeeds.declarations(f), () => {
-                w.sql("Activities, services, receivers and providers", MOBILE_SQL.androidSurface, 40)
+            w.section(t("reports.mobileTemplates.whatManifestExposes"), mobileNeeds.declarations(f), () => {
+                w.sql(t("reports.mobileTemplates.activitiesServicesReceiversProviders"), MOBILE_SQL.androidSurface, 40)
                 w.sql("Permissions", MOBILE_SQL.permissions("android"), 40)
-                w.sql("Links the app answers", MOBILE_SQL.deepLinks, 20)
-                w.prompt("Which exported components other apps are meant to start, and which permissions the app still needs.")
+                w.sql(t("reports.mobileTemplates.linksAppAnswers"), MOBILE_SQL.deepLinks, 20)
+                w.prompt(t("reports.mobileTemplates.whichExportedComponentsOther"))
             })
-            w.section("How the code connects", true, () => { structure(w); w.reading("coupling") })
+            w.section(t("reports.mobileTemplates.howCodeConnects"), true, () => { structure(w); w.reading("coupling") })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
     {
         id: "ios-review",
-        name: "iOS app review",
-        audience: "An iOS team or its architects",
-        summary: "Targets and packages, SwiftUI against UIKit, the largest view controllers, the types everything reaches, views calling the network, Objective-C left, what the app declares, and the stack.",
-        when: "Use it when planning the move from UIKit to SwiftUI, when a few types have become what every screen leans on, before splitting the app into Swift packages, or when a new team takes it over.",
+        name: t("reports.mobileTemplates.iosAppReview"),
+        audience: t("reports.mobileTemplates.iosTeamArchitects"),
+        summary: t("reports.mobileTemplates.targetsPackagesSwiftuiAgainst"),
+        when: t("reports.mobileTemplates.useWhenPlanningMove"),
         ecosystem: "ios",
         title: ws => `iOS review: ${ws}`,
         build(w) {
             const f = w.facts
-            w.prompt("What the app does, who uses it, and what this review should settle.")
-            w.section("The app", true, () => { w.reading("mobile-apps"); w.reading("ios"); w.reading("size") })
+            w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
+            w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("ios"); w.reading("size") })
             w.section("Stack", mobileNeeds.apps(f), () => stack(w))
-            w.section("Targets and packages", needs.modules(f), () => {
-                w.sql("App targets and Swift packages", MOBILE_SQL.appleTargets, 60)
-                w.prompt("Whether the packages split the app along features or along layers, and which package everything depends on.")
+            w.section(t("reports.mobileTemplates.targetsPackages"), needs.modules(f), () => {
+                w.sql(t("reports.mobileTemplates.appTargetsSwiftPackages"), MOBILE_SQL.appleTargets, 60)
+                w.prompt(t("reports.mobileTemplates.whetherPackagesSplitApp"))
             })
-            w.section("SwiftUI and UIKit", mobileNeeds.units(f), () => {
-                w.sql("Views and view controllers by target", MOBILE_SQL.uiKinds, 30)
-                w.sql("The largest view controllers", MOBILE_SQL.bigControllers(f), 15)
-                w.prompt("How far the move to SwiftUI has got, and which view controllers are too large to move as they are.")
+            w.section(t("reports.mobileTemplates.swiftuiUikit"), mobileNeeds.units(f), () => {
+                w.sql(t("reports.mobileTemplates.viewsViewControllersTarget"), MOBILE_SQL.uiKinds, 30)
+                w.sql(t("reports.mobileTemplates.largestViewControllers"), MOBILE_SQL.bigControllers(f), 15)
+                w.prompt(t("reports.mobileTemplates.howFarMoveSwiftui"))
             })
-            w.section("What everything reaches", mobileNeeds.links(f), () => {
-                w.sql("Types used from the most folders", MOBILE_SQL.fanIn, 15)
-                w.sql("Views calling a client or service themselves", MOBILE_SQL.viewsToNetwork(["View", "UIViewController", "UITableViewController", "UICollectionViewController"]), 30)
-                w.prompt("Which of these types are singletons or managers every screen leans on, and which views should get their data through something else.")
+            w.section(t("reports.mobileTemplates.whatEverythingReaches"), mobileNeeds.links(f), () => {
+                w.sql(t("reports.mobileTemplates.typesUsedMostFolders"), MOBILE_SQL.fanIn, 15)
+                w.sql(t("reports.mobileTemplates.viewsCallingClientService"), MOBILE_SQL.viewsToNetwork(["View", "UIViewController", "UITableViewController", "UICollectionViewController"]), 30)
+                w.prompt(t("reports.mobileTemplates.whichTheseTypesSingletons"))
             })
             if (f.languages.some(l => l.language === "Objective-C" && l.lines > 0)) {
-                w.section("Objective-C", true, () => { w.sql("Objective-C by target", MOBILE_SQL.objc, 20); w.prompt("What is left to move to Swift, and what it would take.") })
+                w.section("Objective-C", true, () => { w.sql(t("reports.mobileTemplates.objectiveCTarget"), MOBILE_SQL.objc, 20); w.prompt(t("reports.mobileTemplates.whatLeftMoveSwift")) })
             }
-            w.section("What the app declares", mobileNeeds.declarations(f), () => {
-                w.sql("Permissions, background modes, URL schemes and entitlements", MOBILE_SQL.permissions("ios"), 50)
-                w.prompt("Whether every permission prompt and background mode is still needed, and why any App Transport Security exception exists.")
+            w.section(t("reports.mobileTemplates.whatAppDeclares"), mobileNeeds.declarations(f), () => {
+                w.sql(t("reports.mobileTemplates.permissionsBackgroundModesUrl"), MOBILE_SQL.permissions("ios"), 50)
+                w.prompt(t("reports.mobileTemplates.whetherEveryPermissionPrompt"))
             })
-            w.section("How the code connects", true, () => { structure(w); w.reading("coupling") })
+            w.section(t("reports.mobileTemplates.howCodeConnects"), true, () => { structure(w); w.reading("coupling") })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
     {
         id: "flutter-review",
-        name: "Flutter app review",
-        audience: "A Flutter team",
-        summary: "Packages, screens and widgets by folder, the state management in use and where approaches mix, widgets calling data directly, generated code, and the stack.",
-        when: "Use it when more than one way of managing state has crept in, when widgets have started talking to the network themselves, or before splitting the app into packages.",
+        name: t("reports.mobileTemplates.flutterAppReview"),
+        audience: t("reports.mobileTemplates.flutterTeam"),
+        summary: t("reports.mobileTemplates.packagesScreensWidgetsFolder"),
+        when: t("reports.mobileTemplates.useWhenMoreThan"),
         ecosystem: "flutter",
-        title: ws => `Flutter review: ${ws}`,
+        title: ws => t("reports.mobileTemplates.flutterReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the app does, who uses it, and what this review should settle.")
-            w.section("The app", true, () => { w.reading("mobile-apps"); w.reading("flutter"); w.reading("size") })
+            w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
+            w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("flutter"); w.reading("size") })
             w.section("Stack", mobileNeeds.apps(f), () => stack(w))
-            w.section("Packages", needs.modules(f), () => w.sql("Dart packages", MOBILE_SQL.pubPackages, 30))
-            w.section("Screens, widgets and state", mobileNeeds.units(f), () => {
-                w.sql("By folder", MOBILE_SQL.flutterFolders, 40)
-                w.prompt("Whether one approach to state management is the rule, and where a second one has crept in.")
+            w.section("Packages", needs.modules(f), () => w.sql(t("reports.mobileTemplates.dartPackages"), MOBILE_SQL.pubPackages, 30))
+            w.section(t("reports.mobileTemplates.screensWidgetsState"), mobileNeeds.units(f), () => {
+                w.sql(t("reports.mobileTemplates.folder"), MOBILE_SQL.flutterFolders, 40)
+                w.prompt(t("reports.mobileTemplates.whetherOneApproachState"))
             })
-            w.section("Widgets and data", mobileNeeds.links(f), () => {
-                w.sql("Widgets calling a repository, client or service themselves", MOBILE_SQL.viewsToNetwork(["StatelessWidget", "StatefulWidget", "State", "ConsumerWidget", "ConsumerStatefulWidget", "ConsumerState", "HookWidget", "HookConsumerWidget"]), 30)
-                w.sql("Types used from the most folders", MOBILE_SQL.fanIn, 15)
+            w.section(t("reports.mobileTemplates.widgetsData"), mobileNeeds.links(f), () => {
+                w.sql(t("reports.mobileTemplates.widgetsCallingRepositoryClient"), MOBILE_SQL.viewsToNetwork(["StatelessWidget", "StatefulWidget", "State", "ConsumerWidget", "ConsumerStatefulWidget", "ConsumerState", "HookWidget", "HookConsumerWidget"]), 30)
+                w.sql(t("reports.mobileTemplates.typesUsedMostFolders"), MOBILE_SQL.fanIn, 15)
             })
-            w.section("Generated code", true, () => w.sql("Dart by who wrote it", MOBILE_SQL.generated, 10))
-            w.section("How the code connects", true, () => { structure(w); w.reading("coupling") })
+            w.section(t("reports.mobileTemplates.generatedCode"), true, () => w.sql(t("reports.mobileTemplates.dartWhoWrote"), MOBILE_SQL.generated, 10))
+            w.section(t("reports.mobileTemplates.howCodeConnects"), true, () => { structure(w); w.reading("coupling") })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
     {
         id: "react-native-review",
-        name: "React Native app review",
-        audience: "A React Native or Expo team",
-        summary: "Screens by folder, the native modules on each side of the bridge, how much native code there is, and the stack.",
-        when: "Use it when deciding what to keep native and what to move to JavaScript, before a React Native upgrade, or when a new team takes the app over.",
+        name: t("reports.mobileTemplates.reactNativeAppReview"),
+        audience: t("reports.mobileTemplates.reactNativeExpoTeam"),
+        summary: t("reports.mobileTemplates.screensFolderNativeModules"),
+        when: t("reports.mobileTemplates.useWhenDecidingWhat"),
         ecosystem: "react-native",
-        title: ws => `React Native review: ${ws}`,
+        title: ws => t("reports.mobileTemplates.reactNativeReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the app does, who uses it, and what this review should settle.")
-            w.section("The app", true, () => { w.reading("mobile-apps"); w.reading("node"); w.reading("size") })
+            w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
+            w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("node"); w.reading("size") })
             w.section("Stack", mobileNeeds.apps(f), () => stack(w))
-            w.section("Screens", mobileNeeds.units(f), () => w.sql("Screens by folder", MOBILE_SQL.rnScreens, 30))
-            w.section("Native code", mobileNeeds.units(f), () => {
-                w.sql("JavaScript and native, by side", MOBILE_SQL.nativeLines, 5)
-                w.sql("Native modules", MOBILE_SQL.nativeModules, 30)
-                w.prompt("Which native modules the app owns, which it could take from a library, and who can maintain each side.")
+            w.section("Screens", mobileNeeds.units(f), () => w.sql(t("reports.mobileTemplates.screensFolder"), MOBILE_SQL.rnScreens, 30))
+            w.section(t("reports.mobileTemplates.nativeCode"), mobileNeeds.units(f), () => {
+                w.sql(t("reports.mobileTemplates.javascriptNativeSide"), MOBILE_SQL.nativeLines, 5)
+                w.sql(t("reports.mobileTemplates.nativeModules"), MOBILE_SQL.nativeModules, 30)
+                w.prompt(t("reports.mobileTemplates.whichNativeModulesApp"))
             })
-            w.section("How the code connects", true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
+            w.section(t("reports.mobileTemplates.howCodeConnects"), true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
     {
         id: "kmp-review",
-        name: "Kotlin Multiplatform review",
-        audience: "A team sharing Kotlin across platforms",
-        summary: "How much code is shared and how much is per platform, module by module, and the expect declarations each platform has to implement.",
-        when: "Use it to see how much of the code the platforms really share, before moving more of it to common code, or when a platform keeps needing its own implementation.",
+        name: t("reports.mobileTemplates.kotlinMultiplatformReview"),
+        audience: t("reports.mobileTemplates.teamSharingKotlinAcross"),
+        summary: t("reports.mobileTemplates.howMuchCodeShared"),
+        when: t("reports.mobileTemplates.useSeeHowMuch"),
         ecosystem: "kmp",
-        title: ws => `Multiplatform review: ${ws}`,
+        title: ws => t("reports.mobileTemplates.multiplatformReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("Which platforms the code targets, and what this review should settle.")
-            w.section("Shared and platform code", true, () => { w.reading("kmp"); w.sql("Lines by module and source set", MOBILE_SQL.sourceSets, 60) })
-            w.section("Expect and actual", mobileNeeds.units(f), () => {
-                w.sql("Expect declarations", MOBILE_SQL.expects, 40)
-                w.prompt("Which platform differences belong behind an expect, and which have leaked into common code.")
+            w.prompt(t("reports.mobileTemplates.whichPlatformsCodeTargets"))
+            w.section(t("reports.mobileTemplates.sharedPlatformCode"), true, () => { w.reading("kmp"); w.sql(t("reports.mobileTemplates.linesModuleSourceSet"), MOBILE_SQL.sourceSets, 60) })
+            w.section(t("reports.mobileTemplates.expectActual"), mobileNeeds.units(f), () => {
+                w.sql(t("reports.mobileTemplates.expectDeclarations"), MOBILE_SQL.expects, 40)
+                w.prompt(t("reports.mobileTemplates.whichPlatformDifferencesBelong"))
             })
-            w.section("Modules", needs.modules(f), () => w.sql("Gradle modules", MOBILE_SQL.gradleModules, 60))
+            w.section("Modules", needs.modules(f), () => w.sql(t("reports.mobileTemplates.gradleModules"), MOBILE_SQL.gradleModules, 60))
             w.section("Stack", mobileNeeds.apps(f), () => stack(w))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
 ]

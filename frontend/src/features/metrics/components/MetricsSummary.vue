@@ -2,22 +2,22 @@
   <div class="min-h-0 grow overflow-y-auto">
     <div class="mx-auto flex max-w-[1080px] flex-col gap-7 px-6 pb-14 pt-6">
       <header class="flex flex-col gap-1">
-        <h2 class="text-xl font-semibold leading-[26px] tracking-[-0.01em] text-neutral-900">{{ rows.length.toLocaleString("en-US") }} {{ rows.length === 1 ? one : noun }}, {{ metrics.length }} metrics</h2>
-        <p class="max-w-[72ch] text-base leading-5 text-neutral-600">What stands out in this snapshot, each with the view that shows it best. These are facts about the numbers; what they mean for your code is yours to judge.</p>
+        <h2 class="text-xl font-semibold leading-[26px] tracking-[-0.01em] text-neutral-900">{{ t('metrics.metricsSummary.metrics', { value: rows.length.toLocaleString(intlLocale), value2: rows.length === 1 ? one : noun, metricsLength: metrics.length }) }}</h2>
+        <p class="max-w-[72ch] text-base leading-5 text-neutral-600">{{ t('metrics.metricsSummary.whatStandsOutSnapshot') }}</p>
       </header>
 
       <section class="flex flex-col gap-2">
-        <h3 class="ui-section-title">The median {{ one }}</h3>
+        <h3 class="ui-section-title">{{ t('metrics.metricsSummary.median', { one }) }}</h3>
         <StatStrip :cells="medianCells"/>
       </section>
 
       <section v-if="findings.length" class="flex flex-col gap-2">
-        <h3 class="ui-section-title">What stands out</h3>
+        <h3 class="ui-section-title">{{ t('metrics.metricsSummary.whatStandsOut') }}</h3>
         <MetricFindings class="rounded-lg bg-surface hairline" :rows="rows" :findings="findings" @go="emit('go', $event)" @open="emit('open', $event)"/>
       </section>
 
       <section class="flex flex-col gap-2">
-        <h3 class="ui-section-title">Five ways to look</h3>
+        <h3 class="ui-section-title">{{ t('metrics.metricsSummary.fiveWaysLook') }}</h3>
         <ul class="flex flex-col rounded-lg bg-surface hairline">
           <li v-for="(w, i) in WAYS" :key="w.view" :class="{ 'hairline-t': i > 0 }">
             <button type="button" class="group flex h-14 w-full items-center gap-4 px-4 text-left hover:bg-neutral-50" @click="emit('go', { view: w.view })">
@@ -76,6 +76,7 @@ import { finiteSorted, metricValue, quantile } from "~/features/metrics/plotRead
 import { summarize, type Go } from "~/features/metrics/summary";
 import MetricFindings from "~/features/metrics/components/MetricFindings.vue";
 import { healthLevel, hotspotLevel } from "~/features/metrics/useHealth";
+import { t, intlLocale } from "~/shared/i18n";
 
 // The Metrics entry page: the median row, what stands out in words with a
 // small figure each, and the five ways to look, each one click away and
@@ -97,8 +98,8 @@ const emit = defineEmits<{
 const store = useDataStore();
 const niceName = (k: string) => store.statNiceName(k) || k;
 const { theme } = useChartTheme();
-const noun = computed(() => (props.grain === "file" ? "files" : "components"));
-const one = computed(() => (props.grain === "file" ? "file" : "component"));
+const noun = computed(() => (props.grain === "file" ? t("common.noun.file", { count: 2 }) : t("common.noun.component", { count: 2 })));
+const one = computed(() => (props.grain === "file" ? t("common.noun.file", { count: 1 }) : t("common.noun.component", { count: 1 })));
 
 const findings = computed(() => summarize(props.rows, props.metrics, { niceName, noun: noun.value, one: one.value }));
 
@@ -114,11 +115,11 @@ const medianCells = computed<StatCell[]>(() => {
 
 // ─── Ways to look ───
 const WAYS: Array<{ view: Go["view"]; name: string; text: (one: string) => string }> = [
-  { view: "table", name: "Table", text: (o) => `Every number for every ${o}. Sort, pick columns, export.` },
-  { view: "plot", name: "Plot", text: () => "Two metrics against each other, split at the medians into named corners." },
-  { view: "matrix", name: "Matrix", text: () => "Every pair of metrics at once, and how strongly each pair moves together." },
-  { view: "strips", name: "Strips", text: (o) => `Each metric as a strip of dots. Follow one ${o} across all of them; brush to narrow.` },
-  { view: "profiles", name: "Profiles", text: (o) => `Each ${o} as one line across every metric. Compare shapes; filter on several axes.` },
+  { view: "table", name: t("metrics.metricsSummary.table"), text: (o) => t("metrics.metricsSummary.everyNumberEverySort", { o }) },
+  { view: "plot", name: t("metrics.metricsSummary.plot"), text: () => t("metrics.metricsSummary.twoMetricsAgainstEach") },
+  { view: "matrix", name: t("metrics.metricsSummary.matrix"), text: () => t("metrics.metricsSummary.everyPairMetricsOnce") },
+  { view: "strips", name: t("metrics.metricsSummary.strips"), text: (o) => t("metrics.metricsSummary.eachMetricStripDots", { o }) },
+  { view: "profiles", name: t("metrics.metricsSummary.profiles"), text: (o) => t("metrics.metricsSummary.eachOneLineAcross", { o }) },
 ];
 
 const THUMB_DOTS: Array<[number, number, number]> = [

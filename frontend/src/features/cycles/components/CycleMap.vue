@@ -49,13 +49,13 @@
           :opacity="node.opacity"
           tabindex="0"
           role="button"
-          :aria-label="`${node.name}, in ${node.cycles} cycles`"
+          :aria-label="t('cycles.cycleMap.cycles', { nodeName: node.name, cycles: node.cycles })"
           @click="emit('select-node', node.name)"
           @keydown.enter.prevent="emit('select-node', node.name)"
           @mouseenter="hovered = node.name"
           @mouseleave="hovered = null"
         >
-          <title>{{ node.name }} — in {{ formatNumber(node.cycles) }} {{ node.cycles === 1 ? "cycle" : "cycles" }}</title>
+          <title>{{ t('cycles.cycleMap.in', { nodeName: node.name, cycles: t('common.count.cycle', { count: node.cycles }) }) }}</title>
         </circle>
         <text
           :transform="node.labelTransform"
@@ -84,6 +84,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { edgeKey } from "~/features/cycles/cycles"
 import { formatNumber } from "~/shared/format"
+import { t } from "~/shared/i18n"
 
 export interface MapNode { name: string; label: string; cycles: number }
 export interface MapEdge { from: string; to: string; cycles: number; cut: number | null; breaks?: number }
@@ -219,7 +220,7 @@ const laidOut = computed<Drawn[]>(() => props.edges.flatMap(edge => {
     stroke,
     marker,
     opacity: cutAway ? 0.4 : dimmed || nodeFilter ? 0.06 : active ? 1 : candidate ? 0.85 : 0.16,
-    title: `${edge.from} imports ${edge.to} — in ${formatNumber(edge.cycles)} ${edge.cycles === 1 ? "cycle" : "cycles"}${edge.cut !== null ? `. Cut ${edge.cut + 1} in the plan.` : ""}`,
+    title: t("cycles.cycleMap.imports", { from: edge.from, to: edge.to, cycles: t("common.count.cycle", { count: edge.cycles }), value: edge.cut !== null ? t("cycles.cycleMap.cutPlan", { value: edge.cut + 1 }) : "" }),
     cut: edge.cut,
     cutAway,
   }]
@@ -257,5 +258,5 @@ const captioned = computed(() => {
 })
 
 const caption = computed(() =>
-  `${props.centreLabel} at the centre, ringed by the ${props.nodes.length} components its cycles run through.`)
+  t("cycles.cycleMap.centreRingedComponentsCycles", { centreLabel: props.centreLabel, nodesLength: props.nodes.length }))
 </script>

@@ -4,6 +4,7 @@
 // the pattern can be checked, not trusted.
 
 import { useStateStore } from "~/platform/state.store"
+import { t } from "~/shared/i18n"
 
 export const DEFAULT_FIX_PATTERN = String.raw`\b(fix(es|ed)?|bug(fix)?|hotfix|revert)\b`
 const STATE_KEY = "git.fixPattern"
@@ -12,10 +13,10 @@ export type Compiled = { re: RegExp; error: null } | { re: null; error: string }
 
 /** Case-insensitive, as people write "Fix", "FIX" and "fix". */
 export function compileFixPattern(source: string): Compiled {
-    if (!source.trim()) return { re: null, error: "An empty pattern matches every commit." }
+    if (!source.trim()) return { re: null, error: t("git.commitPattern.emptyPatternMatchesEvery") }
     try {
         const re = new RegExp(source, "i")
-        if (re.test("")) return { re: null, error: "The pattern matches an empty subject, so it matches every commit." }
+        if (re.test("")) return { re: null, error: t("git.commitPattern.patternMatchesEmptySubject") }
         return { re, error: null }
     } catch (e: any) {
         return { re: null, error: String(e?.message ?? e).replace(/^Invalid regular expression: \/.*\/[a-z]*: /, "") }

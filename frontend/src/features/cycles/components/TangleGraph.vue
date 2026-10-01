@@ -6,18 +6,18 @@
        any tangle fades. -->
   <ExhibitFrame :exhibit="figure" legend-class="px-4 pb-2" fill>
     <div ref="host" class="relative h-full w-full overflow-hidden" @mouseleave="hover = null">
-      <svg ref="svgRef" class="block h-full w-full select-none" :viewBox="`0 0 ${size.w} ${size.h}`" role="img" :aria-label="`Tangle of ${layout.order.length} components in ${layout.layers.length} levels`" @click.self="$emit('clear')">
+      <svg ref="svgRef" class="block h-full w-full select-none" :viewBox="`0 0 ${size.w} ${size.h}`" role="img" :aria-label="t('cycles.tangleGraph.tangleComponentsLevels', { orderLength: layout.order.length, layersLength: layout.layers.length })" @click.self="$emit('clear')">
         <defs>
-          <marker :id="`${uid}-arrow`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="t.accent"/></marker>
-          <marker :id="`${uid}-arrow-sel`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="t.ink"/></marker>
-          <marker :id="`${uid}-arrow-fwd`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="t.inkMuted"/></marker>
+          <marker :id="`${uid}-arrow`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="theme.accent"/></marker>
+          <marker :id="`${uid}-arrow-sel`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="theme.ink"/></marker>
+          <marker :id="`${uid}-arrow-fwd`" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0.5 L7.5 4 L0 7.5 z" :fill="theme.inkMuted"/></marker>
         </defs>
-        <rect :width="size.w" :height="size.h" :fill="t.surface" @click="$emit('clear')"/>
+        <rect :width="size.w" :height="size.h" :fill="theme.surface" @click="$emit('clear')"/>
         <g :transform="transform">
           <!-- Levels. -->
           <g v-for="(l, i) in layout.layers" :key="`lvl${i}`">
-            <rect x="0" :y="rowY(i) - 24" :width="bandW" :height="ROW" rx="6" :fill="i % 2 ? 'transparent' : t.ground" opacity="0.7"/>
-            <text x="12" :y="rowY(i) - 6" :font-family="t.fontSans" font-size="10.5" :fill="t.inkMuted" letter-spacing="0.04em">LEVEL {{ i + 1 }}</text>
+            <rect x="0" :y="rowY(i) - 24" :width="bandW" :height="ROW" rx="6" :fill="i % 2 ? 'transparent' : theme.ground" opacity="0.7"/>
+            <text x="12" :y="rowY(i) - 6" :font-family="theme.fontSans" font-size="10.5" :fill="theme.inkMuted" letter-spacing="0.04em">{{ t('cycles.tangleGraph.level', { value: i + 1 }) }}</text>
           </g>
 
           <!-- Imports that run with the levels. -->
@@ -26,7 +26,7 @@
               v-for="e in forward"
               :key="e.key"
               :d="e.d"
-              :stroke="e.inLoop ? t.ink : e.lit ? t.inkSecondary : t.hairlineStrong"
+              :stroke="e.inLoop ? theme.ink : e.lit ? theme.inkSecondary : theme.hairlineStrong"
               :stroke-width="e.inLoop ? e.w + 1 : e.w"
               :opacity="e.dim ? (focus ? 0.07 : 0.12) : e.lit || e.inLoop ? 0.9 : 0.55"
               :marker-end="e.lit ? `url(#${uid}-arrow-fwd)` : undefined"
@@ -40,7 +40,7 @@
               <path
                 :d="e.d"
                 :class="{ 'tg-ants': e.focused && !e.cut }"
-                :stroke="e.focused ? t.accent : e.inLoop ? t.ink : e.selected ? t.ink : e.cut ? t.inkMuted : t.accent"
+                :stroke="e.focused ? theme.accent : e.inLoop ? theme.ink : e.selected ? theme.ink : e.cut ? theme.inkMuted : theme.accent"
                 :stroke-width="e.focused ? e.w + 2 : e.selected || e.inLoop || hoverEdge === e.key ? e.w + 1.25 : e.w"
                 :stroke-dasharray="e.focused && !e.cut ? '9 6' : e.cut ? '4 4' : undefined"
                 :opacity="e.dim ? (focus ? 0.07 : 0.15) : e.cut && !e.focused ? 0.55 : 1"
@@ -52,27 +52,27 @@
 
           <!-- The loop in hand: where to cut, and what it does. -->
           <g v-if="calloutAt" class="pointer-events-none">
-            <rect :x="calloutAt.x" :y="calloutAt.y - 13" :width="calloutAt.w" height="26" rx="13" :fill="t.accent"/>
-            <text :x="calloutAt.x + 13" :y="calloutAt.y + 4.5" :font-family="t.fontSans" font-size="12" font-weight="600" :fill="t.surface">{{ callout }}</text>
+            <rect :x="calloutAt.x" :y="calloutAt.y - 13" :width="calloutAt.w" height="26" rx="13" :fill="theme.accent"/>
+            <text :x="calloutAt.x + 13" :y="calloutAt.y + 4.5" :font-family="theme.fontSans" font-size="12" font-weight="600" :fill="theme.surface">{{ callout }}</text>
           </g>
 
           <!-- Components. -->
           <g v-for="n in nodes" :key="n.name" class="cursor-pointer" :opacity="n.dim ? 0.25 : 1" @mouseenter="hover = n.name" @click.stop="$emit('selectNode', n.name)" @dblclick.stop="$emit('open', n.name)">
-            <rect :x="n.x - n.labelW / 2 - 6" :y="n.y - n.r - 5" :width="n.labelW + 12" :height="n.r + 26" rx="5" :fill="n.selected ? t.accentSoft : t.surface" :opacity="n.selected ? 0.6 : 0.85"/>
-            <circle :cx="n.x" :cy="n.y" :r="n.r + (n.tangled ? 2.5 : 0)" :fill="n.tangled ? t.accentSoft : 'none'" :opacity="n.tangled ? 0.9 : 0"/>
-            <circle v-if="n.inLoop" :cx="n.x" :cy="n.y" :r="n.r + 5" fill="none" :stroke="t.ink" stroke-width="1.5"/>
-            <circle v-if="flashed.has(n.name)" class="tg-flash" :cx="n.x" :cy="n.y" :r="n.r + 4" fill="none" :stroke="t.accent" stroke-width="3"/>
-            <circle :cx="n.x" :cy="n.y" :r="n.r" :fill="n.freed ? t.surface : n.color" :stroke="n.freed ? t.inkMuted : n.color" stroke-width="1.5"/>
-            <text :x="n.x" :y="n.y + n.r + 14" text-anchor="middle" :font-family="t.fontMono" :font-size="n.inLoop ? 12 : 11" :fill="n.freed ? t.inkMuted : n.match ? t.accent : t.ink" :font-weight="n.selected || n.match || n.inLoop ? 600 : 400">{{ n.label }}</text>
+            <rect :x="n.x - n.labelW / 2 - 6" :y="n.y - n.r - 5" :width="n.labelW + 12" :height="n.r + 26" rx="5" :fill="n.selected ? theme.accentSoft : theme.surface" :opacity="n.selected ? 0.6 : 0.85"/>
+            <circle :cx="n.x" :cy="n.y" :r="n.r + (n.tangled ? 2.5 : 0)" :fill="n.tangled ? theme.accentSoft : 'none'" :opacity="n.tangled ? 0.9 : 0"/>
+            <circle v-if="n.inLoop" :cx="n.x" :cy="n.y" :r="n.r + 5" fill="none" :stroke="theme.ink" stroke-width="1.5"/>
+            <circle v-if="flashed.has(n.name)" class="tg-flash" :cx="n.x" :cy="n.y" :r="n.r + 4" fill="none" :stroke="theme.accent" stroke-width="3"/>
+            <circle :cx="n.x" :cy="n.y" :r="n.r" :fill="n.freed ? theme.surface : n.color" :stroke="n.freed ? theme.inkMuted : n.color" stroke-width="1.5"/>
+            <text :x="n.x" :y="n.y + n.r + 14" text-anchor="middle" :font-family="theme.fontMono" :font-size="n.inLoop ? 12 : 11" :fill="n.freed ? theme.inkMuted : n.match ? theme.accent : theme.ink" :font-weight="n.selected || n.match || n.inLoop ? 600 : 400">{{ n.label }}</text>
             <title>{{ n.title }}</title>
           </g>
         </g>
       </svg>
 
       <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-md bg-surface shadow-[0_0_0_1px_rgb(var(--c-neutral-200))]">
-        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900" aria-label="Zoom in" @click="zoomBy(1.3)"><Icon icon="zoom-in" :size="14"/></button>
-        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hairline-t hover:bg-neutral-100 hover:text-neutral-900" aria-label="Zoom out" @click="zoomBy(1 / 1.3)"><Icon icon="zoom-out" :size="14"/></button>
-        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hairline-t hover:bg-neutral-100 hover:text-neutral-900" aria-label="Fit to view" @click="fit(true)"><Icon icon="maximize" :size="13"/></button>
+        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900" :aria-label="t('cycles.tangleGraph.zoom')" @click="zoomBy(1.3)"><Icon icon="zoom-in" :size="14"/></button>
+        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hairline-t hover:bg-neutral-100 hover:text-neutral-900" :aria-label="t('cycles.tangleGraph.zoomOut')" @click="zoomBy(1 / 1.3)"><Icon icon="zoom-out" :size="14"/></button>
+        <button type="button" class="flex h-7 w-7 items-center justify-center text-neutral-500 hairline-t hover:bg-neutral-100 hover:text-neutral-900" :aria-label="t('cycles.tangleGraph.fitView')" @click="fit(true)"><Icon icon="maximize" :size="13"/></button>
       </div>
     </div>
   </ExhibitFrame>
@@ -86,6 +86,7 @@ import Icon from "~/shared/ui/Icon.vue";
 import { useSvgFigure } from "~/features/export/useExportables";
 import { chartTheme, useChartTheme } from "~/shared/ui/useChartTheme";
 import { edgeId, type TangleLayout } from "~/features/cycles/untangle";
+import { t, intlLocale } from "~/shared/i18n";
 
 const props = defineProps<{
   layout: TangleLayout
@@ -120,7 +121,7 @@ const ROW = 84;
 const TOP = 52;
 const LEFT = 96;
 const { version } = useChartTheme();
-const t = computed(() => { void version.value; return chartTheme(); });
+const theme = computed(() => { void version.value; return chartTheme(); });
 
 const host = ref<HTMLElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
@@ -163,12 +164,12 @@ const nodes = computed(() => props.layout.order.map(name => {
   return {
     name, label, x: p.x, y: p.y, r: radius(name), labelW: label.length * 6.6,
     freed, tangled: !freed,
-    color: props.color(name) ?? t.value.ink,
+    color: props.color(name) ?? theme.value.ink,
     selected: props.selectedNode === name,
     match: props.matches.has(name),
     inLoop: loopNodes.value.has(name),
     dim: props.focus ? !loopNodes.value.has(name) : !!focusNode.value && focusNode.value !== name && !neighbours.value.get(focusNode.value)?.has(name),
-    title: `${name}\n${lines.toLocaleString("en-US")} lines${freed ? "\nNo longer in a tangle with the cuts applied" : ""}\nDouble-click to open`,
+    title: t("cycles.tangleGraph.linesDoubleClickOpen", { name, value: lines.toLocaleString(intlLocale), value2: freed ? t("cycles.tangleGraph.noLongerTangleCuts") : "" }),
   };
 }));
 const neighbours = computed(() => {
@@ -223,7 +224,7 @@ const against = computed(() => props.layout.against.map(e => {
     d,
     w: widthOf(e.imports) + 0.6,
     dim: props.focus ? !inLoop : (!!focusNode.value || props.lit.size > 0) && !lit,
-    title: `${props.label(e.from)} imports ${props.label(e.to)}, back up against the levels\n${e.imports} ${e.imports === 1 ? "import" : "imports"} in ${e.files} ${e.files === 1 ? "file" : "files"}${step ? `\nCut ${step} of the plan` : ""}`,
+    title: t("cycles.tangleGraph.importsBackUpAgainst", { from: props.label(e.from), to: props.label(e.to), imports: t("common.count.import", { count: e.imports }), files: t("common.count.file", { count: e.files }), value: step ? t("cycles.tangleGraph.cutPlan", { step }) : "" }),
   };
 }));
 
@@ -297,11 +298,11 @@ const figure = useSvgFigure({
   svg: () => svgRef.value,
   legend: () => ({
     items: [
-      { label: "Imports pointing down the levels", color: t.value.hairlineStrong, mark: "line" },
-      { label: "Imports pointing back up: each closes loops", color: t.value.accent, mark: "line" },
-      { label: "Cut", color: t.value.inkMuted, mark: "dashed" },
+      { label: t("cycles.tangleGraph.importsPointingDownLevels"), color: theme.value.hairlineStrong, mark: "line" },
+      { label: t("cycles.tangleGraph.importsPointingBackUp"), color: theme.value.accent, mark: "line" },
+      { label: t("cycles.tangleGraph.cut"), color: theme.value.inkMuted, mark: "dashed" },
     ],
-    notes: ["Importers sit at the top, what they import below them."],
+    notes: [t("cycles.tangleGraph.importersSitTopWhat")],
   }),
 });
 </script>

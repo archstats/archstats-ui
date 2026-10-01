@@ -1,5 +1,6 @@
 import { ref, watch } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
+import { t } from "~/shared/i18n"
 
 export function useJavaMetrics() {
   const store = useDataStore()
@@ -165,12 +166,12 @@ export function useJavaMetrics() {
     const roles: string[] = []
     const snippetTypes = new Set(snippets.map(s => s.snippet_type))
     
-    if (snippetTypes.has("java__spring__controller")) roles.push("Spring Controller")
-    if (snippetTypes.has("java__spring__service")) roles.push("Spring Service")
-    if (snippetTypes.has("java__spring__repository")) roles.push("Spring Repository")
-    if (snippetTypes.has("java__spring__component")) roles.push("Spring Component")
-    if (snippetTypes.has("java__spring__configuration")) roles.push("Spring Configuration")
-    if (snippetTypes.has("java__jpa__entity")) roles.push("JPA Entity")
+    if (snippetTypes.has("java__spring__controller")) roles.push(t("java.useJavaMetrics.springController"))
+    if (snippetTypes.has("java__spring__service")) roles.push(t("java.useJavaMetrics.springService"))
+    if (snippetTypes.has("java__spring__repository")) roles.push(t("java.useJavaMetrics.springRepository"))
+    if (snippetTypes.has("java__spring__component")) roles.push(t("java.useJavaMetrics.springComponent"))
+    if (snippetTypes.has("java__spring__configuration")) roles.push(t("java.useJavaMetrics.springConfiguration"))
+    if (snippetTypes.has("java__jpa__entity")) roles.push(t("java.useJavaMetrics.jpaEntity"))
     if (snippetTypes.has("java__interface__declaration")) roles.push("Interface")
     if (snippetTypes.has("java__record__declaration")) roles.push("Record")
     if (snippetTypes.has("java__class__declaration") && roles.length === 0) roles.push("Class")

@@ -1,11 +1,11 @@
 <template>
-  <div v-if="items.length" class="mt-1.5 rounded bg-neutral-50 px-2 py-1.5" aria-label="Backfill queue">
+  <div v-if="items.length" class="mt-1.5 rounded bg-neutral-50 px-2 py-1.5" :aria-label="t('workspace.backfillQueue.backfillQueue')">
     <div class="flex items-center gap-2 text-xs text-neutral-500">
-      <span class="font-medium text-neutral-700">Backfill</span>
-      <span class="font-mono tabular-nums">{{ done }} of {{ items.length }}</span>
-      <button v-if="pending && !stopping" type="button" class="ml-auto hover:text-neutral-900" title="The scan in progress finishes; the rest is dropped" @click="stop">Stop after current</button>
-      <span v-else-if="stopping && running" class="ml-auto">Stopping after this one</span>
-      <button v-else-if="!running" type="button" class="ml-auto hover:text-neutral-900" @click="clear">Clear</button>
+      <span class="font-medium text-neutral-700">{{ t('workspace.backfillQueue.backfill') }}</span>
+      <span class="font-mono tabular-nums">{{ t('workspace.backfillQueue.of', { done, itemsLength: items.length }) }}</span>
+      <button v-if="pending && !stopping" type="button" class="ml-auto hover:text-neutral-900" :title="t('workspace.backfillQueue.scanProgressFinishesRest')" @click="stop">{{ t('workspace.backfillQueue.stopAfterCurrent') }}</button>
+      <span v-else-if="stopping && running" class="ml-auto">{{ t('workspace.backfillQueue.stoppingAfterOne') }}</span>
+      <button v-else-if="!running" type="button" class="ml-auto hover:text-neutral-900" @click="clear">{{ t('workspace.backfillQueue.clear') }}</button>
     </div>
     <ul class="mt-1 flex flex-col">
       <li v-for="it in items" :key="it.sha + it.ref" class="flex h-5 items-center gap-2 text-xs">
@@ -24,6 +24,7 @@ import { Loader2 } from "lucide-vue-next";
 import { EventsOn } from "wailsjs/runtime/runtime";
 import { ClearFinished, Queue, StopAfterCurrent } from "wailsjs/go/app/ScanService";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { t } from "~/shared/i18n";
 
 // The backfill queue under the scan button: what is queued, running, done.
 

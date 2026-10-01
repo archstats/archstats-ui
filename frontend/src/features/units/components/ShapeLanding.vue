@@ -11,66 +11,63 @@
       <div class="flex flex-col gap-10 min-[1080px]:flex-row min-[1080px]:gap-12">
         <section class="min-w-0 shrink-0 min-[1080px]:w-[440px]">
           <!-- The diagram's frame hands its figure up, so the export button ends this heading's row. -->
-          <ExhibitFrame title="How the layers lean" header-class="pb-0">
+          <ExhibitFrame :title="t('units.shapeLanding.howLayersLean')" header-class="pb-0">
             <template #intro>
               <!-- The lanes are this control's output, so the control belongs
                    beside them. In the top-right bar alone it read as a setting
                    about the app rather than the thing that decides what this
                    diagram says. -->
               <label class="mt-2 flex items-center gap-2">
-                <span class="shrink-0 text-sm text-neutral-500">Lanes read as</span>
-                <select class="ui-input ui-input-sm min-w-0 flex-1" :value="framework" aria-label="Framework"
+                <span class="shrink-0 text-sm text-neutral-500">{{ t('units.shapeLanding.lanesRead') }}</span>
+                <select class="ui-input ui-input-sm min-w-0 flex-1" :value="framework" :aria-label="t('units.shapeLanding.framework')"
                         @change="$emit('framework', ($event.target as HTMLSelectElement).value)">
-                  <option :value="AUTO">Auto · {{ autoLabel }}</option>
+                  <option :value="AUTO">{{ t('units.shapeLanding.auto', { autoLabel }) }}</option>
                   <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.label }}</option>
                 </select>
               </label>
               <p v-if="!detected" class="mt-1.5 flex items-start gap-1.5 text-sm leading-4 text-neutral-500">
                 <span class="mt-px shrink-0 text-neutral-400"><Icon icon="info" :size="12"/></span>
-                <span>No framework was recognised, so these lanes are folders.
-                  Naming yours above regroups everything on this screen.</span>
+                <span>{{ t('units.shapeLanding.noFrameworkWasRecognised') }}</span>
               </p>
               <p class="mb-4 mt-3 max-w-[46ch] text-sm leading-4 text-neutral-500">
                 <template v-if="flows.length">
-                  Stacked so most references run down. Grey follows the grain, red runs back
-                  against it; width is references. Hover a lane or a link to find it on the map;
-                  click either to open what it is made of.
+                  {{ t('units.shapeLanding.stackedSoMostReferences') }}
                 </template>
                 <template v-else-if="componentEdgeCount > 0">
-                  References between modules were not resolved in this snapshot, so no lane can be read against another.
+                  {{ t('units.shapeLanding.referencesBetweenModulesWere') }}
                 </template>
                 <template v-else>
-                  No references cross a lane boundary in this snapshot.
+                  {{ t('units.shapeLanding.noReferencesCrossLane') }}
                 </template>
               </p>
             </template>
             <StackDiagram
-              :floors="floors" :flows="stackFlows" up-label="points up"
-              figure="How the layers lean" aria-label="The lanes as floors, with the references between them"
+              :floors="floors" :flows="stackFlows" :up-label="t('units.shapeLanding.pointsUp')"
+              :figure="t('units.shapeLanding.howLayersLean')" :aria-label="t('units.shapeLanding.lanesFloorsReferencesBetween')"
               @select="onStack" @hover="onStackHover"/>
           </ExhibitFrame>
         </section>
 
-        <section class="flex min-w-0 flex-1 flex-col" aria-label="The codebase by folder">
+        <section class="flex min-w-0 flex-1 flex-col" :aria-label="t('units.shapeLanding.codebaseFolder')">
           <ExhibitFrame :title="MAP_TITLE[mapMode]" class="flex-1" header-class="pb-0">
             <template #aside>
-              <div class="ui-segmented shrink-0" role="group" aria-label="Colour the map by">
+              <div class="ui-segmented shrink-0" role="group" :aria-label="t('units.shapeLanding.colourMap')">
                 <button v-for="m in MAP_MODES" :key="m.id" type="button" :aria-pressed="mapMode === m.id" :title="m.title" @click="$emit('update:mapMode', m.id)">{{ m.label }}</button>
               </div>
             </template>
             <template #intro>
               <div class="mt-2 flex min-h-[20px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
                 <span v-for="k in legend" :key="k.label" class="flex items-center gap-1.5" :title="k.title">
-                  <span class="h-2 w-2 rounded-sm" :style="{ background: k.color }"/>{{ k.label }}<span v-if="k.count != null" class="font-mono text-neutral-500">{{ k.count.toLocaleString() }}</span>
+                  <span class="h-2 w-2 rounded-sm" :style="{ background: k.color }"/>{{ k.label }}<span v-if="k.count != null" class="font-mono text-neutral-500">{{ k.count.toLocaleString(intlLocale) }}</span>
                 </span>
-                <button v-if="mapMode !== 'lane'" type="button" class="ml-auto text-neutral-600 underline underline-offset-2 hover:text-neutral-900" @click="$emit('evidence')">Open the list</button>
+                <button v-if="mapMode !== 'lane'" type="button" class="ml-auto text-neutral-600 underline underline-offset-2 hover:text-neutral-900" @click="$emit('evidence')">{{ t('units.shapeLanding.openList') }}</button>
               </div>
             </template>
             <div class="mt-2 h-[480px] rounded-md ring-1 ring-neutral-200">
               <FolderMap
                 :files="files" :lines="lines" :paint="paint" :highlight="lit ? highlightFor(lit) : null"
                 :describe="describe" :links-of="linksOf" :bad-link="badLink"
-                :aria-label="`Every file by folder, coloured by ${MAP_MODES.find(m => m.id === mapMode)?.label.toLowerCase()}`"
+                :aria-label="t('units.shapeLanding.everyFileFolderColoured', { MAP_MODESLabel: MAP_MODES.find(m => m.id === mapMode)?.label.toLowerCase() })"
                 :figure="MAP_TITLE[mapMode]" :legend="{ items: legend }" :legend-in-ui="false"
                 @select="(path, kind) => path && $emit('place', path, kind)" @open="$emit('open-file', $event)"
               />
@@ -80,10 +77,10 @@
       </div>
 
       <section>
-        <h2 class="ui-section-title mb-1">What it says</h2>
+        <h2 class="ui-section-title mb-1">{{ t('units.shapeLanding.whatSays') }}</h2>
         <UnitFindings class="gap-x-12 min-[1080px]:grid-cols-2" :findings="findings" @open="$emit('open', $event)"/>
         <p v-if="!findings.length" class="py-4 text-base text-neutral-500">
-          Nothing stands out in this snapshot. Every module sits on its own.
+          {{ t('units.shapeLanding.nothingStandsOutSnapshot') }}
         </p>
       </section>
     </div>
@@ -101,6 +98,7 @@ import UnitFindings from "~/features/units/components/UnitFindings.vue"
 import { AUTO, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { LaneFlow as Flow } from "~/features/units/graph"
 import type { Finding } from "~/features/units/findings"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = defineProps<{
   frameworkName: string
@@ -144,11 +142,11 @@ const emit = defineEmits<{
 }>()
 
 const MAP_MODES = [
-  { id: "lane", label: "Lane", title: "Each file in its lane's colour" },
-  { id: "reach", label: "Reach", title: "Whether an entry point reaches each file" },
-  { id: "dupes", label: "Duplicates", title: "Files that declare a name another file declares, or share a file name" },
+  { id: "lane", label: t("units.shapeLanding.lane"), title: t("units.shapeLanding.eachFileLaneS") },
+  { id: "reach", label: t("units.shapeLanding.reach"), title: t("units.shapeLanding.whetherEntryPointReaches") },
+  { id: "dupes", label: t("units.shapeLanding.duplicates"), title: t("units.shapeLanding.filesDeclareNameAnother") },
 ] as const
-const MAP_TITLE = { lane: "Where each lane lives", reach: "What the entry points reach", dupes: "What is written twice" }
+const MAP_TITLE = { lane: t("units.shapeLanding.whereEachLaneLives"), reach: t("units.shapeLanding.whatEntryPointsReach"), dupes: t("units.shapeLanding.whatWrittenTwice") }
 
 const stack = computed(() => laneStack(props.lanes, props.flows, props.notLayers))
 const floors = computed(() => stack.value.floors)
@@ -173,19 +171,19 @@ function onStack(s: StackSelection) {
  * and for a snapshot that recorded no dependencies at all.
  */
 const composition = computed(() => {
-  const n = (x: number) => x.toLocaleString()
+  const n = (x: number) => x.toLocaleString(intlLocale)
   // "An ASP.NET Core codebase", not "A ASP.NET": by the sound of the first
   // letter, which for these names is the letter itself.
-  const article = props.frameworkName && /^[AEIOU]/i.test(props.frameworkName) ? "An" : "A"
-  const what = props.frameworkName ? `${article} ${props.frameworkName} codebase` : "This codebase"
+  const article = props.frameworkName && /^[AEIOU]/i.test(props.frameworkName) ? t("units.shapeLanding.an") : t("units.shapeLanding.a")
+  const what = props.frameworkName ? t("units.shapeLanding.codebase", { article, frameworkName: props.frameworkName }) : t("units.shapeLanding.codebase2")
   const size = props.unitCount > props.moduleCount
-    ? `${n(props.moduleCount)} files holding ${n(props.unitCount)} declared things`
-    : `${n(props.moduleCount)} files`
+    ? t("units.shapeLanding.filesHoldingDeclaredThings", { moduleCount: n(props.moduleCount), unitCount: n(props.unitCount) })
+    : t("units.shapeLanding.files", { moduleCount: n(props.moduleCount) })
   const ties = props.edgeCount > 0
-    ? `${n(props.edgeCount)} references run between them.`
+    ? t("units.shapeLanding.referencesRunBetweenThem", { edgeCount: n(props.edgeCount) })
     : (props.componentEdgeCount ?? 0) > 0
-      ? `References between them were not resolved in this snapshot, though the component graph has ${n(props.componentEdgeCount ?? 0)} connections, so only their contents can be read here. Connections has the component graph.`
-      : "None of them import each other in this snapshot, so only their contents can be read."
-  return `${what} of ${size}. ${ties}`
+      ? t("units.shapeLanding.referencesBetweenThemWere", { value: n(props.componentEdgeCount ?? 0) })
+      : t("units.shapeLanding.noneThemImportEach")
+  return t("units.shapeLanding.of", { what, size, ties })
 })
 </script>

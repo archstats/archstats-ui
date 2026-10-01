@@ -6,6 +6,7 @@
 // enough structure to know where the writer is.
 
 import { fuzzyScore } from "~/shared/fuzzy"
+import { t } from "~/shared/i18n"
 
 // ── Tokens ────────────────────────────────────────────────────────────────
 
@@ -134,48 +135,48 @@ export interface SqlFunction { name: string; args: string[]; doc: string; aggreg
 
 export const FUNCTIONS: SqlFunction[] = [
     { name: "count", args: ["X"], doc: "Rows in the group; count(X) skips nulls, count(*) counts every row, count(DISTINCT X) each value once.", aggregate: true },
-    { name: "sum", args: ["X"], doc: "The sum of the non-null values; null when there are none.", aggregate: true },
-    { name: "total", args: ["X"], doc: "The sum as a float; 0.0 when there are no values.", aggregate: true },
-    { name: "avg", args: ["X"], doc: "The mean of the non-null values.", aggregate: true },
-    { name: "min", args: ["X", "…"], doc: "With one argument, the smallest value in the group; with several, the smallest of them.", aggregate: true },
-    { name: "max", args: ["X", "…"], doc: "With one argument, the largest value in the group; with several, the largest of them.", aggregate: true },
-    { name: "group_concat", args: ["X", "separator"], doc: "The non-null values joined into one string, comma-separated unless told otherwise.", aggregate: true },
-    { name: "coalesce", args: ["X", "Y", "…"], doc: "The first argument that is not null." },
-    { name: "ifnull", args: ["X", "Y"], doc: "X, or Y when X is null." },
-    { name: "nullif", args: ["X", "Y"], doc: "Null when X equals Y, otherwise X. nullif(x, 0) keeps a zero out of a division." },
-    { name: "iif", args: ["condition", "then", "else"], doc: "then when the condition holds, else otherwise." },
-    { name: "abs", args: ["X"], doc: "The absolute value." },
-    { name: "round", args: ["X", "digits"], doc: "X rounded to so many digits after the point (0 by default)." },
-    { name: "length", args: ["X"], doc: "Characters in a string, bytes in a blob." },
-    { name: "lower", args: ["X"], doc: "The string in lower case." },
-    { name: "upper", args: ["X"], doc: "The string in upper case." },
-    { name: "substr", args: ["X", "start", "length"], doc: "Part of a string, from a 1-based start; a negative start counts from the end." },
-    { name: "instr", args: ["X", "Y"], doc: "Where Y first appears in X, 1-based; 0 when it does not." },
-    { name: "replace", args: ["X", "Y", "Z"], doc: "X with every Y replaced by Z." },
-    { name: "trim", args: ["X", "characters"], doc: "X without leading and trailing spaces (or the characters given)." },
-    { name: "ltrim", args: ["X", "characters"], doc: "X without leading spaces (or the characters given)." },
-    { name: "rtrim", args: ["X", "characters"], doc: "X without trailing spaces (or the characters given)." },
-    { name: "printf", args: ["format", "…"], doc: "A string built from a format, as in C: printf('%.1f%%', share * 100)." },
-    { name: "typeof", args: ["X"], doc: "The storage class: null, integer, real, text or blob." },
+    { name: "sum", args: ["X"], doc: t("sql.sqlLang.sumNonNullValues"), aggregate: true },
+    { name: "total", args: ["X"], doc: t("sql.sqlLang.sumFloat00"), aggregate: true },
+    { name: "avg", args: ["X"], doc: t("sql.sqlLang.meanNonNullValues"), aggregate: true },
+    { name: "min", args: ["X", "…"], doc: t("sql.sqlLang.oneArgumentSmallestValue"), aggregate: true },
+    { name: "max", args: ["X", "…"], doc: t("sql.sqlLang.oneArgumentLargestValue"), aggregate: true },
+    { name: "group_concat", args: ["X", "separator"], doc: t("sql.sqlLang.nonNullValuesJoined"), aggregate: true },
+    { name: "coalesce", args: ["X", "Y", "…"], doc: t("sql.sqlLang.firstArgumentNotNull") },
+    { name: "ifnull", args: ["X", "Y"], doc: t("sql.sqlLang.xYWhenX") },
+    { name: "nullif", args: ["X", "Y"], doc: t("sql.sqlLang.nullWhenXEquals") },
+    { name: "iif", args: ["condition", "then", "else"], doc: t("sql.sqlLang.thenWhenConditionHolds") },
+    { name: "abs", args: ["X"], doc: t("sql.sqlLang.absoluteValue") },
+    { name: "round", args: ["X", "digits"], doc: t("sql.sqlLang.xRoundedSoMany") },
+    { name: "length", args: ["X"], doc: t("sql.sqlLang.charactersStringBytesBlob") },
+    { name: "lower", args: ["X"], doc: t("sql.sqlLang.stringLowerCase") },
+    { name: "upper", args: ["X"], doc: t("sql.sqlLang.stringUpperCase") },
+    { name: "substr", args: ["X", "start", "length"], doc: t("sql.sqlLang.partString1Based") },
+    { name: "instr", args: ["X", "Y"], doc: t("sql.sqlLang.whereYFirstAppears") },
+    { name: "replace", args: ["X", "Y", "Z"], doc: t("sql.sqlLang.xEveryYReplaced") },
+    { name: "trim", args: ["X", "characters"], doc: t("sql.sqlLang.xWithoutLeadingTrailing") },
+    { name: "ltrim", args: ["X", "characters"], doc: t("sql.sqlLang.xWithoutLeadingSpaces") },
+    { name: "rtrim", args: ["X", "characters"], doc: t("sql.sqlLang.xWithoutTrailingSpaces") },
+    { name: "printf", args: ["format", "…"], doc: t("sql.sqlLang.stringBuiltFormatC") },
+    { name: "typeof", args: ["X"], doc: t("sql.sqlLang.storageClassNullInteger") },
     { name: "cast", args: ["X AS type"], doc: "X converted: CAST(x AS INTEGER), CAST(x AS REAL), CAST(x AS TEXT)." },
-    { name: "date", args: ["time", "modifier", "…"], doc: "The date, YYYY-MM-DD: date(commit_time), date('now', '-90 days')." },
-    { name: "datetime", args: ["time", "modifier", "…"], doc: "The date and time, YYYY-MM-DD HH:MM:SS." },
-    { name: "julianday", args: ["time", "modifier", "…"], doc: "Days since noon, 24 November 4714 BC: subtract two to get days between." },
-    { name: "strftime", args: ["format", "time", "modifier", "…"], doc: "A date formatted: strftime('%Y-%m', commit_time) for months." },
-    { name: "unixepoch", args: ["time", "modifier", "…"], doc: "Seconds since 1970-01-01." },
-    { name: "json_extract", args: ["json", "path"], doc: "A value from JSON text: json_extract(value, '$.name')." },
+    { name: "date", args: ["time", "modifier", "…"], doc: t("sql.sqlLang.dateYyyyMmDd") },
+    { name: "datetime", args: ["time", "modifier", "…"], doc: t("sql.sqlLang.dateTimeYyyyMm") },
+    { name: "julianday", args: ["time", "modifier", "…"], doc: t("sql.sqlLang.daysSinceNoon24") },
+    { name: "strftime", args: ["format", "time", "modifier", "…"], doc: t("sql.sqlLang.dateFormattedStrftimeY") },
+    { name: "unixepoch", args: ["time", "modifier", "…"], doc: t("sql.sqlLang.secondsSince197001") },
+    { name: "json_extract", args: ["json", "path"], doc: t("sql.sqlLang.valueJsonTextJson") },
     { name: "random", args: [], doc: "A random 64-bit integer; ORDER BY random() shuffles." },
     { name: "row_number", args: [], doc: "The row's number in its window: row_number() OVER (PARTITION BY … ORDER BY …).", window: true },
-    { name: "rank", args: [], doc: "The rank in the window, with gaps after ties.", window: true },
-    { name: "dense_rank", args: [], doc: "The rank in the window, without gaps.", window: true },
-    { name: "percent_rank", args: [], doc: "(rank − 1) / (rows − 1) in the window, from 0 to 1.", window: true },
-    { name: "ntile", args: ["N"], doc: "Which of N near-equal buckets the row falls in.", window: true },
-    { name: "lag", args: ["X", "offset", "default"], doc: "X from a row before, in the window's order.", window: true },
-    { name: "lead", args: ["X", "offset", "default"], doc: "X from a row after, in the window's order.", window: true },
-    { name: "first_value", args: ["X"], doc: "X at the first row of the window frame.", window: true },
-    { name: "last_value", args: ["X"], doc: "X at the last row of the window frame.", window: true },
-    { name: "pragma_table_info", args: ["table"], doc: "A table's columns as rows: cid, name, type, notnull, dflt_value, pk." },
-    { name: "json_each", args: ["json", "path"], doc: "The elements of a JSON array or object, one row each." },
+    { name: "rank", args: [], doc: t("sql.sqlLang.rankWindowGapsAfter"), window: true },
+    { name: "dense_rank", args: [], doc: t("sql.sqlLang.rankWindowWithoutGaps"), window: true },
+    { name: "percent_rank", args: [], doc: t("sql.sqlLang.rank1Rows1"), window: true },
+    { name: "ntile", args: ["N"], doc: t("sql.sqlLang.whichNNearEqual"), window: true },
+    { name: "lag", args: ["X", "offset", "default"], doc: t("sql.sqlLang.xRowBeforeWindow"), window: true },
+    { name: "lead", args: ["X", "offset", "default"], doc: t("sql.sqlLang.xRowAfterWindow"), window: true },
+    { name: "first_value", args: ["X"], doc: t("sql.sqlLang.xFirstRowWindow"), window: true },
+    { name: "last_value", args: ["X"], doc: t("sql.sqlLang.xLastRowWindow"), window: true },
+    { name: "pragma_table_info", args: ["table"], doc: t("sql.sqlLang.tableSColumnsRows") },
+    { name: "json_each", args: ["json", "path"], doc: t("sql.sqlLang.elementsJsonArrayObject") },
 ]
 const FUNCTION_BY_NAME = new Map(FUNCTIONS.map(f => [f.name, f]))
 
@@ -596,7 +597,7 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
             label: name,
             insert: quoteIdent(name),
             detail: d?.name && d.name !== name ? d.name : type.toLowerCase() || (table ?? ""),
-            doc: { title: d?.name && d.name !== name ? d.name : name, body: d?.short || (!where.length && table ? `A column of ${table}, as this query names it.` : undefined), more: d?.long && d.long !== d.short ? d.long : undefined, meta: [name, d?.category ?? "", type ? type.toLowerCase() : "", where.length ? `in ${where.slice(0, 4).join(", ")}${where.length > 4 ? ` and ${where.length - 4} more` : ""}` : ""].filter(Boolean) },
+            doc: { title: d?.name && d.name !== name ? d.name : name, body: d?.short || (!where.length && table ? t("sql.sqlLang.columnQueryNames", { table }) : undefined), more: d?.long && d.long !== d.short ? d.long : undefined, meta: [name, d?.category ?? "", type ? type.toLowerCase() : "", where.length ? `in ${where.slice(0, 4).join(", ")}${where.length > 4 ? t("sql.sqlLang.more", { value: where.length - 4 }) : ""}` : ""].filter(Boolean) },
         }, d?.name ? `${name} ${d.name}` : name)
     }
 
@@ -609,9 +610,9 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
     }
 
     if (context.wantsTable || context.clause === "from" || context.clause === "start") {
-        for (const c of analysisCtes(src, schema, analysis)) add({ kind: "source", label: c.name, insert: quoteIdent(c.name), detail: "WITH", doc: { title: c.name, body: "A common table expression of this query.", meta: c.columns ? [`${c.columns.length} columns: ${c.columns.slice(0, 6).join(", ")}${c.columns.length > 6 ? ", …" : ""}`] : [] } })
-        if (context.wantsTable || context.clause === "from") for (const t of schema.tables) {
-            add({ kind: "table", label: t.name, insert: quoteIdent(t.name), detail: `${t.columns.length} columns${t.view ? " · view" : ""}`, doc: { title: t.name, body: tableDoc(t.name), meta: [`${t.columns.length} columns`, t.columns.slice(0, 8).map(c => c.name).join(", ") + (t.columns.length > 8 ? ", …" : "")] } })
+        for (const c of analysisCtes(src, schema, analysis)) add({ kind: "source", label: c.name, insert: quoteIdent(c.name), detail: "WITH", doc: { title: c.name, body: t("sql.sqlLang.commonTableExpressionQuery"), meta: c.columns ? [`${c.columns.length} columns: ${c.columns.slice(0, 6).join(", ")}${c.columns.length > 6 ? ", …" : ""}`] : [] } })
+        if (context.wantsTable || context.clause === "from") for (const table of schema.tables) {
+            add({ kind: "table", label: table.name, insert: quoteIdent(table.name), detail: t("sql.sqlLang.columns", { columnsLength: table.columns.length, value: table.view ? " · view" : "" }), doc: { title: table.name, body: tableDoc(table.name), meta: [t("sql.sqlLang.columns2", { columnsLength: table.columns.length }), table.columns.slice(0, 8).map(c => c.name).join(", ") + (table.columns.length > 8 ? ", …" : "")] } })
         }
     }
 
@@ -628,7 +629,7 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
                 if (seen.has(key)) continue
                 seen.add(key)
                 columnItem(c.name, table?.name ?? s.name, c.type)
-                if ((ambiguous.get(c.name) ?? 0) > 1) out[out.length - 1] && (out[out.length - 1].detail = `in several · qualify as ${s.name}.${c.name}`)
+                if ((ambiguous.get(c.name) ?? 0) > 1) out[out.length - 1] && (out[out.length - 1].detail = t("sql.sqlLang.severalQualify", { name: s.name, name2: c.name }))
             }
         }
         // Nothing in FROM yet: every column of every table, so a SELECT can be written first.
@@ -640,8 +641,8 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
             }
         }
         // Aliases and output names.
-        for (const s of sources) if (s.name && (s.kind !== "table" || s.name !== s.table)) add({ kind: "source", label: s.name, insert: quoteIdent(s.name), detail: s.table ? `alias of ${s.table}` : s.kind === "cte" ? "WITH" : "subquery" })
-        if (context.clause === "order" || context.clause === "group" || context.clause === "having") for (const p of context.projection) if (!seen.has(p)) { seen.add(p); add({ kind: "column", label: p, insert: quoteIdent(p), detail: "output column" }) }
+        for (const s of sources) if (s.name && (s.kind !== "table" || s.name !== s.table)) add({ kind: "source", label: s.name, insert: quoteIdent(s.name), detail: s.table ? t("sql.sqlLang.alias", { table: s.table }) : s.kind === "cte" ? "WITH" : t("sql.sqlLang.subquery") })
+        if (context.clause === "order" || context.clause === "group" || context.clause === "having") for (const p of context.projection) if (!seen.has(p)) { seen.add(p); add({ kind: "column", label: p, insert: quoteIdent(p), detail: t("sql.sqlLang.outputColumn") }) }
         if (context.clause !== "from") for (const f of FUNCTIONS) {
             if (f.name === "pragma_table_info" || f.name === "json_each") continue
             add({ kind: "function", label: f.name, insert: `${f.name}()`, caret: f.name.length + 1, detail: `${f.name}(${f.args.join(", ")})`, doc: { title: `${f.name}(${f.args.join(", ")})`, body: f.doc, meta: [f.aggregate ? "aggregate" : f.window ? "window function" : "scalar function"] } })
@@ -653,7 +654,7 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
     }
     if (q.length > 0 || context.clause === "start" || context.clause === "from") for (const k of CLAUSE_KEYWORDS[context.clause]) add({ kind: "keyword", label: k, insert: `${k} ` })
     if (context.clause === "start" && !q) {
-        add({ kind: "snippet", label: "select … from …", insert: "SELECT \nFROM ", caret: 7, detail: "a query", doc: { title: "A query", body: "SELECT, then FROM on the next line; the caret lands after SELECT." } })
+        add({ kind: "snippet", label: "select … from …", insert: "SELECT \nFROM ", caret: 7, detail: t("sql.sqlLang.query"), doc: { title: t("sql.sqlLang.query2"), body: "SELECT, then FROM on the next line; the caret lands after SELECT." } })
     }
     return { context, items: rank(out) }
 }
@@ -661,26 +662,26 @@ export function complete(src: string, caret: number, schema: SqlSchema, analysis
 function analysisCtes(src: string, schema: SqlSchema, a?: SqlAnalysis) { return (a ?? analyze(src, schema)).ctes }
 
 const TABLE_DOCS: Record<string, string> = {
-    components: "One row per component: its size, coupling, health, history and graph measures.",
-    files: "One row per file: its component, role, size, health and history.",
-    directories: "One row per directory, with its files' measures rolled up.",
-    component_connections_direct: "Imports between components: one row per importing file and import, from → to.",
-    component_connections_indirect: "Pairs of components where one reaches the other through imports: hops, and the first step of the shortest route.",
-    component_strongly_connected_groups: "Tangles: components that can all reach each other, by group.",
-    component_cycles_shortest: "The shortest import cycle through each component.",
-    git_commits: "One row per file changed in each commit: author, time, lines added and deleted.",
-    git_commit_info: "One row per commit: hash, time, author and message (git_commits reads it).",
-    git_commit_files: "One row per file changed in each commit, without the commit's details (git_commits reads it).",
-    git_authors: "One row per author: commits, lines and files changed, over each period.",
-    git_file_shared_commits: "Pairs of files changed in the same commits, and how often.",
-    git_component_shared_commits: "Pairs of components changed in the same commits, and how often.",
-    modules: "Build modules the scan read from manifests (Maven, Gradle, npm, Go, Composer, .NET, Django).",
-    rules: "Dependency rules and each import they judge: status, from, to, file and line.",
-    summary: "Whole-snapshot totals, one metric per row.",
-    snippets: "Pieces of source the engine kept: imports, declarations, by type.",
-    units: "Declared units: types, functions and modules, with their spans.",
-    definitions: "What each metric means: its name and descriptions.",
-    _snapshot: "How the snapshot was made: commit, branch, analysis revision, ignore patterns.",
+    components: t("sql.sqlLang.oneRowPerComponent"),
+    files: t("sql.sqlLang.oneRowPerFile"),
+    directories: t("sql.sqlLang.oneRowPerDirectory"),
+    component_connections_direct: t("sql.sqlLang.importsBetweenComponentsOne"),
+    component_connections_indirect: t("sql.sqlLang.pairsComponentsWhereOne"),
+    component_strongly_connected_groups: t("sql.sqlLang.tanglesComponentsCanAll"),
+    component_cycles_shortest: t("sql.sqlLang.shortestImportCycleThrough"),
+    git_commits: t("sql.sqlLang.oneRowPerFile2"),
+    git_commit_info: t("sql.sqlLang.oneRowPerCommit"),
+    git_commit_files: t("sql.sqlLang.oneRowPerFile3"),
+    git_authors: t("sql.sqlLang.oneRowPerAuthor"),
+    git_file_shared_commits: t("sql.sqlLang.pairsFilesChangedSame"),
+    git_component_shared_commits: t("sql.sqlLang.pairsComponentsChangedSame"),
+    modules: t("sql.sqlLang.buildModulesScanRead"),
+    rules: t("sql.sqlLang.dependencyRulesEachImport"),
+    summary: t("sql.sqlLang.wholeSnapshotTotalsOne"),
+    snippets: t("sql.sqlLang.piecesSourceEngineKept"),
+    units: t("sql.sqlLang.declaredUnitsTypesFunctions"),
+    definitions: t("sql.sqlLang.whatEachMetricMeans"),
+    _snapshot: t("sql.sqlLang.howSnapshotWasMade"),
 }
 const tableDoc = (name: string) => TABLE_DOCS[name] ?? undefined
 
@@ -725,16 +726,16 @@ export function lint(src: string, schema: SqlSchema, analysis?: SqlAnalysis): Sq
     if (!schema.tables.length) return []
     const a = analysis ?? analyze(src, schema)
     const out: SqlDiagnostic[] = []
-    for (const t of a.tokens) {
-        if (t.open && t.kind === "string") out.push({ from: t.start, to: t.end, message: "This string has no closing quote.", severity: "error" })
-        if (t.open && t.kind === "comment") out.push({ from: t.start, to: t.end, message: "This comment has no closing */.", severity: "error" })
+    for (const token of a.tokens) {
+        if (token.open && token.kind === "string") out.push({ from: token.start, to: token.end, message: t("sql.sqlLang.stringHasNoClosing"), severity: "error" })
+        if (token.open && token.kind === "comment") out.push({ from: token.start, to: token.end, message: t("sql.sqlLang.commentHasNoClosing"), severity: "error" })
     }
     const known = new Set(schema.tables.map(t => t.name.toLowerCase()))
     const cteNames = new Set(a.ctes.map(c => c.name.toLowerCase()))
     for (const b of a.blocks) for (const s of b.sources) {
         if (s.kind === "table" && s.token && !known.has((s.table ?? "").toLowerCase()) && !cteNames.has((s.table ?? "").toLowerCase())) {
             const close = nearest(s.table ?? "", schema.tables.map(t => t.name))
-            out.push({ from: s.token.start, to: s.token.end, message: `No table called ${s.table}${close ? `; did you mean ${close}?` : "."}`, severity: "error" })
+            out.push({ from: s.token.start, to: s.token.end, message: t("sql.sqlLang.noTableCalled", { table: s.table, value: close ? t("sql.sqlLang.didYouMean", { close }) : "." }), severity: "error" })
         }
     }
     // alias.column where the alias is a schema table that lacks the column.
@@ -747,7 +748,7 @@ export function lint(src: string, schema: SqlSchema, analysis?: SqlAnalysis): Sq
         const col = identName(a.sig[i])
         if (!s.columns.some(c => c.toLowerCase() === col.toLowerCase())) {
             const close = nearest(col, s.columns)
-            out.push({ from: a.sig[i].start, to: a.sig[i].end, message: `${s.table} has no column ${col}${close ? `; did you mean ${close}?` : "."}`, severity: "error" })
+            out.push({ from: a.sig[i].start, to: a.sig[i].end, message: t("sql.sqlLang.hasNoColumn", { table: s.table, col, value: close ? t("sql.sqlLang.didYouMean", { close }) : "." }), severity: "error" })
         }
     }
     return out

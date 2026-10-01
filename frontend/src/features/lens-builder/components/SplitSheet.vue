@@ -1,23 +1,18 @@
 <template>
   <div class="flex flex-col gap-2 rounded-md bg-neutral-50 p-2">
     <div class="flex items-baseline gap-2">
-      <span class="ui-label">Split {{ short }}</span>
-      <span class="ml-auto font-mono text-xs text-neutral-400">{{ picked.size }} of {{ files.length }}</span>
+      <span class="ui-label">{{ t('lens-builder.splitSheet.split', { short }) }}</span>
+      <span class="ml-auto font-mono text-xs text-neutral-400">{{ t('lens-builder.splitSheet.of', { pickedSize: picked.size, filesLength: files.length }) }}</span>
     </div>
     <p class="text-xs leading-4 text-neutral-500">
-      A component only splits when it is really two things. Pick the files that belong elsewhere; the rest stay in
-      <span class="text-neutral-700">{{ from }}</span>.
+{{ t('lens-builder.splitSheet.componentOnlySplitsWhen') }} <span class="text-neutral-700">{{ from }}</span>.
     </p>
 
     <!-- What the engine found, and what it is worth. It draws the line and
          stops there: what a file imports is what it USES, which is not the
          same as where it belongs, so the destination stays an open question. -->
     <p v-if="proposed" class="rounded bg-blue-50 px-2 py-1.5 text-xs leading-4 text-blue-900">
-      <span class="font-medium">{{ proposed.leaving.length }} of these files disagree with the rest.</span>
-      They lean towards <span class="font-medium">{{ proposed.rival }}</span><template v-if="proposed.moved > 0">, and
-      separating them stops {{ proposed.moved }} {{ proposed.moved === 1 ? 'reference' : 'references' }} crossing a
-      boundary</template>. Where they belong is your call — what a file imports is what it uses, not what it is.
-    </p>
+      <I18nT k="lens-builder.splitSheet.theyLeanTowardsWhere"><template #theseFilesDisagreeRest><span class="font-medium">{{ t('lens-builder.splitSheet.theseFilesDisagreeRest', { leavingLength: proposed.leaving.length }) }}</span></template><template #rival><span class="font-medium">{{ proposed.rival }}</span></template><template #separatingThemStopsCrossing><template v-if="proposed.moved > 0">{{ t('lens-builder.splitSheet.separatingThemStopsCrossing', { references: t('common.count.reference', { count: proposed.moved }) }) }}</template></template></I18nT> </p>
 
     <!-- Whole folders first: a split usually follows a directory, not a file. -->
     <div v-if="folders.length > 1" class="flex flex-wrap gap-1">
@@ -27,7 +22,7 @@
         type="button"
         class="rounded border px-1.5 py-0.5 text-xs transition-colors"
         :class="f.all ? 'border-accent-500 bg-accent-50 text-accent-700' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100'"
-        :title="`${f.files.length} files under ${f.path}`"
+        :title="t('lens-builder.splitSheet.filesUnder', { filesLength: f.files.length, path: f.path })"
         @click="toggleFolder(f)"
       >{{ f.label }} <span class="font-mono text-neutral-400">{{ f.files.length }}</span></button>
     </div>
@@ -40,7 +35,7 @@
         role="button"
         tabindex="0"
         :aria-pressed="picked.has(f)"
-        :aria-label="`${f} — ${picked.has(f) ? 'leaving' : 'staying in ' + from}`"
+        :aria-label="`${f} — ${picked.has(f) ? 'leaving' : t('lens-builder.splitSheet.staying', { from })}`"
         @click="toggle(f)"
         @keydown.enter.prevent="toggle(f)"
       >
@@ -52,23 +47,23 @@
     </ul>
 
     <div class="flex flex-wrap items-center gap-1.5">
-      <span class="text-xs text-neutral-500">Send them to</span>
+      <span class="text-xs text-neutral-500">{{ t('lens-builder.splitSheet.sendThem') }}</span>
       <button
         v-for="g in targets"
         :key="g.key"
         type="button"
         class="flex h-7 items-center gap-1.5 rounded-md px-2 text-sm text-neutral-800 transition-colors hover:bg-neutral-100 disabled:opacity-40"
         :disabled="picked.size === 0"
-        :title="`Move ${picked.size} files to ${g.name}`"
+        :title="t('lens-builder.splitSheet.moveFiles', { pickedSize: picked.size, gName: g.name })"
         @click="emit('split', Array.from(picked), g.key)"
       >
         <span class="h-2 w-2 shrink-0 rounded-[2px]" :style="{ backgroundColor: g.color }"></span>
         <span class="max-w-[8rem] truncate">{{ g.name }}</span>
       </button>
-      <button type="button" class="ui-btn ui-btn-sm" :disabled="picked.size === 0" title="Start a group from these files" @click="emit('split', Array.from(picked), null)">
-        <Icon icon="plus" :size="12" class="text-neutral-500"/><span>New group</span>
+      <button type="button" class="ui-btn ui-btn-sm" :disabled="picked.size === 0" :title="t('lens-builder.splitSheet.startGroupTheseFiles')" @click="emit('split', Array.from(picked), null)">
+        <Icon icon="plus" :size="12" class="text-neutral-500"/><span>{{ t('lens-builder.splitSheet.newGroup') }}</span>
       </button>
-      <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="emit('close')">Cancel</button>
+      <button type="button" class="ml-auto text-xs text-neutral-500 hover:text-neutral-900" @click="emit('close')">{{ t('lens-builder.splitSheet.cancel') }}</button>
     </div>
   </div>
 </template>
@@ -76,6 +71,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
+import { t } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT"
 
 // Choosing which files leave. Splitting is never automatic and never a side
 // effect: it is this sheet, opened deliberately, and it says plainly what
@@ -116,7 +113,7 @@ const folders = computed(() => {
   }
   return Array.from(by, ([path, files]) => ({
     path,
-    label: path.split(/[/\\]/).pop() || "root",
+    label: path.split(/[/\\]/).pop() || t("lens-builder.splitSheet.root"),
     files,
     all: files.every(f => picked.value.has(f)),
   })).sort((a, b) => b.files.length - a.files.length);

@@ -1,5 +1,7 @@
 import { useDataStore } from "~/features/snapshot/data.store";
 import { chartTheme } from "~/shared/ui/useChartTheme";
+import { t } from "~/shared/i18n";
+import { fixed } from "~/shared/format";
 
 // The one definition of "good, warning, bad" for the two engine scores that
 // views colour. Code health runs 1–10 (10 is healthy); hotspot score runs
@@ -53,9 +55,9 @@ export function levelDotClass(level: HealthLevel): string {
 
 export function levelLabel(level: HealthLevel): string {
     switch (level) {
-        case "good": return "Healthy";
-        case "warn": return "Watch";
-        case "bad": return "Alert";
+        case "good": return t("metrics.useHealth.healthy");
+        case "warn": return t("metrics.useHealth.watch");
+        case "bad": return t("metrics.useHealth.alert");
         default: return "—";
     }
 }
@@ -73,7 +75,7 @@ export function levelColor(level: HealthLevel): string {
 
 export function formatHealth(score: number | null | undefined): string {
     if (score === null || score === undefined || Number.isNaN(Number(score)) || Number(score) < 1) return "—";
-    return Number(score).toFixed(1);
+    return fixed(Number(score), 1);
 }
 
 export function formatHotspot(score: number | null | undefined): string {

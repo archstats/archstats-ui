@@ -14,6 +14,7 @@ import { chartTheme } from "~/shared/ui/useChartTheme";
 import { useFigure } from "~/features/export/useExportables";
 import type { LegendItem } from "~/features/export/figure";
 import { type CEdge, type CNode, edgeKey, orderNodes, topDegreeIds } from "~/features/connections/connections";
+import { t } from "~/shared/i18n";
 
 // A chord diagram for every source: arcs are nodes (coloured by group),
 // ribbons are edges (blue, weight as thickness). Directed sources draw the
@@ -154,7 +155,7 @@ function scheduleRender() {
 }
 
 const figure = useFigure({
-  title: "Connections chord",
+  title: t("connections.connectionsChord.connectionsChord"),
   ready: () => !!svgEl.value?.firstChild,
   svg: true,
   render: () => {
@@ -163,14 +164,14 @@ const figure = useFigure({
     return { kind: "svg", svg, width: el.clientWidth, height: el.clientHeight };
   },
   legend: () => {
-    const t = chartTheme();
+    const theme = chartTheme();
     const groups = new Map<string, string>();
     for (const n of props.nodes) if (n.group && n.color && !groups.has(n.group)) groups.set(n.group, n.color);
     const items: LegendItem[] = [...groups].slice(0, 12).map(([label, color]) => ({ label, color }));
-    items.push({ label: props.directed ? "Depends on" : "Changed together", color: t.blue });
-    if (props.cycleKeys?.size) items.push({ label: "In a cycle", color: t.red });
-    const notes = [`An arc is a ${props.nodes[0]?.kind ?? "component"}; a ribbon is thicker the more references it carries${props.directed ? ", and runs from the user to the used" : ""}.`];
-    if (groups.size > 12) notes.push(`${groups.size - 12} more groups colour their arcs.`);
+    items.push({ label: props.directed ? t("connections.connectionsChord.depends") : t("connections.connectionsChord.changedTogether"), color: theme.blue });
+    if (props.cycleKeys?.size) items.push({ label: t("connections.connectionsChord.cycle"), color: theme.red });
+    const notes = [t("connections.connectionsChord.arcRibbonThickerMore", { value: props.nodes[0]?.kind ?? t("connections.connectionsChord.component"), value2: props.directed ? t("connections.connectionsChord.runsUserUsed") : "" })];
+    if (groups.size > 12) notes.push(t("connections.connectionsChord.moreGroupsColourTheir", { value: groups.size - 12 }));
     return { items, notes };
   },
 });

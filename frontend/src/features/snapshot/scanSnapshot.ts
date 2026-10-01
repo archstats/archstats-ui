@@ -4,6 +4,7 @@
 // stores instead, so what a view shows and what an exhibit shows are one read.
 
 import type { CyclePath } from "./snapshot"
+import { localized } from "./definition"
 import type { ConnectionRow, Definition, Snapshot } from "./snapshot"
 
 type Query = <T = any>(sql: string) => Promise<T[]>
@@ -41,7 +42,7 @@ async function load(scanId: string, query: Query, o: { workspace: string; author
         : []
     const defs = new Map<string, Definition>()
     const defTable = columns._metric_definitions ? "_metric_definitions" : columns.definitions ? "definitions" : ""
-    if (defTable) for (const d of await query(`SELECT id, name, short_description, long_description FROM ${defTable}`)) defs.set(d.id, { id: d.id, name: d.name ?? d.id, short: d.short_description ?? "", long: d.long_description ?? "" })
+    if (defTable) for (const d of await query(`SELECT id, name, short_description, long_description FROM ${defTable}`)) defs.set(d.id, localized({ id: d.id, name: d.name ?? d.id, short: d.short_description ?? "", long: d.long_description ?? "" }))
     const files = await query(`SELECT name, component${columns.files?.includes("role") ? ", role" : ""} FROM files`)
     const fileComponent = new Map(files.map(f => [String(f.name), String(f.component ?? "")]))
     const roles = new Map(files.map(f => [String(f.name), String(f.role ?? "production")]))

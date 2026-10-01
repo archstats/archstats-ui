@@ -5,54 +5,54 @@
 
       <!-- First run: no workspace at all. Two ways in: a folder here, or a repository elsewhere. -->
       <template v-if="variant === 'first-run'">
-        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">Add a codebase</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ t('workspace.workspaceEmptyState.addCodebase') }}</h1>
         <p class="mt-2 max-w-[48ch] text-base leading-5 text-neutral-600">
-          Archstats reads the source on this machine and keeps every snapshot, so you can come back later and see what changed.
+          {{ t('workspace.workspaceEmptyState.archstatsReadsSourceMachine') }}
         </p>
 
         <section class="mt-8" aria-labelledby="first-folder">
-          <h2 id="first-folder" class="text-base font-semibold text-neutral-900">A folder on this machine</h2>
-          <p class="mt-0.5 text-sm leading-4 text-neutral-500">A checkout, or a parent folder holding several.</p>
+          <h2 id="first-folder" class="text-base font-semibold text-neutral-900">{{ t('workspace.workspaceEmptyState.folderMachine') }}</h2>
+          <p class="mt-0.5 text-sm leading-4 text-neutral-500">{{ t('workspace.workspaceEmptyState.checkoutParentFolderHolding') }}</p>
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <button type="button" class="ui-btn ui-btn-primary h-8 px-3.5" :disabled="adding" @click="add">
               <Loader2 v-if="adding" :size="14" class="animate-spin" aria-hidden="true"/>
               <FolderPlus v-else :size="14" :stroke-width="2" aria-hidden="true"/>
-              Choose folder…
+              {{ t('workspace.workspaceEmptyState.chooseFolder') }}
             </button>
-            <span class="text-sm text-neutral-500">or drop one on this window</span>
+            <span class="text-sm text-neutral-500">{{ t('workspace.workspaceEmptyState.dropOneWindow') }}</span>
           </div>
         </section>
 
         <section class="mt-6 pt-6 hairline-t" aria-labelledby="first-clone">
-          <h2 id="first-clone" class="text-base font-semibold text-neutral-900">A repository</h2>
-          <p class="mt-0.5 text-sm leading-4 text-neutral-500">Cloned with your own git credentials, then scanned.</p>
+          <h2 id="first-clone" class="text-base font-semibold text-neutral-900">{{ t('workspace.workspaceEmptyState.repository') }}</h2>
+          <p class="mt-0.5 text-sm leading-4 text-neutral-500">{{ t('workspace.workspaceEmptyState.clonedYourOwnGit') }}</p>
           <form class="mt-3 flex items-center gap-2" @submit.prevent="clones.open(address.trim())">
             <input
                 v-model="address"
                 type="text"
                 class="ui-input h-8 min-w-0 flex-1 font-mono text-sm"
                 placeholder="https://github.com/owner/repo"
-                aria-label="Repository address"
+                :aria-label="t('workspace.workspaceEmptyState.repositoryAddress')"
                 spellcheck="false"
                 autocomplete="off"
             >
             <button type="submit" class="ui-btn h-8 px-3.5">
               <Download :size="14" :stroke-width="1.75" aria-hidden="true"/>
-              Clone…
+              {{ t('workspace.workspaceEmptyState.clone') }}
             </button>
           </form>
         </section>
 
-        <p class="mt-8 text-sm text-neutral-500">Everything runs locally. Nothing is uploaded.</p>
+        <p class="mt-8 text-sm text-neutral-500">{{ t('workspace.workspaceEmptyState.everythingRunsLocallyNothing') }}</p>
         <p v-if="store.error" class="mt-4 whitespace-pre-wrap break-words rounded bg-red-50 px-3 py-2.5 font-mono text-sm leading-4 text-red-800 shadow-[0_0_0_1px_rgb(var(--c-red-200))]" role="alert">{{ store.error }}</p>
       </template>
 
       <!-- A scan is running and there is no snapshot to show underneath. -->
       <template v-else-if="variant === 'scanning'">
-        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ progress?.ref ? `Rescanning ${active?.name} at ${refLabel(progress.ref)}` : `Scanning ${active?.name}` }}</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ progress?.ref ? t('workspace.workspaceEmptyState.rescanning', { activeName: active?.name, ref: refLabel(progress.ref) }) : t('workspace.workspaceEmptyState.scanning', { activeName: active?.name }) }}</h1>
         <p class="mt-1.5 font-mono text-sm leading-4 text-neutral-500" :title="active?.folderPath">{{ active?.folderPath }}</p>
 
-        <ol class="mt-7 flex flex-col gap-2.5" aria-label="Scan progress" aria-live="polite">
+        <ol class="mt-7 flex flex-col gap-2.5" :aria-label="t('workspace.workspaceEmptyState.scanProgress')" aria-live="polite">
           <li v-for="(p, i) in PHASES" :key="p.key" class="flex items-center gap-3" :aria-current="phaseIndex === i ? 'step' : undefined">
             <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" :class="phaseRing(i)" aria-hidden="true">
               <Check v-if="i < phaseIndex" :size="11" :stroke-width="2.6"/>
@@ -68,33 +68,33 @@
 
         <p class="mt-7 flex items-center gap-3 text-sm text-neutral-500">
           <span class="font-mono tabular-nums text-neutral-900">{{ elapsed }}</span>
-          <span>Large repositories take a few minutes. You can switch workspaces meanwhile.</span>
+          <span>{{ t('workspace.workspaceEmptyState.largeRepositoriesTakeFew') }}</span>
         </p>
       </template>
 
       <!-- The most recent scan failed and nothing older can be shown. -->
       <template v-else-if="variant === 'failed'">
-        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">The scan of {{ active?.name }} failed</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ t('workspace.workspaceEmptyState.scanFailed', { activeName: active?.name }) }}</h1>
         <p class="mt-1.5 font-mono text-sm leading-4 text-neutral-500" :title="active?.folderPath">{{ active?.folderPath }}</p>
         <pre class="mt-5 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-red-50 px-3 py-2.5 font-mono text-sm leading-4 text-red-800 shadow-[0_0_0_1px_rgb(var(--c-red-200))]">{{ failure?.error }}</pre>
         <div class="mt-6 flex flex-wrap items-center gap-3">
           <button type="button" class="ui-btn ui-btn-primary h-8 px-3.5" @click="store.startScan()">
             <Play :size="12" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>
-            Scan again
+            {{ t('workspace.workspaceEmptyState.scanAgain') }}
           </button>
-          <span class="text-sm text-neutral-500">Fix the cause first if the message names one.</span>
+          <span class="text-sm text-neutral-500">{{ t('workspace.workspaceEmptyState.fixCauseFirstIf') }}</span>
         </div>
       </template>
 
       <!-- Workspace exists, nothing has been scanned yet. -->
       <template v-else>
-        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ active?.name }} has no snapshots yet</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 text-balance">{{ t('workspace.workspaceEmptyState.hasNoSnapshotsYet', { activeName: active?.name }) }}</h1>
         <p class="mt-1.5 font-mono text-sm leading-4 text-neutral-500" :title="active?.folderPath">{{ active?.folderPath }}</p>
-        <p class="mt-3 max-w-[48ch] text-base leading-5 text-neutral-600">Run a scan to build the first snapshot. Every later scan is kept alongside it.</p>
+        <p class="mt-3 max-w-[48ch] text-base leading-5 text-neutral-600">{{ t('workspace.workspaceEmptyState.runScanBuildFirst') }}</p>
         <div class="mt-6">
           <button type="button" class="ui-btn ui-btn-primary h-8 px-3.5" @click="store.startScan()">
             <Play :size="12" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>
-            Scan now
+            {{ t('workspace.workspaceEmptyState.scanNow') }}
           </button>
         </div>
       </template>
@@ -109,6 +109,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { useCloneStore } from "~/features/workspace/clone.store";
 import { formatElapsed } from "~/shared/time";
 import { refLabel } from "~/features/workspace/scanFlow";
+import { t } from "~/shared/i18n";
 
 const store = useWorkspacesStore();
 const active = computed(() => store.active);
@@ -127,11 +128,11 @@ const clones = useCloneStore();
 const address = ref("");
 
 const PHASES = computed(() => [
-  { key: "starting", label: active.value?.managed ? "Fetching the latest" : "Preparing" },
-  { key: "detecting", label: "Detecting languages" },
-  { key: "analyzing", label: "Analyzing files" },
-  { key: "rendering", label: "Rendering views" },
-  { key: "saving", label: "Saving snapshot" },
+  { key: "starting", label: active.value?.managed ? t("workspace.workspaceEmptyState.fetchingLatest") : t("workspace.workspaceEmptyState.preparing") },
+  { key: "detecting", label: t("workspace.workspaceEmptyState.detectingLanguages") },
+  { key: "analyzing", label: t("workspace.workspaceEmptyState.analyzingFiles") },
+  { key: "rendering", label: t("workspace.workspaceEmptyState.renderingViews") },
+  { key: "saving", label: t("workspace.workspaceEmptyState.savingSnapshot") },
 ]);
 
 // A scan found running after a reload has no known phase; it reads as analysis.

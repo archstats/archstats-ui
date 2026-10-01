@@ -1,9 +1,9 @@
 <template>
   <ViewWorkspaceLayout
     :queryable="false"
-    title="Authors"
+    :title="t('pages.gitAuthorsIndex.authors')"
     v-model:search-query="searchQuery"
-    :search-placeholder="grain === 'authors' ? 'Search authors' : 'Search components or people'"
+    :search-placeholder="grain === 'authors' ? t('pages.gitAuthorsIndex.searchAuthors') : t('pages.gitAuthorsIndex.searchComponentsPeople')"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
     :tabs="grain === 'authors' ? tabs : []"
@@ -11,57 +11,56 @@
   >
     <template #stats>
       <template v-if="grain === 'components'">
-        <span v-if="knowledge.rows.value.length">Components <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.components) }}</span></span>
+        <span v-if="knowledge.rows.value.length">{{ t('pages.gitAuthorsIndex.components') }} <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.components) }}</span></span>
         <span v-if="knowledge.rows.value.length" class="text-neutral-400">·</span>
-        <span v-if="knowledge.rows.value.length" title="Components no active contributor wrote much of or changed in the window">No active contributor <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.byState.nobody.components) }}</span></span>
+        <span v-if="knowledge.rows.value.length" :title="t('pages.gitAuthorsIndex.componentsNoActiveContributor')">{{ t('pages.gitAuthorsIndex.noActiveContributor') }} <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.byState.nobody.components) }}</span></span>
         <span v-if="knowledge.rows.value.length" class="text-neutral-400">·</span>
-        <span v-if="knowledge.rows.value.length">Active <span class="text-neutral-800">{{ formatNumber(knowledge.summary.value.peopleHere) }} of {{ formatNumber(knowledge.summary.value.people) }}</span> people</span>
+        <span v-if="knowledge.rows.value.length"><I18nT k="pages.gitAuthorsIndex.activePeople"><template #span><span class="text-neutral-800">{{ t('pages.gitAuthorsIndex.of', { peopleHere: formatNumber(knowledge.summary.value.peopleHere), people: formatNumber(knowledge.summary.value.people) }) }}</span></template></I18nT></span>
       </template>
-      <span v-else-if="rows.length" title="Everyone who committed to a file in this snapshot, the same count the Overview and Activity show">
-        Contributors
-        <span class="text-neutral-800">
-          <template v-if="filtered.length !== rows.length">{{ formatNumber(filtered.length) }} of </template>{{ formatNumber(rows.length) }}
+      <span v-else-if="rows.length" :title="t('pages.gitAuthorsIndex.everyoneWhoCommittedFile')">
+{{ t('pages.gitAuthorsIndex.contributors') }} <span class="text-neutral-800">
+          <template v-if="filtered.length !== rows.length">{{ t('pages.gitAuthorsIndex.of2', { filteredLength: formatNumber(filtered.length) }) + ' ' }} </template>{{ formatNumber(rows.length) }}
         </span>
       </span>
     </template>
 
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Rows">
-        <button type="button" :aria-pressed="grain === 'components'" title="Per component: how much active contributors wrote or recently changed" @click="setGrain('components')">Knowledge</button>
-        <button type="button" :aria-pressed="grain === 'authors'" title="Per person: what they changed, when they last committed, and what they keep" @click="setGrain('authors')">People</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.gitAuthorsIndex.rows')">
+        <button type="button" :aria-pressed="grain === 'components'" :title="t('pages.gitAuthorsIndex.perComponentHowMuch')" @click="setGrain('components')">{{ t('pages.gitAuthorsIndex.knowledge') }}</button>
+        <button type="button" :aria-pressed="grain === 'authors'" :title="t('pages.gitAuthorsIndex.perPersonWhatThey')" @click="setGrain('authors')">{{ t('pages.gitAuthorsIndex.people') }}</button>
       </div>
-      <div v-if="grain === 'authors'" class="ui-segmented" role="group" aria-label="Period">
+      <div v-if="grain === 'authors'" class="ui-segmented" role="group" :aria-label="t('pages.gitAuthorsIndex.period')">
         <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days)" @click="period = p.id">{{ p.label }}</button>
       </div>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.pseudonymise" :class="{ 'bg-neutral-100': authorsStore.pseudonymise }"
-              title="Show every author as Author 1…N, numbered by first commit, on every screen and in every export; emails and @handles are hidden"
+              :title="t('pages.gitAuthorsIndex.showEveryAuthorAuthor')"
               @click="authorsStore.setPseudonymise(!authorsStore.pseudonymise)">
         <Icon icon="user" :size="13" class="text-neutral-500"/>
-        <span>{{ authorsStore.pseudonymise ? "Pseudonymised" : "Show as Author 1…N" }}</span>
+        <span>{{ authorsStore.pseudonymise ? t('pages.gitAuthorsIndex.pseudonymised') : t('pages.gitAuthorsIndex.showAuthor1N') }}</span>
       </button>
       <button type="button" class="ui-btn ui-btn-sm" :aria-pressed="authorsStore.showBots" :class="{ 'bg-neutral-100': authorsStore.showBots }"
-              title="Dependency bumpers, CI accounts and release-plugin commits are hidden unless shown here"
+              :title="t('pages.gitAuthorsIndex.dependencyBumpersCiAccounts')"
               @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
-        <span>{{ authorsStore.showBots ? "Bots shown" : "Bots hidden" }}</span>
+        <span>{{ authorsStore.showBots ? t('pages.gitAuthorsIndex.botsShown') : t('pages.gitAuthorsIndex.botsHidden') }}</span>
       </button>
     </template>
 
     <template #visualizer>
       <KnowledgeView v-if="grain === 'components'" v-model:focused="focusedComponent" :k="knowledge" :search="searchQuery"/>
-      <LoadingState v-else-if="loading" text="Reading authors…"/>
-      <EmptyState v-else-if="error" title="Could not read authors" :text="error" icon="alert"/>
+      <LoadingState v-else-if="loading" :text="t('pages.gitAuthorsIndex.readingAuthors')"/>
+      <EmptyState v-else-if="error" :title="t('pages.gitAuthorsIndex.couldNotReadAuthors')" :text="error" icon="alert"/>
       <EmptyState
         v-else-if="rows.length === 0"
-        title="No authors in this snapshot"
-        text="The scan has no git author data. Scan a git checkout to see who contributes."
+        :title="t('pages.gitAuthorsIndex.noAuthorsSnapshot')"
+        :text="t('pages.gitAuthorsIndex.scanHasNoGit')"
         icon="users"
       />
-      <EmptyState v-else-if="filtered.length === 0" title="No authors match" :text="`Nothing matches “${searchQuery}”.`" icon="search">
-        <button type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">Clear search</button>
+      <EmptyState v-else-if="filtered.length === 0" :title="t('pages.gitAuthorsIndex.noAuthorsMatch')" :text="t('pages.gitAuthorsIndex.nothingMatches', { searchQuery })" icon="search">
+        <button type="button" class="ui-btn ui-btn-sm" @click="searchQuery = ''">{{ t('pages.gitAuthorsIndex.clearSearch') }}</button>
       </EmptyState>
       <ExhibitFrame v-else :exhibit="authorTable" class="grow" fill header-class="h-9 shrink-0 px-4 hairline-b">
-        <template #aside>{{ filtered.length.toLocaleString("en-US") }} {{ filtered.length === 1 ? "author" : "authors" }}</template>
+        <template #aside>{{ filtered.length.toLocaleString(intlLocale) }} {{t('common.noun.author', { count: filtered.length })}}</template>
         <div class="absolute inset-0 overflow-auto">
           <table class="ui-table">
             <thead>
@@ -104,13 +103,13 @@
                     @click.stop
                   >{{ a.shown }}</router-link>
                 </td>
-                <td class="text-right" :title="`${a.here ? 'Active' : 'Not active'}: last commit ${agoLabel(a.idle)}, counted back from the snapshot`">
+                <td class="text-right" :title="t('pages.gitAuthorsIndex.lastCommitCountedBack', { value: a.here ? t('pages.gitAuthorsIndex.active') : t('pages.gitAuthorsIndex.notActive'), idle: agoLabel(a.idle) })">
                   <span class="inline-flex items-center justify-end gap-1.5 font-mono text-sm tabular-nums" :class="a.here ? 'text-neutral-800' : 'text-neutral-500'">
                     <span class="h-1.5 w-1.5 rounded-full" :class="a.here ? 'bg-blue-500' : 'bg-neutral-300'" aria-hidden="true"></span>
                     {{ agoLabel(a.idle) }}
                   </span>
                 </td>
-                <td class="is-num text-right" :title="a.keeps ? `Most active contributor on ${a.keeps} component${a.keeps === 1 ? '' : 's'}; the sole active contributor on ${a.keepsOnly}` : undefined">
+                <td class="is-num text-right" :title="a.keeps ? t('pages.gitAuthorsIndex.mostActiveContributorSole', { components: t('common.count.component', { count: a.keeps }), keepsOnly: a.keepsOnly }) : undefined">
                   <template v-if="a.keeps">{{ formatNumber(a.keeps) }}</template><span v-else class="text-neutral-400">—</span>
                 </td>
                 <td class="is-num text-right">
@@ -142,29 +141,29 @@
         </div>
         <!-- The same person under another name: merged by hand, per workspace. -->
         <section v-if="authorsStore.pseudonymise" class="flex flex-col gap-2">
-          <h3 class="ui-section-title">Also committed as</h3>
-          <p class="text-sm leading-4 text-neutral-500">Names are hidden while authors are pseudonymised. Show names to merge one person's names.</p>
+          <h3 class="ui-section-title">{{ t('pages.gitAuthorsIndex.alsoCommitted') }}</h3>
+          <p class="text-sm leading-4 text-neutral-500">{{ t('pages.gitAuthorsIndex.namesHiddenWhileAuthors') }}</p>
         </section>
         <section v-else class="flex flex-col gap-2">
-          <h3 class="ui-section-title">Also committed as</h3>
+          <h3 class="ui-section-title">{{ t('pages.gitAuthorsIndex.alsoCommitted') }}</h3>
           <ul v-if="mergedInto(selected.name).length" class="flex flex-col gap-1">
             <li v-for="alias in mergedInto(selected.name)" :key="alias" class="flex items-center gap-2">
               <span class="min-w-0 flex-1 truncate text-sm text-neutral-700" :title="alias">{{ alias }}</span>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Count ${alias} separately again`" @click="authorsStore.unmerge(alias)">Separate</button>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.gitAuthorsIndex.countSeparatelyAgain', { alias })" @click="authorsStore.unmerge(alias)">{{ t('pages.gitAuthorsIndex.separate') }}</button>
             </li>
           </ul>
-          <SingleSelect :model-value="null" :options="mergeOptions" placeholder="Same person as…" @update:model-value="mergeSelected"/>
-          <p class="text-sm leading-4 text-neutral-500">Merging folds the other name's commits into this one on every screen of this workspace.</p>
+          <SingleSelect :model-value="null" :options="mergeOptions" :placeholder="t('pages.gitAuthorsIndex.samePerson')" @update:model-value="mergeSelected"/>
+          <p class="text-sm leading-4 text-neutral-500">{{ t('pages.gitAuthorsIndex.mergingFoldsOtherName') }}</p>
         </section>
         <section class="flex flex-col gap-2">
-          <h3 class="ui-section-title">Most active in</h3>
-          <p v-if="!selected.keeps" class="text-sm leading-4 text-neutral-500">{{ selected.here ? "Not the most active contributor on any component." : `Last committed ${agoLabel(selected.idle)}; no longer counted as active.` }}</p>
+          <h3 class="ui-section-title">{{ t('pages.gitAuthorsIndex.mostActive') }}</h3>
+          <p v-if="!selected.keeps" class="text-sm leading-4 text-neutral-500">{{ selected.here ? t('pages.gitAuthorsIndex.notMostActiveContributor') : t('pages.gitAuthorsIndex.lastCommittedNoLonger', { idle: agoLabel(selected.idle) }) }}</p>
           <template v-else>
-            <p class="text-sm leading-4 text-neutral-600">Most active contributor on {{ formatNumber(selected.keeps) }} component{{ selected.keeps === 1 ? "" : "s" }}<template v-if="selected.keepsOnly">, and the sole active contributor on {{ formatNumber(selected.keepsOnly) }} of them</template>.</p>
+            <p class="text-sm leading-4 text-neutral-600">{{ t('pages.gitAuthorsIndex.mostActiveContributor', { components: t('common.count.component', { count: selected.keeps }) }) }}<template v-if="selected.keepsOnly">{{ t('pages.gitAuthorsIndex.soleActiveContributorThem', { keepsOnly: formatNumber(selected.keepsOnly) }) }}</template>.</p>
             <ul class="flex flex-col">
               <li v-for="r in keptBy(selected.name)" :key="r.component" class="flex h-6 items-center gap-2">
                 <router-link :to="componentPath(r.component)" class="min-w-0 flex-1 truncate font-mono text-sm text-neutral-800 hover:underline" :title="r.component">{{ r.component }}</router-link>
-                <span class="font-mono text-xs tabular-nums text-neutral-500" title="Lines of code">{{ formatNumber(r.lines) }}</span>
+                <span class="font-mono text-xs tabular-nums text-neutral-500" :title="t('pages.gitAuthorsIndex.linesCode')">{{ formatNumber(r.lines) }}</span>
               </li>
             </ul>
           </template>
@@ -172,21 +171,21 @@
         <section v-for="p in periods" :key="p.id" class="flex flex-col gap-2">
           <h3 class="ui-section-title" :class="{ 'text-neutral-900': p.id === period }">{{ p.title }}</h3>
           <dl class="ui-kv">
-            <dt>Commits</dt><dd>{{ formatNumber(selected.byPeriod[p.id].commits) }}</dd>
-            <dt>Lines added</dt><dd class="text-green-700">{{ formatSigned(selected.byPeriod[p.id].additions) }}</dd>
-            <dt>Lines removed</dt><dd class="text-red-700">{{ formatSigned(-selected.byPeriod[p.id].deletions) }}</dd>
-            <dt>Files</dt><dd>{{ formatNumber(selected.byPeriod[p.id].files) }}</dd>
-            <dt>Components</dt><dd>{{ formatNumber(selected.byPeriod[p.id].components) }}</dd>
+            <dt>{{ t('pages.gitAuthorsIndex.commits') }}</dt><dd>{{ formatNumber(selected.byPeriod[p.id].commits) }}</dd>
+            <dt>{{ t('pages.gitAuthorsIndex.linesAdded') }}</dt><dd class="text-green-700">{{ formatSigned(selected.byPeriod[p.id].additions) }}</dd>
+            <dt>{{ t('pages.gitAuthorsIndex.linesRemoved') }}</dt><dd class="text-red-700">{{ formatSigned(-selected.byPeriod[p.id].deletions) }}</dd>
+            <dt>{{ t('pages.gitAuthorsIndex.files') }}</dt><dd>{{ formatNumber(selected.byPeriod[p.id].files) }}</dd>
+            <dt>{{ t('pages.gitAuthorsIndex.components') }}</dt><dd>{{ formatNumber(selected.byPeriod[p.id].components) }}</dd>
           </dl>
         </section>
         <div class="pt-1">
           <router-link :to="detailRoute(selected.name)" class="ui-btn ui-btn-sm ui-btn-primary">
             <Icon icon="arrow-up-right" :size="13"/>
-            <span>Open</span>
+            <span>{{ t('pages.gitAuthorsIndex.open') }}</span>
           </router-link>
         </div>
       </template>
-      <p v-else class="text-sm leading-4 text-neutral-500">Select an author to see their commits, lines, files and components for every period. Double-click or press Enter to open the author.</p>
+      <p v-else class="text-sm leading-4 text-neutral-500">{{ t('pages.gitAuthorsIndex.selectAuthorSeeTheir') }}</p>
     </template>
   </ViewWorkspaceLayout>
 </template>
@@ -212,6 +211,8 @@ import { formatNumber, formatSigned } from "~/shared/format"
 import Icon from "~/shared/ui/Icon.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t, intlLocale } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const store = useDataStore()
 const router = useRouter()
@@ -247,7 +248,7 @@ const searchQuery = ref("")
 const isSidebarOpen = ref(true)
 const activeTab = ref(grain.value === "authors" ? "author" : "component")
 watch(grain, g => { activeTab.value = g === "authors" ? "author" : "component" })
-const tabs = [{ id: "author", label: "Author" }]
+const tabs = [{ id: "author", label: t("pages.gitAuthorsIndex.author") }]
 
 const periods = AUTHOR_PERIODS
 type PeriodId = (typeof periods)[number]["id"]
@@ -301,13 +302,13 @@ const filtered = computed(() => {
 
 type SortKey = "name" | "idle" | "keeps" | "commits" | "lines" | "files" | "components"
 const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
-  { key: "name", label: "Author" },
-  { key: "idle", label: "Last commit", align: "right", width: "w-[120px]" },
-  { key: "keeps", label: "Most active in", align: "right", width: "w-[112px]" },
-  { key: "commits", label: "Commits", align: "right", width: "w-[140px]" },
-  { key: "lines", label: "Lines", align: "right", width: "w-[160px]" },
-  { key: "files", label: "Files", align: "right", width: "w-[80px]" },
-  { key: "components", label: "Components", align: "right", width: "w-[110px]" },
+  { key: "name", label: t("pages.gitAuthorsIndex.author") },
+  { key: "idle", label: t("pages.gitAuthorsIndex.lastCommit"), align: "right", width: "w-[120px]" },
+  { key: "keeps", label: t("pages.gitAuthorsIndex.mostActive"), align: "right", width: "w-[112px]" },
+  { key: "commits", label: t("pages.gitAuthorsIndex.commits"), align: "right", width: "w-[140px]" },
+  { key: "lines", label: t("pages.gitAuthorsIndex.lines"), align: "right", width: "w-[160px]" },
+  { key: "files", label: t("pages.gitAuthorsIndex.files"), align: "right", width: "w-[80px]" },
+  { key: "components", label: t("pages.gitAuthorsIndex.components"), align: "right", width: "w-[110px]" },
 ]
 const sortKey = ref<SortKey>("commits")
 const sortDir = ref<"asc" | "desc">("desc")
@@ -346,9 +347,9 @@ function barWidth(commits: number): string {
 
 function agoLabel(days: number): string {
   if (days < 1) return "today"
-  if (days < 60) return `${Math.round(days)} d ago`
-  if (days < 540) return `${Math.round(days / 30)} mo ago`
-  return `${(days / 365).toFixed(1)} y ago`
+  if (days < 60) return t("pages.gitAuthorsIndex.dAgo", { days: Math.round(days) })
+  if (days < 540) return t("pages.gitAuthorsIndex.moAgo", { value: Math.round(days / 30) })
+  return t("pages.gitAuthorsIndex.yAgo", { value: (days / 365).toFixed(1) })
 }
 
 const selectedName = ref<string | null>(null)
@@ -363,15 +364,15 @@ const authorTable = useTable({
   get title() { return `Authors (${periods.find(p => p.id === period.value)?.title ?? ""})` },
   rows: () => sorted.value.map(a => ({ author: a.shown, email: a.email, days_since_last_commit: Math.round(a.idle), keeps: a.keeps, commits: a.commits, additions: a.additions, deletions: a.deletions, files: a.files, components: a.components })),
   columns: () => [
-    { id: "author", label: "Author" },
-    ...(authorsStore.pseudonymise ? [] : [{ id: "email", label: "Email" }]),
-    { id: "days_since_last_commit", label: "Days since last commit" },
-    { id: "keeps", label: "Most active in (components)" },
-    { id: "commits", label: "Commits" },
-    { id: "additions", label: "Lines added" },
-    { id: "deletions", label: "Lines deleted" },
-    { id: "files", label: "Files" },
-    { id: "components", label: "Components" },
+    { id: "author", label: t("pages.gitAuthorsIndex.author") },
+    ...(authorsStore.pseudonymise ? [] : [{ id: "email", label: t("pages.gitAuthorsIndex.email") }]),
+    { id: "days_since_last_commit", label: t("pages.gitAuthorsIndex.daysSinceLastCommit") },
+    { id: "keeps", label: t("pages.gitAuthorsIndex.mostActiveComponents") },
+    { id: "commits", label: t("pages.gitAuthorsIndex.commits") },
+    { id: "additions", label: t("pages.gitAuthorsIndex.linesAdded") },
+    { id: "deletions", label: t("pages.gitAuthorsIndex.linesDeleted") },
+    { id: "files", label: t("pages.gitAuthorsIndex.files") },
+    { id: "components", label: t("pages.gitAuthorsIndex.components") },
   ],
 })
 function open(name: string) {

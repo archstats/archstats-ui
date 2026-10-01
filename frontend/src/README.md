@@ -12,7 +12,13 @@ src/
   shared/       helpers that know nothing about the product (format, time,
                 text, fuzzy, SQL literals) and the UI kit in shared/ui/
   features/     one folder per part of the product
+  locales/      every string a person reads, per language (see locales/README.md)
 ```
+
+Text a person reads is never written in a component or a module: it is a
+message, looked up with `t("<namespace>.<area>.<name>")` from
+`~/shared/i18n`, and a sentence with markup in it is an `<I18nT>`.
+`npm run i18n:check` fails on any text left in the code.
 
 ## Features
 

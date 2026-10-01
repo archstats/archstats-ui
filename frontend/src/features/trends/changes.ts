@@ -1,4 +1,5 @@
 import { compareScans, newestFirst, type OrderedScan } from "~/features/workspace/scanOrder"
+import { t } from "~/shared/i18n"
 
 // Changes: Compare. The Go side (app/changes) does the set differences; this
 // picks the two snapshots, counts what moved and writes the summary a report
@@ -105,9 +106,9 @@ export function summaryLine(c: ChangeCounts): string {
     return [
         pair(c.componentsAdded, c.componentsRemoved, "component", "components"),
         pair(c.edgesAdded, c.edgesRemoved, "dependency", "dependencies"),
-        c.tanglesFormed || c.tanglesDissolved || c.tanglesChanged ? `${tangles >= 0 ? "+" : "−"}${Math.abs(tangles)} tangles${c.tanglesChanged ? `, ${c.tanglesChanged} changed` : ""}` : "",
-        pair(c.rulesNew, c.rulesGone, "rule finding", "rule findings"),
-    ].filter(Boolean).join(" · ") || "No structural changes"
+        c.tanglesFormed || c.tanglesDissolved || c.tanglesChanged ? t("trends.changes.tangles", { value: tangles >= 0 ? "+" : "−", tangles: Math.abs(tangles), value2: c.tanglesChanged ? t("trends.changes.changed", { tanglesChanged: c.tanglesChanged }) : "" }) : "",
+        pair(c.rulesNew, c.rulesGone, t("trends.changes.ruleFinding"), t("trends.changes.ruleFindings")),
+    ].filter(Boolean).join(" · ") || t("trends.changes.noStructuralChanges")
 }
 
 /** The comparison as a Markdown section for a report. */
@@ -115,13 +116,13 @@ export function changesMarkdown(cs: ChangeSet, baseLabel: string, headLabel: str
     const c = countChanges(cs)
     const out = [`## Changes: ${baseLabel} → ${headLabel}`, "", summaryLine(c) + "."]
     const list = (title: string, items: string[]) => { if (items.length) out.push("", `### ${title}`, "", ...items.map(i => `- ${i}`)) }
-    list("Components added", (cs.componentsAdded ?? []).map(n => `\`${n}\``))
-    list("Components removed", (cs.componentsRemoved ?? []).map(n => `\`${n}\``))
-    list("Dependencies added", (cs.edgesAdded ?? []).map(e => `\`${e.from}\` → \`${e.to}\` (${e.refs} ref${e.refs === 1 ? "" : "s"}${e.dynamic ? ", runtime lookup only" : ""})`))
-    list("Dependencies removed", (cs.edgesRemoved ?? []).map(e => `\`${e.from}\` → \`${e.to}\``))
+    list(t("trends.changes.componentsAdded"), (cs.componentsAdded ?? []).map(n => `\`${n}\``))
+    list(t("trends.changes.componentsRemoved"), (cs.componentsRemoved ?? []).map(n => `\`${n}\``))
+    list(t("trends.changes.dependenciesAdded"), (cs.edgesAdded ?? []).map(e => `\`${e.from}\` → \`${e.to}\` (${e.refs} ref${e.refs === 1 ? "" : "s"}${e.dynamic ? t("trends.changes.runtimeLookupOnly") : ""})`))
+    list(t("trends.changes.dependenciesRemoved"), (cs.edgesRemoved ?? []).map(e => `\`${e.from}\` → \`${e.to}\``))
     list("Tangles", (cs.tangles ?? []).map(t => `${t.kind}: ${(t.after.length ? t.after : t.before).map(m => `\`${m}\``).join(", ")}${t.joined.length && t.kind !== "formed" ? ` (joined: ${t.joined.join(", ")})` : ""}${t.left.length && t.kind !== "dissolved" ? ` (left: ${t.left.join(", ")})` : ""}`))
-    list("New rule findings", (cs.rulesNew ?? []).map(f => `${f.rule}: \`${f.from}\` → \`${f.to}\` at \`${f.file}:${f.line}\``))
-    list("Rule findings gone", (cs.rulesGone ?? []).map(f => `${f.rule}: \`${f.from}\` → \`${f.to}\``))
+    list(t("trends.changes.newRuleFindings"), (cs.rulesNew ?? []).map(f => t("trends.changes.at", { rule: f.rule, from: f.from, to: f.to, file: f.file, line: f.line })))
+    list(t("trends.changes.ruleFindingsGone"), (cs.rulesGone ?? []).map(f => `${f.rule}: \`${f.from}\` → \`${f.to}\``))
     if (caption) out.push("", `_${caption}_`)
     return out.join("\n") + "\n"
 }

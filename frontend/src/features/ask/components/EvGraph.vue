@@ -13,15 +13,15 @@
           @select="(id: string | null) => (selected = id)"
           @select-pair="(f: string, t: string) => (pair = [f, t])"
           @hover="(id: string | null) => (hovered = id)"
-          @activate="(id: string) => $emit('ask', `Tell me about ${id}`)"
+          @activate="(id: string) => $emit('ask', t('ask.evGraph.tellMeAbout', { id }))"
       />
     </div>
     <p class="mt-1.5 text-[11px] text-neutral-500">
-      Rows import columns; a darker cell carries more import references.
-      <template v-if="e.nodes.length < total"> Showing {{ e.nodes.length }} of {{ total }}, the largest first.</template>
+      {{ t('ask.evGraph.rowsImportColumnsDarker') }}
+      <template v-if="e.nodes.length < total">{{ ' ' + t('ask.evGraph.showingLargestFirst', { nodesLength: e.nodes.length, total }) }}</template>
     </p>
     <p v-if="pair" class="mt-1 text-[11.5px]">
-      <button type="button" class="ev-link" @click="$emit('ask', `Which files make ${pair[0]} import ${pair[1]}?`)">Which files make {{ shortName(pair[0]) }} import {{ shortName(pair[1]) }}?</button>
+      <button type="button" class="ev-link" @click="$emit('ask', t('ask.evGraph.whichFilesMakeImport', { value: pair[0], value2: pair[1] }))">{{ t('ask.evGraph.whichFilesMakeImport', { value: shortName(pair[0]), value2: shortName(pair[1]) }) }}</button>
     </p>
   </div>
 </template>
@@ -33,6 +33,7 @@ import type { CEdge, CNode } from "~/features/connections/connections"
 import { useDataStore } from "~/features/snapshot/data.store"
 import type { Evidence } from "../engine/types"
 import { shortName } from "../tools/shared"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ e: Extract<Evidence, { kind: "graph" }>; total?: number }>()
 defineEmits<{ (ev: "ask", q: string): void }>()

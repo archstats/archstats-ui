@@ -2,27 +2,27 @@
   <Teleport to="body">
     <div v-if="scan" class="fixed inset-0 z-[70] flex items-start justify-center bg-neutral-900/20 pt-[14vh]" @click.self="close" @keydown.esc="close">
       <div class="ui-popover w-[480px] max-w-[92vw] p-5 animate-in" role="dialog" aria-modal="true" aria-labelledby="rescan-title">
-        <h2 id="rescan-title" class="text-base font-semibold text-neutral-900">Rescan this commit</h2>
-        <p v-if="loading" class="mt-3 text-sm text-neutral-500">Finding the commit…</p>
+        <h2 id="rescan-title" class="text-base font-semibold text-neutral-900">{{ t('workspace.rescanCommitSheet.rescanCommit') }}</h2>
+        <p v-if="loading" class="mt-3 text-sm text-neutral-500">{{ t('workspace.rescanCommitSheet.findingCommit') }}</p>
         <p v-else-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
         <template v-else-if="commit">
-          <p v-if="guessed" class="mt-2 text-sm text-neutral-600">This scan did not record its commit. HEAD at scan time was probably:</p>
+          <p v-if="guessed" class="mt-2 text-sm text-neutral-600">{{ t('workspace.rescanCommitSheet.scanDidNotRecord') }}</p>
           <dl class="ui-kv mt-3">
-            <dt>Commit</dt><dd class="font-mono">{{ commit.sha.slice(0, 12) }}</dd>
-            <dt>Committed</dt><dd>{{ formatScanTime(commit.time) }}</dd>
-            <dt>Subject</dt><dd class="!whitespace-normal !text-left">{{ commit.subject }}</dd>
-            <template v-if="estimate"><dt>Takes about</dt><dd>{{ estimate }}</dd></template>
+            <dt>{{ t('workspace.rescanCommitSheet.commit') }}</dt><dd class="font-mono">{{ commit.sha.slice(0, 12) }}</dd>
+            <dt>{{ t('workspace.rescanCommitSheet.committed') }}</dt><dd>{{ formatScanTime(commit.time) }}</dd>
+            <dt>{{ t('workspace.rescanCommitSheet.subject') }}</dt><dd class="!whitespace-normal !text-left">{{ commit.subject }}</dd>
+            <template v-if="estimate"><dt>{{ t('workspace.rescanCommitSheet.takesAbout') }}</dt><dd>{{ estimate }}</dd></template>
           </dl>
           <p class="mt-3 text-sm leading-5 text-neutral-600">
-            Scans a clean checkout of that commit in a temporary clone; your working copy is not touched.
-            <template v-if="dirty"> The original scan's {{ dirty }} uncommitted file{{ dirty === 1 ? "" : "s" }} {{ dirty === 1 ? "is" : "are" }} not included.</template>
-            The new snapshot is read by this build's analysis, revision {{ data._engineRevision ?? "–" }}.
+            {{ t('workspace.rescanCommitSheet.scansCleanCheckoutCommit') }}
+            <template v-if="dirty">{{ ' ' + t('workspace.rescanCommitSheet.originalScanSUncommitted', { dirty, are: t('common.count.is', { count: dirty }) }) }}</template>
+            {{ t('workspace.rescanCommitSheet.newSnapshotReadBuild', { value: data._engineRevision ?? "–" }) }}
           </p>
         </template>
         <div class="mt-5 flex items-center justify-end gap-2">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">Cancel</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="close">{{ t('workspace.rescanCommitSheet.cancel') }}</button>
           <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!commit || starting || workspaces.isScanning" @click="start">
-            {{ starting ? "Starting…" : commit ? `Rescan ${commit.sha.slice(0, 7)}` : "Rescan" }}
+            {{ starting ? t('workspace.rescanCommitSheet.starting') : commit ? t('workspace.rescanCommitSheet.rescan', { slice: commit.sha.slice(0, 7) }) : t('workspace.rescanCommitSheet.rescan2') }}
           </button>
         </div>
       </div>
@@ -36,6 +36,7 @@ import { ResolveCommit, ResolveCommitAt } from "wailsjs/go/app/ScanService";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { formatScanTime } from "~/shared/time";
+import { t } from "~/shared/i18n";
 
 // The one confirmation before a commit is rebuilt: which commit, how long,
 // and what the rebuild leaves out. Opened from a scan's row menu and from the
@@ -56,7 +57,7 @@ const estimate = computed(() => {
   const last: any = done[0];
   if (!last) return "";
   const secs = (new Date(last.finishedAt).getTime() - new Date(last.startedAt).getTime()) / 1000;
-  return secs < 90 ? `${Math.max(5, Math.round(secs))} s` : `${Math.round(secs / 60)} min`;
+  return secs < 90 ? `${Math.max(5, Math.round(secs))} s` : t("workspace.rescanCommitSheet.min", { value: Math.round(secs / 60) });
 });
 
 watch(scan, async (s) => {

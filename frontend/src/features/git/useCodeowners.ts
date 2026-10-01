@@ -5,6 +5,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import { CODEOWNERS_PATHS, ownerSets, parseCodeowners } from "./codeowners"
 import { sqlLiteral } from "~/shared/sql"
 import type { Suggestion } from "~/features/lens-builder/suggest"
+import { t } from "~/shared/i18n"
 
 // The repository's own answer to "who owns what": its CODEOWNERS file, read
 // from the snapshot's kept sources, turned into one proposed group per owner
@@ -32,7 +33,7 @@ export function useCodeowners() {
     const singleRule = computed(() => !!parsed.value && parsed.value.rules.length === 1 && parsed.value.rules[0].pattern.replace(/^\//, "") === "*")
 
     const ownersLabel = (owners: string[]) => owners.map(o => authors.displayText(o)).join(", ")
-    const lookedIn = `looked in ${CODEOWNERS_PATHS.map(p => p.replace(/CODEOWNERS$/, "") || "the root").join(", ")}`
+    const lookedIn = t("git.useCodeowners.looked", { value: CODEOWNERS_PATHS.map(p => p.replace(/CODEOWNERS$/, "") || t("git.useCodeowners.root")).join(", ") })
 
     /** One suggestion per owner set, made of files: a component two teams share is divided between them. */
     const suggestions = computed<Suggestion[]>(() => {
@@ -49,7 +50,7 @@ export function useCodeowners() {
                 name: ownersLabel(s.owners),
                 parts,
                 components: parts.filter(p => p.files.length * 2 >= p.total).map(p => p.component),
-                reasons: rules.map(r => ({ signal: "path" as any, text: `${found.value!.path} line ${r.line}: ${r.pattern}`, share: 1 })),
+                reasons: rules.map(r => ({ signal: "path" as any, text: t("git.useCodeowners.line", { path: found.value!.path, line: r.line, pattern: r.pattern }), share: 1 })),
                 units: s.files.length,
                 split: parts.filter(p => p.files.length < p.total).length,
             }
@@ -57,10 +58,10 @@ export function useCodeowners() {
     })
 
     const reason = computed(() => {
-        if (loading.value) return "Reading…"
-        if (!data.hasView("file_contents")) return "This snapshot kept no source, so there is no CODEOWNERS to read."
-        if (!found.value) return `No CODEOWNERS in this snapshot (${lookedIn}).`
-        if (!parsed.value?.rules.length) return `${found.value.path} has no rules.`
+        if (loading.value) return t("git.useCodeowners.reading")
+        if (!data.hasView("file_contents")) return t("git.useCodeowners.snapshotKeptNoSource")
+        if (!found.value) return t("git.useCodeowners.noCodeownersSnapshot", { lookedIn })
+        if (!parsed.value?.rules.length) return t("git.useCodeowners.hasNoRules", { path: found.value.path })
         return null
     })
 

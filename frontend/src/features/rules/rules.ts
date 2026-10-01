@@ -11,6 +11,8 @@
 // checked. The engine therefore reports a status for every rule, and this
 // module keeps the two apart everywhere.
 
+import { t } from "~/shared/i18n"
+
 export const VIOLATION = "violation"
 export const OK = "ok"
 export const NOT_APPLICABLE = "not_applicable"
@@ -132,7 +134,7 @@ export function held(findings: RuleFinding[], definitionFor: DefinitionLookup): 
 export function kindLabel(kind: string): string {
     switch (kind) {
         case "manifest": return "declared"
-        case "type_only": return "types only"
+        case "type_only": return t("rules.rules.typesOnly")
         case "dynamic": return "dynamic"
         case "embed": return "embedded"
         default: return "import"
@@ -142,11 +144,11 @@ export function kindLabel(kind: string): string {
 /** What the tag means, spelled out, because "declared" is not self-evident. */
 export function kindHint(kind: string): string {
     switch (kind) {
-        case "manifest": return "Declared in a manifest with no import in the source"
-        case "type_only": return "Imported for its types only; erased when the program runs"
-        case "dynamic": return "Named by a string and resolved at runtime"
-        case "embed": return "Composed in rather than referenced"
-        default: return "An ordinary import in the source"
+        case "manifest": return t("rules.rules.declaredManifestNoImport")
+        case "type_only": return t("rules.rules.importedTypesOnlyErased")
+        case "dynamic": return t("rules.rules.namedStringResolvedRuntime")
+        case "embed": return t("rules.rules.composedRatherThanReferenced")
+        default: return t("rules.rules.ordinaryImportSource")
     }
 }
 
@@ -186,9 +188,9 @@ export function verdictOf(findings: RuleFinding[]): Verdict {
 export function summarise(groups: RuleGroup[]): string {
     const total = groups.reduce((n, g) => n + g.violations.length, 0)
     if (total === 0) return ""
-    const v = total === 1 ? "1 violation" : `${total} violations`
-    const r = groups.length === 1 ? "1 rule" : `${groups.length} rules`
-    return `${v} across ${r}`
+    const v = total === 1 ? "1 violation" : t("rules.rules.violations", { total })
+    const r = groups.length === 1 ? "1 rule" : t("rules.rules.rules", { groupsLength: groups.length })
+    return t("rules.rules.across", { v, r })
 }
 
 /**

@@ -10,8 +10,8 @@
   >{{ count }}</span>
 
   <div v-else class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-    <span class="font-mono text-neutral-600" :title="`${health.placed} of ${health.total} components are in a group`">
-      {{ health.placed }}/{{ health.total }} matched
+    <span class="font-mono text-neutral-600" :title="t('groups.lensHealth.componentsGroup', { placed: health.placed, healthTotal: health.total })">
+      {{ t('groups.lensHealth.matched', { placed: health.placed, healthTotal: health.total }) }}
     </span>
 
     <!-- Overlap is legal here and loud. Blocking it would stop a group being
@@ -24,7 +24,7 @@
       :title="overlapTitle"
       @click="emit('show-overlaps', health.overlaps)"
     >
-      {{ health.overlaps.length }} in two groups
+      {{ t('groups.lensHealth.twoGroups', { overlapsLength: health.overlaps.length }) }}
     </button>
 
     <!-- What a rename looks like, said out loud on the scan it happens. -->
@@ -33,10 +33,10 @@
       :key="'s' + s.group.id"
       type="button"
       class="rounded px-1.5 py-0.5 text-red-700 transition-colors hover:bg-red-50"
-      :title="`${s.group.name}: ${s.lines.length === 1 ? 'line' : 'lines'} ${s.lines.join(', ')} match nothing in this scan`"
+      :title="t('groups.lensHealth.matchNothingScan', { groupName: s.group.name, lines: t('common.noun.line', { count: s.lines.length }), value: s.lines.join(', ') })"
       @click="emit('open-group', s.group)"
     >
-      {{ s.group.name }} · {{ s.lines.length }} {{ s.lines.length === 1 ? "line matches" : "lines match" }} nothing
+      {{ t('groups.lensHealth.nothing', { groupName: s.group.name, linesMatch: t('common.count.lineMatches', { count: s.lines.length }) }) }}
     </button>
 
     <!-- A frozen group whose own query has moved on: offered, never applied. -->
@@ -45,19 +45,20 @@
       :key="'c' + c.group.id"
       type="button"
       class="rounded px-1.5 py-0.5 text-accent-700 transition-colors hover:bg-accent-50"
-      :title="`${c.group.name} was found by a query that now matches ${c.extra} more`"
+      :title="t('groups.lensHealth.wasFoundQueryNow', { groupName: c.group.name, extra: c.extra })"
       @click="emit('review', c.group)"
     >
-      {{ c.group.name }} · review {{ c.extra }}
+      {{ t('groups.lensHealth.review', { groupName: c.group.name, extra: c.extra }) }}
     </button>
 
-    <span v-if="quiet" class="text-neutral-400">nothing to review</span>
+    <span v-if="quiet" class="text-neutral-400">{{ t('groups.lensHealth.nothingReview') }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useGroupsStore, type SavedGroup } from "~/features/groups/groups.store";
+import { t } from "~/shared/i18n";
 
 // What a lens is worth, at a glance.
 //
@@ -86,16 +87,16 @@ const count = computed(() =>
 const note = computed(() => {
   const parts: string[] = [];
   for (const s of health.value.silent) {
-    parts.push(`${s.group.name}: ${s.lines.length === 1 ? "a line" : `${s.lines.length} lines`} match nothing in this scan`);
+    parts.push(t("groups.lensHealth.matchNothingScan2", { groupName: s.group.name, value: s.lines.length === 1 ? t("groups.lensHealth.line") : t("groups.lensHealth.lines", { linesLength: s.lines.length }) }));
   }
   if (health.value.overlaps.length) {
-    parts.push(`${health.value.overlaps.length} component${health.value.overlaps.length === 1 ? "" : "s"} in two groups`);
+    parts.push(t("groups.lensHealth.twoGroups2", { components: t("common.count.component", { count: health.value.overlaps.length }) }));
   }
-  for (const c of health.value.candidates) parts.push(`${c.group.name}: its query now matches ${c.extra} more`);
+  for (const c of health.value.candidates) parts.push(t("groups.lensHealth.queryNowMatchesMore", { groupName: c.group.name, extra: c.extra }));
   return parts.join("\n");
 });
 
 const overlapTitle = computed(() =>
   health.value.overlaps.slice(0, 6).map(o => `${o.id} — ${o.groups.join(", ")}`).join("\n")
-  + (health.value.overlaps.length > 6 ? `\n… ${health.value.overlaps.length - 6} more` : ""));
+  + (health.value.overlaps.length > 6 ? t("groups.lensHealth.more", { value: health.value.overlaps.length - 6 }) : ""));
 </script>

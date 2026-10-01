@@ -1,16 +1,16 @@
 <template>
   <div v-if="targets.length" ref="root" class="relative">
-    <button type="button" class="ui-btn ui-btn-sm" :class="buttonClass" :aria-expanded="open" title="Look at this in another view" @click.stop="open = !open">
+    <button type="button" class="ui-btn ui-btn-sm" :class="buttonClass" :aria-expanded="open" :title="t('groups.showInMenu.lookAnotherView')" @click.stop="open = !open">
       <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/>
-      <span>Show in</span>
+      <span>{{ t('groups.showInMenu.show') }}</span>
       <Icon icon="chevron-right" :size="12" class="text-neutral-400" :class="up ? '-rotate-90' : 'rotate-90'"/>
     </button>
     <div v-if="open" class="fixed inset-0 z-40" @click="open = false"></div>
     <div v-if="open" class="ui-menu absolute z-50 w-60 animate-in" :class="up ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-1'" role="menu">
-      <button v-for="t in targets" :key="t.id" type="button" class="ui-menu-item" role="menuitem" :title="t.focus ? 'Focuses every view on the selection, then opens this view' : ''" @click="go(t)">
-        <Icon :icon="t.icon" :size="13" class="text-neutral-500"/>
-        <span class="flex-1">{{ t.label }}</span>
-        <Icon v-if="t.focus" icon="focus" :size="12" class="text-neutral-400"/>
+      <button v-for="target in targets" :key="target.id" type="button" class="ui-menu-item" role="menuitem" :title="target.focus ? t('groups.showInMenu.focusesEveryViewSelection') : ''" @click="go(target)">
+        <Icon :icon="target.icon" :size="13" class="text-neutral-500"/>
+        <span class="flex-1">{{ target.label }}</span>
+        <Icon v-if="target.focus" icon="focus" :size="12" class="text-neutral-400"/>
       </button>
     </div>
   </div>
@@ -21,6 +21,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { showInTargets, showPairTargets, type ShowInKind, type ShowInTarget } from "~/features/navigation/showIn";
 import { useShowIn } from "~/features/groups/useShowIn";
+import { t } from "~/shared/i18n";
 
 const props = withDefaults(defineProps<{
   kind?: ShowInKind

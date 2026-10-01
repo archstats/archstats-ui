@@ -1,6 +1,8 @@
 // Numbers and counts written the same way in every exhibit's facts.
 
-export const n = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 })
+import { intlLocale } from "~/shared/i18n"
+
+export const n = (v: number) => v.toLocaleString(intlLocale, { maximumFractionDigits: 2 })
 export const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`
 export const sq = (s: string) => `'${String(s).replace(/'/g, "''")}'`
 /** A number from a row, or null when there is none. */

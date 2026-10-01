@@ -17,10 +17,10 @@
           :step="stepOf"
           :title="e.title"
           :focus="guide"
-          :callout="guide ? `cut ${1}` : null"
+          :callout="guide ? t('ask.evTangle.cut', { value: 1 }) : null"
           @select-edge="(f: string, t: string) => (selectedEdge = { from: f, to: t })"
           @select-node="(n: string) => (selectedNode = n)"
-          @open="(n: string) => $emit('ask', `Tell me about ${n}`)"
+          @open="(n: string) => $emit('ask', t('ask.evTangle.tellMeAbout', { n }))"
           @clear="selectedEdge = null; selectedNode = null"
       />
       <TangleMatrix
@@ -39,21 +39,20 @@
     </div>
     <ol class="mt-2 space-y-1 text-[12px]">
       <li v-for="(s, i) in e.steps.slice(0, expanded ? 12 : 4)" :key="i" class="ev-step" :class="{ 'ev-step-on': applied > i }">
-        <button v-if="mode === 'graph'" type="button" class="ev-step-n" :title="applied > i ? 'Undo this cut in the picture' : 'Apply the cuts up to here in the picture'" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
-        <span v-else class="ev-step-n ev-step-static" title="Large tangles are drawn as a matrix; open them in Cycles to apply cuts step by step">{{ i + 1 }}</span>
+        <button v-if="mode === 'graph'" type="button" class="ev-step-n" :title="applied > i ? t('ask.evTangle.undoCutPicture') : t('ask.evTangle.applyCutsUpHere')" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
+        <span v-else class="ev-step-n ev-step-static" :title="t('ask.evTangle.largeTanglesDrawnMatrix')">{{ i + 1 }}</span>
         <div class="min-w-0 flex-1">
           <p class="truncate font-mono text-[11.5px] text-neutral-900" :title="`${s.from} → ${s.to}`">{{ shortName(s.from) }} → {{ shortName(s.to) }}</p>
           <p class="text-[11px] text-neutral-500">
-            {{ s.imports }} import reference{{ s.imports === 1 ? "" : "s" }} ·
-            frees {{ s.freed }}, {{ s.tangled }} still tangled
-            <template v-if="s.carriers.length"> · in
-              <button v-for="(f, fi) in s.carriers.slice(0, 2)" :key="f" type="button" class="ev-link" :title="f" @click="$emit('ask', `Outline ${f}`)">{{ f.split('/').pop() }}{{ fi < Math.min(2, s.carriers.length) - 1 ? ',' : '' }}</button>
+            {{ t('ask.evTangle.importFreesStillTangled', { imports: s.imports, references: t('common.noun.reference', { count: s.imports }), freed: s.freed, tangled: s.tangled }) }}
+            <template v-if="s.carriers.length">{{ ' ' + t('ask.evTangle.in') }}
+              <button v-for="(f, fi) in s.carriers.slice(0, 2)" :key="f" type="button" class="ev-link" :title="f" @click="$emit('ask', t('ask.evTangle.outline', { f }))">{{ f.split('/').pop() }}{{ fi < Math.min(2, s.carriers.length) - 1 ? ',' : '' }}</button>
             </template>
           </p>
         </div>
       </li>
     </ol>
-    <button v-if="e.steps.length > 4" type="button" class="ev-more" @click="expanded = !expanded">{{ expanded ? "Fewer cuts" : `All ${e.steps.length} cuts` }}</button>
+    <button v-if="e.steps.length > 4" type="button" class="ev-more" @click="expanded = !expanded">{{ expanded ? t('ask.evTangle.fewerCuts') : t('ask.evTangle.allCuts', { stepsLength: e.steps.length }) }}</button>
   </div>
 </template>
 
@@ -65,6 +64,7 @@ import { afterCuts, edgeId, layoutTangle, type WEdge } from "~/features/cycles/u
 import { useDataStore } from "~/features/snapshot/data.store"
 import type { Evidence } from "../engine/types"
 import { shortName } from "../tools/shared"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ e: Extract<Evidence, { kind: "tangle" }> }>()
 defineEmits<{ (ev: "ask", q: string): void }>()

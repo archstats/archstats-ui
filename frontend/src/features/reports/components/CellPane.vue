@@ -2,63 +2,63 @@
   <!-- The selected cell: what it is made of, what it ran on, what moved. -->
   <div v-if="block" class="flex flex-col gap-4">
     <div>
-      <p class="text-[13px] font-semibold text-neutral-900">{{ spec.type === 'reading' ? reading?.label ?? "Computed paragraph" : `${number}${title ? ` · ${title}` : ""}` }}</p>
+      <p class="text-[13px] font-semibold text-neutral-900">{{ spec.type === 'reading' ? reading?.label ?? t('reports.cellPane.computedParagraph') : `${number}${title ? ` · ${title}` : ""}` }}</p>
       <p class="mt-0.5 text-xs text-neutral-500">{{ what }}</p>
     </div>
 
     <!-- A table cell: its source, columns, order and length. -->
     <section v-if="spec.type === 'table'" class="flex flex-col gap-2">
-      <h3 class="ui-label">Table</h3>
-      <div class="ui-segmented" role="group" aria-label="Rows of">
-        <button type="button" :aria-pressed="spec.source === 'components'" @click="setSpec({ source: 'components' })">Components</button>
-        <button type="button" :aria-pressed="spec.source === 'files'" @click="setSpec({ source: 'files' })">Files</button>
+      <h3 class="ui-label">{{ t('reports.cellPane.table') }}</h3>
+      <div class="ui-segmented" role="group" :aria-label="t('reports.cellPane.rows')">
+        <button type="button" :aria-pressed="spec.source === 'components'" @click="setSpec({ source: 'components' })">{{ t('reports.cellPane.components') }}</button>
+        <button type="button" :aria-pressed="spec.source === 'files'" @click="setSpec({ source: 'files' })">{{ t('reports.cellPane.files') }}</button>
       </div>
       <StatSelectMulti :key="`${block.id}:${spec.source}`" :model-value="spec.columns" :options="columnOptions" @update:model-value="setSpec({ columns: $event })"/>
       <label class="flex items-center justify-between gap-2 text-xs text-neutral-600">
-        Sorted by
+        {{ t('reports.cellPane.sorted') }}
         <select class="ui-input ui-input-sm w-40" :value="spec.sort" @change="setSpec({ sort: ($event.target as HTMLSelectElement).value })">
           <option v-for="c in spec.columns" :key="c" :value="c">{{ label(c) }}</option>
         </select>
       </label>
       <div class="flex items-center justify-between gap-2 text-xs text-neutral-600">
-        Order
-        <div class="ui-segmented" role="group" aria-label="Order">
-          <button type="button" :aria-pressed="spec.desc" @click="setSpec({ desc: true })">Highest first</button>
-          <button type="button" :aria-pressed="!spec.desc" @click="setSpec({ desc: false })">Lowest first</button>
+        {{ t('reports.cellPane.order') }}
+        <div class="ui-segmented" role="group" :aria-label="t('reports.cellPane.order')">
+          <button type="button" :aria-pressed="spec.desc" @click="setSpec({ desc: true })">{{ t('reports.cellPane.highestFirst') }}</button>
+          <button type="button" :aria-pressed="!spec.desc" @click="setSpec({ desc: false })">{{ t('reports.cellPane.lowestFirst') }}</button>
         </div>
       </div>
       <label class="flex items-center justify-between gap-2 text-xs text-neutral-600">
-        Rows
+        {{ t('reports.cellPane.rows2') }}
         <input type="number" min="1" max="500" class="ui-input ui-input-sm w-20 font-mono" :value="spec.limit" @change="setSpec({ limit: Math.max(1, Math.min(500, Number(($event.target as HTMLInputElement).value) || 10)) })">
       </label>
     </section>
 
     <!-- A pin: its note belongs to the pin, shared by every report. -->
     <section v-else-if="spec.type === 'pin' && pin" class="flex flex-col gap-2">
-      <h3 class="ui-label">Pin note</h3>
+      <h3 class="ui-label">{{ t('reports.cellPane.pinNote') }}</h3>
       <textarea
         :value="pin.note"
         rows="4"
         class="ui-input w-full resize-y text-[13px] leading-5"
-        placeholder="What this shows, in your words"
-        aria-label="Pin note"
+        :placeholder="t('reports.cellPane.whatShowsYourWords')"
+        :aria-label="t('reports.cellPane.pinNote')"
         @change="$emit('pinNote', ($event.target as HTMLTextAreaElement).value)"
       ></textarea>
-      <p class="text-[11px] leading-4 text-neutral-500">Shared by {{ usage.length > 1 ? `the ${usage.length} reports that use this pin` : "every report that uses this pin" }}. Run the cell to bring a changed note in.</p>
+      <p class="text-[11px] leading-4 text-neutral-500">{{ t('reports.cellPane.sharedRunCellBring', { value: usage.length > 1 ? t('reports.cellPane.reportsUsePin', { usageLength: usage.length }) : t('reports.cellPane.everyReportUsesPin') }) }}</p>
     </section>
 
     <section v-else-if="spec.type === 'sql'" class="flex flex-col gap-2">
-      <h3 class="ui-label">Query</h3>
-      <p class="text-xs leading-5 text-neutral-600">Edit the SQL in the cell; ⇧↵ runs it. Queries are read-only and stop after 10 seconds.</p>
+      <h3 class="ui-label">{{ t('reports.cellPane.query') }}</h3>
+      <p class="text-xs leading-5 text-neutral-600">{{ t('reports.cellPane.editSqlCellRuns') }}</p>
       <label class="flex items-center justify-between gap-2 text-xs text-neutral-600">
-        Rows kept
+        {{ t('reports.cellPane.rowsKept') }}
         <input type="number" min="1" max="500" class="ui-input ui-input-sm w-20 font-mono" :value="spec.limit" @change="setSpec({ limit: Math.max(1, Math.min(500, Number(($event.target as HTMLInputElement).value) || 50)) })">
       </label>
     </section>
 
     <!-- A computed paragraph: what it counts, how it is set, and the way out. -->
     <section v-else-if="spec.type === 'reading'" class="flex flex-col gap-2">
-      <h3 class="ui-label">Counted</h3>
+      <h3 class="ui-label">{{ t('reports.cellPane.counted') }}</h3>
       <p class="text-xs leading-5 text-neutral-600">{{ reading?.describe }}</p>
       <template v-for="p in reading?.params ?? []" :key="p.id">
         <div v-if="p.choices" class="flex items-center justify-between gap-2 text-xs text-neutral-600">
@@ -69,54 +69,54 @@
         </div>
         <label v-else class="flex items-center justify-between gap-2 text-xs text-neutral-600">
           {{ p.label }}
-          <input :value="spec.params?.[p.id] ?? ''" class="ui-input ui-input-sm w-44 font-mono" list="cellpane-components" placeholder="A component" @change="setParam(p.id, ($event.target as HTMLInputElement).value.trim())">
+          <input :value="spec.params?.[p.id] ?? ''" class="ui-input ui-input-sm w-44 font-mono" list="cellpane-components" :placeholder="t('reports.cellPane.component')" @change="setParam(p.id, ($event.target as HTMLInputElement).value.trim())">
           <datalist id="cellpane-components"><option v-for="c in componentNames" :key="c" :value="c"/></datalist>
         </label>
       </template>
-      <p class="text-[11px] leading-4 text-neutral-500">Facts only; it re-runs on a newer snapshot and says what moved. To change the words, make it yours: it becomes a paragraph you edit, and stops re-running.</p>
-      <button type="button" class="ui-btn ui-btn-sm self-start" :disabled="!cell.output?.reading" @click="$emit('adopt')">Write as my own</button>
+      <p class="text-[11px] leading-4 text-neutral-500">{{ t('reports.cellPane.factsOnlyReRuns') }}</p>
+      <button type="button" class="ui-btn ui-btn-sm self-start" :disabled="!cell.output?.reading" @click="$emit('adopt')">{{ t('reports.cellPane.writeMyOwn') }}</button>
     </section>
 
     <section v-else-if="spec.type === 'slot'" class="flex flex-col gap-2">
-      <h3 class="ui-label">To add</h3>
+      <h3 class="ui-label">{{ t('reports.cellPane.add') }}</h3>
       <dl class="ui-kv">
         <template v-for="r in asked" :key="r.label"><dt>{{ r.label }}</dt><dd>{{ r.asked }}</dd></template>
       </dl>
-      <p class="text-[11px] leading-4 text-neutral-500">Take it: the view opens set as asked, and what it shows comes back to you to check before it takes this place and number.</p>
+      <p class="text-[11px] leading-4 text-neutral-500">{{ t('reports.cellPane.takeViewOpensSet') }}</p>
       <div class="flex items-center gap-2">
-        <button type="button" class="ui-btn ui-btn-sm" @click="$emit('take')">Take it from {{ spec.view }}</button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="$emit('fill')">Set it yourself</button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="$emit('take')">{{ t('reports.cellPane.take', { view: spec.view }) }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="$emit('fill')">{{ t('reports.cellPane.setYourself') }}</button>
       </div>
     </section>
 
     <section v-else-if="spec.type === 'capture'" class="flex flex-col gap-2">
-      <h3 class="ui-label">Captured</h3>
-      <p class="text-xs leading-5 text-neutral-600">Kept as {{ spec.view }} showed it. To bring it up to date, open the view and add it again.</p>
-      <router-link :to="spec.route" class="ui-btn ui-btn-sm self-start">Open {{ spec.view }}</router-link>
+      <h3 class="ui-label">{{ t('reports.cellPane.captured') }}</h3>
+      <p class="text-xs leading-5 text-neutral-600">{{ t('reports.cellPane.keptShowedBringUp', { view: spec.view }) }}</p>
+      <router-link :to="spec.route" class="ui-btn ui-btn-sm self-start">{{ t('reports.cellPane.open', { view: spec.view }) }}</router-link>
     </section>
 
     <section class="flex flex-col gap-2">
-      <h3 class="ui-label">{{ spec.type === 'slot' ? 'Runs on' : 'Ran on' }}</h3>
+      <h3 class="ui-label">{{ spec.type === 'slot' ? t('reports.cellPane.runs') : t('reports.cellPane.ran') }}</h3>
       <dl v-if="cell.ranOn" class="ui-kv">
-        <dt>Snapshot</dt><dd>{{ cell.ranOn.label }}</dd>
-        <template v-if="cell.ranOn.commit"><dt>Commit</dt><dd>{{ cell.ranOn.commit.slice(0, 12) }}</dd></template>
-        <dt>Analysis</dt><dd>r{{ cell.ranOn.revision }}</dd>
-        <template v-if="cell.ranOn.lens"><dt>Lens</dt><dd>{{ cell.ranOn.lens }}</dd></template>
-        <template v-if="cell.ranOn.scope"><dt>Scope</dt><dd class="!whitespace-normal">{{ cell.ranOn.scope }}</dd></template>
-        <template v-if="cell.ranOn.role"><dt>Files</dt><dd>{{ cell.ranOn.role }}</dd></template>
-        <dt>At</dt><dd>{{ new Date(cell.ranOn.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }}</dd>
+        <dt>{{ t('reports.cellPane.snapshot') }}</dt><dd>{{ cell.ranOn.label }}</dd>
+        <template v-if="cell.ranOn.commit"><dt>{{ t('reports.cellPane.commit') }}</dt><dd>{{ cell.ranOn.commit.slice(0, 12) }}</dd></template>
+        <dt>{{ t('reports.cellPane.analysis') }}</dt><dd>r{{ cell.ranOn.revision }}</dd>
+        <template v-if="cell.ranOn.lens"><dt>{{ t('reports.cellPane.lens') }}</dt><dd>{{ cell.ranOn.lens }}</dd></template>
+        <template v-if="cell.ranOn.scope"><dt>{{ t('reports.cellPane.scope') }}</dt><dd class="!whitespace-normal">{{ cell.ranOn.scope }}</dd></template>
+        <template v-if="cell.ranOn.role"><dt>{{ t('reports.cellPane.files') }}</dt><dd>{{ cell.ranOn.role }}</dd></template>
+        <dt>{{ t('reports.cellPane.at') }}</dt><dd>{{ new Date(cell.ranOn.at).toLocaleString(dateLocale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) }}</dd>
       </dl>
-      <p v-else class="text-xs text-neutral-500">{{ spec.type === 'slot' ? "What you add keeps the snapshot it came from." : "Not run yet." }}</p>
+      <p v-else class="text-xs text-neutral-500">{{ spec.type === 'slot' ? t('reports.cellPane.whatYouAddKeeps') : t('reports.cellPane.notRunYet') }}</p>
       <p v-if="change" class="text-xs leading-5 text-neutral-800">{{ change }}</p>
       <div class="flex gap-2">
         <button v-if="spec.type !== 'capture' && spec.type !== 'slot'" type="button" class="ui-btn ui-btn-sm" :class="stale ? 'ui-btn-primary' : ''" :disabled="running" @click="$emit('run')">
-          {{ running ? "Running…" : `Run on ${kernelLabel}` }}
+          {{ running ? t('reports.cellPane.running') : t('reports.cellPane.run', { kernelLabel }) }}
         </button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto text-red-700" @click="$emit('remove')">Remove</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto text-red-700" @click="$emit('remove')">{{ t('reports.cellPane.remove') }}</button>
       </div>
     </section>
   </div>
-  <p v-else class="text-sm leading-5 text-neutral-500">Select a cell to see what it is made of and what it ran on.</p>
+  <p v-else class="text-sm leading-5 text-neutral-500">{{ t('reports.cellPane.selectCellSeeWhat') }}</p>
 </template>
 
 <script setup lang="ts">
@@ -127,6 +127,7 @@ import { readingDef } from "~/features/reports/readings";
 import { askedSettings } from "~/features/reports/slotSettings";
 import { describeChange } from "~/features/reports/reportCells";
 import type { CellBlock, CellSpec } from "~/features/reports/reportDoc";
+import { t, dateLocale } from "~/shared/i18n";
 
 const props = defineProps<{
   block: CellBlock | null
@@ -154,12 +155,12 @@ const title = computed(() => cell.value.title || cell.value.output?.pin?.title |
 const columnOptions = computed(() => (spec.value.type === "table" ? props.columns[spec.value.source as "components" | "files"] ?? [] : []));
 const what = computed(() => {
   const s = spec.value;
-  if (s.type === "table") return `The ${s.limit} ${s.source} with the ${s.desc ? "highest" : "lowest"} ${props.label(s.sort).toLowerCase()}.`;
-  if (s.type === "sql") return "A read-only query on the snapshot.";
-  if (s.type === "pin") return "A pin from the pool: its values as pinned and now.";
-  if (s.type === "reading") return "A paragraph counted from the snapshot.";
-  if (s.type === "slot") return `A ${s.kind} the template asks for, not added yet.`;
-  return `Captured from ${s.view}.`;
+  if (s.type === "table") return t("reports.cellPane.theWithThe", { limit: s.limit, source: s.source, value: s.desc ? t("reports.cellPane.highest") : t("reports.cellPane.lowest"), sort: props.label(s.sort).toLowerCase() });
+  if (s.type === "sql") return t("reports.cellPane.readOnlyQuerySnapshot");
+  if (s.type === "pin") return t("reports.cellPane.pinPoolValuesPinned");
+  if (s.type === "reading") return t("reports.cellPane.paragraphCountedSnapshot");
+  if (s.type === "slot") return t("reports.cellPane.templateAsksNotAdded", { kind: s.kind });
+  return t("reports.cellPane.captured2", { view: s.view });
 });
 const change = computed(() => describeChange(cell.value.previous, cell.value.output, props.label));
 function setSpec(patch: Record<string, unknown>) {

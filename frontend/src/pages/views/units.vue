@@ -1,14 +1,14 @@
 <template>
   <ViewWorkspaceLayout
-    title="Units"
+    :title="t('pages.units.units')"
     v-model:search-query="searchQuery"
-    search-placeholder="Search modules"
+    :search-placeholder="t('pages.units.searchModules')"
     :show-config="true"
   >
     <template #stats>
-      <span>Modules <span class="text-neutral-800">{{ graph.modules.length.toLocaleString() }}</span></span>
+      <span>{{ t('pages.units.modules') }} <span class="text-neutral-800">{{ graph.modules.length.toLocaleString(intlLocale) }}</span></span>
       <span class="text-neutral-400">·</span>
-      <span>Imports <span class="text-neutral-800">{{ graph.edges.length.toLocaleString() }}</span></span>
+      <span>{{ t('pages.units.imports') }} <span class="text-neutral-800">{{ graph.edges.length.toLocaleString(intlLocale) }}</span></span>
       <template v-if="frameworkName">
         <span class="text-neutral-400">·</span>
         <span>{{ frameworkName }}</span>
@@ -17,46 +17,43 @@
 
     <template #actions>
       <button type="button" class="ui-btn ui-btn-sm" :disabled="model.lanes.value.length === 0"
-              title="Save every lane as a group in a Layer lens, so the other views can roll up and colour by it"
+              :title="t('pages.units.saveEveryLaneGroup')"
               @click="saveLanesAsLens">
         <Icon icon="layers" :size="13" class="text-neutral-500"/>
-        <span class="hidden min-[1440px]:inline">Lanes → lens</span>
+        <span class="hidden min-[1440px]:inline">{{ t('pages.units.lanesLens') }}</span>
       </button>
     </template>
 
     <template #config-popover>
       <p class="text-sm leading-4 text-neutral-500">
-        Lanes are read as <span class="text-neutral-700">{{ model.profile.value.label }}</span>.
-        {{ model.detection.value.reason }} Change it from the bar above the view.
-      </p>
+<I18nT k="pages.units.lanesReadChangeBar"><template #profileLabel><span class="text-neutral-700">{{ model.profile.value.label }}</span></template><template #reason>{{ model.detection.value.reason }}</template></I18nT> </p>
       <p class="text-sm leading-4 text-neutral-500">
-        This view reads the codebase as modules, because a module is what an import names.
+        {{ t('pages.units.viewReadsCodebaseModules') }}
         <template v-if="model.modulesAreMeaningful.value">
-          These {{ graph.modules.length.toLocaleString() }} modules hold
-          {{ model.declared.value.length.toLocaleString() }} declared things between them.
+          {{ t('pages.units.theseModulesHoldDeclared', { modulesLength: graph.modules.length.toLocaleString(intlLocale), declaredLength: model.declared.value.length.toLocaleString(intlLocale) }) }}
         </template>
         <template v-else>
-          Here each module declares one thing, so the two readings are the same.
+          {{ t('pages.units.hereEachModuleDeclares') }}
         </template>
       </p>
     </template>
 
     <template #visualizer>
       <div class="flex h-full w-full flex-col overflow-hidden">
-        <LoadingState v-if="model.loading.value" text="Reading modules…"/>
+        <LoadingState v-if="model.loading.value" :text="t('pages.units.readingModules')"/>
 
         <EmptyState v-else-if="model.error.value" icon="alert"
-                    title="Could not read the units" :text="model.error.value"/>
+                    :title="t('pages.units.couldNotReadUnits')" :text="model.error.value"/>
 
         <EmptyState v-else-if="!model.hasUnits.value" icon="braces"
-                    title="No units in this snapshot"
-                    text="This scan recorded no named things to read. Re-scan with a build that records units."/>
+                    :title="t('pages.units.noUnitsSnapshot')"
+                    :text="t('pages.units.scanRecordedNoNamed')"/>
 
         <template v-else>
           <DescentBar :root="rootLabel" :steps="steps"
                       :count="region ? rowCount : null" :noun="rowNoun"
                       :framework="model.frameworkOverride.value ?? AUTO"
-                      :auto-label="model.detection.value.confident ? model.profile.value.label : 'unsure, using structure'"
+                      :auto-label="model.detection.value.confident ? model.profile.value.label : t('pages.units.unsureUsingStructure')"
                       :profiles="model.offeredProfiles.value"
                       @up="ascendTo" @framework="setFramework"/>
 
@@ -74,7 +71,7 @@
                         :component-edge-count="referencesUnresolved ? componentPairs : 0"
                         :lanes="laneBands" :flows="flows" :findings="findings"
                         :framework="model.frameworkOverride.value ?? AUTO"
-                        :auto-label="model.detection.value.confident ? model.profile.value.label : 'by folder structure'"
+                        :auto-label="model.detection.value.confident ? model.profile.value.label : t('pages.units.folderStructure')"
                         :detected="model.detection.value.confident && model.profile.value.id !== 'structure'"
                         :profiles="model.offeredProfiles.value"
                         :files="landingFiles" :lines="landingLines" :paint="landingPaint" :describe="landingDescribe"
@@ -87,8 +84,8 @@
                         @framework="setFramework"/>
 
           <EmptyState v-else-if="rowCount === 0" icon="braces"
-                      title="Nothing here"
-                      text="Nothing in this region matches the current search and scope."/>
+                      :title="t('pages.units.nothingHere')"
+                      :text="t('pages.units.nothingRegionMatchesCurrent')"/>
 
           <!-- A finding about where code lives lands on the map it lives on. -->
           <EvidenceMap v-else-if="region.map" class="min-h-0"
@@ -178,6 +175,8 @@ import type { Finding, Reference, Region } from "~/features/units/findings"
 import { readRelationship } from "~/features/units/relationship"
 import EvidenceMap from "~/features/units/components/EvidenceMap.vue"
 import { globRegExp } from "~/features/checks/checks"
+import { t, intlLocale, listOf } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 // Units, read at the grain that actually has edges.
 //
@@ -215,7 +214,7 @@ const {
 const searchQuery = ref("")
 const trayPaths = ref<string[]>([])
 
-const rootLabel = computed(() => workspaces.active?.name || "This codebase")
+const rootLabel = computed(() => workspaces.active?.name || t("pages.units.codebase"))
 
 function setRoots(globs: string) { router.replace({ query: { ...route.query, roots: globs || undefined } }) }
 
@@ -237,10 +236,10 @@ const moduleLines = computed(() => new Map(graph.value.modules.map((m) => [m.pat
 const landingLines = computed(() => (mapMode.value !== "lane" && walkedFiles.value ? fileGraph.data.value.lines : moduleLines.value))
 
 const REACH = {
-  root: { label: "Entry point", color: "rgb(var(--c-blue-500))", words: "an entry point" },
-  reached: { label: "Reached", color: "rgb(var(--c-neutral-300))", words: "reached from an entry point" },
-  tests: { label: "Only tests", color: "rgb(var(--c-amber-400))", words: "reached only by tests" },
-  none: { label: "Reached by nothing", color: "rgb(var(--c-red-500))", words: "reached by nothing" },
+  root: { label: t("pages.units.entryPoint"), color: "rgb(var(--c-blue-500))", words: t("pages.units.entryPoint2") },
+  reached: { label: t("pages.units.reached"), color: "rgb(var(--c-neutral-300))", words: t("pages.units.reachedEntryPoint") },
+  tests: { label: t("pages.units.onlyTests"), color: "rgb(var(--c-amber-400))", words: t("pages.units.reachedOnlyTests") },
+  none: { label: t("pages.units.reachedNothing"), color: "rgb(var(--c-red-500))", words: t("pages.units.reachedNothing2") },
 } as const
 const unreachedSet = computed(() => new Set(reach.value.unreachable))
 const testOnlySet = computed(() => new Set(reach.value.testOnly))
@@ -256,7 +255,7 @@ function landingPaint(path: string) {
 }
 function landingDescribe(path: string) {
   if (mapMode.value === "reach") return REACH[reachKind(path)].words
-  if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? "declares a name another file declares" : dupFileFiles.value.has(path) ? "its file name is used in another folder" : "nothing repeated"
+  if (mapMode.value === "dupes") return dupNameFiles.value.has(path) ? t("pages.units.declaresNameAnotherFile") : dupFileFiles.value.has(path) ? t("pages.units.fileNameUsedAnother") : t("pages.units.nothingRepeated")
   return describeModule(path)
 }
 const landingLegend = computed(() => {
@@ -266,8 +265,8 @@ const landingLegend = computed(() => {
     return (Object.keys(REACH) as Array<keyof typeof REACH>).map((k) => ({ label: REACH[k].label, color: REACH[k].color, count: c[k] }))
   }
   if (mapMode.value === "dupes") return [
-    { label: "Declares a name another file declares", color: DUP_NAME, count: dupNameFiles.value.size },
-    { label: "Shares its file name", color: DUP_FILE, count: [...dupFileFiles.value].filter((f) => !dupNameFiles.value.has(f)).length },
+    { label: t("pages.units.declaresNameAnotherFile2"), color: DUP_NAME, count: dupNameFiles.value.size },
+    { label: t("pages.units.sharesFileName"), color: DUP_FILE, count: [...dupFileFiles.value].filter((f) => !dupNameFiles.value.has(f)).length },
   ]
   return laneLegend.value
 })
@@ -310,7 +309,7 @@ function focusPaint(path: string) {
 function describeModule(path: string) {
   const m = graph.value.byPath.get(path)
   if (!m) return ""
-  return `${laneLabel(m.lane)} · imported by ${m.fanIn}, imports ${m.fanOut}${m.inCycle.length ? " · in a cycle" : ""}`
+  return t("pages.units.importedImports", { lane: laneLabel(m.lane), fanIn: m.fanIn, fanOut: m.fanOut, value: m.inCycle.length ? t("pages.units.cycle") : "" })
 }
 /** The files a hovered lane, or a hovered link between two lanes, is made of. */
 function filesLitBy(on: { lane: string } | { a: string; b: string }) {
@@ -372,12 +371,12 @@ function regionFromQuery(): Region | null {
       id: "lane:" + id,
       label: laneLabel(id),
       paths: inLane.map((m) => m.path),
-      note: "Sorted by how much the rest of the codebase leans on them.",
+      note: t("pages.units.sortedHowMuchRest"),
       claim: {
-        headline: `${laneLabel(id)} holds ${inLane.length.toLocaleString()} ${inLane.length === 1 ? "module" : "modules"}.`,
+        headline: t("pages.units.holds", { id: laneLabel(id), modules: t("common.count.module", { count: inLane.length }) }),
         detail: knotted > 0
-          ? `${leaning.toLocaleString()} are imported by something else, and ${knotted} are in a cycle with a neighbour.`
-          : `${leaning.toLocaleString()} of them are imported by something else, and none are in a cycle.`,
+          ? t("pages.units.importedSomethingElseCycle", { leaning: leaning.toLocaleString(intlLocale), knotted })
+          : t("pages.units.themImportedSomethingElse", { leaning: leaning.toLocaleString(intlLocale) }),
         tone: knotted > 0 ? "warn" : "neutral",
       },
     }
@@ -399,7 +398,7 @@ function regionFromQuery(): Region | null {
     const weights = new Map(graph.value.edges.map((e) => [e.from + "\n" + e.to, e.via.length]))
     return {
       id: "flow:" + a + "," + b,
-      label: laneLabel(a) + " and " + laneLabel(b),
+      label: t("pages.units.and", { a: laneLabel(a), b: laneLabel(b) }),
       paths: [...new Set(between.flatMap((e) => [e.from, e.to]))],
       // Sorted so the traffic against the grain -- the part worth arguing
       // about -- is at the top rather than buried under the majority. Which
@@ -417,11 +416,11 @@ function regionFromQuery(): Region | null {
       sides: { a, b },
       claim: {
         headline: lightN === 0
-          ? `${heavy} imports ${light}, and never the other way round.`
-          : `${heavy} imports ${light} ${heavyN} times, and ${light} imports ${heavy} ${lightN} back.`,
+          ? t("pages.units.importsNeverOtherWay", { heavy, light })
+          : t("pages.units.importsTimesImportsBack", { heavy, light, heavyN, light2: light, heavy2: heavy, lightN }),
         detail: lightN === 0
-          ? `All ${heavyN} references run one way. That is a layer holding.`
-          : `${Math.round((lightN / between.length) * 100)}% of the traffic runs against the grain.`,
+          ? t("pages.units.allReferencesRunOne", { heavyN })
+          : t("pages.units.trafficRunsAgainstGrain", { value: Math.round((lightN / between.length) * 100) }),
         tone: lightN === 0 ? "neutral" : "warn",
       },
     }
@@ -434,18 +433,18 @@ function regionFromQuery(): Region | null {
     for (const m of inDir) byLane.set(m.lane, (byLane.get(m.lane) ?? 0) + 1)
     const lanesHere = [...byLane].sort((a, b) => b[1] - a[1])
     const knotted = inDir.filter((m) => m.inCycle.length > 0).length
-    const n = inDir.length.toLocaleString()
+    const n = inDir.length.toLocaleString(intlLocale)
     return {
       id: "dir:" + dir,
       label: dir.split("/").slice(-2).join("/") + "/",
       paths: inDir.map((m) => m.path),
-      note: "Sorted by how much the rest of the codebase leans on them.",
+      note: t("pages.units.sortedHowMuchRest"),
       claim: {
-        headline: `${dir}/ holds ${n} ${inDir.length === 1 ? "module" : "modules"}.`,
+        headline: t("pages.units.dirHolds", { dir: `${dir}/`, modules: t("common.count.module", { count: inDir.length }) }),
         detail: (lanesHere.length === 1
-          ? `All of them in ${laneLabel(lanesHere[0][0])}.`
-          : `Most in ${laneLabel(lanesHere[0][0])} (${lanesHere[0][1]}), then ${lanesHere.slice(1, 3).map(([l, c]) => `${laneLabel(l)} (${c})`).join(" and ")}.`)
-          + (knotted ? ` ${knotted} are in a cycle with a neighbour.` : ""),
+          ? t("pages.units.allThem", { value: laneLabel(lanesHere[0][0]) })
+          : t("pages.units.mostThen", { value: laneLabel(lanesHere[0][0]), value2: lanesHere[0][1], value3: listOf(lanesHere.slice(1, 3).map(([l, c]) => `${laneLabel(l)} (${c})`)) }))
+          + (knotted ? t("pages.units.cycleNeighbour", { knotted }) : ""),
         tone: knotted > 0 ? "warn" : "neutral",
       },
     }
@@ -459,10 +458,10 @@ function regionFromQuery(): Region | null {
         .filter((m) => m.path.toLowerCase().includes(needle) ||
           m.units.some((u) => u.name.toLowerCase().includes(needle)))
         .map((m) => m.path),
-      note: "Matched on the module path or on something it declares.",
+      note: t("pages.units.matchedModulePathSomething"),
       claim: {
-        headline: `Modules matching “${q.q}”.`,
-        detail: "Matched on the module path or on something it declares.",
+        headline: t("pages.units.modulesMatching", { q: q.q }),
+        detail: t("pages.units.matchedModulePathSomething"),
         tone: "neutral",
       },
     }
@@ -634,9 +633,9 @@ const rowNoun = computed(() => (region.value?.map ? "file" : relationship.value 
 
 /** What the rows below do, said once rather than left to be discovered. */
 const hint = computed(() => {
-  if (region.value?.map) return "Click a file on the map or in the list to collect it into a group; pick a folder to narrow the list. Double-click opens a file."
-  if (relationship.value) return "Open a warning to see the dependencies behind it, or a module to inspect it."
-  return "Click a file on the map to inspect it and keep its imports drawn; a folder zooms in. Hover a file to draw its imports."
+  if (region.value?.map) return t("pages.units.clickFileMapList")
+  if (relationship.value) return t("pages.units.openWarningSeeDependencies")
+  return t("pages.units.clickFileMapInspect")
 })
 
 const neighbours = computed(() => {
@@ -692,7 +691,7 @@ function saveLanesAsLens() {
       const whole = all.length > 0 && all.every((f) => files.includes(f))
       return { component, files: whole ? null : [...new Set(files)].sort() }
     })
-    return [{ name: lane.label, parts, reasons: ["same lane " + lane.label] }]
+    return [{ name: lane.label, parts, reasons: [t("pages.units.sameLane", { laneLabel: lane.label })] }]
   })
 
   if (groups.length === 0) return

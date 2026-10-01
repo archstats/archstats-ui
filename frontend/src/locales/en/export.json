@@ -1,0 +1,69 @@
+{
+  "exhibitButton": {
+    "export": "Export {exhibitTitle}",
+    "stillDrawing": "Still drawing",
+    "savePng": "Save PNG",
+    "savePng2": "Save PNG (2×)…",
+    "saveSvg": "Save SVG",
+    "saveSvg2": "Save SVG…",
+    "copyRowsClickAgain": "Copy {value} rows? Click again",
+    "copyMarkdown": "Copy as Markdown",
+    "copyCsv": "Copy as CSV",
+    "saveCsv": "Save CSV…",
+    "rows": "{value} rows",
+    "previewReportWriteAround": "Preview it in a report, write around it, then add it",
+    "nothingDrawnHereAdd": "Nothing drawn here to add yet",
+    "addReport": "Add to report",
+    "addReport2": "Add to report…",
+    "keepFigureViewCame": "Keep this figure, and the view it came from, on the evidence board",
+    "pin": "Pin",
+    "pinFigure": "Pin figure",
+    "drawLegendUnderFigure": "Draw the legend under the figure when it is saved, added or pinned",
+    "figureDeclaresNoLegend": "This figure declares no legend",
+    "legendExport": "Legend in export",
+    "showLegendUnderFigure": "Show the legend under the figure in this view",
+    "legendHere": "Legend here",
+    "shownDark": "As shown (dark)",
+    "stillLoading": "Still loading.",
+    "noRowsScope": "No rows in scope.",
+    "export2": "Export",
+    "reportsNotLoadedWindow": "reports are not loaded in this window yet; try again in a moment"
+  },
+  "figureLegend": {
+    "legend": "Legend"
+  },
+  "exportActions": {
+    "copied": "Copied",
+    "saveCsv": "Save CSV",
+    "saved": "Saved"
+  },
+  "figure": {
+    "interSystemUiSans": "Inter, system-ui, sans-serif",
+    "jetbrainsMonoUiMonospace": "\"JetBrains Mono\", ui-monospace, monospace",
+    "figureCouldNotDrawn": "The figure could not be drawn as an image.",
+    "chartHasNoSize": "The chart has no size to capture ({value} by {value2}); it is not on screen, or not drawn yet.",
+    "chartHasNothingDrawn": "The chart has nothing drawn in it yet.",
+    "figureCameOutBlank": "The figure came out blank: nothing but its background was drawn.",
+    "lightRenderingCameOut": "The light rendering came out dark: a colour in the chart did not map to its light value."
+  },
+  "figureActions": {
+    "chartHasNothingDrawn": "the chart has nothing drawn yet",
+    "savePng": "Save PNG",
+    "saved": "Saved",
+    "chartDrawnCanvasSave": "this chart is drawn on a canvas; save it as PNG",
+    "saveSvg": "Save SVG"
+  },
+  "provenance": {
+    "uncommittedFiles": "uncommitted files",
+    "analysisRevision": "analysis revision",
+    "olderThanBuildS": " (older than this build's analysis)",
+    "archstatsDesktop": "archstats desktop",
+    "to": "{since} to {until}",
+    "uncommitted": " +{uncommitted} uncommitted",
+    "matching": "matching {query}",
+    "lens": "lens {lens}",
+    "scope": "scope {scope}",
+    "files": "{role} files",
+    "authorsPseudonymised": "authors pseudonymised"
+  }
+}

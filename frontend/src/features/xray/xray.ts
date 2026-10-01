@@ -9,6 +9,7 @@
 import { louvain, type WeightedEdge } from "~/features/lens-builder/louvain"
 import { CODE_EXTENSIONS, extensionOf } from "~/features/snapshot/coverage"
 import { isTestPath } from "~/features/snapshot/fileRole"
+import { t } from "~/shared/i18n"
 
 export interface XrayFile {
     path: string
@@ -230,7 +231,7 @@ export function topics(files: XrayFile[], resolution = 1): Topic[] {
     // Loners (nothing ties them to the rest) are one "Unclustered" topic, last.
     const alone = out.filter(t => t.files.filter(f => !isTest(byPath.get(f)!)).length === 1 && t.cohesion === 0)
     const grouped = out.filter(t => !alone.includes(t)).sort((a, b) => b.lines - a.lines || a.name.localeCompare(b.name))
-    if (alone.length) grouped.push({ name: "Unclustered", files: alone.flatMap(t => t.files).sort(), lines: alone.reduce((n, t) => n + t.lines, 0), cohesion: 0 })
+    if (alone.length) grouped.push({ name: t("xray.xray.unclustered"), files: alone.flatMap(t => t.files).sort(), lines: alone.reduce((n, t) => n + t.lines, 0), cohesion: 0 })
     return grouped
 }
 

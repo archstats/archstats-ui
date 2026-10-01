@@ -1,0 +1,457 @@
+{
+  "computed": "Berekend door de app.",
+  "computedSql": "Berekend door de app:",
+  "categories": {
+    "architectureRules": "Architectuurregels",
+    "codeHealth": "Code health",
+    "communities": "Communities",
+    "complexity": "Complexiteit",
+    "csharp": "C#",
+    "cycles": "Cycles",
+    "dependencyGraphCycles": "Dependency graph & cycles",
+    "gitHistoryChurn": "Git-historie & churn",
+    "graphPosition": "Positie in de graph",
+    "history": "Historie",
+    "java": "Java",
+    "javaSpringTreesitterSpecific": "Java & Spring (Treesitter)",
+    "modularity": "Modulariteit",
+    "modularityComponentStructure": "Modulariteit & component-structuur",
+    "other": "Overig",
+    "scanCoverage": "Scan-dekking",
+    "sizeAndComplexity": "Grootte en complexiteit",
+    "sizeIndentationComplexity": "Grootte & indentatiecomplexiteit",
+    "systemShape": "Vorm van het systeem",
+    "tangles": "Tangles",
+    "tests": "Tests"
+  },
+  "metrics": {
+    "app__components": {
+      "name": "Componenten",
+      "short": "Componenten in het snapshot, zonder de root.",
+      "long": "Elke component waarin de scan bestanden heeft ingedeeld. De root-component ('.') bevat de bestanden die in geen enkele andere component zitten. Die tellen we niet mee, net als op elk ander scherm."
+    },
+    "app__components_in_tangles": {
+      "name": "Componenten in tangles",
+      "short": "Componenten die met minstens één andere in een dependency cycle zitten.",
+      "long": "Een tangle is een groep van twee of meer componenten die allemaal met elkaar verbonden zijn: elke component bereikt alle andere door imports te volgen. Componenten in een tangle kun je niet los van de rest releasen, testen of begrijpen."
+    },
+    "app__cross_component_edges": {
+      "name": "Component-dependencies",
+      "short": "Geordende paren componenten waarbij de ene de andere importeert.",
+      "long": "Unieke (from, to)-paren in de directe verbindingen, zonder de root. Een paar telt één keer mee, hoeveel imports het ook bevat."
+    },
+    "app__dependency_levels": {
+      "name": "Dependency-niveaus",
+      "short": "Lagen in de dependency graph nadat de tangles zijn samengevouwen.",
+      "long": "Vouw elke tangle samen tot één node en tel dan de nodes op de langste import-keten. Een hoge stapel met weinig tangles is een gelaagd systeem. Een lage stapel met één grote tangle niet.",
+      "method": "Langste pad in de condensation van component_connections_direct, berekend in de app."
+    },
+    "app__largest_tangle": {
+      "name": "Grootste tangle",
+      "short": "Componenten in de grootste tangle.",
+      "long": "De grootte van de grootste groep die onderling verbonden is. Eén grote tangle is een ander probleem dan veel kleine: meestal heeft het systeem dan geen lagen meer."
+    },
+    "app__last_changed_days": {
+      "name": "Dagen sinds laatste wijziging",
+      "short": "Dagen sinds een bestand voor het laatst is gewijzigd, geteld vanaf de head commit van het snapshot.",
+      "long": "We tellen terug vanaf de nieuwste commit in de scan, niet vanaf vandaag. Zo zegt een snapshot altijd hetzelfde, wanneer je het ook leest. Een pure rename is geen wijziging: een verplaatst bestand houdt zijn leeftijd. Een component krijgt de waarde van het meest recent gewijzigde bestand. Vanaf engine revision 2 legt de engine dit per bestand vast als git__last_change_age_in_days. Oudere snapshots rekent de app uit git_commits (gerekend vanaf het moment van de scan)."
+    },
+    "app__lines_in_tangles_share": {
+      "name": "Regels in tangles",
+      "short": "Aandeel van alle regels code dat in een tangle zit.",
+      "long": "De regels van de componenten in een tangle, gedeeld door de regels van alle componenten. Het aantal componenten onderschat een tangle van grote componenten. Deze metric weegt ze mee op grootte."
+    },
+    "app__median_distance": {
+      "name": "Mediaan afstand tot de main sequence",
+      "short": "|A + I − 1| van de component in het midden.",
+      "long": "De mediaan van modularity__distance_main_sequence over alle componenten. Wees voorzichtig in talen zonder expliciete abstracties (Python, JavaScript, Go). Daar is abstractheid voor alles bijna nul."
+    },
+    "app__median_instability": {
+      "name": "Mediaan instabiliteit",
+      "short": "De instabiliteit van de component in het midden, Ce / (Ca + Ce).",
+      "long": "De mediaan van modularity__instability over alle componenten. De helft van de componenten is stabieler dan dit, de andere helft minder stabiel. De mediaan negeert de handvol leaf- en root-componenten die het gemiddelde naar de uitersten trekken."
+    },
+    "app__propagation_cost": {
+      "name": "Propagation cost",
+      "short": "Aandeel van de componentparen waarbij een wijziging in de een de ander kan bereiken: (bereikbare paren + N) / N².",
+      "long": "De propagation cost van MacCormack: de geordende paren (a, b) waarbij a b bereikt via imports, direct of indirect, plus de N paren van elke component met zichzelf, gedeeld door het aantal componenten in het kwadraat. Bij bijna 0 blijven wijzigingen lokaal. Boven ongeveer 0,4 kunnen de meeste wijzigingen doorwerken in het grootste deel van het systeem. Paren tellen we één keer: de tabel van het snapshot kan een rij herhalen."
+    },
+    "app__rule_findings": {
+      "name": "Regelbevindingen",
+      "short": "Imports die een dependency-regel breken.",
+      "long": "Rijen van de regeltabel met status 'violation'. Elke rij is één import, in één bestand, op één regel, die een ingestelde regel verbiedt."
+    },
+    "app__test_importers": {
+      "name": "Testbestanden die dit importeren",
+      "short": "Testbestanden, in welke component dan ook, die deze component importeren.",
+      "long": "Unieke bestanden met rol 'test' in de directe verbindingen naar een component. Importeert geen enkel testbestand een component, dan wordt die alleen getest via iets anders, als dat al gebeurt."
+    },
+    "codesmells__bumpy_road": {
+      "name": "Bumpy Road",
+      "short": "Indentatie-volatiliteit die wijst op schommelingen in nesting.",
+      "long": "Berekent hoe vaak de indentatie verandert. De som van de absolute verschillen in indentatieniveau tussen opeenvolgende regels, gedeeld door het aantal niet-lege regels. Hoge waarden wijzen op een hoge cognitieve belasting en op codepaden die steeds in en uit geneste structuren gaan. De score van een component is de volatiliteit, gewogen op grootte."
+    },
+    "codesmells__code_health": {
+      "name": "Code Health",
+      "short": "Een cijfer van 1,0 tot 10,0 voor hoe onderhoudbaar de structuur is.",
+      "long": "Beoordeeld op een schaal van 1,0 (laagst) tot 10,0 (hoogst). Er gaan punten af voor bestandsgrootte (meer dan 500 regels), maximale nestingdiepte en gemiddelde nestingdiepte. JavaScript- en TypeScript-bestanden krijgen een ruimere indentatiedrempel. Bestanden zonder code (JSON, YAML, lockfiles, markdown) tellen niet mee in code health, anders vertekenen ze het beeld. Scores van componenten zijn een gemiddelde gewogen op grootte, zodat grote God Files niet wegvallen."
+    },
+    "codesmells__health__deduction__avg_nesting": {
+      "name": "Aftrek voor gemiddelde nesting",
+      "short": "Punten die van de health van een bestand af gaan voor de gemiddelde nesting: 1,5 per niveau boven de drempel van de taal, maximaal 3.",
+      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+    },
+    "codesmells__health__deduction__max_nesting": {
+      "name": "Aftrek voor maximale nesting",
+      "short": "Punten die van de health van een bestand af gaan voor de diepste nesting: 0,5 per niveau boven de drempel van de taal, maximaal 3.",
+      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+    },
+    "codesmells__health__deduction__size": {
+      "name": "Aftrek voor grootte",
+      "short": "Punten die van de health van een bestand af gaan voor de grootte: 0,01 per regel boven 500, maximaal 3.",
+      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+    },
+    "codesmells__health__threshold__avg_nesting": {
+      "name": "Drempel voor gemiddelde nesting",
+      "short": "De gemiddelde nesting die een bestand in deze taal mag halen voordat het health verliest.",
+      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+    },
+    "codesmells__health__threshold__max_nesting": {
+      "name": "Drempel voor maximale nesting",
+      "short": "De diepste nesting die een bestand in deze taal mag halen voordat het health verliest.",
+      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+    },
+    "codesmells__hotspot__raw": {
+      "name": "Ruwe hotspot",
+      "short": "log2(commits + 1) × regels, voordat het wordt geschaald naar 0–100 tegen het hotste bestand.",
+      "long": "De hotspot-score is dit getal als aandeel van het grootste getal in het snapshot, maal 100. Daarom vergelijkt de score alleen bestanden binnen één scan. De ruwe waarde kun je wel vergelijken tussen scans van dezelfde code. Een component of map krijgt de waarde van zijn hotste bestand."
+    },
+    "codesmells__hotspot_score": {
+      "name": "Hotspot-score",
+      "short": "Index voor volatiliteit en risico, geschaald van 0 tot 100.",
+      "long": "Meet waar in de ontwikkeling potentiële hotspots zitten. De score is de log-geschaalde wijzigingsfrequentie in Git, log2(commits + 1), maal de bestandsgrootte. Bestanden zonder code en lockfiles laten we weg bij het bepalen van de maximale score, anders drukken ze de schaal in. De hotspot van een component is de hoogste hotspot-score van de bestanden erin."
+    },
+    "codesmells__static_complexity_score": {
+      "name": "Statische complexiteitsscore",
+      "short": "Index voor structurele dichtheid, afgeleid van grootte en nesting.",
+      "long": "Meet structurele complexiteit als Lines * (1 + averageIndentation). Doordat de vermenigvuldiger voor gemiddelde indentatie een plafond heeft, trekken losse diep geneste uitschieters de cijfers niet scheef. Zo zie je hoe dicht het hele bestand genest is."
+    },
+    "complexity__files": {
+      "name": "Aantal bestanden",
+      "short": "Het totale aantal bestanden in een component of map. De eenvoudigste manier om omvang en scope te meten.",
+      "long": "Telt alle bronbestanden die tijdens de analyse zijn gevonden.\nHandig om te zien hoe groot een component is en om metrics eerlijk te verdelen."
+    },
+    "complexity__files__generated": {
+      "name": "Gegenereerde bestanden",
+      "short": "Bestanden die een tool heeft geschreven, volgens hun eigen header.",
+      "long": "Herkend aan de markers die tools letterlijk schrijven: `<auto-generated>` in .NET, Go's\n`// Code generated ... DO NOT EDIT.`, de header van de protocol buffer compiler en de migratie-header van Django. Gegenereerde code hoort bij de build, dus de units en dependencies blijven staan.\nCode health krijgt het niet: niemand bewerkt het met de hand."
+    },
+    "complexity__files__test": {
+      "name": "Testbestanden",
+      "short": "Bestanden die volgens de conventie van hun ecosysteem tests zijn (src/test, tests/, *_test.go, *.spec.ts, *.Tests-projecten).",
+      "long": "Apart geteld, zodat de grootte van een component laat zien hoeveel ervan tests zijn. Een bestand heeft één rol -- production, test, generated, third-party of non-code -- vastgelegd in files.role. Deze metric telt de testbestanden."
+    },
+    "complexity__files__third_party": {
+      "name": "Bestanden van derden",
+      "short": "Bestanden met andermans code die in de repository zitten.",
+      "long": "Gevendorde packages (node_modules, vendor, third_party, lib_npm, wwwroot/lib), geminificeerde bundles en bekende libraries zoals jQuery of moment.js. Ze tellen mee als bestanden en regels, want ze staan in de\nrepository, maar ze declareren geen units en krijgen geen code health."
+    },
+    "complexity__indentation__avg": {
+      "name": "Gemiddelde indentatie",
+      "short": "Gemiddelde indentatiediepte over alle regels in een bestand.",
+      "long": "Meet het gemiddelde indentatieniveau van alle niet-lege regels in een bestand. Een hogere gemiddelde indentatie betekent dat de code veel tijd in geneste blokken zit (loops, conditionals, callbacks). Dat leest slechter en kost meer cognitieve belasting.\n\nOp map- of componentniveau is dit het gemiddelde over de bestanden."
+    },
+    "complexity__indentation__count": {
+      "name": "Indentatietelling",
+      "short": "Totaal aantal indentatie-eenheden over alle regels in een bestand.",
+      "long": "Telt het indentatieniveau van elke niet-lege regel in een bestand op. Dat geeft een ruwe maat voor structurele diepte: een bestand met veel diep geneste regels heeft een hoge telling, ook als de maximale diepte meevalt.\n\nHandig om de totale structurele complexiteit van bestanden van vergelijkbare grootte te vergelijken."
+    },
+    "complexity__indentation__max": {
+      "name": "Maximale indentatie",
+      "short": "Diepste indentatieniveau in een bestand.",
+      "long": "Legt de maximale indentatiediepte (aantal indentatie-eenheden) vast op één regel in een bestand. Een hoge maximale indentatie wijst op diep geneste control flow. Dat is een sterk teken van complexe code die moeilijk te lezen is.\n\nOp map- of componentniveau nemen we het maximum over alle bestanden."
+    },
+    "complexity__lines": {
+      "name": "Aantal regels",
+      "short": "Het aantal regels in het bestand.",
+      "long": "Telt het totale aantal regels in een bestand door newline-tekens te tellen. Dit is de meest basale maat voor grootte. Andere metrics, zoals code health en hotspot-score, gebruiken hem als input."
+    },
+    "complexity__lines__test": {
+      "name": "Testregels",
+      "short": "Regels in testbestanden.",
+      "long": "De regels van de bestanden met rol test. Naast complexity__lines laat dit zien welk aandeel van een component uit tests bestaat."
+    },
+    "cycles__short__avg": {
+      "name": "Gemiddelde grootte van korte cycles",
+      "short": "Gemiddelde lengte van de kortste cycles waar deze component in zit.",
+      "long": "Het gemiddelde aantal componenten in de kortste cycles die deze component bevatten. Kleine cycles wijzen op een strakke lokale coupling. Grotere cycles wijzen op bredere circulaire ketens van dependencies."
+    },
+    "cycles__short__count": {
+      "name": "Aantal korte cycles",
+      "short": "Aantal kortste dependency cycles waar deze component in zit.",
+      "long": "Telt de kortste cycles (met de minimale lengte) in de dependency graph die deze component bevatten. Cycles zijn circulaire dependencies. Die maken het systeem lastiger te begrijpen, te testen en onafhankelijk te deployen.\n\nEen component met veel korte cycles zit strak verstrengeld met zijn buren."
+    },
+    "cycles__short__max": {
+      "name": "Maximale grootte van korte cycles",
+      "short": "Lengte van de langste van de kortste cycles waar deze component in zit.",
+      "long": "Het grootste aantal componenten in een kortste cycle die deze component bevat. Een hoge maximale cyclegrootte betekent dat de component zit in een brede circulaire keten van dependencies over veel componenten."
+    },
+    "git__additions__total": {
+      "name": "Aantal toegevoegde regels",
+      "short": "Totaal aantal regels dat in alle commits aan dit bestand of deze component is toegevoegd.",
+      "long": "Telt de toegevoegde regels op over alle commits die een bestand raakten. Op componentniveau tellen we de toevoegingen van alle bestanden op.\n\nSamen met het aantal verwijderde regels laat dit het churn-profiel van een bestand zien: veel toevoegingen en weinig verwijderingen wijzen op groei. Een evenwicht tussen toevoegingen en verwijderingen wijst op refactoren."
+    },
+    "git__age_in_days": {
+      "name": "Leeftijd in dagen",
+      "short": "Dagen sinds het bestand voor het eerst in de historie van de geanalyseerde branch verscheen.",
+      "long": "Meet hoe lang een bestand al bestaat: het aantal dagen tussen de scan en de oudste commit\ndie het raakte. Voor een component of map is dit de leeftijd van het oudste bestand. Een bestand zonder\nvastgelegde historie (niet gecommit, of buiten een repository) heeft geen leeftijd, in plaats van leeftijd 0.\n\nSamen met het aantal commits en de code health scheidt leeftijd oude code die blijft veranderen\nvan code die nieuw is."
+    },
+    "git__authors__total": {
+      "name": "Aantal auteurs",
+      "short": "Aantal unieke auteurs dat dit bestand of deze component heeft gewijzigd.",
+      "long": "Telt de unieke commit-auteurs (op e-mailadres) die een bestand hebben gewijzigd. Op componentniveau tellen we de unieke auteurs over alle bestanden.\n\nEen hoog aantal auteurs kan wijzen op gedeeld eigenaarschap of op code met veel verkeer die extra aandacht in reviews verdient."
+    },
+    "git__commits__total": {
+      "name": "Aantal commits",
+      "short": "Totaal aantal unieke commits dat dit bestand of deze component heeft gewijzigd.",
+      "long": "Telt de unieke git-commits die een bestand raakten. Op componentniveau telt dit de unieke commits over alle bestanden in de component (een commit die meerdere bestanden raakt, tellen we één keer).\n\nVeel commits betekenen code die vaak verandert. Dat is een belangrijke input voor hotspot-analyse."
+    },
+    "git__deletions__total": {
+      "name": "Aantal verwijderde regels",
+      "short": "Totaal aantal regels dat in alle commits uit dit bestand of deze component is verwijderd.",
+      "long": "Telt de verwijderde regels op over alle commits die een bestand raakten. Op componentniveau tellen we de verwijderingen van alle bestanden op.\n\nVeel verwijderingen naast veel toevoegingen wijzen op actief refactoren of herschrijven."
+    },
+    "git__last_change_age_in_days": {
+      "name": "Dagen sinds laatste wijziging",
+      "short": "Dagen tussen de laatste commit die het raakte en de nieuwste gescande commit.",
+      "long": "Hoe lang code al onaangeraakt is. We tellen terug vanaf de nieuwste commit in het snapshot, niet vanaf de dag van de scan. Zo leest een slapende repository altijd hetzelfde, wanneer je hem ook scant. Een component of map krijgt de waarde van het meest recent gewijzigde bestand. Vergelijk git__age_in_days, dat telt vanaf de eerste commit."
+    },
+    "git__repository": {
+      "name": "Git-repository",
+      "short": "Het rootpad van de git-repository, relatief aan de analyse-root.",
+      "long": "Laat zien bij welke git-repository een bestand hoort. In monorepo's met meerdere geneste .git-mappen zie je zo welke repository-root elk bestand bezit."
+    },
+    "git__unique_file_changes__total": {
+      "name": "Unieke bestandswijzigingen",
+      "short": "Aantal unieke bestanden dat is gewijzigd in commits die dit bestand of deze component raakten.",
+      "long": "Telt de unieke bestanden die in al zijn commits samen met dit bestand zijn gewijzigd. Op componentniveau telt dit de unieke bestanden die zijn gewijzigd in commits die een bestand uit de component raakten.\n\nDeze metric laat co-change-patronen zien: een hoog aantal betekent dat het bestand op wijzigingsniveau aan veel andere bestanden gekoppeld is."
+    },
+    "graph__betweenness": {
+      "name": "Betweenness Centrality",
+      "short": "Hoe vaak een component op het kortste pad tussen andere componenten ligt.",
+      "long": "Betweenness centrality meet welk deel van de kortste paden tussen alle paren componenten door een bepaalde component loopt. Componenten met hoge betweenness zijn bruggen of bottlenecks in de dependency graph.\n\nVerwijder of wijzig je een component met hoge betweenness, dan raak je waarschijnlijk de communicatie tussen veel andere delen van het systeem."
+    },
+    "graph__farness_centrality": {
+      "name": "Farness Centrality",
+      "short": "Som van de kortste padafstanden naar deze component, vanaf elke component die haar bereikt.",
+      "long": "Farness telt op, over elke component die direct of transitief van deze afhangt, hoeveel stappen\nzijn kortste dependency-pad hiernaartoe duurt. Componenten die deze niet kunnen bereiken,\ntellen niet mee. Een component waar niets van afhangt heeft dus farness 0: lees de waarde samen met\nhet aantal componenten dat haar bereikt, niet los."
+    },
+    "graph__harmonic_centrality": {
+      "name": "Harmonic Centrality",
+      "short": "Som van 1/afstand over elke component die deze component bereikt.",
+      "long": "Harmonic centrality telt de reciproken op van de kortste dependency-paden naar deze component,\nvanaf elke component die er direct of transitief van afhangt. Een directe dependent telt 1, een\ncomponent op twee stappen telt 1/2 en componenten die haar niet kunnen bereiken tellen niet mee.\n\nHet is een som, geen gemiddelde: de waarde groeit met het aantal componenten dat van deze afhangt en hoe dichtbij ze zitten. Daarmee meet het hoe breed en hoe direct op deze component wordt gesteund."
+    },
+    "graph__hits__authority_score": {
+      "name": "Authority Score (HITS)",
+      "short": "Hoeveel belangrijke hubs van een component afhangen.",
+      "long": "Onderdeel van het HITS-algoritme (Hyperlink-Induced Topic Search). Een goede authority is een component waar veel goede hubs van afhangen. In een dependency graph wijst een hoge authority score op een fundamentele component met kernfunctionaliteit waar orkestrerende modules op leunen."
+    },
+    "graph__hits__hub_score": {
+      "name": "Hub Score (HITS)",
+      "short": "Hoe goed een component verbonden is met belangrijke authorities.",
+      "long": "Onderdeel van het HITS-algoritme (Hyperlink-Induced Topic Search). Een goede hub is een component die van veel goede authorities afhangt. In een dependency graph wijst een hoge hub score op een component die veel belangrijke dependencies bundelt of aanstuurt."
+    },
+    "graph__page_rank": {
+      "name": "PageRank",
+      "short": "Belangrijkheidsscore op basis van de structuur van de dependency graph.",
+      "long": "PageRank geeft elke component een score op basis van het aantal en het belang van de componenten die ervan afhangen. Hangen veel belangrijke componenten van een component af, dan krijgt die een hogere score.\n\nIn een dependency graph wijst een hoge PageRank op een kerncomponent die cruciaal is voor de architectuur van het systeem."
+    },
+    "graph__residual_closeness": {
+      "name": "Closeness (Dangalchev)",
+      "short": "Som van 2^-afstand over elke component die deze component bereikt.",
+      "long": "Dangalchevs closeness telt 2 tot de macht min de kortste padlengte op, vanaf elke component\ndie van deze afhangt: een directe dependent telt 1/2, een component op twee stappen telt 1/4 en componenten\ndie haar niet kunnen bereiken tellen niet mee. Net als harmonic centrality beloont het dat veel componenten dichtbij\nvan je afhangen, waarbij verre dependents veel minder meetellen.\n\nOndanks de opgeslagen naam van de metric wordt er niets uit de graph verwijderd om hem te berekenen."
+    },
+    "java__class__declarations": {
+      "name": "Java class-declaraties",
+      "short": "Het aantal class-declaraties in je Java-bestanden. Dit meet hoeveel classes er in de codebase zijn gedefinieerd.",
+      "long": "Het totale aantal classes dat in het bestand of de component is gedefinieerd."
+    },
+    "java__field__declarations": {
+      "name": "Java field-declaraties",
+      "short": "Het totale aantal fields (variabelen in een class) in je Java-bestanden. Dit meet hoeveel state of data je classes bijhouden.",
+      "long": "Fields zijn variabelen die in een class-blok zijn gedeclareerd.\nVeel fields in één class kunnen erop wijzen dat de class te veel verantwoordelijkheden op zich neemt (een God Class of veel state-complexiteit)."
+    },
+    "java__import__declaration": {
+      "name": "Java import-declaraties",
+      "short": "Het aantal import-statements in je Java-bestanden. Dit laat zien hoeveel externe of interne classes je code gebruikt.",
+      "long": "Houdt de afzonderlijke import-statements in Java-bestanden bij.\nWordt gebruikt om de imports van een bestand te bepalen, zonder genegeerde packages zoals de standaard java.*-libraries als dat zo is ingesteld."
+    },
+    "java__jpa__entities": {
+      "name": "JPA entities",
+      "short": "Het aantal JPA entity-classes (met @Entity). Deze classes vertegenwoordigen tabellen in je database en bevatten database-records.",
+      "long": "JPA entities zijn lichte persistente domeinobjecten. Meestal horen ze bij een tabel in een relationele database."
+    },
+    "java__method_declarations": {
+      "name": "Java method-declaraties",
+      "short": "Het totale aantal methods (functies in een class) in je Java-bestanden. Dit meet hoeveel acties je classes kunnen uitvoeren.",
+      "long": "Het totale aantal methods dat in de Java-bronbestanden is gedeclareerd.\nVeel method-declaraties wijzen op een grote omvang of complexiteit in gedrag."
+    },
+    "java__spring__beans": {
+      "name": "Spring beans",
+      "short": "Het totale aantal door Spring beheerde beans (classes met @Component, @Service, @Repository, @Controller, enzovoort). Dit zijn de bouwstenen van een Spring-app.",
+      "long": "Telt alle stereotype Spring component- en bean-annotaties op in de component of het bestand.\nEen hoog aantal wijst op zakelijke lagen of framework-lagen die sterk door Spring worden beheerd."
+    },
+    "java__spring__components": {
+      "name": "Spring components",
+      "short": "Het aantal gewone Spring component-classes (met @Component). Dit zijn hulpclasses die Spring beheert voor dependency injection.",
+      "long": "Een algemeen stereotype voor elke door Spring beheerde component waarop geen specifieker stereotype (zoals Service, Controller of Repository) van toepassing is."
+    },
+    "java__spring__configurations": {
+      "name": "Spring configurations",
+      "short": "Het aantal Spring configuratie-classes (met @Configuration). Deze classes zetten de beans en instellingen van je applicatie op en passen ze aan.",
+      "long": "Geeft aan dat een class een of meer @Bean-methods declareert en door de Spring-container kan worden verwerkt om bean-definities en service-requests te maken tijdens runtime."
+    },
+    "java__spring__controllers": {
+      "name": "Spring controllers",
+      "short": "Het aantal Spring controller-classes (met @Controller of @RestController). Deze classes nemen binnenkomende web-requests aan en sturen ze door naar de juiste plek.",
+      "long": "Spring controller-classes verwerken HTTP-requests, binden gebruikersinput en geven responses terug (vaak JSON of HTML).\nVeel controllers in één gebied wijzen op een belangrijk API entry point."
+    },
+    "java__spring__repositories": {
+      "name": "Spring repositories",
+      "short": "Het aantal Spring repository-classes (met @Repository). Deze classes praten met de database om je data op te slaan en te laden.",
+      "long": "Spring repositories kapselen opslaan, ophalen en zoeken in, meestal rond een relationele database met JPA of JDBC."
+    },
+    "java__spring__request_mappings__delete": {
+      "name": "Spring DELETE-mappings",
+      "short": "Het aantal DELETE-endpoints (met @DeleteMapping of @RequestMapping met DELETE). Dit zijn web entry points om data te verwijderen.",
+      "long": "HTTP DELETE-endpoints verwijderen representaties van resources."
+    },
+    "java__spring__request_mappings__get": {
+      "name": "Spring GET-mappings",
+      "short": "Het aantal GET-endpoints (met @GetMapping of @RequestMapping met GET). Dit zijn web entry points om data op te halen.",
+      "long": "HTTP GET-endpoints halen resources op.\nVeel GET-requests wijzen op een controller die vooral leest."
+    },
+    "java__spring__request_mappings__patch": {
+      "name": "Spring PATCH-mappings",
+      "short": "Het aantal PATCH-endpoints (met @PatchMapping of @RequestMapping met PATCH). Dit zijn web entry points om data gedeeltelijk bij te werken.",
+      "long": "HTTP PATCH-endpoints passen gedeeltelijke wijzigingen toe op een resource."
+    },
+    "java__spring__request_mappings__post": {
+      "name": "Spring POST-mappings",
+      "short": "Het aantal POST-endpoints (met @PostMapping of @RequestMapping met POST). Dit zijn web entry points om nieuwe data aan te maken.",
+      "long": "HTTP POST-endpoints sturen data op om te worden verwerkt of om resources aan te maken."
+    },
+    "java__spring__request_mappings__put": {
+      "name": "Spring PUT-mappings",
+      "short": "Het aantal PUT-endpoints (met @PutMapping of @RequestMapping met PUT). Dit zijn web entry points om bestaande data bij te werken of te vervangen.",
+      "long": "HTTP PUT-endpoints doen een upsert of vervangen resources."
+    },
+    "java__spring__request_mappings__total": {
+      "name": "Spring request mappings (totaal)",
+      "short": "Het totale aantal web-endpoints (met @RequestMapping, @GetMapping, @PostMapping, enzovoort) in je applicatie. Dit meet hoeveel web entry points je hebt.",
+      "long": "Totaal aantal HTTP-endpoints dat Spring MVC/WebFlux controllers aanbieden.\nGeeft de omvang van het externe API-oppervlak van de applicatie."
+    },
+    "java__spring__services": {
+      "name": "Spring services",
+      "short": "Het aantal Spring service-classes (met @Service). Deze classes bevatten de bedrijfslogica en regels van je applicatie.",
+      "long": "Spring service-classes sturen domeinlogica aan, praten met repositories en beheren transacties.\nZe vormen de zakelijke kernlaag van je applicatie."
+    },
+    "modularity__abstractness": {
+      "name": "Abstractheid",
+      "short": "Verhouding tussen abstracte declaraties en alle declaraties in een component.",
+      "long": "Abstractheid meet het aandeel abstracte types (interfaces, abstracte classes) ten opzichte van alle declaraties in een component. De schaal loopt van 0 (volledig concreet) tot 1 (volledig abstract).\n\nSamen met instabiliteit bepaalt dit de afstand tot de main sequence."
+    },
+    "modularity__component__declarations": {
+      "name": "Component-declaratie",
+      "short": "Een markering die aangeeft waar een nieuwe component begint, zoals een package-header in Java/Kotlin of een namespace in C#. Zo herken je de verschillende delen van je code.",
+      "long": "Component-declaraties leggen de logische grenzen van het systeem vast. Bijvoorbeeld package-headers of namespace-definities.\nMet ze worden bronbestanden toegewezen aan logische componenten voor de analyse van coupling en architectuur."
+    },
+    "modularity__component__imports": {
+      "name": "Component-import",
+      "short": "Een verbinding die code uit een andere component binnenhaalt. Je ziet hier wanneer het ene package of de ene namespace op een ander leunt om te werken.",
+      "long": "Component-imports zijn de dependency-edges tussen delen van het systeem.\nMet die imports bouwen we een dependency graph en berekenen we coupling-metrics zoals afferent en efferent coupling."
+    },
+    "modularity__coupling__afferent": {
+      "name": "Afferent Coupling",
+      "short": "Aantal bestanden in andere componenten dat deze component importeert.",
+      "long": "Afferent coupling (Ca) telt de bestanden buiten deze component die iets uit deze component importeren. Dit\nis de definitie van Robert Martin, die de afhankelijke classes telt in plaats van de afhankelijke\npackages. Voor het aantal componenten dat van deze afhangt, zie Direct Dependent Count.\n\nEen hoge afferent coupling betekent dat een groot deel van de codebase op deze component leunt. Wijzigingen werken dan breed door,\ndus de component moet stabiel zijn en goed getest."
+    },
+    "modularity__coupling__dependencies": {
+      "name": "Aantal directe dependencies",
+      "short": "Aantal componenten waar deze component direct van afhangt.",
+      "long": "Telt de componenten waar deze component in de dependency graph een directe dependency-edge naartoe heeft. Efferent coupling telt unieke coupling-relaties, maar dependencies telt alle directe uitgaande dependency-edges."
+    },
+    "modularity__coupling__dependents": {
+      "name": "Aantal directe dependents",
+      "short": "Aantal componenten dat direct van deze component afhangt.",
+      "long": "Telt de componenten die in de dependency graph een directe dependency-edge naar deze component hebben. Afferent coupling telt unieke coupling-relaties, maar dependents telt alle directe inkomende dependency-edges."
+    },
+    "modularity__coupling__efferent": {
+      "name": "Efferent Coupling",
+      "short": "Aantal bestanden in deze component dat een andere component importeert.",
+      "long": "Efferent coupling (Ce) telt de bestanden in deze component die iets uit een\nandere component importeren. Dit is de definitie van Robert Martin, die de afhankelijke classes telt in plaats\nvan de packages waar je van afhangt. Voor het aantal componenten waar deze van afhangt, zie Direct\nDependency Count.\n\nComponenten met hoge efferent coupling zijn kwetsbaarder voor wijzigingen in hun dependencies."
+    },
+    "modularity__distance_main_sequence": {
+      "name": "Distance from Main Sequence",
+      "short": "Afstand tot de ideale balans tussen abstractheid en stabiliteit: |A + I - 1|.",
+      "long": "De main sequence is de ideale lijn waar A + I = 1 (abstractheid + instabiliteit = 1). De afstand tot die lijn meet hoe goed een component stabiliteit en abstractheid in balans houdt.\n\n- D = 0: op de main sequence, de ideale balans.\n- Hoge D bij (0,0): zone of pain, stabiel en concreet. Moeilijk te wijzigen.\n- Hoge D bij (1,1): zone of uselessness, instabiel en abstract. Overengineerd."
+    },
+    "modularity__instability": {
+      "name": "Instabiliteit",
+      "short": "Verhouding tussen efferent en totale coupling: Ce / (Ce + Ca). Schaal: 0 (stabiel) tot 1 (instabiel).",
+      "long": "Instabiliteit is Ce / (Ce + Ca), waarbij Ce de efferent coupling is en Ca de afferent coupling.\n\n- I = 0: maximaal stabiel. De component heeft geen uitgaande dependencies. Wijzigingen in andere componenten kunnen hem niet raken.\n- I = 1: maximaal instabiel. De component heeft alleen uitgaande dependencies. Hij hangt volledig af van anderen en wordt waarschijnlijk geraakt door externe wijzigingen.\n\nHet Stable Dependencies Principle (SDP) zegt dat componenten in de richting van stabiliteit moeten afhangen: instabiele componenten horen van stabiele af te hangen."
+    },
+    "modularity__types__abstract": {
+      "name": "Abstracte types",
+      "short": "Het aantal abstracte types (zoals interfaces of abstracte classes) in een bestand of component. Dit zijn sjablonen die andere classes moeten invullen.",
+      "long": "Abstracte types zijn uitbreidingspunten in je codebase.\nMet veel abstracte types kun je componenten makkelijk uitbreiden zonder hun kernlogica te wijzigen. Dat helpt bij het Open-Closed Principle."
+    },
+    "modularity__types__total": {
+      "name": "Totaal aantal types",
+      "short": "Het totale aantal types (zoals classes, interfaces, structs of records) in een bestand of component. Dit meet hoeveel structurele bouwblokken je hebt.",
+      "long": "Het totaal aantal types meet de grootte van een component in ruwe structurele declaraties.\nHet is de noemer bij het berekenen van abstractheid (abstracte types / totaal aantal types)."
+    },
+    "rules__dotnet__core_must_not_depend_on_plugin": {
+      "name": "De core mag niet afhangen van een plugin",
+      "short": "In een .NET plugin-architectuur mogen plugins van de core afhangen. De core mag nooit van een plugin afhangen.",
+      "long": "Een plugin-architectuur is maar in één richting uitbreidbaar. Plugins worden tegen de core gebouwd\nen kun je toevoegen of weghalen zonder de core opnieuw te bouwen. Zodra de core een plugin per project\nreferereert, is die plugin niet meer optioneel en is de architectuur ongemerkt een monoliet geworden met extra\nprojectbestanden.\n\nnopCommerce maakt de vorm duidelijk: 40 .csproj-bestanden, waarvan dertig Nop.Plugin.* heten, en\nelk ervan verwijst naar Nop.Web.Framework of Nop.Web, en niet andersom. De\nnamespaces zeggen niet welke module een plugin is, dus deze regel wordt gecontroleerd op de project-\nreferenties, die dat wel doen."
+    },
+    "rules__go__internal_must_not_be_imported_from_outside": {
+      "name": "internal mag niet uit een andere module worden geïmporteerd",
+      "short": "internal/ in Go is een grens die de compiler afdwingt. Een edge ertussen is dus sterker bewijs dan elke gewone import.",
+      "long": "Een Go-package onder `internal/` mag alleen worden geïmporteerd door code die in de map staat waar die\n`internal/` in zit. De compiler weigert al het andere. Het is daarmee de enige grens in alle onderzochte\necosystemen die je niet per ongeluk kunt breken en waar je niet over kunt discussiëren.\n\nJuist daarom is het de moeite waard om te melden. Een edge die zo'n grens oversteekt, komt niet door een\ntaal die de analyser verkeerd las. Hij komt van twee modules die zijn gevendord, gekopieerd of gemerged, en\nhij markeert de naad. Binnen één module kan de regel nooit afgaan, dus een schending betekent hier altijd\ndat er meer dan één module bij betrokken is."
+    },
+    "rules__symfony__component_must_not_depend_on_bundle": {
+      "name": "Een Component mag niet afhangen van een Bundle",
+      "short": "Een framework-agnostische component mag nooit afhangen van de framework-glue die hem integreert.",
+      "long": "Symfony-projecten die Component en Bundle scheiden, doen dat om het domein bruikbaar te houden zonder het\nframework: de Component bevat het model en het gedrag, de Bundle koppelt het aan de container,\nrouting en configuratie van Symfony. De dependency loopt één kant op. Een component die terugreikt\nnaar zijn bundle kun je niet meer los gebruiken, testen of publiceren, en dat is de enige reden\nvoor de splitsing.\n\nSylius bestaat uit 60 composer-packages die precies zo zijn ingedeeld, met 344 interfaces tegenover 663 classes in\nde Component-tree. De splitsing staat in composer.json, niet in een namespace, en daarom\nwordt deze regel gecontroleerd op de module map."
+    }
+  },
+  "windowed": {
+    "git__additions": {
+      "name": "Toegevoegde regels (laatste {days} dagen)",
+      "short": "Aantal regels code dat de afgelopen {days} dagen aan dit bestand of deze component is toegevoegd.",
+      "long": "Telt hoeveel nieuwe regels code de afgelopen {days} dagen in git-commits zijn toegevoegd. Zo zie je welke bestanden recent actief zijn of groeien."
+    },
+    "git__deletions": {
+      "name": "Verwijderde regels (laatste {days} dagen)",
+      "short": "Aantal regels code dat de afgelopen {days} dagen uit dit bestand of deze component is verwijderd.",
+      "long": "Telt hoeveel regels code de afgelopen {days} dagen in git-commits zijn verwijderd. Zo zie je welke bestanden recent gerefactord of opgeschoond zijn."
+    },
+    "git__commits": {
+      "name": "Aantal commits (laatste {days} dagen)",
+      "short": "Aantal unieke git-commits dat dit bestand of deze component de afgelopen {days} dagen wijzigde.",
+      "long": "Telt hoe vaak dit bestand of deze component de afgelopen {days} dagen in een git-commit is gewijzigd. Een hoog aantal wijst op een recente hotspot van activiteit."
+    },
+    "git__authors": {
+      "name": "Aantal auteurs (laatste {days} dagen)",
+      "short": "Aantal unieke auteurs dat dit bestand of deze component de afgelopen {days} dagen wijzigde.",
+      "long": "Telt hoeveel verschillende developers de afgelopen {days} dagen dit bestand of deze component hebben gewijzigd. Veel auteurs kan wijzen op een risico voor afstemming."
+    },
+    "git__unique_file_changes": {
+      "name": "Unieke bestandswijzigingen (laatste {days} dagen)",
+      "short": "Aantal unieke bestanden dat de afgelopen {days} dagen wijzigde in commits die ook dit bestand of deze component raakten.",
+      "long": "Meet co-changes over de afgelopen {days} dagen: hoeveel andere bestanden in dezelfde commits als dit bestand zijn gewijzigd. Zo vind je verborgen logische koppeling."
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "time": {
+    "justNow": "zojuist",
+    "minAgo": "{minutes} min geleden",
+    "moAgo": "{months} mnd geleden",
+    "hAgo": "{hours} u geleden",
+    "dAgo": "{days} d geleden",
+    "yAgo": "{years} j geleden",
+    "ago": "{span} geleden"
+  },
+  "loadingState": {
+    "loading": "Laden…"
+  },
+  "singleSelect": {
+    "selectOption": "Kies een optie"
+  },
+  "zoomControls": {
+    "zoom": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "resetView": "Weergave resetten"
+  },
+  "useChartTheme": {
+    "interSystemUiSans": "\"Inter\", system-ui, sans-serif",
+    "jetbrainsMonoUiMonospace": "\"JetBrains Mono\", ui-monospace, monospace"
+  },
+  "format": {
+    "mo": "{value} mnd",
+    "days": "{value} d",
+    "years": "{value} j"
+  }
+}

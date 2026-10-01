@@ -1,3 +1,4 @@
+import { has, locale, t } from "~/shared/i18n"
 import { DERIVED_METRICS, type DerivedMetric } from "./derivedMetrics"
 
 interface Definition {
@@ -17,23 +18,58 @@ export type {
 
 // Older snapshots carry no category; the id's first segment is the family.
 const PREFIX_CATEGORIES: Record<string, string> = {
-    complexity: "Size and complexity",
-    codesmells: "Code health",
-    modularity: "Modularity",
-    graph: "Graph position",
-    community: "Communities",
-    git: "History",
-    cycles: "Cycles",
-    group: "Tangles",
-    walker: "Scan coverage",
-    java: "Java",
-    csharp: "C#",
+    complexity: "sizeAndComplexity",
+    codesmells: "codeHealth",
+    modularity: "modularity",
+    graph: "graphPosition",
+    community: "communities",
+    git: "history",
+    cycles: "cycles",
+    group: "tangles",
+    walker: "scanCoverage",
+    java: "java",
+    csharp: "csharp",
+}
+
+/** The key a category is stored under: "Modularity & Component Structure" → "modularityComponentStructure". */
+export function categoryKey(name: string): string {
+    const words = name.toLowerCase().replace(/#/g, "sharp").replace(/[^a-z0-9]+/g, " ").trim().split(" ")
+    return words.map((w, i) => (i && w ? w[0].toUpperCase() + w.slice(1) : w)).join("")
+}
+
+/** A category's name in the app's language; one the messages lack keeps its own. */
+function categoryName(key: string, fallback: string): string {
+    return has(`definitions.categories.${key}`) ? t(`definitions.categories.${key}`) : fallback
 }
 
 export function categoryOf(def: Pick<Definition, "id" | "category">): string {
-    if (def.category) return def.category
+    if (def.category) return categoryName(categoryKey(def.category), def.category)
     const prefix = def.id.split("__")[0]
-    return PREFIX_CATEGORIES[prefix] ?? (prefix ? prefix[0].toUpperCase() + prefix.slice(1) : "Other")
+    const key = PREFIX_CATEGORIES[prefix]
+    if (key) return categoryName(key, key)
+    return prefix ? prefix[0].toUpperCase() + prefix.slice(1) : t("definitions.categories.other")
+}
+
+/**
+ * A snapshot's definition in the app's language. In English the snapshot's
+ * own text stands, since it is what the scan that wrote it said; in another
+ * language the translation of the same metric id replaces it, and a metric
+ * the messages do not know keeps its English.
+ */
+export function localized<D extends Pick<Definition, "id" | "name" | "short" | "long">>(def: D): D {
+    if (locale === "en") return def
+    let key = `definitions.metrics.${def.id}`
+    let params: Record<string, number> | undefined
+    if (!has(`${key}.name`)) {
+        // The engine writes a definition per history window ("git__commits__last_90_days").
+        const windowed = /^(.+)__last_(\d+)_days$/.exec(def.id)
+        if (!windowed || !has(`definitions.windowed.${windowed[1]}.name`)) return def
+        key = `definitions.windowed.${windowed[1]}`
+        params = { days: Number(windowed[2]) }
+    }
+    const out = { ...def, name: t(`${key}.name`, params), short: t(`${key}.short`, params), long: t(`${key}.long`, params) }
+    if ("short_description" in out) Object.assign(out, { short_description: out.short, long_description: out.long })
+    return out
 }
 
 /** One entry in the reference: an engine definition, or one the app computes. */
@@ -59,7 +95,7 @@ export function definitionMarkdown(e: Pick<ReferenceEntry, "id" | "name" | "shor
     const head = `**${e.name}** (\`${e.id}\`): ${e.short}`.trim()
     const parts = [head]
     if (e.long && e.long !== e.short) parts.push(e.long)
-    if (e.derived) parts.push(e.derived.sql ? "Computed by the app:\n\n```sql\n" + e.derived.sql + "\n```" : `Computed by the app. ${e.derived.method ?? ""}`.trim())
+    if (e.derived) parts.push(e.derived.sql ? t("definitions.computedSql") + "\n\n```sql\n" + e.derived.sql + "\n```" : `${t("definitions.computed")} ${e.derived.method ?? ""}`.trim())
     return parts.join("\n\n")
 }
 

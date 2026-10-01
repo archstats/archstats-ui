@@ -2,10 +2,10 @@
   <div class="flex h-full min-h-0 w-full flex-col bg-surface">
     <!-- Toolbar: back, breadcrumb, kind, key stats; actions on the right. -->
     <header class="ui-toolbar drag-region gap-3">
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet -ml-1" aria-label="Back" title="Back" @click="back">
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet -ml-1" :aria-label="t('shell.detailFrame.back')" :title="t('shell.detailFrame.back')" @click="back">
         <Icon icon="arrow-left" :size="14"/>
       </button>
-      <nav class="flex min-w-0 items-center gap-1.5 text-base" aria-label="Breadcrumb">
+      <nav class="flex min-w-0 items-center gap-1.5 text-base" :aria-label="t('shell.detailFrame.breadcrumb')">
         <template v-for="(crumb, i) in crumbs" :key="i">
           <router-link v-if="crumb.to" :to="crumb.to" class="shrink-0 text-neutral-500 transition-colors hover:text-neutral-900">{{ crumb.label }}</router-link>
           <span v-else class="shrink-0 text-neutral-500">{{ crumb.label }}</span>
@@ -51,6 +51,7 @@
 import { useRoute } from "vue-router";
 import Icon from "~/shared/ui/Icon.vue";
 import { useBack } from "~/features/navigation/useBack";
+import { t } from "~/shared/i18n";
 
 export interface DetailTab { id: string; label: string; to: string; exact?: boolean; count?: number | string }
 export interface DetailCrumb { label: string; to?: string }

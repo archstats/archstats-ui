@@ -1,4 +1,5 @@
 import initSqlJs, { Database } from 'sql.js';
+import { t } from "~/shared/i18n";
 
 let db: Database | null = null;
 
@@ -17,7 +18,7 @@ self.onmessage = async (event: MessageEvent) => {
             }
             case 'query': {
                 if (!db) {
-                    self.postMessage({ type: 'error', id, error: 'Database not initialized' });
+                    self.postMessage({ type: 'error', id, error: t("platform.dbWorker.databaseNotInitialized") });
                     return;
                 }
                 const rows: any[] = [];
@@ -30,7 +31,7 @@ self.onmessage = async (event: MessageEvent) => {
                 break;
             }
             default:
-                self.postMessage({ type: 'error', id, error: `Unknown message type: ${type}` });
+                self.postMessage({ type: 'error', id, error: t("platform.dbWorker.unknownMessageType", { type }) });
         }
     } catch (err: any) {
         self.postMessage({ type: 'error', id, error: err?.message || String(err) });

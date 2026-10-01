@@ -4,6 +4,7 @@
 // from the snapshot's anchor.
 
 import { NOT_BOT_SQL, canonicalAuthorSql, type AliasMap } from "./authors"
+import { t } from "~/shared/i18n"
 
 export const MERGE_SQL = "c.commit_message LIKE 'Merge %'"
 
@@ -113,7 +114,7 @@ export function commitBreadthSql(opts: { includeBots: boolean; where?: string | 
 
 /** One row per commit and component in the window, for "changes alone". */
 export function commitComponentsSql(opts: { days: number | null; anchor: string; includeBots: boolean; where?: string | null }): string {
-    const since = opts.days === null ? "" : ` AND julianday(c.commit_time) > ${opts.anchor} - ${opts.days}`
+    const since = opts.days === null ? "" : t("git.changeShape.juliandayCCommitTime", { anchor: opts.anchor, days: opts.days })
     return `
     SELECT c.commit_hash AS h, f.component AS component, count(DISTINCT c.file) AS files
     FROM git_commits c JOIN files f ON f.name = c.file
@@ -122,10 +123,10 @@ export function commitComponentsSql(opts: { days: number | null; anchor: string;
 }
 
 export const BANDS = [
-    { id: "1", label: "1 component", min: 1, max: 1 },
+    { id: "1", label: t("git.changeShape.text1Component"), min: 1, max: 1 },
     { id: "2", label: "2–3", min: 2, max: 3 },
     { id: "4", label: "4–10", min: 4, max: 10 },
-    { id: "11", label: "11 or more", min: 11, max: Infinity },
+    { id: "11", label: t("git.changeShape.text11More"), min: 11, max: Infinity },
 ] as const
 
 export interface CommitBreadth { h: string; t: string; n: number; files: number }

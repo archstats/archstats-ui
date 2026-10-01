@@ -8,6 +8,7 @@ import { foldEdges, layoutTangle, planCuts, tanglesOf, type WEdge } from "~/feat
 import { candidates } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
+import { t, intlLocale } from "~/shared/i18n"
 
 /** `freed` counts every component out of the tangle after this cut and the ones before it; `frees` what this cut adds. */
 export interface TangleStep { from: string; to: string; imports: number; files: number; freed: number; frees: number; tangled: number; carriers: string[] }
@@ -28,17 +29,17 @@ export interface TangleData {
     cuts: number
 }
 
-const n = (v: number) => v.toLocaleString("en-US")
+const n = (v: number) => v.toLocaleString(intlLocale)
 const plural = (k: number, one: string, many = `${one}s`) => `${n(k)} ${k === 1 ? one : many}`
 
 export const tangle = exhibit<TangleData>()({
     kind: "tangle", v: 1,
-    summary: "One tangle (components that all reach each other through imports) in levels, with the cuts that untangle it, most first.",
+    summary: t("cycles.tangle.oneTangleComponentsAll"),
     params: s.object({
-        of: s.string().optional().describe("A component in the tangle; the largest tangle when left out."),
+        of: s.string().optional().describe(t("cycles.tangle.componentTangleLargestTangle")),
     }, { aliases: { component: "of", around: "of" } }),
 
-    title: (p, d) => (d ? `Tangle of ${plural(d.members.length, "component")}${d.anchor ? ` around ${d.anchor}` : ""}` : p.of ? `The tangle around ${p.of}` : "The largest tangle"),
+    title: (p, d) => (d ? t("cycles.tangle.tangle", { components: t("common.count.component", { count: d.members.length }), value: d.anchor ? t("cycles.tangle.around", { anchor: d.anchor }) : "" }) : p.of ? t("cycles.tangle.tangleAround", { of: p.of }) : t("cycles.tangle.largestTangle")),
 
     async resolve(p, { snap }): Promise<TangleData | Absent> {
         const edges = foldEdges(snap.connections())
@@ -46,14 +47,14 @@ export const tangle = exhibit<TangleData>()({
         const all = tanglesOf(new Set([...names, ...edges.flatMap(e => [e.from, e.to])]), edges)
             .map(t => [...t].sort())
             .sort((a, b) => b.length - a.length || a[0].localeCompare(b[0]))
-        if (!all.length) return { absent: "There are no tangles: the import graph has no cycles." }
+        if (!all.length) return { absent: t("cycles.tangle.thereNoTanglesImport") }
         let anchor: string | null = null
         let rank = 1
         if (p.of) {
             anchor = candidates(names, p.of)[0] ?? null
-            if (!anchor) return { absent: `No component matches "${p.of}".` }
+            if (!anchor) return { absent: t("cycles.tangle.noComponentMatches", { of: p.of }) }
             rank = all.findIndex(t => t.includes(anchor!)) + 1
-            if (!rank) return { absent: `${anchor} is in no tangle: nothing it imports leads back to it.` }
+            if (!rank) return { absent: t("cycles.tangle.noTangleNothingImports", { anchor }) }
         }
         const members = all[rank - 1]
         const inside = new Set(members)
@@ -81,16 +82,16 @@ export const tangle = exhibit<TangleData>()({
 
     facts(d) {
         const out: FactDraft[] = [
-            { kind: "total", text: `${plural(d.count, "tangle")} in the codebase, holding ${plural(d.held, "component")}; this is the ${d.rank === 1 ? "largest" : `number ${d.rank} by size`}.`, entities: [], values: { tangles: d.count, components: d.held, rank: d.rank } },
-            { kind: "row", text: `This tangle has ${plural(d.members.length, "component")} in ${plural(d.levels, "level")}; ${plural(d.against, "import")} run against the levels, and cutting ${d.cuts === 1 ? "it" : `all ${n(d.cuts)}`} leaves no tangle.`, entities: d.anchor ? [d.anchor] : [], values: { components: d.members.length, levels: d.levels, against: d.against, cuts: d.cuts } },
+            { kind: "total", text: t("cycles.tangle.codebaseHolding", { tangles: t("common.count.tangle", { count: d.count }), components: t("common.count.component", { count: d.held }), value: d.rank === 1 ? t("cycles.tangle.largest") : t("cycles.tangle.numberSize", { rank: d.rank }) }), entities: [], values: { tangles: d.count, components: d.held, rank: d.rank } },
+            { kind: "row", text: t("cycles.tangle.tangleHasRunAgainst", { components: t("common.count.component", { count: d.members.length }), levels: t("common.count.level", { count: d.levels }), imports: t("common.count.import", { count: d.against }), value: d.cuts === 1 ? t("cycles.tangle.it") : t("cycles.tangle.all", { cuts: n(d.cuts) }) }), entities: d.anchor ? [d.anchor] : [], values: { components: d.members.length, levels: d.levels, against: d.against, cuts: d.cuts } },
             ...d.steps.slice(0, 8).map((x, i): FactDraft => ({
                 kind: "row",
-                text: `Cut ${i + 1}: ${x.from} → ${x.to}, ${plural(x.imports, "import reference")} in ${plural(x.files, "file")}${x.carriers.length ? ` (${x.carriers.slice(0, 2).join(", ")})` : ""}; this cut frees ${plural(x.frees ?? 0, "component")}; with the cuts before it, ${n(x.freed)} are out of the tangle and ${n(x.tangled)} still tangled.`,
+                text: t("cycles.tangle.cutCutFreesCuts", { value: i + 1, from: x.from, to: x.to, importReferences: t("common.count.importReference", { count: x.imports }), files: t("common.count.file", { count: x.files }), value2: x.carriers.length ? ` (${x.carriers.slice(0, 2).join(", ")})` : "", components: t("common.count.component", { count: x.frees ?? 0 }), freed: n(x.freed), tangled: n(x.tangled) }),
                 entities: [x.from, x.to], values: { step: i + 1, references: x.imports, files: x.files, frees: x.frees ?? 0, freed: x.freed, tangled: x.tangled }, element: `edge:${x.from}>${x.to}`,
             })),
-            { kind: "note", text: `Members: ${d.members.slice(0, 12).join(", ")}${d.members.length > 12 ? `, and ${n(d.members.length - 12)} more` : ""}.`, entities: d.members.slice(0, 12), values: {} },
+            { kind: "note", text: t("cycles.tangle.members", { value: d.members.slice(0, 12).join(", "), value2: d.members.length > 12 ? t("cycles.tangle.more", { value: n(d.members.length - 12) }) : "" }), entities: d.members.slice(0, 12), values: {} },
         ]
-        if (d.cuts > 8) out.push({ kind: "note", text: `${n(d.cuts - 8)} further cuts are in the Cycles view.`, entities: [], values: { more: d.cuts - 8 } })
+        if (d.cuts > 8) out.push({ kind: "note", text: t("cycles.tangle.furtherCutsCyclesView", { value: n(d.cuts - 8) }), entities: [], values: { more: d.cuts - 8 } })
         return out
     },
 
@@ -100,10 +101,10 @@ export const tangle = exhibit<TangleData>()({
     ],
 
     table: d => ({
-        columns: [{ id: "cut", label: "Import to cut" }, { id: "imports", label: "Import references", numeric: true }, { id: "frees", label: "This cut frees", numeric: true }, { id: "freed", label: "Out so far", numeric: true }, { id: "tangled", label: "Still tangled", numeric: true }, { id: "files", label: "Carried by" }],
+        columns: [{ id: "cut", label: t("cycles.tangle.importCut") }, { id: "imports", label: t("cycles.tangle.importReferences"), numeric: true }, { id: "frees", label: t("cycles.tangle.cutFrees"), numeric: true }, { id: "freed", label: t("cycles.tangle.outSoFar"), numeric: true }, { id: "tangled", label: t("cycles.tangle.stillTangled"), numeric: true }, { id: "files", label: t("cycles.tangle.carried") }],
         rows: d.steps.map(x => ({ cut: `${x.from} → ${x.to}`, imports: x.imports, frees: x.frees ?? 0, freed: x.freed, tangled: x.tangled, files: x.carriers.join(", ") })),
         total: d.cuts,
-        note: `A tangle of ${plural(d.members.length, "component")}; cuts in the order that untangles most first.`,
+        note: t("cycles.tangle.tangleCutsOrderUntangles", { components: t("common.count.component", { count: d.members.length }) }),
     }),
 
     figure: {
@@ -121,7 +122,7 @@ export const tangle = exhibit<TangleData>()({
         picks: { "select-node": (id: string) => `component:${id}`, "select-edge": (from: string, to: string) => `edge:${from}>${to}` },
     },
 
-    open: (_p, d) => ({ route: d?.anchor ? `/views/components/cycles?component=${encodeURIComponent(d.anchor)}` : "/views/components/cycles", label: "Open Cycles" }),
+    open: (_p, d) => ({ route: d?.anchor ? `/views/components/cycles?component=${encodeURIComponent(d.anchor)}` : "/views/components/cycles", label: t("cycles.tangle.openCycles") }),
 
     samples: snap => {
         const c = snap.cycles()[0]?.nodes[0]

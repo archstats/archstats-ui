@@ -8,37 +8,37 @@
           <Icon icon="file-down" :size="15" class="shrink-0 text-neutral-500"/>
           <h2 id="pdf-title" class="min-w-0 truncate text-[14px] font-semibold text-neutral-900">{{ title }}</h2>
           <p class="shrink-0 font-mono text-[11.5px] text-neutral-500">
-            <template v-if="state === 'ready'">{{ pages }} {{ pages === 1 ? "page" : "pages" }} · {{ pageSize }} · {{ sizeText }}</template>
-            <template v-else-if="state === 'rendering'">Laying out {{ cellCount }} {{ cellCount === 1 ? "cell" : "cells" }}…</template>
+            <template v-if="state === 'ready'">{{ pages }} {{t('common.noun.page', { count: pages })}} · {{ pageSize }} · {{ sizeText }}</template>
+            <template v-else-if="state === 'rendering'">{{ t('reports.pdfPreviewSheet.layingOut', { cells: t('common.count.cell', { count: cellCount }) }) }}</template>
           </p>
-          <span v-if="slots" class="ui-tag shrink-0" :title="`${slots === 1 ? 'A figure or table the template asks for is' : `${slots} figures or tables the template asks for are`} not added yet; the PDF leaves ${slots === 1 ? 'it' : 'them'} out`">{{ slots }} to add, left out</span>
-          <span v-if="stale" class="ui-tag shrink-0" :title="`${stale} cells ran on another snapshot than the report runs on; the PDF shows them as they ran`">{{ stale }} not run on this snapshot</span>
+          <span v-if="slots" class="ui-tag shrink-0" :title="t('reports.pdfPreviewSheet.notAddedYetPdf', { value: slots === 1 ? t('reports.pdfPreviewSheet.figureTableTemplateAsks') : t('reports.pdfPreviewSheet.figuresTablesTemplateAsks', { slots }), them: t('common.noun.it', { count: slots }) })">{{ t('reports.pdfPreviewSheet.addLeftOut', { slots }) }}</span>
+          <span v-if="stale" class="ui-tag shrink-0" :title="t('reports.pdfPreviewSheet.cellsRanAnotherSnapshot', { stale })">{{ t('reports.pdfPreviewSheet.notRunSnapshot', { stale }) }}</span>
 
           <div class="ml-auto flex shrink-0 items-center gap-2">
-            <div class="ui-segmented" role="group" aria-label="Page size">
+            <div class="ui-segmented" role="group" :aria-label="t('reports.pdfPreviewSheet.pageSize')">
               <button type="button" :aria-pressed="pageSize === 'A4'" @click="setSize('A4')">A4</button>
-              <button type="button" :aria-pressed="pageSize === 'Letter'" @click="setSize('Letter')">Letter</button>
+              <button type="button" :aria-pressed="pageSize === 'Letter'" @click="setSize('Letter')">{{ t('reports.pdfPreviewSheet.letter') }}</button>
             </div>
             <span class="mx-1 h-5 w-px bg-neutral-200" aria-hidden="true"></span>
-            <button type="button" class="ui-btn ui-btn-sm" :disabled="state !== 'ready'" title="Open this PDF in the system's viewer" @click="openOutside">
-              <Icon icon="external-link" :size="13" class="text-neutral-500"/><span>Open in {{ viewerName }}</span>
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="state !== 'ready'" :title="t('reports.pdfPreviewSheet.openPdfSystemS')" @click="openOutside">
+              <Icon icon="external-link" :size="13" class="text-neutral-500"/><span>{{ t('reports.pdfPreviewSheet.open', { viewerName }) }}</span>
             </button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="state !== 'ready' || saving" title="Save this PDF (⌘S)" @click="save">
-              {{ saving ? "Saving…" : "Save PDF…" }}
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="state !== 'ready' || saving" :title="t('reports.pdfPreviewSheet.savePdfS')" @click="save">
+              {{ saving ? t('reports.pdfPreviewSheet.saving') : t('reports.pdfPreviewSheet.savePdf') }}
             </button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" aria-label="Close" title="Close (Esc)" @click="close"><Icon icon="x" :size="14"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :aria-label="t('reports.pdfPreviewSheet.close')" :title="t('reports.pdfPreviewSheet.closeEsc')" @click="close"><Icon icon="x" :size="14"/></button>
           </div>
         </header>
 
         <p v-if="savedPath" class="flex shrink-0 items-center gap-2 bg-accent-50 px-4 py-1.5 text-[12.5px] text-neutral-800 hairline-b" role="status">
           <Icon icon="check" :size="13" class="text-accent-700"/>
-          <span class="min-w-0 truncate">Saved to <span class="font-mono">{{ savedPath }}</span></span>
-          <button type="button" class="ml-auto shrink-0 font-medium text-accent-700 hover:underline" @click="reveal(savedPath)">Reveal</button>
+          <span class="min-w-0 truncate">{{ t('reports.pdfPreviewSheet.saved') }} <span class="font-mono">{{ savedPath }}</span></span>
+          <button type="button" class="ml-auto shrink-0 font-medium text-accent-700 hover:underline" @click="reveal(savedPath)">{{ t('reports.pdfPreviewSheet.reveal') }}</button>
         </p>
 
         <div class="relative min-h-0 flex-1 bg-neutral-200/70">
           <!-- The system's PDF view: the file itself, not a rendering of it. -->
-          <iframe v-if="url" :key="url" :src="url" class="absolute inset-0 h-full w-full border-0" :title="`${title}, PDF`"></iframe>
+          <iframe v-if="url" :key="url" :src="url" class="absolute inset-0 h-full w-full border-0" :title="t('reports.pdfPreviewSheet.pdf', { title })"></iframe>
 
           <!-- A page taking shape while Go lays it out. -->
           <div v-if="state === 'rendering'" class="absolute inset-0 flex items-start justify-center overflow-hidden pt-10" aria-hidden="true">
@@ -54,9 +54,9 @@
 
           <div v-if="state === 'error'" class="absolute inset-0 flex items-center justify-center">
             <div class="max-w-[440px] rounded-lg bg-surface px-5 py-4 text-center hairline">
-              <p class="text-sm font-medium text-neutral-900">The PDF could not be laid out</p>
+              <p class="text-sm font-medium text-neutral-900">{{ t('reports.pdfPreviewSheet.pdfCouldNotLaid') }}</p>
               <p class="mt-1 font-mono text-xs text-red-700">{{ error }}</p>
-              <button type="button" class="ui-btn ui-btn-sm mt-3" @click="render">Try again</button>
+              <button type="button" class="ui-btn ui-btn-sm mt-3" @click="render">{{ t('reports.pdfPreviewSheet.tryAgain') }}</button>
             </div>
           </div>
         </div>
@@ -73,6 +73,7 @@ import { usePlatform } from "~/platform/usePlatform";
 import { useReportsStore } from "~/features/reports/reports.store";
 import { useStateStore } from "~/platform/state.store";
 import { FILTERS, reveal, saveBase64 } from "~/platform/files";
+import { t } from "~/shared/i18n";
 
 const open = defineModel<boolean>({ default: false });
 const props = defineProps<{ blocked?: string | null }>();
@@ -89,11 +90,11 @@ const pages = ref(0);
 const bytes = ref(0);
 const saving = ref(false);
 const savedPath = ref("");
-const title = computed(() => reports.current?.title || "Report");
+const title = computed(() => reports.current?.title || t("reports.pdfPreviewSheet.report"));
 const cellCount = computed(() => reports.cells.length);
 const stale = computed(() => reports.stale.length);
 const slots = computed(() => reports.cells.filter(c => c.cell.spec.type === "slot").length);
-const viewerName = computed(() => (isMac.value ? "Preview" : isWindows.value ? "your PDF viewer" : "the PDF viewer"));
+const viewerName = computed(() => (isMac.value ? t("reports.pdfPreviewSheet.preview") : isWindows.value ? t("reports.pdfPreviewSheet.yourPdfViewer") : t("reports.pdfPreviewSheet.pdfViewer")));
 const sizeText = computed(() => (bytes.value < 1024 * 1024 ? `${Math.max(1, Math.round(bytes.value / 1024))} KB` : `${(bytes.value / 1024 / 1024).toFixed(1)} MB`));
 
 // The page size is a way of working, kept with the workspace.
@@ -151,7 +152,7 @@ async function save() {
   if (!b64.value) return;
   saving.value = true;
   try {
-    const path = await saveBase64(`${title.value}.pdf`, b64.value, [FILTERS.pdf], "Save the report as PDF");
+    const path = await saveBase64(`${title.value}.pdf`, b64.value, [FILTERS.pdf], t("reports.pdfPreviewSheet.saveReportPdf"));
     if (path) savedPath.value = path;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);

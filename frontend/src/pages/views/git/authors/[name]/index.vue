@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-0 grow overflow-y-auto">
-    <LoadingState v-if="loading" text="Reading author activity…"/>
-    <EmptyState v-else-if="error" title="Could not read author activity" :text="error" icon="alert"/>
-    <EmptyState v-else-if="!profile.row" title="No activity recorded" :text="`${name} made no commits to files in this snapshot.`" icon="user"/>
+    <LoadingState v-if="loading" :text="t('pages.gitAuthorsIndex.readingAuthorActivity')"/>
+    <EmptyState v-else-if="error" :title="t('pages.gitAuthorsIndex.couldNotReadAuthor')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="!profile.row" :title="t('pages.gitAuthorsIndex.noActivityRecorded')" :text="t('pages.gitAuthorsIndex.madeNoCommitsFiles', { name })" icon="user"/>
     <div v-else class="mx-auto w-full max-w-[1040px] px-6 pb-10 pt-5">
       <!-- Headline numbers: six cells, one hairline strip. -->
       <StatStrip :cells="strip"/>
@@ -11,21 +11,21 @@
       <!-- Knows best: where this author wrote the largest share of what is there. -->
       <section class="mt-8" aria-labelledby="knows-title">
         <div class="flex items-baseline justify-between">
-          <h3 id="knows-title" class="ui-section-title">Knows best</h3>
-          <span class="text-sm text-neutral-500">How much of each component they wrote, and which other active contributor wrote the most</span>
+          <h3 id="knows-title" class="ui-section-title">{{ t('pages.gitAuthorsIndex.knowsBest') }}</h3>
+          <span class="text-sm text-neutral-500">{{ t('pages.gitAuthorsIndex.howMuchEachComponent') }}</span>
         </div>
-        <LoadingState v-if="knowsLoading" text="Reading components…"/>
-        <p v-else-if="knows.length === 0" class="mt-2 text-sm text-neutral-500">No commits to a component in this snapshot.</p>
+        <LoadingState v-if="knowsLoading" :text="t('pages.gitAuthorsIndex.readingComponents')"/>
+        <p v-else-if="knows.length === 0" class="mt-2 text-sm text-neutral-500">{{ t('pages.gitAuthorsIndex.noCommitsComponentSnapshot') }}</p>
         <p v-else-if="alone.length" class="mt-2 text-sm text-neutral-600">
-          {{ alone.length === knows.length ? "In every one of these" : `In ${alone.length} of these` }}, no other active contributor wrote a tenth or more: {{ alone.slice(0, 3).join(", ") }}{{ alone.length > 3 ? ` and ${alone.length - 3} more` : "" }}.
+          {{ t('pages.gitAuthorsIndex.noOtherActiveContributor', { value: alone.length === knows.length ? t('pages.gitAuthorsIndex.everyOneThese') : t('pages.gitAuthorsIndex.these', { aloneLength: alone.length }), value2: alone.slice(0, 3).join(", "), value3: alone.length > 3 ? t('pages.gitAuthorsIndex.more', { value: alone.length - 3 }) : "" }) }}
         </p>
         <table v-else class="ui-table mt-2">
           <thead>
             <tr>
-              <th>Component</th>
-              <th class="w-[220px]">Share of lines added</th>
-              <th class="w-[220px]" title="The active contributor, other than them, who wrote the most of it">Next active contributor</th>
-              <th class="w-[100px] text-right">Commits</th>
+              <th>{{ t('pages.gitAuthorsIndex.component') }}</th>
+              <th class="w-[220px]">{{ t('pages.gitAuthorsIndex.shareLinesAdded') }}</th>
+              <th class="w-[220px]" :title="t('pages.gitAuthorsIndex.activeContributorOtherThan')">{{ t('pages.gitAuthorsIndex.nextActiveContributor') }}</th>
+              <th class="w-[100px] text-right">{{ t('pages.gitAuthorsIndex.commits') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -54,11 +54,11 @@
 
       <!-- Activity by period: the engine's day buckets for this author. -->
       <section class="mt-8" aria-labelledby="period-title">
-        <h3 id="period-title" class="ui-section-title">Activity by period</h3>
+        <h3 id="period-title" class="ui-section-title">{{ t('pages.gitAuthorsIndex.activityPeriod') }}</h3>
         <table class="ui-table mt-2">
           <thead>
             <tr>
-              <th>Metric</th>
+              <th>{{ t('pages.gitAuthorsIndex.metric') }}</th>
               <th v-for="p in periods" :key="p.id" class="w-[120px] text-right">{{ p.label }}</th>
             </tr>
           </thead>
@@ -74,18 +74,18 @@
       <!-- Works with: authors who committed to the same components. -->
       <section class="mt-8 hairline-t pt-5" aria-labelledby="partners-title">
         <div class="flex items-baseline justify-between">
-          <h3 id="partners-title" class="ui-section-title">Works with</h3>
-          <span class="text-sm text-neutral-500">Authors who committed to the same components</span>
+          <h3 id="partners-title" class="ui-section-title">{{ t('pages.gitAuthorsIndex.works') }}</h3>
+          <span class="text-sm text-neutral-500">{{ t('pages.gitAuthorsIndex.authorsWhoCommittedSame') }}</span>
         </div>
-        <LoadingState v-if="partnersLoading" text="Finding co-authors…"/>
-        <EmptyState v-else-if="partnersError" title="Could not read co-authors" :text="partnersError" icon="alert"/>
-        <EmptyState v-else-if="partners.length === 0" title="No co-authors" :text="`Nobody else has committed to the components ${name} touched.`" icon="users"/>
+        <LoadingState v-if="partnersLoading" :text="t('pages.gitAuthorsIndex.findingCoAuthors')"/>
+        <EmptyState v-else-if="partnersError" :title="t('pages.gitAuthorsIndex.couldNotReadCo')" :text="partnersError" icon="alert"/>
+        <EmptyState v-else-if="partners.length === 0" :title="t('pages.gitAuthorsIndex.noCoAuthors')" :text="t('pages.gitAuthorsIndex.nobodyElseHasCommitted', { name })" icon="users"/>
         <table v-else class="ui-table mt-2">
           <thead>
             <tr>
-              <th>Author</th>
-              <th class="w-[160px] text-right">Shared components</th>
-              <th class="w-[120px] text-right">Commits</th>
+              <th>{{ t('pages.gitAuthorsIndex.author') }}</th>
+              <th class="w-[160px] text-right">{{ t('pages.gitAuthorsIndex.sharedComponents') }}</th>
+              <th class="w-[120px] text-right">{{ t('pages.gitAuthorsIndex.commits') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -121,6 +121,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { componentPath } from "~/features/navigation/routes"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t, dateLocale } from "~/shared/i18n"
 
 const route = useRoute()
 const store = useDataStore()
@@ -157,12 +158,12 @@ const first = computed(() => profile.value.row?.first_commit as string | undefin
 const last = computed(() => profile.value.row?.last_commit as string | undefined)
 
 const strip = computed(() => [
-  { label: "Commits", value: formatNumber(total.value.commits) },
-  { label: "Additions", value: formatSigned(total.value.additions) },
-  { label: "Deletions", value: formatSigned(-total.value.deletions) },
-  { label: "Files changed", value: formatNumber(total.value.files) },
-  { label: "Components touched", value: formatNumber(total.value.components) },
-  { label: "Active", value: first.value ? `${formatMonthYear(first.value)} – ${formatMonthYear(last.value ?? first.value)}` : "—" },
+  { label: t("pages.gitAuthorsIndex.commits"), value: formatNumber(total.value.commits) },
+  { label: t("pages.gitAuthorsIndex.additions"), value: formatSigned(total.value.additions) },
+  { label: t("pages.gitAuthorsIndex.deletions"), value: formatSigned(-total.value.deletions) },
+  { label: t("pages.gitAuthorsIndex.filesChanged"), value: formatNumber(total.value.files) },
+  { label: t("pages.gitAuthorsIndex.componentsTouched"), value: formatNumber(total.value.components) },
+  { label: t("pages.gitAuthorsIndex.active"), value: first.value ? `${formatMonthYear(first.value)} – ${formatMonthYear(last.value ?? first.value)}` : "—" },
 ])
 
 // Every period column reads 0 for someone who stopped a while ago; say that
@@ -171,17 +172,17 @@ const quietFor = computed(() => {
   const days = Number(profile.value.row?.days_since_last)
   if (!Number.isFinite(days) || days < 180) return ""
   const years = days / 365
-  const span = years >= 1.5 ? `${years.toFixed(1)} years` : `${Math.round(days / 30)} months`
-  return `No commits in the ${span} before this scan; the last was in ${formatMonthYear(last.value ?? "")}.`
+  const span = years >= 1.5 ? t("pages.gitAuthorsIndex.years", { years: years.toFixed(1) }) : t("pages.gitAuthorsIndex.months", { value: Math.round(days / 30) })
+  return t("pages.gitAuthorsIndex.noCommitsBeforeScan", { span, value: formatMonthYear(last.value ?? "") })
 })
 
 const periods = AUTHOR_PERIODS
 const periodMetrics: Array<{ key: keyof AuthorPeriodStats; label: string }> = [
-  { key: "commits", label: "Commits" },
-  { key: "additions", label: "Additions" },
-  { key: "deletions", label: "Deletions" },
-  { key: "files", label: "Files changed" },
-  { key: "components", label: "Components changed" },
+  { key: "commits", label: t("pages.gitAuthorsIndex.commits") },
+  { key: "additions", label: t("pages.gitAuthorsIndex.additions") },
+  { key: "deletions", label: t("pages.gitAuthorsIndex.deletions") },
+  { key: "files", label: t("pages.gitAuthorsIndex.filesChanged") },
+  { key: "components", label: t("pages.gitAuthorsIndex.componentsChanged") },
 ]
 
 // Knows best: the components where this author added the largest share of
@@ -234,6 +235,6 @@ const { data: partners, loading: partnersLoading, error: partnersError } = useAs
 function formatMonthYear(value: string): string {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+  return d.toLocaleDateString(dateLocale, { month: "short", year: "numeric" })
 }
 </script>

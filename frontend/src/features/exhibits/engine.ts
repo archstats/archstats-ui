@@ -6,6 +6,7 @@
 import { stableKey } from "./schema"
 import type { Snapshot } from "~/features/snapshot/snapshot"
 import { isAbsent, type Absent, type ExhibitDef, type ExhibitPart, type ExhibitRanOn, type ExhibitSpec, type Fact, type ResolveContext } from "./types"
+import { t } from "~/shared/i18n"
 
 // The definitions are registered by the catalog (features/exhibit-catalog),
 // which knows every feature; the engine knows none of them.
@@ -27,7 +28,7 @@ export function registerSnapshotSource(source: (scanId: string) => Promise<Snaps
 }
 
 export function snapshotOf(scanId: string): Promise<Snapshot> {
-    if (!snapshotSource) return Promise.reject(new Error("No snapshot source is registered: import ~/features/exhibit-catalog/app."))
+    if (!snapshotSource) return Promise.reject(new Error(t("exhibits.engine.noSnapshotSourceRegistered")))
     return snapshotSource(scanId)
 }
 
@@ -41,7 +42,7 @@ export type Checked = { spec: ExhibitSpec; def: ExhibitDef; dropped: string[] }
 /** A spec made valid, or why it cannot be. */
 export function check(kind: string, params: unknown): Checked | { error: string } {
     const def = defOf(kind)
-    if (!def) return { error: `No exhibit "${kind}".` }
+    if (!def) return { error: t("exhibits.engine.noExhibit", { kind }) }
     const parsed = def.params.parse(params)
     if ("error" in parsed) return parsed
     return { def, spec: { kind: def.kind, v: def.v, params: parsed.value as Record<string, unknown> }, dropped: parsed.dropped }
@@ -54,7 +55,7 @@ const CACHE_MAX = 60
 
 export function resolve(spec: ExhibitSpec, ctx: ResolveContext): Promise<unknown | Absent> {
     const def = defOf(spec.kind)
-    if (!def) return Promise.resolve({ absent: `No exhibit "${spec.kind}".` })
+    if (!def) return Promise.resolve({ absent: t("exhibits.engine.noExhibit", { kind: spec.kind }) })
     const key = `${ctx.snap.scanId}|${spec.kind}|${spec.v}|${stableKey(spec.params)}`
     let hit = cache.get(key)
     if (!hit) {
@@ -80,7 +81,7 @@ export interface Presented {
 /** An exhibit made for a conversation: computed, stated as facts, kept as a part. */
 export async function present(spec: ExhibitSpec, ctx: ResolveContext & { id: string; ranOn: ExhibitRanOn }): Promise<Presented | Absent> {
     const def = defOf(spec.kind)
-    if (!def) return { absent: `No exhibit "${spec.kind}".` }
+    if (!def) return { absent: t("exhibits.engine.noExhibit", { kind: spec.kind }) }
     const data = await resolve(spec, ctx)
     if (isAbsent(data)) return data
     const title = def.title(spec.params, data)

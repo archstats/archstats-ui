@@ -1,6 +1,6 @@
 <template>
   <ViewWorkspaceLayout
-    title="Cycles"
+    :title="t('pages.cyclesView.cycles')"
     v-model:search-query="searchQuery"
     v-model:is-sidebar-open="isSidebarOpen"
     v-model:active-tab="activeTab"
@@ -8,32 +8,32 @@
     sidebar-width="380px"
   >
     <template #stats>
-      <span v-if="tangles.length">{{ tangles.length }} {{ tangles.length === 1 ? "tangle" : "tangles" }} · {{ fmt(tangledCount) }} of {{ fmt(componentCount) }} components · {{ fmt(listedCycles.length) }} listed cycles</span>
+      <span v-if="tangles.length">{{ t('pages.cyclesView.componentsListedCycles', { tangles: t('common.count.tangle', { count: tangles.length }), tangledCount: fmt(tangledCount), componentCount: fmt(componentCount), listedCyclesLength: fmt(listedCycles.length) }) }}</span>
     </template>
 
     <template #switches>
-      <div v-if="tangle" class="ui-segmented" role="group" aria-label="Draw the tangle as">
-        <button type="button" :aria-pressed="mode === 'graph'" title="Levels, left to right: the imports back against them arc underneath" @click="mode = 'graph'">Levels</button>
-        <button type="button" :aria-pressed="mode === 'matrix'" title="Row imports column, in the same order: below the diagonal runs against the levels" @click="mode = 'matrix'">Matrix</button>
+      <div v-if="tangle" class="ui-segmented" role="group" :aria-label="t('pages.cyclesView.drawTangle')">
+        <button type="button" :aria-pressed="mode === 'graph'" :title="t('pages.cyclesView.levelsLeftRightImports')" @click="mode = 'graph'">{{ t('pages.cyclesView.levels') }}</button>
+        <button type="button" :aria-pressed="mode === 'matrix'" :title="t('pages.cyclesView.rowImportsColumnSame')" @click="mode = 'matrix'">{{ t('pages.cyclesView.matrix') }}</button>
       </div>
     </template>
 
     <template #visualizer>
-      <EmptyState v-if="!store.hasData" icon="recycle" title="No snapshot open" text="Open a scan to look for dependency cycles."/>
+      <EmptyState v-if="!store.hasData" icon="recycle" :title="t('pages.cyclesView.noSnapshotOpen')" :text="t('pages.cyclesView.openScanLookDependency')"/>
       <div v-else-if="!tangles.length" class="flex h-full flex-col items-center justify-center px-8 text-center">
         <Icon icon="recycle" :size="22" class="text-neutral-300"/>
-        <h2 class="mt-3 text-lg font-semibold text-neutral-900">No component is in a tangle</h2>
-        <p class="mt-2 max-w-[460px] text-sm leading-6 text-neutral-600">Every import chain between the {{ fmt(componentCount) }} components runs one way, so there is no cycle to break. That holds for runtime imports; type-only imports are left out, as the engine leaves them out.</p>
+        <h2 class="mt-3 text-lg font-semibold text-neutral-900">{{ t('pages.cyclesView.noComponentTangle') }}</h2>
+        <p class="mt-2 max-w-[460px] text-sm leading-6 text-neutral-600">{{ t('pages.cyclesView.everyImportChainBetween', { componentCount: fmt(componentCount) }) }}</p>
       </div>
       <div v-else-if="!scopedTangles.length" class="flex h-full items-center justify-center">
-        <EmptyState icon="recycle" title="No tangle in scope" :text="`No tangle has a component of ${scopeLabel() || 'the active scope'}.`">
-          <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">Clear scope</button>
+        <EmptyState icon="recycle" :title="t('pages.cyclesView.noTangleScope')" :text="t('pages.cyclesView.noTangleHasComponent', { value: scopeLabel() || t('pages.cyclesView.activeScope') })">
+          <button type="button" class="ui-btn ui-btn-sm" @click="scope.clear()">{{ t('pages.cyclesView.clearScope') }}</button>
         </EmptyState>
       </div>
 
       <template v-else-if="tangle && layout">
         <!-- Every tangle, to scale: the knot the snapshot has, and which one is open. -->
-        <div class="flex shrink-0 items-center gap-3 px-4 py-2.5 hairline-b" role="tablist" aria-label="Tangles">
+        <div class="flex shrink-0 items-center gap-3 px-4 py-2.5 hairline-b" role="tablist" :aria-label="t('pages.cyclesView.tangles')">
           <div class="flex min-w-0 flex-1 gap-[3px]">
             <button
               v-for="(tg, i) in scopedTangles"
@@ -44,30 +44,30 @@
               class="group/tg relative flex h-7 min-w-[18px] items-center justify-center rounded-[4px] font-mono text-[11px] tabular-nums transition-colors"
               :class="tg.key === tangle.key ? 'bg-accent-500 text-on-accent' : tg.matches ? 'bg-accent-200 text-accent-900 hover:bg-accent-300' : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300 hover:text-neutral-900'"
               :style="{ flex: `${tg.members.length} 1 0` }"
-              :title="`Tangle ${i + 1}: ${tg.members.length} components, ${fmt(tg.lines)} lines, ${fmt(tg.cycles)} listed cycles`"
+              :title="t('pages.cyclesView.tangleComponentsLinesListed', { value: i + 1, membersLength: tg.members.length, lines: fmt(tg.lines), cycles: fmt(tg.cycles) })"
               @click="selectTangle(tg.key)"
             >
               <span v-if="tg.members.length >= 3 || scopedTangles.length <= 8">{{ tg.members.length }}</span>
             </button>
           </div>
-          <span class="shrink-0 text-[12px] text-neutral-500">components per tangle</span>
+          <span class="shrink-0 text-[12px] text-neutral-500">{{ t('pages.cyclesView.componentsPerTangle') }}</span>
         </div>
 
         <ExhibitFrame header="custom" fill class="min-h-0 grow">
           <!-- What this one is, and what the cuts have done to it. -->
           <div class="flex h-11 shrink-0 items-center gap-3 px-4 hairline-b">
-            <span class="shrink-0 whitespace-nowrap text-[13px] font-semibold text-neutral-900">Tangle {{ tangleNumber }}</span>
-            <span v-if="prefix" class="min-w-0 max-w-[32%] shrink truncate font-mono text-[12px] text-neutral-500" :title="`Names below leave out ${prefix}`">in {{ prefix.replace(/[./]$/, "") }}</span>
+            <span class="shrink-0 whitespace-nowrap text-[13px] font-semibold text-neutral-900">{{ t('pages.cyclesView.tangle', { tangleNumber }) }}</span>
+            <span v-if="prefix" class="min-w-0 max-w-[32%] shrink truncate font-mono text-[12px] text-neutral-500" :title="t('pages.cyclesView.namesBelowLeaveOut', { prefix })">{{ t('pages.cyclesView.in', { replace: prefix.replace(/[./]$/, "") }) }}</span>
             <span class="ui-toolbar-meta flex min-w-0 shrink items-center gap-1.5 truncate">
-              <span class="whitespace-nowrap">{{ tangle.members.length }} components</span><span class="text-neutral-300">·</span>
-              <span class="whitespace-nowrap">{{ fmt(tangle.lines) }} lines</span><span class="text-neutral-300">·</span>
-              <span class="whitespace-nowrap">{{ layout.layers.length }} levels</span><span class="text-neutral-300">·</span>
-              <span class="whitespace-nowrap">{{ fmt(tangle.cycles) }} listed cycles</span>
-              <template v-if="crossed.length > 1"><span class="text-neutral-300">·</span><span class="whitespace-nowrap" :title="crossed.map(c => `${c.name}: ${c.count}`).join('\n')">{{ crossed.length }} groups</span></template>
+              <span class="whitespace-nowrap">{{ t('pages.cyclesView.components', { membersLength: tangle.members.length }) }}</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ t('pages.cyclesView.lines', { lines: fmt(tangle.lines) }) }}</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ t('pages.cyclesView.levels2', { layersLength: layout.layers.length }) }}</span><span class="text-neutral-300">·</span>
+              <span class="whitespace-nowrap">{{ t('pages.cyclesView.listedCycles', { cycles: fmt(tangle.cycles) }) }}</span>
+              <template v-if="crossed.length > 1"><span class="text-neutral-300">·</span><span class="whitespace-nowrap" :title="crossed.map(c => `${c.name}: ${c.count}`).join('\n')">{{ t('pages.cyclesView.groups', { crossedLength: crossed.length }) }}</span></template>
             </span>
             <div class="ml-auto flex shrink-0 items-center gap-1.5">
-              <PinButton kind="cycle" :entity-key="[...tangle.members].sort().join('\n')" :title="`Tangle of ${tangle.members.length} components`" :values="{ size: tangle.members.length }"/>
-              <button type="button" class="ui-btn ui-btn-sm" title="Its components become a group" @click="saveAsGroup"><Icon icon="bookmark" :size="13" class="text-neutral-500"/><span>Save as group</span></button>
+              <PinButton kind="cycle" :entity-key="[...tangle.members].sort().join('\n')" :title="t('pages.cyclesView.tangleComponents', { membersLength: tangle.members.length })" :values="{ size: tangle.members.length }"/>
+              <button type="button" class="ui-btn ui-btn-sm" :title="t('pages.cyclesView.componentsBecomeGroup')" @click="saveAsGroup"><Icon icon="bookmark" :size="13" class="text-neutral-500"/><span>{{ t('pages.cyclesView.saveGroup') }}</span></button>
               <!-- The drawing below exports from its own header, beside Pin. -->
               <ExhibitButton class="ml-1"/>
             </div>
@@ -76,11 +76,11 @@
           <!-- The cuts, as they stand: always here, so cutting never moves the drawing. -->
           <div class="flex h-9 shrink-0 items-center gap-3 px-4 text-[12.5px] hairline-b" role="status">
             <template v-if="cut.size">
-              <span class="text-neutral-900"><span class="font-semibold tabular-nums">{{ cut.size }}</span> {{ cut.size === 1 ? "cut" : "cuts" }}: <span class="font-semibold tabular-nums">{{ after.freed.size }}</span> of {{ tangle.members.length }} components out of any tangle</span>
-              <span class="text-neutral-500">{{ after.tangles.length ? `${after.tangles.length} ${after.tangles.length === 1 ? "tangle" : "tangles"} left (${after.tangles.map(t => t.length).join(", ")})` : "no cycle left" }}</span>
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">Undo cuts</button>
+              <span class="text-neutral-900"><I18nT k="pages.cyclesView.componentsOutAnyTangle"><template #cutSize><span class="font-semibold tabular-nums">{{ cut.size }}</span></template><template #value>{{t('common.noun.cut', { count: cut.size })}}</template><template #freedSize><span class="font-semibold tabular-nums">{{ after.freed.size }}</span></template><template #membersLength>{{ tangle.members.length }}</template></I18nT></span>
+              <span class="text-neutral-500">{{ after.tangles.length ? t('pages.cyclesView.left', { tangles: t('common.count.tangle', { count: after.tangles.length }), value: after.tangles.map(t => t.length).join(", ") }) : t('pages.cyclesView.noCycleLeft') }}</span>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="setCuts([])">{{ t('pages.cyclesView.undoCuts') }}</button>
             </template>
-            <span v-else class="text-neutral-500">Nothing cut yet. The guide on the right takes you through {{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }} that undo this knot, the one that frees most first.</span>
+            <span v-else class="text-neutral-500">{{ t('pages.cyclesView.nothingCutYetGuide', { cuts: t('common.count.cut', { count: plan.length }) }) }}</span>
           </div>
 
           <div class="relative min-h-0 grow">
@@ -131,28 +131,26 @@
         <!-- Where the walk is. -->
         <div>
           <div class="flex items-baseline text-[12px] text-neutral-500">
-            <span class="flex-1">{{ guideStep === 0 ? "Before you start" : guideStep > plan.length || !after.tangles.length ? "Done" : `Cut ${guideStep} of ${plan.length}` }}</span>
-            <span class="tabular-nums">{{ after.freed.size }} of {{ tangle.members.length }} free</span>
+            <span class="flex-1">{{ guideStep === 0 ? t('pages.cyclesView.beforeYouStart') : guideStep > plan.length || !after.tangles.length ? t('pages.cyclesView.done') : t('pages.cyclesView.cut', { guideStep, planLength: plan.length }) }}</span>
+            <span class="tabular-nums">{{ t('pages.cyclesView.free', { freedSize: after.freed.size, membersLength: tangle.members.length }) }}</span>
           </div>
-          <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200" role="progressbar" :aria-valuenow="after.freed.size" :aria-valuemax="tangle.members.length" aria-label="Components out of the knot">
+          <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200" role="progressbar" :aria-valuenow="after.freed.size" :aria-valuemax="tangle.members.length" :aria-label="t('pages.cyclesView.componentsOutKnot')">
             <div class="h-full rounded-full bg-accent-500 transition-[width] duration-500 ease-out" :style="{ width: `${(100 * after.freed.size) / tangle.members.length}%` }"></div>
           </div>
         </div>
 
         <!-- What the drawing shows, in plain words. -->
         <section v-if="guideStep === 0" class="flex flex-col gap-3 text-[13px] leading-[1.6] text-neutral-800">
-          <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">These {{ tangle.members.length }} components are knotted together</h3>
-          <p>Follow the imports from any one of them and you reach all the others. That is what a cycle is, and it means none of them can be changed, tested or released on its own.</p>
+          <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ t('pages.cyclesView.theseComponentsKnottedTogether', { membersLength: tangle.members.length }) }}</h3>
+          <p>{{ t('pages.cyclesView.followImportsAnyOne') }}</p>
           <p>
-            The drawing puts them in order, top to bottom, so that most imports point down
-            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-neutral-400))" stroke-width="1.5"/></svg>.
-            The {{ layout.against.length }} in orange point back up
-            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-accent-500))" stroke-width="2.5"/></svg>:
-            each of those closes loops. Cut them and the knot comes apart.
+            {{ t('pages.cyclesView.drawingPutsThemOrder') }}
+            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-neutral-400))" stroke-width="1.5"/></svg>{{ t('pages.cyclesView.orangePointBackUp', { againstLength: layout.against.length }) }}
+            <svg width="20" height="8" class="inline align-middle" aria-hidden="true"><path d="M1 4 H19" stroke="rgb(var(--c-accent-500))" stroke-width="2.5"/></svg>{{ t('pages.cyclesView.eachThoseClosesLoops') }}
           </p>
-          <p>{{ plan.length }} of them are enough. This guide takes them one at a time, the one that frees the most first, and shows the loop each one closes and the lines of code it is.</p>
-          <p class="text-[12px] leading-5 text-neutral-500">Cutting here changes nothing in the code or the snapshot; it shows what the change would do.</p>
-          <button type="button" class="ui-btn ui-btn-primary self-start" @click="goStep(1)">Start with the first cut<Icon icon="arrow-right" :size="14"/></button>
+          <p>{{ t('pages.cyclesView.themEnoughGuideTakes', { planLength: plan.length }) }}</p>
+          <p class="text-[12px] leading-5 text-neutral-500">{{ t('pages.cyclesView.cuttingHereChangesNothing') }}</p>
+          <button type="button" class="ui-btn ui-btn-primary self-start" @click="goStep(1)">{{ t('pages.cyclesView.startFirstCut') }}<Icon icon="arrow-right" :size="14"/></button>
         </section>
 
         <!-- One cut. -->
@@ -163,58 +161,53 @@
             <span>{{ shortName(guideCurrent.to) }}</span>
           </h3>
           <p class="text-[13px] leading-[1.6] text-neutral-800">
-            <code class="gd-name">{{ shortName(guideCurrent.from) }}</code> imports <code class="gd-name">{{ shortName(guideCurrent.to) }}</code>,
-            <template v-if="!guideLoop || guideLoop.length < 2">and the cuts before it already broke the way back.</template>
-            <template v-else-if="guideLoop.length === 2">and <code class="gd-name">{{ shortName(guideCurrent.to) }}</code> imports it straight back.</template>
-            <template v-else>and <code class="gd-name">{{ shortName(guideCurrent.to) }}</code> leads back to it through <template v-for="(n, i) in guideLoop.slice(2, 5)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(3, guideLoop.length - 2) - 1 ? ", " : "" }}</template><template v-if="guideLoop.length > 5"> and {{ guideLoop.length - 5 }} more</template>.</template>
-            That loop is lit in the drawing.
-          </p>
+            <I18nT k="pages.cyclesView.importsLoopLitDrawing"><template #from><code class="gd-name">{{ shortName(guideCurrent.from) }}</code></template><template #to><code class="gd-name">{{ shortName(guideCurrent.to) }}</code></template><template #back><template v-if="!guideLoop || guideLoop.length < 2">{{ t('pages.cyclesView.cutsBeforeAlreadyBroke') }}</template><template v-else-if="guideLoop.length === 2"><I18nT k="pages.cyclesView.importsStraightBack"><template #to><code class="gd-name">{{ shortName(guideCurrent.to) }}</code></template></I18nT></template><template v-else><I18nT k="pages.cyclesView.leadsBackThrough"><template #to><code class="gd-name">{{ shortName(guideCurrent.to) }}</code></template><template #value><template v-for="(n, i) in guideLoop.slice(2, 5)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(3, guideLoop.length - 2) - 1 ? ", " : "" }}</template></template><template #more><template v-if="guideLoop.length > 5">{{ ' ' + t('pages.cyclesView.more', { value: guideLoop.length - 5 }) }}</template></template></I18nT></template></template></I18nT> </p>
           <p class="rounded-md bg-accent-50 px-3 py-2 text-[13px] leading-[1.55] text-neutral-900">
-            <template v-if="guideEffect.freed.length">Cutting it frees <b>{{ guideEffect.freed.length }} {{ guideEffect.freed.length === 1 ? "component" : "components" }}</b>: <template v-for="(n, i) in guideEffect.freed.slice(0, 6)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(6, guideEffect.freed.length) - 1 ? ", " : "" }}</template><template v-if="guideEffect.freed.length > 6"> and {{ guideEffect.freed.length - 6 }} more</template>.</template>
-            <template v-else-if="guideEffect.split">Cutting it frees no one yet, but splits the knot in {{ guideEffect.after.length }}: {{ guideEffect.after.join(" and ") }} components.</template>
-            <template v-else-if="guideEffect.already">It is cut.</template>
-            <template v-else>On its own it frees no one yet; it opens the way for the cuts after it.</template>
+            <template v-if="guideEffect.freed.length">{{ t('pages.cyclesView.cuttingFrees') }} <b>{{ t('common.count.component', { count: guideEffect.freed.length }) }}</b>: <template v-for="(n, i) in guideEffect.freed.slice(0, 6)" :key="n"><code class="gd-name">{{ shortName(n) }}</code>{{ i < Math.min(6, guideEffect.freed.length) - 1 ? ", " : "" }}</template><template v-if="guideEffect.freed.length > 6">{{ ' ' + t('pages.cyclesView.more', { value: guideEffect.freed.length - 6 }) }}</template>.</template>
+            <template v-else-if="guideEffect.split">{{ t('pages.cyclesView.cuttingFreesNoOne', { afterLength: guideEffect.after.length, value: listOf(guideEffect.after) }) }}</template>
+            <template v-else-if="guideEffect.already">{{ t('pages.cyclesView.cut2') }}</template>
+            <template v-else>{{ t('pages.cyclesView.ownFreesNoOne') }}</template>
           </p>
 
           <div class="flex flex-col gap-1.5">
-            <h4 class="ui-label">What to change: {{ guideCurrent.imports }} {{ guideCurrent.imports === 1 ? "import" : "imports" }} in {{ guideCurrent.files }} {{ guideCurrent.files === 1 ? "file" : "files" }}</h4>
-            <p v-if="guideLinesLoading" class="text-[12px] text-neutral-500">Reading the code…</p>
+            <h4 class="ui-label">{{ t('pages.cyclesView.whatChange', { imports: t('common.count.import', { count: guideCurrent.imports }), files: t('common.count.file', { count: guideCurrent.files }) }) }}</h4>
+            <p v-if="guideLinesLoading" class="text-[12px] text-neutral-500">{{ t('pages.cyclesView.readingCode') }}</p>
             <ul v-else class="flex flex-col gap-1.5">
               <li v-for="l in guideLines" :key="`${l.file}:${l.line}`" class="overflow-hidden rounded-md bg-neutral-50 hairline">
                 <router-link :to="fileSourcePath(l.file, l.line)" class="flex items-baseline gap-2 px-2.5 pt-1.5 text-[11.5px] text-neutral-600 hover:text-neutral-950" :title="l.file">
-                  <span class="min-w-0 truncate font-medium">{{ l.file.split("/").pop() }}</span><span class="shrink-0 font-mono text-neutral-400">line {{ l.line }}</span>
+                  <span class="min-w-0 truncate font-medium">{{ l.file.split("/").pop() }}</span><span class="shrink-0 font-mono text-neutral-400">{{ t('pages.cyclesView.line', { line: l.line }) }}</span>
                 </router-link>
-                <pre class="overflow-x-auto px-2.5 pb-1.5 pt-0.5 font-mono text-[12px] leading-5 text-neutral-900">{{ l.text || "(line not kept in the snapshot)" }}</pre>
+                <pre class="overflow-x-auto px-2.5 pb-1.5 pt-0.5 font-mono text-[12px] leading-5 text-neutral-900">{{ l.text || t('pages.cyclesView.lineNotKeptSnapshot') }}</pre>
               </li>
             </ul>
-            <p v-if="guideMoreLines" class="text-[11.5px] text-neutral-500">And {{ guideMoreLines }} more; Selection lists every file.</p>
-            <p v-if="cochange.get(edgeId(guideCurrent.from, guideCurrent.to))" class="text-[11.5px] leading-4 text-neutral-500">The two components changed together in {{ cochange.get(edgeId(guideCurrent.from, guideCurrent.to)) }} commits.</p>
+            <p v-if="guideMoreLines" class="text-[11.5px] text-neutral-500">{{ t('pages.cyclesView.moreSelectionListsEvery', { guideMoreLines }) }}</p>
+            <p v-if="cochange.get(edgeId(guideCurrent.from, guideCurrent.to))" class="text-[11.5px] leading-4 text-neutral-500">{{ t('pages.cyclesView.twoComponentsChangedTogether', { edgeId: cochange.get(edgeId(guideCurrent.from, guideCurrent.to)) }) }}</p>
           </div>
 
           <div class="flex items-center gap-2 pt-1">
-            <button type="button" class="ui-btn ui-btn-primary" :title="guideEffect.already ? 'Next cut (→)' : 'Cut it and go to the next (→ or ↵)'" @click="cutAndNext">{{ guideEffect.already ? "Next cut" : "Cut it, next" }}<Icon icon="arrow-right" :size="14"/></button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Leave it, go to the next (S)" @click="goStep(guideStep + 1)">Skip</button>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :disabled="guideStep <= 0" title="Back (←)" @click="goStep(guideStep - 1)"><Icon icon="arrow-left" :size="13"/>Back</button>
+            <button type="button" class="ui-btn ui-btn-primary" :title="guideEffect.already ? t('pages.cyclesView.nextCut') : t('pages.cyclesView.cutGoNext')" @click="cutAndNext">{{ guideEffect.already ? t('pages.cyclesView.nextCut2') : t('pages.cyclesView.cutNext') }}<Icon icon="arrow-right" :size="14"/></button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.cyclesView.leaveGoNextS')" @click="goStep(guideStep + 1)">{{ t('pages.cyclesView.skip') }}</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" :disabled="guideStep <= 0" :title="t('pages.cyclesView.back')" @click="goStep(guideStep - 1)"><Icon icon="arrow-left" :size="13"/>{{ t('pages.cyclesView.back2') }}</button>
           </div>
         </section>
 
         <!-- The end of the walk. -->
         <section v-else class="flex flex-col gap-3 text-[13px] leading-[1.6] text-neutral-800">
           <template v-if="!after.tangles.length">
-            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">The knot is undone</h3>
-            <p>With {{ cut.size }} {{ cut.size === 1 ? "cut" : "cuts" }} ({{ fmt(cutImports) }} {{ cutImports === 1 ? "import" : "imports" }}), all {{ tangle.members.length }} components are free: every import chain among them runs one way.</p>
+            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ t('pages.cyclesView.knotUndone') }}</h3>
+            <p>{{ t('pages.cyclesView.allComponentsFreeEvery', { cuts: t('common.count.cut', { count: cut.size }), imports: t('common.count.import', { count: cutImports }), membersLength: tangle.members.length }) }}</p>
           </template>
           <template v-else>
-            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ after.freed.size }} of {{ tangle.members.length }} free</h3>
-            <p>You skipped some cuts, so {{ after.tangles.reduce((s, t) => s + t.length, 0) }} components are still knotted. Go back to a skipped cut, or apply the rest in All cuts.</p>
+            <h3 class="text-[15px] font-semibold leading-6 text-neutral-950">{{ t('pages.cyclesView.free', { freedSize: after.freed.size, membersLength: tangle.members.length }) }}</h3>
+            <p>{{ t('pages.cyclesView.youSkippedSomeCuts', { reduce: after.tangles.reduce((s, t) => s + t.length, 0) }) }}</p>
           </template>
-          <p>Next: export the plan for a report (⌘E).</p>
+          <p>{{ t('pages.cyclesView.nextExportPlanReport') }}</p>
           <div class="flex flex-wrap gap-2">
-            <button type="button" class="ui-btn ui-btn-sm" @click="goStep(0)">Start over</button>
-            <button v-if="nextTangle" type="button" class="ui-btn ui-btn-sm" @click="selectTangle(nextTangle.key)">Next knot ({{ nextTangle.members.length }})<Icon icon="arrow-right" :size="13"/></button>
+            <button type="button" class="ui-btn ui-btn-sm" @click="goStep(0)">{{ t('pages.cyclesView.startOver') }}</button>
+            <button v-if="nextTangle" type="button" class="ui-btn ui-btn-sm" @click="selectTangle(nextTangle.key)">{{ t('pages.cyclesView.nextKnot', { membersLength: nextTangle.members.length }) }}<Icon icon="arrow-right" :size="13"/></button>
           </div>
         </section>
-        <p v-if="guideCurrent && after.tangles.length" class="text-[11px] text-neutral-400">→ or ↵ cut and go on · S skip · ← back</p>
+        <p v-if="guideCurrent && after.tangles.length" class="text-[11px] text-neutral-400">{{ t('pages.cyclesView.cutGoSSkip') }}</p>
       </div>
     </template>
 
@@ -223,15 +216,14 @@
       <div v-if="tangle && layout" class="flex flex-col gap-4">
         <section>
           <p class="text-[13px] leading-5 text-neutral-900">
-            <span class="font-semibold">{{ plan.length }} {{ plan.length === 1 ? "cut" : "cuts" }}</span>, {{ fmt(planImports) }} {{ planImports === 1 ? "import" : "imports" }} in {{ fmt(planFiles) }} {{ planFiles === 1 ? "file" : "files" }}, leave no cycle in this tangle.
-            <template v-if="firstHalf"> The first {{ firstHalf.step }} free half of it.</template>
+            <I18nT k="pages.cyclesView.leaveNoCycleTangle"><template #icon><span class="font-semibold">{{ plan.length }} {{t('common.noun.cut', { count: plan.length })}}</span></template><template #planImports>{{ fmt(planImports) }}</template><template #value>{{t('common.noun.import', { count: planImports })}}</template><template #planFiles>{{ fmt(planFiles) }}</template><template #value2>{{t('common.noun.file', { count: planFiles })}}</template><template #firstFreeHalf><template v-if="firstHalf">{{ ' ' + t('pages.cyclesView.firstFreeHalf', { step: firstHalf.step }) }}</template></template></I18nT>
           </p>
-          <p class="mt-1 text-[11.5px] leading-4 text-neutral-500">A plan, not the only one: each step takes the cut that untangles most, then the fewest imports. {{ totals ? `Across all ${tangles.length} tangles: ${fmt(totals.cuts)} cuts, ${fmt(totals.imports)} imports.` : "" }}</p>
+          <p class="mt-1 text-[11.5px] leading-4 text-neutral-500">{{ t('pages.cyclesView.planNotOnlyOne', { value: totals ? t('pages.cyclesView.acrossAllTanglesCuts', { tanglesLength: tangles.length, cuts: fmt(totals.cuts), imports: fmt(totals.imports) }) : "" }) }}</p>
         </section>
 
         <!-- How fast it comes apart. -->
-        <section aria-label="Components still tangled, cut by cut">
-          <svg :viewBox="`0 0 ${CW} ${CH}`" class="block w-full cursor-pointer" role="img" :aria-label="`${tangle.members.length} components tangled before any cut, none after ${plan.length}`" @click="onCurveClick">
+        <section :aria-label="t('pages.cyclesView.componentsStillTangledCut')">
+          <svg :viewBox="`0 0 ${CW} ${CH}`" class="block w-full cursor-pointer" role="img" :aria-label="t('pages.cyclesView.componentsTangledBeforeAny', { membersLength: tangle.members.length, planLength: plan.length })" @click="onCurveClick">
             <line :x1="PADL" :y1="CH - PADB" :x2="CW - 4" :y2="CH - PADB" stroke="rgb(var(--c-neutral-200))"/>
             <path :d="curve.area" fill="rgb(var(--c-accent-200) / 0.45)"/>
             <path :d="curve.line" fill="none" stroke="rgb(var(--c-accent-500))" stroke-width="1.75"/>
@@ -239,23 +231,23 @@
             <circle :cx="curve.x(cut.size)" :cy="curve.y(tangledAt(cut.size))" r="3.5" fill="rgb(var(--c-neutral-900))"/>
             <text :x="PADL - 6" y="12" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))" font-family="JetBrains Mono, monospace">{{ tangle.members.length }}</text>
             <text :x="PADL - 6" :y="CH - PADB" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))" font-family="JetBrains Mono, monospace">0</text>
-            <text :x="PADL" :y="CH - 2" font-size="10" fill="rgb(var(--c-neutral-500))">no cut</text>
-            <text :x="CW - 4" :y="CH - 2" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))">{{ plan.length }} cuts</text>
+            <text :x="PADL" :y="CH - 2" font-size="10" fill="rgb(var(--c-neutral-500))">{{ t('pages.cyclesView.noCut') }}</text>
+            <text :x="CW - 4" :y="CH - 2" text-anchor="end" font-size="10" fill="rgb(var(--c-neutral-500))">{{ t('pages.cyclesView.cuts', { planLength: plan.length }) }}</text>
           </svg>
           <label class="mt-1 flex items-center gap-3 text-[12px] text-neutral-600">
-            <span class="w-[92px] shrink-0">Apply the first</span>
-            <input type="range" min="0" :max="plan.length" :value="prefixApplied" class="sq-range min-w-0 flex-1" aria-label="Cuts applied" @input="applyFirst(Number(($event.target as HTMLInputElement).value))">
+            <span class="w-[92px] shrink-0">{{ t('pages.cyclesView.applyFirst') }}</span>
+            <input type="range" min="0" :max="plan.length" :value="prefixApplied" class="sq-range min-w-0 flex-1" :aria-label="t('pages.cyclesView.cutsApplied')" @input="applyFirst(Number(($event.target as HTMLInputElement).value))">
             <span class="w-14 shrink-0 text-right font-mono tabular-nums text-neutral-900">{{ cut.size }} / {{ plan.length }}</span>
           </label>
         </section>
 
         <section>
           <div class="mb-1 flex items-center gap-2">
-            <h3 class="ui-label flex-1">Cuts</h3>
-            <span class="text-[11px] text-neutral-500">↑↓ to move · Space to cut</span>
+            <h3 class="ui-label flex-1">{{ t('pages.cyclesView.cuts2') }}</h3>
+            <span class="text-[11px] text-neutral-500">{{ t('pages.cyclesView.moveSpaceCut') }}</span>
             <ExhibitButton :exhibit="planTable"/>
           </div>
-          <ol ref="planList" class="-mx-1 flex flex-col outline-none" tabindex="0" aria-label="Cut plan" @keydown="onPlanKey">
+          <ol ref="planList" class="-mx-1 flex flex-col outline-none" tabindex="0" :aria-label="t('pages.cyclesView.cutPlan')" @keydown="onPlanKey">
             <li
               v-for="s in plan"
               :key="s.step"
@@ -264,7 +256,7 @@
               :class="isSelectedEdge(s) ? 'bg-accent-50 shadow-[inset_2px_0_0_rgb(var(--c-accent-500))]' : 'hover:bg-neutral-100'"
               @click="selectEdge(s.from, s.to, false)"
             >
-              <Checkbox :model-value="cut.has(edgeId(s.from, s.to))" :aria-label="`Cut ${shortName(s.from)} to ${shortName(s.to)}`" class="mt-[3px]" @click.stop @update:model-value="toggleCut(s.from, s.to)"/>
+              <Checkbox :model-value="cut.has(edgeId(s.from, s.to))" :aria-label="t('pages.cyclesView.cut3', { from: shortName(s.from), to: shortName(s.to) })" class="mt-[3px]" @click.stop @update:model-value="toggleCut(s.from, s.to)"/>
               <span class="w-5 shrink-0 pt-px text-right font-mono text-[11px] tabular-nums text-neutral-400">{{ s.step }}</span>
               <span class="min-w-0 flex-1">
                 <span class="flex min-w-0 items-center gap-1 font-mono text-[12px] text-neutral-900">
@@ -273,10 +265,10 @@
                   <span class="min-w-0 truncate" :title="s.to">{{ shortName(s.to) }}</span>
                 </span>
                 <span class="block text-[11.5px] leading-4 text-neutral-500">
-                  {{ s.imports }} {{ s.imports === 1 ? "import" : "imports" }} · {{ s.files }} {{ s.files === 1 ? "file" : "files" }}<template v-if="cochange.get(edgeId(s.from, s.to))"> · changed together {{ cochange.get(edgeId(s.from, s.to)) }}×</template>
+                  {{ s.imports }} {{t('common.noun.import', { count: s.imports })}} · {{ s.files }} {{t('common.noun.file', { count: s.files })}}<template v-if="cochange.get(edgeId(s.from, s.to))">{{ ' ' + t('pages.cyclesView.changedTogether', { edgeId: cochange.get(edgeId(s.from, s.to)) }) }}</template>
                 </span>
               </span>
-              <span class="shrink-0 pt-px text-right text-[11.5px] tabular-nums" :class="gain(s) > 0 ? 'font-medium text-accent-700' : 'text-neutral-400'" :title="`${s.tangled} components still tangled after this cut${s.left.length ? ` (${s.left.join(', ')})` : ''}`">{{ gain(s) > 0 ? `frees ${gain(s)}` : s.splits ? "splits" : "narrows" }}</span>
+              <span class="shrink-0 pt-px text-right text-[11.5px] tabular-nums" :class="gain(s) > 0 ? 'font-medium text-accent-700' : 'text-neutral-400'" :title="t('pages.cyclesView.componentsStillTangledAfter', { tangled: s.tangled, value: s.left.length ? ` (${s.left.join(', ')})` : '' })">{{ gain(s) > 0 ? t('pages.cyclesView.frees2', { s: gain(s) }) : s.splits ? "splits" : "narrows" }}</span>
             </li>
           </ol>
         </section>
@@ -294,33 +286,33 @@
             <router-link :to="componentPath(selectedEdge.to)" class="hover:underline" :title="selectedEdge.to">{{ shortName(selectedEdge.to) }}</router-link>
           </p>
           <p class="text-[12.5px] leading-5 text-neutral-700">
-            <template v-if="selectedStep">Cut {{ selectedStep.step }} of the plan. It runs back against the levels; {{ gain(selectedStep) > 0 ? `taken in order, it frees ${gain(selectedStep)} ${gain(selectedStep) === 1 ? "component" : "components"}` : selectedStep.splits ? "taken in order, it splits the tangle" : "taken in order, it narrows the loops that remain" }}.</template>
-            <template v-else-if="isAgainst">It runs back against the levels, but the cuts before it already undo what it closes.</template>
-            <template v-else>It runs with the levels: cutting it alone breaks no cycle.</template>
+            <template v-if="selectedStep">{{ t('pages.cyclesView.cutPlanRunsBack', { step: selectedStep.step, value: gain(selectedStep) > 0 ? t('pages.cyclesView.takenOrderFrees', { components: t('common.count.component', { count: gain(selectedStep) }) }) : selectedStep.splits ? t('pages.cyclesView.takenOrderSplitsTangle') : t('pages.cyclesView.takenOrderNarrowsLoops') }) }}</template>
+            <template v-else-if="isAgainst">{{ t('pages.cyclesView.runsBackAgainstLevels') }}</template>
+            <template v-else>{{ t('pages.cyclesView.runsLevelsCuttingAlone') }}</template>
           </p>
           <dl class="ui-kv">
-            <dt>Imports</dt><dd>{{ fmt(edgeDetail.imports) }}</dd>
-            <dt>Files</dt><dd>{{ fmt(edgeDetail.files.length) }}</dd>
-            <template v-if="cochange.get(edgeId(selectedEdge.from, selectedEdge.to))"><dt>Changed together</dt><dd>{{ cochange.get(edgeId(selectedEdge.from, selectedEdge.to)) }} commits</dd></template>
-            <dt>Listed cycles</dt><dd>{{ fmt(cyclesThroughEdge) }}</dd>
+            <dt>{{ t('pages.cyclesView.imports') }}</dt><dd>{{ fmt(edgeDetail.imports) }}</dd>
+            <dt>{{ t('pages.cyclesView.files') }}</dt><dd>{{ fmt(edgeDetail.files.length) }}</dd>
+            <template v-if="cochange.get(edgeId(selectedEdge.from, selectedEdge.to))"><dt>{{ t('pages.cyclesView.changedTogether2') }}</dt><dd>{{ t('pages.cyclesView.commits', { edgeId: cochange.get(edgeId(selectedEdge.from, selectedEdge.to)) }) }}</dd></template>
+            <dt>{{ t('pages.cyclesView.listedCycles2') }}</dt><dd>{{ fmt(cyclesThroughEdge) }}</dd>
           </dl>
           <div v-if="selectedStep" class="flex gap-2">
-            <button type="button" class="ui-btn ui-btn-sm" :class="cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? '' : 'ui-btn-primary'" @click="toggleCut(selectedEdge.from, selectedEdge.to)">{{ cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? "Undo this cut" : "Cut it" }}</button>
+            <button type="button" class="ui-btn ui-btn-sm" :class="cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? '' : 'ui-btn-primary'" @click="toggleCut(selectedEdge.from, selectedEdge.to)">{{ cut.has(edgeId(selectedEdge.from, selectedEdge.to)) ? t('pages.cyclesView.undoCut') : t('pages.cyclesView.cut4') }}</button>
           </div>
         </section>
         <section class="mt-4 flex flex-col gap-1 pt-3 hairline-t">
-          <h3 class="ui-label">Where the imports are</h3>
-          <LoadingState v-if="linesLoading" text="Reading import lines…"/>
-          <p v-else-if="!edgeDetail.files.length" class="text-xs text-neutral-500">The snapshot records no file for these imports.</p>
+          <h3 class="ui-label">{{ t('pages.cyclesView.whereImports') }}</h3>
+          <LoadingState v-if="linesLoading" :text="t('pages.cyclesView.readingImportLines')"/>
+          <p v-else-if="!edgeDetail.files.length" class="text-xs text-neutral-500">{{ t('pages.cyclesView.snapshotRecordsNoFile') }}</p>
           <ul v-else class="flex flex-col">
             <li v-for="f in edgeDetail.files" :key="f.file" class="flex flex-col py-1.5 hairline-b last:shadow-none">
               <div class="flex items-center gap-1.5">
                 <router-link :to="fileSourcePath(f.file, f.first)" class="min-w-0 truncate font-mono text-[12px] font-medium text-neutral-900 hover:underline" :title="f.file">{{ f.file.split("/").pop() }}</router-link>
-                <span class="ui-tag ml-auto shrink-0">{{ f.count }} {{ f.count === 1 ? "import" : "imports" }}</span>
+                <span class="ui-tag ml-auto shrink-0">{{ f.count }} {{t('common.noun.import', { count: f.count })}}</span>
               </div>
               <span class="truncate font-mono text-[11px] text-neutral-500 [direction:rtl] [text-align:left]" :title="f.file">{{ f.file.split("/").slice(0, -1).join("/") }}/</span>
               <div v-if="f.ranges.length" class="flex flex-wrap items-center gap-1 font-mono text-[11.5px] text-neutral-500">
-                <span>lines</span>
+                <span>{{ t('pages.cyclesView.lines2') }}</span>
                 <SnippetPopover v-for="range in f.ranges" :key="range" :file="f.file" :lines="range">
                   <router-link :to="fileSourcePath(f.file, Number(range.split('-')[0]))" class="text-neutral-800 underline decoration-dotted hover:text-neutral-950">{{ range }}</router-link>
                 </SnippetPopover>
@@ -334,32 +326,32 @@
         <section class="flex flex-col gap-2">
           <router-link :to="componentPath(selectedNode)" class="break-all font-mono text-[12.5px] font-medium text-neutral-900 hover:underline" :title="selectedNode">{{ shortName(selectedNode) }}</router-link>
           <p class="text-[12.5px] leading-5 text-neutral-700">
-            Level {{ nodeDetail.level }} of {{ layout?.layers.length }}. {{ after.freed.has(selectedNode) ? "With the cuts applied it is out of every tangle." : "It is still in a tangle with the cuts applied." }}
+            {{ t('pages.cyclesView.level', { level: nodeDetail.level, layersLength: layout?.layers.length, value: after.freed.has(selectedNode) ? t('pages.cyclesView.cutsAppliedOutEvery') : t('pages.cyclesView.stillTangleCutsApplied') }) }}
           </p>
           <dl class="ui-kv">
-            <dt>Lines</dt><dd>{{ fmt(linesOf(selectedNode)) }}</dd>
-            <dt>Imports in the tangle</dt><dd>{{ nodeDetail.out }} components</dd>
-            <dt>Imported by</dt><dd>{{ nodeDetail.in }} of them</dd>
-            <dt>Against the levels</dt><dd>{{ nodeDetail.against.length }}</dd>
-            <dt>Listed cycles</dt><dd>{{ fmt(nodeDetail.cycles) }}</dd>
+            <dt>{{ t('pages.cyclesView.lines3') }}</dt><dd>{{ fmt(linesOf(selectedNode)) }}</dd>
+            <dt>{{ t('pages.cyclesView.importsTangle') }}</dt><dd>{{ t('pages.cyclesView.components2', { out: nodeDetail.out }) }}</dd>
+            <dt>{{ t('pages.cyclesView.imported') }}</dt><dd>{{ t('pages.cyclesView.them', { in: nodeDetail.in }) }}</dd>
+            <dt>{{ t('pages.cyclesView.againstLevels') }}</dt><dd>{{ nodeDetail.against.length }}</dd>
+            <dt>{{ t('pages.cyclesView.listedCycles2') }}</dt><dd>{{ fmt(nodeDetail.cycles) }}</dd>
           </dl>
         </section>
         <section v-if="nodeDetail.against.length" class="mt-4 flex flex-col gap-1 pt-3 hairline-t">
-          <h3 class="ui-label">Its imports against the levels</h3>
+          <h3 class="ui-label">{{ t('pages.cyclesView.importsAgainstLevels') }}</h3>
           <button v-for="e in nodeDetail.against" :key="edgeId(e.from, e.to)" type="button" class="flex items-center gap-1 rounded px-1 py-1 text-left font-mono text-[12px] text-neutral-800 hover:bg-neutral-100" @click="selectEdge(e.from, e.to)">
             <span class="min-w-0 truncate">{{ shortName(e.from) }}</span><Icon icon="arrow-right" :size="11" class="shrink-0 text-accent-600"/><span class="min-w-0 truncate">{{ shortName(e.to) }}</span>
-            <span class="ml-auto shrink-0 font-sans text-[11px] text-neutral-500">{{ e.imports }} {{ e.imports === 1 ? "import" : "imports" }}</span>
+            <span class="ml-auto shrink-0 font-sans text-[11px] text-neutral-500">{{ e.imports }} {{t('common.noun.import', { count: e.imports })}}</span>
           </button>
         </section>
       </template>
-      <p v-else class="text-sm leading-5 text-neutral-500">Select an import or a component in the drawing or the plan to see where it is and what cutting it does.</p>
+      <p v-else class="text-sm leading-5 text-neutral-500">{{ t('pages.cyclesView.selectImportComponentDrawing') }}</p>
     </template>
 
     <!-- The engine's listed cycles in this tangle, and which the cuts break. -->
     <template #tab-cycles>
       <div v-if="tangle" class="flex flex-col gap-3">
         <p class="text-[12.5px] leading-5 text-neutral-700">
-          {{ fmt(tangleCycles.length) }} listed cycles run inside this tangle<template v-if="cut.size">; the cuts break {{ fmt(brokenCount) }} of them</template>. The engine lists the shortest cycle through each component, so a tangle holds more loops than these; the plan breaks them all.
+          {{ t('pages.cyclesView.listedCyclesRunInside', { tangleCyclesLength: fmt(tangleCycles.length) }) }}<template v-if="cut.size">{{ t('pages.cyclesView.cutsBreakThem', { brokenCount: fmt(brokenCount) }) }}</template>{{ t('pages.cyclesView.engineListsShortestCycle') }}
         </p>
         <ul class="-mx-1 flex flex-col">
           <li v-for="c in shownCycles" :key="c.id">
@@ -368,11 +360,11 @@
                 <template v-for="(n, i) in c.nodes" :key="i"><Icon v-if="i > 0" icon="arrow-right" :size="10" class="text-neutral-400"/><span :title="n">{{ shortName(n) }}</span></template>
                 <Icon icon="arrow-right" :size="10" class="text-neutral-400"/><span class="text-neutral-400">{{ shortName(c.nodes[0]) }}</span>
               </span>
-              <span class="text-[11px] text-neutral-500">{{ c.nodes.length }} components<template v-if="c.sharedCommits"> · {{ c.sharedCommits }} commits touched them all</template><template v-if="c.broken"> · broken by cut {{ c.brokenBy }}</template></span>
+              <span class="text-[11px] text-neutral-500">{{ t('pages.cyclesView.components3', { nodesLength: c.nodes.length }) }}<template v-if="c.sharedCommits">{{ ' ' + t('pages.cyclesView.commitsTouchedThemAll', { sharedCommits: c.sharedCommits }) }}</template><template v-if="c.broken">{{ ' ' + t('pages.cyclesView.brokenCut', { brokenBy: c.brokenBy }) }}</template></span>
             </button>
           </li>
         </ul>
-        <button v-if="tangleCycles.length > cycleLimit" type="button" class="ui-btn ui-btn-sm self-start" @click="cycleLimit += 60">Show {{ Math.min(60, tangleCycles.length - cycleLimit) }} more</button>
+        <button v-if="tangleCycles.length > cycleLimit" type="button" class="ui-btn ui-btn-sm self-start" @click="cycleLimit += 60">{{ t('pages.cyclesView.showMore', { min: Math.min(60, tangleCycles.length - cycleLimit) }) }}</button>
       </div>
     </template>
   </ViewWorkspaceLayout>
@@ -406,6 +398,8 @@ import { sqlIn, sqlLiteral } from "~/shared/sql";
 import { passesFacet } from "~/features/snapshot/fileRole";
 import { scopeLabel } from "~/features/groups/scopeSql";
 import { afterCuts, edgeId, foldEdges, layoutTangle, loopThrough, planCuts, tanglesOf, type CutStep, type TangleLayout, type WEdge } from "~/features/cycles/untangle";
+import { t, listOf } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT";
 
 // Cycles, read as tangles: sets of components that all reach each other.
 // Hundreds of listed cycles overlap on a few imports; laid out in levels,
@@ -423,7 +417,7 @@ const fmt = (n: number) => formatNumber(n);
 const searchQuery = ref("");
 const isSidebarOpen = ref(true);
 const activeTab = ref("guide");
-const tabs = [{ id: "guide", label: "Guide" }, { id: "plan", label: "All cuts" }, { id: "selection", label: "Selection" }, { id: "cycles", label: "Cycles" }];
+const tabs = [{ id: "guide", label: t("pages.cyclesView.guide") }, { id: "plan", label: t("pages.cyclesView.allCuts") }, { id: "selection", label: t("pages.cyclesView.selection") }, { id: "cycles", label: t("pages.cyclesView.cycles") }];
 
 // ── The graph and its tangles ───────────────────────────────────────────
 // The Production/Tests switch changes the graph itself, not just which
@@ -508,7 +502,7 @@ const planFiles = computed(() => {
 const firstHalf = computed(() => (tangle.value ? plan.value.find(s => s.freed >= tangle.value!.members.length / 2 && s.step < plan.value.length) ?? null : null));
 const gain = (s: CutStep) => s.freed - (plan.value[s.step - 2]?.freed ?? 0);
 const stepOf = (from: string, to: string) => plan.value.find(s => s.from === from && s.to === to)?.step ?? null;
-const figureTitle = computed(() => (tangle.value ? `Tangle ${tangleNumber.value}: ${tangle.value.members.length} components in ${layout.value?.layers.length ?? 0} levels` : "Tangle"));
+const figureTitle = computed(() => (tangle.value ? t("pages.cyclesView.tangleComponentsLevels", { tangleNumber: tangleNumber.value, membersLength: tangle.value.members.length, value: layout.value?.layers.length ?? 0 }) : t("pages.cyclesView.tangle2")));
 // Drawn while it stays legible; past that, the matrix reads the whole of it.
 const autoMode = computed<"graph" | "matrix">(() => ((tangle.value?.members.length ?? 0) > 60 || Math.max(0, ...(layout.value?.layers.map(l => l.length) ?? [0])) > 12 ? "matrix" : "graph"));
 const chosenMode = ref<"graph" | "matrix" | null>(null);
@@ -612,7 +606,7 @@ const guideEffect = computed(() => {
 const guideCallout = computed(() => {
   const e = guideEffect.value;
   if (!guideCurrent.value) return null;
-  return e.already ? "Cut" : e.freed.length ? `Cut here · frees ${e.freed.length}` : e.split ? "Cut here · splits the knot" : "Cut here";
+  return e.already ? t("pages.cyclesView.cut5") : e.freed.length ? t("pages.cyclesView.cutHereFrees", { freedLength: e.freed.length }) : e.split ? t("pages.cyclesView.cutHereSplitsKnot") : t("pages.cyclesView.cutHere");
 });
 const flashed = ref<ReadonlySet<string>>(new Set());
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -871,16 +865,16 @@ async function saveAsGroup() {
   if (!tangle.value) return;
   traySelection.value = [...tangle.value.members];
   await nextTick();
-  trayRef.value?.startCreate(`Tangle ${tangleNumber.value}`);
+  trayRef.value?.startCreate(t("pages.cyclesView.tangle", { tangleNumber: tangleNumber.value }));
 }
 const planTable = useTable({
-  get title() { return `Cut plan, tangle ${tangleNumber.value}`; },
+  get title() { return t("pages.cyclesView.cutPlanTangle", { tangleNumber: tangleNumber.value }); },
   rows: () => plan.value.map(s => ({ step: s.step, from: s.from, to: s.to, imports: s.imports, files: s.files, changed_together: cochange.value.get(edgeId(s.from, s.to)) ?? null, frees: gain(s), still_tangled: s.tangled })),
   columns: () => [
-    { id: "step", label: "Cut" }, { id: "from", label: "From" }, { id: "to", label: "To" }, { id: "imports", label: "Imports" }, { id: "files", label: "Files" },
-    { id: "changed_together", label: "Changed together" }, { id: "frees", label: "Frees" }, { id: "still_tangled", label: "Still tangled" },
+    { id: "step", label: t("pages.cyclesView.cut5") }, { id: "from", label: t("pages.cyclesView.from") }, { id: "to", label: t("pages.cyclesView.to") }, { id: "imports", label: t("pages.cyclesView.imports") }, { id: "files", label: t("pages.cyclesView.files") },
+    { id: "changed_together", label: t("pages.cyclesView.changedTogether2") }, { id: "frees", label: t("pages.cyclesView.frees") }, { id: "still_tangled", label: t("pages.cyclesView.stillTangled") },
   ],
-  disabledReason: () => (plan.value.length ? null : "No tangle is open."),
+  disabledReason: () => (plan.value.length ? null : t("pages.cyclesView.noTangleOpen")),
 });
 
 onMounted(() => { if (route.query.component) isSidebarOpen.value = true; });

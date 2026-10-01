@@ -3,16 +3,16 @@
        row finds it on the map; a click opens it in this panel. -->
   <aside class="flex h-full flex-col bg-ground">
     <header class="flex shrink-0 items-center gap-2 px-4 pb-1 pt-3">
-      <h2 class="ui-section-title">{{ modules.length.toLocaleString() }} {{ modules.length === 1 ? 'module' : 'modules' }}</h2>
+      <h2 class="ui-section-title">{{ modules.length.toLocaleString(intlLocale) }} {{t('common.noun.module', { count: modules.length })}}</h2>
       <label class="ml-auto flex items-center gap-1.5 text-xs text-neutral-500">
-        <span>by</span>
-        <select v-model="by" class="ui-input ui-input-sm" aria-label="Sort the modules by">
+        <span>{{ t('units.focusList.by') }}</span>
+        <select v-model="by" class="ui-input ui-input-sm" :aria-label="t('units.focusList.sortModules')">
           <option v-for="c in COLUMNS" :key="c.id" :value="c.id">{{ c.label }}</option>
         </select>
       </label>
     </header>
     <p class="shrink-0 px-4 pb-2 text-xs leading-4 text-neutral-500">
-      Click one to inspect it. Hold ⌘ to collect it into a group instead. Red marks a cycle.
+      {{ t('units.focusList.clickOneInspectHold') }}
     </p>
     <ul class="min-h-0 flex-1 overflow-y-auto pb-2" @mouseleave="$emit('point', null)">
       <li v-for="m in rows.slice(0, limit)" :key="m.path">
@@ -32,7 +32,7 @@
       </li>
     </ul>
     <button v-if="rows.length > limit" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 mb-3 shrink-0 self-start"
-            @click="limit += 200">Show more · {{ (rows.length - limit).toLocaleString() }} left</button>
+            @click="limit += 200">{{ t('units.focusList.showMoreLeft', { value: (rows.length - limit).toLocaleString(intlLocale) }) }}</button>
   </aside>
 </template>
 
@@ -41,6 +41,7 @@ import { computed, ref, watch } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import { dirTail, type ModuleNode } from "~/features/units/moduleGraph"
+import { t, intlLocale } from "~/shared/i18n"
 
 type Sort = "fanIn" | "fanOut" | "holds"
 
@@ -57,9 +58,9 @@ defineEmits<{
 }>()
 
 const COLUMNS: Array<{ id: Sort; label: string }> = [
-  { id: "fanIn", label: "imported by" },
-  { id: "fanOut", label: "imports" },
-  { id: "holds", label: "holds" },
+  { id: "fanIn", label: t("units.focusList.imported") },
+  { id: "fanOut", label: t("units.focusList.imports") },
+  { id: "holds", label: t("units.focusList.holds") },
 ]
 
 const by = ref<Sort>(props.initialSort.by === "name" ? "fanIn" : props.initialSort.by)

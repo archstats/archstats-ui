@@ -1,0 +1,92 @@
+{
+  "cycleMap": {
+    "cycles": "{nodeName}, in {cycles} cycles",
+    "in": "{nodeName} — in {cycles}",
+    "cutPlan": ". Cut {value} in het plan.",
+    "imports": "{from} importeert {to} — in {cycles}{value}",
+    "centreRingedComponentsCycles": "{centreLabel} in het midden, omringd door de {nodesLength} componenten waar de cycles doorheen lopen."
+  },
+  "snippetPopover": {
+    "sourceNotAvailableFile": "Broncode niet beschikbaar voor dit bestand.",
+    "viewFileLine": "Bekijk bestand op deze regel",
+    "goFile": "Ga naar bestand"
+  },
+  "tangleExhibit": {
+    "undoCutPicture": "Maak deze cut ongedaan in de afbeelding",
+    "applyCutsUpHere": "Pas de cuts tot hier toe in de afbeelding",
+    "cutFreesCutsBefore": "Deze cut maakt {value} vrij; samen met de cuts ervoor zijn {freed} uit de tangle",
+    "freesOut": "{refs} · maakt {value} vrij · {freed} eruit",
+    "moreCyclesView": "Nog {value} {cuts} in de Cycles-view",
+    "cut": "cut {value}"
+  },
+  "tangleGraph": {
+    "tangleComponentsLevels": "Tangle van {orderLength} componenten in {layersLength} levels",
+    "level": "LEVEL {value}",
+    "zoom": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "fitView": "Passend maken",
+    "noLongerTangleCuts": "\nMet de cuts toegepast niet meer in een tangle",
+    "linesDoubleClickOpen": "{name}\n{value} regels{value2}\nDubbelklik om te openen",
+    "cutPlan": "\nCut {step} van het plan",
+    "importsBackUpAgainst": "{from} importeert {to}, terug omhoog tegen de levels in\n{imports} in {files}{value}",
+    "importsPointingDownLevels": "Imports die de levels af wijzen",
+    "importsPointingBackUp": "Imports die terug omhoog wijzen: elk sluit loops",
+    "cut": "Cut",
+    "importersSitTopWhat": "Importerende componenten staan bovenaan, wat ze importeren eronder."
+  },
+  "tangleMatrix": {
+    "matrixTangleComponents": "Matrix van een tangle van {n} componenten",
+    "againstLevels": ", tegen de levels in",
+    "cut": " (cut)",
+    "imports": "{from} importeert {to}: {imports} in {files}{value}{value2}",
+    "rowImportsColumnLevels": "Rij importeert kolom, met de levels",
+    "belowDiagonalAgainstLevels": "Onder de diagonaal: tegen de levels in, hier ontstaan de cycles",
+    "rowsColumnsSameOrder": "Rijen en kolommen staan in dezelfde volgorde; de blokken langs de diagonaal zijn de levels."
+  },
+  "cycles": {
+    "distinctShortestCyclesHow": "De unieke kortste cycles, hoeveel er van elke lengte zijn en de kleinste als paden.",
+    "onlyCyclesThroughComponent": "Alleen cycles door deze component.",
+    "through": " door {value}",
+    "smallestCycles": "De kleinste cycles{value}",
+    "noComponentMatches": "Geen enkele component komt overeen met \"{of}\".",
+    "noCycle": "{through} zit in geen enkele cycle.",
+    "thereNoCyclesImport": "Er zijn geen cycles: de import-graph heeft er geen.",
+    "runThrough": " lopen door {through}",
+    "length2": "{count} van lengte {length}",
+    "length": "{distinctShortestCycles}{value}. Per lengte: {value2}.",
+    "mutualPairEachImports": " (een wederzijds paar: ze importeren elkaar)",
+    "smallestHasSmallestFirst": "De kleinste heeft {components}{value}; hieronder de kleinste eerst.",
+    "length3": "Lengte",
+    "cycle": "Cycle",
+    "openCycles": "Open Cycles"
+  },
+  "tangle": {
+    "oneTangleComponentsAll": "Eén tangle (componenten die elkaar allemaal bereiken via imports) in levels, met de cuts die hem ontwarren, de belangrijkste eerst.",
+    "componentTangleLargestTangle": "Een component in de tangle; als je dit weglaat, de grootste tangle.",
+    "around": " rond {anchor}",
+    "tangle": "Tangle van {components}{value}",
+    "tangleAround": "De tangle rond {of}",
+    "largestTangle": "De grootste tangle",
+    "thereNoTanglesImport": "Er zijn geen tangles: de import-graph heeft geen cycles.",
+    "noComponentMatches": "Geen enkele component komt overeen met \"{of}\".",
+    "noTangleNothingImports": "{anchor} zit in geen enkele tangle: niets wat de component importeert leidt terug naar hemzelf.",
+    "numberSize": "nummer {rank} op grootte",
+    "largest": "de grootste",
+    "codebaseHolding": "{tangles} in de codebase, samen {components}; dit is {value}.",
+    "all": "alle {cuts} cuts",
+    "it": "die ene cut",
+    "tangleHasRunAgainst": "Deze tangle heeft {components} in {levels}; {imports} lopen tegen de levels in. Met {value} is de tangle weg.",
+    "cutCutFreesCuts": "Cut {value}: {from} → {to}, {importReferences} in {files}{value2}; deze cut maakt {components} vrij; samen met de cuts ervoor zijn {freed} uit de tangle en zitten er nog {tangled} in.",
+    "more": ", en nog {value}",
+    "members": "Leden: {value}{value2}.",
+    "furtherCutsCyclesView": "Nog {value} cuts staan in de Cycles-view.",
+    "importCut": "Import om te cutten",
+    "importReferences": "Import references",
+    "cutFrees": "Deze cut maakt vrij",
+    "outSoFar": "Tot nu toe eruit",
+    "stillTangled": "Nog in de tangle",
+    "carried": "Gedragen door",
+    "tangleCutsOrderUntangles": "Een tangle van {components}; de cuts staan in de volgorde waarin ze het meest ontwarren, de grootste winst eerst.",
+    "openCycles": "Open Cycles"
+  }
+}

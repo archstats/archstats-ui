@@ -12,39 +12,38 @@
         @keydown.esc.prevent="close"
       >
         <header class="px-5 pb-2 pt-4">
-          <h2 id="st-title" class="text-[15px] font-semibold text-neutral-900">Save as template</h2>
-          <p class="mt-1 text-[12.5px] leading-5 text-neutral-600">For any workspace: it opens under Yours when you start a new report.</p>
+          <h2 id="st-title" class="text-[15px] font-semibold text-neutral-900">{{ t('reports.saveTemplateSheet.saveTemplate') }}</h2>
+          <p class="mt-1 text-[12.5px] leading-5 text-neutral-600">{{ t('reports.saveTemplateSheet.anyWorkspaceOpensUnder') }}</p>
         </header>
         <div class="flex flex-col gap-3 px-5 py-3">
           <label class="flex flex-col gap-1 text-[12.5px] text-neutral-700">
-            Name
-            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm" aria-label="Template name" required @focus="selectFresh" @mouseup="keepSelection" @input="fresh = false">
+            {{ t('reports.saveTemplateSheet.name') }}
+            <input ref="nameEl" v-model="name" class="ui-input ui-input-sm" :aria-label="t('reports.saveTemplateSheet.templateName')" required @focus="selectFresh" @mouseup="keepSelection" @input="fresh = false">
           </label>
           <label class="flex flex-col gap-1 text-[12.5px] text-neutral-700">
-            What it is for <span class="sr-only">(optional)</span>
-            <input v-model="summary" class="ui-input ui-input-sm" placeholder="Optional, shown under its name" aria-label="What it is for">
+{{ t('reports.saveTemplateSheet.what') }} <span class="sr-only">{{ t('reports.saveTemplateSheet.optional') }}</span>
+            <input v-model="summary" class="ui-input ui-input-sm" :placeholder="t('reports.saveTemplateSheet.optionalShownUnderName')" :aria-label="t('reports.saveTemplateSheet.what')">
           </label>
           <label class="flex items-start gap-2.5 rounded-md bg-neutral-50 px-3 py-2.5 hairline">
-            <Checkbox v-model="prompts" aria-label="Turn paragraphs into prompts" class="mt-[2px]"/>
+            <Checkbox v-model="prompts" :aria-label="t('reports.saveTemplateSheet.turnParagraphsPrompts')" class="mt-[2px]"/>
             <span class="text-[12.5px] leading-5 text-neutral-800">
-              Turn my paragraphs into prompts
-              <span class="block text-neutral-500">Your words stay as guidance in the empty page; the template's explanations of terms, headings, lists and cells come as they are.</span>
+{{ t('reports.saveTemplateSheet.turnMyParagraphsPrompts') }} <span class="block text-neutral-500">{{ t('reports.saveTemplateSheet.yourWordsStayGuidance') }}</span>
             </span>
           </label>
           <div>
-            <h3 class="ui-label mb-1">Comes with it</h3>
+            <h3 class="ui-label mb-1">{{ t('reports.saveTemplateSheet.comes') }}</h3>
             <ul class="flex flex-col gap-0.5 text-[12.5px] leading-5 text-neutral-700">
               <li v-for="line in keeps" :key="line" class="flex gap-2"><Icon icon="check" :size="13" class="mt-[3px] shrink-0 text-accent-600"/>{{ line }}</li>
-              <li class="flex gap-2 text-neutral-500"><Icon icon="minus" :size="13" class="mt-[3px] shrink-0"/>Not what it found: every cell runs again on the snapshot it is used with.</li>
-              <li v-if="dropped" class="flex gap-2 text-neutral-500"><Icon icon="minus" :size="13" class="mt-[3px] shrink-0"/>{{ dropped === 1 ? "1 pin" : `${dropped} pins` }} without a view to open, left out.</li>
+              <li class="flex gap-2 text-neutral-500"><Icon icon="minus" :size="13" class="mt-[3px] shrink-0"/>{{ t('reports.saveTemplateSheet.notWhatFoundEvery') }}</li>
+              <li v-if="dropped" class="flex gap-2 text-neutral-500"><Icon icon="minus" :size="13" class="mt-[3px] shrink-0"/>{{ t('reports.saveTemplateSheet.withoutViewOpenLeft', { value: dropped === 1 ? t('reports.saveTemplateSheet.text1Pin') : `${dropped} pins` }) }}</li>
             </ul>
           </div>
         </div>
         <footer class="flex items-center gap-2 px-5 pb-4 pt-2">
-          <p v-if="savedAs" class="flex items-center gap-1.5 text-[12.5px] text-green-800" role="status"><Icon icon="check" :size="13"/>Saved “{{ savedAs }}”. It is under Yours when you start a new report.</p>
+          <p v-if="savedAs" class="flex items-center gap-1.5 text-[12.5px] text-green-800" role="status"><Icon icon="check" :size="13"/>{{ t('reports.saveTemplateSheet.savedUnderYoursWhen', { savedAs }) }}</p>
           <p v-if="error" class="text-[12.5px] text-red-700" role="alert">{{ error }}</p>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">Cancel</button>
-          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="saving || !!savedAs || !name.trim()">{{ saving ? "Saving…" : savedAs ? "Saved" : "Save template" }}</button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">{{ t('reports.saveTemplateSheet.cancel') }}</button>
+          <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="saving || !!savedAs || !name.trim()">{{ saving ? t('reports.saveTemplateSheet.saving') : savedAs ? t('reports.saveTemplateSheet.saved') : t('reports.saveTemplateSheet.saveTemplate2') }}</button>
         </footer>
       </form>
     </div>
@@ -60,6 +59,7 @@ import { useReportsStore, type ReportRecord } from "~/features/reports/reports.s
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { isCell, newId, parseDoc, type Block } from "~/features/reports/reportDoc";
 import { toTemplate } from "~/features/reports/reportTemplates";
+import { t } from "~/shared/i18n";
 
 const report = defineModel<ReportRecord | null>({ default: null });
 const reports = useReportsStore();
@@ -80,7 +80,7 @@ const nameEl = ref<HTMLInputElement | null>(null);
 
 watch(report, (r) => {
   if (!r) return;
-  name.value = r.title.replace(/:\s.*$/, "") || "My template";
+  name.value = r.title.replace(/:\s.*$/, "") || t("reports.saveTemplateSheet.myTemplate");
   summary.value = "";
   prompts.value = true;
   error.value = "";
@@ -93,7 +93,7 @@ const source = computed<Block[]>(() => (report.value ? (report.value.id === repo
 const pinRoute = (id: string) => {
   const p = evidence.pins.find(x => x.id === id);
   if (!p?.route) return null;
-  const view = p.route.split("?")[0].split("/").filter(Boolean).pop() ?? "the view";
+  const view = p.route.split("?")[0].split("/").filter(Boolean).pop() ?? t("reports.saveTemplateSheet.view");
   return { title: p.title, route: p.route, view: view.charAt(0).toUpperCase() + view.slice(1) };
 };
 const blocks = computed(() => toTemplate(source.value, { promptParagraphs: prompts.value, pinRoute }));
@@ -112,13 +112,13 @@ const keeps = computed(() => {
     else text++;
   }
   return [
-    headings ? count(headings, "heading") : "",
-    readings ? `${count(readings, "counted paragraph")}, counted afresh` : "",
-    cells ? `${count(cells, "table or query", "tables and queries")}, run afresh` : "",
-    explains ? `${count(explains, "explanation")} of the terms, left out when “Explain the terms” is off` : "",
-    slots ? `${count(slots, "figure or table", "figures and tables")} to add from the same views` : "",
-    promptsN ? count(promptsN, "prompt") : "",
-    text ? `${count(text, "block")} of your text as written` : "",
+    headings ? t("common.count.heading", { count: headings }) : "",
+    readings ? t("reports.saveTemplateSheet.countedAfresh", { count: count(readings, t("reports.saveTemplateSheet.countedParagraph")) }) : "",
+    cells ? t("reports.saveTemplateSheet.runAfresh", { count: count(cells, t("reports.saveTemplateSheet.tableQuery"), t("reports.saveTemplateSheet.tablesQueries")) }) : "",
+    explains ? t("reports.saveTemplateSheet.termsLeftOutWhen", { count: t("common.count.explanation", { count: explains }) }) : "",
+    slots ? t("reports.saveTemplateSheet.addSameViews", { count: count(slots, t("reports.saveTemplateSheet.figureTable"), t("reports.saveTemplateSheet.figuresTables")) }) : "",
+    promptsN ? t("common.count.prompt", { count: promptsN }) : "",
+    text ? t("reports.saveTemplateSheet.yourTextWritten", { count: t("common.count.block", { count: text }) }) : "",
   ].filter(Boolean);
 });
 

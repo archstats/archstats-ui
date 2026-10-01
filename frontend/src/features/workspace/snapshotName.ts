@@ -4,6 +4,7 @@
 // commit stay apart and a reader can still tell how old the code was.
 
 import { formatScanTime } from "~/shared/time"
+import { t } from "~/shared/i18n"
 
 interface Named { label?: string | null; startedAt?: unknown; headCommit?: string | null; headTime?: unknown }
 
@@ -18,5 +19,5 @@ export function commitNote(s: Named): string {
     const sha = s.headCommit ? String(s.headCommit).slice(0, 7) : ""
     if (!sha) return ""
     const when = s.headTime ? formatScanTime(s.headTime as any) : ""
-    return when ? `${sha}, committed ${when}` : sha
+    return when ? t("workspace.snapshotName.committed", { sha, when }) : sha
 }

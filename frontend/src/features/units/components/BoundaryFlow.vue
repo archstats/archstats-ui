@@ -8,9 +8,7 @@
   <ExhibitFrame :exhibit="figure">
     <figure class="m-0 flex min-w-0 flex-col">
       <figcaption class="sr-only">
-        Flow of {{ flow.ribbons.length }} dependencies between {{ headLabel }} and {{ tailLabel }}.
-        Each module is drawn in the column of its own lane, whichever way its
-        dependencies run. Use arrow keys to move between modules.
+        {{ t('units.componentsBoundaryFlow.flowDependenciesBetweenEach', { ribbonsLength: flow.ribbons.length, headLabel, tailLabel }) }}
       </figcaption>
 
       <!-- Which column is which has to survive scrolling: forty-eight named
@@ -30,14 +28,14 @@
         </p>
         <!-- Which way a reference runs, said once where the eye already is,
              and drawn the way the ribbons draw it. -->
-        <p class="flex items-center gap-4 self-center text-xs text-neutral-600" aria-label="Which way the references run">
+        <p class="flex items-center gap-4 self-center text-xs text-neutral-600" :aria-label="t('units.componentsBoundaryFlow.whichWayReferencesRun')">
           <span class="flex items-center gap-1.5">
             <svg width="30" height="8" aria-hidden="true"><line x1="0" y1="4" x2="23" y2="4" class="stroke-neutral-500" stroke-width="2"/><path d="M22,0.5 L29,4 L22,7.5 z" class="fill-neutral-500"/></svg>
-            {{ headLabel }} uses {{ tailLabel }}
+            {{ t('units.componentsBoundaryFlow.uses', { headLabel, tailLabel }) }}
           </span>
           <span class="flex items-center gap-1.5">
             <svg width="30" height="8" aria-hidden="true"><line x1="7" y1="4" x2="30" y2="4" class="stroke-red-500" stroke-width="2"/><path d="M8,0.5 L1,4 L8,7.5 z" class="fill-red-500"/></svg>
-            {{ tailLabel }} uses {{ headLabel }}
+            {{ t('units.componentsBoundaryFlow.uses2', { tailLabel, headLabel }) }}
           </span>
         </p>
         <p class="flex items-center gap-2 text-base text-neutral-900">
@@ -50,7 +48,7 @@
         <svg ref="svg" class="block w-full" :class="{ 'is-key-focus': keyFocus }"
              :viewBox="`0 0 ${W} ${view.height}`"
              role="application" tabindex="0"
-             :aria-label="`${flow.ribbons.length} dependencies. Arrow keys move between modules.`"
+             :aria-label="t('units.componentsBoundaryFlow.dependenciesArrowKeysMove', { ribbonsLength: flow.ribbons.length })"
              @keydown="onKey"
              @pointerdown="viaPointer = true"
              @focus="keyFocus = !viaPointer; viaPointer = false"
@@ -154,6 +152,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { laneDotClass, type LaneColor } from "~/features/frameworks/frameworkProfiles"
 import type { BoundaryFlow, FlowNode, FlowRibbon } from "~/features/units/boundaryFlow"
 import { blendBoundary, easeOut, settled, type BoundaryView } from "~/features/units/boundaryTween"
+import { t } from "~/shared/i18n"
 
 /**
  * Long enough to be followed, short enough not to be waited on.
@@ -554,8 +553,8 @@ function nodeTitle(n: FlowNode, side: "left" | "right"): string {
   const own = side === "left" ? props.headLabel : props.tailLabel
   const other = side === "left" ? props.tailLabel : props.headLabel
   if (!n.path) {
-    const what = `${n.aggregates} more modules in ${own}, ${n.weight} references between them`
-    return props.canExpand ? `${what} — click to name them` : what
+    const what = t("units.componentsBoundaryFlow.moreModulesReferencesBetween", { aggregates: n.aggregates, own, weight: n.weight })
+    return props.canExpand ? t("units.componentsBoundaryFlow.clickNameThem", { what }) : what
   }
   // Forward runs head into tail, so which of the two is outbound depends on
   // the column this module's lane put it in.
@@ -563,19 +562,18 @@ function nodeTitle(n: FlowNode, side: "left" | "right"): string {
   const out = side === "left" ? forward : n.backWeight
   const inbound = side === "left" ? n.backWeight : forward
   const parts = [
-    out ? `${out} ${out === 1 ? "reference" : "references"} out to ${other}` : null,
-    inbound ? `${inbound} ${inbound === 1 ? "reference" : "references"} in from ${other}` : null,
+    out ? t("units.componentsBoundaryFlow.out", { references: t("common.count.reference", { count: out }), other }) : null,
+    inbound ? t("units.componentsBoundaryFlow.inFrom", { references: t("common.count.reference", { count: inbound }), other }) : null,
   ].filter(Boolean)
-  return `${n.label} · ${parts.join(" · ")} · ` +
-    `${n.degree} ${n.degree === 1 ? "module" : "modules"} on the other side`
+  return t("units.componentsBoundaryFlow.otherSide", { nLabel: n.label, value: parts.join(" · "), modules: t("common.count.module", { count: n.degree }) })
 }
 
 function describe(r: FlowRibbon): string {
   const l = labelFor(r.left)
-  const t = labelFor(r.right)
+  const item = labelFor(r.right)
   return r.back
-    ? `${t} imports ${l} — ${r.weight} ${r.weight === 1 ? "reference" : "references"} against the grain`
-    : `${l} imports ${t} — ${r.weight} ${r.weight === 1 ? "reference" : "references"}`
+    ? t("units.componentsBoundaryFlow.importsAgainstGrain", { item, l, references: t("common.count.reference", { count: r.weight }) })
+    : t("units.componentsBoundaryFlow.imports", { l, item, references: t("common.count.reference", { count: r.weight }) })
 }
 
 /** Named `labelFor`, not `flow`: a setup binding called `flow` would shadow
@@ -648,16 +646,16 @@ function onKey(event: KeyboardEvent) {
 
 // The key under the drawing already says all of this, so the frame shows it only in exports.
 const figure = useSvgFigure({
-  title: "Boundary flow",
+  title: t("units.componentsBoundaryFlow.boundaryFlow"),
   svg: () => svg.value,
   legendInUi: false,
   legend: () => ({
     items: [
-      { label: `${props.headLabel} into ${props.tailLabel}`, color: "rgb(var(--c-neutral-400))" },
-      { label: `${props.tailLabel} back into ${props.headLabel}`, color: "rgb(var(--c-red-500))" },
-      { label: "In focus", color: "rgb(var(--c-accent-500))" },
+      { label: t("units.componentsBoundaryFlow.into", { headLabel: props.headLabel, tailLabel: props.tailLabel }), color: "rgb(var(--c-neutral-400))" },
+      { label: t("units.componentsBoundaryFlow.back", { tailLabel: props.tailLabel, headLabel: props.headLabel }), color: "rgb(var(--c-red-500))" },
+      { label: t("units.componentsBoundaryFlow.focus"), color: "rgb(var(--c-accent-500))" },
     ],
-    notes: [`${props.headLabel} is on the left, ${props.tailLabel} on the right. Thickness is references; a bar is red in proportion to what runs the other way.`],
+    notes: [t("units.componentsBoundaryFlow.leftRightThicknessReferences", { headLabel: props.headLabel, tailLabel: props.tailLabel })],
   }),
 })
 </script>

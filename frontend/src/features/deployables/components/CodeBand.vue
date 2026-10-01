@@ -8,14 +8,14 @@
   <div class="flex flex-col gap-2">
     <p class="text-sm text-neutral-700">{{ sentence }}</p>
 
-    <div v-if="share.lines && slices.length" class="flex h-2.5 w-full gap-px overflow-hidden rounded-sm" role="group" aria-label="Production lines by what ships them">
+    <div v-if="share.lines && slices.length" class="flex h-2.5 w-full gap-px overflow-hidden rounded-sm" role="group" :aria-label="t('deployables.codeBand.productionLinesWhatShips')">
       <button
         v-for="s in slices" :key="s.id" type="button"
         class="h-full min-w-[2px] transition-opacity"
         :class="[s.kind === 'deployable' ? 'cursor-pointer' : 'cursor-default', dimSlice(s) ? 'opacity-30' : '']"
         :style="{ flexGrow: s.lines, flexBasis: 0, background: s.kind === 'several' ? HATCH_CSS : s.color }"
-        :title="`${s.label}: ${fmt(s.lines)} lines in ${fmt(s.files)} files (${pct(s.lines)})`"
-        :aria-label="`${s.label}, ${pct(s.lines)} of the lines`"
+        :title="t('deployables.codeBand.linesFiles', { label: s.label, lines: fmt(s.lines), files: fmt(s.files), lines2: pct(s.lines) })"
+        :aria-label="t('deployables.codeBand.lines', { label: s.label, lines: pct(s.lines) })"
         @click="s.kind === 'deployable' && s.id !== OTHER && emit('pick', s.id)"
         @mouseenter="hovered = s" @mouseleave="hovered = null"
       />
@@ -40,8 +40,8 @@
     <div v-if="showMap" class="mt-1 h-[380px] rounded-md ring-1 ring-neutral-200">
       <FolderMap
         :files="files" :lines="lines" :paint="paintFile" :highlight="litFiles"
-        :describe="describe" aria-label="Every production file by folder, coloured by the deployable that ships it"
-        figure="What ships the code" :legend="{ items: legendItems }" :legend-in-ui="false"
+        :describe="describe" :aria-label="t('deployables.codeBand.everyProductionFileFolder')"
+        :figure="t('deployables.codeBand.whatShipsCode')" :legend="{ items: legendItems }" :legend-in-ui="false"
         @select="(path, kind) => kind === 'file' && path && pickFile(path)" @open="emit('open-file', $event)"
       />
     </div>
@@ -53,6 +53,7 @@ import { computed, ref } from "vue"
 import FolderMap from "~/features/checks/components/FolderMap.vue"
 import type { LegendItem } from "~/features/export/figure"
 import { KIND_LABEL, type CodeShare, type DeployableModel } from "../deployables"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = defineProps<{
   model: DeployableModel
@@ -70,7 +71,7 @@ const NONE_CSS = "rgb(var(--c-neutral-200))"
 const OTHER_CSS = "rgb(var(--c-neutral-500))"
 const HATCH_CSS = "repeating-linear-gradient(135deg, rgb(var(--c-neutral-400)) 0 2px, rgb(var(--c-neutral-100)) 2px 4px)"
 
-const fmt = (n: number) => n.toLocaleString("en-US")
+const fmt = (n: number) => n.toLocaleString(intlLocale)
 const pct = (n: number) => { const p = (n / Math.max(1, props.share.lines)) * 100; return p > 0 && p < 1 ? "<1%" : `${Math.round(p)}%` }
 
 const own = computed(() => props.share.slices.filter(s => s.kind === "deployable"))
@@ -82,10 +83,10 @@ type Slice = { id: string; kind: "deployable" | "several" | "none"; label: strin
 const slices = computed<Slice[]>(() => {
   const out: Slice[] = own.value.slice(0, PALETTE.length).map(s => ({ id: s.id, kind: "deployable", label: s.id, color: colourOf.value.get(s.id)!, lines: s.lines, files: s.files, members: [s.id] }))
   const rest = own.value.slice(PALETTE.length)
-  if (rest.length) out.push({ id: OTHER, kind: "deployable", label: `${rest.length} more deployables`, color: OTHER_CSS, lines: rest.reduce((a, s) => a + s.lines, 0), files: rest.reduce((a, s) => a + s.files, 0), members: rest.map(s => s.id) })
+  if (rest.length) out.push({ id: OTHER, kind: "deployable", label: t("deployables.codeBand.moreDeployables", { restLength: rest.length }), color: OTHER_CSS, lines: rest.reduce((a, s) => a + s.lines, 0), files: rest.reduce((a, s) => a + s.files, 0), members: rest.map(s => s.id) })
   for (const s of props.share.slices) {
-    if (s.kind === "several") out.push({ ...s, label: "in several", color: "", members: [] })
-    if (s.kind === "none") out.push({ ...s, label: "ships in nothing", color: NONE_CSS, members: [] })
+    if (s.kind === "several") out.push({ ...s, label: t("deployables.codeBand.several"), color: "", members: [] })
+    if (s.kind === "none") out.push({ ...s, label: t("deployables.codeBand.shipsNothing"), color: NONE_CSS, members: [] })
   }
   return out.filter(s => s.lines > 0 || s.files > 0)
 })
@@ -115,7 +116,7 @@ const litFiles = computed<Set<string> | null>(() => {
 })
 function describe(file: string): string {
   const ids = props.share.ownerOf.get(file) ?? []
-  return ids.length ? `Ships in ${ids.join(", ")}` : "No deployable here ships it"
+  return ids.length ? t("deployables.codeBand.ships", { value: ids.join(", ") }) : t("deployables.codeBand.noDeployableHereShips")
 }
 function pickFile(file: string) {
   const ids = props.share.ownerOf.get(file) ?? []
@@ -124,22 +125,22 @@ function pickFile(file: string) {
 
 const legendItems = computed<LegendItem[]>(() => slices.value.map(s => ({
   label: s.label, color: s.kind === "several" ? "rgb(var(--c-neutral-400))" : s.color, mark: s.kind === "several" ? "hatch" : "swatch", count: s.files,
-  title: s.kind === "several" ? "Components more than one deployable carries" : s.kind === "none" ? "Production files no deployable here packages" : undefined,
+  title: s.kind === "several" ? t("deployables.codeBand.componentsMoreThanOne") : s.kind === "none" ? t("deployables.codeBand.productionFilesNoDeployable") : undefined,
 })))
 
 const sentence = computed(() => {
   const d = props.model.deployables
   const total = props.model.files.length
   if (!d.length) return total
-    ? `No build file here packages this code: no Dockerfile, executable build, serverless template, or desktop or mobile app configuration was found for its ${fmt(total)} production files.`
-    : "No production files were read."
+    ? t("deployables.codeBand.noBuildFileHere", { total: fmt(total) })
+    : t("deployables.codeBand.noProductionFilesWere")
   const kinds = [...new Set(d.map(x => (KIND_LABEL[x.kind] ?? x.kind).toLowerCase()))]
   const none = props.share.slices.find(s => s.kind === "none")
   const several = props.share.slices.find(s => s.kind === "several")
-  if (d.length === 1 && !none && !several) return `All ${fmt(total)} production files ship in ${d[0].id}, ${aOr(kinds[0])} ${kinds[0]}.`
-  const parts = [`${fmt(d.length)} ${d.length === 1 ? kinds[0] : "deployables"} ship${d.length === 1 ? "s" : ""} ${pct(props.share.lines - (none?.lines ?? 0))} of the production lines`]
-  if (several) parts.push(`${pct(several.lines)} ship in more than one`)
-  if (none) parts.push(`${pct(none.lines)} (${fmt(none.files)} files) ship in nothing here`)
+  if (d.length === 1 && !none && !several) return t("deployables.codeBand.allProductionFilesShip", { total: fmt(total), id: d[0].id, value: aOr(kinds[0]), value2: kinds[0] })
+  const parts = [t("deployables.codeBand.shipProductionLines", { length: fmt(d.length), value: d.length === 1 ? kinds[0] : t("deployables.codeBand.deployables"), item: t("common.noun.s", { count: d.length }), value2: pct(props.share.lines - (none?.lines ?? 0)) })]
+  if (several) parts.push(t("deployables.codeBand.shipMoreThanOne", { lines: pct(several.lines) }))
+  if (none) parts.push(t("deployables.codeBand.filesShipNothingHere", { lines: pct(none.lines), files: fmt(none.files) }))
   return parts.join("; ") + "."
 })
 const aOr = (w: string) => (/^[aeiou]/.test(w) ? "an" : "a")

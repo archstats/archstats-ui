@@ -1,28 +1,28 @@
 <template>
-  <ViewWorkspaceLayout :queryable="false" title="Activity">
+  <ViewWorkspaceLayout :queryable="false" :title="t('pages.gitActivity.activity')">
     <template #stats>
       <span v-if="effort.lede.value" class="min-w-0 truncate" :title="effort.lede.value">{{ effort.lede.value }}</span>
       <span v-if="effort.lede.value && age.lines" class="text-neutral-400">·</span>
-      <span v-if="age.lines" :title="`Lines in files unchanged for more than 5 years: ${pct(age.over5)}; more than 1 year: ${pct(age.over1)}. Counted back to ${anchor}.`">
-        Unchanged &gt; 2 y <span class="text-neutral-800">{{ pct(age.over2) }} of lines</span>
+      <span v-if="age.lines" :title="t('pages.gitActivity.linesFilesUnchangedMore', { over5: pct(age.over5), over1: pct(age.over1), anchor })">
+{{ t('pages.gitActivity.unchanged2Y') }} <span class="text-neutral-800">{{ t('pages.gitActivity.lines', { over2: pct(age.over2) }) }}</span>
       </span>
     </template>
     <template #switches>
-      <div class="ui-segmented" role="group" aria-label="Show">
-        <button v-for="t in TABS" :key="t.id" type="button" :aria-pressed="tab === t.id" :title="t.title" @click="setTab(t.id)">{{ t.label }}</button>
+      <div class="ui-segmented" role="group" :aria-label="t('pages.gitActivity.show')">
+        <button v-for="TABS in TABS" :key="TABS.id" type="button" :aria-pressed="tab === TABS.id" :title="TABS.title" @click="setTab(TABS.id)">{{ TABS.label }}</button>
       </div>
     </template>
     <template #visualizer>
       <EmptyState
         v-if="store.hasData && !store.hasView('git_commits')"
-        title="No git history in this snapshot"
-        text="Scan a git checkout to see commits by month and by author."
+        :title="t('pages.gitActivity.noGitHistorySnapshot')"
+        :text="t('pages.gitActivity.scanGitCheckoutSee')"
         icon="git-branch"
       />
       <WorkNow v-else-if="tab === 'now'"/>
       <ChangeBreadth v-else-if="tab === 'breadth'"/>
       <EffortShare v-else-if="tab === 'effort'"/>
-      <CommitHistory v-else :where="where" monthly :empty-text="scoped ? 'No commits touch the files in scope.' : 'No git history in this snapshot.'"/>
+      <CommitHistory v-else :where="where" monthly :empty-text="scoped ? t('pages.gitActivity.noCommitsTouchFiles') : t('pages.gitActivity.noGitHistorySnapshot2')"/>
     </template>
   </ViewWorkspaceLayout>
 </template>
@@ -42,6 +42,7 @@ import ChangeBreadth from "~/features/git/components/ChangeBreadth.vue"
 import { useEffort } from "~/features/git/useEffort"
 import { useRoute, useRouter } from "vue-router"
 import EmptyState from "~/shared/ui/EmptyState.vue"
+import { t } from "~/shared/i18n"
 
 const store = useDataStore()
 const route = useRoute()
@@ -50,10 +51,10 @@ const router = useRouter()
 // asks whether changes are getting wider; Effort what kind of code they land
 // on; Commits is the history itself.
 const TABS = [
-  { id: "now", label: "Work now", title: "Where the changed lines went recently, against the two years before" },
-  { id: "breadth", label: "Breadth", title: "How many components a commit touches, and whether that is growing" },
-  { id: "effort", label: "Effort", title: "Where changed lines went: low health, tangles, fix work" },
-  { id: "commits", label: "Commits", title: "Every commit, by month" },
+  { id: "now", label: t("pages.gitActivity.workNow"), title: t("pages.gitActivity.whereChangedLinesWent") },
+  { id: "breadth", label: t("pages.gitActivity.breadth"), title: t("pages.gitActivity.howManyComponentsCommit") },
+  { id: "effort", label: t("pages.gitActivity.effort"), title: t("pages.gitActivity.whereChangedLinesWent2") },
+  { id: "commits", label: t("pages.gitActivity.commits"), title: t("pages.gitActivity.everyCommitMonth") },
 ] as const
 type TabId = (typeof TABS)[number]["id"]
 const tab = computed<TabId>(() => (TABS.some(t => t.id === route.query.tab) ? route.query.tab as TabId : "now"))

@@ -3,17 +3,17 @@
   <section>
     <!-- Page header: what this is, which snapshot. -->
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 class="text-2xl font-semibold tracking-tight text-neutral-900">Overview</h1>
-      <span class="font-mono text-sm text-neutral-500">{{ workspaceName }}<template v-if="snapshotLabel"> · snapshot {{ snapshotLabel }}</template></span>
-      <span v-if="isJavaProject" class="ui-tag">Java</span>
-      <span v-if="isSpringProject" class="ui-tag">Spring</span>
-      <span v-if="isJpaProject" class="ui-tag">JPA</span>
+      <h1 class="text-2xl font-semibold tracking-tight text-neutral-900">{{ t('overview.summarySection.overview') }}</h1>
+      <span class="font-mono text-sm text-neutral-500">{{ workspaceName }}<template v-if="snapshotLabel">{{ ' ' + t('overview.summarySection.snapshot', { snapshotLabel }) }}</template></span>
+      <span v-if="isJavaProject" class="ui-tag">{{ t('overview.summarySection.java') }}</span>
+      <span v-if="isSpringProject" class="ui-tag">{{ t('overview.summarySection.spring') }}</span>
+      <span v-if="isJpaProject" class="ui-tag">{{ t('overview.summarySection.jpa') }}</span>
     </div>
     <!-- Which code this is: the commit it read, how old that commit was, what was uncommitted. -->
     <div v-if="identity || shallowClone" class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-neutral-500">
       <span v-if="identity" class="font-mono" :title="store.snapshotInfo?.git_head_commit">{{ identity }}</span>
-      <span v-if="shallowClone" class="ui-tag" title="The repository was cloned with --depth, so its history stops where the clone did: commit counts, contributors and ages cover only that">shallow clone</span>
-      <router-link to="/views/snapshot" class="text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline">About this snapshot</router-link>
+      <span v-if="shallowClone" class="ui-tag" :title="t('overview.summarySection.repositoryWasClonedDepth')">{{ t('overview.summarySection.shallowClone') }}</span>
+      <router-link to="/views/snapshot" class="text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline">{{ t('overview.summarySection.aboutSnapshot') }}</router-link>
     </div>
 
     <!-- Stats strip: one hairline frame, six readings. -->
@@ -28,7 +28,7 @@
     <div class="mt-4 grid gap-4 lg:grid-cols-2">
       <!-- Structure -->
       <div class="ui-panel p-4">
-        <h2 class="ui-panel-title">Structure</h2>
+        <h2 class="ui-panel-title">{{ t('overview.summarySection.structure') }}</h2>
         <dl class="mt-3 flex flex-col gap-3">
           <!-- System shape: how entangled the code is, as numbers a report can defend. No grade. -->
           <div v-if="shape.length" class="ui-kv pb-3 hairline-b">
@@ -42,43 +42,43 @@
           </div>
           <div v-if="abstractionRatio !== null">
             <div class="flex items-baseline justify-between">
-              <dt class="text-base text-neutral-600">Abstract types</dt>
-              <dd class="font-mono text-sm tabular-nums text-neutral-900">{{ abstractionRatio.toFixed(1) }}%</dd>
+              <dt class="text-base text-neutral-600">{{ t('overview.summarySection.abstractTypes') }}</dt>
+              <dd class="font-mono text-sm tabular-nums text-neutral-900">{{ fixed(abstractionRatio, 1) }}%</dd>
             </div>
             <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
               <div class="h-full rounded-full bg-neutral-500 transition-[width]" :style="{ width: abstractionRatio + '%' }"></div>
             </div>
-            <p class="mt-1 text-sm leading-4 text-neutral-500">Share of abstract types among all declared types.</p>
+            <p class="mt-1 text-sm leading-4 text-neutral-500">{{ t('overview.summarySection.shareAbstractTypesAmong') }}</p>
           </div>
           <div class="ui-kv">
             <template v-if="getVal('complexity__indentation__avg') !== null">
-              <dt>Average indentation</dt><dd>{{ getVal('complexity__indentation__avg')?.toFixed(2) }}</dd>
+              <dt>{{ t('overview.summarySection.averageIndentation') }}</dt><dd>{{ fixed(getVal('complexity__indentation__avg'), 2) }}</dd>
             </template>
             <template v-if="getVal('modularity__component__imports') !== null">
-              <dt>Component imports</dt><dd>{{ formatVal(getVal('modularity__component__imports')) }}</dd>
+              <dt>{{ t('overview.summarySection.componentImports') }}</dt><dd>{{ formatVal(getVal('modularity__component__imports')) }}</dd>
             </template>
             <template v-if="getVal('modularity__component__declarations') !== null">
-              <dt title="package and namespace statements, one per file that has one">Package declarations</dt><dd>{{ formatVal(getVal('modularity__component__declarations')) }}</dd>
+              <dt :title="t('overview.summarySection.packageNamespaceStatementsOne')">{{ t('overview.summarySection.packageDeclarations') }}</dt><dd>{{ formatVal(getVal('modularity__component__declarations')) }}</dd>
             </template>
             <template v-if="componentDependencies !== null">
-              <dt><MetricHint id="app__cross_component_edges">Component dependencies</MetricHint></dt><dd>{{ formatVal(componentDependencies) }}</dd>
+              <dt><MetricHint id="app__cross_component_edges">{{ t('overview.summarySection.componentDependencies') }}</MetricHint></dt><dd>{{ formatVal(componentDependencies) }}</dd>
             </template>
             <template v-if="evidenceText">
-              <dt title="How the dependencies were found: an import names its target; a runtime lookup names it in a string; a type-only import is erased by the compiler and left out of coupling">Dependency evidence</dt>
+              <dt :title="t('overview.summarySection.howDependenciesWereFound')">{{ t('overview.summarySection.dependencyEvidence') }}</dt>
               <dd class="!whitespace-normal"><router-link to="/views/snapshot#dependencies" class="underline-offset-2 hover:underline">{{ evidenceText }}</router-link></dd>
             </template>
             <template v-if="getVal('connection_count') !== null">
-              <dt title="individual imports that cross from one component into another">Cross-component imports</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
+              <dt :title="t('overview.summarySection.individualImportsCrossOne')">{{ t('overview.summarySection.crossComponentImports') }}</dt><dd>{{ formatVal(getVal('connection_count')) }}</dd>
             </template>
             <template v-if="avgFilesPerComponent">
-              <dt>Files per component</dt><dd>{{ avgFilesPerComponent.toFixed(1) }}</dd>
+              <dt>{{ t('overview.summarySection.filesPerComponent') }}</dt><dd>{{ fixed(avgFilesPerComponent, 1) }}</dd>
             </template>
             <template v-if="avgLinesPerFile">
-              <dt>Lines per file</dt><dd>{{ avgLinesPerFile.toFixed(0) }}</dd>
+              <dt>{{ t('overview.summarySection.linesPerFile') }}</dt><dd>{{ fixed(avgLinesPerFile, 0) }}</dd>
             </template>
           </div>
           <div v-if="isJavaProject && javaStats.length > 0" class="pt-3 hairline-t">
-            <span class="ui-label">Java</span>
+            <span class="ui-label">{{ t('overview.summarySection.java') }}</span>
             <div class="ui-kv mt-1.5">
               <template v-for="stat in javaStats" :key="stat.key">
                 <dt>{{ stat.label }}</dt><dd>{{ formatVal(stat.value) }}</dd>
@@ -90,15 +90,15 @@
 
       <!-- Activity -->
       <div class="ui-panel p-4">
-        <h2 class="ui-panel-title">Activity</h2>
+        <h2 class="ui-panel-title">{{ t('overview.summarySection.activity') }}</h2>
         <div v-if="hasGitChurn" class="mt-3">
           <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-            <div class="h-full bg-green-500" :style="{ width: additionsPercent + '%' }" :title="`Additions ${additionsPercent.toFixed(1)}%`"></div>
-            <div class="h-full bg-red-500" :style="{ width: deletionsPercent + '%' }" :title="`Deletions ${deletionsPercent.toFixed(1)}%`"></div>
+            <div class="h-full bg-green-500" :style="{ width: additionsPercent + '%' }" :title="t('overview.summarySection.additions', { value: additionsPercent.toFixed(1) })"></div>
+            <div class="h-full bg-red-500" :style="{ width: deletionsPercent + '%' }" :title="t('overview.summarySection.deletions', { value: deletionsPercent.toFixed(1) })"></div>
           </div>
           <div class="mt-1.5 flex items-center justify-between font-mono text-sm tabular-nums">
-            <span class="text-green-700">+{{ formatVal(getVal('git__additions__total')) }} added</span>
-            <span class="text-red-700">−{{ formatVal(getVal('git__deletions__total')) }} removed</span>
+            <span class="text-green-700">{{ t('overview.summarySection.added', { value: formatVal(getVal('git__additions__total')) }) }}</span>
+            <span class="text-red-700">{{ t('overview.summarySection.removed', { value: formatVal(getVal('git__deletions__total')) }) }}</span>
           </div>
         </div>
         <div class="mt-3 overflow-x-auto">
@@ -110,9 +110,7 @@
     <!-- Everything else the engine measured. -->
     <details v-if="extraStats.length > 0" class="group/details mt-4 rounded-lg hairline">
       <summary class="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-base font-medium text-neutral-800 hover:bg-neutral-50">
-        <Icon icon="chevron-right" :size="14" class="text-neutral-400 transition-transform group-open/details:rotate-90"/>
-        More metrics
-        <span class="ui-tag">{{ extraStats.length }}</span>
+        <I18nT k="overview.summarySection.moreMetrics"><template #icon><Icon icon="chevron-right" :size="14" class="text-neutral-400 transition-transform group-open/details:rotate-90"/></template><template #extraStatsLength><span class="ui-tag">{{ extraStats.length }}</span></template></I18nT>
       </summary>
       <dl class="ui-kv gap-y-1.5 px-4 pb-4 pt-2 hairline-t sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:gap-x-6">
         <template v-for="stat in extraStats" :key="stat.key">
@@ -124,6 +122,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { fixed } from "~/shared/format"
 import MetricHint from "~/features/snapshot/components/MetricHint.vue"
 import { ReadingsOf } from "wailsjs/go/app/ChangesService"
 import { computed, ref, watch } from "vue"
@@ -135,6 +134,8 @@ import { formatScanTime } from "~/shared/time"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
 import { useAuthorsStore } from "~/features/git/authors.store"
 import { IN_SNAPSHOT, NOT_BOT_SQL, canonicalAuthorSql } from "~/features/git/authors"
+import { t, intlLocale } from "~/shared/i18n"
+import I18nT from "~/shared/ui/I18nT"
 
 const store = useDataStore()
 const workspaces = useWorkspacesStore()
@@ -148,10 +149,10 @@ const identity = computed(() => {
   const scan: any = workspaces.openScan
   if (info.git_head_time && scan?.startedAt) {
     const days = Math.round((new Date(scan.startedAt).getTime() - new Date(info.git_head_time).getTime()) / 86400000)
-    parts.push(days <= 0 ? "committed the day of the scan" : `committed ${days.toLocaleString("en-US")} day${days === 1 ? "" : "s"} before the scan`)
+    parts.push(days <= 0 ? t("overview.summarySection.committedDayScan") : t("overview.summarySection.committedBeforeScan", { days: t("common.count.day", { count: days }) }))
   }
   const dirty = Number(info.git_dirty_files ?? 0)
-  if (dirty > 0) parts.push(`${dirty} uncommitted file${dirty === 1 ? "" : "s"}`)
+  if (dirty > 0) parts.push(t("overview.summarySection.uncommitted", { dirty, files: t("common.noun.file", { count: dirty }) }))
   return parts.join(" · ")
 })
 const snapshotLabel = computed(() => {
@@ -163,15 +164,15 @@ const snapshotLabel = computed(() => {
 const strip = computed(() => {
   const n = (key: string) => (getVal(key) === null ? "—" : formatVal(getVal(key)))
   return [
-    { label: "Components", value: n("component_count"), sub: "", warn: false },
-    { label: "Files", value: n("complexity__files"), sub: "", warn: false },
-    { label: "Lines", value: n("complexity__lines"), sub: "", warn: false },
-    { label: "Directories", value: n("directory_count"), sub: "", warn: false },
+    { label: t("overview.summarySection.components"), value: n("component_count"), sub: "", warn: false },
+    { label: t("overview.summarySection.files"), value: n("complexity__files"), sub: "", warn: false },
+    { label: t("overview.summarySection.lines"), value: n("complexity__lines"), sub: "", warn: false },
+    { label: t("overview.summarySection.directories"), value: n("directory_count"), sub: "", warn: false },
     // A shallow clone's history stops at the depth it was cloned with: gin
     // read one commit by one contributor, with nothing to say so.
-    { label: "Commits", value: people.value ? formatVal(people.value.commits) : n("git__commits__total"), sub: shallowClone.value ? "shallow clone: history is cut short" : "to files in the snapshot", warn: shallowClone.value },
+    { label: t("overview.summarySection.commits"), value: people.value ? formatVal(people.value.commits) : n("git__commits__total"), sub: shallowClone.value ? t("overview.summarySection.shallowCloneHistoryCut") : t("overview.summarySection.filesSnapshot"), warn: shallowClone.value },
     // A mean, said as one: "103 commits each" read as every contributor's number.
-    { label: "Contributors", value: people.value ? formatVal(people.value.authors) : n("git__authors__total"), sub: shallowClone.value ? "in the fetched history only" : commitsPerAuthor.value ? `to those files, ${commitsPerAuthor.value.toFixed(0)} commits on average` : "to files in the snapshot", warn: shallowClone.value },
+    { label: t("overview.summarySection.contributors"), value: people.value ? formatVal(people.value.authors) : n("git__authors__total"), sub: shallowClone.value ? t("overview.summarySection.fetchedHistoryOnly") : commitsPerAuthor.value ? t("overview.summarySection.thoseFilesCommitsAverage", { value: commitsPerAuthor.value.toFixed(0) }) : t("overview.summarySection.filesSnapshot"), warn: shallowClone.value },
   ]
 })
 
@@ -216,14 +217,14 @@ const shape = computed(() => {
   const n = num("app__components"), pairs = num("app__reachable_pairs"), pc = num("app__propagation_cost")
   const inTangles = num("app__components_in_tangles"), linesShare = num("app__lines_in_tangles_share")
   const largest = num("app__largest_tangle"), levels = num("app__dependency_levels")
-  const pct = (v: number) => `${(v * 100).toLocaleString("en-US", { maximumFractionDigits: v < 0.1 ? 1 : 0 })}%`
-  const f = (v: number) => v.toLocaleString("en-US")
+  const pct = (v: number) => `${(v * 100).toLocaleString(intlLocale, { maximumFractionDigits: v < 0.1 ? 1 : 0 })}%`
+  const f = (v: number) => v.toLocaleString(intlLocale)
   const rows: Array<{ id: string; label: string; value: string; inputs: string; to?: string }> = []
-  if (pc !== null) rows.push({ id: "app__propagation_cost", label: "Propagation cost", value: pct(pc), inputs: pairs !== null && n ? `(${f(pairs)} reachable pairs + ${f(n)}) / ${f(n)}²` : "", to: "/views/connections?rep=matrix&order=levels&level=components" })
-  if (inTangles !== null && n) rows.push({ id: "app__components_in_tangles", label: "Components in tangles", value: `${f(inTangles)} of ${f(n)} (${pct(inTangles / n)})`, inputs: "Components in a strongly connected group of two or more", to: "/views/components/cycles" })
-  if (linesShare !== null) rows.push({ id: "app__lines_in_tangles_share", label: "Lines in tangles", value: pct(linesShare), inputs: "Lines of tangled components over all lines", to: "/views/components/cycles" })
-  if (largest !== null) rows.push({ id: "app__largest_tangle", label: "Largest tangle", value: largest ? `${f(largest)} components` : "none", inputs: "", to: largest ? "/views/components/cycles" : undefined })
-  if (levels !== null) rows.push({ id: "app__dependency_levels", label: "Dependency levels", value: f(levels), inputs: "Longest import chain once tangles are collapsed", to: "/views/connections?rep=matrix&order=levels&level=components" })
+  if (pc !== null) rows.push({ id: "app__propagation_cost", label: t("overview.summarySection.propagationCost"), value: pct(pc), inputs: pairs !== null && n ? t("overview.summarySection.reachablePairs", { pairs: f(pairs), n: f(n), n2: f(n) }) : "", to: "/views/connections?rep=matrix&order=levels&level=components" })
+  if (inTangles !== null && n) rows.push({ id: "app__components_in_tangles", label: t("overview.summarySection.componentsTangles"), value: `${f(inTangles)} of ${f(n)} (${pct(inTangles / n)})`, inputs: t("overview.summarySection.componentsStronglyConnectedGroup"), to: "/views/components/cycles" })
+  if (linesShare !== null) rows.push({ id: "app__lines_in_tangles_share", label: t("overview.summarySection.linesTangles"), value: pct(linesShare), inputs: t("overview.summarySection.linesTangledComponentsOver"), to: "/views/components/cycles" })
+  if (largest !== null) rows.push({ id: "app__largest_tangle", label: t("overview.summarySection.largestTangle"), value: largest ? `${f(largest)} components` : "none", inputs: "", to: largest ? "/views/components/cycles" : undefined })
+  if (levels !== null) rows.push({ id: "app__dependency_levels", label: t("overview.summarySection.dependencyLevels"), value: f(levels), inputs: t("overview.summarySection.longestImportChainOnce"), to: "/views/connections?rep=matrix&order=levels&level=components" })
   return rows
 })
 
@@ -235,9 +236,9 @@ const evidenceText = computed(() => {
   const e = evidence.value
   if (!e) return ""
   const parts: string[] = []
-  if (e.dynamicOnly) parts.push(`${formatVal(e.dynamicOnly)} of ${formatVal(e.total)} only by runtime lookup`)
-  if (e.unresolved) parts.push(`${formatVal(e.unresolved)} lookup${e.unresolved === 1 ? "" : "s"} unresolved`)
-  if (e.typeOnly) parts.push(`${formatVal(e.typeOnly)} types only, left out of coupling`)
+  if (e.dynamicOnly) parts.push(t("overview.summarySection.onlyRuntimeLookup", { dynamicOnly: formatVal(e.dynamicOnly), total: formatVal(e.total) }))
+  if (e.unresolved) parts.push(t("overview.summarySection.unresolved", { unresolved: formatVal(e.unresolved), lookups: t("common.noun.lookup", { count: e.unresolved }) }))
+  if (e.typeOnly) parts.push(t("overview.summarySection.typesOnlyLeftOut", { typeOnly: formatVal(e.typeOnly) }))
   return parts.join(" · ")
 })
 watch(
@@ -247,7 +248,7 @@ watch(
     if (!hasData || !store.hasView("component_connections_direct")) return
     try {
       const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('component_connections_direct')")
-      const runtimeOnly = cols.some(c => c.name === "kind") ? `AND kind != 'type_only'` : ""
+      const runtimeOnly = cols.some(c => c.name === "kind") ? t("overview.summarySection.kindTypeOnly") : ""
       const rows = await store.query<{ n: number }>(
         `SELECT count(*) AS n FROM (SELECT DISTINCT "from", "to" FROM component_connections_direct WHERE "from" != "to" ${runtimeOnly})`,
       )
@@ -352,11 +353,11 @@ const deletionsPercent = computed(() => {
 
 // Java counts from the summary table; only the keys the scan produced show.
 const javaKeys = [
-  { key: "java__class__declarations", label: "Classes" },
-  { key: "java__method_declarations", label: "Methods" },
-  { key: "java__field__declarations", label: "Fields" },
-  { key: "java__spring__beans", label: "Spring beans" },
-  { key: "java__jpa__entities", label: "JPA entities" },
+  { key: "java__class__declarations", label: t("overview.summarySection.classes") },
+  { key: "java__method_declarations", label: t("overview.summarySection.methods") },
+  { key: "java__field__declarations", label: t("overview.summarySection.fields") },
+  { key: "java__spring__beans", label: t("overview.summarySection.springBeans") },
+  { key: "java__jpa__entities", label: t("overview.summarySection.jpaEntities") },
 ]
 const javaStats = computed(() =>
   javaKeys
@@ -414,16 +415,16 @@ function formatVal(val: any): string {
   if (val == null || val === "") return ""
   const n = Number(val)
   if (isNaN(n)) return String(val)
-  if (Number.isInteger(n)) return n.toLocaleString()
-  return n.toFixed(2)
+  if (Number.isInteger(n)) return n.toLocaleString(intlLocale)
+  return fixed(n, 2)
 }
 
 function formatStatValue(val: any): string {
   if (val == null || val === "") return "—"
   const n = Number(val)
   if (isNaN(n)) return String(val)
-  if (Number.isInteger(n)) return n.toLocaleString()
-  return n.toFixed(1)
+  if (Number.isInteger(n)) return n.toLocaleString(intlLocale)
+  return fixed(n, 1)
 }
 </script>
 

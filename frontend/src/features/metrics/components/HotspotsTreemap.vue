@@ -16,7 +16,7 @@
           <span class="opacity-70">{{ store.statNiceName(colorMetric) }}</span>
           <span class="font-mono tabular-nums">{{ isBlank(hoveredNode.data.colorValue) ? zeroLabel : formatNumber(hoveredNode.data.colorValue) }}</span>
         </span>
-        <span v-if="rankOf.get(hoveredNode.data.unit?.name)" class="text-xs opacity-70">No. {{ rankOf.get(hoveredNode.data.unit?.name) }} of the {{ labelHigh.toLowerCase() }}</span>
+        <span v-if="rankOf.get(hoveredNode.data.unit?.name)" class="text-xs opacity-70">{{ t('metrics.hotspotsTreemap.no', { unitName: rankOf.get(hoveredNode.data.unit?.name), labelHigh: labelHigh.toLowerCase() }) }}</span>
       </div>
 
       <!-- Circle packing canvas -->
@@ -29,28 +29,28 @@
         class="ui-menu ui-popover absolute z-50 min-w-[200px] animate-in"
         :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
       >
-        <div class="ui-menu-title">{{ contextMenu.node.data.unit ? unitLabel : 'Namespace' }}</div>
+        <div class="ui-menu-title">{{ contextMenu.node.data.unit ? unitLabel : t('metrics.hotspotsTreemap.namespace') }}</div>
 
         <template v-if="!contextMenu.node.data.unit">
           <button type="button" class="ui-menu-item" @click="promoteNamespaceToGroup">
             <Icon icon="folder" :size="13" class="text-neutral-500"/>
-            <span>Promote to group</span>
+            <span>{{ t('metrics.hotspotsTreemap.promoteGroup') }}</span>
           </button>
         </template>
 
         <template v-else>
-          <div class="ui-menu-title">Add to group</div>
+          <div class="ui-menu-title">{{ t('metrics.hotspotsTreemap.addGroup') }}</div>
           <div class="max-h-48 overflow-y-auto">
             <button v-for="g in grainGroups" :key="g.id" type="button" class="ui-menu-item" @click="addLeafToGroup(g.id)">
               <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: g.color }"></span>
               <span class="truncate">{{ g.name }}</span>
             </button>
-            <div v-if="grainGroups.length === 0" class="px-2 py-1.5 text-sm text-neutral-400">No groups yet</div>
+            <div v-if="grainGroups.length === 0" class="px-2 py-1.5 text-sm text-neutral-400">{{ t('metrics.hotspotsTreemap.noGroupsYet') }}</div>
           </div>
           <div class="my-1 hairline-t"></div>
           <button type="button" class="ui-menu-item text-red-700" @click="removeLeafFromGroups">
             <Icon icon="minus" :size="13"/>
-            <span>Remove from groups</span>
+            <span>{{ t('metrics.hotspotsTreemap.removeGroups') }}</span>
           </button>
         </template>
       </div>
@@ -69,6 +69,7 @@ import * as d3 from "d3"
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { hasMember, units, useGroupsStore, type SavedGroup } from "~/features/groups/groups.store"
+import { t } from "~/shared/i18n"
 
 export type HotspotGrain = "components" | "directories" | "files"
 export type HotspotLayout = "packed" | "flat"
@@ -121,7 +122,7 @@ const emit = defineEmits<{
   (e: "replace-selection", names: string[]): void
 }>()
 
-const unitLabel = computed(() => props.grain === "components" ? "Component" : props.grain === "files" ? "File" : "Directory")
+const unitLabel = computed(() => props.grain === "components" ? t("metrics.hotspotsTreemap.component") : props.grain === "files" ? t("metrics.hotspotsTreemap.file") : t("metrics.hotspotsTreemap.directory"))
 const rankOf = computed(() => new Map((props.ranked ?? []).map((name, i) => [name, i + 1])))
 
 /** A heat that stands for "nothing recorded" rather than a value on the scale. */
@@ -176,7 +177,7 @@ function promoteNamespaceToGroup() {
   collect(node)
   if (leaves.length > 0) {
     const nsName = node.data.fullName || node.data.name
-    groupsStore.createGroup(`Namespace ${nsName}`, units(props.grain === "files" ? "file" : "component", leaves))
+    groupsStore.createGroup(t("metrics.hotspotsTreemap.namespace2", { nsName }), units(props.grain === "files" ? "file" : "component", leaves))
   }
   closeContextMenu()
 }
@@ -298,7 +299,7 @@ interface KeyInfo {
 
 const key = shallowRef<KeyInfo | null>(null)
 
-function keyOf(heat: HeatScale, t: ChartTheme, hasGroupRings: boolean): KeyInfo {
+function keyOf(heat: HeatScale, chartTheme: ChartTheme, hasGroupRings: boolean): KeyInfo {
   const n = heat.ramp.length - 1
   return {
     heatLabel: store.statNiceName(props.colorMetric) || props.colorMetric,
@@ -308,9 +309,9 @@ function keyOf(heat: HeatScale, t: ChartTheme, hasGroupRings: boolean): KeyInfo 
     gradient: `linear-gradient(to right, ${heat.ramp.map((c, i) => `${c} ${Math.round((i / n) * 100)}%`).join(", ")})`,
     ramp: heat.ramp,
     blank: props.zeroLabel || null,
-    blankFill: t.ground,
-    blankStroke: t.hairlineStrong,
-    rings: props.layout === "packed" ? (hasGroupRings ? "Ring: namespace or group" : "Ring: namespace") : (hasGroupRings ? "Outline: group" : null),
+    blankFill: chartTheme.ground,
+    blankStroke: chartTheme.hairlineStrong,
+    rings: props.layout === "packed" ? (hasGroupRings ? t("metrics.hotspotsTreemap.ringNamespaceGroup") : t("metrics.hotspotsTreemap.ringNamespace")) : (hasGroupRings ? t("metrics.hotspotsTreemap.outlineGroup") : null),
   }
 }
 
@@ -326,7 +327,7 @@ const FIG_K = 0.85
 
 // What size and colour stand for, in the same words under the chart and under an export.
 const figureHandle = useFigure({
-  title: () => (props.grain === "files" ? "Hotspots: files" : props.grain === "directories" ? "Hotspots: directories" : "Hotspots: components"),
+  title: () => (props.grain === "files" ? t("metrics.hotspotsTreemap.hotspotsFiles") : props.grain === "directories" ? t("metrics.hotspotsTreemap.hotspotsDirectories") : t("metrics.hotspotsTreemap.hotspotsComponents")),
   ready: () => !!svgSel(),
   svg: true,
   render: opts => figure(!!opts?.light),
@@ -340,7 +341,7 @@ const figureHandle = useFigure({
       ramps: [{ label: k.heatLabel, colors: k.ramp, low: k.cool, high: k.hot }],
       items,
       notes: [
-        `Area is ${k.sizeLabel.toLowerCase()}.${k.rings ? ` ${k.rings.startsWith("Ring") ? "A ring" : "An outline"} marks a ${k.rings.replace(/^(Ring|Outline): /, "")}.` : ""}`,
+        t("metrics.hotspotsTreemap.area", { sizeLabel: k.sizeLabel.toLowerCase(), value: k.rings ? t("metrics.hotspotsTreemap.marks", { value: k.rings.startsWith("Ring") ? "A ring" : t("metrics.hotspotsTreemap.outline"), replace: k.rings.replace(/^(Ring|Outline): /, "") }) : "" }),
         ...(props.leftOutNote ? [props.leftOutNote] : []),
       ],
     }
@@ -899,7 +900,7 @@ function buildFlat(units: HotspotUnit[], sizeKey: string, colorKey: string) {
 function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string) {
   const root: any = { name: "root", children: [] }
   const groupNodes = new Map<string, any>()
-  const unassignedNode: any = { name: "Not in a group", children: [] }
+  const unassignedNode: any = { name: t("metrics.hotspotsTreemap.notGroup"), children: [] }
   root.children.push(unassignedNode)
 
   units.forEach(unit => {

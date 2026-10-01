@@ -18,7 +18,7 @@
           :step="stepOf"
           :title="title"
           :focus="guide"
-          :callout="guide ? `cut ${applied + 1}` : null"
+          :callout="guide ? t('cycles.tangleExhibit.cut', { value: applied + 1 }) : null"
           @select-edge="(f: string, t: string) => { selectedEdge = { from: f, to: t }; $emit('select-edge', f, t) }"
           @select-node="(id: string) => { selectedNode = id; $emit('select-node', id) }"
           @clear="selectedEdge = null; selectedNode = null"
@@ -39,11 +39,11 @@
     </div>
     <ol v-if="steps.length" class="tx-steps">
       <li v-for="(s, i) in steps.slice(0, 8)" :key="i" :class="{ 'tx-on': applied > i }">
-        <button type="button" class="tx-n" :title="applied > i ? 'Undo this cut in the picture' : 'Apply the cuts up to here in the picture'" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
+        <button type="button" class="tx-n" :title="applied > i ? t('cycles.tangleExhibit.undoCutPicture') : t('cycles.tangleExhibit.applyCutsUpHere')" @click="applied = applied > i ? i : i + 1">{{ i + 1 }}</button>
         <span class="min-w-0 flex-1 truncate font-mono" :title="`${s.from} → ${s.to}`">{{ shortName(s.from) }} → {{ shortName(s.to) }}</span>
-        <span class="shrink-0 text-neutral-500" :title="`This cut frees ${s.frees ?? 0}; with the cuts before it, ${s.freed} are out of the tangle`">{{ s.imports }} ref{{ s.imports === 1 ? "" : "s" }} · frees {{ s.frees ?? s.freed }} · {{ s.freed }} out</span>
+        <span class="shrink-0 text-neutral-500" :title="t('cycles.tangleExhibit.cutFreesCutsBefore', { value: s.frees ?? 0, freed: s.freed })">{{ t('cycles.tangleExhibit.freesOut', { refs: t('common.count.ref', { count: s.imports }), value: s.frees ?? s.freed, freed: s.freed }) }}</span>
       </li>
-      <li v-if="steps.length > 8" class="pl-[26px] text-neutral-500">{{ steps.length - 8 }} more cut{{ steps.length - 8 === 1 ? "" : "s" }} in the Cycles view</li>
+      <li v-if="steps.length > 8" class="pl-[26px] text-neutral-500">{{ t('cycles.tangleExhibit.moreCyclesView', { value: steps.length - 8, cuts: t('common.noun.cut', { count: steps.length - 8 }) }) }}</li>
     </ol>
   </div>
 </template>
@@ -55,6 +55,7 @@ import { shortName } from "~/features/snapshot/names"
 import type { TangleStep } from "../exhibits/tangle"
 import TangleGraph from "./TangleGraph.vue"
 import TangleMatrix from "./TangleMatrix.vue"
+import { t } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   members: string[]

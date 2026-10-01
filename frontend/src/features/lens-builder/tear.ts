@@ -31,6 +31,8 @@
 // minimum part of three against a coarse partition, against 70% at two).
 // See tasks/desktop-shell-plan.md for the full table.
 
+import { t } from "~/shared/i18n"
+
 export interface TearInput {
   /** Every component's files. A component with one file cannot be torn. */
   filesOf: Map<string, string[]>
@@ -216,7 +218,7 @@ export function scoreTear(
   const before = baseline ?? keptInside(input, new Map(), new Map(), owners)
   const after = keptInside(input, new Map([[component, new Set(line.leaving)]]), new Map([[component, line.rival]]), owners)
   const gain = after - before
-  if (gain <= minGain) return { tear: null, refused: "no gain" }
+  if (gain <= minGain) return { tear: null, refused: t("lens-builder.tear.noGain") }
   return { tear: { component, ...line, gain, moved: Math.round(gain * totalWeight(input, owners)) }, refused: null }
 }
 
@@ -272,7 +274,7 @@ export function findTears(input: TearInput, options: TearOptions = {}): { tears:
     } else {
       splits.delete(c)
       rivalOf.delete(c)
-      refused.set(c, "no gain")
+      refused.set(c, t("lens-builder.tear.noGain"))
     }
   }
 

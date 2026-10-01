@@ -1,29 +1,29 @@
 <template>
   <section v-if="data.hasData && (loading || hasUnits)" class="ui-panel mt-8 overflow-hidden" aria-labelledby="units-glance-title">
     <div class="flex items-baseline gap-3 px-4 pb-2 pt-3 hairline-b">
-      <h2 id="units-glance-title" class="ui-panel-title">How the code is layered</h2>
+      <h2 id="units-glance-title" class="ui-panel-title">{{ t('overview.unitsGlance.howCodeLayered') }}</h2>
       <span v-if="!loading" class="min-w-0 truncate text-sm text-neutral-500">{{ summary }}</span>
-      <router-link to="/views/units" class="ml-auto shrink-0 text-sm text-neutral-500 hover:text-neutral-900">Open Units →</router-link>
+      <router-link to="/views/units" class="ml-auto shrink-0 text-sm text-neutral-500 hover:text-neutral-900">{{ t('overview.unitsGlance.openUnits') }}</router-link>
     </div>
 
-    <p v-if="loading" class="px-4 py-6 text-sm text-neutral-500">Reading modules…</p>
+    <p v-if="loading" class="px-4 py-6 text-sm text-neutral-500">{{ t('overview.unitsGlance.readingModules') }}</p>
     <div v-else class="flex flex-col gap-8 px-4 pb-4 pt-3 min-[1080px]:flex-row min-[1080px]:gap-10">
       <div class="min-w-0 shrink-0 min-[1080px]:w-[400px]">
-        <StackDiagram :floors="stack.floors" :flows="stack.flows" up-label="points up"
-                      figure="How the layers lean" aria-label="The lanes as floors, with the references between them"
+        <StackDiagram :floors="stack.floors" :flows="stack.flows" :up-label="t('overview.unitsGlance.pointsUp')"
+                      :figure="t('overview.unitsGlance.howLayersLean')" :aria-label="t('overview.unitsGlance.lanesFloorsReferencesBetween')"
                       @select="onStack"/>
         <p class="mt-2 max-w-[46ch] text-sm leading-4 text-neutral-500">
-          <template v-if="flows.length">Stacked so most references run down; red runs back against the grain. Click a lane or a link to open what it is made of.</template>
-          <template v-else-if="referencesUnresolved">References between modules were not resolved in this snapshot, so no lane can be read against another.</template>
-          <template v-else>No references cross a lane boundary in this snapshot.</template>
+          <template v-if="flows.length">{{ t('overview.unitsGlance.stackedSoMostReferences') }}</template>
+          <template v-else-if="referencesUnresolved">{{ t('overview.unitsGlance.referencesBetweenModulesWere') }}</template>
+          <template v-else>{{ t('overview.unitsGlance.noReferencesCrossLane') }}</template>
         </p>
       </div>
       <div class="flex min-w-0 flex-1 flex-col">
-        <h3 class="ui-section-title mb-1">What it says</h3>
+        <h3 class="ui-section-title mb-1">{{ t('overview.unitsGlance.whatSays') }}</h3>
         <UnitFindings :findings="shown" @open="open({ finding: $event.id })"/>
-        <p v-if="!findings.length" class="py-4 text-base text-neutral-500">Nothing stands out in this snapshot. Every module sits on its own.</p>
+        <p v-if="!findings.length" class="py-4 text-base text-neutral-500">{{ t('overview.unitsGlance.nothingStandsOutSnapshot') }}</p>
         <router-link v-else-if="findings.length > shown.length" to="/views/units" class="pt-3 text-sm text-neutral-500 hairline-t hover:text-neutral-900">
-          {{ findings.length - shown.length }} more in Units →
+          {{ t('overview.unitsGlance.moreUnits', { value: findings.length - shown.length }) }}
         </router-link>
       </div>
     </div>
@@ -38,6 +38,7 @@ import UnitFindings from "~/features/units/components/UnitFindings.vue"
 import { useUnitsReading } from "~/features/units/useUnitsReading"
 import { laneStack } from "~/features/units/stack"
 import { useDataStore } from "~/features/snapshot/data.store"
+import { t, intlLocale } from "~/shared/i18n"
 
 // The top of the Units descent on the Overview: how the lanes lean on each
 // other, and the first of the findings. Every click lands on the same place
@@ -55,10 +56,10 @@ const stack = computed(() => laneStack(laneBands.value, flows.value, notLayers.v
 const shown = computed(() => findings.value.slice(0, SHOWN))
 
 const summary = computed(() => {
-  const n = (x: number) => x.toLocaleString("en-US")
+  const n = (x: number) => x.toLocaleString(intlLocale)
   const modules = graph.value.modules.length, refs = graph.value.edges.length
-  const lanes = `${n(laneBands.value.length)} lane${laneBands.value.length === 1 ? "" : "s"}`
-  return `${frameworkName.value ? `${frameworkName.value} · ` : "Lanes by folder structure · "}${lanes}, ${n(modules)} module${modules === 1 ? "" : "s"}, ${n(refs)} reference${refs === 1 ? "" : "s"}`
+  const lanes = t("overview.unitsGlance.text2", { lanes: t("common.count.lane", { count: laneBands.value.length }) })
+  return t("overview.unitsGlance.text", { value: frameworkName.value ? `${frameworkName.value} · ` : t("overview.unitsGlance.lanesFolderStructure"), lanes, modules: t("common.count.module", { count: modules }), references: t("common.count.reference", { count: refs }) })
 })
 
 function open(query: Record<string, string>) {

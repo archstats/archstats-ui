@@ -3,46 +3,46 @@
     <!-- Controls row: period on the left, counts on the right. -->
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
       <div class="relative flex items-center gap-2">
-        <div class="ui-segmented" role="group" aria-label="Period">
+        <div class="ui-segmented" role="group" :aria-label="t('git.commitHistory.period')">
           <button v-for="p in periods" :key="p.id" type="button" :aria-pressed="period === p.id" :title="anchorLabel(p.days, anchor)" @click="pickPeriod(p.id)">{{ p.label }}</button>
-          <button type="button" :aria-pressed="period === 'custom'" :title="range ? rangeLabel : 'Choose the dates'" @click="rangeOpen = !rangeOpen">{{ period === "custom" && range ? rangeShort : "Custom…" }}</button>
+          <button type="button" :aria-pressed="period === 'custom'" :title="range ? rangeLabel : t('git.commitHistory.chooseDates')" @click="rangeOpen = !rangeOpen">{{ period === "custom" && range ? rangeShort : t('git.commitHistory.custom') }}</button>
         </div>
         <template v-if="rangeOpen">
           <div class="fixed inset-0 z-40" @click="rangeOpen = false"></div>
           <form class="ui-popover absolute left-0 top-full z-50 mt-1 flex w-72 flex-col gap-3 p-3 animate-in" @submit.prevent="applyRange">
-            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Since <input v-model="draftSince" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
-            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">Until <input v-model="draftUntil" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">{{ t('git.commitHistory.since') }} <input v-model="draftSince" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
+            <label class="flex items-center justify-between gap-3 text-sm text-neutral-700">{{ t('git.commitHistory.until') }} <input v-model="draftUntil" type="date" class="ui-input ui-input-sm w-40" :max="anchorDay"></label>
             <p v-if="rangeError" class="text-sm text-red-700">{{ rangeError }}</p>
             <div class="flex flex-wrap gap-1.5">
-              <button v-if="baselineDay" type="button" class="ui-chip" @click="draftSince = baselineDay; draftUntil = anchorDay">Since the baseline commit</button>
-              <button v-if="range" type="button" class="ui-chip" @click="draftSince = range.since; draftUntil = range.until">Since {{ range.since }}</button>
+              <button v-if="baselineDay" type="button" class="ui-chip" @click="draftSince = baselineDay; draftUntil = anchorDay">{{ t('git.commitHistory.sinceBaselineCommit') }}</button>
+              <button v-if="range" type="button" class="ui-chip" @click="draftSince = range.since; draftUntil = range.until">{{ t('git.commitHistory.since2', { since: range.since }) }}</button>
             </div>
             <div class="flex justify-end gap-2">
-              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="rangeOpen = false">Cancel</button>
-              <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary">Apply</button>
+              <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" @click="rangeOpen = false">{{ t('git.commitHistory.cancel') }}</button>
+              <button type="submit" class="ui-btn ui-btn-sm ui-btn-primary">{{ t('git.commitHistory.apply') }}</button>
             </div>
           </form>
         </template>
       </div>
-      <div class="ui-segmented" role="group" aria-label="Order">
-        <button type="button" :aria-pressed="order === 'date'" @click="order = 'date'">Date</button>
-        <button type="button" :aria-pressed="order === 'widest'" title="Commits that touched the most components first" @click="order = 'widest'">Widest</button>
+      <div class="ui-segmented" role="group" :aria-label="t('git.commitHistory.order')">
+        <button type="button" :aria-pressed="order === 'date'" @click="order = 'date'">{{ t('git.commitHistory.date') }}</button>
+        <button type="button" :aria-pressed="order === 'widest'" :title="t('git.commitHistory.commitsTouchedMostComponents')" @click="order = 'widest'">{{ t('git.commitHistory.widest') }}</button>
       </div>
       <MessagePattern v-model:active="fixOnly" :messages="periodCommits.map(c => c.commit_message)"/>
-      <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="`Commits touching more than ${sweepLimit} files: renames, reformats, merges`" @click="showSweeping = !showSweeping">
-        {{ showSweeping ? "Sweeping commits shown" : `${formatNumber(sweeping)} sweeping commits hidden` }}
+      <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('git.commitHistory.commitsTouchingMoreThan', { sweepLimit })" @click="showSweeping = !showSweeping">
+        {{ showSweeping ? t('git.commitHistory.sweepingCommitsShown') : t('git.commitHistory.sweepingCommitsHidden', { sweeping: formatNumber(sweeping) }) }}
       </button>
       <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
-              :title="authorsStore.showBots ? 'Hide commits made by bots and release plugins' : 'Commits made by bots and release plugins are left out'"
+              :title="authorsStore.showBots ? t('git.commitHistory.hideCommitsMadeBots') : t('git.commitHistory.commitsMadeBotsRelease')"
               @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
-        <span>{{ authorsStore.showBots ? "Bots shown" : `${formatNumber(botCommits)} bot commits hidden` }}</span>
+        <span>{{ authorsStore.showBots ? t('git.commitHistory.botsShown') : t('git.commitHistory.botCommitsHidden', { botCommits: formatNumber(botCommits) }) }}</span>
       </button>
       <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
-        <span v-if="fixOnly" :title="`Subject lines matching /${fixSource}/i`">Commits matching <span class="font-mono text-neutral-700">/{{ fixSource.length > 28 ? fixSource.slice(0, 27) + '…' : fixSource }}/</span> <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span> of <span class="font-mono">{{ formatNumber(periodCommits.length) }}</span></span>
-        <span v-else>Commits <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
+        <span v-if="fixOnly" :title="t('git.commitHistory.subjectLinesMatchingI', { fixSource })"><I18nT k="git.commitHistory.commitsMatching"><template #value><span class="font-mono text-neutral-700">/{{ fixSource.length > 28 ? fixSource.slice(0, 27) + '…' : fixSource }}/</span></template><template #commitsLength><span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></template><template #periodCommitsLength><span class="font-mono">{{ formatNumber(periodCommits.length) }}</span></template></I18nT></span>
+        <span v-else>{{ t('git.commitHistory.commits') }} <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
         <span class="text-neutral-300">·</span>
-        <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(authors.length) }}</span></span>
+        <span>{{ t('git.commitHistory.authors') }} <span class="font-mono text-neutral-800">{{ formatNumber(authors.length) }}</span></span>
         <span class="text-neutral-300">·</span>
         <span class="font-mono text-green-700">{{ formatSigned(totals.additions) }}</span>
         <span class="font-mono text-red-700">{{ formatSigned(-totals.deletions) }}</span>
@@ -53,9 +53,9 @@
       </span>
     </div>
 
-    <LoadingState v-if="loading" text="Reading commit history…"/>
-    <EmptyState v-else-if="error" title="Could not read commits" :text="error" icon="alert"/>
-    <EmptyState v-else-if="allCommits.length === 0" title="No commits recorded" :text="emptyText" icon="git-branch"/>
+    <LoadingState v-if="loading" :text="t('git.commitHistory.readingCommitHistory')"/>
+    <EmptyState v-else-if="error" :title="t('git.commitHistory.couldNotReadCommits')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="allCommits.length === 0" :title="t('git.commitHistory.noCommitsRecorded')" :text="emptyText" icon="git-branch"/>
     <div v-else class="flex min-h-0 grow overflow-hidden">
       <!-- Left: calendar and the commit list. -->
       <div class="flex min-w-0 grow flex-col overflow-y-auto">
@@ -66,17 +66,17 @@
         <div v-if="(monthly || longRange) && commits.length > 0" class="shrink-0 px-4 pb-3 pt-4 hairline-b">
           <MonthlyChangesChart :commits="commits" :height="140"/>
         </div>
-        <EmptyState v-if="commits.length === 0" :title="period === 'custom' ? 'No commits between these dates' : 'No commits in this period'" text="Widen the period to see earlier activity."/>
+        <EmptyState v-if="commits.length === 0" :title="period === 'custom' ? t('git.commitHistory.noCommitsBetweenThese') : t('git.commitHistory.noCommitsPeriod')" :text="t('git.commitHistory.widenPeriodSeeEarlier')"/>
         <table v-else class="ui-table">
           <thead>
             <tr>
-              <th class="w-[72px]">Commit</th>
-              <th>Message</th>
-              <th class="w-[160px]">Author</th>
-              <th class="w-[110px] text-right">Date</th>
-              <th class="w-[60px] text-right">Files</th>
-              <th class="w-[90px] text-right" title="Components the commit touched">Comps</th>
-              <th class="w-[120px] text-right">Lines</th>
+              <th class="w-[72px]">{{ t('git.commitHistory.commit') }}</th>
+              <th>{{ t('git.commitHistory.message') }}</th>
+              <th class="w-[160px]">{{ t('git.commitHistory.author') }}</th>
+              <th class="w-[110px] text-right">{{ t('git.commitHistory.date') }}</th>
+              <th class="w-[60px] text-right">{{ t('git.commitHistory.files') }}</th>
+              <th class="w-[90px] text-right" :title="t('git.commitHistory.componentsCommitTouched')">{{ t('git.commitHistory.comps') }}</th>
+              <th class="w-[120px] text-right">{{ t('git.commitHistory.lines') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -97,7 +97,7 @@
           </tbody>
         </table>
         <div v-if="commits.length > visibleCommits.length" class="flex shrink-0 items-center justify-center py-3">
-          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 100">Show more <span class="font-mono text-neutral-500">{{ formatNumber(commits.length - visibleCommits.length) }} left</span></button>
+          <button type="button" class="ui-btn ui-btn-sm" @click="limit += 100">{{ t('git.commitHistory.showMore') }} <span class="font-mono text-neutral-500">{{ t('git.commitHistory.left', { value: formatNumber(commits.length - visibleCommits.length) }) }}</span></button>
         </div>
       </div>
 
@@ -105,7 +105,7 @@
       <aside class="flex w-[260px] shrink-0 flex-col overflow-y-auto bg-ground hairline-l">
         <CommitFootprint v-if="selectedHash" :hash="selectedHash" @close="select(null)"/>
         <template v-else>
-        <h3 class="ui-section-title px-4 pb-2 pt-4">Contributors</h3>
+        <h3 class="ui-section-title px-4 pb-2 pt-4">{{ t('git.commitHistory.contributors') }}</h3>
         <ul class="flex flex-col">
           <li v-for="a in visibleAuthors" :key="a.name">
             <router-link :to="authorsStore.authorPath(a.name)" class="flex h-8 items-center gap-3 px-4 transition-colors hover:bg-neutral-100">
@@ -117,7 +117,7 @@
             </router-link>
           </li>
         </ul>
-        <button v-if="authors.length > visibleAuthors.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 mb-4 mt-2 self-start" @click="showAllAuthors = true">Show all {{ authors.length }}</button>
+        <button v-if="authors.length > visibleAuthors.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet mx-4 mb-4 mt-2 self-start" @click="showAllAuthors = true">{{ t('git.commitHistory.showAll', { authorsLength: authors.length }) }}</button>
         </template>
       </aside>
     </div>
@@ -145,6 +145,8 @@ import MessagePattern from "./MessagePattern.vue";
 import { fixPattern, fixPatternSource, matchesFix } from "~/features/git/commitPattern";
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
+import { t, dateLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 // One commit history for components, files and authors: the caller supplies
 // the WHERE predicate (already escaped through sqlLiteral) and the rest is
@@ -181,8 +183,8 @@ function pickPeriod(id: HistoryPeriodId) {
 }
 function applyRange() {
   rangeError.value = ""
-  if (!draftSince.value || !draftUntil.value) { rangeError.value = "Both dates are needed."; return }
-  if (draftUntil.value < draftSince.value) { rangeError.value = "Until is before Since."; return }
+  if (!draftSince.value || !draftUntil.value) { rangeError.value = t("git.commitHistory.bothDatesNeeded"); return }
+  if (draftUntil.value < draftSince.value) { rangeError.value = t("git.commitHistory.untilBeforeSince"); return }
   const until = draftUntil.value > anchorDay.value ? anchorDay.value : draftUntil.value
   stateStore.set("history.range", { since: draftSince.value, until })
   period.value = "custom"
@@ -220,7 +222,7 @@ const baselineDay = computed(() => {
   const t = s?.headTime ?? s?.startedAt
   return t ? new Date(t).toISOString().slice(0, 10) : ""
 })
-const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })
 const rangeShort = computed(() => (range.value ? `${fmtDay(range.value.since)} – ${fmtDay(range.value.until)}` : ""))
 const rangeLabel = computed(() => (range.value ? `${rangeShort.value}${anchor.value.commit ? ` (${anchor.value.commit.slice(0, 7)})` : ""}` : ""))
 
@@ -285,7 +287,7 @@ const totals = computed(() => commits.value.reduce((acc, c) => {
 const authors = computed(() => {
   const counts = new Map<string, { name: string; email: string; count: number }>()
   for (const c of commits.value) {
-    const name = c.author_name || "Unknown"
+    const name = c.author_name || t("git.commitHistory.unknown")
     const entry = counts.get(name) ?? { name, email: c.author_email || "", count: 0 }
     entry.count++
     counts.set(name, entry)

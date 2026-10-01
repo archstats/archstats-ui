@@ -19,7 +19,7 @@
           class="absolute left-0 flex flex-col items-start justify-center rounded-r px-3 text-left hover:bg-neutral-100"
           :class="sortKey === m.key ? 'text-neutral-900' : 'text-neutral-700'"
           :style="{ top: `${m.top}px`, height: `${m.height}px`, width: `${LABEL_W - 8}px` }"
-          :title="`Sort the list by ${niceName(m.key)}`"
+          :title="t('metrics.metricStrips.sortList', { key: niceName(m.key) })"
           @click="emit('sort', m.key)"
       >
         <span class="flex w-full items-center gap-1.5 truncate text-sm font-medium leading-4">
@@ -27,7 +27,7 @@
           <Icon v-if="sortKey === m.key" icon="arrow-down" :size="11" class="shrink-0 text-neutral-500"/>
         </span>
         <span class="truncate font-mono text-xs leading-4 text-neutral-500">
-          median {{ formatReading(m.median) }}<template v-if="m.scale.log"> · log</template>
+          {{ t('metrics.metricStrips.median', { median: formatReading(m.median) }) }}<template v-if="m.scale.log">{{ ' ' + t('metrics.metricStrips.log') }}</template>
         </span>
         <span v-if="brushes[m.key]" class="truncate font-mono text-xs leading-4 text-blue-700">{{ formatReading(brushes[m.key][0]) }} – {{ formatReading(brushes[m.key][1]) }}</span>
       </button>
@@ -51,6 +51,7 @@ import { useFigure } from "~/features/export/useExportables";
 import type { FigureOutput } from "~/features/export/figure";
 import { PRINT_W, printCanvas, printTheme, wrapText } from "~/features/metrics/printCanvas";
 import type { LegendItem } from "~/features/export/figure";
+import { t } from "~/shared/i18n";
 
 // Every metric as one strip of dots, one dot per row, on a shared left-to-
 // right scale. Hovering a dot threads that row through every strip, so its
@@ -86,23 +87,23 @@ const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { size, context, local } = useCanvas(box, canvas);
 const figure = useFigure({
-  title: "Metrics strips",
+  title: t("metrics.metricStrips.metricsStrips"),
   // Drawn for the page, not captured from the window: see printStrips.
   ready: () => !!canvas.value && props.rows.length > 0 && props.metrics.length > 0,
   render: (opts) => printStrips(opts.light),
   svg: false,
   legend: () => {
-    const t = theme.value;
+    const theme2 = theme.value;
     const brushed = Object.keys(props.brushes).length > 0;
-    const items: LegendItem[] = [{ label: brushed ? "Inside every brushed range" : `A ${props.grain}`, color: withAlpha(t.inkSecondary, 0.85), mark: "dot" }];
-    if (brushed) items.push({ label: "Outside a brushed range", color: withAlpha(t.inkMuted, 0.25), mark: "dot" }, { label: "Brushed range", color: withAlpha(t.blue, 0.2) });
-    if (props.selected.length) items.push({ label: "Selected", color: t.blue, mark: "dot" });
-    items.push({ label: "Median", color: t.inkMuted, mark: "line" });
+    const items: LegendItem[] = [{ label: brushed ? t("metrics.metricStrips.insideEveryBrushedRange") : `A ${props.grain}`, color: withAlpha(theme2.inkSecondary, 0.85), mark: "dot" }];
+    if (brushed) items.push({ label: t("metrics.metricStrips.outsideBrushedRange"), color: withAlpha(theme2.inkMuted, 0.25), mark: "dot" }, { label: t("metrics.metricStrips.brushedRange"), color: withAlpha(theme2.blue, 0.2) });
+    if (props.selected.length) items.push({ label: t("metrics.metricStrips.selected"), color: theme2.blue, mark: "dot" });
+    items.push({ label: t("metrics.metricStrips.median2"), color: theme2.inkMuted, mark: "line" });
     return {
       items,
       notes: [
-        `One strip per metric, running from its lowest reading on the left to its highest on the right. Each dot is a ${props.grain}, placed along the strip by its reading.`,
-        ...(props.selected.length ? [`The selected ${props.grain === "file" ? "files" : "components"} are drawn over the rest, which recede.`] : []),
+        t("metrics.metricStrips.oneStripPerMetric", { grain: props.grain }),
+        ...(props.selected.length ? [t("metrics.metricStrips.selectedDrawnOverRest", { value: props.grain === "file" ? t("metrics.metricStrips.files") : t("metrics.metricStrips.components") })] : []),
       ],
     };
   },
@@ -266,12 +267,12 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
 function printStrips(light: boolean): FigureOutput | null {
   const keys = props.metrics;
   if (!keys.length || !props.rows.length) return null;
-  const t = printTheme(light);
+  const theme = printTheme(light);
   const LABEL = 180, END = 44, ROW = 34, PAD = 6, INSET = 12;
   const W = PRINT_W, H = PAD * 2 + ROW * keys.length;
   const x0 = LABEL + END, x1 = W - END;
   const { canvas: cv, g, scale } = printCanvas(W, H);
-  g.fillStyle = t.surface;
+  g.fillStyle = theme.surface;
   g.fillRect(0, 0, W, H);
   const files = props.grain === "file";
   const r = files ? 1.5 : 2.2;
@@ -288,34 +289,34 @@ function printStrips(light: boolean): FigureOutput | null {
   keys.forEach((key, i) => {
     const sc = scales.value.get(key)!;
     const top = PAD + i * ROW;
-    if (i > 0) { g.fillStyle = t.hairline; g.fillRect(0, top - 0.5, W, 1); }
+    if (i > 0) { g.fillStyle = theme.hairline; g.fillRect(0, top - 0.5, W, 1); }
     // The label column: the metric, then its median.
     g.textAlign = "left";
     g.textBaseline = "alphabetic";
-    g.font = `600 11px ${t.fontSans}`;
-    g.fillStyle = props.brushes[key] ? t.blue : t.ink;
+    g.font = `600 11px ${theme.fontSans}`;
+    g.fillStyle = props.brushes[key] ? theme.blue : theme.ink;
     g.fillText(wrapText(g, niceName(key), LABEL - INSET - 12, 1)[0] ?? "", INSET, top + 14);
     const med = median(props.domainRows.map((q) => metricValue(q, key)));
-    g.font = `10px ${t.fontMono}`;
-    g.fillStyle = t.inkMuted;
-    g.fillText(`median ${formatReading(med)}${sc.log ? " · log" : ""}`, INSET, top + 27);
+    g.font = `10px ${theme.fontMono}`;
+    g.fillStyle = theme.inkMuted;
+    g.fillText(t("metrics.metricStrips.median3", { med: formatReading(med), value: sc.log ? " · log" : "" }), INSET, top + 27);
     // The ends of the strip, in words.
     g.textBaseline = "middle";
-    g.fillStyle = t.inkSecondary;
+    g.fillStyle = theme.inkSecondary;
     g.textAlign = "right";
     g.fillText(formatReading(sc.domain[0]), x0 - 6, top + ROW / 2);
     g.textAlign = "left";
     g.fillText(formatReading(sc.domain[1]), x1 + 6, top + ROW / 2);
-    g.fillStyle = t.hairlineStrong;
+    g.fillStyle = theme.hairlineStrong;
     g.fillRect(x0, top + 5, 1, ROW - 10);
     g.fillRect(x1 - 1, top + 5, 1, ROW - 10);
-    for (const tick of sc.ticks) { g.fillStyle = withAlpha(t.hairline, 0.9); g.fillRect(Math.round(xP(sc, tick)), top + 5, 1, ROW - 10); }
+    for (const tick of sc.ticks) { g.fillStyle = withAlpha(theme.hairline, 0.9); g.fillRect(Math.round(xP(sc, tick)), top + 5, 1, ROW - 10); }
     const b = props.brushes[key];
     if (b) {
       const bx0 = xP(sc, b[0]), bx1 = xP(sc, b[1]);
-      g.fillStyle = withAlpha(t.blue, 0.1);
+      g.fillStyle = withAlpha(theme.blue, 0.1);
       g.fillRect(bx0, top + 3, Math.max(2, bx1 - bx0), ROW - 6);
-      g.fillStyle = t.blue;
+      g.fillStyle = theme.blue;
       g.fillRect(bx0, top + 3, 1, ROW - 6);
       g.fillRect(bx1 - 1, top + 3, 1, ROW - 6);
     }
@@ -324,11 +325,11 @@ function printStrips(light: boolean): FigureOutput | null {
       const v = metricValue(row, key);
       if (!Number.isFinite(v) || lead.has(row.name)) continue;
       const out = surv && !surv.has(row.name);
-      g.fillStyle = out ? withAlpha(t.inkMuted, 0.12) : withAlpha(t.inkSecondary, lead.size ? 0.22 : surv ? 0.85 : 0.55);
+      g.fillStyle = out ? withAlpha(theme.inkMuted, 0.12) : withAlpha(theme.inkSecondary, lead.size ? 0.22 : surv ? 0.85 : 0.55);
       g.beginPath(); g.arc(xP(sc, v), yP(top, row.name), r, 0, Math.PI * 2); g.fill();
     }
     const mx = xP(sc, med);
-    if (Number.isFinite(mx)) { g.fillStyle = t.inkMuted; g.fillRect(Math.round(mx), top + 3, 1.5, 5); g.fillRect(Math.round(mx), top + ROW - 8, 1.5, 5); }
+    if (Number.isFinite(mx)) { g.fillStyle = theme.inkMuted; g.fillRect(Math.round(mx), top + 3, 1.5, 5); g.fillRect(Math.round(mx), top + ROW - 8, 1.5, 5); }
     leadRows.forEach((row, k) => {
       const v = row ? metricValue(row, key) : NaN;
       leadPts[k].push(row && Number.isFinite(v) ? { x: xP(sc, v), y: yP(top, row.name), v } : null);
@@ -340,7 +341,7 @@ function printStrips(light: boolean): FigureOutput | null {
   const taken: Array<{ x0: number; x1: number; y: number }> = [];
   leadRows.forEach((row, k) => {
     if (!row) return;
-    const color = row.name === focus && !sel.has(row.name) ? t.ink : t.blue;
+    const color = row.name === focus && !sel.has(row.name) ? theme.ink : theme.blue;
     const pts = leadPts[k];
     g.strokeStyle = withAlpha(color, 0.55);
     g.lineWidth = 1;
@@ -350,10 +351,10 @@ function printStrips(light: boolean): FigureOutput | null {
     g.stroke();
     for (const p of pts) {
       if (!p) continue;
-      g.fillStyle = t.surface; g.beginPath(); g.arc(p.x, p.y, 4, 0, Math.PI * 2); g.fill();
+      g.fillStyle = theme.surface; g.beginPath(); g.arc(p.x, p.y, 4, 0, Math.PI * 2); g.fill();
       g.fillStyle = color; g.beginPath(); g.arc(p.x, p.y, 3, 0, Math.PI * 2); g.fill();
       if (leadRows.length <= 3) {
-        g.font = `600 10px ${t.fontMono}`;
+        g.font = `600 10px ${theme.fontMono}`;
         g.textBaseline = "middle";
         const text = formatReading(p.v), w = g.measureText(text).width;
         const fits = (a: number, b: number) => !taken.some((q) => Math.abs(q.y - p.y) < 11 && a < q.x1 && b > q.x0);
@@ -362,8 +363,8 @@ function printStrips(light: boolean): FigureOutput | null {
         g.textAlign = right ? "left" : "right";
         const lx = right ? p.x + 7 : p.x - 7;
         taken.push(right ? { x0: lx, x1: lx + w, y: p.y } : { x0: lx - w, x1: lx, y: p.y });
-        g.lineWidth = 3; g.strokeStyle = t.surface; g.strokeText(formatReading(p.v), lx, p.y);
-        g.fillStyle = t.ink; g.fillText(formatReading(p.v), lx, p.y);
+        g.lineWidth = 3; g.strokeStyle = theme.surface; g.strokeText(formatReading(p.v), lx, p.y);
+        g.fillStyle = theme.ink; g.fillText(formatReading(p.v), lx, p.y);
       }
     }
   });

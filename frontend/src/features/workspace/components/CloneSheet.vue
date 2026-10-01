@@ -10,10 +10,10 @@
         <!-- In flight: the clone's own progress, and the way out. -->
         <template v-if="job && job.state === 'running'">
           <div class="px-5 pb-4 pt-5">
-            <h2 id="clone-title" class="text-lg font-semibold text-neutral-900">Cloning {{ slugOf(job) }}</h2>
+            <h2 id="clone-title" class="text-lg font-semibold text-neutral-900">{{ t('workspace.cloneSheet.cloning', { job: slugOf(job) }) }}</h2>
             <p class="mt-1 truncate font-mono text-xs text-neutral-500" :title="job.dest">{{ job.dest }}</p>
 
-            <div class="mt-5 h-1 overflow-hidden rounded-full bg-neutral-100" role="progressbar" aria-label="Clone progress" :aria-valuenow="job.progress.percent >= 0 ? Math.round(job.progress.percent) : undefined" aria-valuemin="0" aria-valuemax="100">
+            <div class="mt-5 h-1 overflow-hidden rounded-full bg-neutral-100" role="progressbar" :aria-label="t('workspace.cloneSheet.cloneProgress')" :aria-valuenow="job.progress.percent >= 0 ? Math.round(job.progress.percent) : undefined" aria-valuemin="0" aria-valuemax="100">
               <div v-if="job.progress.percent >= 0" class="h-full rounded-full bg-accent-500 transition-[width] duration-300 ease-out" :style="{ width: `${Math.max(2, job.progress.percent)}%` }"/>
               <span v-else class="shell-progress block h-full"><span/></span>
             </div>
@@ -22,24 +22,24 @@
               <span class="shrink-0 font-mono tabular-nums text-neutral-500">{{ elapsedOf(job) }}</span>
               <span v-if="job.progress.percent >= 0" class="w-10 shrink-0 text-right font-mono tabular-nums text-neutral-900">{{ Math.floor(job.progress.percent) }}%</span>
             </div>
-            <p class="mt-4 text-sm leading-5 text-neutral-500">You can hide this. The clone carries on, and the workspace is scanned when it lands.</p>
+            <p class="mt-4 text-sm leading-5 text-neutral-500">{{ t('workspace.cloneSheet.youCanHideClone') }}</p>
           </div>
           <div class="flex items-center gap-2 px-5 py-3 hairline-t">
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet text-red-700" @click="clones.cancel(job.id)">Cancel clone</button>
-            <button ref="primaryBtn" type="button" class="ui-btn ui-btn-sm ml-auto" @click="close">Hide</button>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet text-red-700" @click="clones.cancel(job.id)">{{ t('workspace.cloneSheet.cancelClone') }}</button>
+            <button ref="primaryBtn" type="button" class="ui-btn ui-btn-sm ml-auto" @click="close">{{ t('workspace.cloneSheet.hide') }}</button>
           </div>
         </template>
 
         <!-- The form: an address, a name, how much history, where it goes. -->
         <form v-else @submit.prevent="submit">
           <div class="px-5 pt-5">
-            <h2 id="clone-title" class="text-lg font-semibold text-neutral-900">Clone a repository</h2>
-            <p class="mt-1 text-sm leading-5 text-neutral-500">Archstats clones it with your own git credentials, then scans it.</p>
+            <h2 id="clone-title" class="text-lg font-semibold text-neutral-900">{{ t('workspace.cloneSheet.cloneRepository') }}</h2>
+            <p class="mt-1 text-sm leading-5 text-neutral-500">{{ t('workspace.cloneSheet.archstatsClonesYourOwn') }}</p>
 
             <p v-if="job && job.state === 'failed'" class="mt-4 whitespace-pre-wrap break-words rounded bg-red-50 px-3 py-2 text-sm leading-5 text-red-800 shadow-[0_0_0_1px_rgb(var(--c-red-200))]" role="alert">{{ job.error }}</p>
 
             <label class="mt-4 block">
-              <span class="ui-label">Repository</span>
+              <span class="ui-label">{{ t('workspace.cloneSheet.repository') }}</span>
               <input
                   ref="inputEl"
                   v-model="input"
@@ -53,7 +53,7 @@
               >
             </label>
             <p id="clone-resolved" class="mt-1.5 flex min-h-4 items-center gap-1.5 text-xs leading-4">
-              <template v-if="!input.trim()"><span class="text-neutral-500">An https or SSH address, or owner/repo for GitHub.</span></template>
+              <template v-if="!input.trim()"><span class="text-neutral-500">{{ t('workspace.cloneSheet.httpsSshAddressOwner') }}</span></template>
               <template v-else-if="plan?.error"><span class="text-neutral-500">{{ plan.error }}</span></template>
               <template v-else-if="plan">
                 <Check :size="12" :stroke-width="2.25" class="shrink-0 text-green-600" aria-hidden="true"/>
@@ -63,46 +63,46 @@
 
             <div class="mt-4 grid grid-cols-[1fr_auto] items-end gap-3">
               <label class="block min-w-0">
-                <span class="ui-label">Workspace name</span>
-                <input v-model="name" type="text" maxlength="40" class="ui-input mt-1 w-full" :placeholder="plan?.repo?.name || 'Name'" autocomplete="off">
+                <span class="ui-label">{{ t('workspace.cloneSheet.workspaceName') }}</span>
+                <input v-model="name" type="text" maxlength="40" class="ui-input mt-1 w-full" :placeholder="plan?.repo?.name || t('workspace.cloneSheet.name')" autocomplete="off">
               </label>
             </div>
 
             <fieldset class="mt-4">
-              <legend class="ui-label">History</legend>
-              <div class="ui-segmented mt-1 w-full" role="radiogroup" aria-label="How much history to fetch">
+              <legend class="ui-label">{{ t('workspace.cloneSheet.history') }}</legend>
+              <div class="ui-segmented mt-1 w-full" role="radiogroup" :aria-label="t('workspace.cloneSheet.howMuchHistoryFetch')">
                 <button v-for="h in HISTORIES" :key="h.key" type="button" class="grow" role="radio" :aria-checked="history === h.key" :aria-pressed="history === h.key" @click="history = h.key">{{ h.label }}</button>
               </div>
               <p class="mt-1.5 text-xs leading-4 text-neutral-500">{{ currentHistory.hint }}</p>
             </fieldset>
 
             <div class="mt-4">
-              <span class="ui-label">Location</span>
+              <span class="ui-label">{{ t('workspace.cloneSheet.location') }}</span>
               <div class="mt-1 flex items-center gap-2">
                 <p class="min-w-0 flex-1 truncate rounded bg-neutral-50 px-2 py-1.5 font-mono text-xs text-neutral-700 shadow-[0_0_0_1px_rgb(var(--c-neutral-200))]" :title="plan?.dest">{{ plan?.dest ? shortenPath(plan.dest, 64) : "—" }}</p>
-                <button type="button" class="ui-btn ui-btn-sm shrink-0" :disabled="!plan || !!plan.error" @click="chooseDest">Change…</button>
-                <button v-if="customDest" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="customDest = ''">Reset</button>
+                <button type="button" class="ui-btn ui-btn-sm shrink-0" :disabled="!plan || !!plan.error" @click="chooseDest">{{ t('workspace.cloneSheet.change') }}</button>
+                <button v-if="customDest" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" @click="customDest = ''">{{ t('workspace.cloneSheet.reset') }}</button>
               </div>
               <p class="mt-1.5 text-xs leading-4 text-neutral-500">
-                <template v-if="!customDest">Kept by Archstats: brought up to date before each scan, and deleted with the workspace.</template>
-                <template v-else>Your folder: Archstats never updates it or deletes it.</template>
+                <template v-if="!customDest">{{ t('workspace.cloneSheet.keptArchstatsBroughtUp') }}</template>
+                <template v-else>{{ t('workspace.cloneSheet.yourFolderArchstatsNever') }}</template>
               </p>
             </div>
 
             <p v-if="plan?.existing" class="mt-4 flex items-center gap-2 rounded bg-neutral-50 px-3 py-2 text-sm leading-5 text-neutral-800 shadow-[0_0_0_1px_rgb(var(--c-neutral-200))]">
-              <span class="min-w-0 flex-1">Already cloned as <span class="font-medium">{{ plan.existing.name }}</span>.</span>
-              <button type="button" class="ui-btn ui-btn-sm shrink-0" @click="openExisting">Open it</button>
+              <span class="min-w-0 flex-1">{{ t('workspace.cloneSheet.alreadyCloned') }} <span class="font-medium">{{ plan.existing.name }}</span>.</span>
+              <button type="button" class="ui-btn ui-btn-sm shrink-0" @click="openExisting">{{ t('workspace.cloneSheet.open') }}</button>
             </p>
-            <p v-else-if="plan?.destExists" class="mt-4 text-sm leading-5 text-red-700">That folder already exists and is not empty. Change the location.</p>
+            <p v-else-if="plan?.destExists" class="mt-4 text-sm leading-5 text-red-700">{{ t('workspace.cloneSheet.folderAlreadyExistsNot') }}</p>
             <p v-if="startError" class="mt-4 text-sm leading-5 text-red-700" role="alert">{{ startError }}</p>
           </div>
 
           <div class="mt-5 flex items-center gap-2 px-5 py-3 hairline-t">
-            <span class="text-xs text-neutral-500">Nothing leaves this machine except git's own fetch.</span>
-            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">Cancel</button>
+            <span class="text-xs text-neutral-500">{{ t('workspace.cloneSheet.nothingLeavesMachineExcept') }}</span>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="close">{{ t('workspace.cloneSheet.cancel') }}</button>
             <button ref="primaryBtn" type="submit" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="!canClone">
               <Loader2 v-if="starting" :size="12" class="animate-spin" aria-hidden="true"/>
-              {{ job && job.state === 'failed' ? "Try again" : "Clone" }}
+              {{ job && job.state === 'failed' ? t('workspace.cloneSheet.tryAgain') : t('workspace.cloneSheet.clone') }}
             </button>
           </div>
         </form>
@@ -121,14 +121,15 @@ import { useCloneStore, type History } from "~/features/workspace/clone.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { shortenPath } from "~/features/workspace/scanFlow";
 import { formatElapsed } from "~/shared/time";
+import { t } from "~/shared/i18n";
 
 const clones = useCloneStore();
 const workspaces = useWorkspacesStore();
 
 const HISTORIES: { key: History; label: string; hint: string }[] = [
-  { key: "full", label: "Full history", hint: "Every commit: churn, co-change, authors and every history view work. The largest download." },
-  { key: "year", label: "Last year", hint: "Commits from the past twelve months. History views cover that year only." },
-  { key: "latest", label: "Latest only", hint: "One commit and no history: the structure views work, the git views stay empty. The fastest." },
+  { key: "full", label: t("workspace.cloneSheet.fullHistory"), hint: t("workspace.cloneSheet.everyCommitChurnCo") },
+  { key: "year", label: t("workspace.cloneSheet.lastYear"), hint: t("workspace.cloneSheet.commitsPastTwelveMonths") },
+  { key: "latest", label: t("workspace.cloneSheet.latestOnly"), hint: t("workspace.cloneSheet.oneCommitNoHistory") },
 ];
 
 const input = ref("");
@@ -257,18 +258,18 @@ function elapsedOf(j: clone.Job): string {
 }
 
 const PHASE: Record<string, string> = {
-  connecting: "Connecting",
-  counting: "Counting objects",
-  compressing: "The server is packing the repository",
-  receiving: "Receiving",
-  resolving: "Resolving deltas",
-  checkout: "Writing files",
+  connecting: t("workspace.cloneSheet.connecting"),
+  counting: t("workspace.cloneSheet.countingObjects"),
+  compressing: t("workspace.cloneSheet.serverPackingRepository"),
+  receiving: t("workspace.cloneSheet.receiving"),
+  resolving: t("workspace.cloneSheet.resolvingDeltas"),
+  checkout: t("workspace.cloneSheet.writingFiles"),
 };
 function phaseText(j: clone.Job): string {
   const p = j.progress;
-  const label = PHASE[p.phase] ?? "Cloning";
-  if (p.phase === "receiving" && p.received) return `${label} ${p.received}${p.rate ? ` at ${p.rate}` : ""}`;
-  if (p.phase === "connecting") return `${label} to ${j.repo.host || "the repository"}…`;
+  const label = PHASE[p.phase] ?? t("workspace.cloneSheet.cloning2");
+  if (p.phase === "receiving" && p.received) return `${label} ${p.received}${p.rate ? t("workspace.cloneSheet.at", { rate: p.rate }) : ""}`;
+  if (p.phase === "connecting") return t("workspace.cloneSheet.to", { label, value: j.repo.host || t("workspace.cloneSheet.repository2") });
   return `${label}…`;
 }
 </script>

@@ -4,7 +4,7 @@
       <NavBar @collapse="navExpanded = false"/>
       <PaneHandle
         side="right"
-        label="Resize sidebar"
+        :label="t('pages.layoutDefault.resizeSidebar')"
         :model-value="panes.sidebarWidth"
         :min="SIDEBAR.min"
         :max="SIDEBAR.max"
@@ -24,8 +24,8 @@
       <button
           type="button"
           class="flex flex-1 flex-col items-center pt-3 text-neutral-400 transition-colors hover:text-neutral-800 outline-none focus-visible:text-neutral-900"
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
+          :aria-label="t('pages.layoutDefault.expandSidebar')"
+          :title="t('pages.layoutDefault.expandSidebar')"
           @click="navExpanded = true"
       >
         <PanelLeftOpen :size="13" :stroke-width="1.75"/>
@@ -92,6 +92,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { SIDEBAR, usePanesStore } from "~/features/shell/panes.store";
 import { usePlatform } from "~/platform/usePlatform";
+import { t } from "~/shared/i18n";
 
 const navExpanded = ref(true);
 const { shortcutsOpen, settingsOpen } = useMenuCommands();
@@ -127,10 +128,10 @@ onMounted(() => {
 // macOS hides it (the sidebar carries the workspace); Windows and Linux show it.
 useHead({
   title: computed(() => {
-    if (workspaces.isScanning) return "Scanning…";
-    if (clones.running.length) return "Cloning…";
+    if (workspaces.isScanning) return t("pages.layoutDefault.scanning");
+    if (clones.running.length) return t("pages.layoutDefault.cloning");
     return workspaces.active?.name ?? "";
   }),
-  titleTemplate: (chunk) => (chunk ? `${chunk} – Archstats` : "Archstats"),
+  titleTemplate: (chunk) => (chunk ? t("pages.layoutDefault.archstats", { chunk }) : t("pages.layoutDefault.archstats2")),
 });
 </script>

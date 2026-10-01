@@ -1,20 +1,20 @@
 <template>
   <ViewWorkspaceLayout
     :queryable="false"
-    title="Metric reference"
+    :title="t('pages.reference.metricReference')"
     v-model:search-query="search"
-    :search-placeholder="`Search ${entries.length} metrics`"
+    :search-placeholder="t('pages.reference.searchMetrics', { entriesLength: entries.length })"
   >
     <template #stats>
-      <span v-if="entries.length">Metrics <span class="text-neutral-800">{{ filtered.length === entries.length ? entries.length : `${filtered.length} of ${entries.length}` }}</span></span>
+      <span v-if="entries.length">{{ t('pages.reference.metrics') }} <span class="text-neutral-800">{{ filtered.length === entries.length ? entries.length : t('pages.reference.of', { filteredLength: filtered.length, entriesLength: entries.length }) }}</span></span>
     </template>
 
     <template #visualizer>
-      <EmptyState v-if="!data.hasData" title="Definitions come from a snapshot" text="Open a scan: the reference shows the definitions that scan was written with, so they match its numbers." icon="file-text"/>
+      <EmptyState v-if="!data.hasData" :title="t('pages.reference.definitionsComeSnapshot')" :text="t('pages.reference.openScanReferenceShows')" icon="file-text"/>
       <div v-else class="flex min-h-0 grow">
         <!-- Every metric, grouped by family. -->
-        <nav class="flex w-[300px] shrink-0 flex-col overflow-y-auto bg-ground py-2 hairline-r" aria-label="Metrics">
-          <p v-if="filtered.length === 0" class="px-4 py-3 text-sm text-neutral-500">No metric matches “{{ search }}”.</p>
+        <nav class="flex w-[300px] shrink-0 flex-col overflow-y-auto bg-ground py-2 hairline-r" :aria-label="t('pages.reference.metrics')">
+          <p v-if="filtered.length === 0" class="px-4 py-3 text-sm text-neutral-500">{{ t('pages.reference.noMetricMatches', { search }) }}</p>
           <section v-for="group in groups" :key="group.category" class="pb-2">
             <h3 class="ui-section-title px-4 pb-1 pt-2">{{ group.category }}</h3>
             <ul>
@@ -28,7 +28,7 @@
                   @click="select(e.id)"
                 >
                   <span class="min-w-0 flex-1 truncate">{{ e.name }}</span>
-                  <span v-if="e.derived" class="shrink-0 text-xs text-neutral-400" title="Computed by the app">app</span>
+                  <span v-if="e.derived" class="shrink-0 text-xs text-neutral-400" :title="t('pages.reference.computedApp')">{{ t('pages.reference.app') }}</span>
                 </button>
               </li>
             </ul>
@@ -43,25 +43,25 @@
               <h1 class="text-2xl font-semibold leading-8 text-neutral-900">{{ selected.name }}</h1>
               <p class="break-all font-mono text-sm text-neutral-500">{{ selected.id }}</p>
             </div>
-            <p v-if="selected.derived" class="text-sm text-neutral-600"><span class="ui-tag">Computed by the app</span> from this snapshot's tables; not stored by the scan.</p>
-            <p class="text-lg leading-7 text-neutral-900">{{ selected.short || "No short description." }}</p>
+            <p v-if="selected.derived" class="text-sm text-neutral-600"><span class="ui-tag">{{ t('pages.reference.computedApp') }}</span>{{ ' ' + t('pages.reference.snapshotSTablesNot') }}</p>
+            <p class="text-lg leading-7 text-neutral-900">{{ selected.short || t('pages.reference.noShortDescription') }}</p>
             <p v-if="selected.long && selected.long !== selected.short" class="whitespace-pre-line text-base leading-6 text-neutral-700">{{ selected.long }}</p>
             <section v-if="selected.derived" class="flex flex-col gap-2">
-              <h2 class="ui-section-title">How to reproduce it</h2>
+              <h2 class="ui-section-title">{{ t('pages.reference.howReproduce') }}</h2>
               <pre v-if="selected.derived.sql" class="overflow-x-auto rounded-md bg-neutral-50 p-3 font-mono text-sm leading-5 text-neutral-800 hairline">{{ selected.derived.sql }}</pre>
               <p v-else class="text-base text-neutral-700">{{ selected.derived.method }}</p>
             </section>
             <div class="flex items-center gap-2 pt-2">
               <button type="button" class="ui-btn ui-btn-sm" @click="copySelected">
-                <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/><span>{{ copied ? "Copied" : "Copy definition" }}</span>
+                <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/><span>{{ copied ? t('pages.reference.copied') : t('pages.reference.copyDefinition') }}</span>
               </button>
               <router-link v-if="metricsLink" :to="metricsLink" class="ui-btn ui-btn-sm ui-btn-quiet">
-                <span>See it in Metrics</span><Icon icon="arrow-up-right" :size="12" class="text-neutral-500"/>
+                <span>{{ t('pages.reference.seeMetrics') }}</span><Icon icon="arrow-up-right" :size="12" class="text-neutral-500"/>
               </router-link>
             </div>
           </div>
         </article>
-        <EmptyState v-else class="grow" :title="notDefined ? 'Not defined in this snapshot' : 'Pick a metric'" :text="notDefined ? String(route.query.m) : 'Its definition shows here.'" icon="file-text"/>
+        <EmptyState v-else class="grow" :title="notDefined ? t('pages.reference.notDefinedSnapshot') : t('pages.reference.pickMetric')" :text="notDefined ? String(route.query.m) : t('pages.reference.definitionShowsHere')" icon="file-text"/>
       </div>
     </template>
   </ViewWorkspaceLayout>
@@ -78,6 +78,7 @@ import { useDataStore } from "~/features/snapshot/data.store";
 import { definitionMarkdown, glossaryMarkdown, referenceEntries, type ReferenceEntry } from "~/features/snapshot/definition";
 import { copyText } from "~/platform/files";
 import { metricsPath } from "~/features/metrics/link";
+import { t } from "~/shared/i18n";
 
 // Every metric the open snapshot defines, plus the ones the app computes,
 // grouped by family. Definitions come from the snapshot so they match its
@@ -134,10 +135,10 @@ async function copySelected() {
 const { register } = useExportables();
 register({
   kind: "document",
-  title: "Metric reference",
-  label: "Copy Markdown glossary",
+  title: t("pages.reference.metricReference"),
+  label: t("pages.reference.copyMarkdownGlossary"),
   savable: true,
-  markdown: () => `# Metric reference\n\n${glossaryMarkdown(filtered.value)}`,
-  disabledReason: () => (filtered.value.length ? null : "No metrics to export."),
+  markdown: () => t("pages.reference.metricReference2", { filtered: glossaryMarkdown(filtered.value) }),
+  disabledReason: () => (filtered.value.length ? null : t("pages.reference.noMetricsExport")),
 });
 </script>

@@ -5,14 +5,14 @@
       class="flex h-5 w-5 items-center justify-center rounded text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-900"
       :class="{ 'bg-neutral-200 text-neutral-900': open }"
       :aria-expanded="open"
-      :aria-label="`Move ${what} to another group`"
-      title="Move it to another group"
+      :aria-label="t('lens-builder.memberMoveMenu.moveAnotherGroup', { what })"
+      :title="t('lens-builder.memberMoveMenu.moveAnotherGroup2')"
       @click.stop="set(!open)"
     ><Icon icon="arrow-right" :size="11"/></button>
 
     <div v-if="open" class="fixed inset-0 z-40" @click.stop="set(false)"></div>
     <div v-if="open" class="ui-menu animate-in absolute right-0 top-6 z-50 flex w-56 flex-col" role="menu">
-      <div class="ui-menu-title">Move to</div>
+      <div class="ui-menu-title">{{ t('lens-builder.memberMoveMenu.move') }}</div>
       <div class="max-h-64 overflow-y-auto">
         <!-- Named, not just coloured. This was a row of unlabelled swatches,
              one per group, which could not say which colour was Openadmin —
@@ -31,7 +31,7 @@
           <span class="shrink-0 font-mono text-xs tabular-nums text-neutral-400">{{ g.size }}</span>
         </button>
       </div>
-      <p v-if="!targets.length" class="px-2 py-1.5 text-sm text-neutral-500">There is no other group to move it to yet.</p>
+      <p v-if="!targets.length" class="px-2 py-1.5 text-sm text-neutral-500">{{ t('lens-builder.memberMoveMenu.thereNoOtherGroup') }}</p>
     </div>
   </div>
 </template>
@@ -39,6 +39,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
+import { t } from "~/shared/i18n";
 
 // Where else a member could go, named.
 

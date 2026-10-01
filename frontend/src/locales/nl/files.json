@@ -1,0 +1,32 @@
+{
+  "fileCodeViewer": {
+    "lines": "{codeLinesLength} regels",
+    "copied": "Gekopieerd",
+    "copy": "Kopiëren",
+    "noSourceStored": "Geen broncode opgeslagen",
+    "snapshotDoesNotInclude": "Dit snapshot bevat de inhoud van de bestanden niet.",
+    "vueHtmlXml": "vue / html / xml",
+    "bashShell": "bash / shell",
+    "diffPatch": "diff / patch",
+    "iniToml": "ini / toml"
+  },
+  "openInEditor": {
+    "open": "Open {basename}{value} in {editorLabel}",
+    "line": " op regel {line}",
+    "openEditor": "Open {file}{value} in een editor",
+    "didnTOpenChoose": "Niet geopend? Kies een andere editor.",
+    "openFiles": "Open bestanden in",
+    "revealFinder": "Toon in Finder",
+    "showFolder": "Toon in map",
+    "visualStudioCode": "Visual Studio Code",
+    "cursor": "Cursor",
+    "jetbrainsIde": "JetBrains IDE",
+    "defaultAppNoLine": "Standaard-app (geen regel)",
+    "editor": "een editor",
+    "notDiskAnyMore": "Staat niet meer op schijf.",
+    "pathOutsideWorkspaceFolder": "Dat pad ligt buiten de workspace-map.",
+    "changedSinceSnapshotLine": "Gewijzigd sinds dit snapshot; de regel kan verschoven zijn.",
+    "couldNotOpen": "Kon niet openen: {value}",
+    "couldNotReveal": "Kon niet tonen: {value}"
+  }
+}

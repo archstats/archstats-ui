@@ -5,6 +5,8 @@
 // "/Users/ryan/work/clients/acme/backend" → "/Users/…/acme/backend".
 // The last segment is what identifies the folder, so it is the last thing
 // to be cut; when even that overflows, its own start is elided.
+import { t } from "~/shared/i18n"
+
 export function shortenPath(path: string, max = 36): string {
     if (!path || path.length <= max) return path;
     const sep = path.includes("\\") && !path.includes("/") ? "\\" : "/";
@@ -101,10 +103,10 @@ export function scanEta(elapsedMs: number, estimateMs: number | null): { fractio
     if (!estimateMs) return { fraction: null, label: "" };
     const left = estimateMs - elapsedMs;
     const fraction = Math.min(0.96, Math.max(0, elapsedMs / estimateMs));
-    if (left <= 0) return { fraction, label: "taking longer than last time" };
-    if (left < 10_000) return { fraction, label: "almost done" };
-    if (left < 60_000) return { fraction, label: `about ${Math.round(left / 10_000) * 10}s left` };
-    return { fraction, label: `about ${Math.round(left / 60_000)} min left` };
+    if (left <= 0) return { fraction, label: t("workspace.scanFlow.takingLongerThanLast") };
+    if (left < 10_000) return { fraction, label: t("workspace.scanFlow.almostDone") };
+    if (left < 60_000) return { fraction, label: t("workspace.scanFlow.aboutSLeft", { value: Math.round(left / 10_000) * 10 }) };
+    return { fraction, label: t("workspace.scanFlow.aboutMinLeft", { value: Math.round(left / 60_000) }) };
 }
 
 // Workspace name from a folder path, for the default name after a pick.

@@ -7,11 +7,13 @@
 // 966 contributors on one screen and 434 on the next -- so every author figure
 // is counted here from git_commits, in the snapshot's scope.
 
+import { t } from "~/shared/i18n"
+
 export const AUTHOR_PERIODS = [
-    { id: "total", label: "Total", title: "All time", days: null },
-    { id: "180", label: "180 d", title: "Last 180 days", days: 180 },
-    { id: "90", label: "90 d", title: "Last 90 days", days: 90 },
-    { id: "30", label: "30 d", title: "Last 30 days", days: 30 },
+    { id: "total", label: t("git.authors.total"), title: t("git.authors.allTime"), days: null },
+    { id: "180", label: "180 d", title: t("git.authors.last180Days"), days: 180 },
+    { id: "90", label: "90 d", title: t("git.authors.last90Days"), days: 90 },
+    { id: "30", label: "30 d", title: t("git.authors.last30Days"), days: 30 },
 ] as const
 
 export type AuthorPeriodId = (typeof AUTHOR_PERIODS)[number]["id"]

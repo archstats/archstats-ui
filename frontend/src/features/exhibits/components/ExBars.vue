@@ -14,12 +14,13 @@
       <span class="xb-track"><span class="xb-bar" :style="{ width: `${width(it.value)}%` }"/></span>
       <span class="xb-value">{{ fmt(it.value) }}</span>
     </button>
-    <p class="xb-legend"><span class="xb-swatch"/> bar length = {{ unit }}<template v-if="note"> · {{ note }}</template></p>
+    <p class="xb-legend"><span class="xb-swatch"/>{{ ' ' + t('exhibits.exBars.barLength', { unit }) }}<template v-if="note"> · {{ note }}</template></p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   items: Array<{ key: string; label: string; value: number }>
@@ -37,7 +38,7 @@ const shown = computed(() => props.items.slice(0, props.density === "inline" ? 1
 const lit = computed(() => new Set(props.highlight))
 const max = computed(() => Math.max(1e-9, ...props.items.map(i => Math.abs(i.value))))
 const width = (v: number) => Math.max(1.5, (Math.abs(v) / max.value) * 100)
-const fmt = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 })
+const fmt = (v: number) => v.toLocaleString(intlLocale, { maximumFractionDigits: 2 })
 </script>
 
 <style scoped>

@@ -1,7 +1,7 @@
 <template>
-  <ViewWorkspaceLayout title="Folder X-ray" :queryable="false" :show-config="false">
+  <ViewWorkspaceLayout :title="t('pages.xray.folderXRay')" :queryable="false" :show-config="false">
     <template #stats>
-      <span v-if="dir && files.length">{{ fmt(prodCount) }} files · {{ fmt(totalLines) }} lines · {{ topicList.length }} topic{{ topicList.length === 1 ? "" : "s" }}</span>
+      <span v-if="dir && files.length">{{ t('pages.xray.filesLines', { prodCount: fmt(prodCount), totalLines: fmt(totalLines), topics: t('common.count.topic', { count: topicList.length }) }) }}</span>
     </template>
 
     <template #visualizer>
@@ -9,11 +9,11 @@
         <div class="mx-auto w-full max-w-[1200px] px-8 py-6">
           <!-- Which folder -->
           <div class="flex flex-wrap items-center gap-2">
-            <label class="ui-label" for="xray-dir">Folder</label>
+            <label class="ui-label" for="xray-dir">{{ t('pages.xray.folder') }}</label>
             <input id="xray-dir" v-model="draft" list="xray-dirs" class="ui-input ui-input-sm w-[420px] font-mono" placeholder="src/utils" spellcheck="false" @keydown.enter="open(draft)">
             <datalist id="xray-dirs"><option v-for="d in dirOptions" :key="d" :value="d"/></datalist>
-            <button type="button" class="ui-btn ui-btn-sm" :disabled="!draft.trim()" @click="open(draft)">X-ray</button>
-            <nav v-if="dir" class="ml-2 flex min-w-0 items-center gap-1 font-mono text-sm text-neutral-500" aria-label="Parent folders">
+            <button type="button" class="ui-btn ui-btn-sm" :disabled="!draft.trim()" @click="open(draft)">{{ t('pages.xray.xRay') }}</button>
+            <nav v-if="dir" class="ml-2 flex min-w-0 items-center gap-1 font-mono text-sm text-neutral-500" :aria-label="t('pages.xray.parentFolders')">
               <template v-for="(p, i) in crumbs" :key="p.path">
                 <span v-if="i" class="text-neutral-300">/</span>
                 <button type="button" class="truncate hover:text-neutral-900" :class="{ 'text-neutral-900': p.path === dir }" @click="open(p.path)">{{ p.label }}</button>
@@ -21,39 +21,39 @@
             </nav>
           </div>
 
-          <EmptyState v-if="!dir" class="mt-10" icon="folder" title="Pick a folder to X-ray" text="The X-ray reads every file in a folder the way you would on first contact (what it says about itself, what it exports, who uses it, what it uses, what it changes with) and groups the files into topics. Start with the folder you suspect is a grab-bag: utils, helpers, common, shared."/>
-          <LoadingState v-else-if="loading" class="mt-10" text="Reading the folder…"/>
-          <EmptyState v-else-if="error" class="mt-10" icon="alert" title="Could not read the folder" :text="error"/>
-          <EmptyState v-else-if="!files.length" class="mt-10" icon="folder" title="No files here" :text="`No file in this snapshot sits under ${dir}/.`"/>
+          <EmptyState v-if="!dir" class="mt-10" icon="folder" :title="t('pages.xray.pickFolderXRay')" :text="t('pages.xray.xRayReadsEvery')"/>
+          <LoadingState v-else-if="loading" class="mt-10" :text="t('pages.xray.readingFolder')"/>
+          <EmptyState v-else-if="error" class="mt-10" icon="alert" :title="t('pages.xray.couldNotReadFolder')" :text="error"/>
+          <EmptyState v-else-if="!files.length" class="mt-10" icon="folder" :title="t('pages.xray.noFilesHere')" :text="t('pages.xray.noFileSnapshotSits', { dir })"/>
 
           <template v-else>
             <!-- What the graph does not see here -->
             <p v-if="blind.length" class="mt-4 rounded bg-neutral-100 px-3 py-2 text-sm text-neutral-700">
               <Icon icon="alert" :size="13" class="-mt-0.5 mr-1 inline text-neutral-500"/>
-              {{ fmt(blind.length) }} of {{ fmt(codeCount) }} code files here have no import data ({{ blindExt }}), so the Used by and Uses columns, and the topics, leave them out.
+              {{ t('pages.xray.codeFilesHereHave', { blindLength: fmt(blind.length), codeCount: fmt(codeCount), blindExt }) }}
             </p>
 
             <!-- Topics -->
             <section class="mt-6">
               <div class="flex items-baseline justify-between">
-                <h2 class="ui-section-title">Topics</h2>
-                <p class="text-sm text-neutral-500">Files grouped by who uses them, what they use, what they change with and what they are named. Tests follow the file they test.</p>
+                <h2 class="ui-section-title">{{ t('pages.xray.topics') }}</h2>
+                <p class="text-sm text-neutral-500">{{ t('pages.xray.filesGroupedWhoUses') }}</p>
               </div>
               <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <div v-for="t in topicList" :key="t.name + t.files[0]" class="ui-panel flex flex-col p-3" :class="{ 'ring-1 ring-accent-400': topicFilter === t.name }">
+                <div v-for="topicList in topicList" :key="topicList.name + topicList.files[0]" class="ui-panel flex flex-col p-3" :class="{ 'ring-1 ring-accent-400': topicFilter === topicList.name }">
                   <div class="flex items-baseline gap-2">
-                    <h3 class="truncate text-base font-medium text-neutral-900" :title="t.name">{{ t.name }}</h3>
-                    <span class="ui-tag" :title="`${prodOf(t).length} files and ${t.files.length - prodOf(t).length} tests`">{{ prodOf(t).length }}</span>
-                    <span class="ml-auto whitespace-nowrap text-xs text-neutral-500" :title="'Share of this topic\'s ties that stay inside it'">{{ t.name === "Unclustered" ? "no ties" : `${Math.round(t.cohesion * 100)}% inside` }}</span>
+                    <h3 class="truncate text-base font-medium text-neutral-900" :title="topicList.name">{{ topicList.name }}</h3>
+                    <span class="ui-tag" :title="t('pages.xray.filesTests', { length: prodOf(topicList).length, value: topicList.files.length - prodOf(topicList).length })">{{ prodOf(topicList).length }}</span>
+                    <span class="ml-auto whitespace-nowrap text-xs text-neutral-500" :title="t('pages.xray.shareTopicSTies')">{{ topicList.name === "Unclustered" ? t('pages.xray.noTies') : t('pages.xray.inside', { value: Math.round(topicList.cohesion * 100) }) }}</span>
                   </div>
-                  <p class="mt-1 text-xs text-neutral-500">{{ fmt(t.lines) }} lines</p>
+                  <p class="mt-1 text-xs text-neutral-500">{{ t('pages.xray.lines', { lines: fmt(topicList.lines) }) }}</p>
                   <ul class="mt-2 flex flex-wrap gap-1">
                     <li v-for="f in prodOf(t).slice(0, 8)" :key="f" class="truncate rounded bg-neutral-100 px-1.5 font-mono text-[11px] leading-5 text-neutral-700" :title="f">{{ rel(f) }}</li>
-                    <li v-if="prodOf(t).length > 8" class="text-[11px] leading-5 text-neutral-500">+{{ prodOf(t).length - 8 }}</li>
+                    <li v-if="prodOf(topicList).length > 8" class="text-[11px] leading-5 text-neutral-500">+{{ prodOf(topicList).length - 8 }}</li>
                   </ul>
                   <div class="mt-auto flex gap-1 pt-3">
-                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-pressed="topicFilter === t.name" @click="topicFilter = topicFilter === t.name ? null : t.name">{{ topicFilter === t.name ? "Show all" : "Show only" }}</button>
-                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Select these files, then Create group in the tray" @click="selectFiles(t.files)">Select</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-pressed="topicFilter === topicList.name" @click="topicFilter = topicFilter === topicList.name ? null : topicList.name">{{ topicFilter === topicList.name ? t('pages.xray.showAll') : t('pages.xray.showOnly') }}</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.xray.selectTheseFilesThen')" @click="selectFiles(topicList.files)">{{ t('pages.xray.select') }}</button>
                   </div>
                 </div>
               </div>
@@ -62,13 +62,13 @@
             <!-- Files -->
             <section class="mt-8">
               <div class="flex items-baseline justify-between">
-                <h2 class="ui-section-title">Files<span v-if="topicFilter" class="ml-2 normal-case text-neutral-500">in {{ topicFilter }}</span></h2>
-                <label class="flex items-center gap-2 text-sm text-neutral-600"><Checkbox v-model="showTests" aria-label="Show tests"/> Show tests</label>
+                <h2 class="ui-section-title">{{ t('pages.xray.files') }}<span v-if="topicFilter" class="ml-2 normal-case text-neutral-500">{{ t('pages.xray.in', { topicFilter }) }}</span></h2>
+                <label class="flex items-center gap-2 text-sm text-neutral-600"><Checkbox v-model="showTests" :aria-label="t('pages.xray.showTests')"/>{{ ' ' + t('pages.xray.showTests') }}</label>
               </div>
               <table class="ui-table mt-2">
                 <thead>
                   <tr>
-                    <th class="w-8"><Checkbox :model-value="allSelected" aria-label="Select all shown" @update:model-value="toggleAll"/></th>
+                    <th class="w-8"><Checkbox :model-value="allSelected" :aria-label="t('pages.xray.selectAllShown')" @update:model-value="toggleAll"/></th>
                     <th v-for="c in columns" :key="c.id" :class="c.class">
                       <button type="button" class="hover:text-neutral-900" :aria-sort="sortBy === c.id ? (sortDesc ? 'descending' : 'ascending') : 'none'" @click="sort(c.id)">{{ c.label }}<span v-if="sortBy === c.id">{{ sortDesc ? " ↓" : " ↑" }}</span></button>
                     </th>
@@ -76,14 +76,14 @@
                 </thead>
                 <tbody>
                   <tr v-for="f in shown" :key="f.path" :class="{ 'is-selected': selected.has(f.path) }">
-                    <td><Checkbox :model-value="selected.has(f.path)" :aria-label="`Select ${f.path}`" @update:model-value="toggle(f.path)"/></td>
+                    <td><Checkbox :model-value="selected.has(f.path)" :aria-label="t('pages.xray.select2', { path: f.path })" @update:model-value="toggle(f.path)"/></td>
                     <td class="max-w-[220px]">
                       <router-link :to="filePath(f.path)" class="block truncate font-mono text-sm text-neutral-900 hover:underline" :title="f.path">{{ rel(f.path) }}</router-link>
                       <span v-if="f.role !== 'production'" class="ui-tag mt-0.5">{{ f.role }}</span>
                     </td>
                     <td class="max-w-[320px] text-sm text-neutral-700"><span class="line-clamp-2" :title="f.summary">{{ f.summary || "—" }}</span></td>
                     <td class="max-w-[160px] text-sm"><span class="line-clamp-2 font-mono text-xs text-neutral-700" :title="f.exports.join(', ')">{{ f.exports.length ? `${f.exports.slice(0, 3).join(", ")}${f.exports.length > 3 ? ` +${f.exports.length - 3}` : ""}` : "—" }}</span></td>
-                    <td class="max-w-[200px] text-sm"><AreaChips :areas="byArea(f.usedBy, dir)"/><span v-if="f.testedBy.length" class="block text-[11px] text-neutral-500" :title="f.testedBy.join('\n')">+ {{ f.testedBy.length }} test{{ f.testedBy.length === 1 ? "" : "s" }}</span></td>
+                    <td class="max-w-[200px] text-sm"><AreaChips :areas="byArea(f.usedBy, dir)"/><span v-if="f.testedBy.length" class="block text-[11px] text-neutral-500" :title="f.testedBy.join('\n')">{{ t('pages.xray.text', { tests: t('common.count.test', { count: f.testedBy.length }) }) }}</span></td>
                     <td class="max-w-[200px] text-sm"><AreaChips :areas="byArea(f.uses, dir)"/></td>
                     <td class="max-w-[180px] text-sm">
                       <span v-if="!f.changesWith.length" class="text-neutral-400">—</span>
@@ -117,6 +117,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { CODE_EXTENSIONS, extensionOf } from "~/features/snapshot/coverage";
 import { filePath } from "~/features/navigation/routes";
 import { byArea, loadXray, topics, type XrayFile } from "~/features/xray/xray";
+import { t, intlLocale } from "~/shared/i18n";
 
 // A folder, read file by file and grouped into topics: the first pass of a
 // restructure, which by hand means opening every file in the folder.
@@ -163,18 +164,18 @@ const blindExt = computed(() => {
 const crumbs = computed(() => { const p = dir.value.split("/"); return p.map((label, i) => ({ label, path: p.slice(0, i + 1).join("/") })); });
 const rel = (f: string) => (f.startsWith(dir.value + "/") ? f.slice(dir.value.length + 1) : f);
 const base = (f: string) => f.slice(f.lastIndexOf("/") + 1);
-const fmt = (n: number) => n.toLocaleString("en-US");
+const fmt = (n: number) => n.toLocaleString(intlLocale);
 
 // Sorting and filtering.
 const columns = [
-  { id: "path", label: "File" },
-  { id: "summary", label: "What it says" },
-  { id: "exports", label: "Exports" },
-  { id: "usedBy", label: "Used by" },
-  { id: "uses", label: "Uses" },
-  { id: "changesWith", label: "Changes with" },
-  { id: "lines", label: "Lines", class: "text-right" },
-  { id: "commits", label: "Commits", class: "text-right" },
+  { id: "path", label: t("pages.xray.file") },
+  { id: "summary", label: t("pages.xray.whatSays") },
+  { id: "exports", label: t("pages.xray.exports") },
+  { id: "usedBy", label: t("pages.xray.used") },
+  { id: "uses", label: t("pages.xray.uses") },
+  { id: "changesWith", label: t("pages.xray.changes") },
+  { id: "lines", label: t("pages.xray.lines2"), class: "text-right" },
+  { id: "commits", label: t("pages.xray.commits"), class: "text-right" },
 ] as const;
 type Col = typeof columns[number]["id"];
 const sortBy = ref<Col>("usedBy");

@@ -1,7 +1,16 @@
 // Time formatting for the shell: scan timestamps and how long ago they were.
 // Pure functions; `now` is injectable so tests are deterministic.
 
+import { dateLocale, locale, t } from "~/shared/i18n"
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const shortMonth = new Intl.DateTimeFormat(dateLocale, { month: "short" })
+
+/** "Sep" in English, "sep" in Dutch: the app's short month names. */
+function monthOf(d: Date): string {
+    return locale === "en" ? MONTHS[d.getMonth()] : shortMonth.format(d).replace(/\.$/, "")
+}
 
 function toDate(value: Date | string | number): Date {
     return value instanceof Date ? value : new Date(value);
@@ -15,7 +24,7 @@ function pad(n: number): string {
 export function formatScanTime(value: Date | string | number, now: Date = new Date()): string {
     const d = toDate(value);
     if (Number.isNaN(d.getTime())) return "";
-    const day = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    const day = `${d.getDate()} ${monthOf(d)}`;
     const year = d.getFullYear() === now.getFullYear() ? "" : ` ${d.getFullYear()}`;
     return `${day}${year}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -27,16 +36,16 @@ export function relativeAge(value: Date | string | number, now: Date = new Date(
     const d = toDate(value);
     if (Number.isNaN(d.getTime())) return "";
     const seconds = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 1000));
-    if (seconds < 60) return "just now";
+    if (seconds < 60) return t("ui.time.justNow");
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 60) return t("ui.time.minAgo", { minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} h ago`;
+    if (hours < 24) return t("ui.time.hAgo", { hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} d ago`;
+    if (days < 30) return t("ui.time.dAgo", { days });
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months} mo ago`;
-    return `${Math.floor(days / 365)} y ago`;
+    if (months < 12) return t("ui.time.moAgo", { months });
+    return t("ui.time.yAgo", { years: Math.floor(days / 365) });
 }
 
 // Elapsed time for a running scan: "0:07", "1:42", "1:02:05".
@@ -53,5 +62,5 @@ export function formatElapsed(startedAt: Date | string | number, now: Date = new
 export function formatDate(value: Date | string | number): string {
     const d = toDate(value);
     if (Number.isNaN(d.getTime())) return "";
-    return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    return `${d.getDate()} ${monthOf(d)} ${d.getFullYear()}`;
 }

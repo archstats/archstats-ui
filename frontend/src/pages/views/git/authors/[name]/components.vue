@@ -3,19 +3,19 @@
     <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
       <div class="relative flex items-center">
         <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
-        <input v-model="search" type="search" placeholder="Search components" class="ui-input ui-input-sm w-64 pl-7" aria-label="Search components">
+        <input v-model="search" type="search" :placeholder="t('pages.gitAuthorsComponents.searchComponents')" class="ui-input ui-input-sm w-64 pl-7" :aria-label="t('pages.gitAuthorsComponents.searchComponents')">
       </div>
       <span class="ui-toolbar-meta ml-auto">
-        <template v-if="search.trim()">{{ formatNumber(filtered.length) }} of {{ formatNumber(rows.length) }}</template>
-        <template v-else>{{ formatNumber(rows.length) }} components</template>
+        <template v-if="search.trim()">{{ t('pages.gitAuthorsComponents.of', { filteredLength: formatNumber(filtered.length), rowsLength: formatNumber(rows.length) }) }}</template>
+        <template v-else>{{ t('pages.gitAuthorsComponents.components', { rowsLength: formatNumber(rows.length) }) }}</template>
       </span>
     </div>
 
-    <LoadingState v-if="loading" text="Reading components…"/>
-    <EmptyState v-else-if="error" title="Could not read components" :text="error" icon="alert"/>
-    <EmptyState v-else-if="rows.length === 0" title="No components recorded" :text="`${name} has no commits attributed to a component in this snapshot.`" icon="boxes"/>
-    <EmptyState v-else-if="filtered.length === 0" title="No components match" :text="`0 of ${rows.length} match “${search.trim()}”.`" icon="search">
-      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">Clear search</button>
+    <LoadingState v-if="loading" :text="t('pages.gitAuthorsComponents.readingComponents')"/>
+    <EmptyState v-else-if="error" :title="t('pages.gitAuthorsComponents.couldNotReadComponents')" :text="error" icon="alert"/>
+    <EmptyState v-else-if="rows.length === 0" :title="t('pages.gitAuthorsComponents.noComponentsRecorded')" :text="t('pages.gitAuthorsComponents.hasNoCommitsAttributed', { name })" icon="boxes"/>
+    <EmptyState v-else-if="filtered.length === 0" :title="t('pages.gitAuthorsComponents.noComponentsMatch')" :text="t('pages.gitAuthorsComponents.text0Match', { rowsLength: rows.length, search: search.trim() })" icon="search">
+      <button type="button" class="ui-btn ui-btn-sm" @click="search = ''">{{ t('pages.gitAuthorsComponents.clearSearch') }}</button>
     </EmptyState>
     <div v-else class="min-h-0 grow overflow-y-auto">
       <table class="ui-table">
@@ -30,7 +30,7 @@
           <tr v-for="row in sorted" :key="row.component">
             <td class="max-w-0">
               <router-link v-if="row.component" :to="componentPath(row.component)" class="block truncate font-mono text-sm font-medium text-neutral-900 hover:underline" :title="row.component">{{ row.component }}</router-link>
-              <span v-else class="block truncate text-sm text-neutral-400">No component</span>
+              <span v-else class="block truncate text-sm text-neutral-400">{{ t('pages.gitAuthorsComponents.noComponent') }}</span>
             </td>
             <td class="is-num text-right">{{ formatNumber(row.commits) }}</td>
             <td class="is-num text-right">
@@ -70,6 +70,7 @@ import { healthLevel, hotspotLevel, levelDotClass, levelTextClass, formatHealth,
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { t } from "~/shared/i18n"
 
 const route = useRoute()
 const store = useDataStore()
@@ -137,13 +138,13 @@ const filtered = computed(() => {
 
 type SortKey = "component" | "commits" | "lines" | "health" | "hotspot" | "first_commit" | "last_commit"
 const columns: Array<{ key: SortKey; label: string; align?: "right"; width?: string }> = [
-  { key: "component", label: "Component" },
-  { key: "commits", label: "Commits", align: "right", width: "w-[90px]" },
-  { key: "lines", label: "Lines", align: "right", width: "w-[150px]" },
-  { key: "health", label: "Health", align: "right", width: "w-[90px]" },
-  { key: "hotspot", label: "Hotspot", align: "right", width: "w-[90px]" },
-  { key: "first_commit", label: "First", align: "right", width: "w-[110px]" },
-  { key: "last_commit", label: "Last", align: "right", width: "w-[110px]" },
+  { key: "component", label: t("pages.gitAuthorsComponents.component") },
+  { key: "commits", label: t("pages.gitAuthorsComponents.commits"), align: "right", width: "w-[90px]" },
+  { key: "lines", label: t("pages.gitAuthorsComponents.lines"), align: "right", width: "w-[150px]" },
+  { key: "health", label: t("pages.gitAuthorsComponents.health"), align: "right", width: "w-[90px]" },
+  { key: "hotspot", label: t("pages.gitAuthorsComponents.hotspot"), align: "right", width: "w-[90px]" },
+  { key: "first_commit", label: t("pages.gitAuthorsComponents.first"), align: "right", width: "w-[110px]" },
+  { key: "last_commit", label: t("pages.gitAuthorsComponents.last"), align: "right", width: "w-[110px]" },
 ]
 
 const sortKey = ref<SortKey>("commits")

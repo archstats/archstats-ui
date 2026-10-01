@@ -33,8 +33,8 @@
                     type="button"
                     class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet -my-1 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                     :class="{ 'opacity-100': inspecting === row.name }"
-                    :title="`Why are these two connected?`"
-                    :aria-label="`Evidence for ${row.name}`"
+                    :title="t('connections.pairTable.whyTheseTwoConnected')"
+                    :aria-label="t('connections.pairTable.evidence', { name: row.name })"
                     @click.stop="emit('inspect', row.name)"
                   >
                     <Icon icon="focus" :size="13"/>
@@ -51,12 +51,12 @@
         </table>
       </div>
       <div class="flex h-9 shrink-0 items-center justify-between px-4 text-sm text-neutral-500 hairline-t">
-        <span class="flex items-center gap-1"><span><span class="font-mono text-neutral-700">{{ formatNumber(rows.length) }}</span> {{ rows.length === 1 ? 'pair' : 'pairs' }}</span>
+        <span class="flex items-center gap-1"><span><span class="font-mono text-neutral-700">{{ formatNumber(rows.length) }}</span> {{t('common.noun.pair', { count: rows.length })}}</span>
           <TableExportMenu :title="exportTitle || nameLabel + ' pairs'" :columns="exportColumns" :rows="exportRows"/></span>
         <div v-if="totalPages > 1" class="flex items-center gap-2">
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" aria-label="Previous page" @click="page--"><Icon icon="chevron-left" :size="14"/></button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page <= 1" :aria-label="t('connections.pairTable.previousPage')" @click="page--"><Icon icon="chevron-left" :size="14"/></button>
           <span class="font-mono tabular-nums">{{ page }} / {{ totalPages }}</span>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page >= totalPages" aria-label="Next page" @click="page++"><Icon icon="chevron-right" :size="14"/></button>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="page >= totalPages" :aria-label="t('connections.pairTable.nextPage')" @click="page++"><Icon icon="chevron-right" :size="14"/></button>
         </div>
       </div>
     </template>
@@ -111,16 +111,17 @@ const props = withDefaults(defineProps<{
   inspectable: false,
   inspecting: null,
   loading: false,
-  loadingText: "Reading pairs…",
-  nameLabel: "Name",
-  groupLabel: "Component",
-  emptyTitle: "No pairs",
+  loadingText: t("connections.pairTable.readingPairs"),
+  nameLabel: t("connections.pairTable.name"),
+  groupLabel: t("connections.pairTable.component"),
+  emptyTitle: t("connections.pairTable.noPairs"),
   emptyText: "",
   pageSize: 50,
   defaultSort: "",
 })
 
 import { useRouter } from "vue-router"
+import { t } from "~/shared/i18n"
 const router = useRouter()
 const emit = defineEmits<{ (e: "toggle", name: string): void; (e: "inspect", name: string): void }>()
 
@@ -130,12 +131,12 @@ function onRowClick(event: MouseEvent, row: PairRow) {
 }
 
 const columns = [
-  { key: "references", label: "Refs", title: "Import references between the two", format: (v: any) => formatNumber(v, 0) },
-  { key: "hops", label: "Hops", title: "Shortest dependency path length", format: (v: any) => formatNumber(v, 0) },
-  { key: "sharedCommits", label: "Shared", title: "Commits that touched both", format: (v: any) => formatNumber(v, 0) },
-  { key: "coChangeRate", label: "Co-change", title: "Share of this unit's commits that also touched the other", format: (v: any) => (v === null || v === undefined) ? "—" : `${Math.round(Number(v) * 100)}%` },
-  { key: "similarity", label: "Similarity", title: "Linguistic similarity of the names inside (0–1)", format: (v: any) => (v === null || v === undefined) ? "—" : Number(v).toFixed(2) },
-  { key: "pathDistance", label: "Path", title: "Directory distance between the two", format: (v: any) => (v === null || v === undefined || Number(v) < 0) ? "—" : formatNumber(v, 0) },
+  { key: "references", label: t("connections.pairTable.refs"), title: t("connections.pairTable.importReferencesBetweenTwo"), format: (v: any) => formatNumber(v, 0) },
+  { key: "hops", label: t("connections.pairTable.hops"), title: t("connections.pairTable.shortestDependencyPathLength"), format: (v: any) => formatNumber(v, 0) },
+  { key: "sharedCommits", label: t("connections.pairTable.shared"), title: t("connections.pairTable.commitsTouchedBoth"), format: (v: any) => formatNumber(v, 0) },
+  { key: "coChangeRate", label: t("connections.pairTable.coChange"), title: t("connections.pairTable.shareUnitSCommits"), format: (v: any) => (v === null || v === undefined) ? "—" : `${Math.round(Number(v) * 100)}%` },
+  { key: "similarity", label: t("connections.pairTable.similarity"), title: t("connections.pairTable.linguisticSimilarityNamesInside"), format: (v: any) => (v === null || v === undefined) ? "—" : Number(v).toFixed(2) },
+  { key: "pathDistance", label: t("connections.pairTable.path"), title: t("connections.pairTable.directoryDistanceBetweenTwo"), format: (v: any) => (v === null || v === undefined || Number(v) < 0) ? "—" : formatNumber(v, 0) },
 ]
 
 // A column earns its width only when some row has something to say in it: a

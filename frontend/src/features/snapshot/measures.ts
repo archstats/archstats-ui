@@ -4,6 +4,7 @@
 // count importing files, not components).
 
 import type { Snapshot } from "./snapshot"
+import { t } from "~/shared/i18n"
 
 /** Friendly words to the column that answers them; the file-counting coupling columns go to the component counts. */
 export const METRIC_WORDS: Record<string, string> = {
@@ -22,10 +23,10 @@ export const METRIC_WORDS: Record<string, string> = {
 }
 
 export const METRIC_TRAP: Record<string, string> = {
-    afferent: "Afferent coupling counts importing files; ranked by dependents (components) instead.",
-    modularity__coupling__afferent: "Afferent coupling counts importing files; ranked by dependents (components) instead.",
-    efferent: "Efferent coupling counts importing files; ranked by dependencies (components) instead.",
-    modularity__coupling__efferent: "Efferent coupling counts importing files; ranked by dependencies (components) instead.",
+    afferent: t("snapshot.measures.afferentCouplingCountsImporting"),
+    modularity__coupling__afferent: t("snapshot.measures.afferentCouplingCountsImporting"),
+    efferent: t("snapshot.measures.efferentCouplingCountsImporting"),
+    modularity__coupling__efferent: t("snapshot.measures.efferentCouplingCountsImporting"),
 }
 
 export function resolveMetric(snap: Snapshot, asked: string, table: "components" | "files"): { id: string; note?: string } | null {
@@ -42,11 +43,11 @@ export function resolveMetric(snap: Snapshot, asked: string, table: "components"
 }
 
 export function metricName(snap: Snapshot, id: string): string {
-    if (id === "cycles") return "Cycles it is in"
+    if (id === "cycles") return t("snapshot.measures.cycles")
     return snap.definitions().get(id)?.name || id
 }
 
 export function metricShort(snap: Snapshot, id: string): string {
-    if (id === "cycles") return "Distinct shortest cycles through it, each counted once."
+    if (id === "cycles") return t("snapshot.measures.distinctShortestCyclesThrough")
     return snap.definitions().get(id)?.short ?? ""
 }

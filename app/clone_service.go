@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/archstats/archstats-ui/app/locale"
 	"path/filepath"
 
 	"github.com/archstats/archstats-ui/app/clone"
@@ -39,7 +40,7 @@ func (c *CloneService) ChooseParent(name string) (string, error) {
 		return "", errors.New("folder picker unavailable before startup")
 	}
 	dir, err := runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
-		Title:                "Choose where to clone " + name,
+		Title:                locale.T("cloneWhere", name),
 		CanCreateDirectories: true,
 	})
 	if err != nil || dir == "" {

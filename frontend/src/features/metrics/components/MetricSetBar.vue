@@ -1,8 +1,8 @@
 <template>
   <!-- The metrics a view draws, as chips in drawing order: × removes, drag or
        Alt+←/→ reorders, "Add metric" picks from every metric with its definition. -->
-  <div class="flex min-h-10 shrink-0 flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 py-1.5 hairline-b" role="group" :aria-label="`Metrics in ${viewName}`">
-    <span class="ui-label mr-1">Metrics</span>
+  <div class="flex min-h-10 shrink-0 flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 py-1.5 hairline-b" role="group" :aria-label="t('metrics.metricSetBar.metrics', { viewName })">
+    <span class="ui-label mr-1">{{ t('metrics.metricSetBar.metrics2') }}</span>
     <TransitionGroup name="chip" tag="div" class="contents">
       <span
           v-for="(key, i) in modelValue"
@@ -11,7 +11,7 @@
           :class="{ 'opacity-40': dragFrom === i, 'is-active': dropAt === i && dragFrom !== null && dragFrom !== i }"
           draggable="true"
           tabindex="0"
-          :title="`${niceName(key)} · drag or Alt+←/→ to move`"
+          :title="t('metrics.metricSetBar.dragAltMove', { key: niceName(key) })"
           @dragstart="onDragStart($event, i)"
           @dragover.prevent="dropAt = i"
           @dragleave="dropAt = dropAt === i ? null : dropAt"
@@ -27,8 +27,8 @@
             type="button"
             class="grid h-4 w-4 place-items-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-800 disabled:pointer-events-none disabled:opacity-30"
             :disabled="modelValue.length <= min"
-            :aria-label="`Remove ${niceName(key)}`"
-            :title="modelValue.length <= min ? `${viewName} needs at least ${min}` : `Remove ${niceName(key)}`"
+            :aria-label="t('metrics.metricSetBar.remove', { key: niceName(key) })"
+            :title="modelValue.length <= min ? t('metrics.metricSetBar.needsLeast', { viewName, min }) : t('metrics.metricSetBar.remove', { key: niceName(key) })"
             @click="remove(i)"
         >
           <Icon icon="x" :size="11"/>
@@ -39,14 +39,14 @@
     <StatSelectSingle :model-value="null" :options="addable" @update:model-value="add">
       <template #trigger="{ toggle, open }">
         <button type="button" class="ui-btn ui-btn-sm gap-1" :aria-expanded="open" :disabled="full || addable.length === 0"
-                :title="full ? `${viewName} holds up to ${max} metrics; remove one first` : 'Add a metric'" @click="toggle">
-          <Icon icon="plus" :size="12" class="text-neutral-500"/>Add metric
+                :title="full ? t('metrics.metricSetBar.holdsUpMetricsRemove', { viewName, max }) : t('metrics.metricSetBar.addMetric')" @click="toggle">
+          <Icon icon="plus" :size="12" class="text-neutral-500"/>{{ t('metrics.metricSetBar.addMetric2') }}
         </button>
       </template>
     </StatSelectSingle>
     <span v-if="max < Infinity" class="font-mono text-xs text-neutral-500">{{ modelValue.length }} / {{ max }}</span>
 
-    <button v-if="changed" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('reset')">Reset to defaults</button>
+    <button v-if="changed" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto" @click="emit('reset')">{{ t('metrics.metricSetBar.resetDefaults') }}</button>
     <!-- What the bar draws exports from its end: the bar is that exhibit's header. -->
     <div v-if="$slots.end" class="flex items-center" :class="changed ? 'ml-1' : 'ml-auto'"><slot name="end"/></div>
   </div>
@@ -57,6 +57,7 @@ import { computed, nextTick, ref, type PropType } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import StatSelectSingle from "~/features/metrics/components/StatSelectSingle.vue";
 import { useDataStore } from "~/features/snapshot/data.store";
+import { t } from "~/shared/i18n";
 
 const props = defineProps({
   modelValue: { type: Array as PropType<string[]>, required: true },

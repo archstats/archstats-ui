@@ -1,13 +1,13 @@
 <template>
-  <LoadingState v-if="loading" text="Reading Java declarations…"/>
-  <EmptyState v-else-if="error" title="Could not read Java declarations" :text="error" icon="alert"/>
-  <EmptyState v-else-if="!hasJava" title="No Java classes in this file" :text="`The snapshot records no Java declarations in ${fileBasename}.`" icon="braces"/>
+  <LoadingState v-if="loading" :text="t('pages.filesJava.readingJavaDeclarations')"/>
+  <EmptyState v-else-if="error" :title="t('pages.filesJava.couldNotReadJava')" :text="error" icon="alert"/>
+  <EmptyState v-else-if="!hasJava" :title="t('pages.filesJava.noJavaClassesFile')" :text="t('pages.filesJava.snapshotRecordsNoJava', { fileBasename })" icon="braces"/>
   <div v-else class="min-h-0 grow overflow-y-auto">
     <div class="max-w-[1040px] px-6 py-5">
       <!-- Declarations: what the file declares. -->
       <section>
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="ui-section-title">Declarations</h2>
+          <h2 class="ui-section-title">{{ t('pages.filesJava.declarations') }}</h2>
           <span v-for="role in roles" :key="role" class="ui-tag">{{ role }}</span>
         </div>
         <dl class="mt-3 flex overflow-hidden rounded-lg hairline">
@@ -20,10 +20,10 @@
 
       <!-- Neighbourhood: who imports this class, and what it imports. -->
       <section class="mt-6 pt-5 hairline-t">
-        <ExhibitFrame title="Neighbourhood" header-class="pb-3">
-          <template #aside>Imported by on the left, imports on the right</template>
+        <ExhibitFrame :title="t('pages.filesJava.neighbourhood')" header-class="pb-3">
+          <template #aside>{{ t('pages.filesJava.importedLeftImportsRight') }}</template>
           <div class="overflow-hidden rounded-lg hairline">
-            <EmptyState v-if="incoming.length === 0 && outgoing.length === 0" class="h-[320px]" title="No recorded connections" :text="connectionsText" icon="waypoints"/>
+            <EmptyState v-if="incoming.length === 0 && outgoing.length === 0" class="h-[320px]" :title="t('pages.filesJava.noRecordedConnections')" :text="connectionsText" icon="waypoints"/>
             <ClassNeighbourhoodGraph v-else :centre="centre" :incoming="incoming" :outgoing="outgoing" @open="openFile"/>
           </div>
         </ExhibitFrame>
@@ -32,22 +32,22 @@
       <!-- Outgoing: classes this file imports. -->
       <section class="mt-6 pt-5 hairline-t">
         <div class="flex items-center gap-2">
-          <h2 class="ui-section-title">Outgoing</h2>
+          <h2 class="ui-section-title">{{ t('pages.filesJava.outgoing') }}</h2>
           <span class="font-mono text-xs text-neutral-400">{{ formatNumber(outgoing.length) }}</span>
         </div>
         <div class="mt-3 max-h-[400px] overflow-y-auto rounded-lg hairline">
           <table class="ui-table">
             <thead>
               <tr>
-                <th>Class</th>
-                <th class="w-[120px]">Role</th>
-                <th>Component</th>
-                <th class="w-[100px] text-right">References</th>
+                <th>{{ t('pages.filesJava.class') }}</th>
+                <th class="w-[120px]">{{ t('pages.filesJava.role') }}</th>
+                <th>{{ t('pages.filesJava.component') }}</th>
+                <th class="w-[100px] text-right">{{ t('pages.filesJava.references') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="outgoing.length === 0">
-                <td colspan="4" class="text-neutral-500">Imports no class recorded in the snapshot</td>
+                <td colspan="4" class="text-neutral-500">{{ t('pages.filesJava.importsNoClassRecorded') }}</td>
               </tr>
               <tr v-for="n in outgoing" :key="n.id">
                 <td class="max-w-0">
@@ -69,22 +69,22 @@
       <!-- Incoming: classes that import this file. -->
       <section class="mt-6 pt-5 hairline-t">
         <div class="flex items-center gap-2">
-          <h2 class="ui-section-title">Incoming</h2>
+          <h2 class="ui-section-title">{{ t('pages.filesJava.incoming') }}</h2>
           <span class="font-mono text-xs text-neutral-400">{{ formatNumber(incoming.length) }}</span>
         </div>
         <div class="mt-3 max-h-[400px] overflow-y-auto rounded-lg hairline">
           <table class="ui-table">
             <thead>
               <tr>
-                <th>Class</th>
-                <th class="w-[120px]">Role</th>
-                <th>Component</th>
-                <th class="w-[100px] text-right">References</th>
+                <th>{{ t('pages.filesJava.class') }}</th>
+                <th class="w-[120px]">{{ t('pages.filesJava.role') }}</th>
+                <th>{{ t('pages.filesJava.component') }}</th>
+                <th class="w-[100px] text-right">{{ t('pages.filesJava.references') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="incoming.length === 0">
-                <td colspan="4" class="text-neutral-500">No class in the snapshot imports {{ centre.label }}</td>
+                <td colspan="4" class="text-neutral-500">{{ t('pages.filesJava.noClassSnapshotImports', { centreLabel: centre.label }) }}</td>
               </tr>
               <tr v-for="n in incoming" :key="n.id">
                 <td class="max-w-0">
@@ -106,22 +106,22 @@
       <!-- Structural flags: layering rules this file breaks. -->
       <section class="mt-6 pt-5 hairline-t">
         <div class="flex items-center gap-2">
-          <h2 class="ui-section-title">Structural flags</h2>
+          <h2 class="ui-section-title">{{ t('pages.filesJava.structuralFlags') }}</h2>
           <span class="font-mono text-xs text-neutral-400">{{ formatNumber(flags.length) }}</span>
         </div>
         <div class="mt-3 overflow-hidden rounded-lg hairline">
           <table class="ui-table">
             <thead>
               <tr>
-                <th class="w-[220px]">Rule</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Detail</th>
+                <th class="w-[220px]">{{ t('pages.filesJava.rule') }}</th>
+                <th>{{ t('pages.filesJava.from') }}</th>
+                <th>{{ t('pages.filesJava.to') }}</th>
+                <th>{{ t('pages.filesJava.detail') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="flags.length === 0">
-                <td colspan="4" class="text-neutral-500">No violations found</td>
+                <td colspan="4" class="text-neutral-500">{{ t('pages.filesJava.noViolationsFound') }}</td>
               </tr>
               <tr v-for="flag in flags" :key="flag.key">
                 <td class="text-neutral-800">{{ flag.rule }}</td>
@@ -160,6 +160,7 @@ import {
 import ClassNeighbourhoodGraph, { type NeighbourNode } from "~/features/java/components/ClassNeighbourhoodGraph.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 
 const router = useRouter()
 const store = useDataStore()
@@ -242,15 +243,15 @@ const declarationStats = computed(() => {
   const c = counts.value
   const r = row.value ?? {}
   const list = [
-    { label: "Classes", value: c.classes },
-    { label: "Methods", value: c.methods },
-    { label: "Fields", value: c.fields },
-    { label: "Imports", value: c.imports },
-    { label: "GET", value: num(r.java__spring__request_mappings__get) },
-    { label: "POST", value: num(r.java__spring__request_mappings__post) },
-    { label: "PUT", value: num(r.java__spring__request_mappings__put) },
-    { label: "DELETE", value: num(r.java__spring__request_mappings__delete) },
-    { label: "PATCH", value: num(r.java__spring__request_mappings__patch) },
+    { label: t("pages.filesJava.classes"), value: c.classes },
+    { label: t("pages.filesJava.methods"), value: c.methods },
+    { label: t("pages.filesJava.fields"), value: c.fields },
+    { label: t("pages.filesJava.imports"), value: c.imports },
+    { label: t("pages.filesJava.get"), value: num(r.java__spring__request_mappings__get) },
+    { label: t("pages.filesJava.post"), value: num(r.java__spring__request_mappings__post) },
+    { label: t("pages.filesJava.put"), value: num(r.java__spring__request_mappings__put) },
+    { label: t("pages.filesJava.delete"), value: num(r.java__spring__request_mappings__delete) },
+    { label: t("pages.filesJava.patch"), value: num(r.java__spring__request_mappings__patch) },
   ]
   return list.filter(s => s.value > 0)
 })
@@ -323,9 +324,9 @@ const incoming = computed<NeighbourNode[]>(() => {
 })
 
 const connectionsText = computed(() => {
-  if (!fullClass.value) return "The snapshot did not record a class name for this file, so imports cannot be traced."
-  if (!data.value.hasConnectionsView) return "The snapshot has no Java class connections view; only imports resolved by class name would appear here."
-  return `No other class in the snapshot imports ${centre.value.label}, and it imports no class in the snapshot.`
+  if (!fullClass.value) return t("pages.filesJava.snapshotDidNotRecord")
+  if (!data.value.hasConnectionsView) return t("pages.filesJava.snapshotHasNoJava")
+  return t("pages.filesJava.noOtherClassSnapshot", { centreLabel: centre.value.label })
 })
 
 // Structural flags: rules checked on this file's imports, plus its own

@@ -9,7 +9,7 @@
       <div class="flex select-none items-center gap-1 py-0.5">
         <Icon v-if="stat.children?.length" :icon="expanded ? 'chevron-down' : 'chevron-right'" class="cursor-pointer text-neutral-400 hover:text-neutral-700" :size="14" @click="expanded=!expanded"></Icon>
         <Checkbox :model-value="isChecked" @update:model-value="emit('select-stat', stat.fullName)">
-          <span :class="stat.level <= 1 ? 'font-medium text-neutral-800' : 'text-neutral-700'">{{ stat.name || "All" }}</span>
+          <span :class="stat.level <= 1 ? 'font-medium text-neutral-800' : 'text-neutral-700'">{{ stat.name || t('metrics.statSelectMultiNode.all') }}</span>
         </Checkbox>
       </div>
       <div v-show="expanded" :style="{'padding-left': `${(stat.level + 1) * 14}px`}" v-for="child in orderedChildren" :key="child.fullName">
@@ -22,6 +22,7 @@
 import {Stat} from "~/features/snapshot/statTree";
 import Icon from "~/shared/ui/Icon.vue";
 import Checkbox from "~/shared/ui/Checkbox.vue";
+import { t } from "~/shared/i18n";
 
 const props = defineProps<{
   stat: Stat

@@ -16,7 +16,7 @@
 
     <div class="min-h-0 flex-1 overflow-y-auto">
       <h3 class="flex items-baseline gap-2 px-4 pb-1 pt-3">
-        <span class="ui-section-title">{{ anomaly.kind === 'cycle' ? 'The pairs' : 'The dependencies' }}</span>
+        <span class="ui-section-title">{{ anomaly.kind === 'cycle' ? t('units.anomalyPanel.pairs') : t('units.anomalyPanel.dependencies') }}</span>
         <span class="font-mono text-[11px] tabular-nums text-neutral-400">{{ anomaly.references.length }}</span>
       </h3>
 
@@ -31,14 +31,13 @@
                   :title="r.to" @click="$emit('select', r.to)">{{ nameOf(r.to) }}</button>
           <button type="button"
                   class="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums text-neutral-600 hover:text-neutral-900"
-                  :title="`Inspect the ${r.weight} ${r.weight === 1 ? 'reference' : 'references'} behind this`"
+                  :title="t('units.anomalyPanel.inspectBehind', { references: t('common.count.reference', { count: r.weight }) })"
                   @click="$emit('inspectPair', r.from, r.to)">{{ r.weight }}</button>
         </li>
       </ul>
 
       <p class="px-4 pb-4 pt-2 text-xs leading-4 text-neutral-500">
-        Click a name to inspect that module, or the count to see the declarations that create
-        the dependency.
+        {{ t('units.anomalyPanel.clickNameInspectModule') }}
       </p>
     </div>
   </aside>
@@ -48,6 +47,7 @@
 import { computed } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import type { Anomaly } from "~/features/units/relationship"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ anomaly: Anomaly; nameOf: (path: string) => string }>()
 defineEmits<{
@@ -56,9 +56,9 @@ defineEmits<{
 }>()
 
 const kindLabel = computed(() => ({
-  cycle: "Cycle",
-  "against-grain": "Against the grain",
-  bottleneck: "Single point of failure",
-  wide: "Reaching too widely",
-}[props.anomaly.kind] ?? "Anomaly"))
+  cycle: t("units.anomalyPanel.cycle"),
+  "against-grain": t("units.anomalyPanel.againstGrain"),
+  bottleneck: t("units.anomalyPanel.singlePointFailure"),
+  wide: t("units.anomalyPanel.reachingTooWidely"),
+}[props.anomaly.kind] ?? t("units.anomalyPanel.anomaly")))
 </script>

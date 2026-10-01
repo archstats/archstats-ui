@@ -11,14 +11,15 @@ import {
     ABOUT, coupling, glance, health, hotspots, lanes, libraries, lit, modules, needs, rules, slotOf, SQL, structure, tests, VIEWS,
     type ReportTemplate, type Writer,
 } from "./templateKit"
+import { t } from "~/shared/i18n"
 
 // ── What the framework sections need ──────────────────────────────────────
 
 const has = {
-    units: (f: SnapshotFacts): true | string => (f.tables.has("units") ? true : "the snapshot predates classes and functions (rescan to add them)"),
+    units: (f: SnapshotFacts): true | string => (f.tables.has("units") ? true : t("reports.ecosystemTemplates.snapshotPredatesClassesFunctions")),
     /** Units and the markers on them: annotations, base types, file names, tags. */
-    markers: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_markers") ? true : "the snapshot does not record annotations and base types (rescan to add them)"),
-    links: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_connections") && f.tables.has("unit_markers") ? true : "the snapshot does not record which classes use which (rescan to add it)"),
+    markers: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_markers") ? true : t("reports.ecosystemTemplates.snapshotDoesNotRecord")),
+    links: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_connections") && f.tables.has("unit_markers") ? true : t("reports.ecosystemTemplates.snapshotDoesNotRecord2")),
     /** Any of these markers, as "source:key". */
     marker: (f: SnapshotFacts, why: string, ...keys: string[]): true | string => (keys.some(k => f.markers.has(k)) ? true : why),
     moduleKind: (f: SnapshotFacts, kind: string, why: string): true | string => ((f.moduleKinds[kind] ?? 0) > 0 ? true : why),
@@ -154,18 +155,18 @@ const ann = (keys: string[]) => `u.id IN ${marked("annotation", keys)}`
 const PHP_SQL = {
     packages: (f: SnapshotFacts) => `SELECT u.module AS package, count(DISTINCT u.id) AS classes, ${[
         phpRole("controllers", `(u.name LIKE '%Controller' OR u.name LIKE '%Action' OR ${ann(["AsController", "Route"])} OR ${sup(["AbstractController", "Controller"])})`),
-        phpRole("entities and models", `(${ann(["Entity", "Embeddable", "ORM"])} OR ${sup(["ResourceInterface", "Model", "Authenticatable"])} OR (u.file LIKE '%/Model/%' AND u.id NOT IN ${marked("supertype", ["interface"])}) OR u.name LIKE '%Entity')`),
+        phpRole(t("reports.ecosystemTemplates.entitiesModels"), `(${ann(["Entity", "Embeddable", "ORM"])} OR ${sup(["ResourceInterface", "Model", "Authenticatable"])} OR (u.file LIKE '%/Model/%' AND u.id NOT IN ${marked("supertype", ["interface"])}) OR u.name LIKE '%Entity')`),
         phpRole("repositories", `(u.name LIKE '%Repository' OR ${sup(["EntityRepository", "RepositoryInterface", "ServiceEntityRepository"])})`),
-        phpRole("form types", sup(["AbstractType", "AbstractResourceType", "AbstractTypeExtension", "FormRequest"])),
-        phpRole("message and command handlers", `(${ann(["AsMessageHandler", "AsCommand"])} OR u.name LIKE '%Handler' OR ${sup(["Command", "Job"])})`),
-        phpRole("event subscribers and listeners", `(${ann(["AsEventListener"])} OR ${sup(["EventSubscriberInterface"])} OR u.name LIKE '%Listener' OR u.name LIKE '%Subscriber')`),
+        phpRole(t("reports.ecosystemTemplates.formTypes"), sup(["AbstractType", "AbstractResourceType", "AbstractTypeExtension", "FormRequest"])),
+        phpRole(t("reports.ecosystemTemplates.messageCommandHandlers"), `(${ann(["AsMessageHandler", "AsCommand"])} OR u.name LIKE '%Handler' OR ${sup(["Command", "Job"])})`),
+        phpRole(t("reports.ecosystemTemplates.eventSubscribersListeners"), `(${ann(["AsEventListener"])} OR ${sup(["EventSubscriberInterface"])} OR u.name LIKE '%Listener' OR u.name LIKE '%Subscriber')`),
         phpRole("validators", sup(["ConstraintValidator", "Constraint"])),
     ].join(", ")} FROM units u WHERE u.kind = 'type' AND coalesce(u.owner, '') = '' AND u.file LIKE '%.php' AND u.file IN ${PROD(f)} GROUP BY 1 ORDER BY 2 DESC, 1`,
     crossPackage: (f: SnapshotFacts) => `SELECT u.a AS package, u.b AS "uses code from", u.refs AS "references", u.files AS "files" FROM (${moduleUse(f)}) u ORDER BY 3 DESC, 1, 2`,
     bundles: (f: SnapshotFacts) => `SELECT CASE WHEN instr(u.component, '\\Bundle\\') > 0 THEN substr(substr(u.component, instr(u.component, '\\Bundle\\') + 8), 1, instr(substr(u.component, instr(u.component, '\\Bundle\\') + 8) || '\\', '\\') - 1) ELSE substr(u.component, 1, instr(u.component || '\\', 'Bundle\\') + 5) END AS bundle, count(DISTINCT u.id) AS classes, ${[
-        phpRole("DI extensions and compiler passes", sup(["Extension", "CompilerPassInterface", "ConfigurationInterface", "AbstractExtension", "Bundle", "AbstractBundle"])),
-        phpRole("event subscribers", `(${sup(["EventSubscriberInterface"])} OR ${ann(["AsEventListener"])})`),
-        phpRole("form types", sup(["AbstractType", "AbstractResourceType", "AbstractTypeExtension"])),
+        phpRole(t("reports.ecosystemTemplates.diExtensionsCompilerPasses"), sup(["Extension", "CompilerPassInterface", "ConfigurationInterface", "AbstractExtension", "Bundle", "AbstractBundle"])),
+        phpRole(t("reports.ecosystemTemplates.eventSubscribers"), `(${sup(["EventSubscriberInterface"])} OR ${ann(["AsEventListener"])})`),
+        phpRole(t("reports.ecosystemTemplates.formTypes"), sup(["AbstractType", "AbstractResourceType", "AbstractTypeExtension"])),
         phpRole("controllers", `(u.name LIKE '%Controller' OR u.name LIKE '%Action')`),
     ].join(", ")} FROM units u WHERE u.component LIKE '%Bundle\\%' AND u.kind = 'type' AND coalesce(u.owner, '') = '' AND u.file IN ${PROD(f)} GROUP BY 1 ORDER BY 2 DESC, 1`,
 }
@@ -173,65 +174,65 @@ const PHP_SQL = {
 // ── Explanations ──────────────────────────────────────────────────────────
 
 const EXPLAIN = {
-    layers: "Most frameworks expect work to flow one way: from where a request comes in, through the business logic, down to data access and the data itself. A reference one step down follows that order.\n\nA reference that *skips a layer* makes the skipped layer easy to bypass. One that runs *back up* ties a lower layer to the one above it, so neither can change alone.",
+    layers: t("reports.ecosystemTemplates.mostFrameworksExpectWork"),
 
-    spring: "Spring creates the application's objects, called *beans*, and wires them together. *Controllers* answer web requests, *services* hold the business logic, *repositories* read and write the database, and *entities* (JPA) are classes mapped to database tables.\n\nThe usual layering runs from controllers to services to repositories to entities.",
-    springWeb: "The web layer is where requests come in. Spring MVC marks entry points with `@Controller` or `@RestController` and maps each method to a URL and an HTTP verb: GET reads, POST creates, PUT or PATCH changes, and DELETE removes. Some applications use JAX-RS instead and mark resources with `@Path`; those are counted too, but not per verb.\n\nA controller with many mappings or many collaborators is doing several jobs. It is usually easier to work with once split by resource.",
-    springShortcuts: "These entry points use a repository or an entity directly instead of going through a service. It works, but the business rules in the service layer are then skipped for that request, and the web layer becomes tied to the database structure.",
-    springServices: "Services hold the business logic. The most used services are the ones most other code depends on, so a change to them reaches furthest.\n\n`@Transactional` sets where a database transaction starts and ends. It usually belongs on services, so that one business operation is one transaction. Only `@Transactional` on a whole class is visible here, not on single methods.",
-    springRepos: "Repositories should be the only code that talks to the database. In Spring Data a repository is usually an interface extending `JpaRepository` or `CrudRepository`, one per *aggregate root*: the entity that other entities are saved and loaded through.",
-    springSwitches: "Some beans exist only under a condition. `@ConditionalOnProperty` switches a bean on with a configuration property, `@Profile` only in some environments (dev, test, prod), and `@ConditionalOnMissingBean` only when nothing else provides it.\n\nThese are the application's feature switches, and each one is a combination to test.",
-    springBackwards: "These repositories and entities use a service or a controller: a lower layer reaching up. An entity that calls a service can no longer be loaded, tested or reused without it.",
-    entities: "An *entity* is a class JPA maps to a database table. Entities refer to each other (an order has order lines, and a line refers to a product), and those links become joins and foreign keys.\n\nThe *used by* column counts how many classes use each entity. The most used ones are the heart of the domain model, and a change to them reaches furthest. An entity with no repository of its own is saved through another entity (it is part of that entity's *aggregate*), or not saved on its own at all.",
-    entityHierarchy: "JPA entities can extend each other (`@Inheritance`, `@MappedSuperclass`), so that several tables share columns or one table holds several kinds of row. Deep hierarchies make queries and schema changes harder to follow.",
+    spring: t("reports.ecosystemTemplates.springCreatesApplicationS"),
+    springWeb: t("reports.ecosystemTemplates.webLayerWhereRequests"),
+    springShortcuts: t("reports.ecosystemTemplates.theseEntryPointsUse"),
+    springServices: t("reports.ecosystemTemplates.servicesHoldBusinessLogic"),
+    springRepos: t("reports.ecosystemTemplates.repositoriesShouldOnlyCode"),
+    springSwitches: t("reports.ecosystemTemplates.someBeansExistOnly"),
+    springBackwards: t("reports.ecosystemTemplates.theseRepositoriesEntitiesUse"),
+    entities: t("reports.ecosystemTemplates.entityClassJpaMaps"),
+    entityHierarchy: t("reports.ecosystemTemplates.jpaEntitiesCanExtend"),
 
-    build: "A multi-module build splits the code into *modules* (Maven modules, Gradle projects). Each has its own build file that declares which other modules it needs, and the build uses those declarations to decide what to build first and what goes on the classpath.\n\nThe code, however, can use anything the classpath offers. So the declared structure and the real one drift apart.",
-    drift: "The first table compares what the code does with what the build files say. Module A *uses* module B when a class in A refers to a class in B. *Not declared* means A uses B without listing it, relying on B arriving through another dependency; if that dependency changes, A stops compiling.\n\nThe second table is the opposite: dependencies a module declares but never uses. They slow the build and hide the real structure.",
+    build: t("reports.ecosystemTemplates.multiModuleBuildSplits"),
+    drift: t("reports.ecosystemTemplates.firstTableComparesWhat"),
 
-    django: "A Django project is made of *apps*: packages that each hold their own models (database tables), views (request handlers), forms, admin screens and migrations (recorded changes to the database schema). Apps are meant to be self-contained, so that each can be understood, tested and reused on its own.\n\nSome projects, django-oscar among them, keep models in `abstract_models.py` so that a project using the app can swap a model for its own.",
-    djangoCross: "An app that uses another app's models depends on that app's database tables: it cannot be installed, migrated or tested without it. The table counts references from one app's code into another's, and how many of the things used are models.",
-    djangoMigrations: "Every change to a model adds a migration file. Apps with many migrations are the ones whose data model changes most, and each migration has to run, in order, on every database the application has.",
+    django: t("reports.ecosystemTemplates.djangoProjectMadeApps"),
+    djangoCross: t("reports.ecosystemTemplates.appUsesAnotherApp"),
+    djangoMigrations: t("reports.ecosystemTemplates.everyChangeModelAdds"),
 
-    python: "Here a component is a Python package: a folder of Python files that the rest of the code imports by name. FastAPI and Flask mark request handlers with decorators such as `@app.get` or `@router.post`, and Pydantic models and dataclasses describe the data that crosses the API.",
+    python: t("reports.ecosystemTemplates.hereComponentPythonPackage"),
 
-    node: "A JavaScript or TypeScript workspace is often split into *packages*, each with its own `package.json` that lists what it depends on. Here a component is a folder, so the imports between components are the imports between folders.",
+    node: t("reports.ecosystemTemplates.javascriptTypescriptWorkspaceOften"),
     react: "In a React codebase the word *component* means two things. A *React component* is a function that draws part of the page, named in capitals like `UserMenu`. A component in this report is a folder, which can hold many React components.\n\n*Hooks* (functions named `useSomething`) hold reusable state and behaviour, and *data clients* fetch from a server. A healthy front end keeps drawing, state and data fetching apart, so that each can change without the others.",
-    reactHooks: "A hook used from many folders is shared infrastructure: a change to it changes every screen that uses it. The table lists the hooks used outside the folder they are declared in, the most widely shared first.",
-    vue: "In a Vue codebase the word *component* means two things. A *Vue component* is one `.vue` file: a template that draws part of the page, with the script behind it. A component in this report is a folder, which can hold many Vue components.\n\n*Pages* and *layouts* are the components the router shows, one per screen. *Composables* (functions named `useSomething`) hold reusable state and behaviour, *stores* (Pinia or Vuex) hold state that many screens share, and *data clients* fetch from a server. A healthy front end keeps drawing, state and data fetching apart, so that each can change without the others.",
-    vueShared: "A component used from many folders is shared UI: a button, a table, a panel frame. A change to it changes every screen that uses it, so it should be stable and small. The table lists the components used outside the folder they are declared in, the most widely shared first.",
-    vueUnused: "These components are not pages or layouts, and no other component or script uses them. Most are left over from a change and can be deleted.\n\nThere is one exception. A component that Nuxt imports automatically, or that is registered globally with `app.component()`, is used without an import line, so it shows up here even though it is in use. Check before deleting.",
+    reactHooks: t("reports.ecosystemTemplates.hookUsedManyFolders"),
+    vue: t("reports.ecosystemTemplates.vueCodebaseWordComponent"),
+    vueShared: t("reports.ecosystemTemplates.componentUsedManyFolders"),
+    vueUnused: t("reports.ecosystemTemplates.theseComponentsNotPages"),
     vueComposables: "A *composable* is a function named `useSomething` that packages state and behaviour for components to share: `useFetch`, `useSelection`. One used from many folders is shared infrastructure, and a change to it changes every screen that calls it. The table lists the composables used outside the folder they are declared in, the most widely shared first.",
-    vueStores: "A *store* holds state that outlives one screen: the signed-in user, a cart, the open document. Every component that reads a store depends on its shape, so a store used from many files is hard to change.\n\nA store file is a script that imports Pinia or Vuex. The files importing it are counted by the file name they import, so two stores with the same file name in different folders are counted together.",
-    reactData: "These folders import a data-fetching library directly. When fetching is spread over many folders, every screen talks to the server its own way; when it sits in a few, the server contract has one home.",
+    vueStores: t("reports.ecosystemTemplates.storeHoldsStateOutlives"),
+    reactData: t("reports.ecosystemTemplates.theseFoldersImportData"),
 
-    go: "In Go a component is a *package*: one folder. A name that starts with a capital letter is *exported*, meaning other packages can use it; lower-case names are private to the package.\n\nPackages under a folder named `internal` may only be imported by code inside the folder that holds `internal`, and the Go tool enforces this. Go also refuses import cycles between packages, so a tangle between packages cannot happen.",
-    goTags: "A *struct tag* such as `json:\"name\"` or `db:\"user_id\"` tells an encoder how to read and write a struct. A tagged struct crosses a boundary: it is sent over the wire, stored, or read from configuration. Renaming its fields breaks someone outside the code.",
-    goDirectives: "*Build constraints* (`//go:build linux`) compile a file only on some platforms or with some tags, so part of the code is invisible in a normal build. *Embedded files* (`//go:embed`) bake files into the binary, and *go:generate* marks code that a tool writes.",
+    go: t("reports.ecosystemTemplates.goComponentPackageOne"),
+    goTags: t("reports.ecosystemTemplates.structTagSuchJson"),
+    goDirectives: t("reports.ecosystemTemplates.buildConstraintsGoBuild"),
 
-    dotnet: "A .NET solution is made of *projects*, one `.csproj` file each, that reference each other. A project can only use code from the projects it references. Here a component is a namespace.\n\nThe roles below are read from file names (`OrderController.cs`, `OrderService.cs`), which is how .NET code usually names them.",
+    dotnet: t("reports.ecosystemTemplates.netSolutionMadeProjects"),
 
-    php: "PHP code is organised in *namespaces*, grouped into Composer packages and, in Symfony, *bundles*. Controllers answer requests, entities hold the data, repositories load it, form types describe input, and message handlers and event subscribers react to things that happen.",
-    phpBundles: "A Symfony *bundle* is a plugin. It registers its own services, listens to events through subscribers, and can bring its own controllers and forms. A bundle with many subscribers and extensions changes how the whole application behaves, not just its own part.",
+    php: t("reports.ecosystemTemplates.phpCodeOrganisedNamespaces"),
+    phpBundles: t("reports.ecosystemTemplates.symfonyBundlePluginRegisters"),
 }
 
 // ── Sections several framework templates share ────────────────────────────
 
 /** What marks a role in each ecosystem, for the roles explanation. */
 const ROLE_EXAMPLES: Partial<Record<EcosystemId, string>> = {
-    spring: "a class marked `@Service` is a service, and one extending `JpaRepository` is a repository",
-    jvm: "a class marked `@Entity` holds persistent data, and one named `…Controller` answers requests",
+    spring: t("reports.ecosystemTemplates.classMarkedServiceService"),
+    jvm: t("reports.ecosystemTemplates.classMarkedEntityHolds"),
     django: "a class extending `models.Model` is a model, and a function in `views.py` is a view",
     python: "a class extending Pydantic's `BaseModel` is a schema, and a function decorated with `@app.get` answers a request",
     react: "a function named in Pascal case in a `.tsx` file, such as `UserMenu`, is a component, and one named like `useCart` is a hook",
     vue: "every `.vue` file is a component, one under `pages/` or `layouts/` is a page, and a function named like `useCart` is a composable",
-    node: "a class decorated with `@Controller` answers requests, and code that imports `axios` talks to a server",
-    go: "a struct with `json:` tags is a model, and a type that imports `database/sql` is a store",
-    dotnet: "a class extending `ControllerBase` is a controller, and one using a `DbContext` is data access",
-    php: "a class with a `#[Route]` attribute is a controller, and one implementing `ResourceInterface` is an entity or model",
+    node: t("reports.ecosystemTemplates.classDecoratedControllerAnswers"),
+    go: t("reports.ecosystemTemplates.structJsonTagsModel"),
+    dotnet: t("reports.ecosystemTemplates.classExtendingControllerbaseController"),
+    php: t("reports.ecosystemTemplates.classRouteAttributeController"),
 }
 function rolesAbout(eco: EcosystemId | ""): string {
     const ex = eco ? ROLE_EXAMPLES[eco] : undefined
-    return `Frameworks give classes jobs: a controller answers requests, a repository reads and writes the database, an entity holds the data. Below, each class gets the job that fits it, the same way the Classes view sorts them.\n\nWhat a class says about itself decides first: its annotations, decorators, base classes or struct tags${ex ? `. For example, ${ex}` : ""}. After that come what it imports, and then its name. A class that fits no job is counted separately rather than guessed at.`
+    return t("reports.ecosystemTemplates.frameworksGiveClassesJobs", { value: ex ? t("reports.ecosystemTemplates.example", { ex }) : "" })
 }
 function anatomy(w: Writer, profile: string, language?: string) {
     w.explain(rolesAbout(w.eco)).reading("roles", { profile, ...(language ? { language } : {}) })
@@ -239,17 +240,17 @@ function anatomy(w: Writer, profile: string, language?: string) {
 }
 /** What skipping and running back up look like, in the framework's own words. */
 const LAYER_EXAMPLES: Record<string, string> = {
-    spring: "In Spring: a controller calling a repository directly skips the services; an entity calling a service runs back up.",
-    django: "In Django: a view reading a model directly is the normal path, but a model importing a view or a form runs back up.",
-    react: "In React: a component calling a data client directly skips the hooks that should hold that state; a data client importing a component runs back up.",
-    vue: "In Vue: a page calling a data client directly skips the composables and stores that should hold that state; a store importing a component runs back up.",
-    aspnet: "In ASP.NET: a controller using a DbContext directly skips the services; an entity or DTO calling a service runs back up.",
-    symfony: "In Symfony: a controller using a repository directly skips the services; an entity calling a service runs back up.",
-    "": "For example, an entry point calling data access directly skips the logic, and data access calling an entry point runs back up.",
+    spring: t("reports.ecosystemTemplates.springControllerCallingRepository"),
+    django: t("reports.ecosystemTemplates.djangoViewReadingModel"),
+    react: t("reports.ecosystemTemplates.reactComponentCallingData"),
+    vue: t("reports.ecosystemTemplates.vuePageCallingData"),
+    aspnet: t("reports.ecosystemTemplates.aspNetControllerUsing"),
+    symfony: t("reports.ecosystemTemplates.symfonyControllerUsingRepository"),
+    "": t("reports.ecosystemTemplates.exampleEntryPointCalling"),
 }
 function layering(w: Writer, profile: string, flow?: [string, string, string], language?: string) {
     w.explain(`${EXPLAIN.layers} ${LAYER_EXAMPLES[profile] ?? LAYER_EXAMPLES[""]}`).reading("layers", { profile, ...(language ? { language } : {}) })
-    if (flow) slotOf(w, "figure", `How ${flow[2]} relate`, VIEWS.flow(flow[0], flow[1], `Boundary between ${flow[2]}`))
+    if (flow) slotOf(w, "figure", t("reports.ecosystemTemplates.howRelate", { value: flow[2] }), VIEWS.flow(flow[0], flow[1], t("reports.ecosystemTemplates.boundaryBetween", { value: flow[2] })))
 }
 const role = (w: Writer, lane: string, profile: string, language?: string) => w.reading("role", { lane, profile, ...(language ? { language } : {}) })
 
@@ -258,142 +259,142 @@ const role = (w: Writer, lane: string, profile: string, language?: string) => w.
 const SPRING: ReportTemplate[] = [
     {
         id: "spring-review",
-        name: "Spring application review",
-        audience: "A Spring team or its architects",
-        summary: "A full tour of a Spring application: how the web layer is split into controllers and what each one serves, where the business logic lives, how repositories and entities make up the data model, whether the layers call each other in the right direction, which beans switch on and off, and where complicated code keeps changing.",
-        when: "Use it when a Spring application has grown and you want to know whether its layers still hold, before a Spring Boot upgrade, or when a new team takes it over.",
+        name: t("reports.ecosystemTemplates.springApplicationReview"),
+        audience: t("reports.ecosystemTemplates.springTeamArchitects"),
+        summary: t("reports.ecosystemTemplates.fullTourSpringApplication"),
+        when: t("reports.ecosystemTemplates.useWhenSpringApplication"),
         ecosystem: "spring",
-        title: ws => `Spring review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.springReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the application does, who uses it, and what this review should settle.")
-            w.section("The application at a glance", true, () => { glance(w); w.explain(EXPLAIN.spring).reading("spring") })
-            w.section("Roles in the code", has.units(f), () => anatomy(w, "spring"))
-            w.section("The web layer: how the controllers are split up", has.marker(f, "the code has no controllers or JAX-RS resources", "annotation:Controller", "annotation:RestController", "annotation:Path"), () => {
+            w.prompt(t("reports.ecosystemTemplates.whatApplicationDoesWho"))
+            w.section(t("reports.ecosystemTemplates.applicationGlance"), true, () => { glance(w); w.explain(EXPLAIN.spring).reading("spring") })
+            w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => anatomy(w, "spring"))
+            w.section(t("reports.ecosystemTemplates.webLayerHowControllers"), has.marker(f, t("reports.ecosystemTemplates.codeHasNoControllers"), "annotation:Controller", "annotation:RestController", "annotation:Path"), () => {
                 w.explain(EXPLAIN.springWeb)
                 role(w, "controllers", "spring")
-                w.sql("Web entry points by package", SPRING_SQL.webByPackage(f), 20)
-                w.sql("Every web entry point, the busiest first", SPRING_SQL.web(f), 25)
-                w.prompt("Is the web layer split by resource (one controller per thing the API serves) or by screen or team? Name the controllers that do too much: many mappings, many collaborators, or many lines.")
+                w.sql(t("reports.ecosystemTemplates.webEntryPointsPackage"), SPRING_SQL.webByPackage(f), 20)
+                w.sql(t("reports.ecosystemTemplates.everyWebEntryPoint"), SPRING_SQL.web(f), 25)
+                w.prompt(t("reports.ecosystemTemplates.webLayerSplitResource"))
             })
-            w.section("Services: where the business logic lives", has.units(f), () => {
+            w.section(t("reports.ecosystemTemplates.servicesWhereBusinessLogic"), has.units(f), () => {
                 w.explain(EXPLAIN.springServices)
                 role(w, "services", "spring")
-                if (f.markers.has("annotation:Transactional")) w.sql("Where @Transactional sits", SPRING_SQL.transactional(f), 10)
+                if (f.markers.has("annotation:Transactional")) w.sql(t("reports.ecosystemTemplates.whereTransactionalSits"), SPRING_SQL.transactional(f), 10)
             })
-            w.section("Repositories and the entity model", has.marker(f, "the code has no JPA entities", "annotation:Entity"), () => {
+            w.section(t("reports.ecosystemTemplates.repositoriesEntityModel"), has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), () => {
                 w.explain(EXPLAIN.springRepos)
                 role(w, "repositories", "spring")
                 w.explain(EXPLAIN.entities)
                 role(w, "entities", "spring")
-                w.sql("Entities by package", SPRING_SQL.entitiesByPackage(f), 20)
-                w.sql("Entities, the most used first", SPRING_SQL.entities(f), 20)
-                w.prompt("Which entities are the heart of the model, and do their packages match the business areas? Name any entity that everything touches.")
+                w.sql(t("reports.ecosystemTemplates.entitiesPackage"), SPRING_SQL.entitiesByPackage(f), 20)
+                w.sql(t("reports.ecosystemTemplates.entitiesMostUsedFirst"), SPRING_SQL.entities(f), 20)
+                w.prompt(t("reports.ecosystemTemplates.whichEntitiesHeartModel"))
             })
-            w.section("Do the layers hold?", has.links(f), () => {
-                layering(w, "spring", ["controllers", "services", "Controllers and Services"])
+            w.section(t("reports.ecosystemTemplates.doLayersHold"), has.links(f), () => {
+                layering(w, "spring", ["controllers", "services", t("reports.ecosystemTemplates.controllersServices")])
                 w.explain(EXPLAIN.springShortcuts)
-                w.sql("Entry points that skip the services", SPRING_SQL.shortcuts, 20)
+                w.sql(t("reports.ecosystemTemplates.entryPointsSkipServices"), SPRING_SQL.shortcuts, 20)
                 w.explain(EXPLAIN.springBackwards)
-                w.sql("Repositories and entities that reach up into services or controllers", SPRING_SQL.backwards, 20)
+                w.sql(t("reports.ecosystemTemplates.repositoriesEntitiesReachUp"), SPRING_SQL.backwards, 20)
             })
-            w.section("Beans that switch on and off", has.marker(f, "no bean is conditional", "annotation:ConditionalOnProperty", "annotation:Profile", "annotation:ConditionalOnMissingBean", "annotation:Conditional", "annotation:ConditionalOnClass", "annotation:ConditionalOnBean"), () => {
+            w.section(t("reports.ecosystemTemplates.beansSwitchOff"), has.marker(f, t("reports.ecosystemTemplates.noBeanConditional"), "annotation:ConditionalOnProperty", "annotation:Profile", "annotation:ConditionalOnMissingBean", "annotation:Conditional", "annotation:ConditionalOnClass", "annotation:ConditionalOnBean"), () => {
                 w.explain(EXPLAIN.springSwitches)
-                w.sql("Conditional beans", SPRING_SQL.switches(f), 30)
+                w.sql(t("reports.ecosystemTemplates.conditionalBeans"), SPRING_SQL.switches(f), 30)
             })
-            w.section("Build modules", needs.modules(f), () => modules(w))
-            w.section("Hotspots", needs.git(f), () => { hotspots(w); slotOf(w, "figure", "Churn against code health", VIEWS.treemap("churn", "components", "Churn against health, components")) })
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: where the layers hold, where they leak, and which controllers, services or entities need attention first."))
+            w.section(t("reports.ecosystemTemplates.buildModules"), needs.modules(f), () => modules(w))
+            w.section("Hotspots", needs.git(f), () => { hotspots(w); slotOf(w, "figure", t("reports.ecosystemTemplates.churnAgainstCodeHealth"), VIEWS.treemap("churn", "components", t("reports.ecosystemTemplates.churnAgainstHealthComponents"))) })
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach")))
         },
     },
     {
         id: "spring-layering",
-        name: "Spring layering check",
-        audience: "Keeping a Spring app layered",
-        summary: "Checks one question in depth: do controllers, services, repositories and entities call each other in the right direction? It counts references that follow the layers, skip one, or run back up, names the classes behind each, and shows where transactions start.",
-        when: "Use it before adding dependency rules, after a period of fast feature work, or when business logic seems to be leaking into controllers or entities.",
+        name: t("reports.ecosystemTemplates.springLayeringCheck"),
+        audience: t("reports.ecosystemTemplates.keepingSpringAppLayered"),
+        summary: t("reports.ecosystemTemplates.checksOneQuestionDepth"),
+        when: t("reports.ecosystemTemplates.useBeforeAddingDependency"),
         ecosystem: "spring",
-        title: ws => `Spring layering: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.springLayering", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("The layering the team intends, in a sentence or two, and anything that is allowed to break it on purpose.")
-            w.section("The roles", has.units(f), () => anatomy(w, "spring"))
-            w.section("References between the layers", has.links(f), () => {
-                layering(w, "spring", ["services", "repositories", "Services and Repositories"])
-                slotOf(w, "table", "Dependency matrix", VIEWS.matrix(f))
+            w.prompt(t("reports.ecosystemTemplates.layeringTeamIntendsSentence"))
+            w.section(t("reports.ecosystemTemplates.roles"), has.units(f), () => anatomy(w, "spring"))
+            w.section(t("reports.ecosystemTemplates.referencesBetweenLayers"), has.links(f), () => {
+                layering(w, "spring", ["services", "repositories", t("reports.ecosystemTemplates.servicesRepositories")])
+                slotOf(w, "table", t("reports.ecosystemTemplates.dependencyMatrix"), VIEWS.matrix(f))
             })
-            w.section("Entry points that skip the services", has.links(f), () => { w.explain(EXPLAIN.springShortcuts); w.sql("Entry points using repositories or entities directly", SPRING_SQL.shortcuts, 30) })
-            w.section("Lower layers reaching up", has.links(f), () => { w.explain(EXPLAIN.springBackwards); w.sql("Repositories and entities that use services or controllers", SPRING_SQL.backwards, 30) })
-            w.section("Transaction boundaries", has.marker(f, "no class is marked @Transactional", "annotation:Transactional"), () => { w.explain(EXPLAIN.springServices); w.sql("Where @Transactional sits", SPRING_SQL.transactional(f), 10) })
-            w.section("Dependency rules", needs.rules(f), () => rules(w))
-            w.section("What to fix, and how to keep it fixed", true, () => w.prompt("The references to move first, and a dependency rule for each layer boundary so the build or the next scan catches a new one."))
+            w.section(t("reports.ecosystemTemplates.entryPointsSkipServices"), has.links(f), () => { w.explain(EXPLAIN.springShortcuts); w.sql(t("reports.ecosystemTemplates.entryPointsUsingRepositories"), SPRING_SQL.shortcuts, 30) })
+            w.section(t("reports.ecosystemTemplates.lowerLayersReachingUp"), has.links(f), () => { w.explain(EXPLAIN.springBackwards); w.sql(t("reports.ecosystemTemplates.repositoriesEntitiesUseServices"), SPRING_SQL.backwards, 30) })
+            w.section(t("reports.ecosystemTemplates.transactionBoundaries"), has.marker(f, t("reports.ecosystemTemplates.noClassMarkedTransactional"), "annotation:Transactional"), () => { w.explain(EXPLAIN.springServices); w.sql(t("reports.ecosystemTemplates.whereTransactionalSits"), SPRING_SQL.transactional(f), 10) })
+            w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
+            w.section(t("reports.ecosystemTemplates.whatFixHowKeep"), true, () => w.prompt(t("reports.ecosystemTemplates.referencesMoveFirstDependency")))
         },
     },
     {
         id: "jpa-model",
-        name: "JPA entity model",
-        audience: "The data model of a JVM app",
-        summary: "Describes the persistent data model: which entities there are and in which packages, which ones the rest of the code uses most, how entities refer to each other, which ones have their own repository and which are saved through another, inheritance between entities, and entities the web layer touches directly.",
-        when: "Use it before a database migration or schema change, when splitting a monolith by data, or to explain the domain model to someone new.",
+        name: t("reports.ecosystemTemplates.jpaEntityModel"),
+        audience: t("reports.ecosystemTemplates.dataModelJvmApp"),
+        summary: t("reports.ecosystemTemplates.describesPersistentDataModel"),
+        when: t("reports.ecosystemTemplates.useBeforeDatabaseMigration"),
         ecosystem: "spring",
-        title: ws => `Entity model: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.entityModel", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("Why the data model is being looked at: a migration, a split, performance, or onboarding.")
-            w.section("The entities", has.marker(f, "the code has no JPA entities", "annotation:Entity"), () => {
+            w.prompt(t("reports.ecosystemTemplates.whyDataModelBeing"))
+            w.section(t("reports.ecosystemTemplates.entities"), has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), () => {
                 w.explain(EXPLAIN.entities)
                 role(w, "entities", "spring")
-                w.sql("Entities by package", SPRING_SQL.entitiesByPackage(f), 20)
-                w.sql("Entities, the most used first", SPRING_SQL.entities(f), 25)
+                w.sql(t("reports.ecosystemTemplates.entitiesPackage"), SPRING_SQL.entitiesByPackage(f), 20)
+                w.sql(t("reports.ecosystemTemplates.entitiesMostUsedFirst"), SPRING_SQL.entities(f), 25)
             })
-            w.section("How entities refer to each other", needs.all(has.marker(f, "the code has no JPA entities", "annotation:Entity"), has.links(f)), () => {
-                w.sql("Entities with the most links to other entities", SPRING_SQL.entityLinks, 20)
-                slotOf(w, "figure", "Repositories and entities", VIEWS.flow("repositories", "entities", "Boundary between Repositories and Entities"))
-                w.prompt("Where are the natural aggregates: groups of entities that are always loaded and saved together? Which links cross from one business area into another?")
+            w.section(t("reports.ecosystemTemplates.howEntitiesReferEach"), needs.all(has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), has.links(f)), () => {
+                w.sql(t("reports.ecosystemTemplates.entitiesMostLinksOther"), SPRING_SQL.entityLinks, 20)
+                slotOf(w, "figure", t("reports.ecosystemTemplates.repositoriesEntities"), VIEWS.flow("repositories", "entities", t("reports.ecosystemTemplates.boundaryBetweenRepositoriesEntities")))
+                w.prompt(t("reports.ecosystemTemplates.whereNaturalAggregatesGroups"))
             })
-            w.section("Entities saved through another", needs.all(has.marker(f, "the code has no JPA entities", "annotation:Entity"), has.links(f)), () => w.sql("Entities no repository uses", SPRING_SQL.orphans(f), 25))
-            w.section("Inheritance", has.marker(f, "no entity extends another", "annotation:Inheritance", "annotation:MappedSuperclass"), () => { w.explain(EXPLAIN.entityHierarchy); w.sql("Entities that extend another entity", SPRING_SQL.hierarchy, 30) })
-            w.section("Entities the web layer touches directly", needs.all(has.marker(f, "the code has no JPA entities", "annotation:Entity"), has.links(f)), () => w.sql("Entities used by controllers or resources", SPRING_SQL.touchedByWeb, 20))
-            w.section("What it means", true, () => w.prompt("What the model says about the business, where it is tangled, and what you would change first."))
+            w.section(t("reports.ecosystemTemplates.entitiesSavedThroughAnother"), needs.all(has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), has.links(f)), () => w.sql(t("reports.ecosystemTemplates.entitiesNoRepositoryUses"), SPRING_SQL.orphans(f), 25))
+            w.section("Inheritance", has.marker(f, t("reports.ecosystemTemplates.noEntityExtendsAnother"), "annotation:Inheritance", "annotation:MappedSuperclass"), () => { w.explain(EXPLAIN.entityHierarchy); w.sql(t("reports.ecosystemTemplates.entitiesExtendAnotherEntity"), SPRING_SQL.hierarchy, 30) })
+            w.section(t("reports.ecosystemTemplates.entitiesWebLayerTouches"), needs.all(has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), has.links(f)), () => w.sql(t("reports.ecosystemTemplates.entitiesUsedControllersResources"), SPRING_SQL.touchedByWeb, 20))
+            w.section(t("reports.ecosystemTemplates.whatMeans"), true, () => w.prompt(t("reports.ecosystemTemplates.whatModelSaysAbout")))
         },
     },
     {
         id: "jvm-build",
-        name: "Multi-module build review",
-        audience: "Maven or Gradle builds",
-        summary: "Compares the modules a Maven or Gradle build declares with how the code actually uses them: which modules there are and which are depended on most, which modules use each other's code, and (for Maven) uses the build files do not declare. Ends with a proposal for the module layout.",
-        when: "Use it when the build is slow or fragile, when modules have grown out of their original purpose, or before reorganising them.",
+        name: t("reports.ecosystemTemplates.multiModuleBuildReview"),
+        audience: t("reports.ecosystemTemplates.mavenGradleBuilds"),
+        summary: t("reports.ecosystemTemplates.comparesModulesMavenGradle"),
+        when: t("reports.ecosystemTemplates.useWhenBuildSlow"),
         ecosystem: "jvm",
-        title: ws => `Build review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.buildReview", { ws }),
         build(w) {
             const f = w.facts
             const kind = (f.moduleKinds.maven ?? 0) >= (f.moduleKinds.gradle ?? 0) ? "maven" : "gradle"
-            w.prompt("Why the module layout is being looked at: build times, releases, a planned reorganisation.")
-            w.section("Modules", needs.modules(f), () => { w.explain(EXPLAIN.build).reading("modules"); w.sql("Modules, the most depended on first", BUILD_SQL.usedBy(kind), 40) })
-            w.section("How the modules use each other", has.links(f), () => {
-                w.explain(kind === "maven" ? EXPLAIN.drift : "The table counts references from one module's classes into another's. The scan cannot read every Gradle dependency declaration, so it does not say which uses are declared.")
-                w.sql("Module to module, by references", BUILD_SQL.use(f, kind === "maven" ? "maven" : null), 40)
+            w.prompt(t("reports.ecosystemTemplates.whyModuleLayoutBeing"))
+            w.section("Modules", needs.modules(f), () => { w.explain(EXPLAIN.build).reading("modules"); w.sql(t("reports.ecosystemTemplates.modulesMostDependedFirst"), BUILD_SQL.usedBy(kind), 40) })
+            w.section(t("reports.ecosystemTemplates.howModulesUseEach"), has.links(f), () => {
+                w.explain(kind === "maven" ? EXPLAIN.drift : t("reports.ecosystemTemplates.tableCountsReferencesOne"))
+                w.sql(t("reports.ecosystemTemplates.moduleModuleReferences"), BUILD_SQL.use(f, kind === "maven" ? "maven" : null), 40)
             })
-            w.section("How the code connects", true, () => { structure(w); coupling(w) })
-            w.section("Dependency rules", needs.rules(f), () => rules(w))
-            w.section("Proposal", true, () => w.prompt("Modules to merge, split or point elsewhere, and the references that justify each change."))
+            w.section(t("reports.ecosystemTemplates.howCodeConnects"), true, () => { structure(w); coupling(w) })
+            w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
+            w.section("Proposal", true, () => w.prompt(t("reports.ecosystemTemplates.modulesMergeSplitPoint")))
         },
     },
     {
         id: "module-drift",
-        name: "Module drift check",
-        audience: "Maven build hygiene",
-        summary: "Lists where a Maven build and its code disagree: modules that use code from a module they do not declare (they compile only by luck of the classpath), and dependencies a module declares but never uses. Each row is a line to add to, or remove from, a pom.xml.",
-        when: "Use it before upgrading or splitting modules, when builds break after an unrelated change, or to shorten build times.",
+        name: t("reports.ecosystemTemplates.moduleDriftCheck"),
+        audience: t("reports.ecosystemTemplates.mavenBuildHygiene"),
+        summary: t("reports.ecosystemTemplates.listsWhereMavenBuild"),
+        when: t("reports.ecosystemTemplates.useBeforeUpgradingSplitting"),
         ecosystem: "jvm",
-        title: ws => `Module drift: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.moduleDrift", { ws }),
         build(w) {
             const f = w.facts
-            const maven = has.moduleKind(f, "maven", "the build is not Maven; the scan cannot read every Gradle declaration")
-            w.prompt("What prompted the check: a broken build, an upgrade, or build times.")
-            w.section("Used but not declared", needs.all(maven, has.links(f)), () => { w.explain(EXPLAIN.drift); w.sql("Modules using code they do not declare", BUILD_SQL.undeclared(f, "maven"), 40) })
-            w.section("Declared but not used", needs.all(maven, has.links(f)), () => w.sql("Declared dependencies whose code is never used", BUILD_SQL.unused(f, "maven"), 40))
-            w.section("Changes to make", true, () => w.prompt("The declarations to add and remove, module by module. Removing an unused dependency can break a module that relied on it arriving indirectly, so remove one at a time and build."))
+            const maven = has.moduleKind(f, "maven", t("reports.ecosystemTemplates.buildNotMavenScan"))
+            w.prompt(t("reports.ecosystemTemplates.whatPromptedCheckBroken"))
+            w.section(t("reports.ecosystemTemplates.usedButNotDeclared"), needs.all(maven, has.links(f)), () => { w.explain(EXPLAIN.drift); w.sql(t("reports.ecosystemTemplates.modulesUsingCodeThey"), BUILD_SQL.undeclared(f, "maven"), 40) })
+            w.section(t("reports.ecosystemTemplates.declaredButNotUsed"), needs.all(maven, has.links(f)), () => w.sql(t("reports.ecosystemTemplates.declaredDependenciesWhoseCode"), BUILD_SQL.unused(f, "maven"), 40))
+            w.section(t("reports.ecosystemTemplates.changesMake"), true, () => w.prompt(t("reports.ecosystemTemplates.declarationsAddRemoveModule")))
         },
     },
 ]
@@ -403,74 +404,74 @@ const SPRING: ReportTemplate[] = [
 const PYTHON: ReportTemplate[] = [
     {
         id: "django-review",
-        name: "Django project review",
-        audience: "A Django team",
-        summary: "A tour of a Django project: its apps and what each one holds (models, views, forms, admin, migrations), how the apps depend on each other and on each other's models, the largest view and model files, where complicated code keeps changing, and the state of code health and tests.",
-        when: "Use it when a Django project has grown many apps and you want to know whether they are still self-contained, or to introduce the project to new developers.",
+        name: t("reports.ecosystemTemplates.djangoProjectReview"),
+        audience: t("reports.ecosystemTemplates.djangoTeam"),
+        summary: t("reports.ecosystemTemplates.tourDjangoProjectApps"),
+        when: t("reports.ecosystemTemplates.useWhenDjangoProject"),
         ecosystem: "django",
-        title: ws => `Django review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.djangoReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the project does, and what this review should settle.")
-            w.section("The project at a glance", true, () => { glance(w); w.explain(EXPLAIN.django).reading("django") })
-            w.section("The apps", needs.all(needs.modules(f), has.markers(f)), () => { w.sql("Apps and what they hold", DJANGO_SQL.apps(f), 40); w.prompt("Which apps are the core of the product, which are supporting, and which could go?") })
-            w.section("Roles in the code", has.units(f), () => anatomy(w, "django"))
-            w.section("How the apps depend on each other", has.links(f), () => {
+            w.prompt(t("reports.ecosystemTemplates.whatProjectDoesWhat"))
+            w.section(t("reports.ecosystemTemplates.projectGlance"), true, () => { glance(w); w.explain(EXPLAIN.django).reading("django") })
+            w.section(t("reports.ecosystemTemplates.apps"), needs.all(needs.modules(f), has.markers(f)), () => { w.sql(t("reports.ecosystemTemplates.appsWhatTheyHold"), DJANGO_SQL.apps(f), 40); w.prompt(t("reports.ecosystemTemplates.whichAppsCoreProduct")) })
+            w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => anatomy(w, "django"))
+            w.section(t("reports.ecosystemTemplates.howAppsDependEach"), has.links(f), () => {
                 w.explain(EXPLAIN.djangoCross)
-                w.sql("App to app, by references", DJANGO_SQL.crossApp(f), 30)
-                slotOf(w, "figure", "Apps and their imports", VIEWS.chord)
-                w.prompt("Which apps are meant to be reusable, and do their imports allow it?")
+                w.sql(t("reports.ecosystemTemplates.appAppReferences"), DJANGO_SQL.crossApp(f), 30)
+                slotOf(w, "figure", t("reports.ecosystemTemplates.appsTheirImports"), VIEWS.chord)
+                w.prompt(t("reports.ecosystemTemplates.whichAppsMeantReusable"))
             })
-            w.section("Views and models", has.units(f), () => {
+            w.section(t("reports.ecosystemTemplates.viewsModels"), has.units(f), () => {
                 role(w, "views", "django")
-                w.sql("The largest view files", DJANGO_SQL.bigFiles(f, "views"), 10)
+                w.sql(t("reports.ecosystemTemplates.largestViewFiles"), DJANGO_SQL.bigFiles(f, "views"), 10)
                 role(w, "models", "django")
-                w.sql("The largest model files", DJANGO_SQL.bigFiles(f, "models"), 10)
+                w.sql(t("reports.ecosystemTemplates.largestModelFiles"), DJANGO_SQL.bigFiles(f, "models"), 10)
             })
-            w.section("Migrations", true, () => { w.explain(EXPLAIN.djangoMigrations); w.sql("Migrations per app", DJANGO_SQL.migrations, 20) })
+            w.section("Migrations", true, () => { w.explain(EXPLAIN.djangoMigrations); w.sql(t("reports.ecosystemTemplates.migrationsPerApp"), DJANGO_SQL.migrations, 20) })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Health and tests", needs.health(f), () => { health(w, null); if (f.fileColumns.has("role")) tests(w) })
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: apps that are too big, apps that lean on each other's models, and views or models to split."))
+            w.section(t("reports.ecosystemTemplates.healthTests"), needs.health(f), () => { health(w, null); if (f.fileColumns.has("role")) tests(w) })
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach2")))
         },
     },
     {
         id: "django-apps",
-        name: "Django app boundaries",
-        audience: "Splitting or reusing Django apps",
-        summary: "Focuses on the lines between apps: what each app holds, which apps use which other apps' code and models, and which apps nothing else uses. It is the evidence for merging, splitting or extracting an app.",
-        when: "Use it before extracting an app into its own package or service, or when apps have started to depend on each other in circles.",
+        name: t("reports.ecosystemTemplates.djangoAppBoundaries"),
+        audience: t("reports.ecosystemTemplates.splittingReusingDjangoApps"),
+        summary: t("reports.ecosystemTemplates.focusesLinesBetweenApps"),
+        when: t("reports.ecosystemTemplates.useBeforeExtractingApp"),
         ecosystem: "django",
-        title: ws => `Django app boundaries: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.djangoAppBoundaries2", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("The change you are considering: which apps to merge, split or extract, and why.")
-            w.section("The apps", needs.all(needs.modules(f), has.markers(f)), () => { w.explain(EXPLAIN.django); w.sql("Apps and what they hold", DJANGO_SQL.apps(f), 40) })
-            w.section("Apps that use other apps", has.links(f), () => { w.explain(EXPLAIN.djangoCross); w.sql("App to app, by references", DJANGO_SQL.crossApp(f), 40); slotOf(w, "table", "Dependency matrix", VIEWS.matrix(f)) })
-            w.section("Apps nothing else uses", has.links(f), () => w.sql("Apps no other app uses", DJANGO_SQL.lonely, 30))
-            w.section("Circular dependencies", needs.tangles(f), () => { structure(w, false); w.sql("Tangles", SQL.tangles, 10) })
-            w.section("The boundaries you propose", true, () => w.prompt("Per app: keep, merge into another, split, or extract. For each, the references that would have to change."))
+            w.prompt(t("reports.ecosystemTemplates.changeYouConsideringWhich"))
+            w.section(t("reports.ecosystemTemplates.apps"), needs.all(needs.modules(f), has.markers(f)), () => { w.explain(EXPLAIN.django); w.sql(t("reports.ecosystemTemplates.appsWhatTheyHold"), DJANGO_SQL.apps(f), 40) })
+            w.section(t("reports.ecosystemTemplates.appsUseOtherApps"), has.links(f), () => { w.explain(EXPLAIN.djangoCross); w.sql(t("reports.ecosystemTemplates.appAppReferences"), DJANGO_SQL.crossApp(f), 40); slotOf(w, "table", t("reports.ecosystemTemplates.dependencyMatrix"), VIEWS.matrix(f)) })
+            w.section(t("reports.ecosystemTemplates.appsNothingElseUses"), has.links(f), () => w.sql(t("reports.ecosystemTemplates.appsNoOtherApp"), DJANGO_SQL.lonely, 30))
+            w.section(t("reports.ecosystemTemplates.circularDependencies"), needs.tangles(f), () => { structure(w, false); w.sql("Tangles", SQL.tangles, 10) })
+            w.section(t("reports.ecosystemTemplates.boundariesYouPropose"), true, () => w.prompt(t("reports.ecosystemTemplates.perAppKeepMerge")))
         },
     },
     {
         id: "python-review",
-        name: "Python codebase review",
-        audience: "A Python team",
-        summary: "A review of a Python codebase: its packages and how much each holds and is used, its request handlers and data classes if it is a FastAPI or Flask service, the third-party libraries beneath it, where complicated code keeps changing, and the tests.",
-        when: "Use it for a general health check of a Python codebase, or before restructuring its packages.",
+        name: t("reports.ecosystemTemplates.pythonCodebaseReview"),
+        audience: t("reports.ecosystemTemplates.pythonTeam"),
+        summary: t("reports.ecosystemTemplates.reviewPythonCodebasePackages"),
+        when: t("reports.ecosystemTemplates.useGeneralHealthCheck"),
         ecosystem: "python",
-        title: ws => `Python review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.pythonReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the code does, and what this review should settle.")
-            w.section("The code", true, () => { w.explain(`${ABOUT.size} ${EXPLAIN.python}`).reading("size", { language: "Python" }) })
-            w.section("Packages", has.units(f), () => { w.sql("Packages, the largest first", PYTHON_SQL.packages(f), 25); anatomy(w, "", "python") })
-            w.section("Request handlers", has.marker(f, "no function carries a route decorator", "annotation:get", "annotation:post", "annotation:route", "annotation:put", "annotation:delete"), () => w.sql("Request handlers by package", PYTHON_SQL.routes(f), 20))
-            w.section("Data classes", has.marker(f, "no Pydantic models or dataclasses", "supertype:BaseModel", "annotation:dataclass", "supertype:TypedDict"), () => w.sql("Pydantic models and dataclasses by package", PYTHON_SQL.schemas(f), 20))
-            w.section("Imports between packages", true, () => { structure(w); coupling(w, 0, "py") })
-            w.section("Third-party libraries", needs.snippets(f), () => libraries(w))
+            w.prompt(t("reports.ecosystemTemplates.whatCodeDoesWhat"))
+            w.section(t("reports.ecosystemTemplates.code"), true, () => { w.explain(`${ABOUT.size} ${EXPLAIN.python}`).reading("size", { language: t("reports.ecosystemTemplates.python") }) })
+            w.section("Packages", has.units(f), () => { w.sql(t("reports.ecosystemTemplates.packagesLargestFirst"), PYTHON_SQL.packages(f), 25); anatomy(w, "", "python") })
+            w.section(t("reports.ecosystemTemplates.requestHandlers"), has.marker(f, "no function carries a route decorator", "annotation:get", "annotation:post", "annotation:route", "annotation:put", "annotation:delete"), () => w.sql(t("reports.ecosystemTemplates.requestHandlersPackage"), PYTHON_SQL.routes(f), 20))
+            w.section(t("reports.ecosystemTemplates.dataClasses"), has.marker(f, t("reports.ecosystemTemplates.noPydanticModelsDataclasses"), "supertype:BaseModel", "annotation:dataclass", "supertype:TypedDict"), () => w.sql(t("reports.ecosystemTemplates.pydanticModelsDataclassesPackage"), PYTHON_SQL.schemas(f), 20))
+            w.section(t("reports.ecosystemTemplates.importsBetweenPackages"), true, () => { structure(w); coupling(w, 0, "py") })
+            w.section(t("reports.ecosystemTemplates.thirdPartyLibraries"), needs.snippets(f), () => libraries(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))
         },
     },
 ]
@@ -480,83 +481,83 @@ const PYTHON: ReportTemplate[] = [
 const WEBAPPS: ReportTemplate[] = [
     {
         id: "node-review",
-        name: "JavaScript/TypeScript workspace review",
-        audience: "A web or Node team",
-        summary: "A review of a JavaScript or TypeScript workspace: its packages and how they use each other, the roles in the code (routes, services, components, data clients, depending on the framework), how much is TypeScript, circular imports between folders, the npm libraries it relies on, where complicated code keeps changing, and the tests.",
-        when: "Use it for a general health check of a JavaScript or TypeScript workspace, or before splitting it into packages.",
+        name: t("reports.ecosystemTemplates.javascriptTypescriptWorkspaceReview"),
+        audience: t("reports.ecosystemTemplates.webNodeTeam"),
+        summary: t("reports.ecosystemTemplates.reviewJavascriptTypescriptWorkspace"),
+        when: t("reports.ecosystemTemplates.useGeneralHealthCheck2"),
         ecosystem: "node",
-        title: ws => `Workspace review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.workspaceReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the workspace ships, and what this review should settle.")
-            w.section("The workspace", true, () => { w.explain(`${ABOUT.size} ${EXPLAIN.node}`).reading("size"); w.reading("node") })
-            w.section("Packages", has.moduleKind(f, "node", "the code has no package.json files"), () => {
+            w.prompt(t("reports.ecosystemTemplates.whatWorkspaceShipsWhat"))
+            w.section(t("reports.ecosystemTemplates.workspace"), true, () => { w.explain(`${ABOUT.size} ${EXPLAIN.node}`).reading("size"); w.reading("node") })
+            w.section("Packages", has.moduleKind(f, "node", t("reports.ecosystemTemplates.codeHasNoPackage")), () => {
                 w.sql("Packages", JS_SQL.packages, 30)
-                if (f.tables.has("unit_connections") && (f.moduleKinds.node ?? 0) >= 2) w.sql("Package to package, by references", BUILD_SQL.use(f, null, "node"), 30)
+                if (f.tables.has("unit_connections") && (f.moduleKinds.node ?? 0) >= 2) w.sql(t("reports.ecosystemTemplates.packagePackageReferences"), BUILD_SQL.use(f, null, "node"), 30)
             })
-            w.section("Roles in the code", has.units(f), () => { anatomy(w, ""); layering(w, "") })
-            w.section("Imports between folders", true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
+            w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => { anatomy(w, ""); layering(w, "") })
+            w.section(t("reports.ecosystemTemplates.importsBetweenFolders"), true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
             w.section("Libraries", needs.snippets(f), () => libraries(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))
         },
     },
     {
         id: "react-review",
-        name: "React front end review",
-        audience: "A front-end team",
-        summary: "A tour of a React front end: which folders hold the React components and hooks, which hooks are shared across features, where data is fetched from the server, whether drawing, state and data access stay apart, which files change most, and how easy the code is to work in.",
-        when: "Use it when a front end has grown and features, shared UI and data access have started to mix, or to explain the front end to new developers.",
+        name: t("reports.ecosystemTemplates.reactFrontEndReview"),
+        audience: t("reports.ecosystemTemplates.frontEndTeam"),
+        summary: t("reports.ecosystemTemplates.tourReactFrontEnd"),
+        when: t("reports.ecosystemTemplates.useWhenFrontEnd"),
         ecosystem: "react",
-        title: ws => `Front end review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.frontEndReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the front end does, and what this review should settle.")
-            w.section("The front end", true, () => { w.explain(EXPLAIN.react).reading("node") })
-            w.section("Roles in the code", has.units(f), () => anatomy(w, "react"))
-            w.section("Components and hooks by folder", has.units(f), () => {
-                w.sql("Folders by React components and hooks", JS_SQL.folders(f), 25)
+            w.prompt(t("reports.ecosystemTemplates.whatFrontEndDoes"))
+            w.section(t("reports.ecosystemTemplates.frontEnd"), true, () => { w.explain(EXPLAIN.react).reading("node") })
+            w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => anatomy(w, "react"))
+            w.section(t("reports.ecosystemTemplates.componentsHooksFolder"), has.units(f), () => {
+                w.sql(t("reports.ecosystemTemplates.foldersReactComponentsHooks"), JS_SQL.folders(f), 25)
                 role(w, "components", "react")
-                w.prompt("Are the folders organised by feature (checkout, profile) or by kind (components, hooks)? Which folders are shared UI, and which belong to one feature?")
+                w.prompt(t("reports.ecosystemTemplates.foldersOrganisedFeatureCheckout"))
             })
-            w.section("Shared hooks", has.links(f), () => { w.explain(EXPLAIN.reactHooks); role(w, "hooks", "react"); w.sql("Hooks used outside their own folder", JS_SQL.sharedHooks, 20) })
-            w.section("Where data is fetched", needs.snippets(f), () => { w.explain(EXPLAIN.reactData); role(w, "data", "react"); w.sql("Folders that import a data-fetching library", JS_SQL.dataLibraries, 20) })
-            w.section("Do drawing, state and data stay apart?", has.links(f), () => layering(w, "react", ["components", "data", "Components and Data & Clients"]))
-            w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", "Hotspots by directory", VIEWS.treemap("hotspots", "directories", "Hotspots, directories")) })
-            w.section("Code health", needs.health(f), () => health(w, "files", 10))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: folders to reorganise, hooks to stabilise, and data fetching to bring together."))
+            w.section(t("reports.ecosystemTemplates.sharedHooks"), has.links(f), () => { w.explain(EXPLAIN.reactHooks); role(w, "hooks", "react"); w.sql(t("reports.ecosystemTemplates.hooksUsedOutsideTheir"), JS_SQL.sharedHooks, 20) })
+            w.section(t("reports.ecosystemTemplates.whereDataFetched"), needs.snippets(f), () => { w.explain(EXPLAIN.reactData); role(w, "data", "react"); w.sql(t("reports.ecosystemTemplates.foldersImportDataFetching"), JS_SQL.dataLibraries, 20) })
+            w.section(t("reports.ecosystemTemplates.doDrawingStateData"), has.links(f), () => layering(w, "react", ["components", "data", t("reports.ecosystemTemplates.componentsDataClients")]))
+            w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", t("reports.ecosystemTemplates.hotspotsDirectory"), VIEWS.treemap("hotspots", "directories", t("reports.ecosystemTemplates.hotspotsDirectories"))) })
+            w.section(t("reports.ecosystemTemplates.codeHealth"), needs.health(f), () => health(w, "files", 10))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach4")))
         },
     },
     {
         id: "vue-review",
-        name: "Vue front end review",
-        audience: "A front-end team",
-        summary: "A tour of a Vue or Nuxt front end: its pages, components, composables and stores and where each lives, the components shared across features and the ones nothing uses, the largest components, where data is fetched from the server, whether drawing, state and data access stay apart, which files change most, and how easy the code is to work in.",
-        when: "Use it when a Vue front end has grown and features, shared UI and state have started to mix, or to explain the front end to new developers.",
+        name: t("reports.ecosystemTemplates.vueFrontEndReview"),
+        audience: t("reports.ecosystemTemplates.frontEndTeam"),
+        summary: t("reports.ecosystemTemplates.tourVueNuxtFront"),
+        when: t("reports.ecosystemTemplates.useWhenVueFront"),
         ecosystem: "vue",
-        title: ws => `Front end review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.frontEndReview", { ws }),
         build(w) {
             const f = w.facts
-            const components = has.marker(f, "the scan found no .vue components (a snapshot from before Vue was read needs a rescan)", "filename:vue_component")
-            w.prompt("What the front end does, and what this review should settle.")
-            w.section("The front end", true, () => { w.explain(EXPLAIN.vue).reading("node") })
-            w.section("Roles in the code", has.units(f), () => anatomy(w, "vue", FRONT_END))
-            w.section("Pages, components and composables by folder", components, () => {
-                w.sql("Folders by pages, components and composables", VUE_SQL.folders(f), 25)
+            const components = has.marker(f, t("reports.ecosystemTemplates.scanFoundNoVue"), "filename:vue_component")
+            w.prompt(t("reports.ecosystemTemplates.whatFrontEndDoes"))
+            w.section(t("reports.ecosystemTemplates.frontEnd"), true, () => { w.explain(EXPLAIN.vue).reading("node") })
+            w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => anatomy(w, "vue", FRONT_END))
+            w.section(t("reports.ecosystemTemplates.pagesComponentsComposablesFolder"), components, () => {
+                w.sql(t("reports.ecosystemTemplates.foldersPagesComponentsComposables"), VUE_SQL.folders(f), 25)
                 role(w, "pages", "vue", FRONT_END)
-                w.prompt("Are the folders organised by feature (checkout, profile) or by kind (components, composables)? Which folders are shared UI, and which belong to one feature?")
+                w.prompt(t("reports.ecosystemTemplates.foldersOrganisedFeatureCheckout2"))
             })
-            w.section("Shared components", components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueShared); role(w, "components", "vue", FRONT_END); w.sql("Components used outside their own folder", VUE_SQL.shared, 20) })
-            w.section("The largest components", components, () => w.sql("Components, the largest first", VUE_SQL.largest(f), 20))
-            w.section("Components nothing uses", components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueUnused); w.sql("Components no other code uses", VUE_SQL.unused(f), 20) })
-            w.section("Shared composables", has.links(f), () => { w.explain(EXPLAIN.vueComposables); role(w, "composables", "vue", FRONT_END); w.sql("Composables used outside their own folder", VUE_SQL.sharedComposables, 20) })
-            w.section("Stores", needs.snippets(f), () => { w.explain(EXPLAIN.vueStores); w.sql("Store files, the most imported first", VUE_SQL.stores(f), 20) })
-            w.section("Where data is fetched", needs.snippets(f), () => { w.explain(EXPLAIN.reactData); role(w, "data", "vue", FRONT_END); w.sql("Folders that import a data-fetching library", JS_SQL.dataLibraries, 20) })
-            w.section("Do drawing, state and data stay apart?", has.links(f), () => layering(w, "vue", ["components", "composables", "Components and Composables"], FRONT_END))
-            w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", "Hotspots by directory", VIEWS.treemap("hotspots", "directories", "Hotspots, directories")) })
-            w.section("Code health", needs.health(f), () => health(w, "files", 10))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: folders to reorganise, shared components and stores to stabilise, unused components to delete, and data fetching to bring together."))
+            w.section(t("reports.ecosystemTemplates.sharedComponents"), components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueShared); role(w, "components", "vue", FRONT_END); w.sql(t("reports.ecosystemTemplates.componentsUsedOutsideTheir"), VUE_SQL.shared, 20) })
+            w.section(t("reports.ecosystemTemplates.largestComponents"), components, () => w.sql(t("reports.ecosystemTemplates.componentsLargestFirst"), VUE_SQL.largest(f), 20))
+            w.section(t("reports.ecosystemTemplates.componentsNothingUses"), components === true ? has.links(f) : components, () => { w.explain(EXPLAIN.vueUnused); w.sql(t("reports.ecosystemTemplates.componentsNoOtherCode"), VUE_SQL.unused(f), 20) })
+            w.section(t("reports.ecosystemTemplates.sharedComposables"), has.links(f), () => { w.explain(EXPLAIN.vueComposables); role(w, "composables", "vue", FRONT_END); w.sql(t("reports.ecosystemTemplates.composablesUsedOutsideTheir"), VUE_SQL.sharedComposables, 20) })
+            w.section("Stores", needs.snippets(f), () => { w.explain(EXPLAIN.vueStores); w.sql(t("reports.ecosystemTemplates.storeFilesMostImported"), VUE_SQL.stores(f), 20) })
+            w.section(t("reports.ecosystemTemplates.whereDataFetched"), needs.snippets(f), () => { w.explain(EXPLAIN.reactData); role(w, "data", "vue", FRONT_END); w.sql(t("reports.ecosystemTemplates.foldersImportDataFetching"), JS_SQL.dataLibraries, 20) })
+            w.section(t("reports.ecosystemTemplates.doDrawingStateData"), has.links(f), () => layering(w, "vue", ["components", "composables", t("reports.ecosystemTemplates.componentsComposables")], FRONT_END))
+            w.section("Hotspots", needs.git(f), () => { hotspots(w, "files"); slotOf(w, "figure", t("reports.ecosystemTemplates.hotspotsDirectory"), VIEWS.treemap("hotspots", "directories", t("reports.ecosystemTemplates.hotspotsDirectories"))) })
+            w.section(t("reports.ecosystemTemplates.codeHealth"), needs.health(f), () => health(w, "files", 10))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach5")))
         },
     },
 ]
@@ -566,27 +567,27 @@ const WEBAPPS: ReportTemplate[] = [
 const GO: ReportTemplate[] = [
     {
         id: "go-review",
-        name: "Go module review",
-        audience: "A Go team",
-        summary: "A tour of Go code: its packages and how much each exports, which internal packages exist and who imports them, the structs that cross a boundary (JSON, database, configuration), build constraints and embedded files, the packages everything imports, and dependency rules and libraries.",
-        when: "Use it for a general health check of Go code, before reorganising its packages, or to explain its layout to new developers.",
+        name: t("reports.ecosystemTemplates.goModuleReview"),
+        audience: t("reports.ecosystemTemplates.goTeam"),
+        summary: t("reports.ecosystemTemplates.tourGoCodePackages"),
+        when: t("reports.ecosystemTemplates.useGeneralHealthCheck3"),
         ecosystem: "go",
-        title: ws => `Go review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.goReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the module does, and what this review should settle.")
-            w.section("Modules and packages", true, () => { glance(w); w.explain(EXPLAIN.go).reading("go"); if (f.moduleKinds.go) w.sql("Modules", SQL.modulesOf("go"), 30) })
-            w.section("What each package holds", has.markers(f), () => { w.sql("Packages: types, functions and what they export", GO_SQL.packages(f), 30); anatomy(w, "", "go") })
-            w.section("The packages everything imports", true, () => { w.sql("Packages by how many others import them", GO_SQL.fanIn, 15); coupling(w, 0, "go") })
-            w.section("Structs that cross a boundary", has.marker(f, "no struct carries a tag", "struct_tag:json", "struct_tag:db", "struct_tag:yaml", "struct_tag:form", "struct_tag:xml", "struct_tag:toml", "struct_tag:mapstructure", "struct_tag:gorm"), () => {
+            w.prompt(t("reports.ecosystemTemplates.whatModuleDoesWhat"))
+            w.section(t("reports.ecosystemTemplates.modulesPackages"), true, () => { glance(w); w.explain(EXPLAIN.go).reading("go"); if (f.moduleKinds.go) w.sql("Modules", SQL.modulesOf("go"), 30) })
+            w.section(t("reports.ecosystemTemplates.whatEachPackageHolds"), has.markers(f), () => { w.sql(t("reports.ecosystemTemplates.packagesTypesFunctionsWhat"), GO_SQL.packages(f), 30); anatomy(w, "", "go") })
+            w.section(t("reports.ecosystemTemplates.packagesEverythingImports"), true, () => { w.sql(t("reports.ecosystemTemplates.packagesHowManyOthers"), GO_SQL.fanIn, 15); coupling(w, 0, "go") })
+            w.section(t("reports.ecosystemTemplates.structsCrossBoundary"), has.marker(f, t("reports.ecosystemTemplates.noStructCarriesTag"), "struct_tag:json", "struct_tag:db", "struct_tag:yaml", "struct_tag:form", "struct_tag:xml", "struct_tag:toml", "struct_tag:mapstructure", "struct_tag:gorm"), () => {
                 w.explain(EXPLAIN.goTags)
-                w.sql("Tagged structs by package", GO_SQL.tagsByPackage(f), 20)
-                w.sql("Structs tagged for the most formats", GO_SQL.tagged(f), 15)
+                w.sql(t("reports.ecosystemTemplates.taggedStructsPackage"), GO_SQL.tagsByPackage(f), 20)
+                w.sql(t("reports.ecosystemTemplates.structsTaggedMostFormats"), GO_SQL.tagged(f), 15)
             })
-            w.section("Build constraints and embedded files", has.marker(f, "no file carries a build constraint or embed", "directive:build", "directive:embed", "directive:generate"), () => { w.explain(EXPLAIN.goDirectives); w.sql("Directives by package", GO_SQL.directives(f), 20) })
-            w.section("Dependency rules", needs.rules(f), () => rules(w))
+            w.section(t("reports.ecosystemTemplates.buildConstraintsEmbeddedFiles"), has.marker(f, t("reports.ecosystemTemplates.noFileCarriesBuild"), "directive:build", "directive:embed", "directive:generate"), () => { w.explain(EXPLAIN.goDirectives); w.sql(t("reports.ecosystemTemplates.directivesPackage"), GO_SQL.directives(f), 20) })
+            w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section("Libraries", needs.snippets(f), () => libraries(w, false, "go"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above: packages that export too much, internal packages reached from the wrong place, and structs whose fields others rely on."))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach6")))
         },
     },
 ]
@@ -596,24 +597,24 @@ const GO: ReportTemplate[] = [
 const DOTNET: ReportTemplate[] = [
     {
         id: "dotnet-review",
-        name: ".NET solution review",
-        audience: "A .NET team",
-        summary: "A tour of a .NET solution: its projects and which ones everything references, what each project holds (controllers, services, factories, data access, models, validators), the largest controllers, how the roles reference each other, the namespaces' imports, dependency rules and hotspots.",
-        when: "Use it for a general health check of a .NET solution, before reorganising its projects, or to explain the solution to new developers.",
+        name: t("reports.ecosystemTemplates.netSolutionReview"),
+        audience: t("reports.ecosystemTemplates.netTeam"),
+        summary: t("reports.ecosystemTemplates.tourNetSolutionProjects"),
+        when: t("reports.ecosystemTemplates.useGeneralHealthCheck4"),
         ecosystem: "dotnet",
-        title: ws => `.NET review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.netReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the solution does, and what this review should settle.")
-            w.section("The solution at a glance", true, () => { glance(w); w.explain(EXPLAIN.dotnet).reading("dotnet") })
-            w.section("Projects and their references", has.moduleKind(f, "dotnet", "the code has no .csproj files"), () => w.sql("Projects, the most referenced first", DOTNET_SQL.projects, 40))
-            w.section("What each project holds", true, () => w.sql("Projects by the roles their file names give away", DOTNET_SQL.roles(f), 40))
-            w.section("Controllers", true, () => { w.sql("The largest controllers", DOTNET_SQL.controllers(f), 15); w.prompt("Are controllers thin (they hand work to services) or do they hold the logic themselves?") })
-            w.section("Roles and layers", has.units(f), () => { anatomy(w, "aspnet"); layering(w, "aspnet") })
-            w.section("Between namespaces", true, () => { structure(w); coupling(w) })
-            w.section("Dependency rules", needs.rules(f), () => rules(w))
+            w.prompt(t("reports.ecosystemTemplates.whatSolutionDoesWhat"))
+            w.section(t("reports.ecosystemTemplates.solutionGlance"), true, () => { glance(w); w.explain(EXPLAIN.dotnet).reading("dotnet") })
+            w.section(t("reports.ecosystemTemplates.projectsTheirReferences"), has.moduleKind(f, "dotnet", t("reports.ecosystemTemplates.codeHasNoCsproj")), () => w.sql(t("reports.ecosystemTemplates.projectsMostReferencedFirst"), DOTNET_SQL.projects, 40))
+            w.section(t("reports.ecosystemTemplates.whatEachProjectHolds"), true, () => w.sql(t("reports.ecosystemTemplates.projectsRolesTheirFile"), DOTNET_SQL.roles(f), 40))
+            w.section("Controllers", true, () => { w.sql(t("reports.ecosystemTemplates.largestControllers"), DOTNET_SQL.controllers(f), 15); w.prompt(t("reports.ecosystemTemplates.controllersThinTheyHand")) })
+            w.section(t("reports.ecosystemTemplates.rolesLayers"), has.units(f), () => { anatomy(w, "aspnet"); layering(w, "aspnet") })
+            w.section(t("reports.ecosystemTemplates.betweenNamespaces"), true, () => { structure(w); coupling(w) })
+            w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))
         },
     },
 ]
@@ -623,40 +624,40 @@ const DOTNET: ReportTemplate[] = [
 const PHP: ReportTemplate[] = [
     {
         id: "php-review",
-        name: "PHP application review",
-        audience: "A Symfony, Laravel or PHP team",
-        summary: "A tour of a PHP application: its Composer packages and what each holds (controllers, entities, repositories, form types, handlers, subscribers, validators), how the packages use each other, how the roles reference each other, the libraries it relies on, and where complicated code keeps changing.",
-        when: "Use it for a general health check of a PHP application, before reorganising its packages or bundles, or to explain it to new developers.",
+        name: t("reports.ecosystemTemplates.phpApplicationReview"),
+        audience: t("reports.ecosystemTemplates.symfonyLaravelPhpTeam"),
+        summary: t("reports.ecosystemTemplates.tourPhpApplicationComposer"),
+        when: t("reports.ecosystemTemplates.useGeneralHealthCheck5"),
         ecosystem: "php",
-        title: ws => `PHP review: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.phpReview", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("What the application does, and what this review should settle.")
-            w.section("The application at a glance", true, () => { glance(w); w.explain(EXPLAIN.php).reading("php"); if (f.moduleKinds.composer) w.sql("Composer packages", SQL.modulesOf("composer"), 30) })
-            w.section("What each package holds", has.markers(f), () => w.sql("Packages by role", PHP_SQL.packages(f), 30))
-            w.section("Roles and layers", has.units(f), () => { anatomy(w, ""); layering(w, "") })
-            w.section("How the packages use each other", has.links(f), () => w.sql("Package to package, by references", PHP_SQL.crossPackage(f), 30))
-            w.section("Between namespaces", true, () => { structure(w); coupling(w) })
-            w.section("Dependency rules", needs.rules(f), () => rules(w))
+            w.prompt(t("reports.ecosystemTemplates.whatApplicationDoesWhat"))
+            w.section(t("reports.ecosystemTemplates.applicationGlance"), true, () => { glance(w); w.explain(EXPLAIN.php).reading("php"); if (f.moduleKinds.composer) w.sql(t("reports.ecosystemTemplates.composerPackages"), SQL.modulesOf("composer"), 30) })
+            w.section(t("reports.ecosystemTemplates.whatEachPackageHolds"), has.markers(f), () => w.sql(t("reports.ecosystemTemplates.packagesRole"), PHP_SQL.packages(f), 30))
+            w.section(t("reports.ecosystemTemplates.rolesLayers"), has.units(f), () => { anatomy(w, ""); layering(w, "") })
+            w.section(t("reports.ecosystemTemplates.howPackagesUseEach"), has.links(f), () => w.sql(t("reports.ecosystemTemplates.packagePackageReferences"), PHP_SQL.crossPackage(f), 30))
+            w.section(t("reports.ecosystemTemplates.betweenNamespaces"), true, () => { structure(w); coupling(w) })
+            w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section("Libraries", needs.snippets(f), () => libraries(w, false))
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
-            w.section("Findings", true, () => w.prompt("What you found, each tied to the evidence above."))
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))
         },
     },
     {
         id: "symfony-bundles",
-        name: "Symfony bundle review",
-        audience: "Symfony applications and bundles",
-        summary: "Looks at a Symfony application bundle by bundle: what each registers (DI extensions and compiler passes, event subscribers, form types, controllers), and how much each one changes the rest of the application.",
-        when: "Use it when bundles have grown hard to reason about, before extracting a bundle, or when behaviour changes in one place for reasons set in another.",
+        name: t("reports.ecosystemTemplates.symfonyBundleReview"),
+        audience: t("reports.ecosystemTemplates.symfonyApplicationsBundles"),
+        summary: t("reports.ecosystemTemplates.looksSymfonyApplicationBundle"),
+        when: t("reports.ecosystemTemplates.useWhenBundlesHave"),
         ecosystem: "php",
-        title: ws => `Symfony bundles: ${ws}`,
+        title: ws => t("reports.ecosystemTemplates.symfonyBundles", { ws }),
         build(w) {
             const f = w.facts
-            w.prompt("Why the bundles are being looked at.")
-            w.section("Bundles and what they register", has.markers(f), () => { w.explain(EXPLAIN.phpBundles); w.sql("Bundles by what they register", PHP_SQL.bundles(f), 30) })
-            w.section("How the packages use each other", has.links(f), () => { w.sql("Package to package, by references", PHP_SQL.crossPackage(f), 30); slotOf(w, "table", "Dependency matrix", VIEWS.matrix(f)) })
-            w.section("Findings", true, () => w.prompt("Bundles that do too much, subscribers that change behaviour far from their bundle, and what you would move."))
+            w.prompt(t("reports.ecosystemTemplates.whyBundlesBeingLooked"))
+            w.section(t("reports.ecosystemTemplates.bundlesWhatTheyRegister"), has.markers(f), () => { w.explain(EXPLAIN.phpBundles); w.sql(t("reports.ecosystemTemplates.bundlesWhatTheyRegister2"), PHP_SQL.bundles(f), 30) })
+            w.section(t("reports.ecosystemTemplates.howPackagesUseEach"), has.links(f), () => { w.sql(t("reports.ecosystemTemplates.packagePackageReferences"), PHP_SQL.crossPackage(f), 30); slotOf(w, "table", t("reports.ecosystemTemplates.dependencyMatrix"), VIEWS.matrix(f)) })
+            w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.bundlesDoTooMuch")))
         },
     },
 ]

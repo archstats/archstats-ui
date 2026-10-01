@@ -12,7 +12,7 @@
         role="grid"
         :aria-rowcount="rows.length + 1"
         :aria-colcount="columns.length"
-        aria-label="Result"
+        :aria-label="t('sql.resultGrid.result')"
         @scroll="onScroll"
         @keydown="onKey"
       >
@@ -25,9 +25,9 @@
           <thead>
             <tr>
               <th v-if="unit" class="rg-check rg-stick" :style="{ left: '0px' }">
-                <Checkbox :model-value="allUnits" :aria-label="`Select every ${unit.kind} in the result`" @update:model-value="toggleAll"/>
+                <Checkbox :model-value="allUnits" :aria-label="t('sql.resultGrid.selectEveryResult', { kind: unit.kind })" @update:model-value="toggleAll"/>
               </th>
-              <th class="rg-num rg-stick" :style="{ left: `${unit ? CHECK_W : 0}px` }" aria-label="Row"></th>
+              <th class="rg-num rg-stick" :style="{ left: `${unit ? CHECK_W : 0}px` }" :aria-label="t('sql.resultGrid.row')"></th>
               <th
                 v-for="(c, j) in columns"
                 :key="j"
@@ -52,7 +52,7 @@
             <tr v-if="start > 0" aria-hidden="true"><td :colspan="columns.length + (unit ? 2 : 1)" :style="{ height: `${start * ROW}px`, padding: 0 }"></td></tr>
             <tr v-for="(row, k) in visible" :key="start + k" class="rg-row" :class="[{ 'rg-row-unit': unit && units.has(String(row[unit.index])) }, diff ? `rg-d-${diff[start + k]?.status}` : '']" :aria-rowindex="start + k + 2">
               <td v-if="unit" class="rg-check rg-stick" :style="{ left: '0px' }">
-                <Checkbox :model-value="units.has(String(row[unit.index]))" :aria-label="`Select ${row[unit.index]}`" @update:model-value="$emit('toggle-unit', String(row[unit.index]))"/>
+                <Checkbox :model-value="units.has(String(row[unit.index]))" :aria-label="t('sql.resultGrid.select', { value: row[unit.index] })" @update:model-value="$emit('toggle-unit', String(row[unit.index]))"/>
               </td>
               <td class="rg-num rg-stick" :style="{ left: `${unit ? CHECK_W : 0}px` }" @mousedown.prevent="selectRow(start + k, $event)"><span v-if="diff" class="rg-mark" :title="STATUS[diff[start + k]?.status ?? 'same'].title">{{ STATUS[diff[start + k]?.status ?? "same"].mark }}</span>{{ start + k + 1 }}</td>
               <td
@@ -60,7 +60,7 @@
                 :key="j"
                 class="rg-cell"
                 :class="[cellClass(cell, j), { 'rg-sel': inSel(start + k, j), 'rg-focus': focus && focus.r === start + k && focus.c === j, 'rg-moved': moved(start + k, j) }]"
-                :title="moved(start + k, j) ? `Was ${show(diff![start + k].before![j])} on the baseline` : undefined"
+                :title="moved(start + k, j) ? t('sql.resultGrid.wasBaseline', { value: show(diff![start + k].before![j]) }) : undefined"
                 @mousedown="onCellDown($event, start + k, j)"
                 @mouseenter="onCellEnter(start + k, j)"
                 @dblclick="onCellOpen(start + k, j)"
@@ -75,62 +75,62 @@
       <!-- What is selected, the way an IDE's status line counts it. -->
       <div class="rg-status" role="status">
         <template v-if="stats">
-          <span v-if="stats.cells === 1" class="min-w-0 truncate"><span class="font-mono">{{ columns[focus!.c] }}</span> · row {{ fmt(focus!.r + 1) }} of {{ fmt(rows.length) }}</span>
-          <span v-else>{{ fmt(stats.cells) }} cells<template v-if="stats.rows > 1"> · {{ fmt(stats.rows) }} rows</template></span>
+          <span v-if="stats.cells === 1" class="min-w-0 truncate"><I18nT k="sql.resultGrid.row2"><template #value><span class="font-mono">{{ columns[focus!.c] }}</span></template><template #value2>{{ fmt(focus!.r + 1) }}</template><template #rowsLength>{{ fmt(rows.length) }}</template></I18nT></span>
+          <span v-else>{{ t('sql.resultGrid.cells', { cells: fmt(stats.cells) }) }}<template v-if="stats.rows > 1">{{ ' ' + t('sql.resultGrid.rows', { rows: fmt(stats.rows) }) }}</template></span>
           <template v-if="stats.nums > 1">
-            <span class="rg-agg">Sum <b>{{ fmt(stats.sum) }}</b></span>
-            <span class="rg-agg">Avg <b>{{ fmt(stats.sum / stats.nums) }}</b></span>
-            <span class="rg-agg">Min <b>{{ fmt(stats.min) }}</b></span>
-            <span class="rg-agg">Max <b>{{ fmt(stats.max) }}</b></span>
+            <span class="rg-agg">{{ t('sql.resultGrid.sum') }} <b>{{ fmt(stats.sum) }}</b></span>
+            <span class="rg-agg">{{ t('sql.resultGrid.avg') }} <b>{{ fmt(stats.sum / stats.nums) }}</b></span>
+            <span class="rg-agg">{{ t('sql.resultGrid.min') }} <b>{{ fmt(stats.min) }}</b></span>
+            <span class="rg-agg">{{ t('sql.resultGrid.max') }} <b>{{ fmt(stats.max) }}</b></span>
           </template>
         </template>
-        <span v-else class="text-neutral-400">Click a cell; ⇧ extends, ⌘C copies, double-click opens a name</span>
+        <span v-else class="text-neutral-400">{{ t('sql.resultGrid.clickCellExtendsC') }}</span>
       </div>
     </div>
 
     <!-- The value in full: long paths, file contents, JSON. -->
-    <aside v-if="viewer" class="rg-viewer hairline-l" aria-label="Value">
+    <aside v-if="viewer" class="rg-viewer hairline-l" :aria-label="t('sql.resultGrid.value')">
       <header class="flex h-8 shrink-0 items-center gap-2 px-3 hairline-b">
-        <div class="ui-segmented" role="group" aria-label="Show">
-          <button type="button" :aria-pressed="viewerMode === 'value'" @click="viewerMode = 'value'">Value</button>
-          <button type="button" :aria-pressed="viewerMode === 'row'" @click="viewerMode = 'row'">Row</button>
+        <div class="ui-segmented" role="group" :aria-label="t('sql.resultGrid.show')">
+          <button type="button" :aria-pressed="viewerMode === 'value'" @click="viewerMode = 'value'">{{ t('sql.resultGrid.value') }}</button>
+          <button type="button" :aria-pressed="viewerMode === 'row'" @click="viewerMode = 'row'">{{ t('sql.resultGrid.row') }}</button>
         </div>
         <span class="flex-1"></span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="!focus" title="Copy the value" aria-label="Copy the value" @click="copyValue"><Copy :size="12"/></button>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" title="Hide the value pane" aria-label="Hide the value pane" @click="$emit('update:viewer', false)"><X :size="12"/></button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :disabled="!focus" :title="t('sql.resultGrid.copyValue')" :aria-label="t('sql.resultGrid.copyValue')" @click="copyValue"><Copy :size="12"/></button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet" :title="t('sql.resultGrid.hideValuePane')" :aria-label="t('sql.resultGrid.hideValuePane')" @click="$emit('update:viewer', false)"><X :size="12"/></button>
       </header>
       <dl v-if="viewerMode === 'row' && focus" class="rg-record min-h-0 flex-1 overflow-auto">
         <template v-for="(c, j) in columns" :key="j">
           <dt :class="{ 'rg-record-on': focus.c === j }" :title="define(c) ? `${define(c)!.name}: ${define(c)!.short}` : ''" @click="moveTo({ r: focus.r, c: j }, false)">{{ names && define(c) ? define(c)!.name : c }}</dt>
-          <dd :class="[cellClass(rows[focus.r]?.[j], j), { 'rg-record-on': focus.c === j }]" @click="moveTo({ r: focus.r, c: j }, false)">{{ show(rows[focus.r]?.[j]) }}<span v-if="moved(focus.r, j)" class="rg-record-was">was {{ show(diff![focus.r].before![j]) }}</span></dd>
+          <dd :class="[cellClass(rows[focus.r]?.[j], j), { 'rg-record-on': focus.c === j }]" @click="moveTo({ r: focus.r, c: j }, false)">{{ show(rows[focus.r]?.[j]) }}<span v-if="moved(focus.r, j)" class="rg-record-was">{{ t('sql.resultGrid.was', { value: show(diff![focus.r].before![j]) }) }}</span></dd>
         </template>
       </dl>
       <div v-else-if="focusValue" class="min-h-0 flex-1 overflow-auto p-3">
         <p class="font-mono text-[11.5px] font-medium text-neutral-900">{{ focusValue.column }}</p>
         <p class="mt-0.5 text-[11.5px] text-neutral-500">{{ focusValue.kind }}</p>
         <pre class="rg-value" :class="{ 'rg-null': focusValue.value === null }">{{ focusValue.text }}</pre>
-        <section v-if="focusValue.doc" class="rg-def" aria-label="Definition">
-          <p class="ui-section-title">{{ focusValue.doc.category || "Metric" }}</p>
+        <section v-if="focusValue.doc" class="rg-def" :aria-label="t('sql.resultGrid.definition')">
+          <p class="ui-section-title">{{ focusValue.doc.category || t('sql.resultGrid.metric') }}</p>
           <p class="rg-def-name">{{ focusValue.doc.name }}</p>
           <p v-if="focusValue.doc.short" class="rg-def-short">{{ focusValue.doc.short }}</p>
           <p v-if="focusValue.doc.long && focusValue.doc.long !== focusValue.doc.short" class="rg-def-long">{{ focusValue.doc.long }}</p>
-          <button type="button" class="rg-def-link" @click="$emit('reference', focusValue.doc.id)">Open in the metric reference</button>
+          <button type="button" class="rg-def-link" @click="$emit('reference', focusValue.doc.id)">{{ t('sql.resultGrid.openMetricReference') }}</button>
         </section>
       </div>
-      <p v-else class="p-3 text-xs text-neutral-500">Select a cell to read {{ viewerMode === "row" ? "its row as a list" : "its value in full" }}.</p>
+      <p v-else class="p-3 text-xs text-neutral-500">{{ t('sql.resultGrid.selectCellRead', { value: viewerMode === "row" ? t('sql.resultGrid.rowList') : t('sql.resultGrid.valueFull') }) }}</p>
     </aside>
 
     <!-- A metric column's definition, on hovering its header. -->
     <Teleport to="body">
       <div v-if="card && docOf(card.j)" class="rg-card ui-popover" :style="{ left: `${card.x}px`, top: `${card.y}px` }" role="tooltip" @mouseenter="cardStay" @mouseleave="cardLeave">
-        <p class="ui-section-title">{{ docOf(card.j)!.category || "Metric" }}</p>
+        <p class="ui-section-title">{{ docOf(card.j)!.category || t('sql.resultGrid.metric') }}</p>
         <p class="rg-def-name">{{ docOf(card.j)!.name }}</p>
         <p class="font-mono text-[11px] text-neutral-500">{{ columns[card.j] }}</p>
         <p v-if="docOf(card.j)!.short" class="rg-def-short">{{ docOf(card.j)!.short }}</p>
         <p v-if="docOf(card.j)!.long && docOf(card.j)!.long !== docOf(card.j)!.short" class="rg-def-long rg-card-long">{{ docOf(card.j)!.long }}</p>
         <p class="rg-card-foot">
-          <span>Click to sort · drag the edge to widen</span>
-          <button type="button" class="rg-def-link" @click="$emit('reference', columns[card.j]); card = null">Metric reference</button>
+          <span>{{ t('sql.resultGrid.clickSortDragEdge') }}</span>
+          <button type="button" class="rg-def-link" @click="$emit('reference', columns[card.j]); card = null">{{ t('sql.resultGrid.metricReference') }}</button>
         </p>
       </div>
     </Teleport>
@@ -141,6 +141,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ArrowDown, ArrowUp, Copy, X } from "lucide-vue-next";
 import Checkbox from "~/shared/ui/Checkbox.vue";
+import { t, intlLocale } from "~/shared/i18n";
+import I18nT from "~/shared/ui/I18nT";
 
 const props = withDefaults(defineProps<{
   columns: string[]
@@ -159,7 +161,7 @@ const props = withDefaults(defineProps<{
   emptyText?: string
   /** Against a baseline: each row's status and the baseline's values, aligned with rows. */
   diff?: Array<{ status: "added" | "removed" | "changed" | "same"; before: unknown[] | null }> | null
-}>(), { diff: null, sort: null, unit: null, units: () => new Set(), highlight: "", viewer: false, define: () => null, names: false, emptyText: "No rows." });
+}>(), { diff: null, sort: null, unit: null, units: () => new Set(), highlight: "", viewer: false, define: () => null, names: false, emptyText: t("sql.resultGrid.noRows") });
 const emit = defineEmits<{
   (e: "sort", col: number): void
   (e: "toggle-unit", value: string): void
@@ -172,10 +174,10 @@ const emit = defineEmits<{
 
 const ROW = 24;
 const STATUS = {
-  added: { mark: "+", title: "Only in this snapshot" },
-  removed: { mark: "−", title: "Only in the baseline" },
-  changed: { mark: "~", title: "Changed since the baseline" },
-  same: { mark: "", title: "The same on both" },
+  added: { mark: "+", title: t("sql.resultGrid.onlySnapshot") },
+  removed: { mark: "−", title: t("sql.resultGrid.onlyBaseline") },
+  changed: { mark: "~", title: t("sql.resultGrid.changedSinceBaseline") },
+  same: { mark: "", title: t("sql.resultGrid.sameBoth") },
 } as const;
 const viewerMode = ref<"value" | "row">("value");
 /** A cell whose value differs from the baseline's. */
@@ -195,7 +197,7 @@ function delta(r: number, j: number) {
 }
 const CHECK_W = 30;
 const CHAR = 7.25;
-const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 4 }));
+const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(intlLocale) : n.toLocaleString(intlLocale, { maximumFractionDigits: 4 }));
 const show = (v: unknown) => (v === null || v === undefined ? "null" : typeof v === "number" ? fmt(v) : String(v).replace(/\r?\n/g, " ↵ "));
 
 // ── Columns ─────────────────────────────────────────────────────────────
@@ -239,7 +241,7 @@ function fitColumn(j: number) {
   resized.value = { ...resized.value, [`${j}:${props.columns[j]}`]: Math.round(Math.min(900, w)) };
 }
 function headTitle(j: number) {
-  return `${props.columns[j]}\nClick to sort; drag the edge to widen, double-click it to fit`;
+  return t("sql.resultGrid.clickSortDragEdge2", { value: props.columns[j] });
 }
 const docOf = (j: number) => props.define(props.columns[j]);
 
@@ -354,7 +356,7 @@ async function copySelection() {
   for (let r = b.r0; r <= b.r1; r++) lines.push(props.rows[r].slice(b.c0, b.c1 + 1).map(v => raw(v).replace(/\t/g, " ").replace(/\r?\n/g, " ")).join("\t"));
   const n = (b.r1 - b.r0 + 1) * (b.c1 - b.c0 + 1);
   // One cell copies as it is, newlines and all.
-  await copyText(n === 1 ? raw(props.rows[b.r0][b.c0]) : lines.join("\n"), n === 1 ? "value" : `${fmt(n)} cells`);
+  await copyText(n === 1 ? raw(props.rows[b.r0][b.c0]) : lines.join("\n"), n === 1 ? "value" : t("sql.resultGrid.cells2", { n: fmt(n) }));
 }
 function copyValue() { if (focus.value) void copyText(raw(props.rows[focus.value.r][focus.value.c]), "value"); }
 
@@ -377,8 +379,8 @@ const focusValue = computed(() => {
   if (!f) return null;
   const v = props.rows[f.r]?.[f.c];
   const column = props.columns[f.c];
-  const text = v === null || v === undefined ? "null" : typeof v === "string" && /^[[{]/.test(v.trim()) ? pretty(v) : String(v);
-  const kind = v === null || v === undefined ? "null" : typeof v === "number" ? (Number.isInteger(v) ? "integer" : "real") : `text · ${fmt(String(v).length)} characters`;
+  const text = v === null || v === undefined ? t("sql.resultGrid.null") : typeof v === "string" && /^[[{]/.test(v.trim()) ? pretty(v) : String(v);
+  const kind = v === null || v === undefined ? "null" : typeof v === "number" ? (Number.isInteger(v) ? "integer" : "real") : t("sql.resultGrid.textCharacters", { length: fmt(String(v).length) });
   return { column, value: v ?? null, text, kind, doc: props.define(column) };
 });
 function pretty(s: string) { try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; } }

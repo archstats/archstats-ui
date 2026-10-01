@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { t } from "~/shared/i18n";
 
 // Theme values for D3 canvas and SVG code, read from the design tokens on
 // :root so diagrams follow the light/dark appearance instead of hardcoding
@@ -63,14 +64,14 @@ function readToken(style: CSSStyleDeclaration, name: string): string {
 
 export function readChartTheme(): ChartTheme {
   const style = getComputedStyle(document.documentElement);
-  const t = Object.fromEntries(
+  const item = Object.fromEntries(
     Object.entries(TOKENS).map(([key, name]) => [key, readToken(style, name)]),
   ) as Record<keyof typeof TOKENS, string>;
   const step = (ramp: string, s: number) => readToken(style, `--c-${ramp}-${s}`);
   return {
-    ...t,
-    fontSans: '"Inter", system-ui, sans-serif',
-    fontMono: '"JetBrains Mono", ui-monospace, monospace',
+    ...item,
+    fontSans: t("ui.useChartTheme.interSystemUiSans"),
+    fontMono: t("ui.useChartTheme.jetbrainsMonoUiMonospace"),
     heat: [step("neutral", 300), step("accent", 200), step("accent", 400), step("red", 400), step("red", 700)],
     blues: [step("blue", 200), step("blue", 300), step("blue", 400), step("blue", 500), step("blue", 700)],
   };

@@ -34,7 +34,7 @@
         <p class="text-base leading-5 text-neutral-700">{{ f.text }}</p>
         <p v-for="line in f.more" :key="line" class="text-sm leading-4 text-neutral-500">{{ line }}</p>
         <div v-if="f.names.length" class="mt-1 flex flex-wrap gap-1">
-          <button v-for="n in f.names" :key="n" type="button" class="ui-tag max-w-[280px] truncate hover:text-neutral-900" :title="`${n} · open`" @click="emit('open', n)">{{ tail(n) }}</button>
+          <button v-for="n in f.names" :key="n" type="button" class="ui-tag max-w-[280px] truncate hover:text-neutral-900" :title="t('metrics.metricFindings.open', { n })" @click="emit('open', n)">{{ tail(n) }}</button>
         </div>
       </div>
       <button type="button" class="ui-btn ui-btn-sm whitespace-nowrap" @click="emit('go', f.action.go)">
@@ -51,6 +51,7 @@ import { useChartTheme, withAlpha } from "~/shared/ui/useChartTheme";
 import { distinctTails, metricValue } from "~/features/metrics/plotReading";
 import { metricScale } from "~/features/metrics/lab";
 import type { Figure, Finding, Go } from "~/features/metrics/summary";
+import { t } from "~/shared/i18n";
 
 type Row = { name: string; [key: string]: any };
 

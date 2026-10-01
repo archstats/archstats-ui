@@ -1,0 +1,457 @@
+{
+  "computed": "Computed by the app.",
+  "computedSql": "Computed by the app:",
+  "categories": {
+    "architectureRules": "Architecture Rules",
+    "codeHealth": "Code health",
+    "communities": "Communities",
+    "complexity": "Complexity",
+    "csharp": "C#",
+    "cycles": "Cycles",
+    "dependencyGraphCycles": "Dependency Graph & Cycles",
+    "gitHistoryChurn": "Git History & Churn",
+    "graphPosition": "Graph position",
+    "history": "History",
+    "java": "Java",
+    "javaSpringTreesitterSpecific": "Java & Spring Treesitter Specific",
+    "modularity": "Modularity",
+    "modularityComponentStructure": "Modularity & Component Structure",
+    "other": "Other",
+    "scanCoverage": "Scan coverage",
+    "sizeAndComplexity": "Size and complexity",
+    "sizeIndentationComplexity": "Size & Indentation Complexity",
+    "systemShape": "System shape",
+    "tangles": "Tangles",
+    "tests": "Tests"
+  },
+  "metrics": {
+    "app__components": {
+      "name": "Components",
+      "short": "Components in the snapshot, the root excluded.",
+      "long": "Every component the scan grouped files into. The root component ('.') holds files outside every other component and is left out, as it is on every screen."
+    },
+    "app__components_in_tangles": {
+      "name": "Components in tangles",
+      "short": "Components that sit in a dependency cycle with at least one other.",
+      "long": "A tangle is a strongly connected group of two or more components: each can reach every other by following imports. Components in a tangle cannot be released, tested or understood apart from the rest of it."
+    },
+    "app__cross_component_edges": {
+      "name": "Component dependencies",
+      "short": "Ordered pairs of components where one imports the other.",
+      "long": "Distinct (from, to) pairs in the direct connections, the root excluded. A pair counts once however many imports it carries."
+    },
+    "app__dependency_levels": {
+      "name": "Dependency levels",
+      "short": "Layers in the dependency graph once tangles are collapsed.",
+      "long": "Collapse each tangle into one node, then count the nodes on the longest import chain. A tall stack with few tangles is a layered system; a short stack with one large tangle is not.",
+      "method": "Longest path in the condensation of component_connections_direct, computed in the app."
+    },
+    "app__largest_tangle": {
+      "name": "Largest tangle",
+      "short": "Components in the largest tangle.",
+      "long": "The size of the largest strongly connected group. One big tangle is a different problem from many small ones: it usually means the system has no layers left."
+    },
+    "app__last_changed_days": {
+      "name": "Days since last change",
+      "short": "Days since a file last changed, counted back to the snapshot's head commit.",
+      "long": "Counted back from the newest commit in the scan, not from today, so a snapshot says the same thing whenever it is read. A pure rename is not a change: a moved file keeps its age. A component takes its most recently changed file's. Engine revision 2 records this per file as git__last_change_age_in_days; older snapshots are computed in the app from git_commits (anchored at scan time)."
+    },
+    "app__lines_in_tangles_share": {
+      "name": "Lines in tangles",
+      "short": "Share of all lines of code that sit in a tangle.",
+      "long": "Lines of the components in a tangle over the lines of all components. A count of components understates a tangle of large components; this weighs them by size."
+    },
+    "app__median_distance": {
+      "name": "Median distance from the main sequence",
+      "short": "The middle component's |A + I − 1|.",
+      "long": "The median of modularity__distance_main_sequence over components. Read with care in languages without explicit abstractions (Python, JavaScript, Go), where abstractness is near zero for everything."
+    },
+    "app__median_instability": {
+      "name": "Median instability",
+      "short": "The middle component's instability, Ce / (Ca + Ce).",
+      "long": "The median of modularity__instability over components. Half the components are more stable than this, half less. The median ignores the handful of leaf and root components that pull the mean to the ends."
+    },
+    "app__propagation_cost": {
+      "name": "Propagation cost",
+      "short": "Share of component pairs where a change in one can reach the other: (reachable pairs + N) / N².",
+      "long": "MacCormack's propagation cost: the ordered pairs (a, b) where a reaches b through imports, directly or not, plus the N pairs of each component with itself, over the number of components squared. Near 0, changes stay local; past about 0.4, most changes can ripple through most of the system. Pairs are counted once: the snapshot's table can repeat a row."
+    },
+    "app__rule_findings": {
+      "name": "Rule findings",
+      "short": "Imports that break a dependency rule.",
+      "long": "Rows of the rules table with status 'violation': each is one import, in one file, at one line, that a configured rule forbids."
+    },
+    "app__test_importers": {
+      "name": "Test files importing it",
+      "short": "Test files, in any component, that import this component.",
+      "long": "Distinct files with role 'test' among the direct connections into a component. A component no test file imports is tested, if at all, only through something else."
+    },
+    "codesmells__bumpy_road": {
+      "name": "Bumpy Road",
+      "short": "Indentation volatility indicating nesting fluctuations.",
+      "long": "Calculates the density of indentation changes by summing absolute differences in indentation levels between consecutive lines, normalized by the count of non-empty lines. High values point to high cognitive load and code paths going in and out of nested structures. Component score represents size-weighted volatility."
+    },
+    "codesmells__code_health": {
+      "name": "Code Health",
+      "short": "A rating from 1.0 to 10.0 of structural maintainability.",
+      "long": "Rated on a scale of 1.0 (lowest) to 10.0 (highest). Deducts points for file size (lines > 500), max nesting depth, and average nesting depth. JavaScript/TypeScript files receive a relaxed indentation threshold, while non-code files (JSON/YAML/lockfiles/markdown) are excluded from code health analysis to prevent distortion. Component scores are aggregated using a size-weighted average to avoid masking large God Files."
+    },
+    "codesmells__health__deduction__avg_nesting": {
+      "name": "Average-nesting deduction",
+      "short": "Points taken off a file's health for its average nesting: 1.5 per level over the language's threshold, at most 3.",
+      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    },
+    "codesmells__health__deduction__max_nesting": {
+      "name": "Max-nesting deduction",
+      "short": "Points taken off a file's health for its deepest nesting: 0.5 per level over the language's threshold, at most 3.",
+      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    },
+    "codesmells__health__deduction__size": {
+      "name": "Size deduction",
+      "short": "Points taken off a file's health for its size: 0.01 per line over 500, at most 3.",
+      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    },
+    "codesmells__health__threshold__avg_nesting": {
+      "name": "Average-nesting threshold",
+      "short": "The average nesting a file of this language may reach before losing health.",
+      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    },
+    "codesmells__health__threshold__max_nesting": {
+      "name": "Max-nesting threshold",
+      "short": "The deepest nesting a file of this language may reach before losing health.",
+      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    },
+    "codesmells__hotspot__raw": {
+      "name": "Raw hotspot",
+      "short": "log2(commits + 1) × lines, before it is scaled to 0–100 against the hottest file.",
+      "long": "The hotspot score is this number as a share of the largest one in the snapshot, times 100, so it only compares files within one scan. The raw value can be compared across scans of the same code. A component or directory carries its hottest file's."
+    },
+    "codesmells__hotspot_score": {
+      "name": "Hotspot Score",
+      "short": "Volatility and risk index scaled between 0 and 100.",
+      "long": "Measures potential development hotspots by multiplying log-scaled Git change frequency log2(commits + 1) by file size. Non-code files and lockfiles are ignored when calculating the maximum score to prevent scale suppression. Component-level hotspots represent the maximum hotspot score of any contained file."
+    },
+    "codesmells__static_complexity_score": {
+      "name": "Static Complexity Score",
+      "short": "Structural density index derived from size and nesting.",
+      "long": "Measures structural complexity as Lines * (1 + averageIndentation). Capping the average indentation multiplier prevents single nested outliers from skewing the metrics, representing overall file nesting density."
+    },
+    "complexity__files": {
+      "name": "File Count",
+      "short": "The total number of files in a component or directory. This is the simplest way to measure size and scope.",
+      "long": "Counts all source code files matched during the analysis.\nHelpful for understanding component scale and distributing resource metrics."
+    },
+    "complexity__files__generated": {
+      "name": "Generated Files",
+      "short": "Files a tool wrote, by the account of their own header.",
+      "long": "Recognised by the markers tools write verbatim: `<auto-generated>` in .NET, Go's\n`// Code generated ... DO NOT EDIT.`, the protocol buffer compiler's header and Django's\nmigration header. Generated code is part of the build, so it keeps its units and dependencies,\nbut it receives no code-health reading: nobody edits it by hand."
+    },
+    "complexity__files__test": {
+      "name": "Test files",
+      "short": "Files that are tests by their ecosystem's convention (src/test, tests/, *_test.go, *.spec.ts, *.Tests projects).",
+      "long": "Counted apart so a component's size can say how much of it is tests. A file has one role -- production, test, generated, third-party or non-code -- recorded in files.role; this counts the test ones."
+    },
+    "complexity__files__third_party": {
+      "name": "Third-party Files",
+      "short": "Files that are someone else's code carried in the repository.",
+      "long": "Vendored packages (node_modules, vendor, third_party, lib_npm, wwwroot/lib), minified bundles and\nwell-known libraries such as jQuery or moment.js. They count as files and lines, since they are in\nthe repository, but declare no units and receive no code-health reading."
+    },
+    "complexity__indentation__avg": {
+      "name": "Average Indentation",
+      "short": "Average indentation depth across all lines in a file.",
+      "long": "Measures the mean indentation level of all non-empty lines in a file. Higher average indentation suggests code that spends more time inside nested blocks (loops, conditionals, callbacks), which can reduce readability and increase cognitive load.\n\nWhen aggregated to directory or component level, this metric is averaged across files."
+    },
+    "complexity__indentation__count": {
+      "name": "Indentation Count",
+      "short": "Total number of indentation units across all lines in a file.",
+      "long": "Sums the indentation level of every non-empty line in a file. This gives a raw measure of structural depth: a file with many deeply nested lines will have a high count even if the maximum depth is moderate.\n\nUseful for comparing overall structural complexity between files of similar size."
+    },
+    "complexity__indentation__max": {
+      "name": "Maximum Indentation",
+      "short": "Deepest indentation level found in a file.",
+      "long": "Records the maximum indentation depth (number of indentation units) found on any single line in a file. A high maximum indentation indicates deeply nested control flow, which is a strong indicator of complex, hard-to-read code.\n\nWhen aggregated to directory or component level, the maximum across all files is taken."
+    },
+    "complexity__lines": {
+      "name": "Line Count",
+      "short": "The number of lines in the file.",
+      "long": "Counts the total number of lines in a file by counting newline characters. This is the most basic size metric and is used as an input to other derived metrics like code health and hotspot score."
+    },
+    "complexity__lines__test": {
+      "name": "Test lines",
+      "short": "Lines in test files.",
+      "long": "The lines of the files whose role is test. Against complexity__lines, the share of a component that is tests."
+    },
+    "cycles__short__avg": {
+      "name": "Short Cycle Average Size",
+      "short": "Average length of shortest cycles this component participates in.",
+      "long": "The mean number of components in the shortest cycles that include this component. Smaller average cycle sizes indicate tight local coupling, while larger cycles suggest broader circular dependency chains."
+    },
+    "cycles__short__count": {
+      "name": "Short Cycle Count",
+      "short": "Number of shortest dependency cycles this component participates in.",
+      "long": "Counts the number of shortest (minimum-length) cycles that include this component in the dependency graph. Cycles indicate circular dependencies, which can make the system harder to understand, test, and deploy independently.\n\nA component with many short cycles is tightly entangled with its neighbors."
+    },
+    "cycles__short__max": {
+      "name": "Short Cycle Maximum Size",
+      "short": "Length of the longest shortest cycle this component participates in.",
+      "long": "The maximum number of components in any shortest cycle that includes this component. A high max cycle size indicates involvement in a broad circular dependency chain spanning many components."
+    },
+    "git__additions__total": {
+      "name": "Addition Count",
+      "short": "Total number of lines added to this file or component across all commits.",
+      "long": "Sums the number of added lines across all commits that touched a file. At the component level, additions from all files are summed.\n\nCombined with deletion count, this reveals the churn profile of a file: high additions with low deletions suggest growth, while balanced additions and deletions suggest refactoring."
+    },
+    "git__age_in_days": {
+      "name": "Age in Days",
+      "short": "Days since the file first appeared in the analysed branch's history.",
+      "long": "Measures how long a file has existed: the number of days between the scan and the oldest commit\nthat touched it. For a component or directory it is the age of its oldest file. A file with no\nrecorded history (not committed, or outside a repository) has no age rather than an age of 0.\n\nCombined with commit count and code health, age separates long-lived code that keeps changing\nfrom code that is new."
+    },
+    "git__authors__total": {
+      "name": "Author Count",
+      "short": "Number of unique authors who modified this file or component.",
+      "long": "Counts the number of distinct commit authors (by email) who have modified a file. At the component level, unique authors across all files are counted.\n\nA high author count may indicate shared ownership or high-traffic code that warrants extra review attention."
+    },
+    "git__commits__total": {
+      "name": "Commit Count",
+      "short": "Total number of unique commits that modified this file or component.",
+      "long": "Counts the number of distinct git commits that touched a file. At the component level, this counts unique commits across all files in the component (a single commit touching multiple files is counted once).\n\nHigh commit counts indicate frequently changed code, which is a key input for hotspot analysis."
+    },
+    "git__deletions__total": {
+      "name": "Deletion Count",
+      "short": "Total number of lines deleted from this file or component across all commits.",
+      "long": "Sums the number of deleted lines across all commits that touched a file. At the component level, deletions from all files are summed.\n\nHigh deletion counts alongside high addition counts indicate active refactoring or rewrites."
+    },
+    "git__last_change_age_in_days": {
+      "name": "Days since last change",
+      "short": "Days between the last commit that touched it and the newest commit scanned.",
+      "long": "How long code has sat untouched. Counted back from the newest commit in the snapshot, not from the day of the scan, so a dormant repository reads the same whenever it is scanned. A component or directory reads its most recently changed file's. Compare git__age_in_days, which counts from the first commit instead."
+    },
+    "git__repository": {
+      "name": "Git Repository",
+      "short": "The git repository root path relative to the analysis root.",
+      "long": "Identifies which git repository a file belongs to. In monorepo setups with multiple nested .git directories, this distinguishes which repository root owns each file."
+    },
+    "git__unique_file_changes__total": {
+      "name": "Unique File Changes",
+      "short": "Number of unique files changed in commits that touched this file or component.",
+      "long": "Counts the number of distinct files that were modified alongside this file across all its commits. At the component level, this counts unique files changed in commits that touched any file in the component.\n\nThis metric reveals co-change patterns: a high count suggests the file is coupled to many other files at the change level."
+    },
+    "graph__betweenness": {
+      "name": "Betweenness Centrality",
+      "short": "How often a component lies on the shortest path between other components.",
+      "long": "Betweenness centrality measures the fraction of shortest paths between all pairs of components that pass through a given component. Components with high betweenness act as bridges or bottlenecks in the dependency graph.\n\nRemoving or modifying a high-betweenness component is likely to disrupt communication between many other parts of the system."
+    },
+    "graph__farness_centrality": {
+      "name": "Farness Centrality",
+      "short": "Sum of shortest path distances to this component from every component that reaches it.",
+      "long": "Farness adds up, over every component that depends on this one directly or transitively, the\nnumber of hops its shortest dependency path takes to get here. Components that cannot reach this\none are not counted, so a component nothing depends on has a farness of 0: read it together with\nthe number of components that reach it, not on its own."
+    },
+    "graph__harmonic_centrality": {
+      "name": "Harmonic Centrality",
+      "short": "Sum of 1/distance over every component that reaches this component.",
+      "long": "Harmonic centrality adds up the reciprocals of the shortest dependency paths to this component\nfrom every component that depends on it, directly or transitively. A direct dependent adds 1, one\ntwo hops away adds 1/2, and components that cannot reach it add nothing.\n\nIt is a sum, not an average: it grows with how many components depend on this one and how close\nthey are, which makes it a measure of how widely and how directly this component is relied on."
+    },
+    "graph__hits__authority_score": {
+      "name": "Authority Score (HITS)",
+      "short": "How much a component is depended upon by important hubs.",
+      "long": "Part of the HITS (Hyperlink-Induced Topic Search) algorithm. A good authority is a component that is depended upon by many good hubs. In a dependency graph, a high authority score indicates a foundational component that provides core functionality relied upon by orchestrating modules."
+    },
+    "graph__hits__hub_score": {
+      "name": "Hub Score (HITS)",
+      "short": "How well a component connects to important authorities.",
+      "long": "Part of the HITS (Hyperlink-Induced Topic Search) algorithm. A good hub is a component that depends on many good authorities. In a dependency graph, a high hub score indicates a component that aggregates or orchestrates many important dependencies."
+    },
+    "graph__page_rank": {
+      "name": "PageRank",
+      "short": "Importance score based on the dependency graph structure.",
+      "long": "PageRank assigns a score to each component based on the number and importance of components that depend on it. A component depended upon by many important components receives a higher score.\n\nIn a dependency graph, high PageRank indicates a core component that is critical to the system's architecture."
+    },
+    "graph__residual_closeness": {
+      "name": "Closeness (Dangalchev)",
+      "short": "Sum of 2^-distance over every component that reaches this component.",
+      "long": "Dangalchev's closeness adds 2 to the power of minus the shortest-path length from every component\nthat depends on this one: a direct dependent adds 1/2, one two hops away adds 1/4, and components\nthat cannot reach it add nothing. Like harmonic centrality it rewards being depended on closely\nby many components, with far dependents counting for much less.\n\nDespite the metric's stored name, nothing is removed from the graph to compute it."
+    },
+    "java__class__declarations": {
+      "name": "Java Class Declarations",
+      "short": "The number of class declarations found in your Java files. This measures the total number of classes defined in the codebase.",
+      "long": "The total number of classes defined within the file or component."
+    },
+    "java__field__declarations": {
+      "name": "Java Field Declarations",
+      "short": "The total number of fields (variables inside a class) declared in your Java files. This measures how much state or data your classes hold.",
+      "long": "Fields are variables declared inside a class block.\nA very high number of fields in a single class might suggest that the class is taking on too many responsibilities (a God Class or high state complexity)."
+    },
+    "java__import__declaration": {
+      "name": "Java Import Declarations",
+      "short": "The number of import statements in your Java files. This shows how many external or internal classes your code references.",
+      "long": "Tracks individual import statements in Java files.\nUsed to determine imports of a file, excluding ignored packages like standard java.* libraries if configured."
+    },
+    "java__jpa__entities": {
+      "name": "JPA Entities",
+      "short": "The number of JPA entity classes (annotated with @Entity). These classes represent tables in your database and hold database records.",
+      "long": "JPA Entities are lightweight persistent domain objects. Typically associated with a table in a relational database."
+    },
+    "java__method_declarations": {
+      "name": "Java Method Declarations",
+      "short": "The total number of methods (functions inside a class) declared in your Java files. This measures the number of actions your classes can perform.",
+      "long": "The total number of methods declared in the Java source files.\nA large number of method declarations indicates high behavioral size/complexity."
+    },
+    "java__spring__beans": {
+      "name": "Spring Beans",
+      "short": "The total number of Spring-managed beans (classes annotated with @Component, @Service, @Repository, @Controller, etc.). These are the building blocks of a Spring app.",
+      "long": "Sums up all stereotypic Spring component/bean annotations in the component or file.\nA high count suggests heavily Spring-managed business or framework layers."
+    },
+    "java__spring__components": {
+      "name": "Spring Components",
+      "short": "The number of basic Spring component classes (annotated with @Component). These are helper classes that Spring manages for dependency injection.",
+      "long": "A generic stereotype for any Spring-managed component when no more specific stereotype (like Service, Controller, or Repository) applies."
+    },
+    "java__spring__configurations": {
+      "name": "Spring Configurations",
+      "short": "The number of Spring configuration classes (annotated with @Configuration). These classes set up and customize the beans and settings in your application.",
+      "long": "Indicates that a class declares one or more @Bean methods and may be processed by the Spring container to generate bean definitions and service requests at runtime."
+    },
+    "java__spring__controllers": {
+      "name": "Spring Controllers",
+      "short": "The number of Spring controller classes (annotated with @Controller or @RestController). These classes handle incoming web requests and direct them to the right places.",
+      "long": "Spring controller classes process HTTP requests, bind user input, and return responses (often JSON or HTML).\nA high density of controllers in one area indicates a major API entry-point area."
+    },
+    "java__spring__repositories": {
+      "name": "Spring Repositories",
+      "short": "The number of Spring repository classes (annotated with @Repository). These classes handle talk to the database to save and load your data.",
+      "long": "Spring repositories encapsulate storage, retrieval, and search behavior, typically wrapping a relational database using JPA or JDBC."
+    },
+    "java__spring__request_mappings__delete": {
+      "name": "Spring DELETE Mappings",
+      "short": "The number of DELETE request endpoints (using @DeleteMapping or @RequestMapping with DELETE). These are web entry points used to remove data.",
+      "long": "HTTP DELETE endpoints are used to delete resource representations."
+    },
+    "java__spring__request_mappings__get": {
+      "name": "Spring GET Mappings",
+      "short": "The number of GET request endpoints (using @GetMapping or @RequestMapping with GET). These are web entry points used to retrieve data.",
+      "long": "HTTP GET endpoints are used to fetch resources.\nA high proportion of GET requests indicates a read-heavy controller."
+    },
+    "java__spring__request_mappings__patch": {
+      "name": "Spring PATCH Mappings",
+      "short": "The number of PATCH request endpoints (using @PatchMapping or @RequestMapping with PATCH). These are web entry points used to make partial updates to data.",
+      "long": "HTTP PATCH endpoints are used to apply partial modifications to a resource."
+    },
+    "java__spring__request_mappings__post": {
+      "name": "Spring POST Mappings",
+      "short": "The number of POST request endpoints (using @PostMapping or @RequestMapping with POST). These are web entry points used to create new data.",
+      "long": "HTTP POST endpoints are used to submit data to be processed or to create resources."
+    },
+    "java__spring__request_mappings__put": {
+      "name": "Spring PUT Mappings",
+      "short": "The number of PUT request endpoints (using @PutMapping or @RequestMapping with PUT). These are web entry points used to update or replace existing data.",
+      "long": "HTTP PUT endpoints are used to upsert or replace resources."
+    },
+    "java__spring__request_mappings__total": {
+      "name": "Spring Request Mappings (Total)",
+      "short": "The total number of web endpoints (using @RequestMapping, @GetMapping, @PostMapping, etc.) in your application. It measures how many web entry points you have.",
+      "long": "Total number of HTTP endpoints exposed by Spring MVC/WebFlux controllers.\nIndicates the size of the application's external API surface."
+    },
+    "java__spring__services": {
+      "name": "Spring Services",
+      "short": "The number of Spring service classes (annotated with @Service). These classes hold your application's business logic and rules.",
+      "long": "Spring service classes orchestrate domain logic, communicate with repositories, and manage transactions.\nThey represent the core business layer of your application."
+    },
+    "modularity__abstractness": {
+      "name": "Abstractness",
+      "short": "Ratio of abstract declarations to total declarations in a component.",
+      "long": "Abstractness measures the proportion of abstract types (interfaces, abstract classes) relative to all declarations in a component. Range is 0 (fully concrete) to 1 (fully abstract).\n\nUsed together with instability to compute distance from the main sequence."
+    },
+    "modularity__component__declarations": {
+      "name": "Component Declaration",
+      "short": "A mark that defines where a new component starts, such as a package header in Java/Kotlin or a namespace in C#. This helps identify different parts of your code.",
+      "long": "Component declarations establish the logical boundaries of the system. For instance, package headers or namespace definitions.\nThey are used to map source files into logical components for coupling and architectural analysis."
+    },
+    "modularity__component__imports": {
+      "name": "Component Import",
+      "short": "A connection that brings in code from another component. It shows when one package or namespace relies on another to work.",
+      "long": "Component imports represent dependency edges between different parts of the system.\nAnalyzing these imports allows us to build a dependency graph and calculate coupling metrics like afferent and efferent coupling."
+    },
+    "modularity__coupling__afferent": {
+      "name": "Afferent Coupling",
+      "short": "Number of files in other components that import this component.",
+      "long": "Afferent coupling (Ca) counts the files outside this component that import something from it. This\nis Robert Martin's definition, which counts the depending classes rather than the depending\npackages; for the number of components that depend on this one, see Direct Dependent Count.\n\nA high afferent coupling means much of the codebase leans on this component, so changes to it\ncascade widely and it should be stable and well tested."
+    },
+    "modularity__coupling__dependencies": {
+      "name": "Direct Dependency Count",
+      "short": "Number of components that this component directly depends on.",
+      "long": "Counts the number of components that this component has a direct dependency edge pointing to in the dependency graph. Unlike efferent coupling which counts unique coupling relationships, dependencies counts all direct outgoing dependency edges."
+    },
+    "modularity__coupling__dependents": {
+      "name": "Direct Dependent Count",
+      "short": "Number of components that directly depend on this component.",
+      "long": "Counts the number of components that have a direct dependency edge pointing to this component in the dependency graph. Unlike afferent coupling which counts unique coupling relationships, dependents counts all direct incoming dependency edges."
+    },
+    "modularity__coupling__efferent": {
+      "name": "Efferent Coupling",
+      "short": "Number of files in this component that import another component.",
+      "long": "Efferent coupling (Ce) counts the files inside this component that import something from\nanother component. This is Robert Martin's definition, which counts the depending classes rather\nthan the packages depended on; for the number of components this one depends on, see Direct\nDependency Count.\n\nComponents with high efferent coupling are more exposed to changes in their dependencies."
+    },
+    "modularity__distance_main_sequence": {
+      "name": "Distance from Main Sequence",
+      "short": "Distance from the ideal balance of abstractness and stability: |A + I - 1|.",
+      "long": "The main sequence is the ideal line where A + I = 1 (abstractness + instability = 1). The distance from this line measures how well a component balances stability with abstractness.\n\n- D = 0: On the main sequence — ideal balance.\n- High D near (0,0): Zone of Pain — stable and concrete. Hard to change.\n- High D near (1,1): Zone of Uselessness — unstable and abstract. Over-engineered."
+    },
+    "modularity__instability": {
+      "name": "Instability",
+      "short": "Ratio of efferent to total coupling: Ce / (Ce + Ca). Range: 0 (stable) to 1 (unstable).",
+      "long": "Instability is calculated as Ce / (Ce + Ca), where Ce is efferent coupling and Ca is afferent coupling.\n\n- I = 0: Maximally stable — the component has no outgoing dependencies. Changes to other components cannot affect it.\n- I = 1: Maximally unstable — the component only has outgoing dependencies. It is entirely dependent on others and likely to be affected by external changes.\n\nThe Stable Dependencies Principle (SDP) states that components should depend in the direction of stability: unstable components should depend on stable ones."
+    },
+    "modularity__types__abstract": {
+      "name": "Abstract Types",
+      "short": "The number of abstract types (like interfaces or abstract classes) in a file or component. These are templates that other classes must fill in.",
+      "long": "Abstract types represent extensible points in your codebase.\nA high proportion of abstract types allows components to be easily extended without modifying their core logic, promoting the Open-Closed Principle."
+    },
+    "modularity__types__total": {
+      "name": "Total Types",
+      "short": "The total number of types (like classes, interfaces, structs, or records) declared in a file or component. It measures how many structural blocks you have.",
+      "long": "Total types measures the size of a component in terms of raw structural declarations.\nIt acts as the denominator when calculating abstractness (abstract types / total types)."
+    },
+    "rules__dotnet__core_must_not_depend_on_plugin": {
+      "name": "Core must not depend on a plugin",
+      "short": "In a .NET plugin architecture, plugins may depend on the core; the core must never depend on a plugin.",
+      "long": "A plugin architecture is only extensible in one direction. Plugins are built against the core and\nmay be added or removed without rebuilding it; the moment the core references a plugin by project,\nthat plugin is no longer optional and the architecture has quietly become a monolith with extra\nproject files.\n\nnopCommerce makes the shape plain: 40 .csproj files, of which thirty are named Nop.Plugin.*, and\nevery one of them references Nop.Web.Framework or Nop.Web rather than the other way round. The\nnamespaces do not say which module is a plugin, so this rule is checked against the project\nreferences, which do."
+    },
+    "rules__go__internal_must_not_be_imported_from_outside": {
+      "name": "internal must not be imported from another module",
+      "short": "Go's internal/ is a boundary the compiler enforces, so an edge across one is stronger evidence than any ordinary import.",
+      "long": "A Go package under `internal/` may only be imported by code rooted in the directory holding that\n`internal/`. The compiler refuses anything else, which makes it the one boundary in any surveyed\necosystem that cannot be broken by accident and cannot be argued with.\n\nThat is exactly why it is worth reporting. An edge that crosses one did not come from a\nlanguage the analyser misread; it came from two modules that were vendored, copied or merged, and\nit marks the seam. Within a single module the rule can never fire, so a violation here always\nmeans more than one module is involved."
+    },
+    "rules__symfony__component_must_not_depend_on_bundle": {
+      "name": "Component must not depend on Bundle",
+      "short": "A framework-agnostic component must never depend on the framework glue that integrates it.",
+      "long": "Symfony projects that separate Component from Bundle do so to keep the domain usable without the\nframework: the Component holds the model and the behaviour, the Bundle wires it into Symfony's\ncontainer, routing and configuration. The dependency runs one way. A component that reaches back\ninto its bundle can no longer be used, tested or published on its own, which is the only reason\nthe split exists.\n\nSylius is 60 composer packages arranged exactly this way, with 344 interfaces to 663 classes in\nits Component tree. The split is declared in composer.json, not in any namespace, which is why\nthis rule is checked against the module map."
+    }
+  },
+  "windowed": {
+    "git__additions": {
+      "name": "Addition Count (Last {days} Days)",
+      "short": "Number of lines of code added to this file or component in the last {days} days.",
+      "long": "Counts how many new lines of code were added in git commits over the last {days} days. Helps identify recently active or growing files."
+    },
+    "git__deletions": {
+      "name": "Deletion Count (Last {days} Days)",
+      "short": "Number of lines of code deleted from this file or component in the last {days} days.",
+      "long": "Counts how many lines of code were deleted in git commits over the last {days} days. Helps identify recently refactored or cleaned-up files."
+    },
+    "git__commits": {
+      "name": "Commit Count (Last {days} Days)",
+      "short": "Number of unique git commits modifying this file or component in the last {days} days.",
+      "long": "Counts how many times this file or component was modified in a git commit over the last {days} days. A high count suggests a recent hot spot of activity."
+    },
+    "git__authors": {
+      "name": "Author Count (Last {days} Days)",
+      "short": "Number of unique authors who modified this file or component in the last {days} days.",
+      "long": "Counts how many different developers made changes to this file or component in the last {days} days. High author count can indicate a risk of coordination issues."
+    },
+    "git__unique_file_changes": {
+      "name": "Unique File Changes (Last {days} Days)",
+      "short": "Number of unique files changed in commits that touched this file or component in the last {days} days.",
+      "long": "Measures co-changes over the last {days} days: how many other files were modified in the same commits as this one. Helps find implicit logical coupling."
+    }
+  }
+}

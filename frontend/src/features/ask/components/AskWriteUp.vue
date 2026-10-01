@@ -1,17 +1,17 @@
 <template>
-  <div v-if="ask.writeup.open" class="ask-veil" role="dialog" aria-modal="true" aria-label="Write up" @keydown.esc="close" @click.self="close">
+  <div v-if="ask.writeup.open" class="ask-veil" role="dialog" aria-modal="true" :aria-label="t('ask.askWriteUp.writeUp')" @keydown.esc="close" @click.self="close">
     <div class="ask-sheet">
       <header class="flex items-start gap-3 px-5 pt-5">
         <div class="min-w-0 flex-1">
-          <h2 class="text-[15px] font-semibold text-neutral-900">Write this up as a report</h2>
-          <p class="mt-0.5 text-[12px] leading-relaxed text-neutral-500">Choose the kind of report. Ask lays out its sections, fills them with the conversation's evidence and the template's own readings and queries, then writes every section and a summary. Numbers come only from the evidence.</p>
+          <h2 class="text-[15px] font-semibold text-neutral-900">{{ t('ask.askWriteUp.writeUpReport') }}</h2>
+          <p class="mt-0.5 text-[12px] leading-relaxed text-neutral-500">{{ t('ask.askWriteUp.chooseKindReportAsk') }}</p>
         </div>
-        <button type="button" class="ui-btn ui-btn-quiet ui-btn-icon ui-btn-sm" aria-label="Close" @click="close"><X :size="14" :stroke-width="1.75"/></button>
+        <button type="button" class="ui-btn ui-btn-quiet ui-btn-icon ui-btn-sm" :aria-label="t('ask.askWriteUp.close')" @click="close"><X :size="14" :stroke-width="1.75"/></button>
       </header>
 
       <!-- Choosing. -->
       <div v-if="!p" class="px-5 pb-5 pt-4">
-        <p v-if="ask.writeup.loading" class="flex items-center gap-2 py-6 text-[12.5px] text-neutral-500"><Loader2 :size="13" class="animate-spin"/> Finding the templates that fit…</p>
+        <p v-if="ask.writeup.loading" class="flex items-center gap-2 py-6 text-[12.5px] text-neutral-500"><Loader2 :size="13" class="animate-spin"/>{{ ' ' + t('ask.askWriteUp.findingTemplatesFit') }}</p>
         <div v-else class="grid gap-2">
           <button
               v-for="s in ask.writeup.suggestions"
@@ -23,31 +23,31 @@
           >
             <FileText :size="15" :stroke-width="1.75" class="mt-0.5 shrink-0 text-accent-600"/>
             <span class="min-w-0 flex-1">
-              <span class="flex items-center gap-2 text-[13px] font-medium text-neutral-900">{{ s.name }}<span v-if="s.recommended" class="ask-rec">Recommended</span></span>
+              <span class="flex items-center gap-2 text-[13px] font-medium text-neutral-900">{{ s.name }}<span v-if="s.recommended" class="ask-rec">{{ t('ask.askWriteUp.recommended') }}</span></span>
               <span class="block text-[12px] leading-snug text-neutral-600">{{ s.summary }}</span>
-              <span class="mt-0.5 block text-[11px] text-neutral-400">For {{ s.audience }} · {{ s.why }}</span>
+              <span class="mt-0.5 block text-[11px] text-neutral-400">{{ t('ask.askWriteUp.for', { audience: s.audience, why: s.why }) }}</span>
             </span>
           </button>
           <button type="button" class="ask-opt" :class="{ 'ask-opt-on': ask.writeup.chosen === null }" @click="ask.writeup.chosen = null">
             <ListTree :size="15" :stroke-width="1.75" class="mt-0.5 shrink-0 text-neutral-500"/>
             <span class="min-w-0 flex-1">
-              <span class="block text-[13px] font-medium text-neutral-900">Free form</span>
-              <span class="block text-[12px] leading-snug text-neutral-600">Sections made from what this conversation found, related questions merged.</span>
+              <span class="block text-[13px] font-medium text-neutral-900">{{ t('ask.askWriteUp.freeForm') }}</span>
+              <span class="block text-[12px] leading-snug text-neutral-600">{{ t('ask.askWriteUp.sectionsMadeWhatConversation') }}</span>
             </span>
           </button>
         </div>
         <!-- What the chosen template needs, asked before it writes: nothing waits in the report for a choice. -->
         <label v-if="needs" class="ask-need">
           <span class="text-neutral-600">{{ needs.label }}</span>
-          <input v-model="component" class="ui-input ui-input-sm min-w-0 flex-1 font-mono" list="ask-writeup-components" :placeholder="'The biggest hotspot, if left empty'">
+          <input v-model="component" class="ui-input ui-input-sm min-w-0 flex-1 font-mono" list="ask-writeup-components" :placeholder="t('ask.askWriteUp.biggestHotspotIfLeft')">
           <datalist id="ask-writeup-components"><option v-for="n in componentNames" :key="n" :value="n"/></datalist>
         </label>
-        <p v-if="unbacked" class="ask-unbacked"><AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/><span>{{ unbacked }} {{ unbacked === 1 ? "statement" : "statements" }} in this conversation {{ unbacked === 1 ? "is" : "are" }} not backed by the facts {{ unbacked === 1 ? "it cites" : "they cite" }}. The report is written without {{ unbacked === 1 ? "it" : "them" }}.</span></p>
+        <p v-if="unbacked" class="ask-unbacked"><AlertTriangle :size="13" :stroke-width="1.75" class="mt-px shrink-0"/><span>{{ t('ask.askWriteUp.conversationNotBackedFacts', { statements: t('common.count.statement', { count: unbacked }), are: t('common.noun.is', { count: unbacked }), theyCite: t('common.noun.itCites', { count: unbacked }), them: t('common.noun.it', { count: unbacked }) }) }}</span></p>
         <p v-if="ask.writeup.error" class="mt-3 text-[12px] text-red-700">{{ ask.writeup.error }}</p>
         <!-- Pinned to the sheet's bottom edge: however long the template list, the way to write is on screen. -->
         <div class="ask-sheet-foot">
-          <button type="button" class="ui-btn ui-btn-sm" @click="close">Cancel</button>
-          <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" :disabled="ask.writeup.loading || ask.running" @click="start"><PenLine :size="12" :stroke-width="2"/> Write the report</button>
+          <button type="button" class="ui-btn ui-btn-sm" @click="close">{{ t('ask.askWriteUp.cancel') }}</button>
+          <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" :disabled="ask.writeup.loading || ask.running" @click="start"><PenLine :size="12" :stroke-width="2"/>{{ ' ' + t('ask.askWriteUp.writeReport') }}</button>
         </div>
       </div>
 
@@ -67,15 +67,15 @@
             <Minus v-else-if="s.status === 'skipped'" :size="12" class="text-neutral-300"/>
             <Circle v-else :size="10" class="text-neutral-300"/>
             <span class="min-w-0 flex-1 truncate" :class="s.status === 'waiting' ? 'text-neutral-400' : 'text-neutral-800'">{{ s.heading }}</span>
-            <span v-if="s.status === 'revised'" class="text-[10.5px] text-neutral-400" title="A number was not in the evidence; the section was written again">checked, rewritten</span>
-            <span v-if="s.status === 'skipped'" class="text-[10.5px] text-neutral-400">no evidence: left for you</span>
+            <span v-if="s.status === 'revised'" class="text-[10.5px] text-neutral-400" :title="t('ask.askWriteUp.numberWasNotEvidence')">{{ t('ask.askWriteUp.checkedRewritten') }}</span>
+            <span v-if="s.status === 'skipped'" class="text-[10.5px] text-neutral-400">{{ t('ask.askWriteUp.noEvidenceLeftYou') }}</span>
           </li>
         </ol>
         <div class="mt-4 flex items-center justify-end gap-2">
-          <button v-if="busy" type="button" class="ui-btn ui-btn-sm" @click="ask.cancelWriteUp()">Stop</button>
+          <button v-if="busy" type="button" class="ui-btn ui-btn-sm" @click="ask.cancelWriteUp()">{{ t('ask.askWriteUp.stop') }}</button>
           <template v-else>
-            <button type="button" class="ui-btn ui-btn-sm" @click="close">Close</button>
-            <button v-if="ask.writeup.reportId" type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="openReport">Open “{{ ask.writeup.title }}”</button>
+            <button type="button" class="ui-btn ui-btn-sm" @click="close">{{ t('ask.askWriteUp.close') }}</button>
+            <button v-if="ask.writeup.reportId" type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="openReport">{{ t('ask.askWriteUp.open', { writeupTitle: ask.writeup.title }) }}</button>
           </template>
         </div>
       </div>
@@ -91,6 +91,7 @@ import { useAskStore } from "../app/ask.store"
 import { untrusted } from "../render/verdict"
 import { mostDiscussedComponent, templateComponentParam } from "../app/writer"
 import { useDataStore } from "~/features/snapshot/data.store"
+import { t } from "~/shared/i18n"
 
 const ask = useAskStore()
 const router = useRouter()

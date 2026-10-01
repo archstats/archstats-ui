@@ -3,13 +3,13 @@
     type="button"
     class="ui-btn ui-btn-sm"
     :class="[icon ? 'ui-btn-icon ui-btn-quiet' : '', pinned ? 'text-accent-700' : '']"
-    :title="pinned ? 'Pinned: open the evidence board' : `Pin ${title} to the evidence board`"
-    :aria-label="pinned ? 'Open the evidence board' : `Pin ${title}`"
+    :title="pinned ? t('reports.pinButton.pinnedOpenEvidenceBoard') : t('reports.pinButton.pinEvidenceBoard', { title })"
+    :aria-label="pinned ? t('reports.pinButton.openEvidenceBoard') : t('reports.pinButton.pin', { title })"
     :disabled="busy"
     @click.stop="onClick"
   >
     <Icon icon="bookmark" :size="13" :class="pinned ? 'text-accent-600' : 'text-neutral-500'"/>
-    <span v-if="!icon">{{ busy ? "Pinning…" : pinned ? "Pinned" : "Pin" }}</span>
+    <span v-if="!icon">{{ busy ? t('reports.pinButton.pinning') : pinned ? t('reports.pinButton.pinned') : t('reports.pinButton.pin2') }}</span>
   </button>
 </template>
 
@@ -23,6 +23,7 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { pngBase64 } from "~/features/export/figure";
 import { buildProvenance, provenanceShort } from "~/features/export/provenance";
 import type { PinKind, PinValues } from "~/features/reports/evidence";
+import { t } from "~/shared/i18n";
 
 // The one pin in the app. It keeps a finding on the workspace's evidence
 // board with the snapshot, commit, lens and scope it was seen under; a view

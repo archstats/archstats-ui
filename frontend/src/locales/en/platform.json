@@ -1,0 +1,16 @@
+{
+  "files": {
+    "csvTable": "CSV table",
+    "markdown": "Markdown",
+    "pngImage": "PNG image",
+    "svgImage": "SVG image",
+    "json": "JSON",
+    "archstatsSnapshot": "Archstats snapshot",
+    "pdfDocument": "PDF document",
+    "save": "Save"
+  },
+  "dbWorker": {
+    "databaseNotInitialized": "Database not initialized",
+    "unknownMessageType": "Unknown message type: {type}"
+  }
+}

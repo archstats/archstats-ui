@@ -9,6 +9,7 @@ import {
     blockMarkdown, cellNumbers, inlineRuns, isCell, readingBlocks, tableCells,
     type Block, type Cell, type CellBlock, type CellOutput, type CellSpec, type RanOn, type TableOutput, type TableSource, type TextBlock,
 } from "./reportDoc"
+import { t, intlLocale } from "~/shared/i18n"
 
 // ── Table presets ─────────────────────────────────────────────────────────
 
@@ -29,13 +30,13 @@ export interface TablePreset {
  * (dependents, dependencies), never in files: afferent counts importing files.
  */
 export const TABLE_PRESETS: TablePreset[] = [
-    { id: "c-hotspots", label: "Hotspot components", hint: "Largest hotspot scores first", source: "components", columns: ["complexity__lines", "codesmells__code_health", "codesmells__hotspot_score", "git__commits__total"], sort: "codesmells__hotspot_score", desc: true, scope: "production" },
-    { id: "c-coupling", label: "Most depended-on components", hint: "Components with the most dependents", source: "components", columns: ["modularity__coupling__dependents", "modularity__coupling__dependencies", "modularity__instability", "modularity__distance_main_sequence"], sort: "modularity__coupling__dependents", desc: true, scope: "production" },
-    { id: "c-health", label: "Least healthy components", hint: "Lowest code health first", source: "components", columns: ["codesmells__code_health", "complexity__lines", "codesmells__hotspot_score"], sort: "codesmells__code_health", desc: false, scope: "production" },
-    { id: "c-size", label: "Largest components", hint: "Most lines first", source: "components", columns: ["complexity__lines", "complexity__files", "modularity__coupling__dependents"], sort: "complexity__lines", desc: true, scope: "production" },
-    { id: "f-hotspots", label: "Hotspot files", hint: "Files by hotspot score", source: "files", columns: ["complexity__lines", "codesmells__code_health", "codesmells__hotspot_score", "git__commits__total"], sort: "codesmells__hotspot_score", desc: true, scope: "production" },
-    { id: "f-churn", label: "Most changed files", hint: "Files by commits", source: "files", columns: ["git__commits__total", "complexity__lines", "codesmells__code_health"], sort: "git__commits__total", desc: true, scope: "production" },
-    { id: "f-health", label: "Least healthy files", hint: "Lowest code health first", source: "files", columns: ["codesmells__code_health", "complexity__lines", "codesmells__hotspot_score"], sort: "codesmells__code_health", desc: false, scope: "production" },
+    { id: "c-hotspots", label: t("reports.reportCells.hotspotComponents"), hint: t("reports.reportCells.largestHotspotScoresFirst"), source: "components", columns: ["complexity__lines", "codesmells__code_health", "codesmells__hotspot_score", "git__commits__total"], sort: "codesmells__hotspot_score", desc: true, scope: "production" },
+    { id: "c-coupling", label: t("reports.reportCells.mostDependedComponents"), hint: t("reports.reportCells.componentsMostDependents"), source: "components", columns: ["modularity__coupling__dependents", "modularity__coupling__dependencies", "modularity__instability", "modularity__distance_main_sequence"], sort: "modularity__coupling__dependents", desc: true, scope: "production" },
+    { id: "c-health", label: t("reports.reportCells.leastHealthyComponents"), hint: t("reports.reportCells.lowestCodeHealthFirst"), source: "components", columns: ["codesmells__code_health", "complexity__lines", "codesmells__hotspot_score"], sort: "codesmells__code_health", desc: false, scope: "production" },
+    { id: "c-size", label: t("reports.reportCells.largestComponents"), hint: t("reports.reportCells.mostLinesFirst"), source: "components", columns: ["complexity__lines", "complexity__files", "modularity__coupling__dependents"], sort: "complexity__lines", desc: true, scope: "production" },
+    { id: "f-hotspots", label: t("reports.reportCells.hotspotFiles"), hint: t("reports.reportCells.filesHotspotScore"), source: "files", columns: ["complexity__lines", "codesmells__code_health", "codesmells__hotspot_score", "git__commits__total"], sort: "codesmells__hotspot_score", desc: true, scope: "production" },
+    { id: "f-churn", label: t("reports.reportCells.mostChangedFiles"), hint: t("reports.reportCells.filesCommits"), source: "files", columns: ["git__commits__total", "complexity__lines", "codesmells__code_health"], sort: "git__commits__total", desc: true, scope: "production" },
+    { id: "f-health", label: t("reports.reportCells.leastHealthyFiles"), hint: t("reports.reportCells.lowestCodeHealthFirst"), source: "files", columns: ["codesmells__code_health", "complexity__lines", "codesmells__hotspot_score"], sort: "codesmells__code_health", desc: false, scope: "production" },
 ]
 
 const ident = (c: string) => `"${c.replace(/"/g, '""')}"`
@@ -81,8 +82,8 @@ export function tableWhere(spec: Extract<CellSpec, { type: "table" }>, has: (col
 /** What a scoped table says about its rows. */
 export function scopeNote(spec: Extract<CellSpec, { type: "table" }>, roles: boolean): string | undefined {
     if (spec.scope !== "production") return undefined
-    if (!roles) return "Production code only. This scan did not sort its files, so tests, vendored libraries and files that are not code are recognised by their path, as the Overview does."
-    return spec.source === "files" ? "Production files only: tests, generated and third-party code are left out." : "Components that hold production code; tests, generated and third-party code are left out."
+    if (!roles) return t("reports.reportCells.productionCodeOnlyScan")
+    return spec.source === "files" ? t("reports.reportCells.productionFilesOnlyTests") : t("reports.reportCells.componentsHoldProductionCode")
 }
 
 // ── Running ───────────────────────────────────────────────────────────────
@@ -128,7 +129,7 @@ const isNumeric = (rows: Array<Record<string, unknown>>, id: string) => {
 }
 
 function tableOf(rows: Array<Record<string, unknown>>, ids: string[], label: (id: string) => string, total: number): TableOutput {
-    return { columns: ids.map(id => ({ id, label: id === "name" ? "Name" : label(id), numeric: isNumeric(rows, id) })), rows, total }
+    return { columns: ids.map(id => ({ id, label: id === "name" ? t("reports.reportCells.name") : label(id), numeric: isNumeric(rows, id) })), rows, total }
 }
 
 /**
@@ -153,13 +154,13 @@ export function metricsNote(columns: string[], define?: (id: string) => { name: 
 export const headerCase = (c: string) => (/^[a-z]/.test(c) ? c.charAt(0).toUpperCase() + c.slice(1) : c)
 
 /** What an empty query table says in place of its rows. */
-export const EMPTY_TABLE = "Nothing in this snapshot matches this table."
+export const EMPTY_TABLE = t("reports.reportCells.nothingSnapshotMatchesTable")
 
 /** A query error as a reader can take it: a timeout says so in words. */
 export function errorSentence(message: string): string {
     const m = /stopped after (\S+)/.exec(message)
     if (!m) return message
-    return `This query took too long on this snapshot and was stopped after ${m[1].replace(/s$/, " seconds")}. A large codebase can need more time than a report allows; run it again, or narrow it in the Cell pane.`
+    return t("reports.reportCells.queryTookTooLong", { replace: m[1].replace(/s$/, " seconds") })
 }
 
 /** Runs one cell on the kernel snapshot. A capture or a slot has nothing to run and comes back as it was. */
@@ -170,7 +171,7 @@ export async function runCell(cell: Cell, ctx: RunContext): Promise<Cell> {
     try {
         if (spec.type === "capture" || spec.type === "slot") return cell
         if (spec.type === "exhibit") {
-            output = ctx.exhibit ? await ctx.exhibit(spec) : { error: "Exhibits run only in the app." }
+            output = ctx.exhibit ? await ctx.exhibit(spec) : { error: t("reports.reportCells.exhibitsRunOnlyApp") }
         } else if (spec.type === "reading") {
             output = { reading: await runReading(spec.reading, spec.params, ctx.readings) }
         } else if (spec.type === "table") {
@@ -190,7 +191,7 @@ export async function runCell(cell: Cell, ctx: RunContext): Promise<Cell> {
         } else {
             const pin = ctx.pin(spec.pinId)
             if (!pin) {
-                output = { error: "This pin was removed from the pool." }
+                output = { error: t("reports.reportCells.pinWasRemovedPool") }
             } else {
                 const now = pin.kind === "view" || pin.kind === "heading" ? null : await measurePin({ kind: pin.kind as any, entityKey: pin.entityKey }, ctx.query)
                 const status = pin.kind === "view" ? { text: "" } : pinStatus({ pinned: pin.values, now, blocked: null, deleted: false, label: ctx.label })
@@ -220,23 +221,23 @@ export function describeChange(prev: CellOutput | null | undefined, next: CellOu
         }
         const moved = [...after.keys()].filter((k, i) => before.has(k) && [...before.keys()].indexOf(k) !== i).length
         const parts = [
-            entered ? `${entered} new` : "", left ? `${left} gone` : "",
-            changed ? `${changed} changed` : "", !entered && !left && !changed && moved ? `${moved} reordered` : "",
+            entered ? t("reports.reportCells.new", { entered }) : "", left ? t("reports.reportCells.gone", { left }) : "",
+            changed ? t("reports.reportCells.changed", { changed }) : "", !entered && !left && !changed && moved ? t("reports.reportCells.reordered", { moved }) : "",
         ].filter(Boolean)
-        return parts.length ? `Since the last run: ${parts.join(", ")}.` : "Unchanged since the last run."
+        return parts.length ? t("reports.reportCells.sinceLastRun", { value: parts.join(", ") }) : t("reports.reportCells.unchangedSinceLastRun")
     }
     if (prev.reading && next.reading) {
         const a = prev.reading.values, b = next.reading.values
         const moved = Object.keys(b).filter(k => a[k] !== undefined && Math.abs(a[k] - b[k]) > 1e-9)
         const fresh = Object.keys(b).filter(k => a[k] === undefined).length + Object.keys(a).filter(k => b[k] === undefined).length
-        if (!moved.length && !fresh) return prev.reading.text === next.reading.text ? "Unchanged since the last run." : "Reworded since the last run; the numbers held."
-        return `Since the last run: ${[...moved.map(k => `${k} ${fmtValue(a[k])} → ${fmtValue(b[k])}`), fresh ? `${fresh} named ${fresh === 1 ? "item" : "items"} changed` : ""].filter(Boolean).join(", ")}.`
+        if (!moved.length && !fresh) return prev.reading.text === next.reading.text ? t("reports.reportCells.unchangedSinceLastRun") : t("reports.reportCells.rewordedSinceLastRun")
+        return t("reports.reportCells.sinceLastRun", { value: [...moved.map(k => `${k} ${fmtValue(a[k])} → ${fmtValue(b[k])}`), fresh ? t("reports.reportCells.namedChanged", { fresh, items: t("common.noun.item", { count: fresh }) }) : ""].filter(Boolean).join(", ") })
     }
     if (prev.pin && next.pin) {
         const a = prev.pin.now ?? prev.pin.values, b = next.pin.now
-        if (!b) return "What this pin names is gone."
+        if (!b) return t("reports.reportCells.whatPinNamesGone")
         const moved = Object.keys(b).filter(k => a[k] !== undefined && Math.abs(a[k] - b[k]) > 1e-9)
-        return moved.length ? `Since the last run: ${moved.map(k => `${label(k)} ${fmtValue(a[k])} → ${fmtValue(b[k])}`).join(", ")}.` : "Unchanged since the last run."
+        return moved.length ? t("reports.reportCells.sinceLastRun", { value: moved.map(k => `${label(k)} ${fmtValue(a[k])} → ${fmtValue(b[k])}`).join(", ") }) : t("reports.reportCells.unchangedSinceLastRun")
     }
     return ""
 }
@@ -278,15 +279,15 @@ export function fmtValue(v: unknown): string {
     if (v === null || v === undefined || v === "") return "—"
     if (typeof v === "number") {
         if (!Number.isFinite(v)) return "—"
-        if (Number.isInteger(v)) return v.toLocaleString("en-US")
-        return v.toLocaleString("en-US", { maximumFractionDigits: Math.abs(v) < 1 ? 3 : 2 })
+        if (Number.isInteger(v)) return v.toLocaleString(intlLocale)
+        return v.toLocaleString(intlLocale, { maximumFractionDigits: Math.abs(v) < 1 ? 3 : 2 })
     }
     return String(v)
 }
 
 export function provenanceLine(r: RanOn | null, workspace: string): string {
-    if (!r) return "Not run yet."
-    return [workspace, `snapshot ${r.label}`, r.commit ? `commit ${r.commit.slice(0, 7)}${r.committed ? ` of ${r.committed}` : ""}` : "", `analysis r${r.revision}`, r.lens ? `lens ${r.lens}` : "", r.scope ? `scope ${r.scope}` : "", r.role && r.role !== "all" ? `${r.role} files` : ""].filter(Boolean).join(" · ")
+    if (!r) return t("reports.reportCells.notRunYet")
+    return [workspace, t("reports.reportCells.snapshot", { label: r.label }), r.commit ? t("reports.reportCells.commit", { commit: r.commit.slice(0, 7), value: r.committed ? t("reports.reportCells.of", { committed: r.committed }) : "" }) : "", t("reports.reportCells.analysisR", { revision: r.revision }), r.lens ? t("reports.reportCells.lens", { lens: r.lens }) : "", r.scope ? t("reports.reportCells.scope", { scope: r.scope }) : "", r.role && r.role !== "all" ? t("reports.reportCells.files", { role: r.role }) : ""].filter(Boolean).join(" · ")
 }
 
 /** The rows a cell shows: a pin as metric, pinned and now; a table as it is. */
@@ -302,7 +303,7 @@ export function displayTable(cell: Cell, label: (id: string) => string): { colum
             if (c.numeric) return
             const parent = sharedParent(full.map(r => r[j]))
             if (!parent) return
-            columns[j] = `${c.label} (all in ${parent.replace(/[./\\]$/, "")})`
+            columns[j] = t("reports.reportCells.all", { label: c.label, replace: parent.replace(/[./\\]$/, "") })
             for (const r of rows) r[j] = r[j].slice(parent.length)
         })
         return { columns, align: o.table.columns.map(c => (c.numeric ? "r" : "")), rows, full }
@@ -355,15 +356,15 @@ export function notIncludedLine(left: CellBlock[]): string {
         const s = b.cell.spec as Extract<CellSpec, { type: "slot" }>
         return `${b.cell.title || (s.kind === "figure" ? "a figure" : "a table")} (${s.kind}, from ${s.view})`
     })
-    return `Not included: ${items.join("; ")}. The template asked for ${left.length === 1 ? "it" : "them"}, and ${left.length === 1 ? "it was" : "they were"} not added from ${left.length === 1 ? "its view" : "their views"}.`
+    return t("reports.reportCells.notIncludedTemplateAsked", { value: items.join("; "), them: t("common.noun.it", { count: left.length }), theyWere: t("common.noun.itWas", { count: left.length }), theirViews: t("common.noun.itsView", { count: left.length }) })
 }
 
 /** "22 of 170 rows." when a table holds fewer rows than it found. */
 function rowsNote(cell: Cell): string {
-    const t = cell.output?.table
-    if (!t) return ""
-    const of = t.total < 0 ? `The first ${t.rows.length.toLocaleString("en-US")} rows; the query returned more.` : t.total > t.rows.length ? `${t.rows.length.toLocaleString("en-US")} of ${t.total.toLocaleString("en-US")} rows.` : ""
-    return [of, t.note ?? ""].filter(Boolean).join(" ")
+    const table2 = cell.output?.table
+    if (!table2) return ""
+    const of = table2.total < 0 ? t("reports.reportCells.firstRowsQueryReturned", { value: table2.rows.length.toLocaleString(intlLocale) }) : table2.total > table2.rows.length ? t("reports.reportCells.rows", { value: table2.rows.length.toLocaleString(intlLocale), value2: table2.total.toLocaleString(intlLocale) }) : ""
+    return [of, table2.note ?? ""].filter(Boolean).join(" ")
 }
 
 export function cellTitle(cell: Cell): string {
@@ -451,10 +452,10 @@ export function pdfBlocks(all: Block[], opts: { workspace: string; label: (id: s
             const shown = displayTable(c, opts.label)
             // A query that matched nothing prints its title and a sentence, not an empty grid of headers.
             if (shown && !shown.rows.length && c.output?.table) { out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: ` ${EMPTY_TABLE}` }] }); continue }
-            const t = shown
-            if (img) out.push({ kind: "image", image: img, title, caption: t ? "" : caption, provenance: t ? "" : provenance })
-            if (t) out.push({ kind: "table", table: t, title: img ? "" : title, caption, provenance })
-            if (!img && !t) out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: caption ? ` ${caption}` : " (no output)" }] })
+            const shown2 = shown
+            if (img) out.push({ kind: "image", image: img, title, caption: shown2 ? "" : caption, provenance: shown2 ? "" : provenance })
+            if (shown2) out.push({ kind: "table", table: shown2, title: img ? "" : title, caption, provenance })
+            if (!img && !shown2) out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: caption ? ` ${caption}` : t("reports.reportCells.noOutput") }] })
             continue
         }
         if (b.kind === "ul" || b.kind === "ol") {

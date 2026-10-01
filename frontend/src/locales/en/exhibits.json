@@ -1,0 +1,46 @@
+{
+  "exBars": {
+    "barLength": "bar length = {unit}"
+  },
+  "exProfile": {
+    "nothing": "nothing"
+  },
+  "exTimeline": {
+    "columnHeightPer": "column height = {unit} per {period}"
+  },
+  "exhibitTable": {
+    "fewerRows": "Fewer rows",
+    "allRows": "All {value} rows"
+  },
+  "exhibitView": {
+    "scan": "this scan",
+    "computed": "{partId} · computed on {value}",
+    "addConversationSReport": "Add it to this conversation's report; it runs again on the report's snapshot",
+    "report": "Report",
+    "drawing": "Drawing…",
+    "kindExhibitNoLonger": "This kind of exhibit ({kind}) is no longer made; its table is kept.",
+    "couldNotDrawScan": "Could not draw it from its scan ({value}); the table it had is kept."
+  },
+  "engine": {
+    "noSnapshotSourceRegistered": "No snapshot source is registered: import ~/features/exhibit-catalog/app.",
+    "noExhibit": "No exhibit \"{kind}\"."
+  },
+  "grounding": {
+    "whatDependsNotWhat": "{x} is what depends on it, not what it depends on",
+    "whatDependsNotWhat2": "{x} is what it depends on, not what depends on it",
+    "countsProductionCodeNot": "{x} counts production code, not the total",
+    "totalNotProductionCode": "{x} is a total, not production code",
+    "restatesNumberCitedEarlier": "restates a number cited earlier in the answer",
+    "factsParagraphCites": "facts its paragraph cites",
+    "citedFacts": "cited facts",
+    "countsAllCommitsNot": "{text} counts all commits, not fixes",
+    "statesWithoutCitingFact": "states {value} without citing a fact",
+    "none": "{text} is in none of the {value}",
+    "citedFactsNotAbout": "the cited facts are not about {e}"
+  },
+  "schema": {
+    "required": "\"{k}\" is required{value}.",
+    "mustOneGot": "\"{k}\" must be one of {value}; got \"{v}\".",
+    "mustNumberGot": "\"{k}\" must be a number; got \"{v}\"."
+  }
+}

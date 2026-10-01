@@ -2,8 +2,8 @@
   <div class="min-h-0 grow overflow-y-auto">
     <div class="mx-auto w-full max-w-[900px] px-6 pb-12 pt-5">
       <section>
-        <h2 class="ui-section-title">Module rules</h2>
-        <p v-if="!moduleFindings.length" class="mt-2 text-sm text-neutral-500">No module rule is broken by a file of this group.</p>
+        <h2 class="ui-section-title">{{ t('pages.groupsRules.moduleRules') }}</h2>
+        <p v-if="!moduleFindings.length" class="mt-2 text-sm text-neutral-500">{{ t('pages.groupsRules.noModuleRuleBroken') }}</p>
         <ul v-else class="mt-2 flex flex-col gap-1">
           <li v-for="(f, i) in moduleFindings" :key="i" class="flex items-center gap-3 text-sm">
             <span class="text-neutral-900">{{ f.rule }}</span>
@@ -13,9 +13,9 @@
         </ul>
       </section>
       <section class="mt-8">
-        <h2 class="ui-section-title">Lens rules: {{ group?.dimension }}</h2>
-        <p v-if="!declared" class="mt-2 text-sm text-neutral-500">{{ group?.dimension }} has no declared dependencies. <router-link to="/views/rules#lens" class="underline-offset-2 hover:underline">Declare them</router-link> to check this group's imports against them.</p>
-        <p v-else-if="!mine.length" class="mt-2 text-sm text-neutral-500">No import to or from this group crosses the declared order.</p>
+        <h2 class="ui-section-title">{{ t('pages.groupsRules.lensRules', { dimension: group?.dimension }) }}</h2>
+        <p v-if="!declared" class="mt-2 text-sm text-neutral-500">{{ t('pages.groupsRules.hasNoDeclaredDependencies', { dimension: group?.dimension }) }} <router-link to="/views/rules#lens" class="underline-offset-2 hover:underline">{{ t('pages.groupsRules.declareThem') }}</router-link>{{ ' ' + t('pages.groupsRules.checkGroupSImports') }}</p>
+        <p v-else-if="!mine.length" class="mt-2 text-sm text-neutral-500">{{ t('pages.groupsRules.noImportGroupCrosses') }}</p>
         <ul v-else class="mt-2 flex flex-col gap-1">
           <li v-for="e in mine" :key="e.file + e.toComponent" class="flex items-center gap-3 text-sm">
             <span class="w-40 shrink-0 truncate text-neutral-700">{{ groupName(e.fromGroup) }} → {{ groupName(e.toGroup) }}</span>
@@ -37,6 +37,7 @@ import { useLensFindings } from "~/features/rules/useLensFindings"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useGroupsStore } from "~/features/groups/groups.store"
 import { filePath } from "~/features/navigation/routes"
+import { t } from "~/shared/i18n"
 
 const route = useRoute()
 const data = useDataStore()

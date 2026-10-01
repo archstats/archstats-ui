@@ -2,6 +2,8 @@
 // reads it, and the global handler binds the ones that name a command.
 // "Mod" is ⌘ on macOS and Ctrl elsewhere.
 
+import { t } from "~/shared/i18n"
+
 export interface Shortcut {
     keys: string[]
     label: string
@@ -11,34 +13,34 @@ export interface Shortcut {
 }
 
 export const SHORTCUTS: Shortcut[] = [
-    { area: "App", keys: ["Mod", "R"], label: "Scan again", command: "scan:again" },
-    { area: "App", keys: ["Mod", "P"], label: "Go to anything", command: "goto" },
-    { area: "App", keys: ["Mod", "E"], label: "Export the current view", command: "export" },
-    { area: "App", keys: ["Mod", "O"], label: "Import a snapshot file", command: "snapshot:import" },
-    { area: "App", keys: ["Mod", "N"], label: "Add a folder as a workspace", command: "workspace:new" },
-    { area: "App", keys: ["Mod", "Shift", "N"], label: "Clone a repository", command: "workspace:clone" },
-    { area: "App", keys: ["Mod", "["], label: "Back", command: "nav:back" },
-    { area: "App", keys: ["Mod", "]"], label: "Forward", command: "nav:forward" },
-    { area: "App", keys: ["Mod", "J"], label: "Ask about what is on screen (again to go back)", command: "ask:open" },
-    { area: "App", keys: ["Mod", ","], label: "Settings", command: "settings:open" },
-    { area: "App", keys: ["?"], label: "Show these shortcuts", command: "help:shortcuts" },
-    { area: "Views", keys: ["Mod", "K"], label: "Query: find components and files by pattern" },
-    { area: "Views", keys: ["Esc"], label: "Clear the selection, close a menu" },
-    { area: "Views", keys: ["Enter"], label: "Open the selected node" },
-    { area: "Focus", keys: ["F"], label: "Focus on the selection and its neighbours (Connections)" },
-    { area: "Focus", keys: ["+"], label: "One hop more" },
-    { area: "Focus", keys: ["−"], label: "One hop less" },
-    { area: "Focus", keys: ["⌥", "←"], label: "Back to the previous focus" },
-    { area: "Focus", keys: ["⌥", "→"], label: "Forward again" },
-    { area: "Focus", keys: ["]"], label: "Walk to the strongest dependency (Connections)" },
-    { area: "Focus", keys: ["["], label: "Walk to the strongest dependent (Connections)" },
-    { area: "Selection", keys: ["Shift", "Click"], label: "Add to the selection" },
-    { area: "Selection", keys: ["Shift", "Drag"], label: "Select an area" },
-    { area: "Selection", keys: ["Mod", "G"], label: "Create a group from the selection" },
-    { area: "Lens builder", keys: ["1–9"], label: "Put the question into group 1 to 9" },
-    { area: "Lens builder", keys: ["N"], label: "New group from the question" },
-    { area: "Lens builder", keys: ["X"], label: "Not in this cut" },
-    { area: "Lens builder", keys: ["Mod", "Z"], label: "Undo" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "R"], label: t("shell.shortcuts.scanAgain"), command: "scan:again" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "P"], label: t("shell.shortcuts.goAnything"), command: "goto" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "E"], label: t("shell.shortcuts.exportCurrentView"), command: "export" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "O"], label: t("shell.shortcuts.importSnapshotFile"), command: "snapshot:import" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "N"], label: t("shell.shortcuts.addFolderWorkspace"), command: "workspace:new" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "Shift", "N"], label: t("shell.shortcuts.cloneRepository"), command: "workspace:clone" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "["], label: t("shell.shortcuts.back"), command: "nav:back" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "]"], label: t("shell.shortcuts.forward"), command: "nav:forward" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", "J"], label: t("shell.shortcuts.askAboutWhatScreen"), command: "ask:open" },
+    { area: t("shell.shortcuts.app"), keys: ["Mod", ","], label: t("shell.shortcuts.settings"), command: "settings:open" },
+    { area: t("shell.shortcuts.app"), keys: ["?"], label: t("shell.shortcuts.showTheseShortcuts"), command: "help:shortcuts" },
+    { area: t("shell.shortcuts.views"), keys: ["Mod", "K"], label: t("shell.shortcuts.queryFindComponentsFiles") },
+    { area: t("shell.shortcuts.views"), keys: ["Esc"], label: t("shell.shortcuts.clearSelectionCloseMenu") },
+    { area: t("shell.shortcuts.views"), keys: ["Enter"], label: t("shell.shortcuts.openSelectedNode") },
+    { area: t("shell.shortcuts.focus"), keys: ["F"], label: t("shell.shortcuts.focusSelectionNeighboursConnections") },
+    { area: t("shell.shortcuts.focus"), keys: ["+"], label: t("shell.shortcuts.oneHopMore") },
+    { area: t("shell.shortcuts.focus"), keys: ["−"], label: t("shell.shortcuts.oneHopLess") },
+    { area: t("shell.shortcuts.focus"), keys: ["⌥", "←"], label: t("shell.shortcuts.backPreviousFocus") },
+    { area: t("shell.shortcuts.focus"), keys: ["⌥", "→"], label: t("shell.shortcuts.forwardAgain") },
+    { area: t("shell.shortcuts.focus"), keys: ["]"], label: t("shell.shortcuts.walkStrongestDependencyConnections") },
+    { area: t("shell.shortcuts.focus"), keys: ["["], label: t("shell.shortcuts.walkStrongestDependentConnections") },
+    { area: t("shell.shortcuts.selection"), keys: ["Shift", "Click"], label: t("shell.shortcuts.addSelection") },
+    { area: t("shell.shortcuts.selection"), keys: ["Shift", "Drag"], label: t("shell.shortcuts.selectArea") },
+    { area: t("shell.shortcuts.selection"), keys: ["Mod", "G"], label: t("shell.shortcuts.createGroupSelection") },
+    { area: t("shell.shortcuts.lensBuilder"), keys: ["1–9"], label: t("shell.shortcuts.putQuestionGroup1") },
+    { area: t("shell.shortcuts.lensBuilder"), keys: ["N"], label: t("shell.shortcuts.newGroupQuestion") },
+    { area: t("shell.shortcuts.lensBuilder"), keys: ["X"], label: t("shell.shortcuts.notCut") },
+    { area: t("shell.shortcuts.lensBuilder"), keys: ["Mod", "Z"], label: t("shell.shortcuts.undo") },
 ]
 
 /** Whether a keydown matches a shortcut's keys (single keys, Mod+key and Mod+Shift+key). */
@@ -57,8 +59,8 @@ export function matches(event: KeyboardEvent, s: Shortcut): boolean {
 }
 
 export function keyLabel(key: string, mac: boolean): string {
-    if (key === "Mod") return mac ? "⌘" : "Ctrl"
-    if (key === "Shift") return mac ? "⇧" : "Shift"
-    if (key === "Enter") return mac ? "↵" : "Enter"
+    if (key === "Mod") return mac ? "⌘" : t("shell.shortcuts.ctrl")
+    if (key === "Shift") return mac ? "⇧" : t("shell.shortcuts.shift")
+    if (key === "Enter") return mac ? "↵" : t("shell.shortcuts.enter")
     return key
 }

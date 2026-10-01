@@ -1,0 +1,46 @@
+{
+  "exBars": {
+    "barLength": "lengte van de balk = {unit}"
+  },
+  "exProfile": {
+    "nothing": "niets"
+  },
+  "exTimeline": {
+    "columnHeightPer": "hoogte van de kolom = {unit} per {period}"
+  },
+  "exhibitTable": {
+    "fewerRows": "Minder rijen",
+    "allRows": "Alle {value} rijen"
+  },
+  "exhibitView": {
+    "scan": "deze scan",
+    "computed": "{partId} · berekend op {value}",
+    "addConversationSReport": "Voeg toe aan het rapport van dit gesprek; het draait opnieuw op het snapshot van het rapport",
+    "report": "Rapport",
+    "drawing": "Tekenen…",
+    "kindExhibitNoLonger": "Dit soort exhibit ({kind}) wordt niet meer gemaakt; de tabel blijft bewaard.",
+    "couldNotDrawScan": "Kon het niet tekenen vanuit de scan ({value}); de tabel die het had blijft bewaard."
+  },
+  "engine": {
+    "noSnapshotSourceRegistered": "Er is geen snapshot-bron geregistreerd: importeer ~/features/exhibit-catalog/app.",
+    "noExhibit": "Geen exhibit \"{kind}\"."
+  },
+  "grounding": {
+    "whatDependsNotWhat": "{x} is wat ervan afhangt, niet waar het van afhangt",
+    "whatDependsNotWhat2": "{x} is waar het van afhangt, niet wat ervan afhangt",
+    "countsProductionCodeNot": "{x} telt productiecode, niet het totaal",
+    "totalNotProductionCode": "{x} is een totaal, geen productiecode",
+    "restatesNumberCitedEarlier": "herhaalt een getal dat eerder in het antwoord genoemd is",
+    "factsParagraphCites": "feiten die de alinea noemt",
+    "citedFacts": "genoemde feiten",
+    "countsAllCommitsNot": "{text} telt alle commits, geen fixes",
+    "statesWithoutCitingFact": "noemt {value} zonder een feit aan te halen",
+    "none": "{text} staat in geen van de {value}",
+    "citedFactsNotAbout": "de genoemde feiten gaan niet over {e}"
+  },
+  "schema": {
+    "required": "\"{k}\" is verplicht{value}.",
+    "mustOneGot": "\"{k}\" moet een van {value} zijn; kreeg \"{v}\".",
+    "mustNumberGot": "\"{k}\" moet een getal zijn; kreeg \"{v}\"."
+  }
+}

@@ -17,6 +17,7 @@ import { SAVED_TEMPLATES_KEY, type SavedTemplate } from "./reportTemplates"
 import { newestFirst } from "~/features/workspace/scanOrder"
 import { formatScanTime } from "~/shared/time"
 import { snapshotName } from "~/features/workspace/snapshotName"
+import { t, dateLocale } from "~/shared/i18n"
 
 /** A scan as the kernel cells run on. */
 function kernelOf(scan: any): KernelScan {
@@ -152,9 +153,9 @@ export const useReportsStore = defineStore("reports", {
                 const doc = r.id === s.currentId ? s.doc : parseDoc(r.body)
                 for (const b of doc.blocks) {
                     if (isCell(b) && b.cell.spec.type === "pin") {
-                        const t = out.get(b.cell.spec.pinId) ?? []
-                        if (!t.includes(r.title)) t.push(r.title || "Untitled report")
-                        out.set(b.cell.spec.pinId, t)
+                        const ratio = out.get(b.cell.spec.pinId) ?? []
+                        if (!ratio.includes(r.title)) ratio.push(r.title || t("reports.reportsStore.untitledReport"))
+                        out.set(b.cell.spec.pinId, ratio)
                     }
                 }
             }
@@ -165,8 +166,8 @@ export const useReportsStore = defineStore("reports", {
             return s.list.map(r => {
                 const doc = r.id === s.currentId ? s.doc : parseDoc(r.body)
                 const nums = cellNumbers(doc.blocks)
-                const cells = doc.blocks.filter(isCell).flatMap(b => (b.cell.spec.type === "sql" ? [{ cellId: b.id, label: nums.get(b.id) ?? "Table", title: b.cell.title, sql: b.cell.spec.sql }] : []))
-                return { reportId: r.id, report: r.title || "Untitled report", cells }
+                const cells = doc.blocks.filter(isCell).flatMap(b => (b.cell.spec.type === "sql" ? [{ cellId: b.id, label: nums.get(b.id) ?? t("reports.reportsStore.table"), title: b.cell.title, sql: b.cell.spec.sql }] : []))
+                return { reportId: r.id, report: r.title || t("reports.reportsStore.untitledReport"), cells }
             }).filter(r => r.cells.length)
         },
         canUndo: (s) => s.undoStack.length > 0,
@@ -184,7 +185,7 @@ export const useReportsStore = defineStore("reports", {
                 await evidence.load(workspaceId)
                 if (evidence.pins.length && !this.list.length) {
                     const doc: ReportDoc = { version: 1, blocks: boardBlocks(evidence.pins), kernel: "newest" }
-                    const saved = (await SaveReport({ id: "", workspaceId, position: 0, title: "Evidence", body: JSON.stringify(doc), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any)) as any as ReportRecord
+                    const saved = (await SaveReport({ id: "", workspaceId, position: 0, title: t("reports.reportsStore.evidence"), body: JSON.stringify(doc), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any)) as any as ReportRecord
                     this.list = [...this.list, saved]
                 }
             }
@@ -203,7 +204,7 @@ export const useReportsStore = defineStore("reports", {
             this.burst = ""
             void this.loadFigures()
         },
-        async create(title = "Untitled report", blocks?: Block[]): Promise<ReportRecord | null> {
+        async create(title = t("reports.reportsStore.untitledReport"), blocks?: Block[]): Promise<ReportRecord | null> {
             if (!this.workspace) return null
             // A new report runs on the snapshot open now, not on whichever commit is newest.
             const kernel = this.openKernel?.id ?? "newest"
@@ -222,7 +223,7 @@ export const useReportsStore = defineStore("reports", {
         async rename(id: string, title: string) {
             const r = this.list.find(x => x.id === id)
             if (!r) return
-            r.title = title.trim() || "Untitled report"
+            r.title = title.trim() || t("reports.reportsStore.untitledReport")
             await SaveReport({ ...r, body: r.id === this.currentId ? JSON.stringify(this.doc) : r.body } as any)
         },
         async remove(id: string) {
@@ -345,7 +346,7 @@ export const useReportsStore = defineStore("reports", {
             if (!r) return
             // An untitled report takes the name of its first heading.
             const h = this.doc.blocks.find(b => !isCell(b) && b.kind === "h1" && b.text.trim()) as any
-            if (r.title === "Untitled report" && h) r.title = h.text.trim().slice(0, 80)
+            if ((r.title === t("reports.reportsStore.untitledReport") || r.title === "Untitled report") && h) r.title = h.text.trim().slice(0, 80)
             const body = JSON.stringify({ version: 1, blocks: this.doc.blocks.map(stripSession), kernel: this.doc.kernel })
             this.saving = true
             try {
@@ -461,7 +462,7 @@ export const useReportsStore = defineStore("reports", {
 
         // ── Adding from elsewhere ───────────────────────────────────────────
         /** Appends blocks to a report, opening it; used by "Add to report" in every view. */
-        async append(reportId: string | null, blocks: Block[], newTitle = "Untitled report") {
+        async append(reportId: string | null, blocks: Block[], newTitle = t("reports.reportsStore.untitledReport")) {
             if (!reportId) {
                 await this.create(newTitle, [...blocks, { id: newId(), kind: "p", text: "" }])
                 return
@@ -500,7 +501,7 @@ export const useReportsStore = defineStore("reports", {
          * Inserts blocks into a report after a block (null: at the top; "end":
          * at the end), creating the report when no id is given.
          */
-        async insertInto(reportId: string | null, after: string | null | "end", blocks: Block[], newTitle = "Untitled report") {
+        async insertInto(reportId: string | null, after: string | null | "end", blocks: Block[], newTitle = t("reports.reportsStore.untitledReport")) {
             if (!reportId) {
                 await this.create(newTitle, [...blocks, { id: newId(), kind: "p", text: "" }])
                 return
@@ -550,7 +551,7 @@ export const useReportsStore = defineStore("reports", {
             if (!b || !isCell(b) || b.cell.spec.type !== "slot" || !this.currentId) return null
             const s = b.cell.spec
             this.flushSave()
-            this.filling = { reportId: this.currentId, cellId, kind: s.kind, view: s.view, route: s.route, hint: s.hint, title: b.cell.title, number, reportTitle: this.current?.title || "Untitled report", take: s.take }
+            this.filling = { reportId: this.currentId, cellId, kind: s.kind, view: s.view, route: s.route, hint: s.hint, title: b.cell.title, number, reportTitle: this.current?.title || t("reports.reportsStore.untitledReport"), take: s.take }
             return s.route
         },
         /** Puts what was added where the slot was. */
@@ -589,8 +590,8 @@ export const useReportsStore = defineStore("reports", {
             const p = buildProvenance()
             const k = this.kernel
             return [
-                [p.workspace, k ? `snapshot ${k.label}` : "", k?.headCommit ? `commit ${k.headCommit.slice(0, 7)}${k.committed ? ` of ${k.committed}` : ""}` : "", k ? `analysis r${k.revision}` : ""].filter(Boolean).join(" · "),
-                `Written with Archstats Desktop ${p.appVersion}${p.pseudonymised ? " · authors pseudonymised" : ""} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
+                [p.workspace, k ? t("reports.reportsStore.snapshot", { kLabel: k.label }) : "", k?.headCommit ? t("reports.reportsStore.commit", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? t("reports.reportsStore.of", { committed: k.committed }) : "" }) : "", k ? t("reports.reportsStore.analysisR", { revision: k.revision }) : ""].filter(Boolean).join(" · "),
+                t("reports.reportsStore.writtenArchstatsDesktop", { appVersion: p.appVersion, value: p.pseudonymised ? t("reports.reportsStore.authorsPseudonymised") : "", toLocaleDateString: new Date().toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }) }),
             ]
         },
         async pdfBase64(opts: { pageSize?: "A4" | "Letter" } = {}): Promise<string> {
@@ -603,7 +604,7 @@ export const useReportsStore = defineStore("reports", {
                 if (b64) figs.set(c.id, b64)
             }
             const workspace = buildProvenance().workspace
-            const title = this.current?.title || "Report"
+            const title = this.current?.title || t("reports.reportsStore.report")
             const pageSize = opts.pageSize ?? "A4"
             const doc = { title, meta: this.exportMeta(), blocks: pdfBlocks(this.doc.blocks, { workspace, label: id => data.statNiceName(id) || id, figure: id => figs.get(id) ?? null }) }
             // The web view prints the editor's own type where it can (macOS); elsewhere Go lays the page out.

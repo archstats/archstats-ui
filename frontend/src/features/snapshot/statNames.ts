@@ -1,6 +1,8 @@
 // This class is used to resolve the name of a stat based on the version of Archstats.
 // It is used in cases where the name of a stat has changed between versions,
 // to facilitate backwards compatibility (resolving raw SQL column keys).
+import { t } from "~/shared/i18n"
+
 export class StatNameResolver {
     constructor(private version: string) {}
 
@@ -15,31 +17,31 @@ export class StatNameResolver {
 
 // Static dictionary index mapping standard SQL column names to human-readable nice display names.
 const statDictionary: Record<string, string> = {
-    "complexity__lines": "Lines of Code",
-    "complexity__files": "Number of Files",
-    "complexity__functions": "Number of Functions",
-    "complexity__classes": "Number of Classes",
-    "complexity__indentation__avg": "Average Indentation",
-    "complexity__indentation__max": "Maximum Indentation",
-    "git__commits": "Total Commits",
-    "git__commits:total": "Total Commits",
-    "git__commits__total": "Total Commits",
-    "git__authors": "Number of Authors",
-    "git__authors:total": "Number of Authors",
-    "git__authors__total": "Number of Authors",
-    "git__commits:last_30_days": "Commits (Last 30 Days)",
-    "git__commits:last_90_days": "Commits (Last 90 Days)",
-    "git__commits:last_365_days": "Commits (Last 365 Days)",
-    "modularity__instability": "Instability",
-    "modularity__abstractness": "Abstractness",
-    "modularity__distance": "Distance",
-    "modularity__coupling__afferent": "Afferent Coupling (Inbound)",
-    "modularity__coupling__efferent": "Efferent Coupling (Outbound)",
-    "modularity__component__imports": "Component Imports",
-    "modularity__component__imported_by": "Component Imported By",
-    "directory": "Directory",
-    "component_count": "Component Count",
-    "references": "References"
+    "complexity__lines": t("snapshot.statNames.linesCode"),
+    "complexity__files": t("snapshot.statNames.numberFiles"),
+    "complexity__functions": t("snapshot.statNames.numberFunctions"),
+    "complexity__classes": t("snapshot.statNames.numberClasses"),
+    "complexity__indentation__avg": t("snapshot.statNames.averageIndentation"),
+    "complexity__indentation__max": t("snapshot.statNames.maximumIndentation"),
+    "git__commits": t("snapshot.statNames.totalCommits"),
+    "git__commits:total": t("snapshot.statNames.totalCommits"),
+    "git__commits__total": t("snapshot.statNames.totalCommits"),
+    "git__authors": t("snapshot.statNames.numberAuthors"),
+    "git__authors:total": t("snapshot.statNames.numberAuthors"),
+    "git__authors__total": t("snapshot.statNames.numberAuthors"),
+    "git__commits:last_30_days": t("snapshot.statNames.commitsLast30Days"),
+    "git__commits:last_90_days": t("snapshot.statNames.commitsLast90Days"),
+    "git__commits:last_365_days": t("snapshot.statNames.commitsLast365Days"),
+    "modularity__instability": t("snapshot.statNames.instability"),
+    "modularity__abstractness": t("snapshot.statNames.abstractness"),
+    "modularity__distance": t("snapshot.statNames.distance"),
+    "modularity__coupling__afferent": t("snapshot.statNames.afferentCouplingInbound"),
+    "modularity__coupling__efferent": t("snapshot.statNames.efferentCouplingOutbound"),
+    "modularity__component__imports": t("snapshot.statNames.componentImports"),
+    "modularity__component__imported_by": t("snapshot.statNames.componentImported"),
+    "directory": t("snapshot.statNames.directory"),
+    "component_count": t("snapshot.statNames.componentCount"),
+    "references": t("snapshot.statNames.references")
 };
 
 export function getNiceStatName(stat: string): string {

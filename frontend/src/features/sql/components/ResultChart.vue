@@ -4,67 +4,67 @@
        report puts it in a report with its legend. -->
   <div class="flex min-h-0 flex-1 flex-col">
     <div class="rc-bar hairline-b">
-      <div class="ui-segmented" role="group" aria-label="Chart">
-        <button type="button" :aria-pressed="form === 'bars'" :disabled="!numCols.length" @click="form = 'bars'">Bars</button>
-        <button type="button" :aria-pressed="form === 'scatter'" :disabled="numCols.length < 2" :title="numCols.length < 2 ? 'A scatter needs two number columns' : ''" @click="form = 'scatter'">Scatter</button>
+      <div class="ui-segmented" role="group" :aria-label="t('sql.resultChart.chart')">
+        <button type="button" :aria-pressed="form === 'bars'" :disabled="!numCols.length" @click="form = 'bars'">{{ t('sql.resultChart.bars') }}</button>
+        <button type="button" :aria-pressed="form === 'scatter'" :disabled="numCols.length < 2" :title="numCols.length < 2 ? t('sql.resultChart.scatterNeedsTwoNumber') : ''" @click="form = 'scatter'">{{ t('sql.resultChart.scatter') }}</button>
       </div>
       <template v-if="form === 'bars'">
-        <label class="rc-field">Name <select v-model.number="labelCol" class="rc-select"><option v-for="j in textCols" :key="j" :value="j">{{ columns[j] }}</option><option v-if="!textCols.length" :value="-1">row number</option></select></label>
-        <label class="rc-field">Length <select v-model.number="valueCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
-        <div class="ui-segmented" role="group" aria-label="Bars shown">
+        <label class="rc-field">{{ t('sql.resultChart.name') }} <select v-model.number="labelCol" class="rc-select"><option v-for="j in textCols" :key="j" :value="j">{{ columns[j] }}</option><option v-if="!textCols.length" :value="-1">{{ t('sql.resultChart.rowNumber') }}</option></select></label>
+        <label class="rc-field">{{ t('sql.resultChart.length') }} <select v-model.number="valueCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
+        <div class="ui-segmented" role="group" :aria-label="t('sql.resultChart.barsShown')">
           <button v-for="n in [10, 25, 50]" :key="n" type="button" :aria-pressed="top === n" @click="top = n">{{ n }}</button>
         </div>
       </template>
       <template v-else>
-        <label class="rc-field">Across <select v-model.number="xCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
-        <label class="rc-field">Up <select v-model.number="yCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
-        <label class="rc-field" :title="canLog ? '' : 'Log scales need every value above zero'"><Checkbox v-model="log" :disabled="!canLog" aria-label="Log scales"/> Log</label>
+        <label class="rc-field">{{ t('sql.resultChart.across') }} <select v-model.number="xCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
+        <label class="rc-field">{{ t('sql.resultChart.up') }} <select v-model.number="yCol" class="rc-select"><option v-for="j in numCols" :key="j" :value="j">{{ columns[j] }}</option></select></label>
+        <label class="rc-field" :title="canLog ? '' : t('sql.resultChart.logScalesNeedEvery')"><Checkbox v-model="log" :disabled="!canLog" :aria-label="t('sql.resultChart.logScales')"/>{{ ' ' + t('sql.resultChart.log') }}</label>
       </template>
-      <span class="ml-auto truncate text-[11px] text-neutral-500">Save it, add it to a report or pin it from the button on the chart</span>
+      <span class="ml-auto truncate text-[11px] text-neutral-500">{{ t('sql.resultChart.saveAddReportPin') }}</span>
     </div>
 
     <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden" @mouseleave="hover = null">
-      <p v-if="!numCols.length" class="p-4 text-[13px] text-neutral-600">Nothing to draw: the result has no column of numbers. Select a count, a sum or a metric beside the names.</p>
+      <p v-if="!numCols.length" class="p-4 text-[13px] text-neutral-600">{{ t('sql.resultChart.nothingDrawResultHas') }}</p>
       <ExhibitFrame v-else :exhibit="figure" header="overlay" fill>
       <div ref="host" class="absolute inset-0">
       <svg v-if="w > 40 && h > 40" ref="svgEl" :width="w" :height="h" class="block select-none" role="img" :aria-label="ariaLabel" @mousemove="onMove">
-        <rect :width="w" :height="h" :fill="t.surface"/>
+        <rect :width="w" :height="h" :fill="theme.surface"/>
 
         <!-- Bars -->
         <g v-if="form === 'bars' && bars">
-          <g :font-family="t.fontMono" font-size="10.5" :fill="t.inkMuted">
+          <g :font-family="theme.fontMono" font-size="10.5" :fill="theme.inkMuted">
             <g v-for="tick in bars.ticks" :key="tick" :transform="`translate(${bars.x(tick)},0)`">
-              <line :y1="PAD_T - 4" :y2="bars.bottom" :stroke="tick === 0 ? t.hairlineStrong : t.hairline" stroke-width="1"/>
+              <line :y1="PAD_T - 4" :y2="bars.bottom" :stroke="tick === 0 ? theme.hairlineStrong : theme.hairline" stroke-width="1"/>
               <text :y="PAD_T - 9" text-anchor="middle">{{ short(tick) }}</text>
             </g>
           </g>
-          <text :x="bars.left" :y="14" :font-family="t.fontMono" font-size="11" :fill="t.inkSecondary">{{ columns[valueCol] }}<tspan v-if="nice(columns[valueCol])" :font-family="t.fontSans" :fill="t.inkMuted"> · {{ nice(columns[valueCol]) }}</tspan></text>
+          <text :x="bars.left" :y="14" :font-family="theme.fontMono" font-size="11" :fill="theme.inkSecondary">{{ columns[valueCol] }}<tspan v-if="nice(columns[valueCol])" :font-family="theme.fontSans" :fill="theme.inkMuted"> · {{ nice(columns[valueCol]) }}</tspan></text>
           <g v-for="(b, i) in bars.items" :key="i">
-            <text :x="bars.left - 8" :y="b.y + b.h / 2" dominant-baseline="central" text-anchor="end" :font-family="t.fontMono" font-size="11" :fill="hover?.i === i ? t.ink : t.inkSecondary">{{ b.labelShort }}</text>
-            <path :d="b.path" :fill="t.blue" :opacity="hover && hover.i !== i ? 0.55 : 1"/>
-            <text v-if="bars.values" :x="b.end + (b.v < 0 ? -5 : 5)" :y="b.y + b.h / 2" dominant-baseline="central" :text-anchor="b.v < 0 ? 'end' : 'start'" :font-family="t.fontMono" font-size="10.5" :fill="t.inkSecondary">{{ fmt(b.v) }}</text>
+            <text :x="bars.left - 8" :y="b.y + b.h / 2" dominant-baseline="central" text-anchor="end" :font-family="theme.fontMono" font-size="11" :fill="hover?.i === i ? theme.ink : theme.inkSecondary">{{ b.labelShort }}</text>
+            <path :d="b.path" :fill="theme.blue" :opacity="hover && hover.i !== i ? 0.55 : 1"/>
+            <text v-if="bars.values" :x="b.end + (b.v < 0 ? -5 : 5)" :y="b.y + b.h / 2" dominant-baseline="central" :text-anchor="b.v < 0 ? 'end' : 'start'" :font-family="theme.fontMono" font-size="10.5" :fill="theme.inkSecondary">{{ fmt(b.v) }}</text>
           </g>
-          <text v-if="bars.more" :x="bars.left" :y="h - 8" :font-family="t.fontSans" font-size="11" :fill="t.inkMuted">The first {{ bars.items.length }} of {{ fmt(bars.of) }} rows, in the result's order.</text>
+          <text v-if="bars.more" :x="bars.left" :y="h - 8" :font-family="theme.fontSans" font-size="11" :fill="theme.inkMuted">{{ t('sql.resultChart.firstRowsResultS', { itemsLength: bars.items.length, of: fmt(bars.of) }) }}</text>
         </g>
 
         <!-- Scatter -->
         <g v-else-if="form === 'scatter' && dots">
-          <g :font-family="t.fontMono" font-size="10.5" :fill="t.inkMuted">
+          <g :font-family="theme.fontMono" font-size="10.5" :fill="theme.inkMuted">
             <g v-for="tick in dots.xt" :key="`x${tick}`" :transform="`translate(${dots.x(tick)},0)`">
-              <line :y1="SC.t" :y2="h - SC.b" :stroke="t.hairline"/>
+              <line :y1="SC.t" :y2="h - SC.b" :stroke="theme.hairline"/>
               <text :y="h - SC.b + 15" text-anchor="middle">{{ short(tick) }}</text>
             </g>
             <g v-for="tick in dots.yt" :key="`y${tick}`" :transform="`translate(0,${dots.y(tick)})`">
-              <line :x1="SC.l" :x2="w - SC.r" :stroke="t.hairline"/>
+              <line :x1="SC.l" :x2="w - SC.r" :stroke="theme.hairline"/>
               <text :x="SC.l - 8" dominant-baseline="central" text-anchor="end">{{ short(tick) }}</text>
             </g>
           </g>
-          <text :x="w - SC.r" :y="h - 8" text-anchor="end" :font-family="t.fontMono" font-size="11" :fill="t.inkSecondary">{{ columns[xCol] }} →</text>
-          <text :x="SC.l" :y="16" :font-family="t.fontMono" font-size="11" :fill="t.inkSecondary">↑ {{ columns[yCol] }}</text>
-          <circle v-for="(d, i) in dots.items" :key="i" :cx="d.cx" :cy="d.cy" r="4" :fill="t.blue" :fill-opacity="hover && hover.i !== i ? 0.5 : 0.9" :stroke="t.surface" stroke-width="1.5"/>
-          <circle v-if="hover && dots.items[hover.i]" :cx="dots.items[hover.i].cx" :cy="dots.items[hover.i].cy" r="6" fill="none" :stroke="t.ink" stroke-width="1.5"/>
-          <text v-for="d in dots.labelled" :key="`l${d.i}`" :x="d.cx + 8" :y="d.cy - 7" :font-family="t.fontMono" font-size="10.5" :fill="t.inkSecondary" :stroke="t.surface" stroke-width="3" paint-order="stroke">{{ d.labelShort }}</text>
-          <text v-if="dots.dropped" :x="SC.l" :y="h - 8" :font-family="t.fontSans" font-size="11" :fill="t.inkMuted">{{ fmt(dots.dropped) }} rows without both numbers{{ log ? " above zero" : "" }} are left out.</text>
+          <text :x="w - SC.r" :y="h - 8" text-anchor="end" :font-family="theme.fontMono" font-size="11" :fill="theme.inkSecondary">{{ columns[xCol] }} →</text>
+          <text :x="SC.l" :y="16" :font-family="theme.fontMono" font-size="11" :fill="theme.inkSecondary">↑ {{ columns[yCol] }}</text>
+          <circle v-for="(d, i) in dots.items" :key="i" :cx="d.cx" :cy="d.cy" r="4" :fill="theme.blue" :fill-opacity="hover && hover.i !== i ? 0.5 : 0.9" :stroke="theme.surface" stroke-width="1.5"/>
+          <circle v-if="hover && dots.items[hover.i]" :cx="dots.items[hover.i].cx" :cy="dots.items[hover.i].cy" r="6" fill="none" :stroke="theme.ink" stroke-width="1.5"/>
+          <text v-for="d in dots.labelled" :key="`l${d.i}`" :x="d.cx + 8" :y="d.cy - 7" :font-family="theme.fontMono" font-size="10.5" :fill="theme.inkSecondary" :stroke="theme.surface" stroke-width="3" paint-order="stroke">{{ d.labelShort }}</text>
+          <text v-if="dots.dropped" :x="SC.l" :y="h - 8" :font-family="theme.fontSans" font-size="11" :fill="theme.inkMuted">{{ t('sql.resultChart.rowsWithoutBothNumbers', { dropped: fmt(dots.dropped), value: log ? t('sql.resultChart.aboveZero') : "" }) }}</text>
         </g>
       </svg>
       </div>
@@ -84,6 +84,7 @@ import Checkbox from "~/shared/ui/Checkbox.vue";
 import { chartTheme, useChartTheme } from "~/shared/ui/useChartTheme";
 import { useSvgFigure } from "~/features/export/useExportables";
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
+import { t, intlLocale } from "~/shared/i18n";
 
 const props = defineProps<{
   columns: string[]
@@ -96,8 +97,8 @@ const props = defineProps<{
 }>();
 
 const { version } = useChartTheme();
-const t = computed(() => { void version.value; return chartTheme(); });
-const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 3 }));
+const theme = computed(() => { void version.value; return chartTheme(); });
+const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(intlLocale) : n.toLocaleString(intlLocale, { maximumFractionDigits: 3 }));
 const short = (n: number) => (Math.abs(n) >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : Math.abs(n) >= 1e4 ? `${+(n / 1e3).toFixed(1)}k` : fmt(n));
 const nice = (c: string) => props.define(c)?.name ?? null;
 /** "Code Health: A rating from 1.0 to 10.0 …" for each plotted metric the snapshot defines. */
@@ -211,7 +212,7 @@ function onMove(e: MouseEvent) {
 }
 
 // ── As a figure ─────────────────────────────────────────────────────────
-const ariaLabel = computed(() => (form.value === "bars" ? `Bars of ${props.columns[valueCol.value]} by ${props.columns[labelCol.value] ?? "row"}` : `Scatter of ${props.columns[yCol.value]} against ${props.columns[xCol.value]}`));
+const ariaLabel = computed(() => (form.value === "bars" ? t("sql.resultChart.bars2", { value: props.columns[valueCol.value], value2: props.columns[labelCol.value] ?? t("sql.resultChart.row") }) : t("sql.resultChart.scatterAgainst", { value: props.columns[yCol.value], value2: props.columns[xCol.value] })));
 const figure = useSvgFigure({
   title: () => props.title,
   svg: () => svgEl.value,
@@ -219,10 +220,10 @@ const figure = useSvgFigure({
   legend: () => ({
     notes: [
       form.value === "bars"
-        ? `Bar length is ${props.columns[valueCol.value]}${nice(props.columns[valueCol.value]) ? ` (${nice(props.columns[valueCol.value])})` : ""}, per ${props.columns[labelCol.value] ?? "row"}; ${bars.value?.more ? `the first ${bars.value.items.length} of ${fmt(bars.value.of)} rows` : "every row"} in the query's order.`
-        : `Each dot is a row: ${props.columns[xCol.value]} across, ${props.columns[yCol.value]} up${log.value ? ", both on log scales" : ""}.`,
+        ? t("sql.resultChart.barLengthPerQuery", { value: props.columns[valueCol.value], value2: nice(props.columns[valueCol.value]) ? ` (${nice(props.columns[valueCol.value])})` : "", value3: props.columns[labelCol.value] ?? t("sql.resultChart.row"), value4: bars.value?.more ? t("sql.resultChart.firstRows", { itemsLength: bars.value.items.length, of: fmt(bars.value.of) }) : t("sql.resultChart.everyRow") })
+        : t("sql.resultChart.eachDotRowAcross", { value: props.columns[xCol.value], value2: props.columns[yCol.value], value3: log.value ? t("sql.resultChart.bothLogScales") : "" }),
       ...definitions(form.value === "bars" ? [props.columns[valueCol.value]] : [props.columns[xCol.value], props.columns[yCol.value]]),
-      `Query: ${props.sql.replace(/\s+/g, " ").trim()}`,
+      t("sql.resultChart.query", { replace: props.sql.replace(/\s+/g, " ").trim() }),
     ],
   }),
 });

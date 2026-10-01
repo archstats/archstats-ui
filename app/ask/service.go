@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/locale"
 	"net/http"
 	"os"
 	"strings"
@@ -278,14 +279,14 @@ type TestResult struct {
 func (s *Service) Test(id string) TestResult {
 	k, ok := kindOf(id)
 	if !ok {
-		return TestResult{Message: "No such provider"}
+		return TestResult{Message: locale.T("noSuchProvider")}
 	}
 	s.mu.Lock()
 	pc := s.cfg.Providers[id]
 	s.mu.Unlock()
 	pc.On = true
 	if !s.policy().allows(k, s.baseURL(k, pc)) {
-		return TestResult{Message: "Not allowed by policy"}
+		return TestResult{Message: locale.T("notAllowed")}
 	}
 	p, err := s.build(k, pc)
 	if err != nil {
@@ -298,7 +299,7 @@ func (s *Service) Test(id string) TestResult {
 		return TestResult{Message: err.Error()}
 	}
 	if len(ms) == 0 {
-		return TestResult{OK: true, Message: "It answers, but offers no chat models"}
+		return TestResult{OK: true, Message: locale.T("noChatModels")}
 	}
 	return TestResult{OK: true, Models: len(ms), Message: fmt.Sprintf("Connected: %d models", len(ms))}
 }

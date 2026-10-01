@@ -4,6 +4,8 @@
 // hold one directory and no files is one row: Java's src/main/java/org/acme
 // is a path, not four decisions.
 
+import { t } from "~/shared/i18n"
+
 export interface DirFile {
     name: string
     component: string | null
@@ -29,13 +31,13 @@ export interface DirNode {
 
 /** The rule each column is rolled up by; the table shows it and the CSV carries it. */
 export const ROLLUP_RULES: Array<[string, string]> = [
-    ["files", "count of files under the directory, at any depth"],
-    ["lines", "sum of the files' lines"],
-    ["components", "distinct components with a file under the directory"],
-    ["commits", "distinct commits touching a file under the directory, in the period"],
-    ["max_hotspot", "highest file hotspot score under the directory"],
-    ["lowest_health", "lowest file code health under the directory"],
-    ["edges_out", "distinct component dependencies from a component with files under the directory to one with none there"],
+    ["files", t("metrics.dirTree.countFilesUnderDirectory")],
+    ["lines", t("metrics.dirTree.sumFilesLines")],
+    ["components", t("metrics.dirTree.distinctComponentsFileUnder")],
+    ["commits", t("metrics.dirTree.distinctCommitsTouchingFile")],
+    ["max_hotspot", t("metrics.dirTree.highestFileHotspotScore")],
+    ["lowest_health", t("metrics.dirTree.lowestFileCodeHealth")],
+    ["edges_out", t("metrics.dirTree.distinctComponentDependenciesComponent")],
 ]
 
 export function buildDirTree(files: DirFile[]): DirNode {

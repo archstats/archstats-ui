@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/locale"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,8 +60,8 @@ func (w *WorkspaceService) SaveSnapshotCopy(scanID string, withSource bool) (str
 	}
 	dest, err := runtime.SaveFileDialog(w.ctx(), runtime.SaveDialogOptions{
 		DefaultFilename: name + ".db",
-		Title:           "Save a copy of the snapshot",
-		Filters:         []runtime.FileFilter{{DisplayName: "Archstats snapshot", Pattern: "*.db"}},
+		Title:           locale.T("saveSnapshotCopy"),
+		Filters:         []runtime.FileFilter{{DisplayName: locale.T("snapshotFilter"), Pattern: "*.db"}},
 	})
 	if err != nil || dest == "" {
 		return "", err

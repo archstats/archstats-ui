@@ -6,6 +6,7 @@
 // can be checked against its cells the same way.
 
 import type { Fact } from "./types"
+import { t, intlLocale } from "~/shared/i18n"
 
 export type Verdict = "verified" | "cited" | "partial" | "unsupported" | "uncited"
 
@@ -22,7 +23,12 @@ export interface Grounding {
     counts: Record<Verdict, number>
 }
 
-const NUMBER = /(?<![\w.#&-])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(%?)(?![\w])/g
+// Numbers as the app's language writes them: 1,234.5 in English, 1.234,5 in Dutch.
+const GROUP = intlLocale === "nl-NL" ? "." : ","
+const DECIMAL = intlLocale === "nl-NL" ? "," : "."
+const esc = (c: string) => `\\${c}`
+const NUMBER = new RegExp(`(?<![\\w${esc(DECIMAL)}#&-])(\\d{1,3}(?:${esc(GROUP)}\\d{3})+|\\d+)(?:${esc(DECIMAL)}(\\d+))?(%?)(?![\\w])`, "g")
+const numberOf = (m: RegExpMatchArray) => Number(`${m[1].split(GROUP).join("")}${m[2] ? `.${m[2]}` : ""}`)
 const CITE = /\bE(\d+)(?:\.(\d+))?\b/g
 
 /** Sentences and list items, with code, embeds and headings left out. */
@@ -68,7 +74,7 @@ function numbersIn(sentence: string): Array<{ value: number; text: string; perce
         .replace(/\b(19|20)\d\d-\d\d(-\d\d)?\b/g, " ")
     const out: Array<{ value: number; text: string; percent: boolean }> = []
     for (const m of text.matchAll(NUMBER)) {
-        const value = Number(`${m[1].replace(/,/g, "")}${m[2] ? `.${m[2]}` : ""}`)
+        const value = numberOf(m)
         // Small whole numbers are words ("two floors", "step 1"), not measurements.
         if (!m[2] && !m[3] && value <= 3) continue
         out.push({ value, text: m[0], percent: m[3] === "%" })
@@ -81,7 +87,7 @@ function valuesOf(facts: Fact[]): number[] {
     const out: number[] = []
     for (const f of facts) {
         out.push(...Object.values(f.values))
-        for (const m of f.text.matchAll(NUMBER)) out.push(Number(`${m[1].replace(/,/g, "")}${m[2] ? `.${m[2]}` : ""}`))
+        for (const m of f.text.matchAll(NUMBER)) out.push(numberOf(m))
     }
     return out.filter(Number.isFinite)
 }
@@ -137,9 +143,9 @@ const GENERIC = new Set(["components", "component", "views", "view", "pages", "p
 /** What a number is called, around it: which way a dependency runs, production or all, fixes or all commits. */
 const LABELS: Array<{ id: string; a: RegExp; b: RegExp; say: (x: string, fact: "a" | "b") => string }> = [
     { id: "direction", a: /depended on by|dependents?\b|used by|imported by|importers?|fan-in/i, b: /depends on|dependenc(?:y|ies)|\buses\b|\bimports\b|fan-out/i,
-        say: (x, f) => (f === "a" ? `${x} is what depends on it, not what it depends on` : `${x} is what it depends on, not what depends on it`) },
+        say: (x, f) => (f === "a" ? t("exhibits.grounding.whatDependsNotWhat", { x }) : t("exhibits.grounding.whatDependsNotWhat2", { x })) },
     { id: "scope", a: /\bproduction\b/i, b: /\btotal\b|\bin all\b|\bincluding\b|\ball files\b|\boverall\b/i,
-        say: (x, f) => (f === "a" ? `${x} counts production code, not the total` : `${x} is a total, not production code`) },
+        say: (x, f) => (f === "a" ? t("exhibits.grounding.countsProductionCodeNot", { x }) : t("exhibits.grounding.totalNotProductionCode", { x })) },
 ]
 
 /** The label nearest a number in a text, on either side: "a", "b", or null when nothing near says. */
@@ -162,7 +168,7 @@ function mislabelled(sentence: string, nums: Array<{ value: number; text: string
     const out: string[] = []
     const plainSentence = sentence.replace(/\[[^\]]*\]/g, " ")
     for (const x of nums) {
-        const forms = [x.text, x.value.toLocaleString("en-US")]
+        const forms = [x.text, x.value.toLocaleString(intlLocale)]
         const fact = cited.find(f => forms.some(n => new RegExp(`(?<![\\d.,])${n.replace(/[.,]/g, "\\$&")}(?![\\d])`).test(f.text)))
         if (!fact) continue
         const num = forms.find(n => fact.text.includes(n))!
@@ -172,7 +178,7 @@ function mislabelled(sentence: string, nums: Array<{ value: number; text: string
             if (inFact && inSentence && inFact !== inSentence) out.push(l.say(x.text, inFact))
         }
         // "Fix work" is a claim about fixes: the fact must count fixes, not all commits.
-        if (/\bfix(?:es|ed)?\b|\bbug\s*fix/i.test(plainSentence) && !/\bfix|\bbug/i.test(fact.text) && /commits?|changes?|churn/i.test(fact.text)) out.push(`${x.text} counts all commits, not fixes`)
+        if (/\bfix(?:es|ed)?\b|\bbug\s*fix/i.test(plainSentence) && !/\bfix|\bbug/i.test(fact.text) && /commits?|changes?|churn/i.test(fact.text)) out.push(t("exhibits.grounding.countsAllCommitsNot", { text: x.text }))
     }
     return [...new Set(out)]
 }
@@ -212,9 +218,9 @@ export function checkGrounding(text: string, facts: Fact[], opts: { given?: stri
                 if (!nums.length || nums.every(x => given.includes(x.value))) continue
                 // A number the answer already cited elsewhere is a restatement, not a new claim.
                 const restated = valuesOf(answerCited)
-                if (nums.every(x => matches(x.value, x.percent, restated))) { claims.push({ sentence, cites: [], verdict: "cited", reasons: ["restates a number cited earlier in the answer"] }); continue }
+                if (nums.every(x => matches(x.value, x.percent, restated))) { claims.push({ sentence, cites: [], verdict: "cited", reasons: [t("exhibits.grounding.restatesNumberCitedEarlier")] }); continue }
                 verdict = "uncited"
-                reasons.push(`states ${nums.map(x => x.text).join(", ")} without citing a fact`)
+                reasons.push(t("exhibits.grounding.statesWithoutCitingFact", { value: nums.map(x => x.text).join(", ") }))
             } else {
                 const known = valuesOf(cited)
                 const loose = nums.filter(x => !given.includes(x.value) && !matches(x.value, x.percent, known))
@@ -222,8 +228,8 @@ export function checkGrounding(text: string, facts: Fact[], opts: { given?: stri
                 const citedEntities = new Set(about.flatMap(f => f.entities).map(e => e.toLowerCase()))
                 const citedText = about.map(f => f.text.toLowerCase()).join(" ")
                 const strangers = names.filter(e => !citedEntities.has(e.toLowerCase()) && !citedText.includes(e.toLowerCase()))
-                for (const x of loose) reasons.push(`${x.text} is in none of the ${inherited ? "facts its paragraph cites" : "cited facts"}`)
-                for (const e of strangers) reasons.push(`the cited facts are not about ${e}`)
+                for (const x of loose) reasons.push(t("exhibits.grounding.none", { text: x.text, value: inherited ? t("exhibits.grounding.factsParagraphCites") : t("exhibits.grounding.citedFacts") }))
+                for (const e of strangers) reasons.push(t("exhibits.grounding.citedFactsNotAbout", { e }))
                 // Nothing of its own to check against the paragraph's citation: fine, and not claimed as verified either.
                 if (inherited && !nums.length && !names.length) continue
                 const wrongLabel = loose.length ? [] : mislabelled(sentence, nums, cited)

@@ -6,6 +6,7 @@ import { candidates } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, plural, sq } from "~/features/exhibits/words"
+import { t } from "~/shared/i18n"
 
 export interface CochangeData {
     of: string | null
@@ -15,23 +16,23 @@ export interface CochangeData {
 
 export const cochange = exhibit<CochangeData>()({
     kind: "cochange", v: 1,
-    summary: "Pairs that change in the same commits, with whether an import explains each (hidden coupling when none does).",
+    summary: t("git.exhibitsCochange.pairsChangeSameCommits"),
     params: s.object({
-        of: s.string().optional().describe("A component: what changes with it. The strongest pairs of the whole codebase when left out."),
-        hidden: s.boolean().optional().describe("Only pairs with no import between them."),
+        of: s.string().optional().describe(t("git.exhibitsCochange.componentWhatChangesStrongest")),
+        hidden: s.boolean().optional().describe(t("git.exhibitsCochange.onlyPairsNoImport")),
     }, { aliases: { component: "of", hidden_only: "hidden" } }),
 
-    title: (p, d) => ((d?.of ?? p.of) ? `What changes with ${d?.of ?? p.of}` : p.hidden ? "Hidden coupling: change together, no import" : "What changes together"),
+    title: (p, d) => ((d?.of ?? p.of) ? t("git.exhibitsCochange.whatChanges", { value: d?.of ?? p.of }) : p.hidden ? t("git.exhibitsCochange.hiddenCouplingChangeTogether") : t("git.exhibitsCochange.whatChangesTogether")),
 
     async resolve(p, { snap }): Promise<CochangeData | Absent> {
-        if (!("git_component_shared_commits" in snap.columns)) return { absent: "This snapshot has no co-change data (no git history)." }
+        if (!("git_component_shared_commits" in snap.columns)) return { absent: t("git.exhibitsCochange.snapshotHasNoCo") }
         const linked = new Set<string>()
         for (const r of snap.connections()) if (r.from !== r.to) { linked.add(`${r.from}\u0000${r.to}`); linked.add(`${r.to}\u0000${r.from}`) }
         let of: string | null = null
         let pairs: CochangeData["pairs"]
         if (p.of) {
             of = candidates(snap.components().map(c => String(c.name)), p.of)[0] ?? null
-            if (!of) return { absent: `No component matches "${p.of}".` }
+            if (!of) return { absent: t("git.exhibitsCochange.noComponentMatches", { of: p.of }) }
             const rows = await snap.query<{ other: string; shared_commits: number; pct: number; opct: number }>(`SELECT CASE WHEN pair_1 = ${sq(of)} THEN pair_2 ELSE pair_1 END AS other, shared_commits,
                 round(CASE WHEN pair_1 = ${sq(of)} THEN percentage_of_all_commits_pair_1 ELSE percentage_of_all_commits_pair_2 END, 1) AS pct,
                 round(CASE WHEN pair_1 = ${sq(of)} THEN percentage_of_all_commits_pair_2 ELSE percentage_of_all_commits_pair_1 END, 1) AS opct
@@ -45,7 +46,7 @@ export const cochange = exhibit<CochangeData>()({
         }
         if (p.hidden) pairs = pairs.filter(x => x.hidden)
         pairs = pairs.slice(0, 15)
-        if (!pairs.length) return { absent: of ? `${of} never changed together with another component${p.hidden ? " without an import between them" : ""}.` : "No pairs changed together." }
+        if (!pairs.length) return { absent: of ? t("git.exhibitsCochange.neverChangedTogetherAnother", { of, value: p.hidden ? t("git.exhibitsCochange.withoutImportBetweenThem") : "" }) : t("git.exhibitsCochange.noPairsChangedTogether") }
         return { of, hiddenOnly: !!p.hidden, pairs }
     },
 
@@ -53,12 +54,12 @@ export const cochange = exhibit<CochangeData>()({
         const hidden = d.pairs.filter(x => x.hidden).length
         const out: FactDraft[] = [{
             kind: "rank",
-            text: `${d.of ? `What changes with ${d.of}` : `Pairs that change in the same commits${d.hiddenOnly ? ", only those with no import between them" : ""}`}, most shared commits first; % = share of each side's own commits. ${hidden} of ${d.pairs.length} have no import between them.`,
+            text: t("git.exhibitsCochange.mostSharedCommitsFirst", { value: d.of ? t("git.exhibitsCochange.whatChanges2", { of: d.of }) : t("git.exhibitsCochange.pairsChangeSameCommits2", { value: d.hiddenOnly ? t("git.exhibitsCochange.onlyThoseNoImport") : "" }), hidden, pairsLength: d.pairs.length }),
             entities: d.of ? [d.of] : [], values: { pairs: d.pairs.length, hidden },
         }]
         d.pairs.forEach(x => out.push({
             kind: "row",
-            text: `${x.a} ↔ ${x.b}: ${plural(x.shared, "shared commit")} (${n(x.pa)}% of ${x.a}'s, ${n(x.pb)}% of ${x.b}'s); ${x.hidden ? "no import between them (hidden coupling)" : "an import explains it"}.`,
+            text: t("git.exhibitsCochange.sS", { a: x.a, b: x.b, sharedCommits: t("common.count.sharedCommit", { count: x.shared }), pa: n(x.pa), a2: x.a, pb: n(x.pb), b2: x.b, value: x.hidden ? t("git.exhibitsCochange.noImportBetweenThem") : t("git.exhibitsCochange.importExplains") }),
             entities: [x.a, x.b], values: { shared: x.shared, percent: x.pa, other_percent: x.pb }, element: `pair:${x.a}|${x.b}`,
         }))
         return out
@@ -67,11 +68,11 @@ export const cochange = exhibit<CochangeData>()({
     elements: d => d.pairs.map(x => ({ id: `pair:${x.a}|${x.b}`, label: `${x.a} ↔ ${x.b}` })),
 
     table: d => ({
-        columns: [{ id: "a", label: "Component" }, { id: "b", label: "Changes with" }, { id: "shared", label: "Shared commits", numeric: true }, { id: "pa", label: "% of first", numeric: true }, { id: "pb", label: "% of second", numeric: true }, { id: "import", label: "Import between them" }],
-        rows: d.pairs.map(x => ({ a: x.a, b: x.b, shared: x.shared, pa: x.pa, pb: x.pb, import: x.hidden ? "no — hidden" : "yes" })),
+        columns: [{ id: "a", label: t("git.exhibitsCochange.component") }, { id: "b", label: t("git.exhibitsCochange.changes") }, { id: "shared", label: t("git.exhibitsCochange.sharedCommits"), numeric: true }, { id: "pa", label: t("git.exhibitsCochange.first"), numeric: true }, { id: "pb", label: t("git.exhibitsCochange.second"), numeric: true }, { id: "import", label: t("git.exhibitsCochange.importBetweenThem") }],
+        rows: d.pairs.map(x => ({ a: x.a, b: x.b, shared: x.shared, pa: x.pa, pb: x.pb, import: x.hidden ? t("git.exhibitsCochange.noHidden") : t("git.exhibitsCochange.yes") })),
     }),
 
-    open: () => ({ route: "/views/connections", label: "Open Connections" }),
+    open: () => ({ route: "/views/connections", label: t("git.exhibitsCochange.openConnections") }),
 
     samples: snap => {
         const big = [...snap.components()].sort((a, b) => (Number(b.git__commits__total) || 0) - (Number(a.git__commits__total) || 0))[0]

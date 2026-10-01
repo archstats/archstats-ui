@@ -1,0 +1,92 @@
+{
+  "cycleMap": {
+    "cycles": "{nodeName}, in {cycles} cycles",
+    "in": "{nodeName} — in {cycles}",
+    "cutPlan": ". Cut {value} in the plan.",
+    "imports": "{from} imports {to} — in {cycles}{value}",
+    "centreRingedComponentsCycles": "{centreLabel} at the centre, ringed by the {nodesLength} components its cycles run through."
+  },
+  "snippetPopover": {
+    "sourceNotAvailableFile": "Source not available for this file.",
+    "viewFileLine": "View file at this line",
+    "goFile": "Go to file"
+  },
+  "tangleExhibit": {
+    "undoCutPicture": "Undo this cut in the picture",
+    "applyCutsUpHere": "Apply the cuts up to here in the picture",
+    "cutFreesCutsBefore": "This cut frees {value}; with the cuts before it, {freed} are out of the tangle",
+    "freesOut": "{refs} · frees {value} · {freed} out",
+    "moreCyclesView": "{value} more {cuts} in the Cycles view",
+    "cut": "cut {value}"
+  },
+  "tangleGraph": {
+    "tangleComponentsLevels": "Tangle of {orderLength} components in {layersLength} levels",
+    "level": "LEVEL {value}",
+    "zoom": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitView": "Fit to view",
+    "noLongerTangleCuts": "\nNo longer in a tangle with the cuts applied",
+    "linesDoubleClickOpen": "{name}\n{value} lines{value2}\nDouble-click to open",
+    "cutPlan": "\nCut {step} of the plan",
+    "importsBackUpAgainst": "{from} imports {to}, back up against the levels\n{imports} in {files}{value}",
+    "importsPointingDownLevels": "Imports pointing down the levels",
+    "importsPointingBackUp": "Imports pointing back up: each closes loops",
+    "cut": "Cut",
+    "importersSitTopWhat": "Importers sit at the top, what they import below them."
+  },
+  "tangleMatrix": {
+    "matrixTangleComponents": "Matrix of a tangle of {n} components",
+    "againstLevels": ", against the levels",
+    "cut": " (cut)",
+    "imports": "{from} imports {to}: {imports} in {files}{value}{value2}",
+    "rowImportsColumnLevels": "Row imports column, with the levels",
+    "belowDiagonalAgainstLevels": "Below the diagonal: against the levels, these make the cycles",
+    "rowsColumnsSameOrder": "Rows and columns are in the same order; the blocks along the diagonal are the levels."
+  },
+  "cycles": {
+    "distinctShortestCyclesHow": "The distinct shortest cycles, how many of each length, and the smallest as paths.",
+    "onlyCyclesThroughComponent": "Only cycles through this component.",
+    "through": " through {value}",
+    "smallestCycles": "The smallest cycles{value}",
+    "noComponentMatches": "No component matches \"{of}\".",
+    "noCycle": "{through} is in no cycle.",
+    "thereNoCyclesImport": "There are no cycles: the import graph has none.",
+    "runThrough": " run through {through}",
+    "length2": "{count} of length {length}",
+    "length": "{distinctShortestCycles}{value}. By length: {value2}.",
+    "mutualPairEachImports": " (a mutual pair: each imports the other)",
+    "smallestHasSmallestFirst": "The smallest has {components}{value}; smallest first below.",
+    "length3": "Length",
+    "cycle": "Cycle",
+    "openCycles": "Open Cycles"
+  },
+  "tangle": {
+    "oneTangleComponentsAll": "One tangle (components that all reach each other through imports) in levels, with the cuts that untangle it, most first.",
+    "componentTangleLargestTangle": "A component in the tangle; the largest tangle when left out.",
+    "around": " around {anchor}",
+    "tangle": "Tangle of {components}{value}",
+    "tangleAround": "The tangle around {of}",
+    "largestTangle": "The largest tangle",
+    "thereNoTanglesImport": "There are no tangles: the import graph has no cycles.",
+    "noComponentMatches": "No component matches \"{of}\".",
+    "noTangleNothingImports": "{anchor} is in no tangle: nothing it imports leads back to it.",
+    "numberSize": "number {rank} by size",
+    "largest": "largest",
+    "codebaseHolding": "{tangles} in the codebase, holding {components}; this is the {value}.",
+    "all": "all {cuts}",
+    "it": "it",
+    "tangleHasRunAgainst": "This tangle has {components} in {levels}; {imports} run against the levels, and cutting {value} leaves no tangle.",
+    "cutCutFreesCuts": "Cut {value}: {from} → {to}, {importReferences} in {files}{value2}; this cut frees {components}; with the cuts before it, {freed} are out of the tangle and {tangled} still tangled.",
+    "more": ", and {value} more",
+    "members": "Members: {value}{value2}.",
+    "furtherCutsCyclesView": "{value} further cuts are in the Cycles view.",
+    "importCut": "Import to cut",
+    "importReferences": "Import references",
+    "cutFrees": "This cut frees",
+    "outSoFar": "Out so far",
+    "stillTangled": "Still tangled",
+    "carried": "Carried by",
+    "tangleCutsOrderUntangles": "A tangle of {components}; cuts in the order that untangles most first.",
+    "openCycles": "Open Cycles"
+  }
+}

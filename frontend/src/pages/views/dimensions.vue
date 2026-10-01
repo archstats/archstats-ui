@@ -1,10 +1,10 @@
 <template>
   <ViewWorkspaceLayout
     keep-into="draft"
-    title="Build a lens"
+    :title="t('pages.dimensions.buildLens')"
     :nodes-count="studio.coverage.value.total"
     :connections-count="undefined"
-    :stats-labels="{ nodes: 'Components' }"
+    :stats-labels="{ nodes: t('pages.dimensions.components') }"
     :tabs="TABS"
     active-tab="focus"
     v-model:is-sidebar-open="panelOpen"
@@ -12,13 +12,13 @@
   >
     <template #title>
       <span class="flex items-center gap-2">
-        <span>Build a lens</span>
+        <span>{{ t('pages.dimensions.buildLens') }}</span>
         <input
           :value="draft.dimension"
           type="text"
           class="ui-input ui-input-sm w-36 font-medium"
-          aria-label="Lens name"
-          placeholder="Domain"
+          :aria-label="t('pages.dimensions.lensName')"
+          :placeholder="t('pages.dimensions.domain')"
           @change="draft.setDimension(($event.target as HTMLInputElement).value)"
         />
       </span>
@@ -29,7 +29,7 @@
            changing it is a proposal, and a proposal says what it would do
            before it does it. -->
       <span class="flex items-baseline gap-1.5 text-sm">
-        <span class="text-neutral-500">Cut by</span>
+        <span class="text-neutral-500">{{ t('pages.dimensions.cut') }}</span>
         <span class="font-medium text-neutral-800">{{ studio.way.value.label }}</span>
       </span>
     </template>
@@ -37,15 +37,15 @@
     <template #actions>
       <button type="button" class="ui-btn ui-btn-sm" :disabled="busy" :title="firstPassTitle" @click="openPropose">
         <Icon icon="waypoints" :size="13" class="text-neutral-500"/>
-        <span class="hidden min-[1440px]:inline">Propose a lens cut</span>
+        <span class="hidden min-[1440px]:inline">{{ t('pages.dimensions.proposeLensCut') }}</span>
       </button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon" :disabled="!draft.canUndo" title="Undo (⌘Z)" aria-label="Undo" @click="draft.undo()">
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon" :disabled="!draft.canUndo" :title="t('pages.dimensions.undoZ')" :aria-label="t('pages.dimensions.undo')" @click="draft.undo()">
         <Icon icon="rotate" :size="13"/>
       </button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="draft.groups.length === 0" :title="`Save ${draft.dimension || 'this lens'}`" @click="save">
-        <Icon icon="check" :size="13"/><span>Save</span>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" :disabled="draft.groups.length === 0" :title="t('pages.dimensions.save', { value: draft.dimension || t('pages.dimensions.lens') })" @click="save">
+        <Icon icon="check" :size="13"/><span>{{ t('pages.dimensions.save2') }}</span>
       </button>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" title="Throw the draft away" @click="discard">Discard</button>
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('pages.dimensions.throwDraftAway')" @click="discard">{{ t('pages.dimensions.discard') }}</button>
     </template>
 
     <template #visualizer>
@@ -66,9 +66,9 @@
           @merge="mergeGroups"
         />
         <div class="relative min-w-0 grow">
-          <LoadingState v-if="studio.loading.value" text="Reading the codebase"/>
-          <EmptyState v-else-if="studio.error.value" title="Could not read this snapshot" :text="studio.error.value" icon="alert"/>
-          <EmptyState v-else-if="studio.coverage.value.total === 0" title="Nothing to sort" text="This snapshot has no components." icon="layers"/>
+          <LoadingState v-if="studio.loading.value" :text="t('pages.dimensions.readingCodebase')"/>
+          <EmptyState v-else-if="studio.error.value" :title="t('pages.dimensions.couldNotReadSnapshot')" :text="studio.error.value" icon="alert"/>
+          <EmptyState v-else-if="studio.coverage.value.total === 0" :title="t('pages.dimensions.nothingSort')" :text="t('pages.dimensions.snapshotHasNoComponents')" icon="layers"/>
           <ConnectionsGraph
             v-else
             ref="graphRef"
@@ -92,12 +92,12 @@
 
           <!-- How to pick by hand, said where the hand already is. -->
           <p v-if="!multi.size && !studio.loading.value && studio.coverage.value.total" class="pointer-events-none absolute right-3 top-3 rounded bg-surface/80 px-2 py-1 text-xs text-neutral-500 backdrop-blur-sm">
-            Shift-drag to select an area · shift-click to add one · drag a node onto a group
+            {{ t('pages.dimensions.shiftDragSelectArea') }}
           </p>
           <SelectionBar
             v-if="multi.size"
             :count="multi.size"
-            :verb="movingHome ? 'Move to' : 'Put into'"
+            :verb="movingHome ? t('pages.dimensions.move') : t('pages.dimensions.put')"
             :home="movingHome"
             :groups="railGroups"
             :selected="Array.from(multi)"
@@ -120,8 +120,8 @@
         <div class="flex items-center gap-2">
           <span class="h-3 w-3 shrink-0 rounded-[3px]" :style="{ backgroundColor: studio.colorOf(activeGroup.key) }"></span>
           <h3 class="min-w-0 truncate text-base font-semibold text-neutral-900">{{ activeGroup.name }}</h3>
-          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto shrink-0" title="Back to the queue (Esc)" @click="activeKey = null">
-            <Icon icon="x" :size="12"/><span>Close</span>
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto shrink-0" :title="t('pages.dimensions.backQueueEsc')" @click="activeKey = null">
+            <Icon icon="x" :size="12"/><span>{{ t('pages.dimensions.close') }}</span>
           </button>
         </div>
 
@@ -172,7 +172,7 @@
 
       <QuestionCard
         v-else
-        :hint="`Asking ${studio.way.value.question} of the biggest thing still unsorted, ${studio.fitness.value.why}.`"
+        :hint="t('pages.dimensions.askingBiggestThingStill', { question: studio.way.value.question, why: studio.fitness.value.why })"
         :loading="studio.loading.value || studio.coverage.value.total === 0"
         :bundle="currentQuestion"
         :guesses="questionGuesses"
@@ -246,6 +246,7 @@ import { measureCut, measureMembers, readModularity } from "~/features/lens-buil
 import { parseQuery, runQuery } from "~/features/groups/query";
 import { commonName, nameForQuery, OUT_PILE, reasonFor, subjectOf, WAYS, type Bundle, type Grain, type WayId } from "~/features/lens-builder/studio";
 import { bondBreakdown, channelWords, type Channel } from "~/features/lens-builder/bond";
+import { t, intlLocale } from "~/shared/i18n";
 
 /** A word, not a sentence, for the row that does not match its band. */
 const CHANNEL_TAG: Record<Channel, string> = { static: "references", cochange: "co-change", kinship: "names" };
@@ -269,7 +270,7 @@ const suggest = useSuggestModel();
 // never a group itself. A group is a place in the rail, not a mode over here,
 // which is what made a tab marked "Sort" show a group editor.
 // One tab means no tab bar: the panel is titled by what it is showing.
-const TABS = [{ id: "focus", label: "Focus" }];
+const TABS = [{ id: "focus", label: t("pages.dimensions.focus") }];
 
 const EMPTY_SET = new Set<string>();
 const EMPTY_LIST: never[] = [];
@@ -333,7 +334,7 @@ const currentQuestion = computed<Bundle | null>(() => {
   if (id) {
     const style = studio.style.value;
     const segs = style.split(id);
-    return { key: "pinned:" + id, members: [id], prefix: style.join(segs.slice(0, -1)), name: segs.at(-1) ?? id, reason: "you picked it on the map", lines: studio.linesOf(id), sep: style.sep, depth: Math.max(0, segs.length - 1) };
+    return { key: "pinned:" + id, members: [id], prefix: style.join(segs.slice(0, -1)), name: segs.at(-1) ?? id, reason: t("pages.dimensions.youPickedMap"), lines: studio.linesOf(id), sep: style.sep, depth: Math.max(0, segs.length - 1) };
   }
   return studio.question.value;
 });
@@ -385,7 +386,7 @@ const groupBands = computed<CandidateBand[]>(() => {
         id: bond.id,
         label: bond.id,
         reason: channelWords(bond.channel),
-        tag: leaning.get(bond.id) ? `wants ${leaning.get(bond.id)!.name}` : CHANNEL_TAG[bond.channel],
+        tag: leaning.get(bond.id) ? t("pages.dimensions.wants", { leaningName: leaning.get(bond.id)!.name }) : CHANNEL_TAG[bond.channel],
         rival: leaning.get(bond.id)?.name ?? null,
         detail: bondBreakdown(bond),
         share: Math.max(6, bond.score),
@@ -485,7 +486,7 @@ const activeClaims = computed(() => {
 /** What an opened pile holds, shown in the rail where the pile lives. */
 const openPile = computed(() =>
   activeKey.value === OUT_PILE
-    ? { title: "Not in this cut", ids: draft.out, empty: "Nothing dropped. Press X on a question with no place in this dimension." }
+    ? { title: t("pages.dimensions.notCut"), ids: draft.out, empty: t("pages.dimensions.nothingDroppedPressX") }
     : null,
 );
 
@@ -538,7 +539,7 @@ function assignQuestion(key: string) {
 }
 /** An empty group, from nothing. The question stays where it is. */
 function newGroup(name?: string) {
-  const key = draft.addGroup(name || "New group");
+  const key = draft.addGroup(name || t("pages.dimensions.newGroup"));
   activeKey.value = key;
   renaming.value = key;
   studio.noteTouched(key);
@@ -547,7 +548,7 @@ function newGroup(name?: string) {
 /** A group made out of the question: the bundle goes straight into it. */
 function newGroupFromQuestion() {
   const q = currentQuestion.value;
-  const key = draft.addGroup(q?.name || "New group");
+  const key = draft.addGroup(q?.name || t("pages.dimensions.newGroup"));
   activeKey.value = null;
   studio.noteTouched(key);
   if (q) { draft.assign(q.members, key); pinned.value = null; }
@@ -678,7 +679,7 @@ function parkSelection(pile: "later" | "out") {
 }
 
 // ── The optional first pass ────────────────────────────────────────────
-const firstPassTitle = "Measure every way of cutting this codebase, then take one. It only proposes a group it can stand behind, so expect it to leave a good deal for you.";
+const firstPassTitle = t("pages.dimensions.measureEveryWayCutting");
 const presetLabel = computed(() => presetById(studio.way.value.preset).label);
 /**
  * A first pass runs the preset that matches the way, not a remembered one —
@@ -812,36 +813,36 @@ const repoReadings = computed<RepoReading[]>(() => {
   const unowned = codeowners.owned.value?.unowned.length ?? 0;
   const path = codeowners.found.value?.path ?? "CODEOWNERS";
   const notes = [
-    codeowners.singleRule.value ? `One rule (${codeowners.parsed.value?.rules[0].pattern}) owns every file: one group at 100%, which says who reviews, not how the code divides.` : "",
-    unowned ? `${unowned.toLocaleString("en-US")} files match no rule and stay unplaced; About this snapshot lists them.` : "",
+    codeowners.singleRule.value ? t("pages.dimensions.oneRuleOwnsEvery", { pattern: codeowners.parsed.value?.rules[0].pattern }) : "",
+    unowned ? t("pages.dimensions.filesMatchNoRule", { value: unowned.toLocaleString(intlLocale) }) : "",
   ].filter(Boolean).join(" ");
   const mWhy = buildModules.reason.value;
   const mSug = buildModules.suggestions.value;
   const fixtures = buildModules.fixtures.value.length;
   const modulesReading: RepoReading = {
     id: "modules",
-    label: "Build modules",
-    hint: `${buildModules.kindsText.value || "the manifests"}: one group per declared module`,
+    label: t("pages.dimensions.buildModules"),
+    hint: t("pages.dimensions.oneGroupPerDeclared", { value: buildModules.kindsText.value || t("pages.dimensions.manifests") }),
     icon: "boxes",
     ok: !mWhy && mSug.length > 1,
-    why: mWhy ?? (mSug.length > 1 ? undefined : "The modules hold no file of this snapshot."),
+    why: mWhy ?? (mSug.length > 1 ? undefined : t("pages.dimensions.modulesHoldNoFile")),
     preview: !mWhy && mSug.length > 1 ? previewOf(mSug) : null,
-    note: "Declared by the build files. Declare the dependencies they state from the lens's Declare sheet once it is saved.",
-    option: fixtures ? { label: `Show ${fixtures} test fixture${fixtures === 1 ? "" : "s"}`, on: buildModules.withFixtures.value } : undefined,
+    note: t("pages.dimensions.declaredBuildFilesDeclare"),
+    option: fixtures ? { label: t("pages.dimensions.showTest", { fixtures, fixtures2: t("common.noun.fixture", { count: fixtures }) }), on: buildModules.withFixtures.value } : undefined,
   };
   return [modulesReading, {
     id: "codeowners",
-    label: "Declared owners",
-    hint: `${path}: one group per owner set, divided by files where owners share a component`,
+    label: t("pages.dimensions.declaredOwners"),
+    hint: t("pages.dimensions.oneGroupPerOwner", { path }),
     icon: "users",
     ok: !why && sug.length > 0,
-    why: why ?? (sug.length ? undefined : `${path} owns no file in this snapshot.`),
+    why: why ?? (sug.length ? undefined : t("pages.dimensions.ownsNoFileSnapshot", { path })),
     preview: !why && sug.length ? previewOf(sug) : null,
     note: notes || undefined,
   }];
 });
 async function proposeRepo(id: string) {
-  const source = id === "codeowners" ? { name: "Owners", suggestions: codeowners.suggestions.value } : id === "modules" ? { name: "Modules", suggestions: buildModules.suggestions.value } : null;
+  const source = id === "codeowners" ? { name: t("pages.dimensions.owners"), suggestions: codeowners.suggestions.value } : id === "modules" ? { name: t("pages.dimensions.modules"), suggestions: buildModules.suggestions.value } : null;
   if (!source) return;
   busy.value = true;
   try {

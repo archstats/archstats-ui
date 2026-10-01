@@ -3,6 +3,8 @@
 // with its file and line; nothing is scored. A quantum is not computed here:
 // the architect draws it as a group, and `proposeLens` only offers a cut.
 
+import { t } from "~/shared/i18n"
+
 export interface Deployable {
   id: string
   name: string
@@ -89,54 +91,54 @@ export async function loadModel(query: Query, hasView: (v: string) => boolean): 
 // Words
 // ---------------------------------------------------------------------------
 
-export const KIND_LABEL: Record<string, string> = { image: "Image", app: "App", function: "Function", mobile_app: "Mobile app", desktop_app: "Desktop app" }
+export const KIND_LABEL: Record<string, string> = { image: t("deployables.deployables.image"), app: t("deployables.deployables.app"), function: t("deployables.deployables.function"), mobile_app: t("deployables.deployables.mobileApp"), desktop_app: t("deployables.deployables.desktopApp") }
 export const PLATFORM_LABEL: Record<string, string> = {
-  android: "Android", ios: "iOS", flutter: "Flutter", "react-native": "React Native", wails: "Wails", tauri: "Tauri", electron: "Electron",
+  android: t("deployables.deployables.android"), ios: "iOS", flutter: t("deployables.deployables.flutter"), "react-native": t("deployables.deployables.reactNative"), wails: t("deployables.deployables.wails"), tauri: t("deployables.deployables.tauri"), electron: t("deployables.deployables.electron"),
 }
 
 export const BUILT_BY_LABEL: Record<string, string> = {
-  skaffold: "Skaffold", jib: "Jib", buildpacks: "Buildpacks", ko: "ko", bazel: "Bazel", pipeline: "a pipeline",
-  compose: "Compose", "maven-docker": "a Maven plugin", "spring-boot": "Spring Boot", "dotnet-publish": "dotnet publish",
-  dockerfile: "a Dockerfile only", maven: "Maven", gradle: "Gradle", dotnet: ".NET", aspire: "the Aspire app host",
-  xcode: "Xcode", flutter: "Flutter", "react-native": "React Native", expo: "Expo",
-  wails: "Wails", tauri: "Tauri", electron: "Electron",
-  sam: "SAM", serverless: "Serverless", delegated: "a template outside this workspace",
+  skaffold: t("deployables.deployables.skaffold"), jib: t("deployables.deployables.jib"), buildpacks: t("deployables.deployables.buildpacks"), ko: "ko", bazel: t("deployables.deployables.bazel"), pipeline: "a pipeline",
+  compose: t("deployables.deployables.compose"), "maven-docker": t("deployables.deployables.mavenPlugin"), "spring-boot": t("deployables.deployables.springBoot"), "dotnet-publish": t("deployables.deployables.dotnetPublish"),
+  dockerfile: t("deployables.deployables.dockerfileOnly"), maven: t("deployables.deployables.maven"), gradle: t("deployables.deployables.gradle"), dotnet: ".NET", aspire: t("deployables.deployables.aspireAppHost"),
+  xcode: t("deployables.deployables.xcode"), flutter: t("deployables.deployables.flutter"), "react-native": t("deployables.deployables.reactNative"), expo: t("deployables.deployables.expo"),
+  wails: t("deployables.deployables.wails"), tauri: t("deployables.deployables.tauri"), electron: t("deployables.deployables.electron"),
+  sam: "SAM", serverless: t("deployables.deployables.serverless"), delegated: t("deployables.deployables.templateOutsideWorkspace"),
 }
 
 /** How a join was made, in words, strongest first. The last three are weaker and drawn dashed. */
 export const RESOLUTION_LABEL: Record<string, string> = {
-  declared: "Named outright",
+  declared: t("deployables.deployables.namedOutright"),
   path: "A path, resolved",
-  build_output: "A build output, traced to its module",
-  module_dependency: "A manifest dependency",
-  repository: "The only one in its repository",
-  paths: "What the pipeline's path filter watches",
-  name: "Joined by name",
-  shared_config: "From a ConfigMap several services load",
+  build_output: t("deployables.deployables.buildOutputTracedModule"),
+  module_dependency: t("deployables.deployables.manifestDependency"),
+  repository: t("deployables.deployables.onlyOneRepository"),
+  paths: t("deployables.deployables.whatPipelineSPath"),
+  name: t("deployables.deployables.joinedName"),
+  shared_config: t("deployables.deployables.configmapSeveralServicesLoad"),
 }
 export const WEAK_RESOLUTIONS = new Set(["name", "shared_config", "paths"])
 
 export const LINK_LABEL: Record<string, string> = {
-  calls: "Calls", messages: "Messages", uses_datastore: "Uses datastore",
-  shares_datastore: "Shares a database with", shares_module: "Carries", depends_on: "Starts after",
+  calls: t("deployables.deployables.calls"), messages: t("deployables.deployables.messages"), uses_datastore: t("deployables.deployables.usesDatastore"),
+  shares_datastore: t("deployables.deployables.sharesDatabase"), shares_module: t("deployables.deployables.carries"), depends_on: t("deployables.deployables.startsAfter"),
 }
 
 export const UNRESOLVED_LABEL: Record<string, string> = {
-  not_built_here: "Not built in this workspace",
-  external: "A public image",
-  interpolated: "Named by a variable",
-  ambiguous: "Could be more than one thing",
-  not_found: "Named, but nothing here answers to it",
+  not_built_here: t("deployables.deployables.notBuiltWorkspace"),
+  external: t("deployables.deployables.publicImage"),
+  interpolated: t("deployables.deployables.namedVariable"),
+  ambiguous: t("deployables.deployables.couldMoreThanOne"),
+  not_found: t("deployables.deployables.namedButNothingHere"),
 }
 
 export const STAGES = ["build", "test", "scan", "package", "publish", "deploy", "approve"] as const
 export const STAGE_LABEL: Record<string, string> = {
-  build: "Build", test: "Test", scan: "Scan", package: "Package", publish: "Publish", deploy: "Deploy", approve: "Approve",
+  build: t("deployables.deployables.build"), test: t("deployables.deployables.test"), scan: t("deployables.deployables.scan"), package: t("deployables.deployables.package"), publish: t("deployables.deployables.publish"), deploy: t("deployables.deployables.deploy"), approve: t("deployables.deployables.approve"),
 }
 
 export const SYSTEM_LABEL: Record<string, string> = {
-  github_actions: "GitHub Actions", gitlab: "GitLab CI", jenkins: "Jenkins", azure_pipelines: "Azure Pipelines",
-  circleci: "CircleCI", travis: "Travis CI", bitbucket: "Bitbucket Pipelines", cloud_build: "Cloud Build", other: "Other",
+  github_actions: t("deployables.deployables.githubActions"), gitlab: t("deployables.deployables.gitlabCi"), jenkins: t("deployables.deployables.jenkins"), azure_pipelines: t("deployables.deployables.azurePipelines"),
+  circleci: "CircleCI", travis: t("deployables.deployables.travisCi"), bitbucket: t("deployables.deployables.bitbucketPipelines"), cloud_build: t("deployables.deployables.cloudBuild"), other: t("deployables.deployables.other"),
 }
 
 /** Splits a comma list the engine wrote into one column. */
@@ -611,14 +613,14 @@ export function codeShare(m: DeployableModel): CodeShare {
 export const BLOCK_KINDS = new Set(["reusable_workflow", "composite_action", "docker_action", "javascript_action", "action"])
 
 export const PIPELINE_KIND_LABEL: Record<string, string> = {
-  workflow: "Workflow", reusable_workflow: "Reusable workflow", composite_action: "Composite action",
-  docker_action: "Docker action", javascript_action: "JavaScript action", action: "Action", pipeline: "Pipeline",
+  workflow: t("deployables.deployables.workflow"), reusable_workflow: t("deployables.deployables.reusableWorkflow"), composite_action: t("deployables.deployables.compositeAction"),
+  docker_action: t("deployables.deployables.dockerAction"), javascript_action: t("deployables.deployables.javascriptAction"), action: t("deployables.deployables.action"), pipeline: t("deployables.deployables.pipeline"),
 }
 
 export const TRIGGER_LABEL: Record<string, string> = {
-  push: "push", pull_request: "pull request", pull_request_target: "pull request", schedule: "schedule",
-  workflow_dispatch: "by hand", workflow_call: "called", release: "release", merge_group: "merge queue",
-  workflow_run: "after a workflow", repository_dispatch: "API call", issue_comment: "comment", issues: "issue",
+  push: "push", pull_request: t("deployables.deployables.pullRequest"), pull_request_target: t("deployables.deployables.pullRequest"), schedule: "schedule",
+  workflow_dispatch: t("deployables.deployables.hand"), workflow_call: "called", release: "release", merge_group: t("deployables.deployables.mergeQueue"),
+  workflow_run: t("deployables.deployables.afterWorkflow"), repository_dispatch: t("deployables.deployables.apiCall"), issue_comment: "comment", issues: "issue",
 }
 
 /** A pipeline's kind; snapshots before revision 9 say only what the triggers show. */
@@ -681,7 +683,7 @@ export function shipRows(m: DeployableModel): ShipRow[] {
   return [...rows.values()]
     .map(r => {
       const names = [...new Set(r.pipelines.map(p => p.name))]
-      r.name = names.length === 1 ? names[0] : `${r.pipelines.length} pipelines`
+      r.name = names.length === 1 ? names[0] : t("deployables.deployables.pipelines", { pipelinesLength: r.pipelines.length })
       r.pipelines.sort((a, b) => a.id.localeCompare(b.id))
       r.environments.sort((a, b) => envOrder(a) - envOrder(b) || a.localeCompare(b))
       return r

@@ -2,7 +2,7 @@
 <template>
   <div class="relative inline-block" tabindex="-1" @focusout="onFocusOut">
     <button type="button" class="ui-btn min-w-[200px] justify-between gap-2 font-normal" :aria-expanded="isDropdownOpen" @click="toggleDropdown">
-      <span :class="{ 'text-neutral-400': !modelValue.length }">{{ modelValue.length }} of {{ allRealStats.length }} columns</span>
+      <span :class="{ 'text-neutral-400': !modelValue.length }">{{ t('metrics.statSelectMulti.columns', { modelValueLength: modelValue.length, allRealStatsLength: allRealStats.length }) }}</span>
       <Icon icon="chevron-down" :size="14" class="shrink-0 text-neutral-400"></Icon>
     </button>
     <div v-show="isDropdownOpen" class="ui-popover absolute right-0 top-full z-50 mt-1 max-h-[450px] w-[340px] overflow-y-auto p-2 animate-in">
@@ -17,6 +17,7 @@ import StatSelectMultiNode from "./StatSelectMultiNode.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import StatSelectOptionNode from "./StatSelectOptionNode.vue";
 import {ref} from "vue";
+import { t } from "~/shared/i18n";
 
 const props = defineProps<{
   modelValue: string[],

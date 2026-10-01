@@ -14,6 +14,7 @@
 import type { ModuleGraph } from "./moduleGraph"
 import { laneFlows, mutualPairs } from "./graph"
 import { UNCLASSIFIED } from "~/features/frameworks/frameworkProfiles"
+import { t, intlLocale } from "~/shared/i18n"
 
 /** One module depending on another, as the evidence for a claim. */
 export interface Reference {
@@ -128,28 +129,28 @@ export function findingsFor({ graph, laneLabel, generated = new Set(), definitio
         const from = laneLabel(strongest.from)
         const to = laneLabel(strongest.to)
         const headline = oneWay
-            ? `${from} depends on ${to}, and never the other way round.`
-            : `${from} and ${to} depend on each other.`
+            ? t("units.findings.dependsNeverOtherWay", { from, to })
+            : t("units.findings.dependEachOther", { from, to })
         const detail = oneWay
-            ? `${strongest.count} module references in one direction, none back. That is a layer holding.`
-            : `${strongest.count} module references one way, ${strongest.reverse} the other. Neither layer can move without the other.`
+            ? t("units.findings.moduleReferencesOneDirection", { strongestCount: strongest.count })
+            : t("units.findings.moduleReferencesOneWay", { strongestCount: strongest.count, reverse: strongest.reverse })
         out.push({
             id: "layering",
             headline,
             detail,
             tone: oneWay ? "neutral" : "warn",
-            action: oneWay ? `Open the ${strongest.count}` : `Open the ${strongest.reverse} going back`,
+            action: oneWay ? t("units.findings.open", { strongestCount: strongest.count }) : t("units.findings.openGoingBack", { reverse: strongest.reverse }),
             region: {
                 id: "layering",
-                label: oneWay ? `${from} into ${to}` : `${to} back into ${from}`,
+                label: oneWay ? t("units.findings.into", { from, to }) : t("units.findings.back", { to, from }),
                 paths: pathsOf(between),
                 references: between.map((e) => ({
                     from: e.from, to: e.to, weight: e.via.length,
                     back: weightOf.get(e.to + "\n" + e.from),
                 })),
                 note: oneWay
-                    ? `Every reference from ${from} into ${to}.`
-                    : `The ${strongest.reverse} running from ${to} back into ${from}, against the grain of the other ${strongest.count}.`,
+                    ? t("units.findings.everyReference", { from, to })
+                    : t("units.findings.runningBackAgainstGrain", { reverse: strongest.reverse, to, from, strongestCount: strongest.count }),
                 claim: { headline, detail, tone: oneWay ? "neutral" : "warn" },
                 sides: { a: strongest.from, b: strongest.to },
             },
@@ -162,25 +163,25 @@ export function findingsFor({ graph, laneLabel, generated = new Set(), definitio
         const names = new Map(modules.map((m) => [m.path, m.name]))
         const [a, b] = knots[0]
         const headline = knots.length === 1
-            ? `${names.get(a) ?? a} and ${names.get(b) ?? b} import each other.`
-            : `${knots.length} pairs of modules import each other.`
-        const detail = "Neither side can be extracted, tested or replaced on its own."
+            ? t("units.findings.importEachOther", { value: names.get(a) ?? a, value2: names.get(b) ?? b })
+            : t("units.findings.pairsModulesImportEach", { knotsLength: knots.length })
+        const detail = t("units.findings.neitherSideCanExtracted")
         out.push({
             id: "knots",
             headline,
             detail,
             tone: "warn",
-            action: knots.length === 1 ? "Open the pair" : "Open the pairs",
+            action: knots.length === 1 ? t("units.findings.openPair") : t("units.findings.openPairs"),
             region: {
                 id: "knots",
-                label: knots.length === 1 ? "A knotted pair" : `${knots.length} knotted pairs`,
+                label: knots.length === 1 ? t("units.findings.knottedPair") : t("units.findings.knottedPairs", { knotsLength: knots.length }),
                 paths: [...new Set(knots.flat())],
                 references: knots.map(([x, y]) => ({
                     from: x, to: y,
                     weight: weightOf.get(x + "\n" + y) ?? 0,
                     back: weightOf.get(y + "\n" + x) ?? 0,
                 })),
-                note: "Each row is two modules that import one another.",
+                note: t("units.findings.eachRowTwoModules"),
                 claim: { headline, detail, tone: "warn" },
             },
         })
@@ -196,20 +197,20 @@ export function findingsFor({ graph, laneLabel, generated = new Set(), definitio
     if (crowded.length > 0) {
         const top = crowded[0]
         const headline = crowded.length === 1
-            ? `${top.name} declares ${top.declared.length} separate things.`
-            : `${crowded.length} modules declare ${CROWDED} or more things each.`
-        const detail = `${top.name} is the largest at ${top.declared.length}. A module doing this many jobs is where an extraction starts.`
+            ? t("units.findings.declaresSeparateThings", { topName: top.name, declaredLength: top.declared.length })
+            : t("units.findings.modulesDeclareMoreThings", { crowdedLength: crowded.length, CROWDED })
+        const detail = t("units.findings.largestModuleDoingMany", { topName: top.name, declaredLength: top.declared.length })
         out.push({
             id: "crowded",
             headline,
             detail,
             tone: "warn",
-            action: crowded.length === 1 ? "Open it" : "Open them",
+            action: crowded.length === 1 ? t("units.findings.open2") : t("units.findings.openThem"),
             region: {
                 id: "crowded",
-                label: "Crowded modules",
+                label: t("units.findings.crowdedModules"),
                 paths: crowded.map((m) => m.path),
-                note: `Sorted by what each one declares. Anything over ${CROWDED} is here.`,
+                note: t("units.findings.sortedWhatEachOne", { CROWDED }),
                 claim: { headline, detail, tone: "warn" },
             },
         })
@@ -219,19 +220,19 @@ export function findingsFor({ graph, laneLabel, generated = new Set(), definitio
     const hubs = modules.filter((m) => m.fanIn > 0).sort((a, b) => b.fanIn - a.fanIn)
     if (hubs.length > 0 && hubs[0].fanIn >= MIN_FLOW) {
         const top = hubs.slice(0, 3)
-        const headline = `${top.map((m) => m.name).join(", ")} carry the most weight.`
-        const detail = `${hubs[0].name} is imported by ${hubs[0].fanIn} other modules. Changing one of these reaches furthest.`
+        const headline = t("units.findings.carryMostWeight", { value: top.map((m) => m.name).join(", ") })
+        const detail = t("units.findings.importedOtherModulesChanging", { name: hubs[0].name, fanIn: hubs[0].fanIn })
         out.push({
             id: "hubs",
             headline,
             detail,
             tone: "neutral",
-            action: "Open the load-bearing modules",
+            action: t("units.findings.openLoadBearingModules"),
             region: {
                 id: "hubs",
-                label: "Load-bearing",
+                label: t("units.findings.loadBearing"),
                 paths: hubs.slice(0, 20).map((m) => m.path),
-                note: "The twenty modules the rest of the codebase imports most.",
+                note: t("units.findings.twentyModulesRestCodebase"),
                 claim: { headline, detail, tone: "neutral" },
             },
         })
@@ -251,23 +252,22 @@ export function findingsFor({ graph, laneLabel, generated = new Set(), definitio
         const isolated = never.filter((m) => m.fanOut === 0).length
         const tool = never.filter((m) => generated.has(m.path)).length
         const share = Math.round((never.length / modules.length) * 100)
-        const headline = `${never.length.toLocaleString()} ${never.length === 1 ? "module is" : "modules are"} never imported.`
+        const headline = t("units.findings.neverImported", { modulesAre: t("common.count.moduleIs", { count: never.length }) })
         // Django loads every migration by name, so they all land here; they
         // are not deletion candidates and the sentence should not imply it.
-        const written = tool > 0 ? ` ${tool.toLocaleString()} ${tool === 1 ? "is" : "are"} generated by a tool.` : ""
-        const detail = `${share}% of the total; ${isolated.toLocaleString()} of them import nothing either.${written} ` +
-            "Entry points, config and tests belong here; anything else is a candidate for deletion."
+        const written = tool > 0 ? t("units.findings.generatedTool", { are: t("common.count.is", { count: tool }) }) : ""
+        const detail = t("units.findings.totalThemImportNothing", { share, isolated: isolated.toLocaleString(intlLocale), written })
         out.push({
             id: "dark",
             headline,
             detail,
             tone: "neutral",
-            action: "Open them",
+            action: t("units.findings.openThem"),
             region: {
                 id: "dark",
-                label: "Never imported",
+                label: t("units.findings.neverImported2"),
                 paths: never.map((m) => m.path),
-                note: "No module in this codebase imports these. Those that import nothing either are listed first.",
+                note: t("units.findings.noModuleCodebaseImports"),
                 claim: { headline, detail, tone: "neutral" },
             },
         })

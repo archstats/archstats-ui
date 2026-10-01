@@ -9,6 +9,15 @@ import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { useCloneStore } from "~/features/workspace/clone.store";
 import { hasCommand, registerCommand, runCommand } from "~/platform/commands";
 import { SHORTCUTS, matches } from "./shortcuts";
+import { t } from "~/shared/i18n";
+
+/** Native menu ids and the message that names each. */
+const MENU_LABELS: Record<string, string> = {
+    "menu:file": "file", "workspace:new": "addFolder", "workspace:clone": "cloneRepository", "scan:again": "scanAgain",
+    "snapshot:reveal": "revealSnapshot", "snapshot:save": "saveSnapshotCopy", "snapshot:import": "importSnapshot",
+    "export": "export", "settings:open": "settings", "menu:view": "view", "goto": "goToAnything",
+    "nav:back": "back", "nav:forward": "forward", "menu:help": "help", "help:shortcuts": "keyboardShortcuts", "help:metrics": "metricReference",
+}
 
 // The shell's commands: registered once in the layout, run from the native
 // menu (macOS) or the keyboard (everywhere). Keeps the menu's enabled items
@@ -87,8 +96,10 @@ export function useMenuCommands() {
         off.forEach(f => f());
     });
 
+    // The native menu is built in Go with English titles; these name it in the app's language.
+    const labels = Object.fromEntries(Object.entries(MENU_LABELS).map(([id, key]) => [id, t(`shell.menu.${key}`)]))
     watch(
-        () => ({ hasWorkspace: !!workspaces.active, hasSnapshot: !!data.hasData, scanning: !!workspaces.isScanning, canExport: !!data.hasData }),
+        () => ({ hasWorkspace: !!workspaces.active, hasSnapshot: !!data.hasData, scanning: !!workspaces.isScanning, canExport: !!data.hasData, labels }),
         (state) => { try { void SetState(state as any); } catch { /* no native menu here */ } },
         { immediate: true, deep: true },
     );

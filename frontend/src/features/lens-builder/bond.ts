@@ -16,6 +16,7 @@
 //     broad answer rather than a specific one.
 
 import { SIGNALS, type GraphMetrics, type SignalId, type SuggestInput } from "./suggest"
+import { t } from "~/shared/i18n"
 
 /** The couplings that decide a cut, kept apart so each can be reported. */
 export type Channel = "static" | "cochange" | "kinship" | "role"
@@ -186,9 +187,9 @@ export interface Bond {
 }
 
 const CHANNEL_WORDS: Record<Channel, string> = {
-  static: "references between them",
-  cochange: "changed in the same commits",
-  kinship: "the same names, packages and types",
+  static: t("lens-builder.bond.referencesBetweenThem"),
+  cochange: t("lens-builder.bond.changedSameCommits"),
+  kinship: t("lens-builder.bond.sameNamesPackagesTypes"),
   role: "used by the same things, and use the same things",
 }
 
@@ -398,14 +399,14 @@ export function bandBonds(bonds: Bond[], cohesion: number, leaning?: Map<string,
   const bands: Band[] = [
     {
       id: "strong",
-      label: "Strongly related",
+      label: t("lens-builder.bond.stronglyRelated"),
       hint: measured
-        ? "Binds about as hard as this group already binds to itself, leans here harder than anywhere else, and is near enough the top to be worth judging"
-        : "The strongest pull in the pool; the group is still too small to measure against",
+        ? t("lens-builder.bond.bindsAboutHardGroup")
+        : t("lens-builder.bond.strongestPullPoolGroup"),
       items: [],
     },
-    { id: "related", label: "Related", hint: "A real pull, well short of the group's own grip", items: [] },
-    { id: "loose", label: "Loosely related", hint: "A thread or two. Judge these yourself", items: [] },
+    { id: "related", label: t("lens-builder.bond.related"), hint: t("lens-builder.bond.realPullWellShort"), items: [] },
+    { id: "loose", label: t("lens-builder.bond.looselyRelated"), hint: t("lens-builder.bond.threadTwoJudgeThese"), items: [] },
   ]
   let strong = 0
   for (const bond of bonds) {
@@ -426,15 +427,15 @@ export function bandBonds(bonds: Bond[], cohesion: number, leaning?: Map<string,
 /** A plain reading of what the score is made of, for a tooltip. */
 export function bondBreakdown(bond: Bond): string {
   const total = bond.parts.static + bond.parts.cochange + bond.parts.kinship + bond.parts.role
-  if (total <= 0) return "No measurable coupling"
+  if (total <= 0) return t("lens-builder.bond.noMeasurableCoupling")
   const pct = (n: number) => Math.round((n / total) * 100)
   const said: string[] = []
-  if (bond.parts.static > 0) said.push(`${pct(bond.parts.static)}% references`)
+  if (bond.parts.static > 0) said.push(t("lens-builder.bond.references", { static: pct(bond.parts.static) }))
   if (bond.parts.cochange > 0) said.push(`${pct(bond.parts.cochange)}% co-change`)
-  if (bond.parts.kinship > 0) said.push(`${pct(bond.parts.kinship)}% names and packages`)
-  if (bond.parts.role > 0) said.push(`${pct(bond.parts.role)}% same role`)
-  const hop = bond.indirect > bond.direct ? " · reached through a go-between" : ""
-  const hub = bond.hub ? " · coupled to many others, so discounted" : ""
+  if (bond.parts.kinship > 0) said.push(t("lens-builder.bond.namesPackages", { kinship: pct(bond.parts.kinship) }))
+  if (bond.parts.role > 0) said.push(t("lens-builder.bond.sameRole", { role: pct(bond.parts.role) }))
+  const hop = bond.indirect > bond.direct ? t("lens-builder.bond.reachedThroughGoBetween") : ""
+  const hub = bond.hub ? t("lens-builder.bond.coupledManyOthersSo") : ""
   return said.join(" · ") + hop + hub
 }
 

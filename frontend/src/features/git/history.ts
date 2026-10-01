@@ -1,6 +1,7 @@
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
 import { formatDate } from "~/shared/time"
+import { t, intlLocale } from "~/shared/i18n"
 
 // What "the last 90 days" counts back from. From analysis revision 2 the
 // engine anchors its windows at the newest commit scanned (git_based_on), so
@@ -10,11 +11,11 @@ import { formatDate } from "~/shared/time"
 // two.
 
 export const HISTORY_PERIODS = [
-    { id: "all", label: "All", title: "All history", days: null as number | null },
-    { id: "1y", label: "1 y", title: "Last year", days: 365 },
-    { id: "180", label: "180 d", title: "Last 180 days", days: 180 },
-    { id: "90", label: "90 d", title: "Last 90 days", days: 90 },
-    { id: "30", label: "30 d", title: "Last 30 days", days: 30 },
+    { id: "all", label: t("git.history.all"), title: t("git.history.allHistory"), days: null as number | null },
+    { id: "1y", label: "1 y", title: t("git.history.lastYear"), days: 365 },
+    { id: "180", label: "180 d", title: t("git.history.last180Days"), days: 180 },
+    { id: "90", label: "90 d", title: t("git.history.last90Days"), days: 90 },
+    { id: "30", label: "30 d", title: t("git.history.last30Days"), days: 30 },
 ] as const
 
 export type HistoryPeriodId = (typeof HISTORY_PERIODS)[number]["id"]
@@ -46,10 +47,10 @@ export function anchorSql(anchor: HistoryAnchor = historyAnchor()): string {
 
 /** "Last 90 days to 2 Jun 2026 (3f2a91c)", or "… to scan time" for older snapshots. */
 export function anchorLabel(days: number | null, anchor: HistoryAnchor = historyAnchor()): string {
-    if (days === null) return "All history"
-    const span = days === 365 ? "Last year" : `Last ${days} days`
-    if (anchor.source === "scan") return `${span} to scan time`
-    return `${span} to ${formatDate(anchor.date)}${anchor.commit ? ` (${anchor.commit.slice(0, 7)})` : ""}`
+    if (days === null) return t("git.history.allHistory")
+    const span = days === 365 ? t("git.history.lastYear") : t("git.history.lastDays", { days })
+    if (anchor.source === "scan") return t("git.history.scanTime", { span })
+    return t("git.history.to", { span, date: formatDate(anchor.date), value: anchor.commit ? ` (${anchor.commit.slice(0, 7)})` : "" })
 }
 
 /**
@@ -61,5 +62,5 @@ export function anchorNote(anchor: HistoryAnchor = historyAnchor()): string {
     const scan: any = useWorkspacesStore().openScan
     if (!scan?.startedAt) return ""
     const gap = Math.round((new Date(scan.startedAt).getTime() - anchor.date.getTime()) / 86400000)
-    return gap > 90 ? `Periods count back from the scanned commit, ${gap.toLocaleString("en-US")} days before the scan.` : ""
+    return gap > 90 ? t("git.history.periodsCountBackScanned", { value: gap.toLocaleString(intlLocale) }) : ""
 }

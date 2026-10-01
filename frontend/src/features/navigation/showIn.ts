@@ -1,5 +1,6 @@
 import { componentPath, filePath, searchPath } from "./routes"
 import { focusText } from "./focusSpec"
+import { t } from "~/shared/i18n"
 
 // "Show in…": one list of places a component, a file, a pair or a selection
 // can be looked at next, the same wherever it is offered. A selection travels
@@ -24,25 +25,25 @@ export function showInTargets(kind: ShowInKind, ids: string[]): ShowInTarget[] {
   const one = ids.length === 1 ? ids[0] : null
   const out: ShowInTarget[] = []
   if (kind === "component") {
-    if (one) out.push({ id: "detail", label: "Component page", icon: "external-link", to: componentPath(one) })
+    if (one) out.push({ id: "detail", label: t("navigation.showIn.componentPage"), icon: "external-link", to: componentPath(one) })
     out.push({
-      id: "connections", label: "Connections", icon: "network",
+      id: "connections", label: t("navigation.showIn.connections"), icon: "network",
       to: one ? `/views/connections?level=components&sel=${encodeURIComponent(one)}` : `/views/connections?level=components&${hl(ids)}`,
     })
-    out.push({ id: "matrix", label: "Dependency matrix", icon: "table", to: `/views/connections?rep=matrix&level=components&${hl(ids)}` })
-    if (one) out.push({ id: "cochange", label: "Changes with it (co-change)", icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${encodeURIComponent(one)}` })
-    if (one) out.push({ id: "cycles", label: "Its cycles", icon: "refresh", to: `/views/components/cycles?component=${encodeURIComponent(one)}` })
-    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?view=table&${hl(ids)}` })
-    out.push({ id: "hotspots", label: "Hotspots", icon: "flame", to: `/views/components/hotspots?${hl(ids)}` })
+    out.push({ id: "matrix", label: t("navigation.showIn.dependencyMatrix"), icon: "table", to: `/views/connections?rep=matrix&level=components&${hl(ids)}` })
+    if (one) out.push({ id: "cochange", label: t("navigation.showIn.changesCoChange"), icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${encodeURIComponent(one)}` })
+    if (one) out.push({ id: "cycles", label: t("navigation.showIn.cycles"), icon: "refresh", to: `/views/components/cycles?component=${encodeURIComponent(one)}` })
+    out.push({ id: "metrics", label: t("navigation.showIn.metricsTable"), icon: "table", to: `/views/metrics?view=table&${hl(ids)}` })
+    out.push({ id: "hotspots", label: t("navigation.showIn.hotspots"), icon: "flame", to: `/views/components/hotspots?${hl(ids)}` })
     out.push({
-      id: "files", label: one ? "Its files" : "Their files", icon: "file-code", to: "/views/metrics?grain=files&view=table",
+      id: "files", label: one ? t("navigation.showIn.files") : t("navigation.showIn.theirFiles"), icon: "file-code", to: "/views/metrics?grain=files&view=table",
       focus: focusText({ op: "only", anchors: ids, depth: null }),
     })
-    if (one) out.push({ id: "search", label: "Find it in code", icon: "search-code", to: searchPath(one) })
+    if (one) out.push({ id: "search", label: t("navigation.showIn.findCode"), icon: "search-code", to: searchPath(one) })
   } else {
-    if (one) out.push({ id: "detail", label: "File page", icon: "external-link", to: filePath(one) })
-    out.push({ id: "metrics", label: "Metrics table", icon: "table", to: `/views/metrics?grain=files&view=table&${hl(ids)}` })
-    out.push({ id: "hotspots", label: "Hotspots", icon: "flame", to: `/views/components/hotspots?grain=files&${hl(ids)}` })
+    if (one) out.push({ id: "detail", label: t("navigation.showIn.filePage"), icon: "external-link", to: filePath(one) })
+    out.push({ id: "metrics", label: t("navigation.showIn.metricsTable"), icon: "table", to: `/views/metrics?grain=files&view=table&${hl(ids)}` })
+    out.push({ id: "hotspots", label: t("navigation.showIn.hotspots"), icon: "flame", to: `/views/components/hotspots?grain=files&${hl(ids)}` })
   }
   return out
 }
@@ -51,11 +52,11 @@ export function showInTargets(kind: ShowInKind, ids: string[]): ShowInTarget[] {
 export function showPairTargets(from: string, to: string): ShowInTarget[] {
   const sel = encodeURIComponent(`${from}→${to}`)
   return [
-    { id: "imports", label: "The imports between them", icon: "network", to: `/views/connections?level=components&sel=${sel}` },
-    { id: "cochange", label: "Their co-change", icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${sel}` },
-    { id: "matrix", label: "Dependency matrix", icon: "table", to: `/views/connections?rep=matrix&level=components&${hl([from, to])}` },
+    { id: "imports", label: t("navigation.showIn.importsBetweenThem"), icon: "network", to: `/views/connections?level=components&sel=${sel}` },
+    { id: "cochange", label: t("navigation.showIn.theirCoChange"), icon: "git-commit", to: `/views/connections?source=git&level=components&sel=${sel}` },
+    { id: "matrix", label: t("navigation.showIn.dependencyMatrix"), icon: "table", to: `/views/connections?rep=matrix&level=components&${hl([from, to])}` },
     {
-      id: "files", label: "Files of both", icon: "file-code", to: "/views/metrics?grain=files&view=table",
+      id: "files", label: t("navigation.showIn.filesBoth"), icon: "file-code", to: "/views/metrics?grain=files&view=table",
       focus: focusText({ op: "only", anchors: [from, to], depth: null }),
     },
   ]

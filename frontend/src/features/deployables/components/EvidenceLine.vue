@@ -14,10 +14,11 @@ import { computed } from "vue"
 import OpenInEditor from "~/features/files/components/OpenInEditor.vue"
 import { filePath } from "~/features/navigation/routes"
 import { RESOLUTION_LABEL, WEAK_RESOLUTIONS } from "../deployables"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{ file: string; line?: number; resolution?: string }>()
 
-const RESOLUTION_SHORT: Record<string, string> = { name: "by name", shared_config: "shared ConfigMap", paths: "by path filter" }
+const RESOLUTION_SHORT: Record<string, string> = { name: t("deployables.evidenceLine.name"), shared_config: t("deployables.evidenceLine.sharedConfigmap"), paths: t("deployables.evidenceLine.pathFilter") }
 const weak = computed(() => !!props.resolution && WEAK_RESOLUTIONS.has(props.resolution))
 // The last two segments are enough to recognise a file in a narrow rail.
 const shortFile = computed(() => {

@@ -1,13 +1,13 @@
 <template>
-  <LoadingState v-if="loading" text="Reading files…"/>
-  <EmptyState v-else-if="error" title="Could not read files" :text="error" icon="alert"/>
-  <EmptyState v-else-if="files.length === 0" title="No files in this component" :text="`The snapshot records no files for ${name}.`" icon="file-text"/>
+  <LoadingState v-if="loading" :text="t('pages.componentsInside.readingFiles')"/>
+  <EmptyState v-else-if="error" :title="t('pages.componentsInside.couldNotReadFiles')" :text="error" icon="alert"/>
+  <EmptyState v-else-if="files.length === 0" :title="t('pages.componentsInside.noFilesComponent')" :text="t('pages.componentsInside.snapshotRecordsNoFiles', { name })" icon="file-text"/>
   <div v-else class="flex min-h-0 grow flex-col overflow-hidden">
     <div v-if="hasJava" class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
-      <div class="ui-segmented" role="group" aria-label="What to show">
+      <div class="ui-segmented" role="group" :aria-label="t('pages.componentsInside.whatShow')">
         <button v-for="v in views" :key="v.value" type="button" :aria-pressed="view === v.value" @click="view = v.value">{{ v.label }}</button>
       </div>
-      <span class="ui-toolbar-meta ml-auto">{{ view === "wiring" ? "How this component's own classes import each other" : "Every file in this component" }}</span>
+      <span class="ui-toolbar-meta ml-auto">{{ view === "wiring" ? t('pages.componentsInside.howComponentSOwn') : t('pages.componentsInside.everyFileComponent') }}</span>
     </div>
 
     <!-- Wiring: the classes inside the component, and the rules they break. -->
@@ -19,18 +19,18 @@
     <!-- Left: every file, ordered by whichever reading is being followed. -->
     <div class="flex w-[360px] shrink-0 flex-col bg-surface hairline-r">
       <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
-        <input v-model="search" type="search" class="ui-input ui-input-sm min-w-0 grow" placeholder="Search files" aria-label="Search files"/>
-        <SingleSelect v-if="roleFilterOptions.length > 1" v-model="roleFilter" :options="roleFilterOptions" placeholder="All roles"/>
-        <router-link v-if="folder" :to="xrayPath(folder)" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="`X-ray ${folder}: every file read and grouped into topics`">X-ray</router-link>
+        <input v-model="search" type="search" class="ui-input ui-input-sm min-w-0 grow" :placeholder="t('pages.componentsInside.searchFiles')" :aria-label="t('pages.componentsInside.searchFiles')"/>
+        <SingleSelect v-if="roleFilterOptions.length > 1" v-model="roleFilter" :options="roleFilterOptions" :placeholder="t('pages.componentsInside.allRoles')"/>
+        <router-link v-if="folder" :to="xrayPath(folder)" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="t('pages.componentsInside.xRayEveryFile', { folder })">{{ t('pages.componentsInside.xRay') }}</router-link>
       </div>
       <div class="flex h-8 shrink-0 items-center gap-1 px-3 hairline-b">
-        <span class="ui-label">Sort</span>
-        <div class="ui-segmented ml-auto" role="group" aria-label="Sort files">
+        <span class="ui-label">{{ t('pages.componentsInside.sort') }}</span>
+        <div class="ui-segmented ml-auto" role="group" :aria-label="t('pages.componentsInside.sortFiles')">
           <button v-for="s in sorts" :key="s.id" type="button" :aria-pressed="sortBy === s.id" :disabled="!s.available" @click="sortBy = s.id">{{ s.label }}</button>
         </div>
       </div>
       <div class="min-h-0 grow overflow-y-auto">
-        <EmptyState v-if="visibleFiles.length === 0" title="No files match" :text="`0 of ${files.length} files match.`"/>
+        <EmptyState v-if="visibleFiles.length === 0" :title="t('pages.componentsInside.noFilesMatch')" :text="t('pages.componentsInside.text0FilesMatch', { filesLength: files.length })"/>
         <button
           v-for="file in visibleFiles"
           v-else
@@ -57,20 +57,19 @@
     <div class="flex min-w-0 grow flex-col overflow-hidden">
       <div class="flex h-10 shrink-0 items-center gap-3 px-4 hairline-b">
         <span v-if="selectedFile" class="ui-toolbar-meta flex min-w-0 items-center gap-1.5">
-          <span>Lines <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.lines) }}</span></span>
+          <span>{{ t('pages.componentsInside.lines') }} <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.lines) }}</span></span>
           <span class="text-neutral-300">·</span>
-          <span>Commits <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.commits) }}</span></span>
+          <span>{{ t('pages.componentsInside.commits') }} <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.commits) }}</span></span>
           <span class="text-neutral-300">·</span>
-          <span>Authors <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.authors) }}</span></span>
+          <span>{{ t('pages.componentsInside.authors') }} <span class="font-mono text-neutral-800">{{ formatNumber(selectedFile.authors) }}</span></span>
           <span class="text-neutral-300">·</span>
           <span class="flex items-center gap-1.5" :title="selectedFile.deductions ?? undefined">
-            Health
-            <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(selectedFile.health))"></span>
+{{ t('pages.componentsInside.health') }} <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(selectedFile.health))"></span>
             <span class="font-mono" :class="levelTextClass(healthLevel(selectedFile.health))">{{ formatHealth(selectedFile.health) }}</span>
           </span>
         </span>
         <router-link v-if="selected" :to="`/views/files/${selected}`" class="ui-btn ui-btn-sm ml-auto">
-          <Icon icon="file-code" :size="13" class="text-neutral-500"/><span>Open file</span>
+          <Icon icon="file-code" :size="13" class="text-neutral-500"/><span>{{ t('pages.componentsInside.openFile') }}</span>
         </router-link>
       </div>
       <div class="min-h-0 grow overflow-hidden">
@@ -97,6 +96,7 @@ import LoadingState from "~/shared/ui/LoadingState.vue"
 import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import ComponentWiring from "~/features/java/components/ComponentWiring.vue"
 import Icon from "~/shared/ui/Icon.vue"
+import { t, intlLocale } from "~/shared/i18n"
 
 type RawFile = Record<string, any> & { name: string }
 
@@ -139,8 +139,8 @@ const { classes, hasJava } = useComponentJava(name)
 // Wiring is about the classes inside this component, which makes it an Inside
 // question rather than a Connections one.
 const views = [
-  { value: "files" as const, label: "Files" },
-  { value: "wiring" as const, label: "Wiring" },
+  { value: "files" as const, label: t("pages.componentsInside.files") },
+  { value: "wiring" as const, label: t("pages.componentsInside.wiring") },
 ]
 const view = ref<"files" | "wiring">("files")
 watch(name, () => { view.value = "files" })
@@ -172,8 +172,8 @@ function deductionsOf(f: RawFile): string | null {
   const max = optional(f, "codesmells__health__deduction__max_nesting")
   const avg = optional(f, "codesmells__health__deduction__avg_nesting")
   if (size === null || max === null || avg === null) return null
-  const n = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 })
-  return `10 − ${n(size)} (size) − ${n(max)} (deepest nesting) − ${n(avg)} (average nesting), never below 1`
+  const n = (v: number) => v.toLocaleString(intlLocale, { maximumFractionDigits: 2 })
+  return t("pages.componentsInside.text10SizeDeepestNesting", { size: n(size), max: n(max), avg: n(avg) })
 }
 
 const has = (pick: (f: InsideFile) => number | null) => computed(() => files.value.some(f => pick(f) !== null && pick(f) !== 0))
@@ -185,11 +185,11 @@ type SortId = "name" | "lines" | "health" | "hotspot" | "commits"
 const sortBy = ref<SortId>("lines")
 
 const sorts = computed(() => [
-  { id: "name" as const, label: "Name", unit: "lines", available: true },
-  { id: "lines" as const, label: "Lines", unit: "lines", available: true },
-  { id: "health" as const, label: "Health", unit: "health", available: hasHealth.value },
-  { id: "hotspot" as const, label: "Hotspot", unit: "hotspot", available: hasHotspot.value },
-  { id: "commits" as const, label: "Commits", unit: "commits", available: hasCommits.value },
+  { id: "name" as const, label: t("pages.componentsInside.name"), unit: "lines", available: true },
+  { id: "lines" as const, label: t("pages.componentsInside.lines"), unit: "lines", available: true },
+  { id: "health" as const, label: t("pages.componentsInside.health"), unit: "health", available: hasHealth.value },
+  { id: "hotspot" as const, label: t("pages.componentsInside.hotspot"), unit: "hotspot", available: hasHotspot.value },
+  { id: "commits" as const, label: t("pages.componentsInside.commits"), unit: "commits", available: hasCommits.value },
 ])
 
 const activeSort = computed(() => sorts.value.find(s => s.id === sortBy.value) ?? sorts.value[1])
@@ -207,7 +207,7 @@ function sortValue(file: InsideFile): string {
   }
 }
 
-const ALL_ROLES = "All roles"
+const ALL_ROLES = t("pages.componentsInside.allRoles")
 const roleFilter = ref<string>(ALL_ROLES)
 const roleFilterOptions = computed(() => {
   const present = new Set<string>()

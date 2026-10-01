@@ -1,4 +1,5 @@
 import { formatNumber } from "~/shared/format"
+import { t } from "~/shared/i18n"
 
 // Comparing one reading against the same reading in an earlier snapshot.
 //
@@ -53,7 +54,7 @@ export function deltaTone(delta: Delta, direction: DeltaDirection = "neutral", d
 }
 
 export function deltaTitle(delta: Delta, decimals = 0): string {
-    if (delta.isNew) return "Not in the baseline snapshot"
+    if (delta.isNew) return t("trends.delta.notBaselineSnapshot")
     if (delta.baseline === null) return ""
-    return `Was ${formatNumber(delta.baseline, decimals)}`
+    return t("trends.delta.was", { baseline: formatNumber(delta.baseline, decimals) })
 }

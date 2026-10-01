@@ -1,7 +1,7 @@
 <template>
   <!-- A view, previewed: its real figure drawn out of sight, and the button that opens it. -->
   <div class="ev-view" :class="{ 'ev-view-compact': compact }">
-    <button type="button" class="ev-view-frame" :class="{ 'ev-view-plain': plain }" :title="`Open ${label}`" @click="$emit('open')">
+    <button type="button" class="ev-view-frame" :class="{ 'ev-view-plain': plain }" :title="t('ask.evView.open', { label })" @click="$emit('open')">
       <template v-if="figure">
         <img :src="figure.src" :alt="figure.title" class="ev-view-img" :style="imgStyle" draggable="false">
       </template>
@@ -13,11 +13,11 @@
       </div>
       <div v-else-if="state === 'loading'" class="ev-view-skeleton">
         <span class="ev-view-shimmer"/>
-        <span class="ev-view-hint"><Loader2 :size="12" class="animate-spin"/> Drawing {{ label }}…</span>
+        <span class="ev-view-hint"><Loader2 :size="12" class="animate-spin"/>{{ ' ' + t('ask.evView.drawing', { label }) }}</span>
       </div>
       <!-- Nothing to preview (a view like Changes that draws on demand): a plain way in, not an empty frame. -->
-      <span v-else class="ev-view-plain-text">{{ state === "error" ? `No preview (${error}).` : `${label} opens with this snapshot.` }}</span>
-      <span class="ev-view-open"><ArrowUpRight :size="12" :stroke-width="2"/> Open {{ label }}</span>
+      <span v-else class="ev-view-plain-text">{{ state === "error" ? t('ask.evView.noPreview', { error }) : t('ask.evView.opensSnapshot', { label }) }}</span>
+      <span class="ev-view-open"><ArrowUpRight :size="12" :stroke-width="2"/>{{ ' ' + t('ask.evView.open', { label }) }}</span>
     </button>
     <div v-if="figure && figure.legend" class="ev-view-legend" :title="figure.legend">{{ figure.legend }}</div>
     <div v-if="figures.length > 1" class="mt-1 flex gap-1">
@@ -31,6 +31,7 @@ import { computed, onMounted, ref } from "vue"
 import { ArrowUpRight, Loader2 } from "lucide-vue-next"
 import { takeView } from "../app/stage"
 import type { StageTake } from "../app/stageHost"
+import { t } from "~/shared/i18n"
 
 const props = defineProps<{
   route: string

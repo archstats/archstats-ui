@@ -8,6 +8,7 @@ import {
     type FlagEdge, type JavaRole,
 } from "./java"
 import type { WiringEdge, WiringNode } from "./java"
+import { t } from "~/shared/i18n"
 
 // The Java reading of one component: which classes it holds, what role each
 // plays, which imports run between them, and which of those break a layering
@@ -123,14 +124,14 @@ export function useComponentJava(name: Ref<string>) {
         const count = (role: JavaRole) => rows.filter(r => r.roleSet.has(role)).length
         const sumClasses = rows.reduce((a, r) => a + r.classes, 0)
         return [
-            { label: "Classes", value: sumClasses || rows.length },
-            { label: "Methods", value: rows.reduce((a, r) => a + r.methods, 0) },
-            { label: "Fields", value: rows.reduce((a, r) => a + r.fields, 0) },
-            { label: "Spring beans", value: rows.filter(r => isBean(r.roleSet)).length },
-            { label: "Controllers", value: count("Controller") },
-            { label: "Services", value: count("Service") },
-            { label: "Repositories", value: count("Repository") },
-            { label: "JPA entities", value: count("Entity") },
+            { label: t("java.useComponentJava.classes"), value: sumClasses || rows.length },
+            { label: t("java.useComponentJava.methods"), value: rows.reduce((a, r) => a + r.methods, 0) },
+            { label: t("java.useComponentJava.fields"), value: rows.reduce((a, r) => a + r.fields, 0) },
+            { label: t("java.useComponentJava.springBeans"), value: rows.filter(r => isBean(r.roleSet)).length },
+            { label: t("java.useComponentJava.controllers"), value: count("Controller") },
+            { label: t("java.useComponentJava.services"), value: count("Service") },
+            { label: t("java.useComponentJava.repositories"), value: count("Repository") },
+            { label: t("java.useComponentJava.jpaEntities"), value: count("Entity") },
         ].filter(s => s.value > 0)
     })
 

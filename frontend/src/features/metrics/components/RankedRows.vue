@@ -3,7 +3,7 @@
     <div class="flex h-9 shrink-0 items-center gap-2 px-3 hairline-b">
       <span class="ui-section-title">{{ title }}</span>
       <span class="ui-tag">{{ rows.length }}</span>
-      <span class="ml-auto truncate text-xs text-neutral-500">by {{ niceName(sortKey) }}</span>
+      <span class="ml-auto truncate text-xs text-neutral-500">{{ t('metrics.rankedRows.by', { sortKey: niceName(sortKey) }) }}</span>
     </div>
     <ul class="min-h-0 grow overflow-y-auto py-1" @mouseleave="emit('update:hovered', null)">
       <li v-for="row in ranked" :key="row.name">
@@ -25,8 +25,8 @@
           <span class="w-14 shrink-0 text-right font-mono text-xs tabular-nums text-neutral-700">{{ formatReading(row[sortKey]) }}</span>
         </button>
       </li>
-      <li v-if="rows.length > LIMIT" class="px-3 py-2 text-xs text-neutral-500">and {{ rows.length - LIMIT }} more. Brush a strip to narrow the list.</li>
-      <li v-if="rows.length === 0" class="px-3 py-6 text-center text-sm text-neutral-500">Nothing passes every brush.</li>
+      <li v-if="rows.length > LIMIT" class="px-3 py-2 text-xs text-neutral-500">{{ t('metrics.rankedRows.moreBrushStripNarrow', { value: rows.length - LIMIT }) }}</li>
+      <li v-if="rows.length === 0" class="px-3 py-6 text-center text-sm text-neutral-500">{{ t('metrics.rankedRows.nothingPassesEveryBrush') }}</li>
     </ul>
   </div>
 </template>
@@ -36,6 +36,7 @@ import { computed, type PropType } from "vue";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { formatReading } from "~/shared/format";
 import { metricValue, splitName } from "~/features/metrics/plotReading";
+import { t } from "~/shared/i18n";
 
 // The rows still in play, ranked by one metric: the list half of an overview.
 // Hover links back to the drawing; click selects; double-click opens.
@@ -45,7 +46,7 @@ type Row = { name: string; [key: string]: any };
 const props = defineProps({
   rows: { type: Array as PropType<Row[]>, required: true },
   sortKey: { type: String, required: true },
-  title: { type: String, default: "In play" },
+  title: { type: String, default: t("metrics.rankedRows.play") },
   selected: { type: Array as PropType<string[]>, default: () => [] },
   hovered: { type: String as PropType<string | null>, default: null },
 });

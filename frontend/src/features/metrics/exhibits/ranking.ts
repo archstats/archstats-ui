@@ -10,6 +10,7 @@ import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, plural, sq } from "~/features/exhibits/words"
 import { metricsPath } from "~/features/metrics/link"
+import { t } from "~/shared/i18n"
 
 export interface RankingData {
     among: "components" | "files"
@@ -51,17 +52,17 @@ export function readMeasure(words: string): { measure: string; ascending: boolea
 
 export const ranking = exhibit<RankingData>()({
     kind: "ranking", v: 1,
-    summary: "Components or files ranked by one measure, drawn as bars.",
+    summary: t("metrics.ranking.componentsFilesRankedOne"),
     params: s.object({
-        measure: s.string().describe(`What to rank by, in plain words, optionally with most/least: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("__") && !k.includes("_")).slice(0, 22).join(", ")}.`),
-        among: s.enum(["components", "files"]).default("components").describe("Rank components (default) or files."),
-        of: s.string().optional().describe("Only names containing this (a component, area or folder)."),
-        where: s.string().optional().describe("Only those meeting a condition, e.g. \"dependents > 5\" or \"lines >= 1000 and health < 5\"."),
+        measure: s.string().describe(t("metrics.ranking.whatRankPlainWords", { value: [...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("__") && !k.includes("_")).slice(0, 22).join(", ") })),
+        among: s.enum(["components", "files"]).default("components").describe(t("metrics.ranking.rankComponentsDefaultFiles")),
+        of: s.string().optional().describe(t("metrics.ranking.onlyNamesContainingComponent")),
+        where: s.string().optional().describe(t("metrics.ranking.onlyThoseMeetingCondition")),
     }, { aliases: { metric: "measure", by: "measure", grain: "among", within: "of", filter: "where" } }),
 
     title: (p, d) => {
         const r = d ?? { ascending: readMeasure(p.measure).ascending, name: readMeasure(p.measure).measure, among: p.among ?? "components" }
-        return `${r.ascending ? "Lowest" : "Highest"} ${r.name.toLowerCase()}${r.among === "files" ? " (files)" : ""}${p.of ? ` in ${p.of}` : ""}${p.where ? ` · ${p.where}` : ""}`
+        return `${r.ascending ? t("metrics.ranking.lowest") : t("metrics.ranking.highest")} ${r.name.toLowerCase()}${r.among === "files" ? " (files)" : ""}${p.of ? t("metrics.ranking.in", { of: p.of }) : ""}${p.where ? ` · ${p.where}` : ""}`
     },
 
     async resolve(p, { snap }): Promise<RankingData | Absent> {
@@ -69,8 +70,8 @@ export const ranking = exhibit<RankingData>()({
         const { measure, ascending } = readMeasure(p.measure)
         const m = resolveMetric(snap, measure, among)
         // A name, a path or a role is not a measure: ranked, it would read "Highest name".
-        if (m && /(^|__)(name|path|file|component|role|language|kind|type)$/.test(m.id)) return { absent: `"${p.measure}" is not a measure: rank by one, such as ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 8).join(", ")}.` }
-        if (!m) return { absent: `"${p.measure}" is not a measure of ${among} here. Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 24).join(", ")}.` }
+        if (m && /(^|__)(name|path|file|component|role|language|kind|type)$/.test(m.id)) return { absent: t("metrics.ranking.notMeasureRankOne", { measure: p.measure, value: [...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 8).join(", ") }) }
+        if (!m) return { absent: t("metrics.ranking.notMeasureHereMeasures", { measure: p.measure, among, value: [...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 24).join(", ") }) }
         const of = String(p.of ?? "").trim()
         let items: RankingData["items"]
         if (m.id === "cycles") {
@@ -86,22 +87,22 @@ export const ranking = exhibit<RankingData>()({
             }
             const role = among === "files" && (snap.columns.files ?? []).includes("role") ? "coalesce(role, 'production') = 'production'" : among === "components" ? "name != '.'" : ""
             const where = [`${m.id} IS NOT NULL`, m.id === "codesmells__code_health" ? `${m.id} > 0` : "", role, of ? `name LIKE ${sq(`%${of.replace(/[%_]/g, "")}%`)}` : "", ...conds].filter(Boolean).join(" AND ")
-            items = (await snap.query(`SELECT name, ${m.id} AS value FROM ${among} WHERE ${where} ORDER BY ${m.id} ${ascending ? "ASC" : "DESC"}${among === "components" && (snap.columns.components ?? []).includes("complexity__lines") && m.id !== "complexity__lines" ? ", complexity__lines DESC" : ""} LIMIT 15`))
+            items = (await snap.query(`SELECT name, ${m.id} AS value FROM ${among} WHERE ${where} ORDER BY ${m.id} ${ascending ? "ASC" : "DESC"}${among === "components" && (snap.columns.components ?? []).includes("complexity__lines") && m.id !== "complexity__lines" ? t("metrics.ranking.complexityLinesDesc") : ""} LIMIT 15`))
                 .map((r: any) => ({ key: String(r.name), label: shortName(String(r.name)), value: Number(r.value) || 0 }))
         }
-        if (!items.length) return { absent: `No ${among} ${of ? `in "${of}" ` : ""}${p.where ? `meet "${p.where}"` : "have this measure"}.` }
+        if (!items.length) return { absent: `No ${among} ${of ? t("metrics.ranking.in2", { of }) : ""}${p.where ? t("metrics.ranking.meet", { where: p.where }) : t("metrics.ranking.haveMeasure")}.` }
         // Highest-first and all zero says nothing; lowest-first and all zero is the answer (nothing imports these).
         const allZero = !ascending && items.every(x => x.value === 0)
         return {
             among, metric: m.id, name: metricName(snap, m.id), definition: metricShort(snap, m.id), ascending, of, where: String(p.where ?? ""), items,
-            note: [m.note ?? "", allZero ? "Every value is 0, so this ranking says nothing; for history the scanned commit may be old." : ""].filter(Boolean).join(" "),
+            note: [m.note ?? "", allZero ? t("metrics.ranking.everyValue0So") : ""].filter(Boolean).join(" "),
         }
     },
 
     facts(d) {
         const out: FactDraft[] = [{
             kind: "rank",
-            text: `${d.among === "files" ? "Production files" : "Components"} by ${d.name}${d.definition ? ` (${d.definition.replace(/\.$/, "")})` : ""}, ${d.ascending ? "lowest" : "highest"} first${d.of ? `, names containing "${d.of}"` : ""}${d.where ? `, only where ${d.where}` : ""}; ${plural(d.items.length, "shown")}.`,
+            text: t("metrics.ranking.first", { value: d.among === "files" ? t("metrics.ranking.productionFiles") : t("metrics.ranking.components"), name: d.name, value2: d.definition ? ` (${d.definition.replace(/\.$/, "")})` : "", value3: d.ascending ? t("metrics.ranking.lowest2") : t("metrics.ranking.highest2"), value4: d.of ? t("metrics.ranking.namesContaining", { of: d.of }) : "", value5: d.where ? t("metrics.ranking.onlyWhere", { where: d.where }) : "", showns: t("common.count.shown", { count: d.items.length }) }),
             entities: [], values: { shown: d.items.length },
         }]
         if (d.note) out.push({ kind: "note", text: d.note, entities: [], values: {} })
@@ -113,7 +114,7 @@ export const ranking = exhibit<RankingData>()({
     elements: d => d.items.map(x => ({ id: `${d.among === "files" ? "file" : "component"}:${x.key}`, label: x.key })),
 
     table: d => ({
-        columns: [{ id: "rank", label: "#", numeric: true }, { id: "name", label: d.among === "files" ? "File" : "Component" }, { id: "value", label: d.name, numeric: true }],
+        columns: [{ id: "rank", label: "#", numeric: true }, { id: "name", label: d.among === "files" ? t("metrics.ranking.file") : t("metrics.ranking.component") }, { id: "value", label: d.name, numeric: true }],
         rows: d.items.map((x, i) => ({ rank: i + 1, name: x.key, value: x.value })),
         note: d.definition || undefined,
     }),
@@ -131,7 +132,7 @@ export const ranking = exhibit<RankingData>()({
         route: d && d.metric !== "cycles"
             ? metricsPath({ grain: d.among, view: "table", sort: d.metric, selected: d.items.map(x => x.key) })
             : p.among === "files" ? "/views/metrics?grain=files" : "/views/metrics",
-        label: "Open Metrics",
+        label: t("metrics.ranking.openMetrics"),
     }),
 
     samples: () => [{ measure: "most depended on" }, { measure: "least healthy", among: "files" }, { measure: "health", where: "dependents > 2" }, { measure: "cycles" }, { measure: "no such measure" }],

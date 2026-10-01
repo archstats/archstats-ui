@@ -1,8 +1,8 @@
 <template>
   <section class="flex flex-col gap-1.5">
-    <h3 class="ui-section-title">Shared commits<span v-if="rows.length" class="ml-1.5 font-mono text-neutral-400">{{ rows.length }}</span></h3>
-    <p v-if="loading" class="text-sm text-neutral-500">Reading commits…</p>
-    <p v-else-if="!rows.length" class="text-sm text-neutral-500">No commit touched both, sweeping commits left out.</p>
+    <h3 class="ui-section-title">{{ t('git.sharedCommitList.sharedCommits') }}<span v-if="rows.length" class="ml-1.5 font-mono text-neutral-400">{{ rows.length }}</span></h3>
+    <p v-if="loading" class="text-sm text-neutral-500">{{ t('git.sharedCommitList.readingCommits') }}</p>
+    <p v-else-if="!rows.length" class="text-sm text-neutral-500">{{ t('git.sharedCommitList.noCommitTouchedBoth') }}</p>
     <ul v-else class="flex flex-col">
       <li v-for="c in rows.slice(0, shown)" :key="c.commit_hash" class="flex flex-col py-1 hairline-b last:border-0">
         <span class="truncate text-sm text-neutral-900" :title="authors.displayText(c.commit_message)">{{ authors.displayText(c.commit_message).split("\n")[0] }}</span>
@@ -13,7 +13,7 @@
         </span>
       </li>
     </ul>
-    <button v-if="rows.length > shown" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="shown += 20">Show {{ Math.min(20, rows.length - shown) }} more</button>
+    <button v-if="rows.length > shown" type="button" class="self-start text-xs text-neutral-500 hover:text-neutral-900" @click="shown += 20">{{ t('git.sharedCommitList.showMore', { min: Math.min(20, rows.length - shown) }) }}</button>
   </section>
 </template>
 
@@ -23,6 +23,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { useAuthorsStore } from "~/features/git/authors.store";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { formatDate } from "~/shared/time";
+import { t } from "~/shared/i18n";
 
 // The evidence behind a co-change number: the commits that touched both
 // sides, newest first, within the same sweep limit the count uses.

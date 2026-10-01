@@ -6,6 +6,8 @@
 // on this, the domain barely does". Everything here is pure: the caller
 // supplies the separator and, when the user has groups, the group index.
 
+import { t } from "~/shared/i18n"
+
 export type Direction = "in" | "out" | "both"
 
 export interface Neighbour {
@@ -141,7 +143,7 @@ export function foldTail(groups: NeighbourGroup[], max: number): NeighbourGroup[
     const components = tail.reduce((a, g) => a + g.components, 0)
     return [...kept, {
         key: FOLDED_KEY,
-        label: `${tail.length} more groups`,
+        label: t("connections.neighbours.moreGroups", { tailLength: tail.length }),
         components,
         references: tail.reduce((a, g) => a + g.references, 0),
         members: tail.flatMap(g => g.members),

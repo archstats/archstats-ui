@@ -1,11 +1,12 @@
 <template>
-  <LoadingState text="Opening Hotspots…"/>
+  <LoadingState :text="t('pages.filesTreemap.openingHotspots')"/>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from "vue"
 import { useRouter } from "vue-router"
 import LoadingState from "~/shared/ui/LoadingState.vue"
+import { t } from "~/shared/i18n"
 // The directory treemap became the directory grain of Hotspots; old links land there.
 const router = useRouter()
 onMounted(() => { router.replace({ path: "/views/components/hotspots", query: { grain: "directories" } }) })

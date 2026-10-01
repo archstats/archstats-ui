@@ -20,7 +20,7 @@
             :title="it.name"
             @click="$emit('select', it.name)"
         ><span class="xp-name">{{ it.label ?? tail(it.name) }}</span><span v-if="it.note !== undefined" class="xp-note">{{ it.note }}</span></button>
-        <p v-if="!l.items.length" class="xp-none">nothing</p>
+        <p v-if="!l.items.length" class="xp-none">{{ t('exhibits.exProfile.nothing') }}</p>
       </div>
     </div>
   </div>
@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
+import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
   values: Array<{ label: string; value: number | string | null }>
@@ -41,7 +42,7 @@ defineEmits<{ (e: "select", name: string): void }>()
 const lit = computed(() => new Set(props.highlight))
 /** A long path shows its last segments; the whole name is in the title. */
 const tail = (name: string) => (name.length > 48 && name.includes("/") ? `…/${name.split("/").slice(-2).join("/")}` : name)
-const fmt = (v: number | string | null) => (v === null || v === "" ? "–" : typeof v === "number" ? v.toLocaleString("en-US", { maximumFractionDigits: 2 }) : v)
+const fmt = (v: number | string | null) => (v === null || v === "" ? "–" : typeof v === "number" ? v.toLocaleString(intlLocale, { maximumFractionDigits: 2 }) : v)
 </script>
 
 <style scoped>

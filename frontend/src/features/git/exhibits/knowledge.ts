@@ -7,6 +7,7 @@ import { buildKnowledge, knowledgePairsSql, peopleToAsk, STATES, summarise, type
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, plural } from "~/features/exhibits/words"
+import { t } from "~/shared/i18n"
 
 type Row = { component: string; lines: number; state: string; hereShare: number; hereCommits: number; ask: string | null; main: string | null }
 
@@ -21,17 +22,17 @@ export interface KnowledgeData {
 
 export const knowledge = exhibit<KnowledgeData>()({
     kind: "knowledge", v: 1,
-    summary: "Who still knows each part of the code: components by whether active contributors wrote or changed them, and whom to ask.",
+    summary: t("git.knowledge.whoStillKnowsEach"),
     params: s.object({
-        of: s.string().optional().describe("Only components whose name contains this."),
+        of: s.string().optional().describe(t("git.knowledge.onlyComponentsWhoseName")),
     }, { aliases: { within: "of", component: "of" } }),
 
-    title: (p, d) => `Who still knows the code${(d?.of || p.of) ? ` · ${d?.of || p.of}` : ""}`,
+    title: (p, d) => t("git.knowledge.whoStillKnowsCode", { value: (d?.of || p.of) ? ` · ${d?.of || p.of}` : "" }),
 
     async resolve(p, { snap }): Promise<KnowledgeData | Absent> {
-        if (!("git_commits" in snap.columns)) return { absent: "This snapshot has no git history." }
+        if (!("git_commits" in snap.columns)) return { absent: t("git.knowledge.snapshotHasNoGit") }
         const newest = (await snap.query<{ t: string }>("SELECT max(commit_time) AS t FROM git_commits"))[0]?.t
-        if (!newest) return { absent: "No commits recorded." }
+        if (!newest) return { absent: t("git.knowledge.noCommitsRecorded") }
         // Counted back from where the Authors view counts: the newest commit scanned (git_based_on), else the scan's time.
         const at = [snap.info.git_based_on, snap.info.scanned_at, newest].map(x => new Date(String(x ?? ""))).find(d => !Number.isNaN(d.getTime()))!
         const last = at.toISOString()
@@ -42,7 +43,7 @@ export const knowledge = exhibit<KnowledgeData>()({
         let rows = buildKnowledge(pairs, lines, 365).filter(r => r.lines > 0)
         const of = String(p.of ?? "").trim()
         if (of) rows = rows.filter(r => r.component.toLowerCase().includes(of.toLowerCase()))
-        if (!rows.length) return { absent: "No components with history match." }
+        if (!rows.length) return { absent: t("git.knowledge.noComponentsHistoryMatch") }
         return {
             of, last: String(last).slice(0, 10),
             rows: rows.slice(0, 600).map(r => ({ component: r.component, lines: r.lines, state: r.state, hereShare: r.hereShare, hereCommits: r.hereCommits, ask: r.ask ? snap.author(r.ask.author) : null, main: r.main ? snap.author(r.main.author) : null })),
@@ -54,28 +55,28 @@ export const knowledge = exhibit<KnowledgeData>()({
 
     facts(d) {
         const sum = d.summary
-        const out: FactDraft[] = [{ kind: "total", text: `${plural(sum.components, "component")} with code and commits, ${plural(sum.lines, "line")}; people count as active with a commit in the last year, to ${d.last}. ${n(sum.peopleHere)} of the ${plural(sum.people, "author")} who wrote them are still active (bots left out).`, entities: [], values: { components: sum.components, lines: sum.lines, active: sum.peopleHere, authors: sum.people } }]
-        for (const st of STATES) out.push({ kind: "row", text: `${st.label}: ${plural(sum.byState[st.id].components, "component")}, ${plural(sum.byState[st.id].lines, "line")}.`, entities: [], values: { components: sum.byState[st.id].components, lines: sum.byState[st.id].lines } })
-        for (const x of d.people) out.push({ kind: "row", text: `Person to ask: ${x.name}, for ${plural(x.components, "component")} (${n(x.lines)} lines)${x.only ? `, ${n(x.only)} of them known only to them` : ""}.`, entities: [x.name], values: { components: x.components, lines: x.lines, only: x.only } })
-        for (const r of d.nobody) out.push({ kind: "row", text: `No active contributor knows ${r.component} (${n(r.lines)} lines).`, entities: [r.component], values: { lines: r.lines }, element: `component:${r.component}` })
+        const out: FactDraft[] = [{ kind: "total", text: t("git.knowledge.codeCommitsPeopleCount", { components: t("common.count.component", { count: sum.components }), lines: t("common.count.line", { count: sum.lines }), last: d.last, peopleHere: n(sum.peopleHere), authors: t("common.count.author", { count: sum.people }) }), entities: [], values: { components: sum.components, lines: sum.lines, active: sum.peopleHere, authors: sum.people } }]
+        for (const st of STATES) out.push({ kind: "row", text: `${st.label}: ${t("common.count.component", { count: sum.byState[st.id].components })}, ${t("common.count.line", { count: sum.byState[st.id].lines })}.`, entities: [], values: { components: sum.byState[st.id].components, lines: sum.byState[st.id].lines } })
+        for (const x of d.people) out.push({ kind: "row", text: t("git.knowledge.personAskLines", { name: x.name, components: t("common.count.component", { count: x.components }), lines: n(x.lines), value: x.only ? t("git.knowledge.themKnownOnlyThem", { only: n(x.only) }) : "" }), entities: [x.name], values: { components: x.components, lines: x.lines, only: x.only } })
+        for (const r of d.nobody) out.push({ kind: "row", text: t("git.knowledge.noActiveContributorKnows", { component: r.component, lines: n(r.lines) }), entities: [r.component], values: { lines: r.lines }, element: `component:${r.component}` })
         return out
     },
 
     elements: d => d.rows.map(r => ({ id: `component:${r.component}`, label: r.component })),
 
     table: d => ({
-        columns: [{ id: "component", label: "Component" }, { id: "lines", label: "Lines", numeric: true }, { id: "state", label: "Knowledge" }, { id: "ask", label: "Person to ask" }],
+        columns: [{ id: "component", label: t("git.knowledge.component") }, { id: "lines", label: t("git.knowledge.lines"), numeric: true }, { id: "state", label: t("git.knowledge.knowledge") }, { id: "ask", label: t("git.knowledge.personAsk") }],
         rows: [...d.rows].sort((a, b) => b.lines - a.lines).slice(0, 40).map(r => ({ component: r.component, lines: r.lines, state: r.state, ask: r.ask ?? "" })),
         total: d.rows.length,
     }),
 
     figure: {
         load: () => import("~/features/git/components/KnowledgeExhibit.vue"),
-        props: (d, _p, o) => ({ rows: d.rows, windowWords: "the last year", highlight: o.highlight }),
+        props: (d, _p, o) => ({ rows: d.rows, windowWords: t("git.knowledge.lastYear"), highlight: o.highlight }),
         height: (_d, o) => (o.density === "inline" ? 380 : 560),
         fill: true,
         picks: { pick: (element: string) => element },
     },
 
-    open: () => ({ route: "/views/git/authors", label: "Open Authors" }),
+    open: () => ({ route: "/views/git/authors", label: t("git.knowledge.openAuthors") }),
 })
