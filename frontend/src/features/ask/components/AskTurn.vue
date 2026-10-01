@@ -14,7 +14,7 @@
         <span>{{ planSummary }}</span>
       </button>
       <div v-if="turn.plan.length && (running || planOpen)" class="ask-plan">
-        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> {{ running ? "Testing these claims" : "Claims tested" }}</p>
+        <p class="ask-eyebrow"><ListChecks :size="12" :stroke-width="1.75"/> {{ running ? "Checking these hypotheses first" : "Hypotheses checked before answering" }}</p>
         <ol>
           <li v-for="(p, i) in turn.plan" :key="i">
             <span class="ask-plan-n">
@@ -259,7 +259,8 @@ const planOpen = ref(false)
 const planSummary = computed(() => {
   const vs = (props.turn.claims ?? []).map(c => c?.verdict).filter(Boolean) as string[]
   const n = (v: string) => vs.filter(x => x === v).length
-  return [`Tested ${props.turn.plan.length} claim${props.turn.plan.length === 1 ? "" : "s"}`, n("supported") && `${n("supported")} held`, n("refuted") && `${n("refuted")} did not`, n("can't tell") && `${n("can't tell")} could not be told`].filter(Boolean).join(" · ")
+  // Hypotheses, not claims: what was checked before answering, so it never reads as the answer's own verdict.
+  return [`Checked ${props.turn.plan.length} hypothes${props.turn.plan.length === 1 ? "is" : "es"} first`, n("supported") && `${n("supported")} held`, n("refuted") && `${n("refuted")} did not`, n("can't tell") && `${n("can't tell")} could not be told`].filter(Boolean).join(" · ")
 })
 const verdict = computed(() => answerVerdict(props.turn.grounding, { broken: brokenCitations(props.turn.answer, props.ids), failedChecks: failed.value.filter(c => c.id !== "topic").map(checkWords), wrongTopic: failed.value.find(c => c.id === "topic")?.detail.replace(/\s*\[E\d+\]$/, ""), folded: folded.value }))
 /** Each citation's worst verdict among the sentences that use it. */
@@ -321,8 +322,8 @@ const stepsSummary = computed(() => {
 .ask-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes ask-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 .ask-error { margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: rgb(var(--c-red-800, 153 27 27)); background: rgb(var(--c-red-50, 254 242 242)); border-radius: 8px; padding: 8px 10px; }
-.ask-versions { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--c-neutral-600)); }
-.ask-versions button { color: rgb(var(--c-neutral-800)); text-decoration: underline dotted; text-underline-offset: 2px; }
+.ask-versions { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgb(var(--c-neutral-800)); border: 1px solid rgb(var(--c-neutral-200)); background: rgb(var(--c-neutral-50)); border-radius: 6px; padding: 6px 10px; }
+.ask-versions button { margin-left: auto; font-weight: 500; color: rgb(var(--c-neutral-900)); text-decoration: underline dotted; text-underline-offset: 2px; }
 .ask-versions button:hover { color: rgb(var(--c-neutral-900)); }
 .ask-foot { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .ask-actions { display: flex; align-items: center; gap: 2px; }

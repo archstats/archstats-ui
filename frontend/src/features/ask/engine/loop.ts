@@ -67,6 +67,16 @@ export interface TurnOutput {
 
 const INVESTIGATE = `You test one claim about a codebase with Archstats tools. Call the tools that test it (one to three calls), then reply, without thinking aloud, with exactly one line "Verdict: supported", "Verdict: refuted" or "Verdict: can't tell", followed by one to three plain sentences that give the deciding numbers with their evidence ids like [E4]. Only numbers from tool results. No verdicts on people or design quality.`
 
+/** An answer that ends announcing more work, or mid-sentence, instead of concluding. */
+export function unfinished(answer: string): boolean {
+    const text = answer.replace(/```[\s\S]*?```/g, " ").trim()
+    if (!text) return false
+    const last = text.split("\n").map(l => l.trim()).filter(Boolean).pop() ?? ""
+    if (/^\|/.test(last) || /^!\[/.test(last)) return false
+    if (/\b(?:I will now|I'll now|I will check|I'll check|Let me (?:now )?(?:check|look|see|find|verify)|Next,? I (?:will|'ll)|I need to (?:check|look|verify)|I am going to)\b/i.test(last)) return true
+    return /[A-Za-z,;]$/.test(last) && !/^\s*(?:[-*+]|\d+[.)])\s/.test(last) && last.length > 40
+}
+
 /** Questions that compare this scan with another: "since the last scan", "what got worse". */
 export const COMPARES_SCANS = /\b(?:since (?:the |my )?(?:last|previous|prior|earlier) (?:scan|snapshot)|(?:got|gotten|getting) (?:worse|better)|between (?:the |two )?(?:scans|snapshots)|(?:compared?|vs\.?) (?:to |with )?(?:the )?(?:last|previous|prior|earlier) (?:scan|snapshot)|over the last (?:few )?scans)\b/i
 
@@ -164,10 +174,18 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
     const ctx: ToolContext = { world: input.world, ranOn: input.ranOn, nextId: input.nextId, recall: input.recall }
 
     /** Runs one tool call and reports it; returns the message the model reads. Large results enter the context as a preview. */
+    /** Calls already made this turn, by tool and arguments: the same lookup twice is answered by the first. */
+    const made = new Map<string, string[]>()
     async function runCall(callIn: { name: string; args: Record<string, any> }, prefix: string): Promise<ModelMessage> {
         let call = callIn
         const tool = input.tools.find(t => t.name === call.name)
         if (tool) call = { ...call, args: aliasArgs(tool, call.args ?? {}) }
+        const key = `${call.name}:${JSON.stringify(call.args ?? {}, Object.keys(call.args ?? {}).sort())}`
+        const earlier = made.get(key)
+        if (earlier) {
+            // No second figure: the answer already holds this one.
+            return { role: "tool", tool_name: call.name, content: `This was already looked up: ${earlier.length ? earlier.map(id => `[${id}]`).join(", ") : "the result above"}. Use that result and cite it; do not ask again.` }
+        }
         const callId = `${prefix}:${toolCalls}`
         toolCalls++
         const label = tool ? safeLabel(tool, call.args) : call.name
@@ -196,6 +214,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         sources += `\n${result.text}`
         emit({ type: "tool", phase: "end", callId, name: call.name, result, ms: Math.round(now() - t0), error })
         const ids = [...(result.evidence ?? []).map(e => e.id), ...(result.exhibits ?? []).map(x => x.id)]
+        if (!error) made.set(key, ids)
         const content = result.text.length > MAX_TOOL_TEXT
             ? `${result.text.slice(0, MAX_TOOL_TEXT)}\n…[${result.text.length - MAX_TOOL_TEXT} more characters${ids.length ? `; recall ${ids.join(", ")} for all of it` : ""}]`
             : result.text
@@ -348,6 +367,11 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         // It comes first: any other repair of an answer that looked nothing up only polishes a guess.
         if (input.intents && toolCalls === 0 && /\d/.test(answer)) {
             outcome.repair = "Ask the codebase with a tool before answering: the snapshot card only orients you. Call the tool for this question (structure, about, rank…), then answer from its facts, citing them."
+        }
+        // An answer that stops before its conclusion ("I will now check…"): finished, not shown half-done.
+        if (!outcome.repair && input.intents && unfinished(answer)) {
+            outcome = { ...outcome, checks: [...outcome.checks, { id: "unfinished", ok: false, detail: "Stops before its conclusion" }] }
+            outcome.repair = "Your answer stops before its conclusion. Finish it now from the results you already have: state the answer to the question in one or two sentences, citing the facts. Do not announce further checks."
         }
         // What the facts still do not bear out: one repair that names each sentence and why, before anything is shown.
         if (!outcome.repair && input.intents && allFacts().length) {

@@ -68,6 +68,8 @@ export const ranking = exhibit<RankingData>()({
         const among = p.among === "files" ? "files" : "components"
         const { measure, ascending } = readMeasure(p.measure)
         const m = resolveMetric(snap, measure, among)
+        // A name, a path or a role is not a measure: ranked, it would read "Highest name".
+        if (m && /(^|__)(name|path|file|component|role|language|kind|type)$/.test(m.id)) return { absent: `"${p.measure}" is not a measure: rank by one, such as ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 8).join(", ")}.` }
         if (!m) return { absent: `"${p.measure}" is not a measure of ${among} here. Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 24).join(", ")}.` }
         const of = String(p.of ?? "").trim()
         let items: RankingData["items"]

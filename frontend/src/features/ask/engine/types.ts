@@ -161,7 +161,7 @@ export interface ModelClient {
 
 // ── What a turn reports as it runs ────────────────────────────────────────
 
-export interface Check { id: "unsourced" | "gave-up" | "uncited" | "verdict" | "invented" | "menu" | "topic" | "judgement"; ok: boolean; detail: string }
+export interface Check { id: "unsourced" | "gave-up" | "uncited" | "verdict" | "invented" | "menu" | "topic" | "judgement" | "unfinished"; ok: boolean; detail: string }
 
 export type TurnEvent =
     | { type: "route"; namespaces: Namespace[]; tools: string[] }

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="targets.length" class="relative">
+  <div v-if="targets.length" ref="root" class="relative">
     <button type="button" class="ui-btn ui-btn-sm" :class="buttonClass" :aria-expanded="open" title="Look at this in another view" @click.stop="open = !open">
       <Icon icon="arrow-up-right" :size="13" class="text-neutral-500"/>
       <span>Show in</span>
@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import Icon from "~/shared/ui/Icon.vue";
 import { showInTargets, showPairTargets, type ShowInKind, type ShowInTarget } from "~/features/navigation/showIn";
 import { useShowIn } from "~/features/groups/useShowIn";
@@ -38,6 +38,17 @@ const open = ref(false);
 const show = useShowIn();
 const targets = computed(() =>
   (props.pair ? showPairTargets(props.pair.from, props.pair.to) : showInTargets(props.kind, props.ids)).filter(t => !props.except.includes(t.id)));
+
+// Closed by Escape and by a press anywhere else. The backdrop alone is not enough: inside a container
+// that contains its layout (Ask's docked tray) a fixed backdrop covers only that container.
+const root = ref<HTMLElement | null>(null);
+const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); open.value = false; } };
+const onPress = (e: PointerEvent) => { if (root.value && !root.value.contains(e.target as Node)) open.value = false; };
+watch(open, on => {
+  if (on) { window.addEventListener("keydown", onKey, true); window.addEventListener("pointerdown", onPress, true); }
+  else { window.removeEventListener("keydown", onKey, true); window.removeEventListener("pointerdown", onPress, true); }
+});
+onBeforeUnmount(() => { window.removeEventListener("keydown", onKey, true); window.removeEventListener("pointerdown", onPress, true); });
 
 function go(t: ShowInTarget) {
   open.value = false;

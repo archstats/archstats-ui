@@ -99,18 +99,78 @@ function matches(v: number, percent: boolean, known: number[]): boolean {
     return false
 }
 
-/** Things named in a sentence: any entity of any fact, by full name or by its last segment when that is unique. */
-function namesIn(sentence: string, entities: string[]): string[] {
+/**
+ * Things named in a sentence: any entity of any fact, by full name or by its
+ * last segment when that is unique. A name that is also a plain word ("admin",
+ * "shipping", "authentication") counts only where the sentence writes it as a
+ * name (in code or in bold), unless its figure is cited in the same answer.
+ * Otherwise prose about "shipping" would be read as a claim about a component
+ * called that from a figure three questions back.
+ */
+function namesIn(sentence: string, entities: string[], near: ReadonlySet<string> = new Set(entities)): string[] {
     const s = sentence.toLowerCase()
-    const tails = new Map<string, string[]>()
+    const marked = [...sentence.matchAll(/`([^`]+)`|\*\*([^*]+)\*\*/g)].map(m => (m[1] ?? m[2]).toLowerCase()).join(" ")
+    const plain = (x: string) => /^[a-z]+$/.test(x)
+    const seen = (text: string, word: string) => new RegExp(`(?<![\\w./-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`).test(text)
+    const tails = new Map<string, { raw: string; es: string[] }>()
     for (const e of entities) {
-        const t = e.split(/[./\\]|::/).filter(Boolean).pop()?.toLowerCase()
-        if (t && t.length > 3) tails.set(t, [...(tails.get(t) ?? []), e])
+        const raw = e.split(/[./\\]|::/).filter(Boolean).pop() ?? ""
+        const t = raw.toLowerCase()
+        if (t.length > 3) tails.set(t, { raw, es: [...(tails.get(t)?.es ?? []), e] })
     }
     const out = new Set<string>()
-    for (const e of entities) if (e.length > 3 && s.includes(e.toLowerCase())) out.add(e)
-    for (const [t, es] of tails) if (es.length === 1 && !out.has(es[0]) && new RegExp(`(?<![\\w./-])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`).test(s)) out.add(es[0])
+    for (const e of entities) {
+        if (e.length <= 3) continue
+        if (plain(e) && !near.has(e) ? seen(marked, e.toLowerCase()) : plain(e) ? seen(s, e.toLowerCase()) : s.includes(e.toLowerCase())) out.add(e)
+    }
+    for (const [t, { raw, es }] of tails) {
+        if (es.length !== 1 || out.has(es[0])) continue
+        if (seen(plain(raw) && !near.has(es[0]) ? marked : s, t)) out.add(es[0])
+    }
     return [...out]
+}
+
+/** What a number is called, around it: which way a dependency runs, production or all, fixes or all commits. */
+const LABELS: Array<{ id: string; a: RegExp; b: RegExp; say: (x: string, fact: "a" | "b") => string }> = [
+    { id: "direction", a: /depended on by|dependents?\b|used by|imported by|importers?|fan-in/i, b: /depends on|dependenc(?:y|ies)|\buses\b|\bimports\b|fan-out/i,
+        say: (x, f) => (f === "a" ? `${x} is what depends on it, not what it depends on` : `${x} is what it depends on, not what depends on it`) },
+    { id: "scope", a: /\bproduction\b/i, b: /\btotal\b|\bin all\b|\bincluding\b|\ball files\b|\boverall\b/i,
+        say: (x, f) => (f === "a" ? `${x} counts production code, not the total` : `${x} is a total, not production code`) },
+]
+
+/** The label nearest a number in a text, on either side: "a", "b", or null when nothing near says. */
+function labelNear(text: string, num: string, l: (typeof LABELS)[number]): "a" | "b" | null {
+    const i = text.indexOf(num)
+    if (i < 0) return null
+    const before = text.slice(Math.max(0, i - 40), i)
+    const after = text.slice(i + num.length, i + num.length + 40)
+    let best: { side: "a" | "b"; d: number } | null = null
+    for (const side of ["a", "b"] as const) {
+        const re = new RegExp(l[side].source, "gi")
+        for (const m of before.matchAll(re)) { const d = before.length - (m.index! + m[0].length); if (!best || d < best.d) best = { side, d } }
+        for (const m of after.matchAll(re)) { const d = m.index!; if (!best || d < best.d) best = { side, d } }
+    }
+    return best?.side ?? null
+}
+
+/** Numbers a sentence puts under another label than the fact that holds them. */
+function mislabelled(sentence: string, nums: Array<{ value: number; text: string }>, cited: Fact[]): string[] {
+    const out: string[] = []
+    const plainSentence = sentence.replace(/\[[^\]]*\]/g, " ")
+    for (const x of nums) {
+        const forms = [x.text, x.value.toLocaleString("en-US")]
+        const fact = cited.find(f => forms.some(n => new RegExp(`(?<![\\d.,])${n.replace(/[.,]/g, "\\$&")}(?![\\d])`).test(f.text)))
+        if (!fact) continue
+        const num = forms.find(n => fact.text.includes(n))!
+        for (const l of LABELS) {
+            const inFact = labelNear(fact.text, num, l)
+            const inSentence = labelNear(plainSentence, x.text, l)
+            if (inFact && inSentence && inFact !== inSentence) out.push(l.say(x.text, inFact))
+        }
+        // "Fix work" is a claim about fixes: the fact must count fixes, not all commits.
+        if (/\bfix(?:es|ed)?\b|\bbug\s*fix/i.test(plainSentence) && !/\bfix|\bbug/i.test(fact.text) && /commits?|changes?|churn/i.test(fact.text)) out.push(`${x.text} counts all commits, not fixes`)
+    }
+    return [...new Set(out)]
 }
 
 /**
@@ -127,6 +187,8 @@ export function checkGrounding(text: string, facts: Fact[], opts: { given?: stri
     const expand = (cs: string[]) => cs.flatMap(c => (c.includes(".") ? (byId.has(c) ? [byId.get(c)!] : []) : facts.filter(f => f.id.startsWith(`${c}.`))))
     /** Every fact the answer cites anywhere: a later sentence may restate one of its numbers. */
     const answerCited = expand([...new Set(citesOf(text))])
+    const citedExhibits = new Set(citesOf(text).map(c => c.split(".")[0]))
+    const near = new Set(facts.filter(f => citedExhibits.has(f.id.split(".")[0])).flatMap(f => f.entities))
     for (const block of blocksOf(text)) {
         const blockCites = [...new Set(block.flatMap(citesOf))]
         for (const sentence of block) {
@@ -138,7 +200,7 @@ export function checkGrounding(text: string, facts: Fact[], opts: { given?: stri
             const exhibits = new Set(cited.map(f => f.id.split(".")[0]))
             const context = facts.filter(f => exhibits.has(f.id.split(".")[0]) && (f.kind === "total" || f.kind === "note"))
             const nums = numbersIn(sentence)
-            const names = namesIn(sentence, allEntities)
+            const names = namesIn(sentence, allEntities, near)
             const reasons: string[] = []
             let verdict: Verdict
             if (!cites.length) {
@@ -160,7 +222,9 @@ export function checkGrounding(text: string, facts: Fact[], opts: { given?: stri
                 for (const e of strangers) reasons.push(`the cited facts are not about ${e}`)
                 // Nothing of its own to check against the paragraph's citation: fine, and not claimed as verified either.
                 if (inherited && !nums.length && !names.length) continue
-                verdict = loose.length ? "unsupported" : strangers.length ? "partial" : nums.length || names.length ? "verified" : "cited"
+                const wrongLabel = loose.length ? [] : mislabelled(sentence, nums, cited)
+                for (const r of wrongLabel) reasons.push(r)
+                verdict = loose.length || wrongLabel.length ? "unsupported" : strangers.length ? "partial" : nums.length || names.length ? "verified" : "cited"
             }
             claims.push({ sentence, cites: own, verdict, reasons })
         }

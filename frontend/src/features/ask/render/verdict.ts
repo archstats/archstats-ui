@@ -39,12 +39,31 @@ export function untrusted(g: Grounding | null | undefined): Array<{ sentence: st
     return (g?.claims ?? []).filter(c => c.verdict === "unsupported" || c.verdict === "uncited")
 }
 
-/** The answer with the sentences its facts do not bear out taken out: what a writer may build on. */
+/**
+ * The answer with the sentences its facts do not bear out taken out: what a
+ * writer may build on. What leaned on a sentence goes with it: a following
+ * sentence that opens with "This" or "They" (it points at nothing now), a list
+ * item left empty, and a lead-in ending in a colon whose list is gone.
+ */
 export function trustedText(answer: string, g: Grounding | null | undefined): string {
     let out = answer
-    for (const c of untrusted(g)) out = out.replace(c.sentence, "")
-    // A list item left empty by it goes too.
-    return out.replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]*$/gm, "").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim()
+    for (const c of untrusted(g)) {
+        const i = out.indexOf(c.sentence)
+        if (i < 0) continue
+        let end = i + c.sentence.length
+        const next = /^[ \t]*((?:This|That|These|Those|They|It|Its|Their|He|She)\b[^.!?\n]*[.!?](?:[ \t]*\[[^\]]*\])?)/.exec(out.slice(end))
+        if (next) end += next[0].length
+        out = out.slice(0, i) + out.slice(end)
+    }
+    out = out.replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]*$/gm, "")
+    // A lead-in whose list is gone: "The key risks:" followed by nothing but a blank line or another paragraph.
+    const lines = out.split("\n")
+    for (let k = 0; k < lines.length; k++) {
+        if (!/:\s*$/.test(lines[k]) || /^\s*(?:[-*+]|\d+[.)])\s/.test(lines[k])) continue
+        const rest = lines.slice(k + 1).find(l => l.trim())
+        if (!rest || !/^\s*(?:[-*+]|\d+[.)])\s|^\s*\|/.test(rest)) lines[k] = ""
+    }
+    return lines.join("\n").replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 /**
@@ -65,6 +84,7 @@ export function checkWords(c: { id: string; detail: string }): string {
         case "uncited": return /ids no tool returned: (.*)/.exec(c.detail)?.[1] ? `Cites ${/ids no tool returned: (.*)/.exec(c.detail)![1]}, which Ask never showed` : /Made-up markers/.test(c.detail) ? "Cites sources that do not exist" : "States numbers without citing where they come from"
         case "invented": return c.detail.replace(/^Names no tool returned: /, "Names nothing it looked up: ")
         case "verdict": return c.detail.replace(/^Verdict word/, "Judges instead of showing:")
+        case "unfinished": return "Stops before its conclusion"
         default: return c.detail
     }
 }

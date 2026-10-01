@@ -35,6 +35,7 @@
             aria-label="Group name"
             placeholder="Group name"
             @keydown.esc.stop.prevent="cancel"
+            @mousedown="keepSuggestion"
           />
           <span class="text-xs text-neutral-400">in</span>
           <select v-if="!newDimension" class="ui-input ui-input-sm w-32" aria-label="Lens" :value="dimension" @change="onDimensionPick(($event.target as HTMLSelectElement).value)">
@@ -257,6 +258,12 @@ function nextName(): string {
   return `Group ${n}`;
 }
 
+/** The name offered when naming starts: a click into it keeps it selected, so typing replaces it rather than landing inside it. */
+const offered = ref("");
+function keepSuggestion(e: MouseEvent) {
+  if (name.value === offered.value && document.activeElement === nameEl.value) { e.preventDefault(); nameEl.value?.select(); }
+}
+
 async function startCreate(suggested?: string) {
   if (!props.selectedItems.length) return;
   addOpen.value = false;
@@ -265,6 +272,7 @@ async function startCreate(suggested?: string) {
   dimension.value = startDimension();
   newDimension.value = false;
   naming.value = true;
+  offered.value = name.value;
   await nextTick();
   nameEl.value?.focus();
   nameEl.value?.select();

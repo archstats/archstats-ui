@@ -57,9 +57,9 @@ describe("brokenCitations", () => {
 })
 
 describe("trustedText", () => {
-    it("leaves out what the facts do not bear out", () => {
+    it("leaves out what the facts do not bear out, and the sentence that leaned on it", () => {
         const answer = "It has 12 cycles [E1.1]. Coverage is 80%. It is fine."
-        expect(trustedText(answer, g([["It has 12 cycles [E1.1].", "verified"], ["Coverage is 80%.", "uncited"]]))).toBe("It has 12 cycles [E1.1]. It is fine.")
+        expect(trustedText(answer, g([["It has 12 cycles [E1.1].", "verified"], ["Coverage is 80%.", "uncited"]]))).toBe("It has 12 cycles [E1.1].")
     })
 })
 
@@ -67,5 +67,13 @@ describe("checkWords", () => {
     it("says a failed check in the reader's words", () => {
         expect(checkWords({ id: "gave-up", detail: "Said it could not answer after 0 tool calls; the catalogue says: …" })).toBe("Said it could not answer without looking it up")
         expect(checkWords({ id: "uncited", detail: "Cites ids no tool returned: E7.14, E7.45" })).toBe("Cites E7.14, E7.45, which Ask never showed")
+    })
+})
+
+describe("what leaned on a left-out sentence", () => {
+    const one = (sentence: string) => ({ claims: [{ sentence, cites: [], verdict: "unsupported" as const, reasons: ["x"] }], counts: { verified: 0, cited: 0, partial: 0, unsupported: 1, uncited: 0 } })
+    it("goes with it", () => {
+        expect(trustedText("Ryan wrote 97% of commits. They know all 49 components. The tangle has 29.", one("Ryan wrote 97% of commits."))).toBe("The tangle has 29.")
+        expect(trustedText("Intro.\n\nThe key risks:\n\n- Risk is 12 [E1].\n\nNext part.", one("Risk is 12 [E1]."))).toBe("Intro.\n\nNext part.")
     })
 })

@@ -8,6 +8,7 @@ import { resolveScope } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { daysIn, plural, sq } from "~/features/exhibits/words"
+import { IN_SNAPSHOT, NOT_BOT_SQL } from "~/features/git/authors"
 
 export interface AuthorsData {
     of: string | null
@@ -39,7 +40,8 @@ export const authors = exhibit<AuthorsData>()({
         }
         const days = daysIn(p.since)
         const last = days ? (await snap.query<{ t: string }>("SELECT max(commit_time) AS t FROM git_commits"))[0]?.t : null
-        const where = [inScope, days && last ? `julianday(commit_time) >= julianday(${sq(last)}) - ${days}` : ""].filter(Boolean)
+        // Counted as the Authors view counts: commits to files still in the snapshot, bots left out.
+        const where = [IN_SNAPSHOT, NOT_BOT_SQL, inScope, days && last ? `julianday(commit_time) >= julianday(${sq(last)}) - ${days}` : ""].filter(Boolean)
         const w = where.length ? `WHERE ${where.join(" AND ")}` : ""
         const raw = await snap.query<{ author: string; commits: number; last: string }>(`SELECT author_name AS author, count(DISTINCT commit_hash) AS commits, max(commit_time) AS last FROM git_commits ${w} GROUP BY author_name`)
         // One person under several spellings ("Jeff Fischer", "jefffischer") is one author: the workspace's

@@ -115,6 +115,7 @@ Voice:
 - Write every number as digits (61, not sixty-one), exactly as the evidence has it; every number must appear in the evidence given. If the evidence cannot answer part of the brief, say so once, in one sentence, for the whole section; never repeat a limitation per item.
 - Never make "the evidence", "the data", "the scan" or "the table" the subject of a sentence. Vary sentence openings; do not repeat one pattern for every item of a list.
 - No citations, no brackets, no "[E1]", no "[Snapshot]", no offers to show things, no questions to the reader, no headings.
+- Refer to a figure or table as "the figure" or "the table" in this section, never by an id ("Figure E5"): the report numbers its figures itself.
 Write Markdown: paragraphs and lists only. Keep it under 180 words unless the brief asks for more.`
 
 /** Loaded words a report must not use: they judge instead of describing. */
@@ -169,9 +170,15 @@ async function write(model: ModelClient, brief: string, evidence: string, signal
 }
 
 /** What a model sometimes adds anyway: citation markers, offers, a heading on top. */
-function clean(md: string): string {
+export function clean(md: string): string {
     return md
         .replace(/\s*\[(?:E\d+(?:\.\d+)?(?:\s*,\s*E\d+(?:\.\d+)?)*|Snapshot|snapshot card|show:[^\]]*|source[^\]]*)\]/g, "")
+        // An id the report does not print ("(Figure E5)", "Table E6") would point at nothing: the report numbers its own.
+        .replace(/\s*\((?:see\s+)?(?:Figure|Fig\.|Table|Exhibit)s?\s+E\d+(?:\.\d+)?(?:\s*(?:,|and)\s*E?\d+(?:\.\d+)?)*\)/gi, "")
+        .replace(/\b(Figure|Fig\.|Table|Exhibit)\s+E\d+(?:\.\d+)?\b/gi, (_m, k: string, at: number, all: string) => {
+            const word = /^t/i.test(k) ? "table" : "figure"
+            return `${at === 0 || /[.!?:]\s*$/.test(all.slice(0, at)) ? "The" : "the"} ${word}`
+        })
         .replace(/^#{1,6}\s.*\n+/, "")
         .replace(/\n{3,}/g, "\n\n")
         .trim()

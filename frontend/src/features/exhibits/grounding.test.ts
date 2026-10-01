@@ -82,3 +82,27 @@ describe("what needs no fact", () => {
         expect(g.counts.verified).toBe(1)
     })
 })
+
+describe("what a number is called", () => {
+    const deps: Fact[] = [{ id: "E2.2", kind: "row", text: "checkout depends on 39 components and is depended on by 87.", entities: ["oscar.apps.checkout"], values: { uses: 39, usedBy: 87 } }]
+    it("fails a count put under the other direction", () => {
+        const g = checkGrounding("Checkout depends on 87 components [E2.2].", deps)
+        expect(g.claims[0].verdict).toBe("unsupported")
+        expect(g.claims[0].reasons[0]).toBe("87 is what depends on it, not what it depends on")
+        expect(checkGrounding("Checkout depends on 39 components [E2.2].", deps).claims[0].verdict).toBe("verified")
+        expect(checkGrounding("87 components depend on checkout; it is used by 87 [E2.2].", deps).claims[0].verdict).toBe("verified")
+    })
+
+    it("fails production written as the total, and churn written as fixes", () => {
+        const lines: Fact[] = [{ id: "E3.2", kind: "total", text: "22,193 production lines; 56,353 lines in all.", entities: [], values: { production: 22193, all: 56353 } }]
+        expect(checkGrounding("It has 22,193 lines in total [E3.2].", lines).claims[0].verdict).toBe("unsupported")
+        const churn: Fact[] = [{ id: "E16.1", kind: "row", text: "src/app.ts: 41 commits.", entities: ["src/app.ts"], values: { commits: 41 } }]
+        expect(checkGrounding("Fix work concentrates in src/app.ts, 41 commits [E16.1].", churn).claims[0].reasons).toContain("41 counts all commits, not fixes")
+    })
+
+    it("reads a plain-word name as a name only when written as one", () => {
+        const f: Fact[] = [{ id: "E1.1", kind: "row", text: "com.x.core: 12 files.", entities: ["com.x.core"], values: { files: 12 } }, { id: "E9.1", kind: "row", text: "shop/shipping: 3 files.", entities: ["shop/shipping"], values: { files: 3 } }]
+        expect(checkGrounding("The core has 12 files, and it handles shipping [E1.1].", f).claims[0].verdict).toBe("verified")
+        expect(checkGrounding("The core has 12 files, and `shipping` depends on it [E1.1].", f).claims[0].verdict).toBe("partial")
+    })
+})

@@ -25,10 +25,17 @@
               :rx="Math.min(2, s / 5)"
               :fill="c.cut ? 'none' : c.against ? t.accent : t.inkSecondary"
               :fill-opacity="c.cut ? 0 : c.alpha"
-              :stroke="c.selected ? t.ink : c.cut ? t.inkMuted : 'none'"
-              :stroke-width="c.selected ? 1.5 : 1"
-              :stroke-dasharray="c.cut ? '2 2' : undefined"
+              :stroke="c.selected ? t.ink : c.cut ? t.accent : 'none'"
+              :stroke-width="c.selected || c.cut ? 1.5 : 1"
+              :stroke-dasharray="c.cut ? '2 1' : undefined"
             />
+          </g>
+          <!-- Freed by the cuts: out of the tangle, so its row and column wash out and the knot visibly shrinks. -->
+          <g pointer-events="none">
+            <template v-for="i in freedRows" :key="`f${i}`">
+              <rect :x="0" :y="i * s" :width="n * s" :height="s" :fill="t.surface" opacity="0.72"/>
+              <rect :x="i * s" :y="0" :width="s" :height="n * s" :fill="t.surface" opacity="0.72"/>
+            </template>
           </g>
           <rect :x="0" :y="0" :width="n * s" :height="n * s" fill="none" :stroke="t.hairlineStrong" stroke-width="1"/>
         </g>
@@ -94,6 +101,8 @@ const blocks = computed(() => {
   for (let i = 1; i <= lvl.length; i++) if (i === lvl.length || lvl[i] !== lvl[i - 1]) { out.push({ i: out.length, start, len: i - start }); start = i; }
   return out;
 });
+/** Rows (and columns) of the components the cuts freed. */
+const freedRows = computed(() => props.layout.order.flatMap((name, i) => (props.freed.has(name) ? [i] : [])));
 const maxImports = computed(() => Math.max(1, ...[...props.layout.forward, ...props.layout.against].map(e => e.imports)));
 const cells = computed(() => [...props.layout.forward.map(e => ({ e, against: false })), ...props.layout.against.map(e => ({ e, against: true }))].map(({ e, against }) => {
   const key = edgeId(e.from, e.to);
