@@ -208,8 +208,10 @@ onMounted(() => {
     // Never the report into itself: a late take landing on the report page would pick
     // the report's own Markdown and fill the slot with the whole report (P1-13).
     if (isReportView.value || !reportsStore.filling) return;
-    const item = pickFor(reportsStore.filling.kind, reportsStore.filling.take);
-    if (!item) { fail(t("reports.exportMenu.addReport2"), new Error(t("reports.exportMenu.viewHasNothingAdd"))); return; }
+    // The slot's own pick first; "Take what is shown" on a view set otherwise takes what it shows, of the slot's kind.
+    const kind = reportsStore.filling.kind;
+    const item = pickFor(kind, reportsStore.filling.take) ?? pickFor(kind);
+    if (!item || item.kind !== kind) { fail(t("reports.exportMenu.addReport2"), new Error(t("reports.exportMenu.viewShowsNoAdd", { kind }))); return; }
     await addToReport(item);
   });
 });

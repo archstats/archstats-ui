@@ -19,6 +19,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** A force layout keeps moving for a while after its first frame. */
 const SETTLE = { figure: 1400, table: 300 } as const
 const PATIENCE = 15000
+/** A view still saying it is loading (a long history on a big codebase) is waited on this much longer. */
+const LOADING_PATIENCE = 90000
+const stillLoading = () => !!document.querySelector("[data-loading]")
 /** How long a slot's first choice of exportable may take before an alternative is accepted. */
 const FALLBACK_AFTER = 3000
 
@@ -40,6 +43,11 @@ function restoreFacet() {
     if (facetBefore === null) return
     useScopeStore().setFacet(facetBefore)
     facetBefore = null
+}
+
+/** While a figure is taken the view draws at a page's width (index.css, html.figure-capture). */
+function capturing(on: boolean) {
+    if (typeof document !== "undefined") document.documentElement.classList.toggle("figure-capture", on)
 }
 
 export function useSlotTaking() {
@@ -69,6 +77,7 @@ export function useSlotTaking() {
         const route = reports.beginFill(id, cellNumbers(reports.doc.blocks).get(id) ?? "")
         if (!route) { q.at++; return takeCurrent() }
         applyFacet(route)
+        capturing(kind === "figure")
         const mine = ++token
         reports.taking = "waiting"
         reports.takeWhy = ""
@@ -85,15 +94,15 @@ export function useSlotTaking() {
         // A view that says why it has nothing to hand over is not waited on.
         const blocked = () => router.currentRoute.value.path === path ? reasonOf(kind) : null
         let blockedSince = 0
-        const until = Date.now() + PATIENCE
-        while (!drawn() && Date.now() < until && mine === token) {
-            if (blocked()) { blockedSince ||= Date.now(); if (Date.now() - blockedSince > 1200) break } else blockedSince = 0
+        const until = Date.now() + PATIENCE, longest = Date.now() + LOADING_PATIENCE
+        while (!drawn() && (Date.now() < until || (stillLoading() && Date.now() < longest)) && mine === token) {
+            if (blocked() && !stillLoading()) { blockedSince ||= Date.now(); if (Date.now() - blockedSince > 1200) break } else blockedSince = 0
             await sleep(200)
         }
         if (mine !== token) return
         if (!drawn()) {
             const why = blocked()
-            reports.takeWhy = why ? t("reports.useSlotTaking.hasNothingTake", { view: b.cell.spec.view, why }) : t("reports.useSlotTaking.drewNothingTakeSeconds", { view: b.cell.spec.view, value: PATIENCE / 1000 })
+            reports.takeWhy = why ? t("reports.useSlotTaking.hasNothingTake", { view: b.cell.spec.view, why }) : t("reports.useSlotTaking.drewNothingTakeSet", { view: b.cell.spec.view, value: stillLoading() ? t("reports.useSlotTaking.secondsStillLoading", { value: LOADING_PATIENCE / 1000 }) : t("reports.useSlotTaking.seconds", { value: PATIENCE / 1000 }) })
             reports.taking = "failed"
             return
         }
@@ -107,6 +116,7 @@ export function useSlotTaking() {
 
     /** After a slot was filled or skipped: the next one, or back to the report. */
     async function advance(outcome: "filled" | "skipped" = "filled", why = "") {
+        capturing(false)
         const q = reports.takeQueue
         if (!q) return
         const id = q.ids[q.at]
@@ -146,6 +156,7 @@ export function useSlotTaking() {
 
     /** Holds the run where it is: the slot stays asked for, the bar offers the way on. */
     function pause() {
+        capturing(false)
         token++
         reports.importing = null
         if (reports.takeQueue) reports.taking = "paused"
@@ -153,6 +164,7 @@ export function useSlotTaking() {
 
     /** Ends the run and goes back to the report; the slots left stay asked for. */
     async function stop() {
+        capturing(false)
         restoreFacet()
         token++
         if (reports.takeLog && reports.takeQueue) { reports.takeLog.stopped = true; reports.takeLog.done = true }
@@ -165,6 +177,7 @@ export function useSlotTaking() {
     }
 
     async function finish() {
+        capturing(false)
         restoreFacet()
         token++
         if (reports.takeLog) reports.takeLog.done = true

@@ -303,6 +303,8 @@ const aloneTable = useTable({
     { id: "changed_alone", label: t("git.changeBreadth.changedAlone") }, { id: "changed_with", label: t("git.changeBreadth.changed") },
     { id: "most_often_with", label: t("git.changeBreadth.mostOften") }, { id: "together", label: t("git.changeBreadth.commitsTogether") },
   ],
-  disabledReason: () => (!aloneRows.value.length ? t("git.changeBreadth.noComponentHadTwo") : null),
+  // Nothing is said while the commits still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!loading.value && !aloneLoading.value && !aloneRows.value.length ? t("git.changeBreadth.noComponentHadTwo") : null),
+  ready: () => !loading.value && !aloneLoading.value,
 })
 </script>

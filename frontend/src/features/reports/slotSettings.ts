@@ -23,6 +23,7 @@ const VIEWS: Record<string, ViewDef> = {
         settings: [
             { key: "rep", label: t("reports.slotSettings.shown"), fallback: "graph", always: true, values: { graph: t("reports.slotSettings.graph"), matrix: t("reports.slotSettings.matrix"), chord: t("reports.slotSettings.chord"), list: t("reports.slotSettings.list"), crosscut: t("reports.slotSettings.crosscut") } },
             { key: "level", label: t("reports.slotSettings.level"), fallback: "groups", always: true, values: { groups: t("reports.slotSettings.group"), components: t("reports.slotSettings.components"), files: t("reports.slotSettings.files") } },
+            { key: "by", label: t("reports.slotSettings.rolledUp"), fallback: "", values: { "": t("reports.slotSettings.lens"), Folders: t("reports.slotSettings.folders"), none: t("reports.slotSettings.nothing") } },
             { key: "source", label: t("reports.slotSettings.connections"), fallback: "static", values: { static: t("reports.slotSettings.imports"), git: t("reports.slotSettings.changedTogether"), combined: t("reports.slotSettings.importsCoChange") } },
             { key: "order", label: t("reports.slotSettings.order"), fallback: "", values: { "": t("reports.slotSettings.laidOut"), levels: t("reports.slotSettings.levels"), name: t("reports.slotSettings.name") } },
             { key: "relation", label: t("reports.slotSettings.pairs"), fallback: "all", values: { all: t("reports.slotSettings.all"), "no-import": t("reports.slotSettings.withoutImport") } },
@@ -44,7 +45,10 @@ const VIEWS: Record<string, ViewDef> = {
     },
     "/views/git/activity": {
         name: t("reports.slotSettings.activity"),
-        settings: [{ key: "tab", label: t("reports.slotSettings.tab"), fallback: "now", always: true, values: { now: t("reports.slotSettings.workNow"), breadth: t("reports.slotSettings.breadth"), effort: t("reports.slotSettings.effort"), commits: t("reports.slotSettings.commits") } }],
+        settings: [
+            { key: "tab", label: t("reports.slotSettings.tab"), fallback: "now", always: true, values: { now: t("reports.slotSettings.workNow"), breadth: t("reports.slotSettings.breadth"), effort: t("reports.slotSettings.effort"), commits: t("reports.slotSettings.commits") } },
+            { key: "window", label: t("reports.slotSettings.window"), fallback: "", values: { "": t("reports.slotSettings.lastChosen"), "30": "30 days", "90": "90 days", "180": "180 days", "365": "1 year" } },
+        ],
     },
     "/views/metrics": {
         name: t("reports.slotSettings.metrics"),

@@ -119,3 +119,50 @@ export function monthlyLowShare(rows: EffortCommit[], from: number | null, to: n
     }
     return out
 }
+
+/** A month's changed lines, split by where they went; the parts up to `gone` add up to `lines`. */
+export interface MonthBreakdown {
+    month: string
+    lines: number
+    /** Into files below the health threshold. */
+    low: number
+    /** Into files with a health reading at or above it. */
+    rated: number
+    noHealth: number
+    gone: number
+    /** Into tangle members; overlaps the parts above. */
+    tangle: number
+}
+
+/** Every month in [from, to], oldest first, each split by where its changed lines went. */
+export function monthlyBreakdown(rows: EffortCommit[], from: number | null, to: number): MonthBreakdown[] {
+    const by = new Map<string, MonthBreakdown>()
+    let first = Infinity
+    const keyOf = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+    for (const r of rows) {
+        const t = new Date(r.t).getTime()
+        if (Number.isNaN(t) || t > to || (from !== null && t < from)) continue
+        first = Math.min(first, t)
+        const key = keyOf(new Date(t))
+        const e = by.get(key) ?? { month: key, lines: 0, low: 0, rated: 0, noHealth: 0, gone: 0, tangle: 0 }
+        const lines = Number(r.lines) || 0, low = Number(r.low) || 0, noHealth = Number(r.noHealth) || 0, gone = Number(r.gone) || 0
+        e.lines += lines
+        e.low += low
+        e.noHealth += noHealth
+        e.gone += gone
+        e.rated += Math.max(0, lines - low - noHealth - gone)
+        e.tangle += Number(r.tangle) || 0
+        by.set(key, e)
+    }
+    if (!by.size) return []
+    const out: MonthBreakdown[] = []
+    const cur = new Date(first)
+    cur.setUTCDate(1)
+    const end = new Date(to)
+    while (cur <= end) {
+        const key = keyOf(cur)
+        out.push(by.get(key) ?? { month: key, lines: 0, low: 0, rated: 0, noHealth: 0, gone: 0, tangle: 0 })
+        cur.setUTCMonth(cur.getUTCMonth() + 1)
+    }
+    return out
+}

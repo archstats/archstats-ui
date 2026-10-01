@@ -66,25 +66,23 @@
       </section>
 
       <section v-if="months.length > 1">
-        <ExhibitFrame :exhibit="figure" :title="t('git.effortShare.shareHealthBelowMonth', { threshold: effort.threshold.value })">
+        <ExhibitFrame :exhibit="figure" :title="t('git.effortShare.whereEachMonthS')">
           <div ref="barsHost" class="w-full">
-            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} 120`" :width="barsWidth" height="120" class="block max-w-full" role="img" :aria-label="t('git.effortShare.monthlyShareChangedLines', { threshold: effort.threshold.value })">
-              <line x1="0" :x2="barsWidth" y1="100" y2="100" stroke="currentColor" class="text-neutral-200"/>
-              <g v-for="g in [0.25, 0.5]" :key="g">
-                <line x1="28" :x2="barsWidth" :y1="100 - g * 96" :y2="100 - g * 96" stroke="currentColor" stroke-dasharray="2 3" class="text-neutral-200"/>
-                <text x="0" :y="103 - g * 96" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
+            <svg ref="barsSvg" :viewBox="`0 0 ${barsWidth} ${H}`" :width="barsWidth" :height="H" class="block max-w-full" role="img" :aria-label="t('git.effortShare.eachMonthSChanged')">
+              <!-- The split: every column is the whole of its month. -->
+              <g v-for="g in [0, 0.5, 1]" :key="g">
+                <line :x1="AXIS" :x2="barsWidth" :y1="SPLIT_Y + SPLIT_H * (1 - g)" :y2="SPLIT_Y + SPLIT_H * (1 - g)" stroke="currentColor" :stroke-dasharray="g === 0 ? '' : '2 3'" class="text-neutral-200"/>
+                <text x="0" :y="SPLIT_Y + SPLIT_H * (1 - g) + 3" font-size="10" class="fill-neutral-400 font-mono">{{ g * 100 }}%</text>
               </g>
               <g v-for="(m, i) in months" :key="m.month">
-                <rect
-                  :x="i * step + 1"
-                  :y="100 - m.share * 96"
-                  :width="Math.max(1, step - 2)"
-                  :height="m.share * 96"
-                  :fill="m.lines ? 'rgb(var(--c-accent-500))' : 'none'"
-                  :opacity="m.lines ? 0.75 : 0"
-                ><title>{{ m.month }}: {{ m.lines ? t('git.effortShare.lines', { value: Math.round(m.share * 100), lines: formatNumber(m.lines) }) : t('git.effortShare.noChanges') }}</title></rect>
+                <title>{{ monthTitle(m) }}</title>
+                <rect v-for="p in parts(m)" :key="p.key" :x="AXIS + i * step + 1" :y="p.y" :width="Math.max(1, step - 2)" :height="p.h" :fill="p.color"/>
               </g>
-              <text v-for="monthTick in monthTicks" :key="monthTick.i" :x="monthTick.i * step" y="116" font-size="10" class="fill-neutral-500 font-mono">{{ monthTick.label }}</text>
+              <polyline v-if="tangleLine" :points="tangleLine" fill="none" stroke="rgb(var(--c-accent-700))" stroke-width="1.75" stroke-linejoin="round"/>
+              <!-- The volume under it: how much there was to split. -->
+              <text x="0" :y="VOL_Y + 9" font-size="10" class="fill-neutral-400 font-mono">{{ t('git.effortShare.lines2') }}</text>
+              <rect v-for="(m, i) in months" :key="`v${m.month}`" :x="AXIS + i * step + 1" :y="VOL_Y + VOL_H - volH(m)" :width="Math.max(1, step - 2)" :height="volH(m)" fill="rgb(var(--c-neutral-400))"/>
+              <text v-for="monthTick in monthTicks" :key="monthTick.i" :x="AXIS + monthTick.i * step" :y="H - 2" font-size="10" class="fill-neutral-500 font-mono">{{ monthTick.label }}</text>
             </svg>
           </div>
         </ExhibitFrame>
@@ -101,8 +99,8 @@ import EmptyState from "~/shared/ui/EmptyState.vue";
 import Icon from "~/shared/ui/Icon.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { useEffort } from "~/features/git/useEffort";
-import { useSvgFigure, useTable } from "~/features/export/useExportables";
-import { monthlyLowShare, pctText, share } from "~/features/git/effort";
+import { REPORT_FIGURE_WIDTH, useSvgFigure, useTable } from "~/features/export/useExportables";
+import { monthlyBreakdown, pctText, share, type MonthBreakdown } from "~/features/git/effort";
 import { formatNumber } from "~/shared/format";
 import { HISTORY_PERIODS, anchorLabel, historyAnchor } from "~/features/git/history";
 import { scopeWhere } from "~/features/groups/scopeSql";
@@ -137,8 +135,38 @@ const windows = computed(() => HISTORY_PERIODS.map(p => ({ id: p.id, label: p.ti
 const months = computed(() => {
   const d = effort.days.value;
   const r = effort.rangeOf(d === null ? null : Math.max(d, 365));
-  return monthlyLowShare(effort.rows.value, r.from, r.to);
+  return monthlyBreakdown(effort.rows.value, r.from, r.to);
 });
+// The split on top, the volume under it, the months along the bottom.
+const AXIS = 30, SPLIT_Y = 10, SPLIT_H = 120, VOL_Y = 138, VOL_H = 34, H = 190;
+const PARTS = computed(() => [
+  { key: "low", label: t("git.effortShare.healthBelow2", { threshold: effort.threshold.value }), color: "rgb(var(--c-red-500))" },
+  { key: "rated", label: t("git.effortShare.healthMore", { threshold: effort.threshold.value }), color: "rgb(var(--c-neutral-300))" },
+  { key: "noHealth", label: t("git.effortShare.noHealthReading"), color: "rgb(var(--c-neutral-200))" },
+  { key: "gone", label: t("git.effortShare.filesNoLongerSnapshot"), color: "rgb(var(--c-amber-300))" },
+] as const);
+function parts(m: MonthBreakdown) {
+  if (!m.lines) return [];
+  let y = SPLIT_Y;
+  return PARTS.value.map(p => {
+    const h = (m[p.key] / m.lines) * SPLIT_H;
+    const out = { key: p.key, color: p.color, y, h };
+    y += h;
+    return out;
+  }).filter(p => p.h > 0);
+}
+const maxLines = computed(() => {
+  // A sweeping month (an import, a reformat) would flatten the rest: the scale tops out at three times the median busy month.
+  const v = months.value.map(m => m.lines).filter(Boolean).sort((a, b) => a - b);
+  return Math.max(1, Math.min(v[v.length - 1] ?? 1, (v[Math.floor(v.length / 2)] ?? 1) * 3));
+});
+const volH = (m: MonthBreakdown) => (m.lines ? Math.max(1, Math.min(1, m.lines / maxLines.value) * VOL_H) : 0);
+const tangleLine = computed(() => months.value
+  .map((m, i) => (m.lines ? `${AXIS + i * step.value + step.value / 2},${SPLIT_Y + SPLIT_H * (1 - m.tangle / m.lines)}` : null))
+  .filter(Boolean).join(" "));
+const monthTitle = (m: MonthBreakdown) => (m.lines
+  ? t("git.effortShare.changedLinesHealthBelow", { month: m.month, lines: formatNumber(m.lines), share: pctText(share(m.low, m.lines)), threshold: effort.threshold.value, share2: pctText(share(m.tangle, m.lines)) })
+  : t("git.effortShare.noChanges2", { month: m.month }));
 const barsHost = ref<HTMLElement | null>(null);
 const barsSvg = ref<SVGSVGElement | null>(null);
 const hostWidth = ref(900);
@@ -150,18 +178,25 @@ watch(barsHost, (el, old) => {
   if (el) ro.observe(el);
 }, { flush: "post" });
 onBeforeUnmount(() => ro?.disconnect());
-const barsWidth = computed(() => hostWidth.value);
-const step = computed(() => barsWidth.value / Math.max(1, months.value.length));
+// Drawn for export at a report page's width; otherwise the width it is given.
+const exportWidth = ref<number | null>(null);
+const barsWidth = computed(() => exportWidth.value ?? hostWidth.value);
+const step = computed(() => (barsWidth.value - AXIS) / Math.max(1, months.value.length));
 const monthTicks = computed(() => {
   const every = Math.max(1, Math.ceil(months.value.length / Math.floor(barsWidth.value / 70)));
   return months.value.map((m, i) => ({ i, label: `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m.month.slice(5)) - 1]} ’${m.month.slice(2, 4)}` })).filter(t => t.i % every === 0);
 });
 const figure = useSvgFigure({
-  title: () => t("git.effortShare.shareChangedLinesHealth", { threshold: effort.threshold.value }),
+  title: () => t("git.effortShare.whereEachMonthS"),
   svg: () => barsSvg.value,
+  exportWidth: REPORT_FIGURE_WIDTH,
+  relayout: width => { exportWidth.value = width; },
   legend: () => ({
-    items: [{ label: t("git.effortShare.linesChangedFilesHealth", { threshold: effort.threshold.value }), color: "rgb(var(--c-accent-500))" }],
-    notes: [t("git.effortShare.oneBarPerMonth")],
+    items: [
+      ...PARTS.value.map(p => ({ label: p.label, color: p.color })),
+      { label: t("git.effortShare.shareTangleMembers"), color: "rgb(var(--c-accent-700))", mark: "line" as const },
+    ],
+    notes: [t("git.effortShare.eachColumnOneMonth")],
   }),
 });
 
@@ -182,6 +217,8 @@ const windowTable = useTable({
     { id: "gone", label: t("git.effortShare.shareFilesNotSnapshot") },
     { id: "no_health", label: t("git.effortShare.shareFilesNoHealth") },
   ],
-  disabledReason: () => (!effort.rows.value.length ? t("git.effortShare.noChangesRecorded2") : null),
+  // Nothing is said while the commits still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!effort.loading.value && !effort.rows.value.length ? t("git.effortShare.noChangesRecorded2") : null),
+  ready: () => !effort.loading.value,
 });
 </script>

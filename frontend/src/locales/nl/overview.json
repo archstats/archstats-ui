@@ -53,8 +53,7 @@
     "componentsMetrics": "{value} componenten, {metricsLength} metrics",
     "within": "· binnen {scopeLabel}",
     "factsAboutNumbersWhat": ". Feiten over de getallen; wat ze betekenen beoordeel je zelf.",
-    "openMetrics": "Metrics openen →",
-    "components": "componenten"
+    "openMetrics": "Metrics openen →"
   },
   "summarySection": {
     "overview": "Overzicht",

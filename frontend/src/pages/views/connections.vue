@@ -29,7 +29,7 @@
             <div class="ui-segmented w-full" role="group" :aria-label="t('pages.connections.referenceFloor')">
               <button v-for="n in [1, 2, 5, 10, 25]" :key="n" type="button" class="flex-1" :aria-pressed="refsFloor === n" @click="setState({ minRefs: n })">{{ n }}</button>
             </div>
-            <p class="text-xs leading-4 text-neutral-500">{{ t('pages.connections.edgesHiddenFloorCycles', { value: weakEdges.toLocaleString(intlLocale), value2: model.edges.value.length.toLocaleString(intlLocale) }) }}</p>
+            <p class="text-xs leading-4 text-neutral-500">{{ t('pages.connections.edgesHiddenFloorCycles2', { weakEdges: weakEdges.toLocaleString(intlLocale), edgesLength: model.edges.value.length.toLocaleString(intlLocale) }) }}</p>
           </div>
         </template>
       </div>
@@ -71,7 +71,7 @@
               <button type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === null" @click="setState({ by: 'none' })">{{ t('pages.connections.none') }}</button>
               <button v-for="d in model.dimensions.value" :key="d" type="button" class="flex-1" :aria-pressed="model.rollupDimension.value === d" @click="setState({ by: d })">{{ d }}</button>
             </div>
-            <p v-if="model.dimensions.value.length === 0" class="text-xs text-neutral-500">{{ t('pages.connections.createGroupsRollComponents') }}</p>
+            <p v-if="model.dimensions.value.length === 1" class="text-xs text-neutral-500">{{ t('pages.connections.foldersCodeSOwn') }}</p>
           </div>
           <div v-if="model.dimensions.value.length > 1 || (model.dimensions.value.length === 1 && model.rollupDimension.value === null)" class="flex flex-col gap-1">
             <span class="ui-label">{{ t('pages.connections.colour') }}</span>
@@ -203,12 +203,16 @@
       <!-- Too big to draw. With no lens, "close some groups" pointed at
            groups that do not exist; the way out is to make some. -->
       <EmptyState
-        v-else-if="overCap && model.dimensions.value.length === 0"
+        v-else-if="overCap && !model.rollupDimension.value"
         :title="t('pages.connections.componentsTooMany', { nodesLength: model.nodes.value.length, rep })"
-        :text="t('pages.connections.readsWellUpNodes', { rep, cap, rep2: rep })"
+        :text="t('pages.connections.readsWellUpNodes3', { rep, cap, rep2: rep })"
         icon="scale"
+        :data-view-reason="t('pages.connections.componentsTooManyRoll', { nodesLength: model.nodes.value.length, rep })"
       >
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" @click="setState({ by: FOLDERS, level: 'groups' })">
+          <Icon icon="folder" :size="13"/><span>{{ t('pages.connections.rollUpFolder') }}</span>
+        </button>
+        <button type="button" class="ui-btn ui-btn-sm" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">
           <Icon icon="waypoints" :size="13"/><span>{{ t('pages.connections.proposeLens') }}</span>
         </button>
         <button type="button" class="ui-btn ui-btn-sm" @click="setState({ rep: 'graph' })">{{ t('pages.connections.showGraph') }}</button>
@@ -299,11 +303,12 @@
       <ZoomControls v-if="rep === 'graph' && !overCap && model.nodes.value.length" @zoom-in="rendererRef?.zoomIn?.()" @zoom-out="rendererRef?.zoomOut?.()" @reset="rendererRef?.resetZoom?.()"/>
       <!-- Hundreds of ungrouped components draw as a cloud. Say what makes it readable, once, out of the way. -->
       <div
-        v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && model.dimensions.value.length === 0 && !model.loading.value"
-        class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[640px] -translate-x-1/2 items-center gap-3 px-3 py-2"
+        v-if="rep === 'graph' && !hairballDismissed && model.nodes.value.length > 300 && !model.rollupDimension.value && !model.loading.value"
+        class="ui-popover absolute left-1/2 top-3 z-10 flex max-w-[680px] -translate-x-1/2 items-center gap-3 px-3 py-2"
       >
         <span class="text-sm text-neutral-700">{{ t('pages.connections.componentsOnceDrawCloud', { nodesLength: model.nodes.value.length.toLocaleString(intlLocale) }) }}</span>
-        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">{{ t('pages.connections.proposeLens') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-primary shrink-0" @click="setState({ by: FOLDERS, level: 'groups' })">{{ t('pages.connections.folder') }}</button>
+        <button type="button" class="ui-btn ui-btn-sm shrink-0" @click="router.push({ path: '/views/dimensions', query: { build: 'new', propose: '1' } })">{{ t('pages.connections.proposeLens') }}</button>
         <button type="button" class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet shrink-0" :aria-label="t('pages.connections.dismiss')" :title="t('pages.connections.dismiss')" @click="hairballDismissed = true"><Icon icon="x" :size="13"/></button>
       </div>
 
@@ -461,6 +466,7 @@
         :memberships="model.membershipsOf"
         :cycle-set-of="model.cycleSetOf.value"
         :cycle-sets="model.cycleSets.value"
+        :rollups="model.rollupGroups.value"
         @select="focusNode"
         @select-pair="onSelectPair"
         @select-cycle="onSelectCycle"
@@ -502,6 +508,7 @@ import { units, useGroupsStore, type UnitKind } from "~/features/groups/groups.s
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { useConnectionsModel } from "~/features/connections/useConnectionsModel";
+import { FOLDERS } from "~/features/connections/folders";
 import { focusText, type FocusOp } from "~/features/navigation/focusSpec";
 import { adjacency, shortestPath, strongestNeighbour } from "~/features/navigation/focus";
 import { showInTargets } from "~/features/navigation/showIn";
@@ -514,7 +521,7 @@ import {
   toConnectionsQuery, toggleSelection,
 } from "~/features/connections/connections";
 import { t, intlLocale } from "~/shared/i18n";
-import I18nT from "~/shared/ui/I18nT";
+import I18nT from "~/shared/ui/I18nT"
 
 // One view for every "what is coupled to what" question. The picture is a
 // tree (groups ⊃ components ⊃ files) opened per node; source, roll-up
@@ -634,7 +641,7 @@ const crossColDim = computed(() => {
   const dims = model.dimensions.value.filter(d => d !== crossRowDim.value);
   return state.value.x && dims.includes(state.value.x) ? state.value.x : dims[0] ?? null;
 });
-const crossGroupsOf = (dim: string | null): CrossGroup[] => (dim ? groupsStore.groups.filter(g => g.dimension === dim).map(g => ({ id: g.id, name: g.name, color: g.color, files: groupsStore.filesOf(g) })) : []);
+const crossGroupsOf = (dim: string | null): CrossGroup[] => model.groupsOfDimension(dim).map(g => ({ id: g.id, name: g.name, color: g.color, files: g.files }));
 const crossRows = computed(() => crossGroupsOf(crossRowDim.value));
 const crossCols = computed(() => crossGroupsOf(crossColDim.value));
 const cross = computed(() => buildCrosscut({ rows: crossRows.value, cols: crossCols.value, filesOfComponent: model.filesOfComponent.value, edges: model.componentEdges.value, source: source.value }));

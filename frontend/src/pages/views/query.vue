@@ -63,7 +63,7 @@
                 <span v-else class="min-w-0 truncate">{{ tab2.name }}</span>
                 <span v-if="changed(tab2)" class="qc-dirty" :title="tab2.cell ? t('pages.query.changedSinceCameReport') : t('pages.query.changedSinceWasSaved')" :aria-label="t('pages.query.changed')"></span>
                 <Loader2 v-if="con.runs[tab2.id]?.running" :size="11" class="shrink-0 animate-spin text-neutral-500"/>
-                <button type="button" class="qc-tab-x" :aria-label="t('pages.query.close', { tab2Name: tab2.name })" @mousedown.stop @click.stop="con.close(tab2.id)"><X :size="11"/></button>
+                <button type="button" class="qc-tab-x" :aria-label="t('pages.query.close', { name: tab2.name })" @mousedown.stop @click.stop="con.close(tab2.id)"><X :size="11"/></button>
               </div>
             </div>
             <button type="button" class="qc-tab-add" :title="t('pages.query.newQueryT')" :aria-label="t('pages.query.newQuery')" @click="newTab()"><Plus :size="14"/></button>

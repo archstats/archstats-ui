@@ -53,8 +53,7 @@
     "componentsMetrics": "{value} components, {metricsLength} metrics",
     "within": "· within {scopeLabel}",
     "factsAboutNumbersWhat": ". Facts about the numbers; what they mean is yours to judge.",
-    "openMetrics": "Open Metrics →",
-    "components": "components"
+    "openMetrics": "Open Metrics →"
   },
   "summarySection": {
     "overview": "Overview",

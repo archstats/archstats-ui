@@ -11,7 +11,7 @@
 import { TABLE_PRESETS } from "./reportCells"
 import { newId, type Block, type CellSpec, type TextKind } from "./reportDoc"
 import { ignoredTestDirs, prodComponents, realModule, type Ecosystem, type EcosystemId, type SnapshotFacts } from "./readings"
-import { t, intlLocale } from "~/shared/i18n"
+import { t } from "~/shared/i18n"
 
 export interface TemplateParam { id: string; label: string; kind: "component" }
 
@@ -79,9 +79,25 @@ export class Writer {
         return this
     }
     sql(title: string, sql: string, limit = 20) { this.blocks.push(cellBlock({ type: "sql", sql: sql.replace(/\s+/g, " ").trim(), limit }, title)); return this }
+    /**
+     * An exhibit (features/exhibits): computed and drawn when the report runs,
+     * with no view to visit, as a figure where it has one and a table where not.
+     */
+    exhibit(kind: string, params: Record<string, unknown>, title: string) {
+        this.blocks.push(cellBlock({ type: "exhibit", kind, v: 1, params }, title))
+        this.used.add(`exhibit:${kind}:${JSON.stringify(params)}`)
+        return this
+    }
     slot(kind: "figure" | "table", title: string, view: string, route: string, hint: string, take?: string) {
         this.blocks.push(cellBlock({ type: "slot", kind, view, route, hint, ...(take ? { take } : {}) }, title))
+        this.used.add(`slot:${route}#${take ?? ""}`)
         return this
+    }
+    /** Figures this report already shows, so a shared section picks another picture rather than repeat one. */
+    used = new Set<string>()
+    /** Whether this report already has this slot (by route and take) or exhibit. */
+    has(v: ViewAsk | { kind: string; params: Record<string, unknown> }): boolean {
+        return "route" in v ? this.used.has(`slot:${v.route}#${v.take ?? ""}`) : this.used.has(`exhibit:${v.kind}:${JSON.stringify(v.params)}`)
     }
     /** A section, written only when the snapshot has what it needs; `need` is true or the reason it has not. */
     section(title: string, need: true | string, body: () => void) {
@@ -120,28 +136,34 @@ export const needs = {
 // Views a slot opens, set the way the figure needs them. Every one of them
 // offers its figure or table to Add to report.
 export const VIEWS: Record<string, ViewAsk | ((...a: any[]) => ViewAsk)> & Record<string, any> = {
-    // The dependency graph: components while they stay legible, the lens's groups beyond that.
+    // The dependency graph: components while they stay legible, rolled up into the code's own folders beyond that.
     structure: (f: SnapshotFacts) => (f.components <= 60
-        ? { view: t("reports.templateKit.connections"), route: "/views/connections?level=components", hint: t("reports.templateKit.graphComponents") }
-        : { view: t("reports.templateKit.connections"), route: "/views/connections?level=groups", hint: t("reports.templateKit.graphGroup") }),
-    // Without a lens its groups are the components, which past a few dozen print as a cloud.
-    graph: { view: t("reports.templateKit.connections"), route: "/views/connections?level=groups", hint: t("reports.templateKit.graphGroupSetLens") },
+        ? { view: t("reports.templateKit.connections"), route: "/views/connections?level=components&by=none", hint: t("reports.templateKit.graphComponents") }
+        : { view: t("reports.templateKit.connections"), route: "/views/connections?level=groups&by=Folders", hint: t("reports.templateKit.graphRolledUpFolder") }),
+    // Folders need no lens, so the graph reads at any size.
+    graph: { view: t("reports.templateKit.connections"), route: "/views/connections?level=groups&by=Folders", hint: t("reports.templateKit.graphRolledUpFolder") },
     focus: (c: string) => ({ view: t("reports.templateKit.connections"), route: `/views/connections?level=components&sel=${encodeURIComponent(c)}`, hint: t("reports.templateKit.graphComponentsSelected", { c }) }),
     // facet=production: the same production pairs as the template's own table beside it.
     hidden: { view: t("reports.templateKit.connections"), route: "/views/connections?source=git&rep=list&relation=no-import&facet=production", hint: t("reports.templateKit.coChangeWithoutImport"), take: "Connections list" },
     // A table: the matrix exports as rows and numbered columns, in dependency levels, up to 40 of them.
     // Components while they fit; beyond that it needs a lens whose groups do.
     matrix: (f: SnapshotFacts) => (f.components <= 40
-        ? { view: t("reports.templateKit.connections"), route: "/views/connections?rep=matrix&level=components&order=levels", hint: t("reports.templateKit.matrixComponentsLevels"), take: "Dependency matrix" }
-        : { view: t("reports.templateKit.connections"), route: "/views/connections?rep=matrix&level=groups&order=levels", hint: t("reports.templateKit.matrixGroupLevelsNeeds"), take: "Dependency matrix" }),
-    // Arcs by group: legible with a lens of a few dozen groups (for Django, its apps), a ring of clipped names without one.
-    chord: { view: t("reports.templateKit.connections"), route: "/views/connections?rep=chord&level=groups", hint: t("reports.templateKit.chordGroupSetLens") },
+        ? { view: t("reports.templateKit.connections"), route: "/views/connections?rep=matrix&level=components&order=levels&by=none", hint: t("reports.templateKit.matrixComponentsLevels"), take: "Dependency matrix" }
+        : { view: t("reports.templateKit.connections"), route: "/views/connections?rep=matrix&level=groups&order=levels&by=Folders", hint: t("reports.templateKit.matrixRolledUpFolder"), take: "Dependency matrix" }),
+    // Arcs between folders: how much each part of the tree leans on each other part.
+    chord: { view: t("reports.templateKit.connections"), route: "/views/connections?rep=chord&level=groups&by=Folders", hint: t("reports.templateKit.chordRolledUpFolder"), take: "Connections chord" },
     combined: (c: string) => ({ view: t("reports.templateKit.connections"), route: `/views/connections?source=combined&level=components&sel=${encodeURIComponent(c)}`, hint: t("reports.templateKit.importsCoChangeSelected", { c }) }),
     plot: (preset: string, hint: string) => ({ view: t("reports.templateKit.metrics"), route: `/views/metrics?view=plot&preset=${preset}`, hint }),
     // Files: production only, or licences, Markdown and lock files lead every ranking.
     treemap: (preset: string, grain: "components" | "files" | "directories", hint: string) => ({ view: t("reports.templateKit.hotspots"), route: `/views/components/hotspots?preset=${preset}&grain=${grain}${grain === "files" ? "&facet=production" : ""}`, hint }),
     cyclesAround: (c: string) => ({ view: t("reports.templateKit.cycles"), route: `/views/components/cycles?component=${encodeURIComponent(c)}`, hint: t("reports.templateKit.tangleSits", { c }) }),
     activity: { view: t("reports.templateKit.activity"), route: "/views/git/activity?tab=commits", hint: t("reports.templateKit.linesAddedRemovedMonth"), take: "Lines added and removed by month" },
+    // Where the work moved: each component's share of the changed lines now against the two years before.
+    workMoved: (window: "30" | "90" | "180" | "365" = "365") => ({ view: t("reports.templateKit.activity"), route: `/views/git/activity?tab=now&window=${window}`, hint: t("reports.templateKit.whereWorkMovedAgainst", { value: window === "365" ? t("reports.templateKit.lastYear") : t("reports.templateKit.lastDays", { window }) }), take: "Where the work moved" }),
+    // Each month's changed lines split by the health of the files they went into.
+    effort: { view: t("reports.templateKit.activity"), route: "/views/git/activity?tab=effort", hint: t("reports.templateKit.eachMonthSChanged"), take: "Where each month's changed lines went" },
+    // Co-change between folders: which parts of the tree keep changing together.
+    cochangeGraph: { view: t("reports.templateKit.connections"), route: "/views/connections?source=git&level=groups&by=Folders", hint: t("reports.templateKit.changedTogetherRolledUp") },
     // The Overview's year of commits by day: the grain a month's review reads at.
     calendar: { view: t("reports.templateKit.overview"), route: "/", hint: t("reports.templateKit.yearCommitsOneSquare"), take: "Commit calendar" },
     breadth: { view: t("reports.templateKit.activity"), route: "/views/git/activity?tab=breadth", hint: t("reports.templateKit.shareCommitsHowMany"), take: "Components touched per commit" },
@@ -218,6 +240,11 @@ export const SHOWS = {
     knowledgeMap: t("reports.templateKit.mapShowsEveryComponent"),
     breadth: t("reports.templateKit.eachColumnYearCommits"),
     workNow: t("reports.templateKit.tableListsComponentsChanged"),
+    stack: t("reports.templateKit.drawingStacksCodeFloors"),
+    graphFolders: t("reports.templateKit.graphRollsComponentsUp"),
+    chord: t("reports.templateKit.eachArcAroundCircle"),
+    workMoved: t("reports.templateKit.eachRowComponentS"),
+    modulesDeps: t("reports.templateKit.eachBarBuildModule"),
 }
 
 // ── Topics several templates share ────────────────────────────────────────
@@ -247,20 +274,25 @@ export function librariesAbout(eco: EcosystemId | ""): string {
     return t("reports.templateKit.librariesCodeProjectUses2", { from: e.from, two: e.two, value: e.platform ? t("reports.templateKit.modulesLanguageSOwn", { platform: e.platform }) : "" })
 }
 
-/** Past this many components a drawing of the whole graph is a cloud of dots, whatever the grouping. */
-export const GRAPH_LIMIT = 300
 /** The scan recorded classes and functions, so the Units view can draw the roles. */
 export const hasUnits = (f: SnapshotFacts) => f.tables.has("units")
 /**
  * The structure, and a drawing of it: the roles as floors when the scan has
- * classes (legible at any size), else the graph while it stays legible.
+ * classes (legible at any size), else the graph, rolled up by folder past a
+ * few dozen components.
  */
-export function structure(w: Writer, withFigure = true) {
+export function structure(w: Writer, withFigure: boolean | "stack" | "graph" | "chord" = true) {
     w.explain(ABOUT.structure).reading("structure")
     if (!withFigure) return
+    if (withFigure === "stack") { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, t("reports.templateKit.codebaseFloors")); return }
+    if (withFigure === "graph" || withFigure === "chord") { folderPicture(w, withFigure, withFigure === "chord" ? t("reports.templateKit.howFoldersLeanEach") : t("reports.templateKit.foldersTheirImports")); return }
     if (hasUnits(w.facts)) layers(w, t("reports.templateKit.dependencyStructure"))
-    else if (w.facts.components > GRAPH_LIMIT) w.p(t("reports.templateKit.drawingWholeGraphLeft", { value: w.facts.components.toLocaleString(intlLocale) }))
     else slotOf(w, "figure", t("reports.templateKit.dependencyStructure"), VIEWS.structure(w.facts))
+}
+/** The folders as a graph or a chord: legible at any size, needing no lens. */
+export function folderPicture(w: Writer, how: "graph" | "chord", title: string) {
+    if (how === "chord") { w.explainSlot(SHOWS.chord); slotOf(w, "figure", title, VIEWS.chord) }
+    else { w.explainSlot(SHOWS.graphFolders); slotOf(w, "figure", title, VIEWS.graph) }
 }
 /** The roles as floors, with how to read them; nothing without classes in the scan. */
 export function layers(w: Writer, title = t("reports.templateKit.howLayersLean")) {

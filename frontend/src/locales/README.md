@@ -67,7 +67,8 @@ language to answer in. What people see in Ask is messages like everywhere else.
   every Dutch file has exactly the keys of its English file, with the same placeholders
   and plural forms; every English file has a Dutch file.
 - `npm run i18n:check`: no text for people is left in the code outside a message and
-  outside `keep-english.json`.
+  outside `keep-english.json`; every `t()` call and `<I18nT>` fills all of its message's
+  placeholders; no message is left that nothing uses.
 
 ## Adding text
 

@@ -321,7 +321,7 @@ const tallyLine = computed(() => {
     tallied2.explanations ? t("reports.templateSheet.explainingTerms", { count: t("common.count.paragraph", { count: tallied2.explanations }) }) : "",
     tallied2.readings ? t("reports.templateSheet.countedSnapshot", { count: t("common.count.paragraph", { count: tallied2.readings }) }) : "",
     tallied2.tables ? t("reports.templateSheet.runSnapshot", { count: t("common.count.table", { count: tallied2.tables }) }) : "",
-    tallied2.slots ? t("reports.templateSheet.addViews", { tallied2: slotPhrase(tallied2) }) : "",
+    tallied2.slots ? t("reports.templateSheet.addViews", { slots: slotPhrase(tallied2) }) : "",
     tallied2.prompts ? t("reports.templateSheet.yourReading", { count: t("common.count.prompt", { count: tallied2.prompts }) }) : "",
   ].filter(Boolean);
   const last = parts.pop();

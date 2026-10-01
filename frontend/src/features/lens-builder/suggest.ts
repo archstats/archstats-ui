@@ -906,7 +906,7 @@ function reasonText(signal: SignalId, members: Unit[], raw: number, input: Sugge
       const shared = Array.from(count.values()).filter(n => n >= 2).length
       return t("lens-builder.suggest.shareDomain", { shared, types: t("common.noun.type", { count: shared }) })
     }
-    case "names": { const item = topToken(members, input.idf); return item ? t("lens-builder.suggest.name", { item }) : t("lens-builder.suggest.similarNames") }
+    case "names": { const item = topToken(members, input.idf); return item ? t("lens-builder.suggest.name", { token: item }) : t("lens-builder.suggest.similarNames") }
     case "path": return t("lens-builder.suggest.samePackageTree")
     case "lanes": { const lane = topLane(members); return lane ? t("lens-builder.suggest.sameLane2", { value: input.laneLabels[lane] ?? lane }) : t("lens-builder.suggest.sameLane3") }
     case "depth": return t("lens-builder.suggest.sameDepthEntryPoints")

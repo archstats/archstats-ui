@@ -20,7 +20,7 @@ import {
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   ArrowLeftRight, ArrowDown, ArrowUpDown,
-  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share
+  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share, Merge
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -37,6 +37,8 @@ const iconComponent = computed(() => {
   switch (props.icon) {
     case "recycle":
       return Recycle
+    case "merge":
+      return Merge
     case "info":
       return Info
     case "chevron-down":

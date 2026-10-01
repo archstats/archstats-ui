@@ -80,6 +80,14 @@ export interface ExhibitDef<P = any, D = any> {
         height(d: D, o: DrawOptions): number
         /** The component fills the box it is given (a tangle, a matrix) rather than sizing itself (the stack). */
         fill?: boolean
+        /**
+         * The width it is drawn at for a report or a PNG, in px (960 by default):
+         * narrower where its text must stay legible on a page, wider where a
+         * matrix needs room to name its rows.
+         */
+        exportWidth?: number
+        /** False where the drawing would not read on a printed page (a matrix of sixty rows): a report takes the table. */
+        printable?(d: D): boolean
         /** Drawn only when this holds (a ranking of one row is a table); the table otherwise. */
         when?(d: D): boolean
         /** The component's events that pick an element, turned into its element id (or null for none). */

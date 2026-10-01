@@ -220,7 +220,7 @@
     "questionsYouAskKept": "Vragen die je stelt worden hier bewaard met hun bewijs, per workspace.",
     "conversationName": "Naam van het gesprek",
     "aboutSnapshot": "Over snapshot {snapshot}",
-    "delete": "“{tTitle}” verwijderen",
+    "delete": "“{title}” verwijderen",
     "deleteConversation": "Gesprek verwijderen",
     "today": "Vandaag",
     "week": "Deze week",

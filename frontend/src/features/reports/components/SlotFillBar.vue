@@ -108,9 +108,11 @@ function onKey(e: KeyboardEvent) {
 }
 onMounted(() => { timer = setInterval(() => { if (reports.filling) tick.value++; }, 500); window.addEventListener("keydown", onKey); });
 onBeforeUnmount(() => { if (timer) clearInterval(timer); window.removeEventListener("keydown", onKey); });
+// Something of the slot's kind is drawn: a table does not fill a figure's slot.
 const canAdd = computed(() => {
   void tick.value;
-  return exportables.value.some(usable);
+  const kind = fill.value?.kind;
+  return exportables.value.some(i => usable(i) && (!kind || i.kind === kind));
 });
 function add() { void runCommand("add-to-report"); }
 </script>

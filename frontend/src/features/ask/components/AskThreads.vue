@@ -36,7 +36,7 @@
               <span>{{ questions(item) }}</span><span>·</span><span>{{ relativeAge(item.updatedAt) }}</span>
               <span v-if="item.scanId !== ask.openScanId && item.turns.length" class="ui-tag" :title="t('ask.askThreads.aboutSnapshot', { snapshot: item.snapshot })">{{ item.snapshot }}</span>
             </p>
-            <button type="button" class="ask-thread-x" :title="t('ask.askThreads.delete', { itemTitle: item.title })" :aria-label="t('ask.askThreads.deleteConversation')" @click.stop="ask.remove(item.id)"><Trash2 :size="12" :stroke-width="1.75"/></button>
+            <button type="button" class="ask-thread-x" :title="t('ask.askThreads.delete', { title: item.title })" :aria-label="t('ask.askThreads.deleteConversation')" @click.stop="ask.remove(item.id)"><Trash2 :size="12" :stroke-width="1.75"/></button>
           </template>
         </div>
       </template>

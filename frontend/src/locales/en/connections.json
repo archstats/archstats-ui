@@ -285,5 +285,9 @@
   },
   "exhibitsNeighbours": {
     "uses": "{of} uses"
+  },
+  "folders": {
+    "folders": "Folders",
+    "root": "(root)"
   }
 }

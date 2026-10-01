@@ -285,5 +285,9 @@
   },
   "exhibitsNeighbours": {
     "uses": "{of} gebruikt"
+  },
+  "folders": {
+    "folders": "Mappen",
+    "root": "(root)"
   }
 }

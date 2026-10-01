@@ -150,26 +150,27 @@
     "fixPattern": "Fix-patroon",
     "notSnapshot": "Niet in het snapshot",
     "noHealthReading": "Geen health-meting",
-    "shareHealthBelowMonth": "Aandeel in health onder {threshold}, per maand",
-    "monthlyShareChangedLines": "Maandelijks aandeel gewijzigde regels in bestanden met health onder {threshold}",
-    "lines": "{value}% van {lines} regels",
-    "noChanges": "geen wijzigingen",
     "commits": "{commits} commits",
     "theseFilesFilesHealth": "Deze bestanden zijn {lowFiles} van de bestanden met een health-meting",
     "filesComponentsTangleTwo": "Bestanden van componenten in een tangle van twee of meer",
     "commitsWhoseSubjectMatches": "Commits waarvan het onderwerp matcht met /{source}/i",
     "filesDeletedMovedWhere": "Bestanden die zijn verwijderd of verplaatst, waar renames niet werden gevolgd",
     "filesSnapshotHasBut": "Bestanden die in het snapshot zitten maar geen beoordeling kregen: configuratie, templates, data",
-    "shareChangedLinesHealth": "Aandeel gewijzigde regels in health onder {threshold}, per maand",
-    "linesChangedFilesHealth": "Regels gewijzigd in bestanden met health onder {threshold}",
-    "oneBarPerMonth": "Eén balk per maand: het aandeel van de gewijzigde regels van die maand.",
     "whereChangeEffortGoes": "Waar de wijzigingsinspanning heen gaat",
     "shareHealthBelow": "Aandeel in health onder {threshold}",
     "shareTangleMembers": "Aandeel in tangle-leden",
     "shareCommitsMatchingFix": "Aandeel in commits die matchen met het fix-patroon",
     "shareFilesNotSnapshot": "Aandeel in bestanden die niet in het snapshot zitten",
     "shareFilesNoHealth": "Aandeel in bestanden zonder health-meting",
-    "noChangesRecorded2": "Geen wijzigingen vastgelegd."
+    "noChangesRecorded2": "Geen wijzigingen vastgelegd.",
+    "whereEachMonthS": "Waar de gewijzigde regels van elke maand heen gingen",
+    "eachMonthSChanged": "De gewijzigde regels van elke maand, verdeeld naar de health van de bestanden waar ze in terechtkwamen, met het aandeel in tangle-leden en het volume",
+    "lines2": "regels",
+    "healthMore": "Health {threshold} of hoger",
+    "filesNoLongerSnapshot": "Bestanden die niet meer in het snapshot zitten",
+    "changedLinesHealthBelow": "{month}: {lines} gewijzigde regels; {share} in health onder {threshold}, {share2} in tangle-leden",
+    "noChanges2": "{month}: geen wijzigingen",
+    "eachColumnOneMonth": "Elke kolom toont de gewijzigde regels van één maand, verdeeld naar de health van de bestanden waar ze in terechtkwamen. De lijn is het aandeel in componenten in een tangle. De grijze balken eronder zijn het aantal regels dat die maand veranderde, afgekapt op drie keer een gemiddelde maand."
   },
   "gitActivityChart": {
     "mon": "Ma",
@@ -316,7 +317,7 @@
     "linesAddedRemovedMonth": "Toegevoegde en verwijderde regels per maand",
     "linesAdded": "Toegevoegde regels",
     "linesRemoved": "Verwijderde regels",
-    "oneBarPerMonth": "Eén balk per maand: toegevoegd boven de lijn, verwijderd eronder."
+    "oneBarPerMonth2": "Eén balk per maand: toegevoegd boven de lijn, verwijderd eronder. Een maand die ver boven de rest uitsteekt, wordt aan de rand afgekapt. Het totaal staat ernaast."
   },
   "sharedCommitList": {
     "readingCommits": "Commits lezen…",
@@ -386,7 +387,14 @@
     "tookMoreThanFour": "Bij {value} is {their} aandeel meer dan vier keer zo groot als in de twee jaar ervoor:",
     "more2": ", en nog {value}",
     "took1MoreBefore": "Stil geworden: {value} die eerder 1% of meer had.",
-    "changedComponentsHalfThem": "In {windowWords} zijn {lines} gewijzigd in {rowsLength} componenten; de helft daarvan zit in {value}. {tookMoreThanFour}{took1MoreBefore}"
+    "whereWorkMoved": "Waar het werk heen ging",
+    "componentsWhoseShareMoved": "De {moversLength} componenten waarvan het aandeel het meest verschoof",
+    "eachComponentSShare": "Het aandeel van elke component in de gewijzigde regels nu, tegenover de twee jaar ervoor",
+    "whereWorkMovedAgainst": "Waar het werk heen ging ({windowWords} tegenover de twee jaar ervoor)",
+    "eachRowComponentS": "Elke rij is het aandeel van een component in alle gewijzigde regels, per periode. De rijen zijn de grootste verschuivingen, winst eerst: werk dat erbij komt staat bovenaan, werk dat wegtrekt onderaan.",
+    "linesWentInto": "In {window} veranderden {lines} in {components}; de helft daarvan ging naar {half}.",
+    "and": "en",
+    "oneLower": "één"
   },
   "effort": {
     "coalesceCFileAdditions": "(coalesce(c.file_additions, 0) + coalesce(c.file_deletions, 0))",

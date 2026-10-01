@@ -16,11 +16,35 @@
     <div v-else class="min-h-0 grow overflow-y-auto">
       <div class="mx-auto flex w-full max-w-[1180px] flex-col gap-5 px-6 pb-12 pt-5">
         <p class="max-w-[76ch] text-lg leading-7 text-neutral-900">
-<I18nT k="git.workNow.changedComponentsHalfThem"><template #windowWords>{{ windowWords }}</template><template #lines><strong class="font-semibold">{{ t('git.workNow.lines', { lines: formatNumber(w.lines, 0) }) }}</strong></template><template #rowsLength>{{ formatNumber(w.rows.length, 0) }}</template><template #value><strong class="font-semibold">{{ w.half === 1 ? "one" : formatNumber(w.half, 0) }}</strong></template><template #tookMoreThanFour><template v-if="w.rising.length">
+          <I18nT k="git.workNow.linesWentInto"><template #window>{{ windowWords }}</template><template #lines><strong class="font-semibold">{{ t('git.workNow.lines', { lines: formatNumber(w.lines, 0) }) }}</strong></template><template #components>{{ t('common.count.component', { count: w.rows.length }) }}</template><template #half><strong class="font-semibold">{{ w.half === 1 ? t('git.workNow.oneLower') : formatNumber(w.half, 0) }}</strong></template></I18nT>
+          <template v-if="w.rising.length">
             {{ t('git.workNow.tookMoreThanFour', { value: w.rising.length === 1 ? t('git.workNow.one') : formatNumber(w.rising.length, 0), their: t('common.noun.its', { count: w.rising.length }) }) }}
-            <template v-for="(r, i) in w.rising.slice(0, 3)" :key="r.component"><code class="font-mono text-base">{{ tails.get(r.component) }}</code>{{ i < Math.min(3, w.rising.length) - 2 ? ", " : i === Math.min(3, w.rising.length) - 2 ? " and " : "" }}</template><template v-if="w.rising.length > 3">{{ t('git.workNow.more2', { value: w.rising.length - 3 }) }}</template>.
-          </template></template><template #took1MoreBefore><template v-if="w.quiet.length">{{ ' ' + t('git.workNow.took1MoreBefore', { value: w.quiet.length === 1 ? t('git.workNow.oneComponent') : t('git.workNow.components', { quietLength: formatNumber(w.quiet.length, 0) }) }) }}</template></template></I18nT>
+            <template v-for="(r, i) in w.rising.slice(0, 3)" :key="r.component"><code class="font-mono text-base">{{ tails.get(r.component) }}</code>{{ i < Math.min(3, w.rising.length) - 2 ? ", " : i === Math.min(3, w.rising.length) - 2 ? ` ${t('git.workNow.and')} ` : "" }}</template><template v-if="w.rising.length > 3">{{ t('git.workNow.more2', { value: w.rising.length - 3 }) }}</template>.
+          </template>
+          <template v-if="w.quiet.length">{{ ' ' + t('git.workNow.took1MoreBefore', { value: w.quiet.length === 1 ? t('git.workNow.oneComponent') : t('git.workNow.components', { quietLength: formatNumber(w.quiet.length, 0) }) }) }}</template>
         </p>
+
+        <!-- The biggest moves, as a picture: where the work went to, and where it came from. -->
+        <section v-if="movers.length >= 3" class="flex flex-col gap-2">
+          <ExhibitFrame :exhibit="moversFigure" :title="t('git.workNow.whereWorkMoved')">
+            <template #aside>{{ t('git.workNow.componentsWhoseShareMoved', { moversLength: movers.length }) }}</template>
+            <div ref="moversHost" class="w-full">
+              <svg ref="moversSvg" :viewBox="`0 0 ${mw} ${mh}`" :width="mw" :height="mh" class="block max-w-full" role="img" :aria-label="t('git.workNow.eachComponentSShare')">
+                <g v-for="moverTick in moverTicks" :key="moverTick">
+                  <line :x1="mx(moverTick)" :x2="mx(moverTick)" y1="14" :y2="mh - 4" stroke="rgb(var(--c-neutral-200))" stroke-dasharray="2 3"/>
+                  <text :x="mx(moverTick)" y="10" font-size="10" text-anchor="middle" fill="rgb(var(--c-neutral-500))" font-family="ui-monospace, monospace">{{ pct(moverTick) }}</text>
+                </g>
+                <g v-for="(r, i) in movers" :key="r.component" :transform="`translate(0 ${24 + i * ROW})`">
+                  <text x="0" y="4" font-size="11" fill="rgb(var(--c-neutral-800))" font-family="ui-monospace, monospace">{{ clip(label(r.component), Math.floor(labelW / 7)) }}</text>
+                  <line :x1="mx(r.beforeShare)" :x2="mx(r.share)" y1="0" y2="0" :stroke="r.share >= r.beforeShare ? 'rgb(var(--c-blue-300))' : 'rgb(var(--c-neutral-300))'" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle :cx="mx(r.beforeShare)" cy="0" r="4.5" fill="rgb(var(--c-surface))" stroke="rgb(var(--c-neutral-500))" stroke-width="1.5"/>
+                  <circle :cx="mx(r.share)" cy="0" r="4.5" fill="rgb(var(--c-blue-500))"/>
+                  <text :x="mw" y="4" font-size="10.5" text-anchor="end" fill="rgb(var(--c-neutral-600))" font-family="ui-monospace, monospace">{{ r.beforeLines ? pct(r.beforeShare) : "new" }} → {{ pct(r.share) }}</text>
+                </g>
+              </svg>
+            </div>
+          </ExhibitFrame>
+        </section>
 
         <section class="flex flex-col gap-2">
           <ExhibitFrame :exhibit="linesTable" :title="t('git.workNow.whereChangedLinesWent')">
@@ -91,11 +115,11 @@
 
 <script setup lang="ts">
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
-import { computed, ref, watch } from "vue"
-import { useRouter } from "vue-router"
+import { computed, onBeforeUnmount, ref, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import GroupActionBar from "~/features/groups/components/GroupActionBar.vue"
 import { scopeWhere } from "~/features/groups/scopeSql"
-import { useTable } from "~/features/export/useExportables"
+import { REPORT_FIGURE_WIDTH, useSvgFigure, useTable } from "~/features/export/useExportables"
 import { componentLabel, componentPath } from "~/features/navigation/routes"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
@@ -108,8 +132,8 @@ import { formatNumber } from "~/shared/format"
 import { useAuthorsStore } from "../authors.store"
 import { NOW_WINDOWS, buildWorkNow, shortTails, workNowSql, type NowWindowId, type WorkNowInput } from "../changeShape"
 import { anchorLabel, anchorSql } from "../history"
+import I18nT from "~/shared/ui/I18nT";
 import { t } from "~/shared/i18n"
-import I18nT from "~/shared/ui/I18nT"
 
 const data = useDataStore()
 const authors = useAuthorsStore()
@@ -117,9 +141,18 @@ const state = useStateStore()
 const workspaces = useWorkspacesStore()
 const router = useRouter()
 
+// A report's slot can ask for a window in the address (?window=30); otherwise the one last chosen here.
+const route = useRoute()
 const windowId = computed<NowWindowId>({
-  get: () => { const v = state.get<string>("activity.now", "90"); return (NOW_WINDOWS.some(w => w.id === v) ? v : "90") as NowWindowId },
-  set: v => state.set("activity.now", v === "90" ? null : v),
+  get: () => {
+    const asked = typeof route.query.window === "string" ? route.query.window : null
+    const v = asked && NOW_WINDOWS.some(w => w.id === asked) ? asked : state.get<string>("activity.now", "90")
+    return (NOW_WINDOWS.some(w => w.id === v) ? v : "90") as NowWindowId
+  },
+  set: v => {
+    state.set("activity.now", v === "90" ? null : v)
+    if (route.query.window) { const query = { ...route.query }; delete query.window; void router.replace({ query }) }
+  },
 })
 const days = computed(() => NOW_WINDOWS.find(w => w.id === windowId.value)!.days)
 const windowWords = computed(() => (days.value === 365 ? t("git.workNow.lastYear") : t("git.workNow.lastDays", { days: days.value })))
@@ -151,6 +184,46 @@ const allSelected = computed(() => visible.value.length > 0 && visible.value.eve
 function toggle(c: string) { const n = new Set(selected.value); n.has(c) ? n.delete(c) : n.add(c); selected.value = n }
 function toggleAll() { selected.value = allSelected.value ? new Set() : new Set(visible.value.map(r => r.component)) }
 
+// ── Where the work moved: the biggest shifts in share, both ways ─────────
+const ROW = 22, LABEL_W = 230, VALUE_W = 110
+const movers = computed(() => w.value.rows
+  .filter(r => Math.max(r.share, r.beforeShare) >= 0.005)
+  .sort((a, b) => Math.abs(b.share - b.beforeShare) - Math.abs(a.share - a.beforeShare))
+  .slice(0, 16)
+  .sort((a, b) => (b.share - b.beforeShare) - (a.share - a.beforeShare)))
+const moversHost = ref<HTMLElement | null>(null)
+const moversSvg = ref<SVGSVGElement | null>(null)
+const hostW = ref(900)
+// Drawn for export at a report page's width; otherwise the width it is given.
+const exportW = ref<number | null>(null)
+const mw = computed(() => exportW.value ?? hostW.value)
+let ro: ResizeObserver | null = null
+watch(moversHost, (el, old) => {
+  ro ??= new ResizeObserver(e => { hostW.value = Math.max(480, Math.floor(e[0].contentRect.width)) })
+  if (old) ro.unobserve(old)
+  if (el) ro.observe(el)
+}, { flush: "post" })
+onBeforeUnmount(() => ro?.disconnect())
+const mh = computed(() => 24 + movers.value.length * ROW)
+const moverMax = computed(() => Math.max(0.001, ...movers.value.map(r => Math.max(r.share, r.beforeShare))))
+const labelW = computed(() => Math.min(LABEL_W, Math.round(mw.value * 0.3)))
+const mx = (v: number) => labelW.value + (v / moverMax.value) * (mw.value - labelW.value - VALUE_W - 12)
+const moverTicks = computed(() => { const m = moverMax.value; const step = m > 0.2 ? 0.1 : m > 0.08 ? 0.02 : m > 0.03 ? 0.01 : 0.005; return Array.from({ length: Math.floor(m / step) + 1 }, (_, i) => i * step) })
+const clip = (s: string, n: number) => (s.length > n ? "…" + s.slice(-(n - 1)) : s)
+const moversFigure = useSvgFigure({
+  title: () => t("git.workNow.whereWorkMovedAgainst", { windowWords: windowWords.value }),
+  svg: () => moversSvg.value,
+  exportWidth: REPORT_FIGURE_WIDTH,
+  relayout: width => { exportW.value = width },
+  legend: () => ({
+    items: [
+      { label: windowLabel.value, color: "rgb(var(--c-blue-500))", mark: "dot" },
+      { label: t("git.workNow.twoYearsBefore"), color: "rgb(var(--c-neutral-500))", mark: "ring" },
+    ],
+    notes: [t("git.workNow.eachRowComponentS")],
+  }),
+})
+
 const linesTable = useTable({
   get title() { return t("git.workNow.whereChangedLinesWent2", { windowWords: windowWords.value }) },
   rows: () => w.value.rows.map(r => ({ component: r.component, changed_lines: r.lines, share_now: Number(r.share.toFixed(4)), share_before: Number(r.beforeShare.toFixed(4)), commits: r.commits, people: r.people })),
@@ -159,6 +232,8 @@ const linesTable = useTable({
     { id: "share_now", label: t("git.workNow.shareNow") }, { id: "share_before", label: t("git.workNow.shareTwoYearsBefore") },
     { id: "commits", label: t("git.workNow.commits") }, { id: "people", label: t("git.workNow.people") },
   ],
-  disabledReason: () => (!w.value.rows.length ? t("git.workNow.nothingChangedWindow2") : null),
+  // Nothing is said while the history still loads: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!loading.value && !w.value.rows.length ? t("git.workNow.nothingChangedWindow2") : null),
+  ready: () => !loading.value,
 })
 </script>

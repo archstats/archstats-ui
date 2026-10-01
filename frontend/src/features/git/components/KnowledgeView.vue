@@ -302,7 +302,9 @@ const componentTable = useTable({
     { id: "commits_by_people_here", label: t("git.knowledgeView.changesActiveContributors", { windowWords: windowWords.value }) }, { id: "written_by_people_here", label: t("git.knowledgeView.writtenActiveContributors") },
     { id: "wrote_most", label: t("git.knowledgeView.mainAuthor") }, { id: "wrote_most_share", label: t("git.knowledgeView.theirShare") }, { id: "lines", label: t("git.knowledgeView.lines") },
   ],
-  disabledReason: () => (!listed.value.length ? t("git.knowledgeView.noComponentsListed") : null),
+  // Nothing is said while the rows still load: a report's take reads a reason as "there is nothing here".
+  disabledReason: () => (!props.k.loading.value && !listed.value.length ? t("git.knowledgeView.noComponentsListed") : null),
+  ready: () => !props.k.loading.value,
 })
 </script>
 

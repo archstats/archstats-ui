@@ -385,7 +385,7 @@
     "referencesBetweenThem": "{raw} references between them",
     "coChangedTimes": "co-changed {raw} times",
     "shareDomain": "share {shared} domain {types}",
-    "name": "name “{t}”",
+    "name": "name “{token}”",
     "similarNames": "similar names",
     "sameLane3": "same lane",
     "cycleTogether": "in a cycle together",

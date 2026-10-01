@@ -115,10 +115,13 @@ export const tangle = exhibit<TangleData>()({
             const cuts = Math.min(8, d.steps.length) * 21 + (d.steps.length > 8 ? 20 : 0) + 8
             const levels = layoutTangle(d.members, d.edges).layers
             const graph = d.members.length <= 40 && Math.max(0, ...levels.map(l => l.length)) <= 10
-            const drawing = graph ? 52 + levels.length * 84 + 40 : o.density === "inline" ? 440 : 560
-            return Math.min(o.density === "inline" ? 680 : 900, Math.round(drawing * 0.92) + cuts)
+            // A full matrix gets rows of 10px at least, so its row labels are drawn (they are left out below 9px).
+            const drawing = graph ? 52 + levels.length * 84 + 40 : o.density === "inline" ? 440 : Math.max(560, Math.round((26 + d.members.length * 10.5 + 90) / 0.92))
+            return Math.min(o.density === "inline" ? 680 : 1600, Math.round(drawing * 0.92) + cuts)
         },
         fill: true,
+        // Past forty members it is a matrix whose names print too small to read; the cut plan prints instead.
+        printable: d => d.members.length <= 40,
         picks: { "select-node": (id: string) => `component:${id}`, "select-edge": (from: string, to: string) => `edge:${from}>${to}` },
     },
 

@@ -82,7 +82,10 @@ function render() {
     if (!props.directed) matrix[b][a] += v;
   }
 
-  const labelBudget = n > 60 ? 150 : 110;
+  // Room for the longest label that is drawn, in the mono face (about 0.62em a character), so none is cut at the edge.
+  const maxChars = n > 60 ? 22 : 30;
+  const longest = Math.max(4, ...nodes.map(x => Math.min(maxChars, x.label.length)));
+  const labelBudget = Math.round(longest * (n > 60 ? 10 : 11) * 0.62) + 14;
   const outer = Math.max(Math.min(width, height) / 2 - labelBudget, 60);
   const inner = Math.max(outer - 12, 40);
   const chord = (props.directed ? d3.chordDirected() : d3.chord()).padAngle(Math.min(0.03, 2 / n)).sortSubgroups(d3.descending);
@@ -142,7 +145,7 @@ function render() {
     .attr("fill", (d) => (nodes[d.index].id === focus || isMarked(nodes[d.index].id) ? t.ink : t.inkSecondary))
     .attr("font-weight", (d) => (isMarked(nodes[d.index].id) ? 600 : 400))
     .style("pointer-events", "none")
-    .text((d) => shorten(nodes[d.index].label, n > 60 ? 22 : 30));
+    .text((d) => shorten(nodes[d.index].label, maxChars));
 }
 
 function shorten(label: string, max: number): string {

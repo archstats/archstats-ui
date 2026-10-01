@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { fromMarkdown, inlineHtml, shortcutFor, tableCells, type Block, type TextBlock, type TextKind } from "~/features/reports/reportDoc";
+import { readBlocks } from "~/features/reports/blockClipboard";
 import { t } from "~/shared/i18n";
 
 const props = defineProps<{
@@ -263,10 +264,17 @@ function onHrKey(e: KeyboardEvent) {
 
 // Pasting several lines of Markdown makes several blocks.
 function onPaste(e: ClipboardEvent) {
+  const el = e.target as HTMLTextAreaElement;
+  // Blocks copied in the app come back whole, cells and all.
+  const copied = props.block.kind === "code" || props.block.kind === "table" ? null : readBlocks(e.clipboardData);
+  if (copied) {
+    e.preventDefault();
+    emit("paste", copied, el.value.slice(0, el.selectionStart), el.value.slice(el.selectionEnd));
+    return;
+  }
   const text = e.clipboardData?.getData("text/plain") ?? "";
   if (!text.includes("\n") || props.block.kind === "code" || props.block.kind === "table") return;
   e.preventDefault();
-  const el = e.target as HTMLTextAreaElement;
   emit("paste", fromMarkdown(text), el.value.slice(0, el.selectionStart), el.value.slice(el.selectionEnd));
 }
 </script>

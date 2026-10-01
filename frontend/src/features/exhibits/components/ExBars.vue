@@ -1,5 +1,6 @@
 <template>
   <!-- A ranking as bars: one row per thing, its bar as long as its value. -->
+  <ExhibitFrame :exhibit="figure" header="overlay">
   <div class="xb" role="img" :aria-label="ariaLabel">
     <button
         v-for="it in shown"
@@ -16,10 +17,15 @@
     </button>
     <p class="xb-legend"><span class="xb-swatch"/>{{ ' ' + t('exhibits.exBars.barLength', { unit }) }}<template v-if="note"> · {{ note }}</template></p>
   </div>
+  </ExhibitFrame>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import { useFigure } from "~/features/export/useExportables"
+import { barsSvg } from "../exportSvg"
+import { chartTheme } from "~/shared/ui/useChartTheme"
 import { t, intlLocale } from "~/shared/i18n"
 
 const props = withDefaults(defineProps<{
@@ -39,6 +45,19 @@ const lit = computed(() => new Set(props.highlight))
 const max = computed(() => Math.max(1e-9, ...props.items.map(i => Math.abs(i.value))))
 const width = (v: number) => Math.max(1.5, (Math.abs(v) / max.value) * 100)
 const fmt = (v: number) => v.toLocaleString(intlLocale, { maximumFractionDigits: 2 })
+
+// On screen the bars are rows to pick; for a report or a PNG they are drawn again as an SVG.
+const figure = useFigure({
+  title: () => props.ariaLabel,
+  ready: () => shown.value.length > 0,
+  svg: true,
+  render: () => {
+    const d = barsSvg(shown.value.map(i => ({ label: i.label, value: i.value })), { lit: new Set(shown.value.map((it, i) => (lit.value.has(`row:${it.key}`) || lit.value.has(`${props.pickAs}:${it.key}`) ? i : -1)).filter(i => i >= 0)) })
+    return { kind: "svg", ...d }
+  },
+  legend: () => ({ items: [{ label: t("exhibits.exBars.barLength2", { unit: props.unit }), color: chartTheme().blue }], ...(props.note ? { notes: [props.note] } : {}) }),
+  legendInUi: false,
+})
 </script>
 
 <style scoped>

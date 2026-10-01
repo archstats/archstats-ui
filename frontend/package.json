@@ -14,7 +14,7 @@
     "capture": "node scripts/capture.mjs",
     "bench": "vitest run --config vitest.bench.config.ts",
     "check:figures": "node scripts/figure-check.mjs",
-    "i18n:check": "node scripts/i18n-extract.mjs check",
+    "i18n:check": "node scripts/i18n-extract.mjs check && node scripts/i18n-params.mjs",
     "i18n:definitions": "node scripts/i18n-definitions.mjs"
   },
   "dependencies": {

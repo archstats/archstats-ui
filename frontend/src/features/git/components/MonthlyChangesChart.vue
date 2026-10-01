@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
-import { useSvgFigure } from "~/features/export/useExportables"
+import { REPORT_FIGURE_WIDTH, useSvgFigure } from "~/features/export/useExportables"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import * as d3 from "d3"
 import type { GitCommit } from "~/features/git/git"
@@ -58,16 +58,29 @@ function buckets(): MonthBucket[] {
   return out
 }
 
+/**
+ * The top of the scale. One huge month (an import, a vendored library) used
+ * to flatten every other bar into the axis; past three times the 95th
+ * percentile the scale stops there and the big months are cut and labelled.
+ */
+function scaleTop(data: MonthBucket[]): { value: number; clipped: boolean } {
+  const values = data.flatMap(d => [d.additions, d.deletions]).filter(v => v > 0).sort((a, b) => a - b)
+  const max = values[values.length - 1] ?? 1
+  const p95 = d3.quantileSorted(values, 0.95) ?? max
+  return max > 3 * p95 && p95 > 0 ? { value: p95 * 1.5, clipped: true } : { value: max, clipped: false }
+}
+
 // "Dec 08" read as the eighth of December; the apostrophe makes it a year.
 const tickLabel = d3.timeFormat("%b ’%y")
 const titleLabel = d3.timeFormat("%B %Y")
 
-function draw() {
+/** Draws at the host's width, or at `at` (a report page's width, for export). */
+function draw(at: number | null = null) {
   const svg = svgRef.value
   const host = hostRef.value
   if (!svg || !host) return
   const t = chartTheme()
-  const width = host.clientWidth
+  const width = at ?? host.clientWidth
   const height = props.height
   const sel = d3.select(svg)
   sel.selectAll("*").remove()
@@ -82,8 +95,10 @@ function draw() {
   const innerH = Math.max(0, height - margin.top - margin.bottom)
 
   const x = d3.scaleBand<string>().domain(data.map(d => d.key)).range([0, innerW]).padding(0.25)
-  const maxVal = d3.max(data, d => Math.max(d.additions, d.deletions)) || 1
-  const y = d3.scaleLinear().domain([-maxVal, maxVal]).range([innerH, 0]).nice()
+  const top = scaleTop(data)
+  const y = d3.scaleLinear().domain([-top.value, top.value]).range([innerH, 0]).nice()
+  const [lo, hi] = y.domain()
+  const clip = (v: number) => Math.min(v, hi)
 
   const g = sel.append("g").attr("transform", `translate(${margin.left},${margin.top})`)
 
@@ -92,17 +107,32 @@ function draw() {
   bars.append("rect")
     .attr("x", d => x(d.key)!)
     .attr("width", x.bandwidth())
-    .attr("y", d => y(d.additions))
-    .attr("height", d => Math.max(0, y(0) - y(d.additions)))
+    .attr("y", d => y(clip(d.additions)))
+    .attr("height", d => Math.max(0, y(0) - y(clip(d.additions))))
     .attr("fill", t.green)
     .attr("rx", 1)
   bars.append("rect")
     .attr("x", d => x(d.key)!)
     .attr("width", x.bandwidth())
     .attr("y", y(0))
-    .attr("height", d => Math.max(0, y(-d.deletions) - y(0)))
+    .attr("height", d => Math.max(0, y(Math.max(-d.deletions, lo)) - y(0)))
     .attr("fill", t.red)
     .attr("rx", 1)
+  // A month past the scale is cut at its edge, marked with a break, and its total written beside it.
+  if (top.clipped) {
+    const cut = data.filter(d => d.additions > hi || d.deletions > -lo)
+    for (const d of cut) {
+      const cx = x(d.key)! + x.bandwidth() / 2
+      for (const [v, edge, dy] of [[d.additions, hi, -1], [d.deletions, -lo, 1]] as const) {
+        if (v <= edge) continue
+        const yy = dy < 0 ? y(hi) + 5 : y(lo) - 5
+        g.append("line").attr("x1", cx - 4).attr("x2", cx + 4).attr("y1", yy + 2).attr("y2", yy - 2).attr("stroke", t.surface).attr("stroke-width", 2)
+        g.append("text").attr("x", cx + x.bandwidth() / 2 + 3).attr("y", dy < 0 ? y(hi) + 9 : y(lo) - 2)
+          .attr("font-size", "10px").attr("font-family", t.fontMono).attr("fill", t.inkSecondary)
+          .text(d3.format("~s")(v))
+      }
+    }
+  }
 
   g.append("line")
     .attr("x1", 0).attr("x2", innerW).attr("y1", y(0)).attr("y2", y(0))
@@ -140,11 +170,13 @@ watch([() => props.commits, () => props.height, version], () => draw(), { flush:
 const figure = useSvgFigure({
   title: t("git.monthlyChangesChart.linesAddedRemovedMonth"),
   svg: () => svgRef.value,
+  exportWidth: REPORT_FIGURE_WIDTH,
+  relayout: width => draw(width),
   legend: () => {
     const theme = chartTheme()
     return {
       items: [{ label: t("git.monthlyChangesChart.linesAdded"), color: theme.green }, { label: t("git.monthlyChangesChart.linesRemoved"), color: theme.red }],
-      notes: [t("git.monthlyChangesChart.oneBarPerMonth")],
+      notes: [t("git.monthlyChangesChart.oneBarPerMonth2")],
     }
   },
 })

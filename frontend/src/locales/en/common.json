@@ -593,6 +593,14 @@
     "lookup": {
       "one": "lookup",
       "other": "lookups"
+    },
+    "table": {
+      "one": "table",
+      "other": "tables"
+    },
+    "figure": {
+      "one": "figure",
+      "other": "figures"
     }
   }
 }

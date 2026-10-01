@@ -8,7 +8,7 @@
 
 import { prodFile, reactComponent, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, coupling, glance, health, hotspots, lanes, libraries, lit, modules, needs, rules, slotOf, SQL, structure, tests, VIEWS,
+    ABOUT, coupling, glance, health, hotspots, lanes, layers, libraries, lit, modules, needs, rules, SHOWS, slotOf, SQL, structure, tests, VIEWS,
     type ReportTemplate, type Writer,
 } from "./templateKit"
 import { t } from "~/shared/i18n"
@@ -80,6 +80,10 @@ const BUILD_SQL = {
     use: (f: SnapshotFacts, declaredFor: string | null, onlyKind?: string) => `SELECT u.a AS module, u.b AS "uses code from", u.refs AS "references", u.files AS "files"${declaredFor ? `, CASE WHEN ${declares("m.depends_on", "u.b")} THEN 'declared' ELSE 'not declared' END AS "in its build file"` : ""} FROM (${moduleUse(f)}) u${declaredFor ? ` JOIN modules m ON m.name = u.a AND m.kind = ${lit(declaredFor)}` : ""}${onlyKind ? ` WHERE u.a IN (SELECT name FROM modules WHERE kind = ${lit(onlyKind)}) AND u.b IN (SELECT name FROM modules WHERE kind = ${lit(onlyKind)})` : ""} ORDER BY ${declaredFor ? `5 DESC, ` : ""}3 DESC, 1, 2`,
     undeclared: (f: SnapshotFacts, kind: string) => `SELECT u.a AS module, u.b AS "uses code from", u.refs AS "references", u.files AS "files" FROM (${moduleUse(f)}) u JOIN modules m ON m.name = u.a AND m.kind = ${lit(kind)} WHERE NOT ${declares("m.depends_on", "u.b")} ORDER BY 3 DESC, 1, 2`,
     unused: (f: SnapshotFacts, kind: string) => `WITH RECURSIVE split(m, dep, rest) AS (SELECT name, '', replace(coalesce(depends_on, ''), ', ', ',') || ',' FROM modules WHERE kind = ${lit(kind)} UNION ALL SELECT m, substr(rest, 1, instr(rest, ',') - 1), substr(rest, instr(rest, ',') + 1) FROM split WHERE rest <> ''), used AS (${moduleUse(f)}) SELECT m AS module, dep AS "declares a dependency on" FROM split WHERE dep <> '' AND NOT EXISTS (SELECT 1 FROM used WHERE used.a = split.m AND used.b = split.dep) ORDER BY 1, 2`,
+    /** Each module's size, health and recent change. */
+    profile: (f: SnapshotFacts, kind: string) => `SELECT m.name AS module, count(fi.name) AS files, sum(coalesce(fi.complexity__lines, 0)) AS lines${f.fileColumns.has("codesmells__code_health") ? `, round(sum(fi.codesmells__code_health * fi.complexity__lines) / nullif(sum(CASE WHEN fi.codesmells__code_health IS NOT NULL THEN fi.complexity__lines END), 0), 1) AS "code health, by lines"` : ""}${f.fileColumns.has("git__commits__last_180_days") ? `, sum(coalesce(fi.git__commits__last_180_days, 0)) AS "file changes, last 180 days"` : ""} FROM modules m JOIN files fi ON fi.module = m.name WHERE m.kind = ${lit(kind)} AND ${prodFile(f, "fi")} GROUP BY 1 ORDER BY 3 DESC, 1`,
+    /** Modules changed in the same commits: the build's parts that move together. */
+    coChange: (kind: string) => `WITH m AS (SELECT DISTINCT c.commit_hash AS h, fi.module AS m FROM git_commits c JOIN files fi ON fi.name = c.file WHERE fi.module IN (SELECT name FROM modules WHERE kind = ${lit(kind)})) SELECT a.m AS module, b.m AS "changes with", count(*) AS "commits that changed both" FROM m a JOIN m b ON a.h = b.h AND a.m < b.m GROUP BY 1, 2 HAVING count(*) >= 3 ORDER BY 3 DESC, 1, 2`,
     usedBy: (kind: string) => `SELECT m.name AS module, m.directory, m.files, (SELECT count(*) FROM modules o WHERE o.kind = m.kind AND ${declares("o.depends_on", "m.name")}) AS "declared by modules", m.internal_dependencies AS "declares (internal)" FROM modules m WHERE m.kind = ${lit(kind)} ORDER BY 4 DESC, m.files DESC`,
 }
 
@@ -174,6 +178,8 @@ const PHP_SQL = {
 // ── Explanations ──────────────────────────────────────────────────────────
 
 const EXPLAIN = {
+    moduleCoChange: t("reports.ecosystemTemplates.modulesKeepChangingSame"),
+    dependentsBars: t("reports.ecosystemTemplates.eachBarFolderLong"),
     layers: t("reports.ecosystemTemplates.mostFrameworksExpectWork"),
 
     spring: t("reports.ecosystemTemplates.springCreatesApplicationS"),
@@ -234,9 +240,11 @@ function rolesAbout(eco: EcosystemId | ""): string {
     const ex = eco ? ROLE_EXAMPLES[eco] : undefined
     return t("reports.ecosystemTemplates.frameworksGiveClassesJobs", { value: ex ? t("reports.ecosystemTemplates.example", { ex }) : "" })
 }
-function anatomy(w: Writer, profile: string, language?: string) {
+/** The roles, and a picture of them: where each lives (the map) or how they lean (the floors). */
+function anatomy(w: Writer, profile: string, language?: string, picture: "lanes" | "layers" = "lanes") {
     w.explain(rolesAbout(w.eco)).reading("roles", { profile, ...(language ? { language } : {}) })
-    lanes(w)
+    if (picture === "layers") layers(w, t("reports.ecosystemTemplates.howRolesLeanEach"))
+    else lanes(w)
 }
 /** What skipping and running back up look like, in the framework's own words. */
 const LAYER_EXAMPLES: Record<string, string> = {
@@ -281,6 +289,7 @@ const SPRING: ReportTemplate[] = [
                 w.explain(EXPLAIN.springServices)
                 role(w, "services", "spring")
                 if (f.markers.has("annotation:Transactional")) w.sql(t("reports.ecosystemTemplates.whereTransactionalSits"), SPRING_SQL.transactional(f), 10)
+                w.exhibit("recipe", { recipe: "largest-classes" }, t("reports.ecosystemTemplates.largestClasses"))
             })
             w.section(t("reports.ecosystemTemplates.repositoriesEntityModel"), has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), () => {
                 w.explain(EXPLAIN.springRepos)
@@ -304,6 +313,11 @@ const SPRING: ReportTemplate[] = [
             })
             w.section(t("reports.ecosystemTemplates.buildModules"), needs.modules(f), () => modules(w))
             w.section("Hotspots", needs.git(f), () => { hotspots(w); slotOf(w, "figure", t("reports.ecosystemTemplates.churnAgainstCodeHealth"), VIEWS.treemap("churn", "components", t("reports.ecosystemTemplates.churnAgainstHealthComponents"))) })
+            w.section(t("reports.ecosystemTemplates.whereWorkHasGone"), needs.git(f), () => {
+                w.explain(ABOUT.churn).reading("churn", { days: "180" })
+                w.explainSlot(SHOWS.workMoved)
+                slotOf(w, "figure", t("reports.ecosystemTemplates.whereWorkMoved"), VIEWS.workMoved("365"))
+            })
             w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach")))
         },
     },
@@ -318,11 +332,12 @@ const SPRING: ReportTemplate[] = [
         build(w) {
             const f = w.facts
             w.prompt(t("reports.ecosystemTemplates.layeringTeamIntendsSentence"))
-            w.section(t("reports.ecosystemTemplates.roles"), has.units(f), () => anatomy(w, "spring"))
+            w.section(t("reports.ecosystemTemplates.roles"), has.units(f), () => anatomy(w, "spring", undefined, "layers"))
             w.section(t("reports.ecosystemTemplates.referencesBetweenLayers"), has.links(f), () => {
                 layering(w, "spring", ["services", "repositories", t("reports.ecosystemTemplates.servicesRepositories")])
                 slotOf(w, "table", t("reports.ecosystemTemplates.dependencyMatrix"), VIEWS.matrix(f))
             })
+            w.section(t("reports.ecosystemTemplates.packagesFloors"), true, () => { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, t("reports.ecosystemTemplates.packagesFloors")) })
             w.section(t("reports.ecosystemTemplates.entryPointsSkipServices"), has.links(f), () => { w.explain(EXPLAIN.springShortcuts); w.sql(t("reports.ecosystemTemplates.entryPointsUsingRepositories"), SPRING_SQL.shortcuts, 30) })
             w.section(t("reports.ecosystemTemplates.lowerLayersReachingUp"), has.links(f), () => { w.explain(EXPLAIN.springBackwards); w.sql(t("reports.ecosystemTemplates.repositoriesEntitiesUseServices"), SPRING_SQL.backwards, 30) })
             w.section(t("reports.ecosystemTemplates.transactionBoundaries"), has.marker(f, t("reports.ecosystemTemplates.noClassMarkedTransactional"), "annotation:Transactional"), () => { w.explain(EXPLAIN.springServices); w.sql(t("reports.ecosystemTemplates.whereTransactionalSits"), SPRING_SQL.transactional(f), 10) })
@@ -346,6 +361,7 @@ const SPRING: ReportTemplate[] = [
                 role(w, "entities", "spring")
                 w.sql(t("reports.ecosystemTemplates.entitiesPackage"), SPRING_SQL.entitiesByPackage(f), 20)
                 w.sql(t("reports.ecosystemTemplates.entitiesMostUsedFirst"), SPRING_SQL.entities(f), 25)
+                if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, t("reports.ecosystemTemplates.typesUsedMostPlaces"))
             })
             w.section(t("reports.ecosystemTemplates.howEntitiesReferEach"), needs.all(has.marker(f, t("reports.ecosystemTemplates.codeHasNoJpa"), "annotation:Entity"), has.links(f)), () => {
                 w.sql(t("reports.ecosystemTemplates.entitiesMostLinksOther"), SPRING_SQL.entityLinks, 20)
@@ -370,12 +386,21 @@ const SPRING: ReportTemplate[] = [
             const f = w.facts
             const kind = (f.moduleKinds.maven ?? 0) >= (f.moduleKinds.gradle ?? 0) ? "maven" : "gradle"
             w.prompt(t("reports.ecosystemTemplates.whyModuleLayoutBeing"))
-            w.section("Modules", needs.modules(f), () => { w.explain(EXPLAIN.build).reading("modules"); w.sql(t("reports.ecosystemTemplates.modulesMostDependedFirst"), BUILD_SQL.usedBy(kind), 40) })
+            w.section("Modules", needs.modules(f), () => {
+                w.explain(EXPLAIN.build).reading("modules")
+                w.sql(t("reports.ecosystemTemplates.modulesMostDependedFirst"), BUILD_SQL.usedBy(kind), 40)
+                w.sql(t("reports.ecosystemTemplates.modulesSizeHealthRecent"), BUILD_SQL.profile(f, kind), 40)
+            })
             w.section(t("reports.ecosystemTemplates.howModulesUseEach"), has.links(f), () => {
                 w.explain(kind === "maven" ? EXPLAIN.drift : t("reports.ecosystemTemplates.tableCountsReferencesOne"))
                 w.sql(t("reports.ecosystemTemplates.moduleModuleReferences"), BUILD_SQL.use(f, kind === "maven" ? "maven" : null), 40)
             })
-            w.section(t("reports.ecosystemTemplates.howCodeConnects"), true, () => { structure(w); coupling(w) })
+            w.section(t("reports.ecosystemTemplates.whichModulesLeanWhich"), needs.modules(f), () => { w.explainSlot(SHOWS.modulesDeps); w.exhibit("recipe", { recipe: "modules-deps" }, t("reports.ecosystemTemplates.whichModulesDependWhich")) })
+            w.section(t("reports.ecosystemTemplates.modulesChangeTogether"), needs.all(needs.modules(f), needs.git(f)), () => {
+                w.explain(EXPLAIN.moduleCoChange)
+                w.sql(t("reports.ecosystemTemplates.modulesChangedSameCommits"), BUILD_SQL.coChange(kind), 25)
+            })
+            w.section(t("reports.ecosystemTemplates.howCodeConnects"), true, () => { structure(w, "stack"); coupling(w) })
             w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section("Proposal", true, () => w.prompt(t("reports.ecosystemTemplates.modulesMergeSplitPoint")))
         },
@@ -448,6 +473,11 @@ const PYTHON: ReportTemplate[] = [
             w.section(t("reports.ecosystemTemplates.apps"), needs.all(needs.modules(f), has.markers(f)), () => { w.explain(EXPLAIN.django); w.sql(t("reports.ecosystemTemplates.appsWhatTheyHold"), DJANGO_SQL.apps(f), 40) })
             w.section(t("reports.ecosystemTemplates.appsUseOtherApps"), has.links(f), () => { w.explain(EXPLAIN.djangoCross); w.sql(t("reports.ecosystemTemplates.appAppReferences"), DJANGO_SQL.crossApp(f), 40); slotOf(w, "table", t("reports.ecosystemTemplates.dependencyMatrix"), VIEWS.matrix(f)) })
             w.section(t("reports.ecosystemTemplates.appsNothingElseUses"), has.links(f), () => w.sql(t("reports.ecosystemTemplates.appsNoOtherApp"), DJANGO_SQL.lonely, 30))
+            w.section(t("reports.ecosystemTemplates.appsChangeTogether"), needs.all(needs.modules(f), needs.git(f)), () => {
+                w.explain(EXPLAIN.moduleCoChange)
+                w.sql(t("reports.ecosystemTemplates.appsChangedSameCommits"), BUILD_SQL.coChange("django"), 25)
+            })
+            w.section(t("reports.ecosystemTemplates.appsFloors"), true, () => { w.explainSlot(SHOWS.stack); w.exhibit("stack", {}, t("reports.ecosystemTemplates.codeFloors")) })
             w.section(t("reports.ecosystemTemplates.circularDependencies"), needs.tangles(f), () => { structure(w, false); w.sql("Tangles", SQL.tangles, 10) })
             w.section(t("reports.ecosystemTemplates.boundariesYouPropose"), true, () => w.prompt(t("reports.ecosystemTemplates.perAppKeepMerge")))
         },
@@ -467,7 +497,7 @@ const PYTHON: ReportTemplate[] = [
             w.section("Packages", has.units(f), () => { w.sql(t("reports.ecosystemTemplates.packagesLargestFirst"), PYTHON_SQL.packages(f), 25); anatomy(w, "", "python") })
             w.section(t("reports.ecosystemTemplates.requestHandlers"), has.marker(f, "no function carries a route decorator", "annotation:get", "annotation:post", "annotation:route", "annotation:put", "annotation:delete"), () => w.sql(t("reports.ecosystemTemplates.requestHandlersPackage"), PYTHON_SQL.routes(f), 20))
             w.section(t("reports.ecosystemTemplates.dataClasses"), has.marker(f, t("reports.ecosystemTemplates.noPydanticModelsDataclasses"), "supertype:BaseModel", "annotation:dataclass", "supertype:TypedDict"), () => w.sql(t("reports.ecosystemTemplates.pydanticModelsDataclassesPackage"), PYTHON_SQL.schemas(f), 20))
-            w.section(t("reports.ecosystemTemplates.importsBetweenPackages"), true, () => { structure(w); coupling(w, 0, "py") })
+            w.section(t("reports.ecosystemTemplates.importsBetweenPackages"), true, () => { structure(w, "stack"); coupling(w, 0, "py") })
             w.section(t("reports.ecosystemTemplates.thirdPartyLibraries"), needs.snippets(f), () => libraries(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
@@ -496,8 +526,9 @@ const WEBAPPS: ReportTemplate[] = [
                 if (f.tables.has("unit_connections") && (f.moduleKinds.node ?? 0) >= 2) w.sql(t("reports.ecosystemTemplates.packagePackageReferences"), BUILD_SQL.use(f, null, "node"), 30)
             })
             w.section(t("reports.ecosystemTemplates.rolesCode"), has.units(f), () => { anatomy(w, ""); layering(w, "") })
-            w.section(t("reports.ecosystemTemplates.importsBetweenFolders"), true, () => { structure(w); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
-            w.section("Libraries", needs.snippets(f), () => libraries(w))
+            w.section(t("reports.ecosystemTemplates.importsBetweenFolders"), true, () => { structure(w, "graph"); if (f.tangles) w.sql("Tangles", SQL.tangles, 10) })
+            w.section(t("reports.ecosystemTemplates.codeEverythingUses"), true, () => { w.explainSlot(EXPLAIN.dependentsBars); w.exhibit("ranking", { measure: "most dependents" }, t("reports.ecosystemTemplates.mostDependedFolders")) })
+            w.section("Libraries", needs.snippets(f), () => { libraries(w); w.exhibit("recipe", { recipe: "external-imports" }, t("reports.ecosystemTemplates.outsidePackagesImportedMost")) })
             w.section("Hotspots", needs.git(f), () => hotspots(w, "files"))
             w.section("Tests", needs.tests(f), () => tests(w))
             w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))
@@ -578,7 +609,11 @@ const GO: ReportTemplate[] = [
             w.prompt(t("reports.ecosystemTemplates.whatModuleDoesWhat"))
             w.section(t("reports.ecosystemTemplates.modulesPackages"), true, () => { glance(w); w.explain(EXPLAIN.go).reading("go"); if (f.moduleKinds.go) w.sql("Modules", SQL.modulesOf("go"), 30) })
             w.section(t("reports.ecosystemTemplates.whatEachPackageHolds"), has.markers(f), () => { w.sql(t("reports.ecosystemTemplates.packagesTypesFunctionsWhat"), GO_SQL.packages(f), 30); anatomy(w, "", "go") })
-            w.section(t("reports.ecosystemTemplates.packagesEverythingImports"), true, () => { w.sql(t("reports.ecosystemTemplates.packagesHowManyOthers"), GO_SQL.fanIn, 15); coupling(w, 0, "go") })
+            w.section(t("reports.ecosystemTemplates.packagesEverythingImports"), true, () => {
+                w.sql(t("reports.ecosystemTemplates.packagesHowManyOthers"), GO_SQL.fanIn, 15)
+                coupling(w, 0, "go")
+                structure(w, "graph")
+            })
             w.section(t("reports.ecosystemTemplates.structsCrossBoundary"), has.marker(f, t("reports.ecosystemTemplates.noStructCarriesTag"), "struct_tag:json", "struct_tag:db", "struct_tag:yaml", "struct_tag:form", "struct_tag:xml", "struct_tag:toml", "struct_tag:mapstructure", "struct_tag:gorm"), () => {
                 w.explain(EXPLAIN.goTags)
                 w.sql(t("reports.ecosystemTemplates.taggedStructsPackage"), GO_SQL.tagsByPackage(f), 20)
@@ -611,7 +646,7 @@ const DOTNET: ReportTemplate[] = [
             w.section(t("reports.ecosystemTemplates.whatEachProjectHolds"), true, () => w.sql(t("reports.ecosystemTemplates.projectsRolesTheirFile"), DOTNET_SQL.roles(f), 40))
             w.section("Controllers", true, () => { w.sql(t("reports.ecosystemTemplates.largestControllers"), DOTNET_SQL.controllers(f), 15); w.prompt(t("reports.ecosystemTemplates.controllersThinTheyHand")) })
             w.section(t("reports.ecosystemTemplates.rolesLayers"), has.units(f), () => { anatomy(w, "aspnet"); layering(w, "aspnet") })
-            w.section(t("reports.ecosystemTemplates.betweenNamespaces"), true, () => { structure(w); coupling(w) })
+            w.section(t("reports.ecosystemTemplates.betweenNamespaces"), true, () => { structure(w, "stack"); coupling(w) })
             w.section(t("reports.ecosystemTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section("Hotspots", needs.git(f), () => hotspots(w))
             w.section("Findings", true, () => w.prompt(t("reports.ecosystemTemplates.whatYouFoundEach3")))

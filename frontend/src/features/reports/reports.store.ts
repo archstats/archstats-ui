@@ -231,6 +231,38 @@ export const useReportsStore = defineStore("reports", {
             this.list = this.list.filter(r => r.id !== id)
             if (this.currentId === id) this.open(this.list[0]?.id ?? null)
         },
+        /** Deletes several reports; the one left open is the first that remains. */
+        async removeMany(ids: string[]) {
+            const gone = new Set(ids)
+            if (this.currentId && gone.has(this.currentId)) { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null } }
+            for (const id of ids) await DeleteReport(id)
+            this.list = this.list.filter(r => !gone.has(r.id))
+            if (!this.currentId || gone.has(this.currentId)) this.open(this.list[0]?.id ?? null)
+        },
+        /**
+         * One report from several, in the list's order: each starts under its
+         * own title as a heading, cells keep what they found. The originals
+         * stay unless asked to go. Returns the new report.
+         */
+        async merge(ids: string[], opts: { title?: string; removeOriginals?: boolean } = {}): Promise<ReportRecord | null> {
+            this.flushSave()
+            const picked = this.list.filter(r => ids.includes(r.id))
+            if (picked.length < 2) return null
+            const blocks: Block[] = []
+            const docs = picked.map(r => (r.id === this.currentId ? this.doc : parseDoc(r.body)))
+            picked.forEach((r, i) => {
+                const own = docs[i].blocks.filter(b => isCell(b) || !!b.text.trim() || !!b.prompt || b.kind === "hr")
+                const first = own[0]
+                if (!(first && !isCell(first) && first.kind === "h1")) blocks.push({ id: newId(), kind: "h1", text: r.title || t("reports.reportsStore.untitledReport") })
+                blocks.push(...own.map(b => ({ ...JSON.parse(JSON.stringify(b)), id: newId() }) as Block))
+            })
+            const title = opts.title?.trim() || t("reports.reportsStore.more", { value: picked[0].title || t("reports.reportsStore.untitledReport"), value2: picked.length - 1 })
+            const kernel = docs[0].kernel
+            const saved = await this.create(title, blocks)
+            if (saved && kernel !== this.doc.kernel) { this.doc.kernel = kernel; this.changed() }
+            if (opts.removeOriginals) await this.removeMany(picked.map(r => r.id))
+            return saved
+        },
         async reorder(ids: string[]) {
             const by = new Map(this.list.map(r => [r.id, r]))
             this.list = ids.map(id => by.get(id)!).filter(Boolean)
@@ -285,6 +317,36 @@ export const useReportsStore = defineStore("reports", {
             this.doc.blocks.splice(i, 1)
             if (!this.doc.blocks.length) this.doc.blocks.push({ id: newId(), kind: "p", text: "" })
             this.changed()
+        },
+        /** Removes several blocks as one undo step; returns the index the first one had. */
+        removeBlocks(ids: string[]): number {
+            const gone = new Set(ids)
+            const first = this.doc.blocks.findIndex(b => gone.has(b.id))
+            if (first < 0) return -1
+            this.checkpoint()
+            this.doc.blocks = this.doc.blocks.filter(b => !gone.has(b.id))
+            if (!this.doc.blocks.length) this.doc.blocks.push({ id: newId(), kind: "p", text: "" })
+            this.changed()
+            return first
+        },
+        /**
+         * Pasted blocks, as one undo step: in place of `replace` when blocks are
+         * selected, else after `after` (null: at the top).
+         */
+        paste(after: string | null, blocks: Block[], replace: string[] = []) {
+            if (!blocks.length) return
+            this.checkpoint()
+            const gone = new Set(replace)
+            let at = after === null ? 0 : this.doc.blocks.findIndex(x => x.id === after) + 1
+            if (gone.size) {
+                at = this.doc.blocks.findIndex(b => gone.has(b.id))
+                this.doc.blocks = this.doc.blocks.filter(b => !gone.has(b.id))
+            }
+            this.doc.blocks.splice(Math.max(0, at), 0, ...blocks)
+            const last = this.doc.blocks[this.doc.blocks.length - 1]
+            if (!last || isCell(last)) this.doc.blocks.push({ id: newId(), kind: "p", text: "" })
+            this.changed()
+            void this.loadFigures()
         },
         move(id: string, toIndex: number) {
             const i = this.doc.blocks.findIndex(x => x.id === id)
@@ -409,7 +471,8 @@ export const useReportsStore = defineStore("reports", {
                     const checked = check(spec.kind, spec.params)
                     if ("error" in checked) return { error: checked.error }
                     const data = await resolve(checked.spec, { snap: await snapshotFor(k.id) })
-                    if (isAbsent(data)) return { error: data.absent }
+                    // Nothing to show here ("is in no tangle") is a finding, said quietly, not a failure.
+                    if (isAbsent(data)) return { table: { columns: [], rows: [], total: 0, note: data.absent } }
                     const t = checked.def.table(data, checked.spec.params)
                     const table = { columns: t.columns.map(c => ({ id: c.id, label: c.label, numeric: !!c.numeric })), rows: t.rows, total: t.total ?? t.rows.length, ...(t.note ? { note: t.note } : {}) }
                     const png = await renderExhibitPng(checked.spec, k.id, { highlight: spec.highlight })

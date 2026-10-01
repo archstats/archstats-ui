@@ -30,7 +30,7 @@ const SRC = join(ROOT, "src")
 
 const PROSE_ATTRS = new Set(["figure", "title", "placeholder", "aria-label", "alt", "label", "hint", "heading", "subtitle", "description", "caption", "tooltip", "empty", "empty-text", "confirm-label", "cancel-label", "action-label", "summary", "text", "message", "legend", "lede", "note", "help", "prompt", "question", "detail", "blurb", "eyebrow", "kicker", "unit-label", "aria-description", "aria-roledescription", "aria-valuetext"])
 const PROSE_PROPS = new Set([...PROSE_ATTRS, "name", "why", "short", "long", "audience", "when", "describe", "explain", "emptyText", "confirmLabel", "cancelLabel", "actionLabel", "tip", "reason", "intro", "cta", "headline", "body", "lead", "ariaLabel", "plural", "singular", "noun", "what", "meaning", "read", "reading", "question", "answer", "caveat", "unitLabel"])
-const KEY_PROPS = new Set(["id", "take", "where", "sqlWhere", "filterSql", "entity-key", "entityKey", "verdict", "header", "section", "group", "key", "kind", "type", "to", "href", "path", "route", "icon", "class", "cls", "style", "color", "tone", "variant", "mode", "sql", "query", "column", "col", "field", "sort", "order", "format", "slot", "ref", "lang", "ext", "extension", "scheme", "event", "shortcut", "keys", "accelerator", "testid", "dataKey", "accessor", "font", "align", "anchor", "cursor", "fill", "stroke", "d", "transform", "role", "value", "intent", "tool", "direction", "insert", "kindOf", "verdictOf", "table", "source", "target", "from", "file", "dir", "glob", "pattern", "regex", "match", "selector", "storageKey", "name_", "also", "metric", "stat", "prop", "param", "kindOf", "grain", "level", "status", "state", "provider", "model", "url", "endpoint", "mime", "accept", "unit", "symbol"])
+const KEY_PROPS = new Set(["id", "take", "measure", "among", "where", "sqlWhere", "filterSql", "entity-key", "entityKey", "verdict", "header", "section", "group", "key", "kind", "type", "to", "href", "path", "route", "icon", "class", "cls", "style", "color", "tone", "variant", "mode", "sql", "query", "column", "col", "field", "sort", "order", "format", "slot", "ref", "lang", "ext", "extension", "scheme", "event", "shortcut", "keys", "accelerator", "testid", "dataKey", "accessor", "font", "align", "anchor", "cursor", "fill", "stroke", "d", "transform", "role", "value", "intent", "tool", "direction", "insert", "kindOf", "verdictOf", "table", "source", "target", "from", "file", "dir", "glob", "pattern", "regex", "match", "selector", "storageKey", "name_", "also", "metric", "stat", "prop", "param", "kindOf", "grain", "level", "status", "state", "provider", "model", "url", "endpoint", "mime", "accept", "unit", "symbol"])
 const DENY_CALLS = new Set(["enum", "literal", "default", "log", "warn", "error", "info", "debug", "trace", "query", "q", "querySelector", "querySelectorAll", "getElementById", "closest", "addEventListener", "removeEventListener", "emit", "$emit", "defineEmits", "require", "RegExp", "Symbol", "replace", "navigateTo", "t", "has", "getItem", "setItem", "removeItem", "startsWith", "endsWith", "includes", "split", "match", "matchAll", "test", "indexOf", "lastIndexOf", "join", "add", "remove", "toggle", "contains", "setAttribute", "getAttribute", "removeAttribute", "getPropertyValue", "setProperty", "fetch", "attr", "style", "classed", "select", "selectAll", "append", "insert", "on", "call", "sqlLiteral", "sqlIn", "sqlLikeLiteral", "lit", "defineStore", "createElement", "createElementNS", "postMessage", "invoke", "provide", "inject", "localeCompare", "padStart", "padEnd", "toLocaleString", "toLocaleDateString", "toLocaleTimeString", "measureText", "font", "useRoute", "watch", "mark", "measure", "command", "register", "fold", "SQL", "exec", "run", "prepare", "all", "get", "set", "delete", "isPinned", "column", "col", "sortBy", "orderBy", "keyBy", "pick", "omit"])
 // Calls whose first argument is a key and the rest may be text.
 const KEY_FIRST_CALLS = new Set(["set", "get", "has", "setItem", "attr", "style", "on", "classed", "register", "command", "provide", "emit", "$emit"])
@@ -819,6 +819,9 @@ function apply(ns, planFile) {
                 return `<I18nT k="${key}">${c.parts.map(p => `<template #${p.name}>${textOf(p)}</template>`).join("")}</I18nT>`
             }
             const { key, message } = wanted.get(c.start)
+            // The names the message was planned with win: renaming a local t since then renamed what they were read from.
+            const planned = [...new Set([...message.matchAll(/\{(\w+)\}/g)].map(m => m[1]))]
+            if (planned.length === c.parts.length) c.parts.forEach((p, i) => { p.name = planned[i] })
             const args = c.parts.map(p => {
                 const text = textOf(p)
                 if (p.kind) {
@@ -883,13 +886,15 @@ function check() {
     if (left.length) {
         console.log(left.join("\n"))
         console.error(`\n${left.length} strings for people are not messages. Extract them (scripts/i18n-extract.mjs plan/apply) or, when they must stay English, list them in src/locales/keep-english.json with why.`)
-        process.exit(1)
+        // An exit right after a large write to a pipe drops the rest of it.
+        process.exitCode = 1
+        return
     }
     console.log("Every string for people is a message.")
 }
 
 const [mode, ns, ...rest] = process.argv.slice(2)
-if (mode === "check") { check(); process.exit(0) }
-if (mode === "plan") process.stdout.write(plan(ns, rest))
+if (mode === "check") check()
+else if (mode === "plan") process.stdout.write(plan(ns, rest))
 else if (mode === "apply") apply(ns, rest[0])
 else { console.error("usage: i18n-extract.mjs plan|apply <namespace> ..."); process.exit(1) }

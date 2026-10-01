@@ -150,26 +150,27 @@
     "fixPattern": "Fix pattern",
     "notSnapshot": "Not in the snapshot",
     "noHealthReading": "No health reading",
-    "shareHealthBelowMonth": "Share into health below {threshold}, by month",
-    "monthlyShareChangedLines": "Monthly share of changed lines into files with health below {threshold}",
-    "lines": "{value}% of {lines} lines",
-    "noChanges": "no changes",
     "commits": "{commits} commits",
     "theseFilesFilesHealth": "These files are {lowFiles} of the files with a health reading",
     "filesComponentsTangleTwo": "Files of components in a tangle of two or more",
     "commitsWhoseSubjectMatches": "Commits whose subject matches /{source}/i",
     "filesDeletedMovedWhere": "Files deleted, or moved where renames were not followed",
     "filesSnapshotHasBut": "Files the snapshot has but did not rate: configuration, templates, data",
-    "shareChangedLinesHealth": "Share of changed lines into health below {threshold}, by month",
-    "linesChangedFilesHealth": "Lines changed in files with health below {threshold}",
-    "oneBarPerMonth": "One bar per month: the share of that month's changed lines.",
     "whereChangeEffortGoes": "Where change effort goes",
     "shareHealthBelow": "Share into health below {threshold}",
     "shareTangleMembers": "Share into tangle members",
     "shareCommitsMatchingFix": "Share in commits matching the fix pattern",
     "shareFilesNotSnapshot": "Share into files not in the snapshot",
     "shareFilesNoHealth": "Share into files with no health reading",
-    "noChangesRecorded2": "No changes recorded."
+    "noChangesRecorded2": "No changes recorded.",
+    "whereEachMonthS": "Where each month's changed lines went",
+    "eachMonthSChanged": "Each month's changed lines, split by the health of the files they went into, with the share into tangle members and the volume",
+    "lines2": "lines",
+    "healthMore": "Health {threshold} or more",
+    "filesNoLongerSnapshot": "Files no longer in the snapshot",
+    "changedLinesHealthBelow": "{month}: {lines} changed lines; {share} into health below {threshold}, {share2} into tangle members",
+    "noChanges2": "{month}: no changes",
+    "eachColumnOneMonth": "Each column is one month's changed lines, split by the health of the files they went into; the line is the share into components in a tangle. The grey bars under it are how many lines changed that month, cut at three times a typical month."
   },
   "gitActivityChart": {
     "mon": "Mon",
@@ -316,7 +317,7 @@
     "linesAddedRemovedMonth": "Lines added and removed by month",
     "linesAdded": "Lines added",
     "linesRemoved": "Lines removed",
-    "oneBarPerMonth": "One bar per month: added above the line, removed below it."
+    "oneBarPerMonth2": "One bar per month: added above the line, removed below it. A month far past the others is cut at the edge, its total written beside it."
   },
   "sharedCommitList": {
     "readingCommits": "Reading commits…",
@@ -386,7 +387,14 @@
     "tookMoreThanFour": "{value} took more than four times {their} share of the two years before:",
     "more2": ", and {value} more",
     "took1MoreBefore": "{value} that took 1% or more before went quiet.",
-    "changedComponentsHalfThem": "In the {windowWords}, {lines} changed in {rowsLength} components; half of them went into {value}. {tookMoreThanFour}{took1MoreBefore}"
+    "whereWorkMoved": "Where the work moved",
+    "componentsWhoseShareMoved": "The {moversLength} components whose share moved most",
+    "eachComponentSShare": "Each component's share of the changed lines now against the two years before",
+    "whereWorkMovedAgainst": "Where the work moved ({windowWords} against the two years before)",
+    "eachRowComponentS": "Each row is a component's share of all changed lines in each period. Rows are the biggest moves, gains first: work arriving at the top, leaving at the bottom.",
+    "linesWentInto": "In the {window}, {lines} changed in {components}; half of them went into {half}.",
+    "and": "and",
+    "oneLower": "one"
   },
   "effort": {
     "coalesceCFileAdditions": "(coalesce(c.file_additions, 0) + coalesce(c.file_deletions, 0))",

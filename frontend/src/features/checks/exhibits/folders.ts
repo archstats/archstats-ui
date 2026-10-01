@@ -75,6 +75,8 @@ export const folders = exhibit<FoldersData>()({
 
     figure: {
         load: () => import("~/features/checks/components/FolderExhibit.vue"),
+        // Its labels stay legible at a report page's width.
+        exportWidth: 720,
         props: (d, _p, o) => ({ files: d.files, lines: d.lines, values: d.values, colorBy: d.colorBy, title: o.title, highlight: o.highlight }),
         height: (_d, o) => (o.density === "inline" ? 340 : 520),
         fill: true,

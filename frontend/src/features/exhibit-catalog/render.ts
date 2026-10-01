@@ -43,7 +43,7 @@ export async function renderExhibitPng(spec: ExhibitSpec, scanId: string, o: { h
     const def = defOf(spec.kind)
     if (!def?.figure) return null
     const data = await resolve(spec, { snap: await snapshotFor(scanId) })
-    if (isAbsent(data) || !(def.figure.when?.(data) ?? true)) return null
+    if (isAbsent(data) || !(def.figure.when?.(data) ?? true) || def.figure.printable?.(data) === false) return null
     const key = nextKey++
     const fig = await new Promise<FigureExportable | null>(res => {
         const timer = setTimeout(() => res(null), o.timeoutMs ?? 8000)

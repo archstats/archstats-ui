@@ -32,13 +32,13 @@
       <button v-if="order === 'widest' && sweeping > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :title="t('git.commitHistory.commitsTouchingMoreThan', { sweepLimit })" @click="showSweeping = !showSweeping">
         {{ showSweeping ? t('git.commitHistory.sweepingCommitsShown') : t('git.commitHistory.sweepingCommitsHidden', { sweeping: formatNumber(sweeping) }) }}
       </button>
-      <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet"
+      <button v-if="!includeBots && botCommits > 0" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 whitespace-nowrap"
               :title="authorsStore.showBots ? t('git.commitHistory.hideCommitsMadeBots') : t('git.commitHistory.commitsMadeBotsRelease')"
               @click="authorsStore.setShowBots(!authorsStore.showBots)">
         <Icon :icon="authorsStore.showBots ? 'eye' : 'eye-off'" :size="13" class="text-neutral-500"/>
         <span>{{ authorsStore.showBots ? t('git.commitHistory.botsShown') : t('git.commitHistory.botCommitsHidden', { botCommits: formatNumber(botCommits) }) }}</span>
       </button>
-      <span class="ui-toolbar-meta ml-auto flex items-center gap-1.5">
+      <span class="ui-toolbar-meta ml-auto flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
         <span v-if="fixOnly" :title="t('git.commitHistory.subjectLinesMatchingI', { fixSource })"><I18nT k="git.commitHistory.commitsMatching"><template #value><span class="font-mono text-neutral-700">/{{ fixSource.length > 28 ? fixSource.slice(0, 27) + '…' : fixSource }}/</span></template><template #commitsLength><span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></template><template #periodCommitsLength><span class="font-mono">{{ formatNumber(periodCommits.length) }}</span></template></I18nT></span>
         <span v-else>{{ t('git.commitHistory.commits') }} <span class="font-mono text-neutral-800">{{ formatNumber(commits.length) }}</span></span>
         <span class="text-neutral-300">·</span>
@@ -146,7 +146,7 @@ import { fixPattern, fixPatternSource, matchesFix } from "~/features/git/commitP
 import EmptyState from "~/shared/ui/EmptyState.vue";
 import LoadingState from "~/shared/ui/LoadingState.vue";
 import { t, dateLocale } from "~/shared/i18n";
-import I18nT from "~/shared/ui/I18nT";
+import I18nT from "~/shared/ui/I18nT"
 
 // One commit history for components, files and authors: the caller supplies
 // the WHERE predicate (already escaped through sqlLiteral) and the rest is

@@ -224,14 +224,14 @@ export function describeChange(prev: CellOutput | null | undefined, next: CellOu
             entered ? t("reports.reportCells.new", { entered }) : "", left ? t("reports.reportCells.gone", { left }) : "",
             changed ? t("reports.reportCells.changed", { changed }) : "", !entered && !left && !changed && moved ? t("reports.reportCells.reordered", { moved }) : "",
         ].filter(Boolean)
-        return parts.length ? t("reports.reportCells.sinceLastRun", { value: parts.join(", ") }) : t("reports.reportCells.unchangedSinceLastRun")
+        return parts.length ? t("reports.reportCells.sinceLastRun2", { parts: parts.join(", ") }) : t("reports.reportCells.unchangedSinceLastRun")
     }
     if (prev.reading && next.reading) {
         const a = prev.reading.values, b = next.reading.values
         const moved = Object.keys(b).filter(k => a[k] !== undefined && Math.abs(a[k] - b[k]) > 1e-9)
         const fresh = Object.keys(b).filter(k => a[k] === undefined).length + Object.keys(a).filter(k => b[k] === undefined).length
         if (!moved.length && !fresh) return prev.reading.text === next.reading.text ? t("reports.reportCells.unchangedSinceLastRun") : t("reports.reportCells.rewordedSinceLastRun")
-        return t("reports.reportCells.sinceLastRun", { value: [...moved.map(k => `${k} ${fmtValue(a[k])} → ${fmtValue(b[k])}`), fresh ? t("reports.reportCells.namedChanged", { fresh, items: t("common.noun.item", { count: fresh }) }) : ""].filter(Boolean).join(", ") })
+        return t("reports.reportCells.sinceLastRun3", { Boolean: [...moved.map(k => `${k} ${fmtValue(a[k])} → ${fmtValue(b[k])}`), fresh ? t("reports.reportCells.namedChanged", { fresh, items: t("common.noun.item", { count: fresh }) }) : ""].filter(Boolean).join(", ") })
     }
     if (prev.pin && next.pin) {
         const a = prev.pin.now ?? prev.pin.values, b = next.pin.now
@@ -287,7 +287,7 @@ export function fmtValue(v: unknown): string {
 
 export function provenanceLine(r: RanOn | null, workspace: string): string {
     if (!r) return t("reports.reportCells.notRunYet")
-    return [workspace, t("reports.reportCells.snapshot", { label: r.label }), r.commit ? t("reports.reportCells.commit", { commit: r.commit.slice(0, 7), value: r.committed ? t("reports.reportCells.of", { committed: r.committed }) : "" }) : "", t("reports.reportCells.analysisR", { revision: r.revision }), r.lens ? t("reports.reportCells.lens", { lens: r.lens }) : "", r.scope ? t("reports.reportCells.scope", { scope: r.scope }) : "", r.role && r.role !== "all" ? t("reports.reportCells.files", { role: r.role }) : ""].filter(Boolean).join(" · ")
+    return [workspace, t("reports.reportCells.snapshot", { label: r.label }), r.commit ? t("reports.reportCells.commit", { commit: r.commit.slice(0, 7), value: r.committed ? ` of ${r.committed}` : "" }) : "", t("reports.reportCells.analysisR", { revision: r.revision }), r.lens ? t("reports.reportCells.lens", { lens: r.lens }) : "", r.scope ? t("reports.reportCells.scope", { scope: r.scope }) : "", r.role && r.role !== "all" ? t("reports.reportCells.files", { role: r.role }) : ""].filter(Boolean).join(" · ")
 }
 
 /** The rows a cell shows: a pin as metric, pinned and now; a table as it is. */
@@ -356,14 +356,14 @@ export function notIncludedLine(left: CellBlock[]): string {
         const s = b.cell.spec as Extract<CellSpec, { type: "slot" }>
         return `${b.cell.title || (s.kind === "figure" ? "a figure" : "a table")} (${s.kind}, from ${s.view})`
     })
-    return t("reports.reportCells.notIncludedTemplateAsked", { value: items.join("; "), them: t("common.noun.it", { count: left.length }), theyWere: t("common.noun.itWas", { count: left.length }), theirViews: t("common.noun.itsView", { count: left.length }) })
+    return t("reports.reportCells.notIncludedTemplateAsked2", { items: items.join("; "), them: t("common.noun.it", { count: left.length }), theyWere: t("common.noun.itWas", { count: left.length }), theirViews: t("common.noun.itsView", { count: left.length }) })
 }
 
 /** "22 of 170 rows." when a table holds fewer rows than it found. */
 function rowsNote(cell: Cell): string {
     const table2 = cell.output?.table
     if (!table2) return ""
-    const of = table2.total < 0 ? t("reports.reportCells.firstRowsQueryReturned", { value: table2.rows.length.toLocaleString(intlLocale) }) : table2.total > table2.rows.length ? t("reports.reportCells.rows", { value: table2.rows.length.toLocaleString(intlLocale), value2: table2.total.toLocaleString(intlLocale) }) : ""
+    const of = table2.total < 0 ? t("reports.reportCells.firstRowsQueryReturned2", { rowsLength: table2.rows.length.toLocaleString(intlLocale) }) : table2.total > table2.rows.length ? t("reports.reportCells.rows2", { rowsLength: table2.rows.length.toLocaleString(intlLocale), total: table2.total.toLocaleString(intlLocale) }) : ""
     return [of, table2.note ?? ""].filter(Boolean).join(" ")
 }
 
@@ -376,9 +376,14 @@ export function cellTitle(cell: Cell): string {
  * tables and figures, with numbering, captions and provenance.
  */
 export function exportMarkdown(title: string, meta: string[], all: Block[], opts: { workspace: string; label: (id: string) => string; figureFile: (cellId: string) => string | null }): string {
+    return [`# ${title}`, "", ...meta.map(m => `_${m}_  `), "", readableMarkdown(all, opts)].join("\n").replace(/\n{3,}/g, "\n\n")
+}
+
+/** Blocks as a reader's Markdown: cells as their findings, tables and figures, not as specs. */
+export function readableMarkdown(all: Block[], opts: { workspace: string; label: (id: string) => string; figureFile: (cellId: string) => string | null }): string {
     const { blocks, left } = printedBlocks(all)
     const numbers = cellNumbers(blocks)
-    const out: string[] = [`# ${title}`, "", ...meta.map(m => `_${m}_  `), ""]
+    const out: string[] = []
     let n = 0
     blocks.forEach((b, i) => {
         const prev = blocks[i - 1]
@@ -395,7 +400,7 @@ export function exportMarkdown(title: string, meta: string[], all: Block[], opts
         const fig = opts.figureFile(b.id)
         if (fig) out.push(`![${cellTitle(c) || head}](${fig})`, "")
         const t = displayTable(c, opts.label)
-        if (t && !t.rows.length && c.output?.table) out.push(EMPTY_TABLE, "")
+        if (t && !t.rows.length && c.output?.table) out.push(c.output.table.note || EMPTY_TABLE, "")
         else if (t) {
             out.push(`| ${t.columns.join(" | ")} |`, `|${t.align.map(a => (a === "r" ? " ---: " : " --- ")).join("|")}|`)
             for (const r of t.rows) out.push(`| ${r.map(x => x.replace(/\|/g, "\\|")).join(" | ")} |`)
@@ -451,7 +456,7 @@ export function pdfBlocks(all: Block[], opts: { workspace: string; label: (id: s
             const img = opts.figure(b.id)
             const shown = displayTable(c, opts.label)
             // A query that matched nothing prints its title and a sentence, not an empty grid of headers.
-            if (shown && !shown.rows.length && c.output?.table) { out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: ` ${EMPTY_TABLE}` }] }); continue }
+            if (shown && !shown.rows.length && c.output?.table) { out.push({ kind: "p", runs: [{ text: title, bold: true }, { text: ` ${c.output.table.note || EMPTY_TABLE}` }] }); continue }
             const shown2 = shown
             if (img) out.push({ kind: "image", image: img, title, caption: shown2 ? "" : caption, provenance: shown2 ? "" : provenance })
             if (shown2) out.push({ kind: "table", table: shown2, title: img ? "" : title, caption, provenance })

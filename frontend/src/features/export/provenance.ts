@@ -45,7 +45,7 @@ export function buildProvenance(view = typeof location !== "undefined" ? locatio
     const state = useStateStore()
     const scan: any = workspaces.openScan
     const info = data.snapshotInfo ?? {}
-    const scopeGroups = listOf(scope.byDimension.map(b => b.groups.map(g => g.name).join(" or ")))
+    const scopeGroups = listOf(scope.byDimension.map(b => listOf(b.groups.map(g => g.name), "disjunction")))
     const scopeText = [scopeGroups, scope.query.trim() ? t("export.provenance.matching", { query: scope.query.trim() }) : ""].filter(Boolean).join(", ")
     const role = state.get<string>("fileRole.facet", "all")
     return {

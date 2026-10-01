@@ -220,7 +220,7 @@
     "questionsYouAskKept": "Questions you ask are kept here with their evidence, per workspace.",
     "conversationName": "Conversation name",
     "aboutSnapshot": "About snapshot {snapshot}",
-    "delete": "Delete “{tTitle}”",
+    "delete": "Delete “{title}”",
     "deleteConversation": "Delete conversation",
     "today": "Today",
     "week": "This week",

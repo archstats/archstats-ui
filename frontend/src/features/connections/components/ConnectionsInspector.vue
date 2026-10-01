@@ -221,6 +221,7 @@
 </template>
 
 <script setup lang="ts">
+import type { RollupGroup } from "~/features/connections/useConnectionsModel";
 import PinButton from "~/features/reports/components/PinButton.vue";
 import SharedCommitList from "~/features/git/components/SharedCommitList.vue";
 import { groupPath } from "~/features/navigation/routes";
@@ -249,6 +250,8 @@ const props = defineProps<{
   memberships: (componentId: string) => SavedGroup[]
   cycleSetOf: Map<string, string[]>
   cycleSets: string[][]
+  /** The groups the view rolls up by, saved or folders. */
+  rollups?: RollupGroup[]
 }>();
 
 const emit = defineEmits<{
@@ -269,7 +272,9 @@ const byId = computed(() => new Map(props.nodes.map(n => [n.id, n])));
 
 const node = computed(() => (props.selection?.type === "node" ? byId.value.get(props.selection.id) ?? null : null));
 const group = computed(() => (node.value?.kind === "group" ? groups.groups.find(g => g.id === node.value!.id) ?? null : null));
-const groupComponents = computed(() => (group.value ? Array.from(groups.componentsOf(group.value).entries()) : []));
+// A folder of the folder roll-up is not a saved group: its members come with it.
+const rollup = computed(() => (node.value?.kind === "group" && !group.value ? props.rollups?.find(g => g.id === node.value!.id) ?? null : null));
+const groupComponents = computed(() => (group.value ? Array.from(groups.componentsOf(group.value).entries()) : rollup.value ? Array.from(rollup.value.coverage.entries()) : []));
 const nodeRoute = computed(() => (node.value ? detailRoute(node.value.kind, node.value.id) : null));
 const nodeCycle = computed(() => (node.value ? props.cycleSetOf.get(node.value.id) ?? null : null));
 const cycleMembers = computed(() => (props.selection?.type === "cycle" ? props.cycleSetOf.get(props.selection.id) ?? [] : []));

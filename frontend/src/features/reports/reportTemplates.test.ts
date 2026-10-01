@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest"
 import { dependencyLevels, ecosystems, listOf, runReading, type SnapshotFacts } from "./readings"
 import { describeChange, exportMarkdown, pdfBlocks } from "./reportCells"
 import { cellNumbers, fromMarkdown, isCell, toMarkdown, type Block } from "./reportDoc"
-import { bestTemplate, buildTemplate, fromSaved, hasEvidence, TEMPLATES, toTemplate, tally } from "./reportTemplates"
+import { bestTemplate, buildTemplate, fromSaved, hasEvidence, TEMPLATES, toTemplate, tally, Writer } from "./reportTemplates"
+import { structure } from "./templateKit"
 
 const facts = (over: Partial<SnapshotFacts> = {}): SnapshotFacts => ({
     tables: new Set(["files", "components", "component_connections_direct", "snippets", "modules", "rules"]),
@@ -65,9 +66,9 @@ describe("templates", () => {
     it("leaves out what the snapshot cannot fill, and names it", () => {
         const t = TEMPLATES.find(x => x.id === "architecture-review")!
         const built = buildTemplate(t, { facts: facts({ commits: 0 }), ecosystems: [], params: {} })
-        expect(built.skipped.map(s => s.section)).toEqual(["Dependency rules", "Hotspots: complicated code that changes often"])
-        expect(built.skipped[1].why).toBe("the scan has no git history")
-        const withRules = buildTemplate(t, { facts: facts({ rules: { applicable: 2, violations: 1 } }), ecosystems: [], params: {} })
+        expect(built.skipped.map(s => s.section)).toEqual(["Tangles and the cuts that undo them", "Dependency rules", "Hotspots: complicated code that changes often", "Where the work has gone"])
+        expect(built.skipped[2].why).toBe("the scan has no git history")
+        const withRules = buildTemplate(t, { facts: facts({ rules: { applicable: 2, violations: 1 }, tangles: 3 }), ecosystems: [], params: {} })
         expect(withRules.skipped).toEqual([])
     })
 
@@ -137,7 +138,7 @@ describe("templates", () => {
     it("asks for a component before a quick win can say what it affects", () => {
         const t = TEMPLATES.find(x => x.id === "change-impact")!
         const f = facts({ tables: new Set(["files", "components", "component_connections_direct", "component_connections_indirect", "git_component_shared_commits"]), roles: { production: { files: 10, lines: 1000 }, test: { files: 3, lines: 90 } } })
-        expect(buildTemplate(t, { facts: f, ecosystems: [], params: {} }).skipped.map(s => s.why)).toEqual(["no component is chosen", "no component is chosen", "no component is chosen"])
+        expect(buildTemplate(t, { facts: f, ecosystems: [], params: {} }).skipped.map(s => s.why)).toEqual(["no component is chosen", "no component is chosen", "no component is chosen", "no component is chosen"])
         const chosen = buildTemplate(t, { facts: f, ecosystems: [], params: { component: "o'core" } })
         expect(chosen.skipped).toEqual([])
         const sql = chosen.blocks.flatMap(b => (isCell(b) && b.cell.spec.type === "sql" ? [b.cell.spec.sql] : []))
@@ -250,11 +251,11 @@ describe("figures", () => {
         .filter(isCell).map(b => b.cell.spec).filter(s => s.type === "slot") as Array<{ route: string; take?: string; kind: string }>
 
     it("draws the structure as the roles' floors when the scan has classes, at any size", () => {
-        const withUnits = facts({ tables: new Set([...facts().tables, "units"]), components: 900 })
-        expect(slots("architecture-review", withUnits).some(s => s.take === "How the layers lean")).toBe(true)
-        // Without classes: the graph while it stays legible, nothing past that.
-        expect(slots("architecture-review", facts()).some(s => s.route.startsWith("/views/connections?level="))).toBe(true)
-        expect(slots("architecture-review", facts({ components: 900 })).some(s => s.route.startsWith("/views/connections?level="))).toBe(false)
+        const drawn = (f: SnapshotFacts) => { const w = new Writer(f); structure(w); return w.blocks.filter(isCell).map(b => b.cell.spec as any).filter(x => x.type === "slot") }
+        expect(drawn(facts({ tables: new Set([...facts().tables, "units"]), components: 900 })).some(s => s.take === "How the layers lean")).toBe(true)
+        // Without classes: the components while they stay legible, their folders past that.
+        expect(drawn(facts()).some(s => s.route.startsWith("/views/connections?level=components"))).toBe(true)
+        expect(drawn(facts({ components: 900 })).some(s => s.route === "/views/connections?level=groups&by=Folders")).toBe(true)
     })
 
     it("names the figure it wants on every view that shows more than one", () => {
@@ -268,16 +269,39 @@ describe("figures", () => {
 
     it("plots the main sequence only where some code is abstract", () => {
         const plot = (f: SnapshotFacts) => slots("load-bearing", f).map(s => s.route).find(r => r.includes("view=plot"))
-        expect(plot(facts({ componentColumns: new Set([...facts().componentColumns, "modularity__coupling__dependents"]), abstractComponents: 12 }))).toContain("preset=dms")
-        expect(plot(facts({ componentColumns: new Set([...facts().componentColumns, "modularity__coupling__dependents"]), abstractComponents: 0 }))).toContain("preset=betweenness-churn")
+        const cols = new Set([...facts().componentColumns, "modularity__coupling__dependents", "modularity__instability"])
+        expect(plot(facts({ componentColumns: cols, abstractComponents: 12 }))).toContain("preset=dms")
+        expect(plot(facts({ componentColumns: cols, abstractComponents: 0 }))).toContain("preset=betweenness-churn")
     })
 
     it("leaves out the drawings that print as a cloud", () => {
-        const f = facts({ tables: new Set([...facts().tables, "units", "git_component_shared_commits"]) })
+        // Co-change between components is a cloud; between folders it reads.
+        const f = facts({ tables: new Set([...facts().tables, "units", "git_component_shared_commits"]), components: 900 })
         for (const t of TEMPLATES) {
             const routes = slots(t.id, f).map(s => s.route)
-            expect(routes.filter(r => r.includes("source=git&level=")), t.id).toEqual([])
-            expect(routes.filter(r => r.includes("tab=effort")), t.id).toEqual([])
+            expect(routes.filter(r => r.includes("source=git&level=") && !r.includes("by=Folders")), t.id).toEqual([])
+            expect(routes.filter(r => r.startsWith("/views/connections?") && r.includes("level=components") && !r.includes("sel=")), t.id).toEqual([])
         }
+    })
+
+    it("does not ask any report for the same picture twice", () => {
+        const f = facts({ tables: new Set([...facts().tables, "units", "unit_connections", "unit_markers", "git_component_shared_commits", "component_connections_indirect", "deployables"]), tangles: 4, rules: { applicable: 2, violations: 3 }, summary: { git__commits__last_30_days: 5 }, fileColumns: new Set([...facts().fileColumns, "codesmells__hotspot_score", "git__age_in_days"]) })
+        for (const t of TEMPLATES) {
+            const { blocks } = buildTemplate(t, { facts: f, ecosystems: [], params: { component: "core" } })
+            const seen = blocks.filter(isCell).flatMap(b => { const s: any = b.cell.spec; return s.type === "slot" ? [`${s.route}#${s.take ?? ""}`] : s.type === "exhibit" ? [`${s.kind}${JSON.stringify(s.params)}`] : [] })
+            expect(seen.filter((x, i) => seen.indexOf(x) !== i), t.id).toEqual([])
+        }
+    })
+
+    it("gives the general templates pictures of their own, not one shared drawing", () => {
+        const f = facts({ tables: new Set([...facts().tables, "units", "unit_connections", "git_component_shared_commits", "component_connections_indirect"]), tangles: 4, components: 400 })
+        const pictures = new Map<string, number>()
+        for (const t of TEMPLATES.filter(x => !x.ecosystem)) {
+            const { blocks } = buildTemplate(t, { facts: f, ecosystems: [], params: { component: "core" } })
+            for (const b of blocks.filter(isCell)) { const s: any = b.cell.spec; if (s.type === "slot" && s.kind === "figure") pictures.set(`${s.route}#${s.take ?? ""}`, (pictures.get(`${s.route}#${s.take ?? ""}`) ?? 0) + 1) }
+        }
+        // No single figure in more than a third of the general and quick templates.
+        const most = Math.max(...pictures.values())
+        expect(most).toBeLessThanOrEqual(Math.ceil(TEMPLATES.filter(x => !x.ecosystem).length / 3))
     })
 })

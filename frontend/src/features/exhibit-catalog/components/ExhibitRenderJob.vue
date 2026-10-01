@@ -1,6 +1,6 @@
 <template>
   <!-- One exhibit drawn for export, at full density, its figure caught in a scope of its own. -->
-  <div :style="def?.figure?.fill ? { height: `${height}px` } : undefined">
+  <div :style="{ ...(def?.figure?.fill ? { height: `${height}px` } : {}), ...(def?.figure?.exportWidth ? { width: `${def.figure.exportWidth}px` } : {}) }">
     <component :is="figure" v-if="figure" v-bind="props_"/>
   </div>
 </template>

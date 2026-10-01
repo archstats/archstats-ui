@@ -1,12 +1,14 @@
 {
   "exBars": {
-    "barLength": "bar length = {unit}"
+    "barLength": "bar length = {unit}",
+    "barLength2": "Bar length: {unit}"
   },
   "exProfile": {
     "nothing": "nothing"
   },
   "exTimeline": {
-    "columnHeightPer": "column height = {unit} per {period}"
+    "columnHeightPer": "column height = {unit} per {period}",
+    "columnHeightPer2": "Column height: {unit} per {period}"
   },
   "exhibitTable": {
     "fewerRows": "Fewer rows",

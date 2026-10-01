@@ -72,6 +72,8 @@ export const knowledge = exhibit<KnowledgeData>()({
 
     figure: {
         load: () => import("~/features/git/components/KnowledgeExhibit.vue"),
+        // Its labels stay legible at a report page's width.
+        exportWidth: 720,
         props: (d, _p, o) => ({ rows: d.rows, windowWords: t("git.knowledge.lastYear"), highlight: o.highlight }),
         height: (_d, o) => (o.density === "inline" ? 380 : 560),
         fill: true,

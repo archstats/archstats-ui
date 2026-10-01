@@ -385,7 +385,7 @@
     "referencesBetweenThem": "{raw} verwijzingen tussen hen",
     "coChangedTimes": "{raw} keer samen gewijzigd",
     "shareDomain": "delen {shared} domain-{types}",
-    "name": "naam “{t}”",
+    "name": "naam “{token}”",
     "similarNames": "vergelijkbare namen",
     "sameLane3": "dezelfde lane",
     "cycleTogether": "samen in een cycle",

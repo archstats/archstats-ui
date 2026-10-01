@@ -5,9 +5,11 @@
 // drawn, a blank image or a dark light rendering. Tables must have rows or
 // say why not. Exits 1 when anything fails, so it can gate a release.
 //
-// Usage: node scripts/figure-check.mjs [--workspace NAME] [--routes name=/path,...] [--scheme dark|light]
-// Requires `wails dev` to be running (see scripts/dev-check.mjs). Read-only: nothing is saved.
+// Usage: node scripts/figure-check.mjs [--workspace NAME] [--routes name=/path,...] [--scheme dark|light] [--url http://localhost:34115] [--out DIR]
+// Requires `wails dev` to be running (see scripts/dev-check.mjs). Read-only: nothing is saved
+// in the app; --out writes each light PNG there, to look at.
 import { spawn } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.startsWith("--") ? [a.slice(2), all[i + 1] && !all[i + 1].startsWith("--") ? all[i + 1] : "true"] : []).filter(Boolean));
 const scheme = args.scheme === "light" ? "light" : "dark";
@@ -15,15 +17,39 @@ const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/M
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The views that draw figures. A route that registers none fails: a chart view that stops
-// handing over its figure is what this guards against.
+// handing over its figure is what this guards against. Views marked "table" hand over tables only.
+// Every view a report template's slot opens is here, set as the slot sets it.
 const DEFAULT_ROUTES = [
+  ["overview", "/"],
   ["connections graph", "/views/connections?level=components"],
-  ["connections chord", "/views/connections?rep=chord"],
+  ["connections matrix", "/views/connections?rep=matrix&level=groups&order=levels&by=Folders", "table"],
+  ["connections chord by folder", "/views/connections?rep=chord&level=groups&by=Folders"],
+  ["connections graph by folder", "/views/connections?level=groups&by=Folders"],
+  ["connections hidden", "/views/connections?source=git&rep=list&relation=no-import&facet=production", "table"],
+  ["connections co-change", "/views/connections?source=git&level=components"],
+  ["connections combined", "/views/connections?source=combined&level=components"],
+  ["plot dms", "/views/metrics?view=plot&preset=dms"],
+  ["plot betweenness", "/views/metrics?view=plot&preset=betweenness-churn"],
+  ["plot churn-health", "/views/metrics?view=plot&preset=churn-health"],
+  ["plot authors", "/views/metrics?view=plot&preset=authors-churn"],
+  ["metrics directories", "/views/metrics?grain=directories", "table"],
   ["hotspots", "/views/components/hotspots"],
+  ["hotspots age", "/views/components/hotspots?preset=age&grain=components"],
+  ["hotspots nesting", "/views/components/hotspots?preset=nesting&grain=files&facet=production"],
   ["cycles", "/views/components/cycles"],
-  ["plotter", "/views/components/plotter"],
-  ["activity", "/views/git/activity"],
-  ["effort", "/views/git/activity?tab=effort"],
+  ["activity commits", "/views/git/activity?tab=commits"],
+  ["activity now", "/views/git/activity?tab=now"],
+  ["activity breadth", "/views/git/activity?tab=breadth"],
+  ["activity effort", "/views/git/activity?tab=effort"],
+  ["authors", "/views/git/authors?grain=components"],
+  ["units", "/views/units"],
+  ["units reach", "/views/units?colour=reach"],
+  ["checks", "/views/checks"],
+  ["deployables", "/views/deployables", "table"],
+  ["libraries", "/views/libraries", "table"],
+  ["rules", "/views/rules", "table"],
+  ["trends", "/views/trends"],
+  ["changes", "/views/changes", "table"],
 ];
 const routes = args.routes ? args.routes.split(",").map((p) => { const i = p.indexOf("="); return [p.slice(0, i), p.slice(i + 1)]; }) : DEFAULT_ROUTES;
 
@@ -49,7 +75,17 @@ const evaluate = async (expression) => {
 await send("Page.enable");
 await send("Emulation.setDeviceMetricsOverride", { width: 1500, height: 950, deviceScaleFactor: 1, mobile: false });
 await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: scheme }] });
-await send("Page.navigate", { url: "http://localhost:34115/" });
+const BASE = args.url ?? "http://localhost:34115";
+const OUT = args.out ?? null;
+if (OUT) mkdirSync(OUT, { recursive: true });
+const consoleErrors = [];
+await send("Runtime.enable");
+ws.addEventListener("message", (m) => {
+  const msg = JSON.parse(m.data);
+  if (msg.method === "Runtime.exceptionThrown") consoleErrors.push(msg.params.exceptionDetails?.exception?.description ?? msg.params.exceptionDetails?.text ?? "exception");
+  if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") consoleErrors.push(msg.params.args.map((a) => a.value ?? a.description ?? "").join(" "));
+});
+await send("Page.navigate", { url: BASE + "/" });
 
 // The app, then the workspace (the one asked for, else the first), then its data.
 let chosen = null;
@@ -80,6 +116,7 @@ const CHECK = `(async () => {
     if (item.kind === "figure") {
       for (const light of [true, false]) {
         const row = { kind: "figure", title: item.title, light };
+        const t0 = performance.now();
         try {
           const f = await item.render({ light });
           if (!f) throw new Error("render returned nothing");
@@ -88,6 +125,8 @@ const CHECK = `(async () => {
           const png = await fig.pngBase64(f, "figure check", { light, legend });
           const img = new Image(); img.src = "data:image/png;base64," + png; await img.decode();
           row.size = img.width + "x" + img.height;
+          row.ms = Math.round(performance.now() - t0);
+          if (light) row.png = png;
           if (f.kind === "svg") fig.svgDocument(f, "figure check", { light, legend });
         } catch (e) { row.error = e && e.message ? e.message : String(e); }
         out.push(row);
@@ -102,20 +141,23 @@ const CHECK = `(async () => {
 })()`;
 
 let failures = 0;
-for (const [name, route] of routes) {
+for (const [name, route, only] of routes) {
+  consoleErrors.length = 0;
   await evaluate(`(() => { location.hash = ${JSON.stringify("#" + route)}; return true; })()`);
   await sleep(1200);
   let rows;
   try { rows = await evaluate(CHECK); } catch (e) { rows = [{ kind: "page", title: name, error: e.message }]; }
   const figures = rows.filter((r) => r.kind === "figure");
-  if (!figures.length && !rows.some((r) => r.kind === "page")) rows.push({ kind: "figure", title: "(none registered)", error: "this view draws a chart but hands over no figure" });
+  if (!figures.length && only !== "table" && !rows.some((r) => r.kind === "page")) rows.push({ kind: "figure", title: "(none registered)", error: "this view draws a chart but hands over no figure" });
   console.log(`${name}  ${route}`);
   for (const r of rows) {
     const bad = !!r.error;
     if (bad) failures++;
-    const what = r.kind === "figure" ? `${r.light ? "light" : "as shown"}${r.size ? `  ${r.size}` : ""}` : r.kind === "table" ? (r.why ? `none: ${r.why}` : `${r.rows} rows`) : "";
+    const what = r.kind === "figure" ? `${r.light ? "light" : "as shown"}${r.size ? `  ${r.size}` : ""}${r.ms != null ? `  ${r.ms} ms` : ""}` : r.kind === "table" ? (r.why ? `none: ${r.why}` : `${r.rows} rows`) : "";
+    if (OUT && r.png) writeFileSync(`${OUT}/${name.replace(/[^\w-]+/g, "-")}--${r.title.replace(/[^\w-]+/g, "-").slice(0, 60)}.png`, Buffer.from(r.png, "base64"));
     console.log(`  ${bad ? "FAIL" : "ok  "}  ${r.kind.padEnd(6)} ${r.title}  ${what}${bad ? `\n          ${r.error}` : ""}`);
   }
+  for (const e of new Set(consoleErrors)) { failures++; console.log(`  FAIL  error  ${String(e).split("\n")[0].slice(0, 300)}`); }
 }
 ws.close(); chrome.kill();
 console.log(failures ? `\n${failures} failed.` : "\nEvery figure and table can go into a report.");
