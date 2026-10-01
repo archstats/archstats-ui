@@ -41,6 +41,7 @@ src/
 | `overview` | The home view |
 | `exhibits` | The exhibit kernel: a definition's schema and facts, the engine that checks, resolves and presents a spec (definitions are registered, never imported), the claim checker, and the drawing primitives |
 | `exhibit-catalog` | Every exhibit, registered with the engine; the snapshot an exhibit reads in the app; drawing one to a PNG with nothing on screen |
+| `ai` | The AI switch every AI feature obeys, and the model provider settings (keys stay in the Go side and the system keychain) |
 | `ask` | Ask: questions about the snapshot answered by a local model through intents, with cited exhibits, the grounding check, threads, and write-ups into reports |
 
 Inside a feature: logic is plain `.ts` next to its test, composables are

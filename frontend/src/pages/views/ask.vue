@@ -8,15 +8,18 @@
     </template>
     <template #switches>
       <select
-          class="ui-input ui-input-sm max-w-[200px]"
-          :value="ask.modelName"
+          class="ui-input ui-input-sm max-w-[220px]"
+          :value="ask.modelId"
           :disabled="ask.running"
-          title="The local model that answers (Ollama)"
+          :title="ask.model ? `${ask.model.label}: ${ask.model.remote ? 'questions leave this machine' : 'runs on this machine'}` : 'The model that answers'"
           aria-label="Model"
-          @change="ask.setModel(($event.target as HTMLSelectElement).value)"
+          @change="pickModel($event.target as HTMLSelectElement)"
       >
         <option v-if="!ask.models.length" value="">{{ ask.loadingModels ? "Finding models…" : "No models" }}</option>
-        <option v-for="m in ask.models" :key="m.name" :value="m.name" :disabled="!m.tools">{{ m.name }}{{ m.remote ? " · cloud" : "" }}{{ m.tools ? "" : " · no tools" }}</option>
+        <optgroup v-for="g in modelGroups" :key="g.provider" :label="g.label">
+          <option v-for="m in g.models" :key="m.id" :value="m.id" :disabled="!m.tools">{{ m.label }}{{ m.remote && g.provider === 'ollama' ? " · cloud" : "" }}{{ m.tools ? "" : " · no tools" }}</option>
+        </optgroup>
+        <option value="__settings">Model settings…</option>
       </select>
       <label v-if="ask.model?.think" class="flex items-center gap-1.5 text-[12px] text-neutral-600" title="Let the model reason before each step: slower, sometimes better on broad questions">
         <input type="checkbox" class="ui-check" :checked="ask.think" :disabled="ask.running" @change="ask.setThink(($event.target as HTMLInputElement).checked)"> Think
@@ -34,7 +37,17 @@
     </template>
 
     <template #visualizer>
-      <div ref="shell" class="ask-shell relative flex min-h-0 grow">
+      <!-- AI off (a link or a stale tab can still land here): say so, and where to turn it on. -->
+      <div v-if="ai.loaded && !ai.enabled" class="flex min-h-0 grow items-start justify-center px-8 pt-[14vh]">
+        <div class="max-w-[440px]">
+          <h1 class="text-lg font-semibold text-neutral-900">Ask is off</h1>
+          <p class="mt-1.5 text-base text-neutral-600">
+            {{ ai.status.locked ? `AI features are held off here: ${ai.status.policy}.` : "AI features are off, so Archstats sends nothing to any model. Turn them on and pick a model provider in Settings." }}
+          </p>
+          <button v-if="!ai.status.locked" type="button" class="ui-btn ui-btn-primary mt-4" @click="runCommand('settings:open')">Open settings</button>
+        </div>
+      </div>
+      <div v-else ref="shell" class="ask-shell relative flex min-h-0 grow">
         <div class="ask-rail w-[236px] shrink-0 bg-ground hairline-r" :class="{ 'ask-rail-open': threadsOpen }">
           <AskThreads @new="fresh"/>
         </div>
@@ -54,7 +67,7 @@
                 <h1>What do you want to know about {{ workspaceName }}?</h1>
                 <p class="ask-sub">
                   Answers come from the open snapshot, through the code the views use. Every number cites its evidence; every piece of evidence opens in its view, pins, or goes into a report.
-                  <span class="text-neutral-400">{{ ask.model ? `${ask.model.name}, on this machine.` : "" }}</span>
+                  <span class="text-neutral-400">{{ ask.model ? `${ask.model.label}, ${ask.model.remote ? "in the cloud: questions leave this machine" : "on this machine"}.` : "" }}</span>
                 </p>
                 <!-- How to read an answer, said once, where it is needed. -->
                 <ul class="ask-howto">
@@ -63,7 +76,8 @@
                   <li><span class="ask-howto-k">This view</span> Come here from any view and "this" means that view.</li>
                 </ul>
                 <button type="button" class="ask-howto-more" @click="ask.inspector.open = true; ask.inspector.tab = 'context'">What can Ask answer, and what not?</button>
-                <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">Try again</button></p>
+                <p v-if="ask.modelsError" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.modelsError }} <button type="button" class="underline" @click="ask.loadModels()">Try again</button> <button type="button" class="underline" @click="runCommand('settings:open')">Settings</button></p>
+                <p v-else-if="ask.problems.length" class="ask-error"><AlertCircle :size="13" :stroke-width="1.75"/> {{ ask.problems.map(p => `${p.label}: ${p.message}`).join(" · ") }}</p>
                 <div class="ask-starters">
                   <button v-for="s in starters" :key="s.q" type="button" class="ask-starter" @click="send(s.q)">
                     <component :is="s.icon" :size="14" :stroke-width="1.75" class="shrink-0 text-neutral-400"/>
@@ -135,8 +149,32 @@ import { reportable } from "~/features/ask/app/toReport"
 import { shortName } from "~/features/ask/tools/shared"
 import { useDataStore } from "~/features/snapshot/data.store"
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store"
+import { useAIStore } from "~/features/ai/ai.store"
+import { runCommand } from "~/platform/commands"
+import type { AskModel } from "~/features/ask/app/models"
 
 const ask = useAskStore()
+const ai = useAIStore()
+
+// The picker groups models by provider, in the order the settings list them.
+const modelGroups = computed(() => {
+  const groups: Array<{ provider: string; label: string; models: AskModel[] }> = []
+  for (const p of ai.status.providers) {
+    const models = ask.models.filter(m => m.provider === p.id)
+    if (models.length) groups.push({ provider: p.id, label: p.id === "openai-compatible" && p.name ? p.name : p.label, models })
+  }
+  return groups
+})
+function pickModel(el: HTMLSelectElement) {
+  if (el.value === "__settings") { el.value = ask.modelId; void runCommand("settings:open"); return }
+  ask.setModel(el.value)
+}
+// Turning AI on, adding a key or switching a provider changes what can answer.
+// Watched as one string: loading the models refreshes the status, and a fresh
+// array would read as a change every time, asking the providers in a loop.
+watch(() => `${ai.enabled}|${ai.ready.map(p => `${p.id}:${p.baseUrl}:${p.keyHint}`).join()}`, (now, before) => {
+  if (before !== undefined && now !== before && ai.enabled) void ask.loadModels()
+})
 const actions = useAskActions()
 const data = useDataStore()
 const ws = useWorkspacesStore()
@@ -152,14 +190,16 @@ const narrow = computed(() => width.value < 1180)
 const tight = computed(() => width.value < 900)
 const threadsOpen = ref(false)
 let ro: ResizeObserver | null = null
-onMounted(() => {
-  if (!shell.value) return
-  width.value = shell.value.getBoundingClientRect().width || width.value
+// Watched rather than read once: the shell appears when AI is turned on while this view is open.
+watch(shell, el => {
+  ro?.disconnect()
+  if (!el) return
+  width.value = el.getBoundingClientRect().width || width.value
   if (narrow.value) ask.inspector.open = false
   ro = new ResizeObserver(([e]) => { width.value = e.contentRect.width })
-  ro.observe(shell.value)
-  window.addEventListener("resize", measure)
-})
+  ro.observe(el)
+}, { flush: "post" })
+onMounted(() => window.addEventListener("resize", measure))
 function measure() { if (shell.value) width.value = shell.value.getBoundingClientRect().width || width.value }
 onBeforeUnmount(() => { ro?.disconnect(); window.removeEventListener("resize", measure) })
 // Narrowing the window closes the inspector's column; it can still open as a drawer.

@@ -95,6 +95,9 @@ export function toolSpec(t: Tool) {
     }
 }
 
+/** The provider refused the key, the credit or the rate: asking again, in any form, only adds refusals. */
+export const refused = (e: any) => /\((401|403|429|529)\)|rate limit|out of credit|refused the API key/i.test(String(e?.message ?? e))
+
 async function chatWithRetry(model: ModelClient, req: Parameters<ModelClient["chat"]>[0], onDelta: Parameters<ModelClient["chat"]>[1], signal: AbortSignal, onRetry: () => void): Promise<ModelReply> {
     for (let attempt = 0; ; attempt++) {
         try {
@@ -140,7 +143,10 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             const parsed = JSON.parse(reply.content || "{}")
             plan = (parsed.claims ?? []).filter((c: any) => c?.claim).slice(0, 4)
             if (plan?.length) emit({ type: "plan", steps: plan })
-        } catch { plan = undefined }
+        } catch (e) {
+            if (refused(e)) throw e
+            plan = undefined
+        }
     }
 
     const system: ModelMessage = { role: "system", content: (input.intents ? intentsPrompt : systemPrompt)({ card: input.card, here: input.here, onScreen: input.onScreen, plan, strict: input.strict }) }
@@ -216,10 +222,13 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
                 let reply: ModelReply
                 try {
                     reply = await chatWithRetry(input.model, { messages: msgs, tools: last ? undefined : tools().map(toolSpec), think: false }, () => {}, signal, () => {})
-                } catch { break }
+                } catch (e) {
+                    if (refused(e)) throw e
+                    break
+                }
                 tokens.prompt += reply.promptTokens; tokens.output += reply.outputTokens; tokens.ms += reply.ms
                 if (reply.toolCalls.length && !last) {
-                    msgs.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map(x => ({ function: { name: x.name, arguments: x.args } })) })
+                    msgs.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map(x => ({ id: x.id, function: { name: x.name, arguments: x.args } })), raw: reply.raw })
                     for (const call of reply.toolCalls) msgs.push(await runCall(call, `c${i}.${k}`))
                     continue
                 }
@@ -295,7 +304,7 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
         if (reply.toolCalls.length && !finalCall) {
             // Words written before a tool call are the model thinking aloud; the answer comes after.
             emit({ type: "draft-reset" })
-            added.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map(c => ({ function: { name: c.name, arguments: c.args } })) })
+            added.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map(c => ({ id: c.id, function: { name: c.name, arguments: c.args } })), raw: reply.raw })
             for (const call of reply.toolCalls) added.push(await runCall(call, `${step}`))
             // The model asked the person to choose: the turn ends on the question.
             const asked = pending.asked
@@ -385,7 +394,10 @@ export async function runTurn(input: TurnInput): Promise<TurnOutput> {
             const again = await chatWithRetry(input.model, { messages: [...conversation(), { role: "user", content: "[Check] (Automatic, not the person.) Write the answer now in plain words from the tool results above, citing their ids. If they do not answer the question, say what they do show and what is missing." }], think: false }, d => emit({ type: "delta", content: d.content, thinking: d.thinking }), signal, () => {})
             tokens.prompt += again.promptTokens; tokens.output += again.outputTokens; tokens.ms += again.ms
             answer = stripMarkers(again.content.trim())
-        } catch { /* fall through to the plain statement */ }
+        } catch (e) {
+            if (refused(e)) throw e
+            /* fall through to the plain statement */
+        }
         if (!answer.trim()) answer = `I looked at ${toolCalls} thing${toolCalls === 1 ? "" : "s"} but could not put an answer together. The evidence is below: ${[...new Set([...evidence.filter(e => e.kind !== "link").map(e => e.id), ...exhibits.map(x => x.id)])].map(id => `[${id}]`).join(" ")}.`
         added.push({ role: "assistant", content: answer })
         if (input.intents && allFacts().length) answer = recite(answer, allFacts(), { given: input.question }).text

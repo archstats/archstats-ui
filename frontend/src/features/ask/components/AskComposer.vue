@@ -32,13 +32,13 @@
     />
     <div class="mt-2 flex items-center gap-2">
       <span class="min-w-0 flex-1 truncate text-[11px] text-neutral-500">
-        <template v-if="ask.model">{{ ask.model.name }}{{ ask.model.remote ? " · cloud: leaves this machine" : " · on this machine" }}</template>
-        <template v-else-if="ask.loadingModels">Finding local models…</template>
-        <template v-else>No model</template>
+        <template v-if="ask.model">{{ ask.model.label }}{{ ask.model.remote ? " · cloud: leaves this machine" : " · on this machine" }}</template>
+        <template v-else-if="ask.loadingModels">Finding models…</template>
+        <template v-else>{{ ask.modelsError || "No model" }} <button type="button" class="underline decoration-neutral-300 hover:text-neutral-900" @click="runCommand('settings:open')">Settings</button></template>
         · Enter to ask, Shift+Enter for a new line
       </span>
       <template v-if="ask.running && busyElsewhere">
-        <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" title="The local model answers one question at a time" @click="ask.runningThreadId && ask.select(ask.runningThreadId)">Answering elsewhere · show</button>
+        <button type="button" class="ui-btn ui-btn-quiet ui-btn-sm" title="The model answers one question at a time" @click="ask.runningThreadId && ask.select(ask.runningThreadId)">Answering elsewhere · show</button>
         <button type="button" class="ui-btn ui-btn-sm" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/> Stop</button>
       </template>
       <button v-else-if="ask.running" type="button" class="ui-btn ui-btn-sm" title="Stop (Esc)" @click="ask.stop()"><Square :size="10" :stroke-width="2.25"/> Stop</button>
@@ -51,6 +51,7 @@
 import { computed, nextTick, ref } from "vue"
 import { ArrowUp, PanelTop, Plus, Square, X } from "lucide-vue-next"
 import { useAskStore } from "../app/ask.store"
+import { runCommand } from "~/platform/commands"
 import { shortName } from "../tools/shared"
 
 const emit = defineEmits<{ (e: "send", q: string): void }>()

@@ -18,6 +18,7 @@ export function useMenuCommands() {
     const workspaces = useWorkspacesStore();
     const data = useDataStore();
     const shortcutsOpen = ref(false);
+    const settingsOpen = ref(false);
     const off: Array<() => void> = [];
 
     off.push(registerCommand("scan:again", () => { void workspaces.startScan(); }));
@@ -31,6 +32,7 @@ export function useMenuCommands() {
     off.push(registerCommand("nav:back", () => router.back()));
     off.push(registerCommand("nav:forward", () => router.forward()));
     off.push(registerCommand("help:shortcuts", () => { shortcutsOpen.value = true; }));
+    off.push(registerCommand("settings:open", () => { settingsOpen.value = true; }));
     off.push(registerCommand("help:metrics", () => { void router.push("/views/reference"); }));
     // The open snapshot's file: shown, or copied out with its source.
     off.push(registerCommand("snapshot:reveal", async () => { if (workspaces.openScanId) await RevealSnapshot(workspaces.openScanId); }));
@@ -91,5 +93,5 @@ export function useMenuCommands() {
         { immediate: true, deep: true },
     );
 
-    return { shortcutsOpen };
+    return { shortcutsOpen, settingsOpen };
 }

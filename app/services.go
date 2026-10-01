@@ -131,7 +131,7 @@ func (q *QueryService) AnalysisRevision() int {
 }
 
 // AskService is the Wails-bound facade over ask.Service: the Ask pane's
-// line to a local Ollama server.
+// line to the model it picked. Every call refuses while AI features are off.
 type AskService struct {
 	svc *ask.Service
 }
@@ -140,13 +140,12 @@ func NewAskService(svc *ask.Service) *AskService {
 	return &AskService{svc: svc}
 }
 
-// Models lists the models the local Ollama server holds.
-func (a *AskService) Models() ([]ask.Model, error) {
+// Models lists the models of every provider that is set up.
+func (a *AskService) Models() (ask.ModelList, error) {
 	return a.svc.Models()
 }
 
-// Chat runs one model turn and streams it as "ask:delta" events; the
-// request and the reply are Ollama's JSON.
+// Chat runs one model turn and streams it as "ask:delta" events.
 func (a *AskService) Chat(id, requestJSON string) (string, error) {
 	return a.svc.Chat(id, requestJSON)
 }
@@ -160,3 +159,33 @@ func (a *AskService) Embed(model string, texts []string) ([][]float64, error) {
 func (a *AskService) Cancel(id string) {
 	a.svc.Cancel(id)
 }
+
+// AIService is the Wails-bound home of the AI settings: the switch every AI
+// feature obeys, and each provider. It stores API keys but never returns one.
+type AIService struct {
+	svc *ask.Service
+}
+
+func NewAIService(svc *ask.Service) *AIService {
+	return &AIService{svc: svc}
+}
+
+// Status is the switch, the policy, and every provider (without keys).
+func (a *AIService) Status() ask.Status { return a.svc.Status() }
+
+// SetEnabled turns AI features on or off.
+func (a *AIService) SetEnabled(on bool) error { return a.svc.SetEnabled(on) }
+
+// SaveProvider stores a provider's settings.
+func (a *AIService) SaveProvider(id string, in ask.ProviderInput) error {
+	return a.svc.SaveProvider(id, in)
+}
+
+// SetKey puts a provider's API key in the system keychain.
+func (a *AIService) SetKey(id, key string) error { return a.svc.SetKey(id, key) }
+
+// DeleteKey removes a provider's API key from the system keychain.
+func (a *AIService) DeleteKey(id string) error { return a.svc.DeleteKey(id) }
+
+// Test checks that a provider answers with its settings.
+func (a *AIService) Test(id string) ask.TestResult { return a.svc.Test(id) }

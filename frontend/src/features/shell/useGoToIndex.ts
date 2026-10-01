@@ -7,6 +7,7 @@ import { canonicalAuthor, isBotAuthor } from "~/features/git/authors"
 import { referenceEntries } from "~/features/snapshot/definition"
 import { fuzzyScore } from "~/shared/fuzzy"
 import { componentLabel, componentPath, filePath, groupPath, VIEWS } from "~/features/navigation/routes"
+import { useAIStore } from "~/features/ai/ai.store"
 import { detectSeparator } from "~/features/snapshot/names"
 
 // What Go to anything searches: views, metric definitions, components, files,
@@ -98,7 +99,9 @@ async function authorItems(): Promise<GoItem[]> {
 function liveItems(): GoItem[] {
     const data = useDataStore()
     const groups = useGroupsStore()
-    const out: GoItem[] = VIEWS.map(v => ({ kind: "view" as const, key: v.to, label: v.label, text: v.also ? `${v.label} ${v.also}` : v.label, tail: -1, to: v.to }))
+    // Ask is a view only while AI features are on.
+    const ai = useAIStore()
+    const out: GoItem[] = VIEWS.filter(v => ai.enabled || v.to !== "/views/ask").map(v => ({ kind: "view" as const, key: v.to, label: v.label, text: v.also ? `${v.label} ${v.also}` : v.label, tail: -1, to: v.to }))
     for (const e of referenceEntries(data.definitions.values())) {
         out.push({ kind: "metric", key: e.id, label: e.name, text: `${e.name} ${e.id}`, tail: -1, detail: e.category, to: `/views/reference?m=${encodeURIComponent(e.id)}` })
     }

@@ -125,9 +125,10 @@ export interface Tool {
 export interface ModelMessage {
     role: "system" | "user" | "assistant" | "tool"
     content: string
-    tool_calls?: Array<{ function: { name: string; arguments: Record<string, any> | string } }>
+    tool_calls?: Array<{ id?: string; function: { name: string; arguments: Record<string, any> | string } }>
     tool_name?: string
     images?: string[]
+    raw?: ProviderRaw
 }
 
 export interface ModelRequest {
@@ -141,12 +142,17 @@ export interface ModelRequest {
 export interface ModelReply {
     content: string
     thinking: string
-    toolCalls: Array<{ name: string; args: Record<string, any> }>
+    toolCalls: Array<{ id?: string; name: string; args: Record<string, any> }>
     promptTokens: number
     outputTokens: number
     ms: number
     stopped: boolean
+    /** The provider's own reply (thinking with its signature, call ids), sent back unchanged with the calls. */
+    raw?: ProviderRaw
 }
+
+/** Opaque to the loop: only the provider that wrote it reads it. */
+export interface ProviderRaw { provider: string; model: string; blocks: unknown }
 
 export interface ModelClient {
     name: string

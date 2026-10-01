@@ -34,13 +34,16 @@ import Icon from "~/shared/ui/Icon.vue";
 import { SHORTCUTS, keyLabel } from "~/features/shell/shortcuts";
 import { usePlatform } from "~/platform/usePlatform";
 import { runCommand } from "~/platform/commands";
+import { useAIStore } from "~/features/ai/ai.store";
 
 const open = defineModel<boolean>({ default: false });
 const { isMac } = usePlatform();
+const ai = useAIStore();
 
 const areas = computed(() => {
   const order = ["App", "Views", "Focus", "Selection", "Lens builder"] as const;
-  return order.map(name => ({ name, items: SHORTCUTS.filter(s => s.area === name) }));
+  // ⌘J belongs to Ask, which exists only while AI features are on.
+  return order.map(name => ({ name, items: SHORTCUTS.filter(s => s.area === name && (s.command !== "ask:open" || ai.enabled)) }));
 });
 
 function close() { open.value = false; }

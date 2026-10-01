@@ -14,7 +14,8 @@ import type { Grounding } from "~/features/exhibits/grounding"
 import { buildCard, type SnapshotCard } from "../knowledge/card"
 import { INTENTS, TOOLS, useIntents } from "../tools"
 import { appWorld } from "./world"
-import { listModels, ollamaClient, type LocalModel } from "./ollama"
+import { listModels, modelClient, type AskModel, type ModelProblem } from "./models"
+import { useAIStore } from "~/features/ai/ai.store"
 import { answerBlocks, checkBlocks, draftPrompt, evidenceBlocks, exhibitBlock, reportable } from "./toReport"
 import { brokenCitations, trustedText, untrusted } from "../render/verdict"
 import { suggestTemplates, writeReport, type TemplateSuggestion, type WriteProgress } from "./writer"
@@ -24,7 +25,7 @@ import { pointsAtView } from "./deixis"
 const embedLocal = async (texts: string[]) => (await Embed("nomic-embed-text", texts)) as number[][]
 let writeController: AbortController | null = null
 
-// Ask: conversations with a local model about the open snapshot. A
+// Ask: conversations with a model about the open snapshot. A
 // conversation belongs to one snapshot; questions about another start a new
 // one. Conversations are kept per workspace, with their evidence, so the
 // person can come back to one and turn it into a report.
@@ -126,12 +127,25 @@ export interface Thread {
 const THREADS_KEY = "ask.threads"
 const MODEL_KEY = "archstats.ask.model"
 const THINK_KEY = "archstats.ask.think"
-const PREFERRED = ["qwen3.6:35b-a3b", "qwen3-vl:30b", "gemma4:26b", "qwen3:30b", "qwen3-vl:8b", "qwen3:8b", "mistral:7b"]
+/** First choices when none was picked: local models first (nothing leaves the machine), then the cloud ones Ask was tried on. */
+const PREFERRED = [...["qwen3.6:35b-a3b", "qwen3-vl:30b", "gemma4:26b", "qwen3:30b", "qwen3-vl:8b", "qwen3:8b", "mistral:7b"].map(n => `ollama/${n}`), "anthropic/claude-opus-5", "openai/gpt-5", "gemini/gemini-2.5-pro"]
 /** Tokens of history kept whole before older tool results are shortened. */
 const HISTORY_BUDGET = 9000
 
 let controller: AbortController | null = null
+let modelsLoading: Promise<void> | null = null
 const cards = new Map<string, Promise<SnapshotCard>>()
+
+/**
+ * The tools a model is offered. A provider the person has not let read source
+ * code gets none that return lines of it: the answer comes from names,
+ * measures and structure.
+ */
+function toolsFor(model: AskModel) {
+    const all = useIntents() ? INTENTS : TOOLS
+    if (useAIStore().provider(model.provider)?.shareCode) return all
+    return all.filter(t => t.name !== "code" && t.namespace !== "files")
+}
 
 function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -158,7 +172,8 @@ function slim(t: Thread): Thread {
             // Preview images are drawn again on load; kept, one view's SVG can weigh half a megabyte.
             evidence: u.evidence.map(e => (e.kind === "table" ? { ...e, rows: e.rows.slice(0, 60) } : e.kind === "code" ? { ...e, lines: e.lines.slice(0, 160) } : e.kind === "view" ? { ...e, figures: [] } : e)),
         })),
-        history: t.history.slice(-60).map(m => (m.images ? { ...m, images: undefined } : m)),
+        // A provider's own blocks matter only inside the tool round they came from.
+        history: t.history.slice(-60).map(m => (m.images || m.raw ? { ...m, images: undefined, raw: undefined } : m)),
     }
 }
 
@@ -167,8 +182,11 @@ export const useAskStore = defineStore("ask", {
         workspaceId: "" as string,
         threads: [] as Thread[],
         currentId: null as string | null,
-        models: [] as LocalModel[],
-        modelName: "" as string,
+        models: [] as AskModel[],
+        /** The picked model: "<provider>/<name>". */
+        modelId: "" as string,
+        /** Providers that are set up but did not answer. */
+        problems: [] as ModelProblem[],
         think: false,
         modelsError: null as string | null,
         loadingModels: false,
@@ -194,7 +212,7 @@ export const useAskStore = defineStore("ask", {
     }),
     getters: {
         current(s): Thread | null { return s.threads.find(t => t.id === s.currentId) ?? null },
-        model(s): LocalModel | null { return s.models.find(m => m.name === s.modelName) ?? null },
+        model(s): AskModel | null { return s.models.find(m => m.id === s.modelId) ?? null },
         openScanId(): string { return useDataStore()._openScanId ?? "" },
         /** The current conversation is about another snapshot than the open one. */
         stale(): boolean { const t = this.current; return !!t && !!t.turns.length && t.scanId !== this.openScanId },
@@ -216,19 +234,37 @@ export const useAskStore = defineStore("ask", {
         save() {
             useStateStore().set(THREADS_KEY, this.threads.slice(-40).map(slim) as any)
         },
-        async loadModels() {
+        /** Lists the models; a call while a list is on its way waits for that one. */
+        loadModels(): Promise<void> {
+            modelsLoading ??= this.fetchModels().finally(() => { modelsLoading = null })
+            return modelsLoading
+        },
+        async fetchModels() {
             this.loadingModels = true
             this.modelsError = null
             try {
-                this.models = await listModels()
+                const ai = useAIStore()
+                await ai.refresh()
+                if (!ai.enabled) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = "AI features are off. Turn them on in Settings."; return }
+                if (!ai.ready.length) { this.models = []; this.problems = []; this.modelId = ""; this.modelsError = "No model provider is set up. Add one in Settings → AI."; return }
+                const { models, problems } = await listModels()
+                this.models = models
+                this.problems = problems
                 let saved = ""
                 try { saved = localStorage.getItem(MODEL_KEY) ?? "" } catch { /* none */ }
+                // A model remembered before there were providers is an Ollama one.
+                if (saved && !/^(ollama|anthropic|openai|gemini|openai-compatible)\//.test(saved)) saved = `ollama/${saved}`
                 const usable = this.models.filter(m => m.tools)
-                const pick = usable.find(m => m.name === saved) ?? PREFERRED.map(n => usable.find(m => m.name === n)).find(Boolean) ?? usable.find(m => !m.remote) ?? usable[0]
-                this.modelName = pick?.name ?? ""
-                if (!usable.length) this.modelsError = "No local model can call tools. Pull one, for example: ollama pull qwen3:8b"
+                const pick = usable.find(m => m.id === saved) ?? PREFERRED.map(n => usable.find(m => m.id === n)).find(Boolean) ?? usable.find(m => !m.remote) ?? usable[0]
+                this.modelId = pick?.id ?? ""
+                if (!usable.length) {
+                    const onlyOllama = ai.ready.every(p => p.id === "ollama")
+                    this.modelsError = problems.length
+                        ? problems.map(p => `${p.label}: ${p.message}`).join(" · ") + (onlyOllama ? " Start it (ollama serve) and try again." : "")
+                        : onlyOllama ? "No local model can call tools. Pull one, for example: ollama pull qwen3:8b" : "None of the models can call tools."
+                }
             } catch (e: any) {
-                this.modelsError = `Ollama is not answering. Start it (ollama serve) and try again. ${String(e?.message ?? e)}`
+                this.modelsError = String(e?.message ?? e)
             } finally {
                 this.loadingModels = false
             }
@@ -238,9 +274,9 @@ export const useAskStore = defineStore("ask", {
             if (!world.scanId) return
             try { this.cardText = (await cardFor(world.scanId, () => buildCard(world))).text } catch { this.cardText = "" }
         },
-        setModel(name: string) {
-            this.modelName = name
-            try { localStorage.setItem(MODEL_KEY, name) } catch { /* best effort */ }
+        setModel(id: string) {
+            this.modelId = id
+            try { localStorage.setItem(MODEL_KEY, id) } catch { /* best effort */ }
         },
         setThink(on: boolean) {
             this.think = on
@@ -306,7 +342,7 @@ export const useAskStore = defineStore("ask", {
             this.lastView = null
             thread.turns.push({
                 historyFrom: thread.history.length,
-                id: newId(), question: q, context, askedAt: new Date().toISOString(), model: model.name, status: "running",
+                id: newId(), question: q, context, askedAt: new Date().toISOString(), model: model.label || model.name, status: "running",
                 namespaces: [], plan: [], steps: [], answer: "", thinking: "", evidence: [], exhibits: [], checks: [], repairs: [], followUps: [],
                 tokens: { prompt: 0, output: 0, ms: 0 }, trace: [],
             })
@@ -338,8 +374,8 @@ export const useAskStore = defineStore("ask", {
                 const out = await runTurn({
                     question: q,
                     history: compact(thr.history, HISTORY_BUDGET),
-                    model: markRaw(ollamaClient(model)),
-                    tools: useIntents() ? INTENTS : TOOLS,
+                    model: markRaw(modelClient(model)),
+                    tools: toolsFor(model),
                     intents: useIntents(),
                     facts: earlier.flatMap(t => (t.exhibits ?? []).flatMap(x => x.facts)),
                     strict: strict,
@@ -577,7 +613,7 @@ export const useAskStore = defineStore("ask", {
             if (!thread) return
             this.writeup = { open: true, loading: true, suggestions: [], chosen: null, progress: null, error: "", reportId: null, title: "" }
             try {
-                this.writeup.suggestions = await suggestTemplates(thread, embedLocal, this.model ? ollamaClient(this.model) : undefined)
+                this.writeup.suggestions = await suggestTemplates(thread, embedLocal, this.model ? modelClient(this.model) : undefined)
                 this.writeup.chosen = this.writeup.suggestions.find(x => x.recommended)?.id ?? null
             } catch (e: any) { this.writeup.error = String(e?.message ?? e) } finally { this.writeup.loading = false }
         },
@@ -594,7 +630,7 @@ export const useAskStore = defineStore("ask", {
             this.writeup.progress = { phase: "planning", sections: [], message: "Laying out the report" }
             this.running = true
             try {
-                const r = await writeReport({ thread, templateId, params, model: ollamaClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
+                const r = await writeReport({ thread, templateId, params, model: modelClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
                 this.writeup.reportId = r.reportId
                 this.writeup.title = r.title
                 thread.reportId = r.reportId

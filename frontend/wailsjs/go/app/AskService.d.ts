@@ -8,4 +8,4 @@ export function Chat(arg1:string,arg2:string):Promise<string>;
 
 export function Embed(arg1:string,arg2:Array<string>):Promise<Array<any>>;
 
-export function Models():Promise<Array<ask.Model>>;
+export function Models():Promise<ask.ModelList>;

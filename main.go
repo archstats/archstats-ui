@@ -92,7 +92,7 @@ func main() {
 	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
 	scanSvc.SetOnDone(func(scanID string) { go changesSvc.ComputeReadings(scanID) })
 
-	askSvc := ask.NewService()
+	askSvc := ask.NewService(st)
 	appSvc := app.NewAppService(version)
 	if wd, err := os.Getwd(); err == nil {
 		appSvc.QueueSnapshots(os.Args[1:], wd)
@@ -155,6 +155,7 @@ func main() {
 			changesSvc,
 			app.NewEvidenceService(st),
 			app.NewAskService(askSvc),
+			app.NewAIService(askSvc),
 		},
 	})
 	if err != nil {

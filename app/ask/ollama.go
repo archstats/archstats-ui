@@ -1,7 +1,3 @@
-// Package ask talks to a local Ollama server for the Ask pane. The agent
-// loop and the tools live in the frontend, where the views' own logic is;
-// this side only carries a chat request to the model and streams the reply
-// back as events, so nothing but the local server is ever contacted.
 package ask
 
 import (
@@ -10,69 +6,42 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
-// Model is one model the local server holds, and whether it can call tools.
-type Model struct {
-	Name   string `json:"name"`
-	Size   int64  `json:"size"`
-	Tools  bool   `json:"tools"`
-	Vision bool   `json:"vision"`
-	Think  bool   `json:"think"`
-	Remote bool   `json:"remote"`
+// ollama is a local Ollama server. Nothing leaves the machine, except for a
+// model that only proxies to a hosted service ("…:cloud"), which is marked.
+type ollama struct {
+	base   string
+	client *http.Client
 }
 
-// Service holds the running requests so the pane can stop one.
-type Service struct {
-	base    string
-	client  *http.Client
-	mu      sync.Mutex
-	cancels map[string]context.CancelFunc
-	emit    func(event string, data ...any)
-}
+func (o *ollama) who() string { return "Ollama at " + o.base }
 
-func NewService() *Service {
-	base := strings.TrimRight(os.Getenv("OLLAMA_HOST"), "/")
-	if base == "" {
-		base = "http://127.0.0.1:11434"
-	} else if !strings.HasPrefix(base, "http") {
-		base = "http://" + base
-	}
-	return &Service{base: base, client: &http.Client{}, cancels: map[string]context.CancelFunc{}}
-}
-
-// SetEmitter wires event emission (in production: Wails runtime.EventsEmit).
-func (s *Service) SetEmitter(emit func(event string, data ...any)) { s.emit = emit }
-
-// Models lists the local models, tool-capable first. A model that only
-// proxies to a hosted service ("…:cloud") is marked, because it sends the
-// conversation off this machine.
-func (s *Service) Models() ([]Model, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func (o *ollama) models(ctx context.Context) ([]Model, error) {
 	var tags struct {
 		Models []struct {
 			Name string `json:"name"`
 			Size int64  `json:"size"`
 		} `json:"models"`
 	}
-	if err := s.getJSON(ctx, "/api/tags", &tags); err != nil {
-		return nil, fmt.Errorf("Ollama is not answering at %s: %w", s.base, err)
+	if err := getJSON(ctx, o.client, o.who(), o.base+"/api/tags", nil, &tags); err != nil {
+		return nil, err
 	}
+	remote := !onThisMachine(o.base)
 	out := make([]Model, 0, len(tags.Models))
 	for _, t := range tags.Models {
-		m := Model{Name: t.Name, Size: t.Size, Remote: strings.HasSuffix(t.Name, ":cloud") || strings.Contains(t.Name, "-cloud")}
+		m := Model{ID: Ollama + "/" + t.Name, Provider: Ollama, Name: t.Name, Label: t.Name, Size: t.Size,
+			Remote: remote || strings.HasSuffix(t.Name, ":cloud") || strings.Contains(t.Name, "-cloud")}
 		var show struct {
 			Capabilities []string `json:"capabilities"`
 		}
-		if err := s.postJSON(ctx, "/api/show", map[string]any{"model": t.Name}, &show); err == nil {
+		if res, err := post(ctx, o.client, o.who(), o.base+"/api/show", nil, map[string]any{"model": t.Name}); err == nil {
+			_ = json.NewDecoder(res.Body).Decode(&show)
+			res.Body.Close()
 			for _, c := range show.Capabilities {
 				switch c {
 				case "tools":
@@ -95,56 +64,58 @@ func (s *Service) Models() ([]Model, error) {
 	return out, nil
 }
 
-// Chat sends one request (Ollama's /api/chat body, as JSON) and streams the
-// reply as "ask:delta" events carrying {id, content, thinking}. It returns
-// the whole assistant message with any tool calls, plus the token counts,
-// as JSON.
-func (s *Service) Chat(id, requestJSON string) (string, error) {
-	var req map[string]any
-	if err := json.Unmarshal([]byte(requestJSON), &req); err != nil {
-		return "", fmt.Errorf("reading the request: %w", err)
-	}
-	req["stream"] = true
-	body, _ := json.Marshal(req)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	s.cancels[id] = cancel
-	s.mu.Unlock()
-	defer func() {
-		cancel()
-		s.mu.Lock()
-		delete(s.cancels, id)
-		s.mu.Unlock()
-	}()
-
-	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, s.base+"/api/chat", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	hr.Header.Set("Content-Type", "application/json")
-	res, err := s.client.Do(hr)
-	if err != nil {
-		if ctx.Err() != nil {
-			return `{"stopped":true}`, nil
+func (o *ollama) chat(ctx context.Context, req Request, onDelta func(Delta)) (Reply, error) {
+	msgs := make([]map[string]any, 0, len(req.Messages))
+	for _, m := range req.Messages {
+		x := map[string]any{"role": m.Role, "content": m.Content}
+		if len(m.ToolCalls) > 0 {
+			calls := make([]map[string]any, len(m.ToolCalls))
+			for i, c := range m.ToolCalls {
+				calls[i] = map[string]any{"function": map[string]any{"name": c.Function.Name, "arguments": c.Args()}}
+			}
+			x["tool_calls"] = calls
 		}
-		return "", fmt.Errorf("Ollama is not answering at %s: %w", s.base, err)
+		if m.ToolName != "" {
+			x["tool_name"] = m.ToolName
+		}
+		if len(m.Images) > 0 {
+			x["images"] = m.Images
+		}
+		msgs = append(msgs, x)
+	}
+	body := map[string]any{
+		"model":      req.Model,
+		"messages":   msgs,
+		"stream":     true,
+		"keep_alive": "30m",
+		// A local model: a long window, steady answers, a capped reply so a
+		// small machine does not write for minutes.
+		"options": map[string]any{"num_ctx": 32768, "temperature": 0.2, "num_predict": 2048, "seed": 7},
+	}
+	if len(req.Tools) > 0 {
+		body["tools"] = req.Tools
+	}
+	if f := schemaObject(req.Format); f != nil {
+		body["format"] = f
+	}
+	if req.Think != nil {
+		body["think"] = *req.Think
+	}
+	res, err := post(ctx, o.client, o.who(), o.base+"/api/chat", nil, body)
+	if err != nil {
+		return Reply{}, err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-		return "", fmt.Errorf("Ollama answered %d: %s", res.StatusCode, strings.TrimSpace(string(msg)))
-	}
 
-	type toolCall struct {
+	type call struct {
 		Function struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments"`
+			Name      string          `json:"name"`
+			Arguments json.RawMessage `json:"arguments"`
 		} `json:"function"`
 	}
 	var (
 		content, thinking strings.Builder
-		calls             []toolCall
+		calls             []ToolCall
 		final             struct {
 			PromptEvalCount int    `json:"prompt_eval_count"`
 			EvalCount       int    `json:"eval_count"`
@@ -161,9 +132,9 @@ func (s *Service) Chat(id, requestJSON string) (string, error) {
 		}
 		var chunk struct {
 			Message struct {
-				Content   string     `json:"content"`
-				Thinking  string     `json:"thinking"`
-				ToolCalls []toolCall `json:"tool_calls"`
+				Content   string `json:"content"`
+				Thinking  string `json:"thinking"`
+				ToolCalls []call `json:"tool_calls"`
 			} `json:"message"`
 			Done  bool   `json:"done"`
 			Error string `json:"error"`
@@ -172,13 +143,17 @@ func (s *Service) Chat(id, requestJSON string) (string, error) {
 			continue
 		}
 		if chunk.Error != "" {
-			return "", fmt.Errorf("Ollama: %s", chunk.Error)
+			return Reply{}, fmt.Errorf("Ollama: %s", chunk.Error)
 		}
 		content.WriteString(chunk.Message.Content)
 		thinking.WriteString(chunk.Message.Thinking)
-		calls = append(calls, chunk.Message.ToolCalls...)
-		if (chunk.Message.Content != "" || chunk.Message.Thinking != "") && s.emit != nil {
-			s.emit("ask:delta", map[string]any{"id": id, "content": chunk.Message.Content, "thinking": chunk.Message.Thinking})
+		for _, c := range chunk.Message.ToolCalls {
+			var tc ToolCall
+			tc.Function.Name, tc.Function.Arguments = c.Function.Name, c.Function.Arguments
+			calls = append(calls, tc)
+		}
+		if chunk.Message.Content != "" || chunk.Message.Thinking != "" {
+			onDelta(Delta{Content: chunk.Message.Content, Thinking: chunk.Message.Thinking})
 		}
 		if chunk.Done {
 			_ = json.Unmarshal(line, &final)
@@ -186,73 +161,32 @@ func (s *Service) Chat(id, requestJSON string) (string, error) {
 		}
 	}
 	if err := sc.Err(); err != nil && ctx.Err() == nil {
-		return "", err
+		return Reply{}, err
 	}
-	out, _ := json.Marshal(map[string]any{
-		"stopped":      ctx.Err() != nil,
-		"content":      content.String(),
-		"thinking":     thinking.String(),
-		"toolCalls":    calls,
-		"promptTokens": final.PromptEvalCount,
-		"outputTokens": final.EvalCount,
-		"ms":           final.TotalDuration / int64(time.Millisecond),
-		"doneReason":   final.DoneReason,
-	})
-	return string(out), nil
+	return Reply{
+		Content:      content.String(),
+		Thinking:     thinking.String(),
+		ToolCalls:    calls,
+		PromptTokens: final.PromptEvalCount,
+		OutputTokens: final.EvalCount,
+		Ms:           final.TotalDuration / int64(time.Millisecond),
+		DoneReason:   final.DoneReason,
+	}, nil
 }
 
-// Embed turns texts into vectors with a local embedding model (for finding
+// embed turns texts into vectors with a local embedding model (for finding
 // the recipe or capability a question means, not just the words it uses).
-func (s *Service) Embed(model string, texts []string) ([][]float64, error) {
-	if model == "" {
-		model = "nomic-embed-text"
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+func (o *ollama) embed(ctx context.Context, model string, texts []string) ([][]float64, error) {
 	var out struct {
 		Embeddings [][]float64 `json:"embeddings"`
 	}
-	if err := s.postJSON(ctx, "/api/embed", map[string]any{"model": model, "input": texts, "keep_alive": "30m"}, &out); err != nil {
+	res, err := post(ctx, o.client, o.who(), o.base+"/api/embed", nil, map[string]any{"model": model, "input": texts, "keep_alive": "30m"})
+	if err != nil {
 		return nil, fmt.Errorf("embedding with %s: %w", model, err)
 	}
-	return out.Embeddings, nil
-}
-
-// Cancel stops a running request; the reply so far is kept.
-func (s *Service) Cancel(id string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if c, ok := s.cancels[id]; ok {
-		c()
-	}
-}
-
-func (s *Service) getJSON(ctx context.Context, path string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.base+path, nil)
-	if err != nil {
-		return err
-	}
-	return s.do(req, out)
-}
-
-func (s *Service) postJSON(ctx context.Context, path string, in, out any) error {
-	b, _ := json.Marshal(in)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.base+path, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	return s.do(req, out)
-}
-
-func (s *Service) do(req *http.Request, out any) error {
-	res, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("status %d", res.StatusCode)
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, err
 	}
-	return json.NewDecoder(res.Body).Decode(out)
+	return out.Embeddings, nil
 }

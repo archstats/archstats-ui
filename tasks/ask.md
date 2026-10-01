@@ -12,7 +12,10 @@ Built 2026-09-29 (second version, from scratch). Design reasoning: `tasks/ask-ha
 - **Sidebar → Ask**, or **⌘J** from any view.
   - ⌘J takes what the view shows (route, subject, focus, selection, its tables and figures) into the next question as a chip above the composer.
   - ⌘J again goes back.
-- **Model:** a local Ollama server. The model is picked in the toolbar and remembered; Think is a toggle. A `:cloud` model is labelled, because the conversation leaves the machine.
+- **AI switch:** Ask exists only while **Settings → AI features** is on (off by default). Off, the Go side refuses every model call (`ask.ErrOff`) and the rail link, ⌘J, the go-to entry and the shortcut row are gone; `/views/ask` says "Ask is off". A policy holds it off: `ARCHSTATS_AI=off` (or `local` for models on this machine only), or a policy file (`/Library/Application Support/Archstats/policy.json` on macOS: `{"ai": {"enabled": false}}`, `{"ai": {"localOnly": true}}`, `{"ai": {"providers": ["ollama"]}}`; `ARCHSTATS_POLICY_FILE` points elsewhere).
+- **Model:** any provider set up in Settings → AI: Ollama, Anthropic (Claude), OpenAI, Gemini, or an OpenAI-compatible server (LM Studio, vLLM, llama.cpp, OpenRouter…). The toolbar groups models by provider; the pick is remembered as `<provider>/<name>`; Think is a toggle. A cloud model is labelled, because the conversation leaves the machine.
+- **Keys:** written once in Settings, kept in the system keychain (service "Archstats AI"), never returned to the webview (only whether there is one, where from, and its last four). `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY`/`GOOGLE_API_KEY` are read when none is stored.
+- **Source code:** per provider, "Let Ask read source code" (on for Ollama, off for cloud). Off, the `code` intent (and the legacy `files` tools) is not offered, so no line of code is sent.
 - **Conversations** are kept per workspace (workspace state `ask.threads`). A conversation belongs to one snapshot: a question asked after switching snapshots starts a new one.
 - **Evidence cards** can:
   - open in their view (with the focus they name);
@@ -58,7 +61,7 @@ features/ask/
     stageHost.ts      inside the stage: open a route, wait for its exhibits, hand back figures (SVG/PNG) and tables
     codeRunner.ts     run_code in a Web Worker with no network
     world.ts          World from the data store (scan registry fallback for old snapshots)
-    ollama.ts         ModelClient over AskService (Go), streamed; reply capped at 2,048 tokens
+    models.ts         ModelClient over AskService (Go), streamed; the provider's own reply blocks (`raw`) ride on the assistant message with the calls
     viewContext.ts    what a view shows, captured at ⌘J (tables, legends, and figures as PNG for vision models)
     toReport.ts       evidence → report cells (views become figure slots the report fills itself)
   components/         AskThreads, AskTurn, AskProse, AskEvidence (+ EvTangle, EvGraph, EvFigures, EvView),
@@ -68,7 +71,10 @@ platform/stage.ts     ?askStage=<scan>: the stage reads only that snapshot and w
 pages/views/ask.vue   the view
 scripts/ask-mcp.ts    the MCP server (stdio)
 scripts/ask-harvest.mjs  cookbook candidates from the app's own SQL
-app/ask/ollama.go     Go transport to Ollama (chat, models, embed); AskService in app/services.go
+app/ask/              providers (ollama.go, anthropic.go, openai.go, gemini.go) behind one message format (provider.go);
+                      settings, policy and keychain (settings.go); the switch and routing (service.go); tests against fake streams
+                      AskService and AIService in app/services.go
+features/ai/          the AI switch as the app sees it (ai.store) and the settings section (AISettings, in shell's SettingsSheet)
 ```
 
 ## MCP: the same tools in Claude Code

@@ -48,6 +48,8 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	m.add(file, "snapshot:import", "Import Snapshot…", keys.CmdOrCtrl("o"))
 	file.AddSeparator()
 	m.add(file, "export", "Export…", keys.CmdOrCtrl("e"))
+	file.AddSeparator()
+	m.add(file, "settings:open", "Settings…", keys.CmdOrCtrl(","))
 
 	root.Append(menu.EditMenu())
 

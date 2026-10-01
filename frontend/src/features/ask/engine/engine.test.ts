@@ -122,6 +122,18 @@ describe("the loop", () => {
         expect(out.answer).toBe("There are 42 things [E1].")
         expect(out.messages.some(m => m.content.startsWith("[Check]"))).toBe(true)
     })
+
+    it("stops at the first rate limit instead of planning, testing and answering anyway", async () => {
+        let calls = 0
+        const limited: ModelClient = { name: "limited", chat: async () => { calls++; throw new Error("Anthropic is rate limiting or out of credit (429): rate limited") } }
+        let n = 0
+        await expect(runTurn({
+            question: "Is this codebase well layered?", history: [], tools: [echo], world, card: "", here: "", onScreen: null,
+            ranOn: { scanId: "s", commit: "", revision: 1, workspace: "w" }, nextId: () => `E${++n}`, recall: () => null,
+            sources: "", evidenceIds: new Set(), signal: new AbortController().signal, emit: () => {}, model: limited,
+        })).rejects.toThrow(/429/)
+        expect(calls).toBe(1)
+    })
 })
 
 describe("the loop's budget", () => {

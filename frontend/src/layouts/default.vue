@@ -34,6 +34,7 @@
     </div>
 
     <ShortcutSheet v-model="shortcutsOpen"/>
+    <SettingsSheet v-model="settingsOpen"/>
     <ExportMenu headless/>
     <GoToAnything/>
     <AddToReportSheet/>
@@ -53,7 +54,8 @@
         <slot v-else/>
       </div>
     </main>
-    <AskLauncher/>
+    <!-- Ask and ⌘J exist only while AI features are on (the stage draws views for Ask, so it keeps its door). -->
+    <AskLauncher v-if="ai.enabled || STAGE_SCAN"/>
     <ExhibitRenderHost/>
   </div>
 </template>
@@ -68,6 +70,9 @@ import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapsho
 import ImportCoverageBar from "~/features/snapshot/components/ImportCoverageBar.vue";
 import DriftBar from "~/features/rules/components/DriftBar.vue";
 import ShortcutSheet from "~/features/shell/components/ShortcutSheet.vue";
+import SettingsSheet from "~/features/shell/components/SettingsSheet.vue";
+import { useAIStore } from "~/features/ai/ai.store";
+import { STAGE_SCAN } from "~/platform/stage";
 import ExportMenu from "~/features/reports/components/ExportMenu.vue";
 import GoToAnything from "~/features/shell/components/GoToAnything.vue";
 import AddToReportSheet from "~/features/reports/components/AddToReportSheet.vue";
@@ -89,7 +94,8 @@ import { SIDEBAR, usePanesStore } from "~/features/shell/panes.store";
 import { usePlatform } from "~/platform/usePlatform";
 
 const navExpanded = ref(true);
-const { shortcutsOpen } = useMenuCommands();
+const { shortcutsOpen, settingsOpen } = useMenuCommands();
+const ai = useAIStore();
 
 const dataStore = useDataStore();
 const workspaces = useWorkspacesStore();
@@ -111,6 +117,7 @@ const router = useRouter();
 watch(() => clones.openRequest, () => { void router.push("/"); });
 
 onMounted(() => {
+  void ai.load();
   panes.load();
   if (!workspaces.loaded) workspaces.init();
   void clones.init();

@@ -372,7 +372,10 @@ export namespace app {
 export namespace ask {
 	
 	export class Model {
+	    id: string;
+	    provider: string;
 	    name: string;
+	    label: string;
 	    size: number;
 	    tools: boolean;
 	    vision: boolean;
@@ -385,12 +388,186 @@ export namespace ask {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.provider = source["provider"];
 	        this.name = source["name"];
+	        this.label = source["label"];
 	        this.size = source["size"];
 	        this.tools = source["tools"];
 	        this.vision = source["vision"];
 	        this.think = source["think"];
 	        this.remote = source["remote"];
+	    }
+	}
+	export class Problem {
+	    provider: string;
+	    label: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Problem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.provider = source["provider"];
+	        this.label = source["label"];
+	        this.message = source["message"];
+	    }
+	}
+	export class ModelList {
+	    models: Model[];
+	    problems: Problem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ModelList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.models = this.convertValues(source["models"], Model);
+	        this.problems = this.convertValues(source["problems"], Problem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class ProviderInput {
+	    on: boolean;
+	    baseUrl: string;
+	    name: string;
+	    shareCode: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProviderInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.on = source["on"];
+	        this.baseUrl = source["baseUrl"];
+	        this.name = source["name"];
+	        this.shareCode = source["shareCode"];
+	    }
+	}
+	export class ProviderStatus {
+	    id: string;
+	    label: string;
+	    cloud: boolean;
+	    needsKey: boolean;
+	    takesKey: boolean;
+	    needsUrl: boolean;
+	    defaultUrl: string;
+	    envKey: string;
+	    keyUrl: string;
+	    on: boolean;
+	    baseUrl: string;
+	    name: string;
+	    shareCode: boolean;
+	    hasKey: boolean;
+	    keySource: string;
+	    keyHint: string;
+	    allowed: boolean;
+	    ready: boolean;
+	    local: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProviderStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.cloud = source["cloud"];
+	        this.needsKey = source["needsKey"];
+	        this.takesKey = source["takesKey"];
+	        this.needsUrl = source["needsUrl"];
+	        this.defaultUrl = source["defaultUrl"];
+	        this.envKey = source["envKey"];
+	        this.keyUrl = source["keyUrl"];
+	        this.on = source["on"];
+	        this.baseUrl = source["baseUrl"];
+	        this.name = source["name"];
+	        this.shareCode = source["shareCode"];
+	        this.hasKey = source["hasKey"];
+	        this.keySource = source["keySource"];
+	        this.keyHint = source["keyHint"];
+	        this.allowed = source["allowed"];
+	        this.ready = source["ready"];
+	        this.local = source["local"];
+	    }
+	}
+	export class Status {
+	    enabled: boolean;
+	    switch: boolean;
+	    locked: boolean;
+	    policy: string;
+	    policyPath: string;
+	    providers: ProviderStatus[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.switch = source["switch"];
+	        this.locked = source["locked"];
+	        this.policy = source["policy"];
+	        this.policyPath = source["policyPath"];
+	        this.providers = this.convertValues(source["providers"], ProviderStatus);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TestResult {
+	    ok: boolean;
+	    models: number;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.models = source["models"];
+	        this.message = source["message"];
 	    }
 	}
 

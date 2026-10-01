@@ -7,15 +7,26 @@
         <img src="/img/archstats/archstats-text.png" alt="Archstats" class="h-3 object-contain object-left dark:hidden">
         <img src="/img/archstats/archstats-text-white.png" alt="Archstats" class="hidden h-3 object-contain object-left dark:block">
       </router-link>
-      <button
-          type="button"
-          class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet text-neutral-500"
-          aria-label="Collapse sidebar"
-          title="Collapse sidebar"
-          @click="emit('collapse')"
-      >
-        <PanelLeftClose :size="15" :stroke-width="1.75"/>
-      </button>
+      <div class="flex items-center gap-0.5">
+        <button
+            type="button"
+            class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet text-neutral-500"
+            aria-label="Settings"
+            :title="`Settings (${isMac ? '⌘,' : 'Ctrl+,'})`"
+            @click="runCommand('settings:open')"
+        >
+          <Settings :size="14" :stroke-width="1.75"/>
+        </button>
+        <button
+            type="button"
+            class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet text-neutral-500"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+            @click="emit('collapse')"
+        >
+          <PanelLeftClose :size="15" :stroke-width="1.75"/>
+        </button>
+      </div>
     </div>
 
     <WorkspaceSwitcher/>
@@ -53,6 +64,7 @@
           <span v-if="scanCount > 1" class="ml-auto font-mono text-xs text-neutral-400" :title="`${scanCount} snapshots to compare`">{{ scanCount }}</span>
         </router-link>
         <router-link
+            v-if="ai.enabled"
             to="/views/ask"
             :tabindex="hasData ? undefined : -1"
             class="-mt-3 flex h-[26px] items-center gap-2 rounded px-2 text-base text-neutral-800 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
@@ -181,8 +193,10 @@ import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
   Activity, Users, Braces, LayoutDashboard, Scale, Package, Container,
-  Sparkles,
+  Sparkles, Settings,
 } from "lucide-vue-next";
+import { useAIStore } from "~/features/ai/ai.store";
+import { runCommand } from "~/platform/commands";
 import LensHealth from "~/features/groups/components/LensHealth.vue";
 import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel";
 import GroupsManager from "~/features/groups/components/GroupsManager.vue";
@@ -204,6 +218,7 @@ import { usePanesStore } from "~/features/shell/panes.store";
 
 const emit = defineEmits<{ (e: "collapse"): void }>();
 const panes = usePanesStore();
+const ai = useAIStore();
 const { isMac } = usePlatform();
 
 const { isJavaProject } = useJavaMetrics();
