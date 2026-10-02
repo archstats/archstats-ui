@@ -18,6 +18,17 @@ import { rules } from "~/features/rules/exhibits/rules"
 import { excerpt, files, matches, names } from "./generic/code"
 import { profile } from "./generic/profile"
 import { recipeExhibit } from "./generic/recipe"
+import { conventions } from "~/features/landmarks/exhibits/conventions"
+import { data } from "~/features/landmarks/exhibits/data"
+import { docs } from "~/features/landmarks/exhibits/docs"
+import { entries } from "~/features/landmarks/exhibits/entries"
+import { implementations } from "~/features/landmarks/exhibits/implementations"
+import { map } from "~/features/landmarks/exhibits/map"
+import { notes } from "~/features/landmarks/exhibits/notes"
+import { origins } from "~/features/landmarks/exhibits/origins"
+import { surface } from "~/features/landmarks/exhibits/surface"
+import { surprises } from "~/features/landmarks/exhibits/surprises"
+import { trace } from "~/features/landmarks/exhibits/trace"
 import { registerExhibits } from "~/features/exhibits/engine"
 import type { ExhibitDef } from "~/features/exhibits/types"
 
@@ -26,6 +37,7 @@ export const CATALOG: readonly ExhibitDef[] = [
     activity, cochange, authors, knowledge,
     files, excerpt, matches, names,
     deployables, rules, recipeExhibit,
+    map, entries, trace, data, surface, implementations, origins, docs, conventions, surprises, notes,
 ]
 
 registerExhibits(CATALOG)

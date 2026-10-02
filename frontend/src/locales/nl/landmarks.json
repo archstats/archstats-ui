@@ -1,0 +1,387 @@
+{
+  "common": {
+    "andMore": "{list} en nog {count}",
+    "component": "Component",
+    "noComponent": "Geen component komt overeen met \"{name}\".",
+    "olderSnapshot": "Deze snapshot komt van analyse-revisie {revision}; hiervoor is revisie {needed} of later nodig. Scan opnieuw om het te zien.",
+    "openUnits": "Open Units",
+    "signature": "Signatuur",
+    "unit": "Unit",
+    "where": "Waar"
+  },
+  "access": {
+    "read": "leest",
+    "write": "schrijft",
+    "read_write": "leest en schrijft"
+  },
+  "via": {
+    "repository": "een repository",
+    "orm": "de ORM",
+    "dbset": "een EF DbSet",
+    "jpql": "een JPQL-query",
+    "sql": "SQL"
+  },
+  "mechanism": {
+    "bean": "een @Bean-methode",
+    "dagger": "een Dagger @Provides-methode",
+    "component_scan": "component scanning",
+    "spring_xml": "Spring XML",
+    "guice": "Guice",
+    "dotnet_di": ".NET dependency injection",
+    "autofac": "Autofac",
+    "laravel": "de container van Laravel",
+    "symfony_php": "de serviceconfig van Symfony",
+    "symfony_xml": "de service-XML van Symfony",
+    "symfony_alias": "een Symfony-alias",
+    "angular": "een Angular-provider",
+    "koin": "Koin",
+    "hilt": "Hilt",
+    "implements": "overerving (geen binding gevonden)"
+  },
+  "map": {
+    "inOf": " in {of}",
+    "members": " Meest gebruikte members: {list}.",
+    "note": "Gesorteerd op hoeveel andere componenten een unit gebruiken, dan op hoeveel units dat doen. Rank is PageRank over wie wie gebruikt (members tellen voor hun type, tests niet); 1 is de gemiddelde unit.",
+    "paramKind": "Types, functies of alles (standaard).",
+    "paramLimit": "Hoeveel units, de meest gebruikte eerst (standaard 40, hooguit 150).",
+    "paramOf": "Alleen units in deze component of dit gebied; de hele codebase als je het weglaat.",
+    "rank": "Rank",
+    "row": "{i}. {name}: {signature} ({at}). Gebruikt door {usedBy} units in {usedByComponents} andere componenten.{members}",
+    "summary": "De units waar de rest van de code het meest op leunt, met hun signatuur en meest gebruikte members: een kaart van de codebase in een paar honderd regels.",
+    "title": "De units waar de code het meest op leunt",
+    "titleOf": "De meest gebruikte units in {of}",
+    "total": "De {shown} units waar de rest van de code het meest op leunt{of}, van {ranked} gerankte.",
+    "usedBy": "Gebruikt door",
+    "usedByComponents": "Andere componenten"
+  },
+  "entries": {
+    "entry": "Ingang",
+    "framework": "Framework",
+    "handler": "Afgehandeld door",
+    "kindCount": "{kind}: {count} ({frameworks})",
+    "more": "Nog {count} staan in de tabel.",
+    "none": "Geen ingangen gevonden: geen route, pagina, consumer, schedule, command of main die deze scan herkent.",
+    "noneMatch": "Geen ingang komt overeen met \"{find}\".",
+    "paramFind": "Tekst in de route, handler of unit, zoals \"/orders\".",
+    "paramKind": "Welke soort: http, page, message, event, schedule, cli, main, job, of all (standaard).",
+    "paramOf": "Alleen die in deze component of dit gebied worden afgehandeld.",
+    "row": "{entry} → {handler} ({at}).",
+    "summary": "De ingangen van de code: HTTP-routes, pagina's, verwerkte berichten en events, schedules, commands en programma's, met wat elk afhandelt.",
+    "title": "Ingangen",
+    "titleOf": "{what} in {of}",
+    "total": {
+      "one": "1 ingang: {list}.",
+      "other": "{count} ingangen: {list}."
+    },
+    "totalOne": "{kind}: {count} ({frameworks}).",
+    "unknownHandler": "een handler die de scan niet kon benoemen",
+    "where": "Ze worden vooral afgehandeld in: {list}.",
+    "kind": {
+      "http": "HTTP",
+      "page": "pagina",
+      "message": "bericht",
+      "event": "event",
+      "schedule": "schedule",
+      "cli": "command",
+      "main": "programma",
+      "job": "job"
+    },
+    "plural": {
+      "http": "HTTP-routes",
+      "page": "Pagina's",
+      "message": "Berichtverwerkers",
+      "event": "Event listeners",
+      "schedule": "Schedules",
+      "cli": "Commands",
+      "main": "Programma's",
+      "job": "Jobs"
+    }
+  },
+  "trace": {
+    "also": "Ook gevonden: {list}. Vraag er een op met de volledige route of naam.",
+    "bound": "{iface} leidt verder naar {impl} in {component}, gebonden via {mechanism}.",
+    "boundTo": "gebonden aan {name}",
+    "cut": "De trace stopt bij {count} units; vraag minder stappen om alleen de dichtstbijzijnde te zien.",
+    "data": {
+      "one": "Hij raakt 1 opgeslagen ding: {list}.",
+      "other": "Hij raakt {count} opgeslagen dingen: {list}."
+    },
+    "dataCol": "Opgeslagen data",
+    "handledBy": "{from} wordt afgehandeld door {handler} ({at}).",
+    "noData": "Geen unit op deze trace leest of schrijft opgeslagen data die de scan zag.",
+    "noStart": "Geen ingang of unit komt overeen met \"{from}\".",
+    "order": "Componenten in de volgorde waarin de trace ze bereikt: {list}.",
+    "paramDepth": "Hoeveel stappen te volgen (standaard 5, hooguit 8).",
+    "paramFrom": "Waar te beginnen: een route (\"GET /orders/:id\" of \"/orders\"), een handler, een command of een unit bij naam.",
+    "reachedFrom": "Bereikt vanuit",
+    "readBy": "gelezen door {list}",
+    "static": "De trace volgt imports en bindingen. Een aanroep via reflection, via een naam in een string of via een event wordt niet gezien.",
+    "step": "Stap {depth}: {list}.",
+    "stepCol": "Stap",
+    "summary": "Het stuk codebase waar één use case op draait: vanaf een ingang of unit wat die stap voor stap gebruikt, via interfaces naar hun implementaties, tot aan de data die hij leest en schrijft.",
+    "title": "Waar {from} op draait",
+    "total": "Vanaf {from} bereikt de code {units} units in {components} componenten binnen {depth} stappen.",
+    "writtenBy": "geschreven door {list}"
+  },
+  "data": {
+    "access": "Toegang",
+    "alsoTouched": "ook gebruikt door {list}",
+    "declared": "gedeclareerd door {framework} in {at}",
+    "mine": {
+      "one": "{of} raakt 1 opgeslagen ding.",
+      "other": "{of} raakt {count} opgeslagen dingen."
+    },
+    "mineRow": "{key}: {access}; {others}.",
+    "nothingNamed": "Geen entity, tabel of component komt overeen met \"{of}\".",
+    "one": "{key}{table}, {declared}: {both}.",
+    "onlyHere": "geen andere component raakt het",
+    "paramOf": "Een entity of tabel, om te zien wie hem raakt; of een component, om te zien wat die raakt. Laat weg voor wat het breedst gedeeld wordt.",
+    "readBy": {
+      "one": "gelezen door 1 component ({list})",
+      "other": "gelezen door {count} componenten ({list})"
+    },
+    "readers": "Gelezen door",
+    "shared": {
+      "one": "1 daarvan wordt door meer dan één component geraakt.",
+      "other": "{count} daarvan worden door meer dan één component geraakt."
+    },
+    "stored": "Opgeslagen",
+    "summary": "Wat de code opslaat en wie het raakt: entities en tabellen, welke componenten elk lezen en schrijven, en welke gedeeld worden.",
+    "table": " (tabel {table})",
+    "tableCol": "Tabel",
+    "title": "Opgeslagen data en wie die raakt",
+    "titleComponent": "Wat {of} leest en schrijft",
+    "titleStored": "Wie {of} raakt",
+    "total": "De code slaat {stored} dingen op: {entities} gedeclareerd als entity, {tables} alleen als tabel in SQL genoemd.",
+    "touch": "{component}: {who} {access} het via {via} ({at}).",
+    "touches": "Plekken",
+    "undeclared": "niet als entity gedeclareerd",
+    "untouched": "geen code raakt het",
+    "via": "Via",
+    "writers": "Geschreven door",
+    "writtenBy": {
+      "one": "geschreven door 1 component ({list})",
+      "other": "geschreven door {count} componenten ({list})"
+    }
+  },
+  "surface": {
+    "caveat": "Gebruikt betekent: bij naam geïmporteerd. Een unit die alleen via reflection, een string of een frameworkconventie gebruikt wordt, lijkt hier ongebruikt.",
+    "framework": {
+      "one": "1 unit wordt door het framework bereikt in plaats van via imports (een ingang of een gebonden implementatie): {list}.",
+      "other": "{count} units worden door het framework bereikt in plaats van via imports (ingangen of gebonden implementaties): {list}."
+    },
+    "inside": {
+      "one": "1 unit wordt alleen intern gebruikt: {list}. Die kan intern blijven.",
+      "other": "{count} units worden alleen intern gebruikt: {list}. Die kunnen intern blijven."
+    },
+    "noUnits": "{of} declareert geen units die deze scan kon lezen.",
+    "paramOf": "De component.",
+    "row": {
+      "one": "{name} ({signature}): gebruikt door {users} units uit 1 component: {list}.",
+      "other": "{name} ({signature}): gebruikt door {users} units uit {count} componenten: {list}."
+    },
+    "summary": "Wat een component echt aanbiedt: welke van zijn units andere componenten gebruiken, en door wie, tegenover wat alleen intern gebruikt wordt.",
+    "testsOnly": {
+      "one": "1 unit wordt van buitenaf alleen door tests gebruikt: {list}.",
+      "other": "{count} units worden van buitenaf alleen door tests gebruikt: {list}."
+    },
+    "testsOnlyCell": "alleen tests",
+    "title": "Wat {of} aanbiedt",
+    "total": "{of} heeft {units} units: {exposed} gebruikt door andere componenten ({components} stuks), {inside} alleen intern gebruikt, {framework} bereikt door het framework.",
+    "usedFrom": "Gebruikt vanuit",
+    "users": "Gebruikers"
+  },
+  "implementations": {
+    "aType": "een class",
+    "also": "Andere types hebben dezelfde naam: {list}.",
+    "anInterface": "een interface",
+    "bypass": {
+      "one": "1 unit buiten de eigen component gebruikt {impl} direct in plaats van {name}: {list}.",
+      "other": "{count} units buiten de eigen component gebruiken {impl} direct in plaats van {name}: {list}."
+    },
+    "directly": "Direct",
+    "extends": "{name} breidt zelf {list} uit.",
+    "how": "Hoe",
+    "implementation": "Implementatie",
+    "noType": "Geen type heet \"{of}\".",
+    "noWiring": "Geen containerbinding noemt {name}: de implementatie wordt in code gekozen, of door iets wat deze scan niet leest.",
+    "paramOf": "Een type, meestal een interface: bij naam, of bij volledige naam als namen dubbel voorkomen.",
+    "summary": "Wat een type implementeert, waar een container elke implementatie koppelt, en wie een implementatie direct gebruikt in plaats van het type.",
+    "throughSubtype": "Via een subtype",
+    "title": "Implementaties van {of}",
+    "total": {
+      "one": "{name} is {kind} in {component} met 1 implementatie{list}.",
+      "other": "{name} is {kind} in {component} met {count} implementaties{list}."
+    },
+    "usedDirectly": "Direct gebruikt door",
+    "users": "Units die {name} zelf gebruiken: {units}, in {list}.",
+    "wired": "{impl} is aan {name} gebonden via {mechanism} ({at})."
+  },
+  "origins": {
+    "atHead": "De repository van dit bestand is niet die van de gescande commit, dus de regels zijn gedateerd op de nieuwste commit van die repository.",
+    "capped": "Alleen {dated} van de {files} bestanden zijn gedateerd; de rest is geteld, niet gedateerd.",
+    "closed": "De cycle sloot op {date}, toen {from} {to} begon te importeren: commit {commit} \"{summary}\" door {author}.",
+    "commit": "Commit",
+    "cycle": "De twee zitten in de cycle {list}.",
+    "cycleEdge": "{from} → {to} sinds {date} (commit {commit}, \"{summary}\").",
+    "dependency": "Afhankelijkheid",
+    "files": {
+      "one": "1 bestand in {from} importeert {to} vandaag; {recent} van de {dated} gedateerde begonnen in het afgelopen jaar.",
+      "other": "{count} bestanden in {from} importeren {to} vandaag; {recent} van de {dated} gedateerde begonnen in het afgelopen jaar."
+    },
+    "filesCol": "Bestanden",
+    "lastWrote": "Een regel krijgt de datum van de commit die hem het laatst schreef: een import die later herschreven is (een verplaatsing, een herformattering) krijgt die datum, dus een datum hier is de laatste waarop de afhankelijkheid kan zijn begonnen.",
+    "latest": "Het nieuwste bestand dat het begon te importeren: {file}, op {date} (commit {commit}, \"{summary}\", door {author}).",
+    "noGit": "Git is niet bereikbaar voor deze snapshot: de workspacemap is hier geen git-checkout.",
+    "noImport": "{from} en {to} importeren elkaar niet.",
+    "noSnippets": "Deze snapshot bewaart niet waar elke import staat, dus de imports kunnen niet gedateerd worden.",
+    "paramFrom": "De component die importeert.",
+    "paramTo": "De component die geïmporteerd wordt.",
+    "recentCol": "Begonnen in het afgelopen jaar",
+    "since": "{from} importeert {to} sinds {date}: commit {commit} \"{summary}\" door {author}, in {file}.",
+    "sinceCol": "Sinds",
+    "summary": "Wanneer en waarom de ene component de andere begon te importeren: de commit achter de oudste import die er nog staat, de nieuwste, en bij een cycle de commit die hem sloot.",
+    "title": "Wanneer {from} {to} begon te importeren",
+    "undated": "{files} bestanden in {from} importeren {to}, maar git kon hun imports niet dateren."
+  },
+  "docs": {
+    "about": " over {of}",
+    "aboutCol": "Over",
+    "aboutList": "; over {list}",
+    "date": "Datum",
+    "kindCol": "Soort",
+    "none": "Deze codebase heeft geen documenten: geen README, decision record of handleiding.",
+    "noneAbout": "Geen document gaat over {of}: geen staat in de map, noemt de bestanden of noemt de types.",
+    "paramOf": "Een component, om de documenten erover te zien. Laat weg voor alle documenten.",
+    "read": "Om er een te lezen: vraag de code van het bestand.",
+    "row": "{kind}: {title}{meta}, {file}{about}.",
+    "status": "Status",
+    "summary": "De vastgelegde bedoeling: decision records, architectuurnotities, READMEs en handleidingen, en over welke code elk gaat.",
+    "title": "Documenten",
+    "titleCol": "Titel",
+    "titleOf": "Documenten over {of}",
+    "total": {
+      "one": "1 document{of}: {list}.",
+      "other": "{count} documenten{of}: {list}."
+    },
+    "kind": {
+      "adr": "Decision record",
+      "architecture": "Architectuurnotitie",
+      "readme": "README",
+      "guide": "Handleiding",
+      "contributing": "Bijdragegids",
+      "note": "Notitie",
+      "changelog": "Changelog"
+    },
+    "kinds": {
+      "adr": {
+        "one": "1 decision record",
+        "other": "{count} decision records"
+      },
+      "architecture": {
+        "one": "1 architectuurnotitie",
+        "other": "{count} architectuurnotities"
+      },
+      "readme": {
+        "one": "1 README",
+        "other": "{count} READMEs"
+      },
+      "guide": {
+        "one": "1 handleiding",
+        "other": "{count} handleidingen"
+      },
+      "contributing": {
+        "one": "1 bijdragegids",
+        "other": "{count} bijdragegidsen"
+      },
+      "note": {
+        "one": "1 andere notitie",
+        "other": "{count} andere notities"
+      },
+      "changelog": {
+        "one": "1 changelog",
+        "other": "{count} changelogs"
+      }
+    }
+  },
+  "conventions": {
+    "data": "Opgeslagen data wordt geraakt vanuit {area}: {share} van {total} plekken.{elsewhere}",
+    "declare": "Dit zijn lezingen van wat de code doet, geen regels die iemand heeft vastgelegd. Een regel die het bewaren waard is, leg je vast in Rules, zodat een latere scan zegt wanneer hij breekt.",
+    "elsewhere": " Elders: {list}.",
+    "elsewhereItem": "{area} ({count}, zoals {example})",
+    "entries": "Ingangen zitten in {area}: {share} van {total}.{elsewhere}",
+    "exception": "{from} → {to} ({files})",
+    "exceptions": "Uitzonderingen",
+    "held": {
+      "one": "1 richting houdt stand zonder uitzondering: {list}.",
+      "other": "{count} richtingen houden stand zonder uitzondering: {list}."
+    },
+    "heldPair": "{lower} importeert {upper} nooit ({references} referenties de andere kant op)",
+    "kept": {
+      "one": "{lower} importeert {upper} niet, aangehouden door {share} van {references} importreferenties tussen hen; 1 uitzondering: {list}.",
+      "other": "{lower} importeert {upper} niet, aangehouden door {share} van {references} importreferenties tussen hen; {count} uitzonderingen: {list}."
+    },
+    "keptCol": "Aangehouden door",
+    "none": "Tussen deze gebieden wordt geen richting aangehouden door 90% of meer van minstens 10 importreferenties.",
+    "oneArea": "Er is hier maar één gebied, dus er zijn geen richtingen tussen gebieden te lezen.",
+    "openRules": "Open Rules",
+    "paramOf": "Alleen de gebieden binnen deze component of dit gebied; de hele codebase als je het weglaat.",
+    "references": "Importreferenties",
+    "rule": "Regel",
+    "ruleText": "{lower} importeert {upper} niet",
+    "summary": "De regels die de code aanhoudt zonder dat ze vastgelegd zijn: welke kant imports op lopen tussen gebieden, en waar data en ingangen zitten, met de uitzonderingen.",
+    "title": "Regels die de code aanhoudt",
+    "titleOf": "Regels die de code binnen {of} aanhoudt",
+    "total": "Tussen zijn {areas} gebieden houdt de code {held} richtingen aan zonder uitzondering en {kept} meer met een paar uitzonderingen."
+  },
+  "surprises": {
+    "grain": "{from} importeert {to} ({file}), terwijl {lower} verder nooit {upper} importeert: een van de weinige van {references} importreferenties tussen hen die die kant op lopen.",
+    "hidden": "{a} en {b} veranderden samen in {commits} commits, maar geen van beide importeert de ander, direct of via iets anders.",
+    "hub": "{name} in {component} wordt gebruikt vanuit {count} van de {of} componenten ({users} units in totaal).",
+    "kind": "Soort",
+    "none": "Niets springt eruit tegenover de eigen normen van deze codebase. Bekeken: {list}.",
+    "paramLimit": "Hoeveel (standaard 8).",
+    "shared": "{name} wordt geschreven vanuit {count} componenten: {list}.",
+    "size": "{name} heeft {lines} regels, {times} keer de mediaan van de {siblings} andere componenten in {area}.",
+    "summary": "Wat hier ongebruikelijk is tegenover de eigen normen van deze codebase, elk met het bewijs.",
+    "title": "Wat eruit springt",
+    "total": {
+      "one": "1 ding springt eruit. Bekeken: {list}.",
+      "other": "{count} dingen springen eruit. Bekeken: {list}."
+    },
+    "what": "Wat",
+    "young": "{name} is {days} dagen oud maar wordt al door {dependents} componenten gebruikt.",
+    "kinds": {
+      "size": "grootte tegenover broers",
+      "grain": "imports tegen de draad in",
+      "hidden": "samen veranderen zonder imports",
+      "young": "jong maar al veel gebruikt",
+      "hub": "units die het grootste deel van het systeem gebruikt",
+      "shared": "data die vanuit veel plekken geschreven wordt"
+    }
+  },
+  "notes": {
+    "author": "Door",
+    "codebase": "de codebase",
+    "commit": "Commit",
+    "noWorkspace": "Notities horen bij een workspace; deze snapshot is los geopend.",
+    "none": "Nog geen notities. Een notitie bewaart wat je over een deel van de code leerde voor het volgende gesprek.",
+    "noneAbout": "Geen notitie gaat over {of}.",
+    "older": " (geschreven tegen commit {commit}; de code kan sindsdien veranderd zijn)",
+    "paramOf": "Een component, bestand, unit of tabel, om de notities erover te zien. Laat weg voor alle.",
+    "row": "Over {subject}, door {author}: {text}{older}",
+    "subject": "Over",
+    "summary": "Wat iemand of Ask in eerdere sessies opschreef over delen van de codebase.",
+    "text": "Notitie",
+    "title": "Notities",
+    "titleOf": "Notities over {of}",
+    "total": {
+      "one": "1 notitie{of}.",
+      "other": "{count} notities{of}."
+    },
+    "by": {
+      "person": "iemand",
+      "model": "Ask"
+    }
+  }
+}

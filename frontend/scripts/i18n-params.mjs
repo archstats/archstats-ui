@@ -70,7 +70,7 @@ else console.log("Every message gets its placeholders.")
     read(SRC)
     const used = new Set([...src.matchAll(/["'`]([\w[\]-]+\.[\w.[\]]+)["'`]/g), ...src.matchAll(/k="([\w.[\]-]+)"/g)].map(m => m[1]))
     // Keys built at run time: definitions by metric id, Java roles, native menu items.
-    const dynamic = ["definitions.", "java.roles.", "shell.menu."]
+    const dynamic = ["definitions.", "java.roles.", "shell.menu.", "landmarks.access.", "landmarks.via.", "landmarks.mechanism.", "landmarks.entries.kind.", "landmarks.entries.plural.", "landmarks.docs.kind.", "landmarks.docs.kinds.", "landmarks.surprises.kinds.", "landmarks.notes.by.", "landmarks.conventions.data", "landmarks.conventions.entries"]
     const unused = []
     const leaves = (tree, path) => { for (const [k, v] of Object.entries(tree)) { const key = `${path}.${k}`; if (typeof v === "string" || Object.keys(v).every(x => ["zero", "one", "two", "few", "many", "other"].includes(x))) { if (!used.has(key) && !dynamic.some(d => key.startsWith(d))) unused.push(key) } else leaves(v, key) } }
     for (const [ns, tree] of Object.entries(messages)) leaves(tree, ns)

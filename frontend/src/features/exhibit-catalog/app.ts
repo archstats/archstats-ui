@@ -9,8 +9,16 @@ import { scanSnapshot } from "~/features/snapshot/scanSnapshot"
 import type { Snapshot } from "~/features/snapshot/snapshot"
 import type { CyclePath } from "~/features/cycles/cycles"
 import type { ConnectionRow, Definition } from "~/features/snapshot/snapshot"
+import type { History } from "~/features/snapshot/snapshot"
 import { registerSnapshotSource } from "~/features/exhibits/engine"
+import { appNotes } from "~/features/notes/appNotes"
+import { Blame } from "wailsjs/go/app/WorkspaceService"
 import "./catalog"
+
+/** Blame through the Go side, at the commit the scan read. */
+const appHistory = (scanId: string): History => ({
+    blame: async (file, lines) => ((await Blame(scanId, file, lines)) ?? []) as any,
+})
 
 export async function snapshotFor(scanId: string): Promise<Snapshot> {
     const data = useDataStore()
@@ -19,7 +27,8 @@ export async function snapshotFor(scanId: string): Promise<Snapshot> {
     const author = (name: string) => authors.display(name)
     const aliases = () => (authors.aliases ?? {}) as Record<string, string>
     if (scanId && scanId === data._openScanId) return openSnapshot()
-    return scanSnapshot(scanId, sql => data.queryIn(scanId, sql), { workspace: ws.active?.name ?? "", author, aliases })
+    const wsId = ws.active?.id ?? ""
+    return scanSnapshot(scanId, sql => data.queryIn(scanId, sql), { workspace: ws.active?.name ?? "", author, aliases, history: appHistory(scanId), notes: wsId ? appNotes(wsId, scanId, "") : undefined })
 }
 
 /** The scan open in the window, from its stores. */
@@ -49,6 +58,8 @@ export function openSnapshot(): Snapshot {
         query: sql => data.queryIn(scanId, sql),
         author: name => authors.display(name),
         aliases: () => (authors.aliases ?? {}) as Record<string, string>,
+        history: appHistory(scanId),
+        notes: ws.active?.id ? appNotes(ws.active.id, scanId, String((data.snapshotInfo as Record<string, string>)?.git_head_commit ?? "")) : undefined,
     }
 }
 

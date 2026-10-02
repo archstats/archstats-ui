@@ -1,0 +1,18 @@
+{
+  "pane": {
+    "tab": "Notes",
+    "subject": "About",
+    "subjectPlaceholder": "About (a component, file or class)",
+    "text": "Note",
+    "textPlaceholder": "What you learned, in a sentence or two",
+    "add": "Add note",
+    "codebase": "the codebase",
+    "byAsk": "by Ask",
+    "byPerson": "by you",
+    "older": "older code",
+    "olderTitle": "Written against commit {commit}; the code may have moved on.",
+    "remove": "Remove note",
+    "none": "No notes yet.",
+    "noneHint": "A note keeps what you learned about part of the code. Ask reads them back in later conversations, and can keep one when you ask it to remember something."
+  }
+}

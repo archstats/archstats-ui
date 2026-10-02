@@ -20,8 +20,10 @@ function ctxFor(world: World): ToolContext {
 
 describe("the intents", () => {
     it("are few, named for questions, with few params", () => {
-        // Thirteen questions and ask_user.
-        expect(INTENTS.length).toBeLessThanOrEqual(14)
+        // Thirteen questions, the six a navigating architect asks (flows, data,
+        // contracts, why, surprises, note) and ask_user. Every one more costs a
+        // small local model accuracy: add a parameter before an intent.
+        expect(INTENTS.length).toBeLessThanOrEqual(20)
         for (const t of INTENTS) {
             expect(t.name).toMatch(/^[a-z_]+$/)
             expect(Object.keys(t.params).length, t.name).toBeLessThanOrEqual(4)
@@ -50,13 +52,20 @@ describe.skipIf(!snaps.length)("intents on real snapshots", () => {
                 ["code", { of: file }], ["code", { of: file, find: "import" }], ["code", { find: "import" }], ["code", { of: big }],
                 ["search", { text: big.slice(-4) }],
                 ["explain", { term: "instability" }], ["explain", { term: "health", of: big }],
+                // What a navigating architect asks (analysis revision 13; an older snapshot says so).
+                ["rank", { measure: "most used", among: "units" }], ["rules", { kind: "kept" }],
+                ["flows", {}], ["flows", { kind: "http" }], ["flows", { from: big }],
+                ["data", {}], ["data", { of: big }],
+                ["contracts", { of: big }], ["why", { of: big }], ["why", { of: small, on: big }],
+                ["surprises", {}], ["note", { about: big, text: "A note." }],
             ]
             for (const [name, args] of cases) {
                 it(`${name} ${JSON.stringify(args).slice(0, 70)}`, async () => {
                     const t = INTENTS.find(x => x.name === name)!
                     const r = await t.run(args, ctxFor(world))
                     expect(r.text.length, "says something").toBeGreaterThan(10)
-                    expect(r.text).not.toMatch(/undefined|NaN|\[object/)
+                    // `undefined` in a type position is TypeScript a signature quotes, not a template slip.
+                    expect(r.text).not.toMatch(/(?<![|:<,(] ?)\bundefined\b|NaN|\[object/)
                     if (r.exhibits?.length) {
                         expect(r.text).toMatch(/\[E\d+\.1\] /)
                         expect(r.text.length, `${name} fits the model's context (${r.text.length})`).toBeLessThanOrEqual(MAX_TOOL_TEXT)
