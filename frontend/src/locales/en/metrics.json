@@ -119,7 +119,28 @@
     "levels": "{maxNesting} levels",
     "over": "over {maxT}",
     "levels2": "{avgNesting} levels",
-    "over2": "over {avgT}"
+    "over2": "over {avgT}",
+    "complexCode": "Complex code",
+    "linesInComplexFunctions": {
+      "one": "{lines} lines in {functions} function",
+      "other": "{lines} lines in {functions} functions"
+    },
+    "cognitiveOver": "cognitive over {threshold}",
+    "perDoublingOfLines": "1 per doubling of 1 + lines ÷ 25",
+    "coupling": "Coupling",
+    "imports": {
+      "one": "{imports} import",
+      "other": "{imports} imports"
+    },
+    "oneAndAHalfPerDoubling": "1.5 per doubling",
+    "onePerDoubling": "1 per doubling",
+    "codeLines": "{lines} code lines",
+    "deepCode": "Deep code",
+    "deepLines": "{lines} lines 3+ levels in",
+    "levelsIn": "{levels} levels in",
+    "nonBlankLines": "{lines} non-blank lines",
+    "readFromIndentation": "No language pack reads this language, so its health is read from its indentation: a rougher reading than the functions a parsed file is scored by.",
+    "olderFormula": "Scored by the formula before revision 11, which deducted for nesting. A new scan scores this file by its functions, imports and size."
   },
   "hotspotsTreemap": {
     "no": "No. {unitName} of the {labelHigh}",
@@ -331,5 +352,19 @@
     "healthy": "Healthy",
     "watch": "Watch",
     "alert": "Alert"
+  },
+  "complexFunctions": {
+    "complexFunctions": "Complex functions",
+    "mostComplexFunctions": "Most complex functions",
+    "function": "Function",
+    "file": "File",
+    "cognitive": "Cognitive",
+    "lines": "Lines",
+    "nesting": "Nesting",
+    "params": "Parameters",
+    "over": "{total} over cognitive {threshold}",
+    "shownOfOver": "{shown} of {total} over cognitive {threshold}",
+    "anonymous": "anonymous, line {line}",
+    "whatCognitiveMeans": "Cognitive complexity counts each break in a function's flow (if, loop, switch, catch, a run of && or ||) and one more for each level it is nested at. Edits to long functions over 15 were bug fixes about 1.6 times as often as edits to equally long simple ones."
   }
 }

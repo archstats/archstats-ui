@@ -8,7 +8,18 @@
     "vueHtmlXml": "vue / html / xml",
     "bashShell": "bash / shell",
     "diffPatch": "diff / patch",
-    "iniToml": "ini / toml"
+    "iniToml": "ini / toml",
+    "complexity": "Complexiteit",
+    "complexityTitle": "Laat zien wat elke complexe functie lastig te volgen maakt",
+    "inComplexFunction": "In {name}, cognitieve complexiteit {cognitive}",
+    "anonymous": "anonieme functie",
+    "step": "+{points} voor deze {construct}",
+    "stepNested": "+{points}: deze {construct} zit {nesting} niveaus diep, 1 plus 1 per niveau",
+    "symbols": "Symbolen",
+    "symbolsTitle": "Laat de functies van dit bestand zien",
+    "scopeTitle": "{name}: ga naar de eerste regel",
+    "cognitive": "cognitief {cognitive}",
+    "selectLine": "Selecteer deze regel; shift-klik selecteert een bereik"
   },
   "openInEditor": {
     "open": "Open {basename}{value} in {editorLabel}",
@@ -28,5 +39,32 @@
     "changedSinceSnapshotLine": "Gewijzigd sinds dit snapshot; de regel kan verschoven zijn.",
     "couldNotOpen": "Kon niet openen: {value}",
     "couldNotReveal": "Kon niet tonen: {value}"
+  },
+  "fileNavigator": {
+    "files": "Bestanden",
+    "goToFile": "Ga naar bestand",
+    "pressT": "Druk op t om bestanden te zoeken",
+    "arrange": "Bestanden ordenen",
+    "tree": "Boom",
+    "ranked": "Gerangschikt",
+    "rankBy": "Rangschikken op",
+    "noMatch": "Geen bestand gevonden",
+    "noMatchText": "Niets van de {files} bestanden past bij “{query}”.",
+    "health": "Health {health}"
+  },
+  "symbolsPane": {
+    "symbols": "Symbolen",
+    "order": "Volgorde",
+    "inOrder": "Bestand",
+    "inOrderTitle": "In de volgorde van het bestand",
+    "mostComplex": "Complex",
+    "mostComplexTitle": "Lastigst te volgen eerst",
+    "filterSymbols": "Symbolen filteren",
+    "noFunctions": "Geen functies",
+    "noFunctionsText": "Het language pack vond geen functies in dit bestand.",
+    "noMatch": "Geen symbool gevonden",
+    "noMatchText": "Niets hier heet zoals “{filter}”.",
+    "rowTitle": "{name}, regels {begin}–{end}, cognitieve complexiteit {cognitive}",
+    "anonymous": "anoniem, regel {line}"
   }
 }

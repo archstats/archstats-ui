@@ -119,7 +119,28 @@
     "levels": "{maxNesting} levels",
     "over": "boven {maxT}",
     "levels2": "{avgNesting} levels",
-    "over2": "boven {avgT}"
+    "over2": "boven {avgT}",
+    "complexCode": "Complexe code",
+    "linesInComplexFunctions": {
+      "one": "{lines} regels in {functions} functie",
+      "other": "{lines} regels in {functions} functies"
+    },
+    "cognitiveOver": "cognitief boven {threshold}",
+    "perDoublingOfLines": "1 per verdubbeling van 1 + regels ÷ 25",
+    "coupling": "Koppeling",
+    "imports": {
+      "one": "{imports} import",
+      "other": "{imports} imports"
+    },
+    "oneAndAHalfPerDoubling": "1,5 per verdubbeling",
+    "onePerDoubling": "1 per verdubbeling",
+    "codeLines": "{lines} coderegels",
+    "deepCode": "Diepe code",
+    "deepLines": "{lines} regels 3+ niveaus diep",
+    "levelsIn": "{levels} niveaus diep",
+    "nonBlankLines": "{lines} niet-lege regels",
+    "readFromIndentation": "Geen language pack leest deze taal, dus de health komt uit de indentatie: grover dan de functies waarop een geparsed bestand wordt gescoord.",
+    "olderFormula": "Gescoord met de formule van vóór revisie 11, die punten aftrok voor nesting. Een nieuwe scan scoort dit bestand op zijn functies, imports en omvang."
   },
   "hotspotsTreemap": {
     "no": "Nr. {unitName} van de {labelHigh}",
@@ -331,5 +352,19 @@
     "healthy": "Gezond",
     "watch": "Let op",
     "alert": "Alarm"
+  },
+  "complexFunctions": {
+    "complexFunctions": "Complexe functies",
+    "mostComplexFunctions": "Meest complexe functies",
+    "function": "Functie",
+    "file": "Bestand",
+    "cognitive": "Cognitief",
+    "lines": "Regels",
+    "nesting": "Nesting",
+    "params": "Parameters",
+    "over": "{total} boven cognitief {threshold}",
+    "shownOfOver": "{shown} van {total} boven cognitief {threshold}",
+    "anonymous": "anoniem, regel {line}",
+    "whatCognitiveMeans": "Cognitieve complexiteit telt elke onderbreking in de flow van een functie (if, loop, switch, catch, een reeks && of ||) en één extra per niveau dat die genest is. Wijzigingen in lange functies boven de 15 waren ongeveer 1,6 keer zo vaak bugfixes als wijzigingen in even lange eenvoudige functies."
   }
 }

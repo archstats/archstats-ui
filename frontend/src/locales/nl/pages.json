@@ -344,7 +344,7 @@
     "notScan": "Niet in die scan",
     "notComparable": "Niet vergelijkbaar: {text}",
     "noEarlierScanCompare": "Geen eerdere scan om mee te vergelijken.",
-    "healthLineWeightedMean": "Health is het gemiddelde van {scoredFiles} gescoorde {files}, gewogen op regels.",
+    "healthLineWeightedMean": "Health is het gemiddelde van {scoredFiles} gescoorde {files}, gewogen op omvang.",
     "hottestFile": "Heetste bestand:",
     "text100WhichSetsComponent": "({codesmells__hotspot_score} van 100), dat bepaalt de hotspot van de component.",
     "shape": "Vorm",
@@ -463,7 +463,8 @@
     "methodsLabel": "Methods",
     "directoriesLabel": "Mappen",
     "directoriesHint": "Mappen waarover de bestanden verspreid zijn",
-    "indentationLabel": "Gemiddelde inspringing"
+    "indentationLabel": "Gemiddelde inspringing",
+    "leastHealthy": "Minst gezond:"
   },
   "componentsInside": {
     "readingFiles": "Bestanden lezen…",
@@ -473,24 +474,16 @@
     "whatShow": "Wat te tonen",
     "howComponentSOwn": "Hoe de eigen classes van deze component elkaar importeren",
     "everyFileComponent": "Elk bestand in deze component",
-    "searchFiles": "Bestanden zoeken",
     "allRoles": "Alle rollen",
     "xRayEveryFile": "X-ray {folder}: elk bestand gelezen en gegroepeerd in topics",
     "xRay": "X-ray",
-    "sort": "Sorteren",
-    "sortFiles": "Bestanden sorteren",
-    "noFilesMatch": "Geen bestanden komen overeen",
-    "text0FilesMatch": "0 van de {filesLength} bestanden komen overeen.",
     "openFile": "Bestand openen",
     "files": "Bestanden",
     "wiring": "Wiring",
-    "text10SizeDeepestNesting": "10 − {size} (grootte) − {max} (diepste nesting) − {avg} (gemiddelde nesting), nooit lager dan 1",
-    "name": "Naam",
     "lines": "Regels",
     "health": "Health",
     "hotspot": "Hotspot",
-    "commits": "Commits",
-    "authors": "Auteurs"
+    "commits": "Commits"
   },
   "componentsComparison": {
     "openingHotspots": "Hotspots openen…"
@@ -710,7 +703,12 @@
     "deepestNesting": "Diepste nesting",
     "flattest": "Vlakst",
     "amongHalfMost": "Binnen de helft met de meeste {replace}",
-    "of": "van"
+    "of": "van",
+    "leastHealthyFile": "Minst gezonde bestand",
+    "complexCode": "Complexe code",
+    "linesInComplexFunctions": "Regels in functies met een cognitieve complexiteit boven 15: de code waarvan wijzigingen het vaakst bugfixes bleken.",
+    "mostComplexCode": "Meest complexe code",
+    "simplest": "Eenvoudigst"
   },
   "componentsPlotter": {
     "openingMetrics": "Metrics openen…"
@@ -1100,7 +1098,8 @@
     "source": "Source",
     "imports": "Imports",
     "history": "Historie",
-    "java": "Java"
+    "java": "Java",
+    "functions": "Functies"
   },
   "filesHistory": {
     "fileHasNoCommits": "Dit bestand heeft geen commits in het snapshot."
@@ -2008,7 +2007,8 @@
     "thirdPartyGeneratedFiles2": "Third-party ({third_party}) en gegenereerde ({generated}) bestanden tellen mee in de omvang, maar worden niet gescoord voor health of hotspots.",
     "linesNotCodeGet": "{non_code} regels zijn geen code en krijgen geen health-analyse.",
     "limitsEvidence": "### Grenzen van het bewijs",
-    "codeHealth10Less": "Code health is 10 min drie begrensde aftrekposten (omvang boven 500 regels, diepste nesting en gemiddelde nesting boven de drempels van de taal), nooit lager dan 1; die van een component is het naar regels gewogen gemiddelde van zijn bestanden. De hotspot-score is log2(commits + 1) × regels, geschaald zodat het heetste bestand in het snapshot 100 haalt."
+    "codeHealth10Less": "Code health is 10 min drie begrensde aftrekposten (omvang boven 500 regels, diepste nesting en gemiddelde nesting boven de drempels van de taal), nooit lager dan 1; die van een component is het naar regels gewogen gemiddelde van zijn bestanden. De hotspot-score is log2(commits + 1) × regels, geschaald zodat het heetste bestand in het snapshot 100 haalt.",
+    "codeHealthFromFunctions": "Code health is 10 min drie aftrekposten, nooit lager dan 1: complexe code (een punt per verdubbeling van de regels in functies boven cognitieve complexiteit 15), koppeling (anderhalve punt per verdubbeling van de imports boven 10) en omvang (een punt per verdubbeling van de coderegels boven 150); talen die geen pack parst, lezen we op hun indentatie. Die van een component is het gemiddelde van zijn bestanden, gewogen op coderegels. De hotspot-score is log2(commits + 1) × regels, geschaald zodat het heetste bestand in het snapshot 100 haalt."
   },
   "trends": {
     "changes": "Wijzigingen",
@@ -2135,5 +2135,22 @@
     "commits": "Commits",
     "files": "Bestanden",
     "in": "in {topicFilter}"
+  },
+  "filesFunctions": {
+    "noFunctions": "Geen functies gemeten",
+    "noFunctionsText": "Geen language pack heeft functies in dit bestand gemeten, of het bevat er geen.",
+    "function": "Functie",
+    "line": "Regel",
+    "complex": "complex",
+    "functions": "Functies",
+    "sortedBy": "Gesorteerd op {column}",
+    "ledeComplex": {
+      "one": "{functions} functie; {complex} daarvan komt boven cognitieve complexiteit {threshold}. Lange functies die eenvoudig blijven zijn prima: wijzigingen daarin waren niet vaker bugfixes dan wijzigingen in korte functies.",
+      "other": "{functions} functies; {complex} daarvan komen boven cognitieve complexiteit {threshold}. Lange functies die eenvoudig blijven zijn prima: wijzigingen daarin waren niet vaker bugfixes dan wijzigingen in korte functies."
+    },
+    "ledeSimple": {
+      "one": "{functions} functie, geen boven cognitieve complexiteit {threshold}.",
+      "other": "{functions} functies, geen boven cognitieve complexiteit {threshold}."
+    }
   }
 }

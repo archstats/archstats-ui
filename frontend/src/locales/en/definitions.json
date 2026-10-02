@@ -1,6 +1,33 @@
 {
   "computed": "Computed by the app.",
   "computedSql": "Computed by the app:",
+  "windowed": {
+    "git__additions": {
+      "name": "Addition Count (Last {days} Days)",
+      "short": "Number of lines of code added to this file or component in the last {days} days.",
+      "long": "Counts how many new lines of code were added in git commits over the last {days} days. Helps identify recently active or growing files."
+    },
+    "git__deletions": {
+      "name": "Deletion Count (Last {days} Days)",
+      "short": "Number of lines of code deleted from this file or component in the last {days} days.",
+      "long": "Counts how many lines of code were deleted in git commits over the last {days} days. Helps identify recently refactored or cleaned-up files."
+    },
+    "git__commits": {
+      "name": "Commit Count (Last {days} Days)",
+      "short": "Number of unique git commits modifying this file or component in the last {days} days.",
+      "long": "Counts how many times this file or component was modified in a git commit over the last {days} days. A high count suggests a recent hot spot of activity."
+    },
+    "git__authors": {
+      "name": "Author Count (Last {days} Days)",
+      "short": "Number of unique authors who modified this file or component in the last {days} days.",
+      "long": "Counts how many different developers made changes to this file or component in the last {days} days. High author count can indicate a risk of coordination issues."
+    },
+    "git__unique_file_changes": {
+      "name": "Unique File Changes (Last {days} Days)",
+      "short": "Number of unique files changed in commits that touched this file or component in the last {days} days.",
+      "long": "Measures co-changes over the last {days} days: how many other files were modified in the same commits as this one. Helps find implicit logical coupling."
+    }
+  },
   "categories": {
     "architectureRules": "Architecture Rules",
     "codeHealth": "Code health",
@@ -93,33 +120,33 @@
     },
     "codesmells__code_health": {
       "name": "Code Health",
-      "short": "A rating from 1.0 to 10.0 of structural maintainability.",
-      "long": "Rated on a scale of 1.0 (lowest) to 10.0 (highest). Deducts points for file size (lines > 500), max nesting depth, and average nesting depth. JavaScript/TypeScript files receive a relaxed indentation threshold, while non-code files (JSON/YAML/lockfiles/markdown) are excluded from code health analysis to prevent distortion. Component scores are aggregated using a size-weighted average to avoid masking large God Files."
+      "short": "A rating from 1.0 to 10.0 of how costly a file's code is to change, read from the code alone.",
+      "long": "10 less three deductions, never below 1. Complex code: a point per doubling of the lines inside functions whose cognitive complexity passes 15, counted as 1 + lines ÷ 25. Coupling: a point and a half per doubling of import statements past 10. Size: a point per doubling of code lines past 150. Each was kept for predicting later bug fixes beyond what size predicts, on fifteen codebases read as they stood two years earlier; indentation was dropped for predicting nothing beyond size.\n\nA file in a programming language no language pack parses is read by its indentation instead: size from its non-blank lines past 180, and a point per doubling of 1 + lines three levels in ÷ 25. Markup, data, stylesheets, SQL and shell scripts get no reading.\n\nA component's or directory's health is its files' weighted by code lines, with its least healthy file beside it."
     },
-    "codesmells__health__deduction__avg_nesting": {
-      "name": "Average-nesting deduction",
-      "short": "Points taken off a file's health for its average nesting: 1.5 per level over the language's threshold, at most 3.",
-      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    "codesmells__code_health__worst_file": {
+      "name": "Least healthy file",
+      "short": "The lowest code health among a component's or directory's files.",
+      "long": "Shown beside the group's health, which is its files' weighted by code lines and can hide one bad file among many good ones. Not recorded for single files."
     },
-    "codesmells__health__deduction__max_nesting": {
-      "name": "Max-nesting deduction",
-      "short": "Points taken off a file's health for its deepest nesting: 0.5 per level over the language's threshold, at most 3.",
-      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+    "codesmells__health__deduction__complex_code": {
+      "name": "Complex code deduction",
+      "short": "Points taken off a file's health for the lines inside functions whose cognitive complexity passes 15.",
+      "long": "One point per doubling of 1 + those lines ÷ 25: 25 lines cost a point, 75 two, 175 three. Edits to long, complex functions were bug fixes about 1.6 times as often as edits to equally long simple ones; long simple functions were no worse than short ones. The functions view names them. Recorded for parsed files only."
+    },
+    "codesmells__health__deduction__coupling": {
+      "name": "Coupling deduction",
+      "short": "Points taken off a file's health for its imports: one and a half per doubling past 10.",
+      "long": "20 imports cost a point and a half, 40 three. Every import counts, the standard library's and other projects' too: what the file has to know about predicted later fixes, where the files it reaches inside the project did not. Recorded for parsed files only."
+    },
+    "codesmells__health__deduction__deep_code": {
+      "name": "Deep code deduction",
+      "short": "For a file no pack parses: points taken off its health for lines indented three levels or more.",
+      "long": "One point per doubling of 1 + those lines ÷ 25. The indentation stand-in for complex code in a language without a pack, scored as if the fifteen tested codebases had no parser: weaker than reading functions, but better than the average or deepest indentation the score used before."
     },
     "codesmells__health__deduction__size": {
       "name": "Size deduction",
-      "short": "Points taken off a file's health for its size: 0.01 per line over 500, at most 3.",
-      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
-    },
-    "codesmells__health__threshold__avg_nesting": {
-      "name": "Average-nesting threshold",
-      "short": "The average nesting a file of this language may reach before losing health.",
-      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
-    },
-    "codesmells__health__threshold__max_nesting": {
-      "name": "Max-nesting threshold",
-      "short": "The deepest nesting a file of this language may reach before losing health.",
-      "long": "One of the inputs behind a file's code health, stored so the score can be explained rather than taken on trust: health is 10 less the size, maximum-nesting and average-nesting deductions, and never below 1. Recorded for files only; a component's health is the size-weighted average of its files'."
+      "short": "Points taken off a file's health for its size: one per doubling of code lines past 150.",
+      "long": "300 code lines cost one point, 600 two, 1,200 three; nothing caps it. A file no pack parsed is measured by its non-blank lines past 180 instead. Bigger files collect more bug fixes, though not more per line, so this deduction is about how much there is to change rather than how well it is written. Recorded for files only."
     },
     "codesmells__hotspot__raw": {
       "name": "Raw hotspot",
@@ -135,6 +162,11 @@
       "name": "Static Complexity Score",
       "short": "Structural density index derived from size and nesting.",
       "long": "Measures structural complexity as Lines * (1 + averageIndentation). Capping the average indentation multiplier prevents single nested outliers from skewing the metrics, representing overall file nesting density."
+    },
+    "complexity__cognitive__max": {
+      "name": "Worst cognitive complexity",
+      "short": "The cognitive complexity of the hardest function to follow.",
+      "long": "Cognitive complexity, as SonarSource defines it, costs one for each break in the linear flow of a function (an if, a loop, a switch, a catch, a ternary, a run of && or ||) and one more for each level it is nested at. Labelled jumps and recursion are not counted. For a group it is the worst of its files."
     },
     "complexity__files": {
       "name": "File Count",
@@ -156,6 +188,16 @@
       "short": "Files that are someone else's code carried in the repository.",
       "long": "Vendored packages (node_modules, vendor, third_party, lib_npm, wwwroot/lib), minified bundles and\nwell-known libraries such as jQuery or moment.js. They count as files and lines, since they are in\nthe repository, but declare no units and receive no code-health reading."
     },
+    "complexity__functions": {
+      "name": "Functions",
+      "short": "Functions, methods, constructors and closures a language pack found; a closure inside a function counts as part of it.",
+      "long": "Every one of them is in the functions view with its length and cognitive complexity."
+    },
+    "complexity__functions__complex": {
+      "name": "Complex functions",
+      "short": "Functions whose cognitive complexity passes 15.",
+      "long": "SonarSource's default threshold. The functions view lists them."
+    },
     "complexity__indentation__avg": {
       "name": "Average Indentation",
       "short": "Average indentation depth across all lines in a file.",
@@ -166,6 +208,11 @@
       "short": "Total number of indentation units across all lines in a file.",
       "long": "Sums the indentation level of every non-empty line in a file. This gives a raw measure of structural depth: a file with many deeply nested lines will have a high count even if the maximum depth is moderate.\n\nUseful for comparing overall structural complexity between files of similar size."
     },
+    "complexity__indentation__deep": {
+      "name": "Deeply indented lines",
+      "short": "Lines indented three levels or more.",
+      "long": "The stand-in for complex code in a language no pack parses: code health's fallback deducts for these lines the way it deducts for lines in complex functions elsewhere. Three levels predicted later bug fixes better than four, five or six, and better than the average or the deepest indentation (tasks/code-health/DECISION.md)."
+    },
     "complexity__indentation__max": {
       "name": "Maximum Indentation",
       "short": "Deepest indentation level found in a file.",
@@ -175,6 +222,21 @@
       "name": "Line Count",
       "short": "The number of lines in the file.",
       "long": "Counts the total number of lines in a file by counting newline characters. This is the most basic size metric and is used as an input to other derived metrics like code health and hotspot score."
+    },
+    "complexity__lines__code": {
+      "name": "Code lines",
+      "short": "Lines that hold code: not blank and not only a comment.",
+      "long": "Counted by a language pack from the file's syntax tree, so a comment is known as a comment. Code health measures size with it."
+    },
+    "complexity__lines__complex": {
+      "name": "Lines in complex functions",
+      "short": "Lines inside functions whose cognitive complexity passes 15.",
+      "long": "What code health's complex-code deduction counts. 15 is SonarSource's default threshold for a function's cognitive complexity."
+    },
+    "complexity__lines__nonblank": {
+      "name": "Non-blank lines",
+      "short": "Lines with anything on them, comments included.",
+      "long": "Counted by the indentation reader for every text file. Code health measures size with it when no language pack parses the file; a parsed file is measured by its code lines instead."
     },
     "complexity__lines__test": {
       "name": "Test lines",
@@ -396,6 +458,11 @@
       "short": "Distance from the ideal balance of abstractness and stability: |A + I - 1|.",
       "long": "The main sequence is the ideal line where A + I = 1 (abstractness + instability = 1). The distance from this line measures how well a component balances stability with abstractness.\n\n- D = 0: On the main sequence — ideal balance.\n- High D near (0,0): Zone of Pain — stable and concrete. Hard to change.\n- High D near (1,1): Zone of Uselessness — unstable and abstract. Over-engineered."
     },
+    "modularity__imports__count": {
+      "name": "Imports",
+      "short": "Import statements in the file, the standard library's and other projects' included.",
+      "long": "One per module imported; CommonJS require() counts as one. Code health's coupling deduction reads it."
+    },
     "modularity__instability": {
       "name": "Instability",
       "short": "Ratio of efferent to total coupling: Ce / (Ce + Ca). Range: 0 (stable) to 1 (unstable).",
@@ -425,33 +492,6 @@
       "name": "Component must not depend on Bundle",
       "short": "A framework-agnostic component must never depend on the framework glue that integrates it.",
       "long": "Symfony projects that separate Component from Bundle do so to keep the domain usable without the\nframework: the Component holds the model and the behaviour, the Bundle wires it into Symfony's\ncontainer, routing and configuration. The dependency runs one way. A component that reaches back\ninto its bundle can no longer be used, tested or published on its own, which is the only reason\nthe split exists.\n\nSylius is 60 composer packages arranged exactly this way, with 344 interfaces to 663 classes in\nits Component tree. The split is declared in composer.json, not in any namespace, which is why\nthis rule is checked against the module map."
-    }
-  },
-  "windowed": {
-    "git__additions": {
-      "name": "Addition Count (Last {days} Days)",
-      "short": "Number of lines of code added to this file or component in the last {days} days.",
-      "long": "Counts how many new lines of code were added in git commits over the last {days} days. Helps identify recently active or growing files."
-    },
-    "git__deletions": {
-      "name": "Deletion Count (Last {days} Days)",
-      "short": "Number of lines of code deleted from this file or component in the last {days} days.",
-      "long": "Counts how many lines of code were deleted in git commits over the last {days} days. Helps identify recently refactored or cleaned-up files."
-    },
-    "git__commits": {
-      "name": "Commit Count (Last {days} Days)",
-      "short": "Number of unique git commits modifying this file or component in the last {days} days.",
-      "long": "Counts how many times this file or component was modified in a git commit over the last {days} days. A high count suggests a recent hot spot of activity."
-    },
-    "git__authors": {
-      "name": "Author Count (Last {days} Days)",
-      "short": "Number of unique authors who modified this file or component in the last {days} days.",
-      "long": "Counts how many different developers made changes to this file or component in the last {days} days. High author count can indicate a risk of coordination issues."
-    },
-    "git__unique_file_changes": {
-      "name": "Unique File Changes (Last {days} Days)",
-      "short": "Number of unique files changed in commits that touched this file or component in the last {days} days.",
-      "long": "Measures co-changes over the last {days} days: how many other files were modified in the same commits as this one. Helps find implicit logical coupling."
     }
   }
 }

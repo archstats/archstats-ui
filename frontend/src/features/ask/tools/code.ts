@@ -53,7 +53,8 @@ export const codeTools: Tool[] = [
             const { name: path, also } = resolveFile(world, a.path)
             if (!path) return { text: notFound("file", a.path, also) }
             const cols = world.columns.files ?? []
-            const want = ["component", "role", "complexity__lines", "codesmells__code_health", "git__commits__total", "git__commits__last_90_days", "git__authors__total", "git__last_change_age_in_days", "codesmells__hotspot_score"].filter(c => cols.includes(c))
+            const want = ["component", "role", "complexity__lines", "codesmells__code_health", "git__commits__total", "git__commits__last_90_days", "git__authors__total", "git__last_change_age_in_days", "codesmells__hotspot_score",
+                "codesmells__health__deduction__complex_code", "codesmells__health__deduction__coupling", "codesmells__health__deduction__size", "codesmells__health__deduction__deep_code"].filter(c => cols.includes(c))
             const row = (await world.query(`SELECT ${want.join(", ")} FROM files WHERE name = ${sq(path)}`))[0] ?? {}
             let outline: Array<{ line: number; kind: string; text: string }> = []
             let imports: string[] = []
@@ -73,6 +74,13 @@ export const codeTools: Tool[] = [
                 importedBy = (await world.query<{ f: string }>(`SELECT DISTINCT from_file AS f FROM unit_connections WHERE to_file = ${sq(path)} AND from_file != to_file LIMIT 40`)).map(r => r.f)
                 importsFiles = (await world.query<{ f: string }>(`SELECT DISTINCT to_file AS f FROM unit_connections WHERE from_file = ${sq(path)} AND from_file != to_file LIMIT 40`)).map(r => r.f)
             }
+            // Revision 11 on: what took the health down, and the functions behind complex code.
+            const deductions = ([["complex code", row.codesmells__health__deduction__complex_code], ["coupling", row.codesmells__health__deduction__coupling], ["size", row.codesmells__health__deduction__size], ["deep code (from indentation)", row.codesmells__health__deduction__deep_code]] as const)
+                .filter(([, v]) => num(v) !== null).map(([k, v]) => `${k} −${fmt(num(v))}`)
+            let complexFunctions: Array<{ name: string; begin_line: number; end_line: number; cognitive: number }> = []
+            if (has(world, "functions")) {
+                complexFunctions = await world.query(`SELECT name, begin_line, end_line, cognitive FROM functions WHERE file = ${sq(path)} AND cognitive > 15 ORDER BY cognitive DESC LIMIT 10`)
+            }
             const values = [
                 { label: "Lines", value: num(row.complexity__lines) },
                 { label: "Code health (10 best)", value: num(row.codesmells__code_health) },
@@ -85,6 +93,8 @@ export const codeTools: Tool[] = [
             const text = [
                 `[${id}] ${path} · component ${row.component ?? world.fileComponent().get(path) ?? "?"} · role ${row.role ?? world.fileRole(path)}`,
                 values.map(v => `${v.label}: ${fmt(v.value)}`).join(" · "),
+                deductions.length ? `Health deductions (10 less these): ${deductions.join(", ")}` : "",
+                complexFunctions.length ? `Complex functions (cognitive complexity over 15, worst first): ${complexFunctions.map(f => `${f.name || "anonymous"} (cognitive ${f.cognitive}, lines ${f.begin_line}–${f.end_line})`).join("; ")}` : "",
                 outline.length ? `Declarations (${outline.length}${outline.length === 60 ? "+" : ""}; ${[...new Set(outline.map(o => o.kind))].map(k => `${outline.filter(o => o.kind === k).length} ${k}`).join(", ")}):\n${outline.map(o => `  line ${o.line} · ${o.kind}: ${o.text}`).join("\n")}` : "No declarations recorded for this file type.",
                 imports.length ? `Imports ${imports.length} components: ${imports.slice(0, 20).join(", ")}` : "",
                 importsFiles.length ? `Uses ${importsFiles.length} files: ${importsFiles.slice(0, 15).join(", ")}` : "",

@@ -453,7 +453,7 @@ function methodology(): string {
   if (roleFiles.value.third_party || roleFiles.value.generated) limits.push(t("pages.snapshot.thirdPartyGeneratedFiles2", { third_party: fmt(roleFiles.value.third_party), generated: fmt(roleFiles.value.generated) }));
   if (roleTotals.value.non_code) limits.push(t("pages.snapshot.linesNotCodeGet", { non_code: fmt(roleTotals.value.non_code) }));
   if (limits.length) lines.push("", t("pages.snapshot.limitsEvidence"), "", ...limits.map(l => `- ${l}`));
-  lines.push("", "### Definitions", "", t("pages.snapshot.codeHealth10Less"));
+  lines.push("", "### Definitions", "", store.hasColumn("files", "codesmells__health__deduction__complex_code") ? t("pages.snapshot.codeHealthFromFunctions") : t("pages.snapshot.codeHealth10Less"));
   lines.push("", "### Provenance", "", provenanceMarkdown(p), "");
   return lines.join("\n");
 }

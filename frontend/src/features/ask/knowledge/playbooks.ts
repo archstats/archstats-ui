@@ -63,8 +63,8 @@ export const PLAYBOOKS: Playbook[] = [
             "rank hotspot with grain files — complexity meeting change.",
             "cookbook unhealthy-changing — effort going into unhealthy code now.",
             "mass (color health) — where the unhealthy code lives.",
-            "file_outline on the top one or two files — what makes them big.",
-            "Answer: the few files to start with, why (numbers), and what a first refactoring step would be.",
+            "file_outline on the top one or two files — what took their health down (complex code, coupling, size) and which functions are complex.",
+            "Answer: the few files to start with, why (numbers), and what a first refactoring step would be — name the complex function to split when there is one.",
         ],
     },
 ]

@@ -344,7 +344,7 @@
     "notScan": "Not in that scan",
     "notComparable": "Not comparable: {text}",
     "noEarlierScanCompare": "No earlier scan to compare with.",
-    "healthLineWeightedMean": "Health is the line-weighted mean of {scoredFiles} scored {files}.",
+    "healthLineWeightedMean": "Health is the mean of {scoredFiles} scored {files}, weighted by size.",
     "hottestFile": "Hottest file:",
     "text100WhichSetsComponent": "({codesmells__hotspot_score} of 100), which sets the component's hotspot.",
     "shape": "Shape",
@@ -463,7 +463,8 @@
     "methodsLabel": "Methods",
     "directoriesLabel": "Directories",
     "directoriesHint": "Folders its files are spread across",
-    "indentationLabel": "Average indentation"
+    "indentationLabel": "Average indentation",
+    "leastHealthy": "Least healthy:"
   },
   "componentsInside": {
     "readingFiles": "Reading files…",
@@ -473,24 +474,16 @@
     "whatShow": "What to show",
     "howComponentSOwn": "How this component's own classes import each other",
     "everyFileComponent": "Every file in this component",
-    "searchFiles": "Search files",
     "allRoles": "All roles",
     "xRayEveryFile": "X-ray {folder}: every file read and grouped into topics",
     "xRay": "X-ray",
-    "sort": "Sort",
-    "sortFiles": "Sort files",
-    "noFilesMatch": "No files match",
-    "text0FilesMatch": "0 of {filesLength} files match.",
     "openFile": "Open file",
     "files": "Files",
     "wiring": "Wiring",
-    "text10SizeDeepestNesting": "10 − {size} (size) − {max} (deepest nesting) − {avg} (average nesting), never below 1",
-    "name": "Name",
     "lines": "Lines",
     "health": "Health",
     "hotspot": "Hotspot",
-    "commits": "Commits",
-    "authors": "Authors"
+    "commits": "Commits"
   },
   "componentsComparison": {
     "openingHotspots": "Opening Hotspots…"
@@ -710,7 +703,12 @@
     "deepestNesting": "Deepest nesting",
     "flattest": "Flattest",
     "amongHalfMost": "Among the half with the most {replace}",
-    "of": "of"
+    "of": "of",
+    "leastHealthyFile": "Least healthy file",
+    "complexCode": "Complex code",
+    "linesInComplexFunctions": "Lines inside functions whose cognitive complexity passes 15: the code whose edits most often turned out to be bug fixes.",
+    "mostComplexCode": "Most complex code",
+    "simplest": "Simplest"
   },
   "componentsPlotter": {
     "openingMetrics": "Opening Metrics…"
@@ -1100,7 +1098,8 @@
     "source": "Source",
     "imports": "Imports",
     "history": "History",
-    "java": "Java"
+    "java": "Java",
+    "functions": "Functions"
   },
   "filesHistory": {
     "fileHasNoCommits": "This file has no commits in the snapshot."
@@ -2008,7 +2007,8 @@
     "thirdPartyGeneratedFiles2": "Third-party ({third_party}) and generated ({generated}) files are counted in size but not scored for health or hotspots.",
     "linesNotCodeGet": "{non_code} lines are not code and get no health reading.",
     "limitsEvidence": "### Limits of the evidence",
-    "codeHealth10Less": "Code health is 10 less three capped deductions (size over 500 lines, deepest nesting and average nesting over the language's thresholds), never below 1; a component's is the line-weighted mean of its files'. The hotspot score is log2(commits + 1) × lines, scaled so the hottest file in the snapshot reads 100."
+    "codeHealth10Less": "Code health is 10 less three capped deductions (size over 500 lines, deepest nesting and average nesting over the language's thresholds), never below 1; a component's is the line-weighted mean of its files'. The hotspot score is log2(commits + 1) × lines, scaled so the hottest file in the snapshot reads 100.",
+    "codeHealthFromFunctions": "Code health is 10 less three deductions, never below 1: complex code (a point per doubling of the lines in functions over cognitive complexity 15), coupling (a point and a half per doubling of imports past 10) and size (a point per doubling of code lines past 150); languages no pack parses are read by their indentation. A component's is its files' weighted by code lines. The hotspot score is log2(commits + 1) × lines, scaled so the hottest file in the snapshot reads 100."
   },
   "trends": {
     "changes": "Changes",
@@ -2135,5 +2135,22 @@
     "commits": "Commits",
     "files": "Files",
     "in": "in {topicFilter}"
+  },
+  "filesFunctions": {
+    "noFunctions": "No functions measured",
+    "noFunctionsText": "No language pack measured functions in this file, or it holds none.",
+    "function": "Function",
+    "line": "Line",
+    "complex": "complex",
+    "functions": "Functions",
+    "sortedBy": "Sorted by {column}",
+    "ledeComplex": {
+      "one": "{functions} function; {complex} of them passes cognitive complexity {threshold}. Long functions that stay simple are fine: edits to them were no more often bug fixes than edits to short ones.",
+      "other": "{functions} functions; {complex} of them pass cognitive complexity {threshold}. Long functions that stay simple are fine: edits to them were no more often bug fixes than edits to short ones."
+    },
+    "ledeSimple": {
+      "one": "{functions} function, none over cognitive complexity {threshold}.",
+      "other": "{functions} functions, none over cognitive complexity {threshold}."
+    }
   }
 }

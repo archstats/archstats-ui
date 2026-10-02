@@ -15,6 +15,10 @@
       </div>
       <p v-if="scoredFiles || hottestFile" class="text-sm text-neutral-500">
         <template v-if="scoredFiles">{{ t('pages.componentsIndex.healthLineWeightedMean', { scoredFiles: formatNumber(scoredFiles), files: t('common.noun.file', { count: scoredFiles }) }) }}</template>
+        <template v-if="leastHealthyFile">
+          {{ ' ' + t('pages.componentsIndex.leastHealthy') }} <router-link :to="filePath(leastHealthyFile.name)" class="font-mono text-neutral-800 underline-offset-2 hover:underline">{{ leastHealthyFile.name.split("/").pop() }}</router-link>
+          ({{ formatHealth(Number(leastHealthyFile.codesmells__code_health)) }}).
+        </template>
         <template v-if="hottestFile && Number(hottestFile.codesmells__hotspot_score) > 0">
           {{ t('pages.componentsIndex.hottestFile') }} <router-link :to="filePath(hottestFile.name)" class="font-mono text-neutral-800 underline-offset-2 hover:underline">{{ hottestFile.name.split("/").pop() }}</router-link>
           {{ t('pages.componentsIndex.text100WhichSetsComponent', { codesmells__hotspot_score: formatHotspot(Number(hottestFile.codesmells__hotspot_score)) }) }}
@@ -203,6 +207,7 @@
             <template v-for="(part, i) in healthSpread.parts" :key="part.level"><span v-if="i > 0"> · </span>{{ part.count }} {{ part.label }}</template>
           </p>
         </div>
+        <ComplexFunctions :component="name" section-class="mt-6"/>
       </ReadingBand>
 
       <!-- 6. What it ships in: the deployables that hold it, from the
@@ -264,6 +269,7 @@ import { NO_DELTA, type Delta } from "~/features/trends/delta"
 import { sqlLiteral } from "~/shared/sql"
 import { healthLevel, levelDotClass, formatHealth, formatHotspot, hotspotLevel, type HealthLevel } from "~/features/metrics/useHealth"
 import StatStrip, { type StatCell } from "~/features/metrics/components/StatStrip.vue"
+import ComplexFunctions from "~/features/metrics/components/ComplexFunctions.vue"
 import ReadingBand from "~/shared/ui/ReadingBand.vue"
 import MainSequencePlot from "~/features/metrics/components/MainSequencePlot.vue"
 import PercentileStrip, { type StandingRow } from "~/features/metrics/components/PercentileStrip.vue"
@@ -520,6 +526,13 @@ const positionCells = computed(() => {
 // A component's health is the line-weighted mean of its scored files; its
 // hotspot is its hottest file's. Both say so under the strip, with the file.
 const scoredFiles = computed(() => (loaded.value?.files ?? []).filter(f => f.codesmells__code_health !== null).length)
+// The mean can hide one bad file among many good ones, so the worst is named beside it.
+const leastHealthyFile = computed(() => {
+  if (scoredFiles.value < 2) return null
+  let worst: FileRow | null = null
+  for (const f of loaded.value?.files ?? []) if (f.codesmells__code_health !== null && (!worst || Number(f.codesmells__code_health) < Number(worst.codesmells__code_health))) worst = f
+  return worst
+})
 const hottestFile = computed(() => {
   let best: FileRow | null = null
   for (const f of loaded.value?.files ?? []) if (f.codesmells__hotspot_score !== null && (!best || Number(f.codesmells__hotspot_score) > Number(best.codesmells__hotspot_score))) best = f

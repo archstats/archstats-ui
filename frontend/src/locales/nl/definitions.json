@@ -93,33 +93,13 @@
     },
     "codesmells__code_health": {
       "name": "Code Health",
-      "short": "Een cijfer van 1,0 tot 10,0 voor hoe onderhoudbaar de structuur is.",
-      "long": "Beoordeeld op een schaal van 1,0 (laagst) tot 10,0 (hoogst). Er gaan punten af voor bestandsgrootte (meer dan 500 regels), maximale nestingdiepte en gemiddelde nestingdiepte. JavaScript- en TypeScript-bestanden krijgen een ruimere indentatiedrempel. Bestanden zonder code (JSON, YAML, lockfiles, markdown) tellen niet mee in code health, anders vertekenen ze het beeld. Scores van componenten zijn een gemiddelde gewogen op grootte, zodat grote God Files niet wegvallen."
-    },
-    "codesmells__health__deduction__avg_nesting": {
-      "name": "Aftrek voor gemiddelde nesting",
-      "short": "Punten die van de health van een bestand af gaan voor de gemiddelde nesting: 1,5 per niveau boven de drempel van de taal, maximaal 3.",
-      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
-    },
-    "codesmells__health__deduction__max_nesting": {
-      "name": "Aftrek voor maximale nesting",
-      "short": "Punten die van de health van een bestand af gaan voor de diepste nesting: 0,5 per niveau boven de drempel van de taal, maximaal 3.",
-      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+      "short": "Een cijfer van 1,0 tot 10,0 voor hoe duur de code van een bestand is om te wijzigen, alleen uit de code gelezen.",
+      "long": "10 min drie aftrekposten, nooit lager dan 1. Complexe code: een punt per verdubbeling van de regels in functies met een cognitieve complexiteit boven 15, geteld als 1 + regels ÷ 25. Koppeling: anderhalve punt per verdubbeling van de import-statements boven 10. Omvang: een punt per verdubbeling van de coderegels boven 150. Elke aftrekpost bleef omdat hij latere bugfixes voorspelde bovenop wat omvang al voorspelt, op vijftien codebases zoals ze twee jaar eerder waren; indentatie viel af omdat die niets voorspelde bovenop omvang.\n\nEen bestand in een programmeertaal die geen language pack leest, wordt op zijn indentatie gelezen: omvang uit de niet-lege regels boven 180, en een punt per verdubbeling van 1 + regels drie niveaus diep ÷ 25. Markup, data, stylesheets, SQL en shellscripts krijgen geen score.\n\nDe health van een component of map is die van zijn bestanden, gewogen op coderegels, met het minst gezonde bestand ernaast."
     },
     "codesmells__health__deduction__size": {
-      "name": "Aftrek voor grootte",
-      "short": "Punten die van de health van een bestand af gaan voor de grootte: 0,01 per regel boven 500, maximaal 3.",
-      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
-    },
-    "codesmells__health__threshold__avg_nesting": {
-      "name": "Drempel voor gemiddelde nesting",
-      "short": "De gemiddelde nesting die een bestand in deze taal mag halen voordat het health verliest.",
-      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
-    },
-    "codesmells__health__threshold__max_nesting": {
-      "name": "Drempel voor maximale nesting",
-      "short": "De diepste nesting die een bestand in deze taal mag halen voordat het health verliest.",
-      "long": "Een van de inputs achter de code health van een bestand. We slaan ze op zodat je de score kunt uitleggen in plaats van blind te vertrouwen: health is 10 min de aftrek voor grootte, maximale nesting en gemiddelde nesting, en nooit lager dan 1. Alleen vastgelegd voor bestanden. De health van een component is het gemiddelde van zijn bestanden, gewogen op grootte."
+      "name": "Aftrek voor omvang",
+      "short": "Punten die van de health van een bestand af gaan voor de omvang: een per verdubbeling van de coderegels boven 150.",
+      "long": "300 coderegels kosten een punt, 600 twee, 1.200 drie; er zit geen plafond op. Een bestand dat geen pack parste, meten we in plaats daarvan op zijn niet-lege regels boven 180. Grotere bestanden krijgen meer bugfixes, maar niet meer per regel, dus deze aftrek gaat over hoeveel er te wijzigen valt en niet over hoe goed het geschreven is. Alleen vastgelegd voor bestanden."
     },
     "codesmells__hotspot__raw": {
       "name": "Ruwe hotspot",
@@ -425,6 +405,66 @@
       "name": "Een Component mag niet afhangen van een Bundle",
       "short": "Een framework-agnostische component mag nooit afhangen van de framework-glue die hem integreert.",
       "long": "Symfony-projecten die Component en Bundle scheiden, doen dat om het domein bruikbaar te houden zonder het\nframework: de Component bevat het model en het gedrag, de Bundle koppelt het aan de container,\nrouting en configuratie van Symfony. De dependency loopt één kant op. Een component die terugreikt\nnaar zijn bundle kun je niet meer los gebruiken, testen of publiceren, en dat is de enige reden\nvoor de splitsing.\n\nSylius bestaat uit 60 composer-packages die precies zo zijn ingedeeld, met 344 interfaces tegenover 663 classes in\nde Component-tree. De splitsing staat in composer.json, niet in een namespace, en daarom\nwordt deze regel gecontroleerd op de module map."
+    },
+    "codesmells__health__deduction__coupling": {
+      "name": "Aftrek voor koppeling",
+      "short": "Punten die van de health van een bestand af gaan voor zijn imports: anderhalve per verdubbeling boven 10.",
+      "long": "20 imports kosten anderhalve punt, 40 drie. Elke import telt, ook die van de standaardbibliotheek en van andere projecten: hoeveel een bestand moet weten voorspelde latere fixes, waar de bestanden die het binnen het project bereikt dat niet deden. Alleen vastgelegd voor geparste bestanden."
+    },
+    "codesmells__health__deduction__complex_code": {
+      "name": "Aftrek voor complexe code",
+      "short": "Punten die van de health van een bestand af gaan voor de regels in functies met een cognitieve complexiteit boven 15.",
+      "long": "Een punt per verdubbeling van 1 + die regels ÷ 25: 25 regels kosten een punt, 75 twee, 175 drie. Wijzigingen in lange, complexe functies waren ongeveer 1,6 keer zo vaak bugfixes als wijzigingen in even lange eenvoudige functies; lange eenvoudige functies waren niet slechter dan korte. De functies-view noemt ze bij naam. Alleen vastgelegd voor geparste bestanden."
+    },
+    "codesmells__health__deduction__deep_code": {
+      "name": "Aftrek voor diepe code",
+      "short": "Voor een bestand dat geen pack parst: punten die van de health af gaan voor regels die drie niveaus of dieper ingesprongen zijn.",
+      "long": "Een punt per verdubbeling van 1 + die regels ÷ 25. De indentatie-vervanger voor complexe code in een taal zonder pack, gescoord alsof de vijftien geteste codebases geen parser hadden: zwakker dan functies lezen, maar beter dan de gemiddelde of diepste indentatie die de score eerder gebruikte."
+    },
+    "codesmells__code_health__worst_file": {
+      "name": "Minst gezonde bestand",
+      "short": "De laagste code health onder de bestanden van een component of map.",
+      "long": "Staat naast de health van de groep, die het gemiddelde van zijn bestanden is, gewogen op coderegels, en zo één slecht bestand tussen veel goede kan verbergen. Niet vastgelegd voor losse bestanden."
+    },
+    "complexity__lines__code": {
+      "name": "Coderegels",
+      "short": "Regels met code: niet leeg en niet alleen commentaar.",
+      "long": "Geteld door een language pack uit de syntaxboom van het bestand, dus commentaar wordt als commentaar herkend. Code health meet de omvang hiermee."
+    },
+    "complexity__lines__complex": {
+      "name": "Regels in complexe functies",
+      "short": "Regels in functies met een cognitieve complexiteit boven 15.",
+      "long": "Wat de aftrek voor complexe code in code health telt. 15 is de standaarddrempel van SonarSource voor de cognitieve complexiteit van een functie."
+    },
+    "complexity__functions": {
+      "name": "Functies",
+      "short": "Functies, methods, constructors en closures die een language pack vond; een closure binnen een functie telt als deel daarvan.",
+      "long": "Elke functie staat in de functies-view met zijn lengte en cognitieve complexiteit."
+    },
+    "complexity__functions__complex": {
+      "name": "Complexe functies",
+      "short": "Functies met een cognitieve complexiteit boven 15.",
+      "long": "De standaarddrempel van SonarSource. De functies-view somt ze op."
+    },
+    "complexity__cognitive__max": {
+      "name": "Hoogste cognitieve complexiteit",
+      "short": "De cognitieve complexiteit van de functie die het lastigst te volgen is.",
+      "long": "Cognitieve complexiteit, zoals SonarSource die definieert, kost één per onderbreking in de lineaire flow van een functie (een if, een loop, een switch, een catch, een ternary, een reeks && of ||) en één extra per niveau dat die genest is. Gelabelde sprongen en recursie tellen niet mee. Voor een groep is het de hoogste van zijn bestanden."
+    },
+    "modularity__imports__count": {
+      "name": "Imports",
+      "short": "Import-statements in het bestand, ook die van de standaardbibliotheek en van andere projecten.",
+      "long": "Eén per geïmporteerde module; een CommonJS-require() telt als één. De aftrek voor koppeling in code health leest dit."
+    },
+    "complexity__lines__nonblank": {
+      "name": "Niet-lege regels",
+      "short": "Regels waar iets op staat, commentaar meegeteld.",
+      "long": "Geteld door de indentatielezer, voor elk tekstbestand. Code health meet de omvang hiermee als geen language pack het bestand parst; een geparst bestand meten we op zijn coderegels."
+    },
+    "complexity__indentation__deep": {
+      "name": "Diep ingesprongen regels",
+      "short": "Regels die drie niveaus of dieper ingesprongen zijn.",
+      "long": "De vervanger voor complexe code in een taal die geen pack parst: de terugvalscore van code health trekt voor deze regels af zoals die elders aftrekt voor regels in complexe functies. Drie niveaus voorspelde latere bugfixes beter dan vier, vijf of zes, en beter dan de gemiddelde of diepste indentatie (tasks/code-health/DECISION.md)."
     }
   },
   "windowed": {

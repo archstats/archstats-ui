@@ -33,6 +33,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
 import { useFileRoute } from "~/features/files/useFileRoute"
 import { useJavaMetrics } from "~/features/java/useJavaMetrics"
 import { formatNumber } from "~/shared/format"
+import { sqlLiteral } from "~/shared/sql"
 import DetailFrame, { type DetailCrumb, type DetailStat, type DetailTab } from "~/features/shell/components/DetailFrame.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import Icon from "~/shared/ui/Icon.vue"
@@ -93,11 +94,23 @@ const { data: hasJava } = useAsyncQuery<boolean>(
   { initial: false },
 )
 
+// The Functions tab, from revision 11, when a pack measured this file's functions.
+const { data: hasFunctions } = useAsyncQuery<boolean>(
+  async () => {
+    if (!filePath.value || !store.hasColumn("functions", "cognitive")) return false
+    const rows = await store.query<{ n: number }>(`SELECT count(*) AS n FROM functions WHERE file = ${sqlLiteral(filePath.value)}`)
+    return Number(rows[0]?.n ?? 0) > 0
+  },
+  [filePath, () => store.datasetKey],
+  { initial: false },
+)
+
 const tabs = computed<DetailTab[]>(() => {
   const base = `/views/files/${filePath.value}`
   const list: DetailTab[] = [
     { id: "overview", label: t("pages.files.overview"), to: base, exact: true },
     { id: "source", label: t("pages.files.source"), to: `${base}/source` },
+    ...(hasFunctions.value ? [{ id: "functions", label: t("pages.files.functions"), to: `${base}/functions` }] : []),
     { id: "imports", label: t("pages.files.imports"), to: `${base}/imports` },
     { id: "history", label: t("pages.files.history"), to: `${base}/history` },
   ]

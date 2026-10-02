@@ -2,7 +2,9 @@
   <section v-if="health !== null" class="mt-5 pt-5 hairline-t" aria-labelledby="why-score">
     <h2 id="why-score" class="ui-section-title">{{ t('metrics.healthBreakdown.whyScore') }}</h2>
 
-    <template v-if="hasDeductions">
+    <template v-if="breakdown">
+      <p v-if="breakdown.kind === 'indentation'" class="mt-2 max-w-[76ch] text-base text-neutral-600">{{ t('metrics.healthBreakdown.readFromIndentation') }}</p>
+      <p v-else-if="breakdown.kind === 'legacy' && store.snapshotOutdated" class="mt-2 max-w-[76ch] text-base text-neutral-600">{{ t('metrics.healthBreakdown.olderFormula') }}</p>
       <div class="mt-3 overflow-hidden rounded-lg hairline">
         <table class="ui-table">
           <thead>
@@ -15,8 +17,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in rows" :key="r.label">
-              <td class="text-neutral-900">{{ r.label }}</td>
+            <tr v-for="r in breakdown.rows" :key="r.id">
+              <td class="text-neutral-900"><router-link v-if="r.to" :to="r.to" class="underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-700">{{ r.label }}</router-link><template v-else>{{ r.label }}</template></td>
               <td class="is-num">{{ r.input }}</td>
               <td class="is-num text-neutral-600">{{ r.threshold }}</td>
               <td class="text-neutral-600">{{ r.rule }}</td>
@@ -31,7 +33,8 @@
           </tfoot>
         </table>
       </div>
-      <p v-if="mismatch" class="mt-2 text-sm text-amber-700">{{ t('metrics.healthBreakdown.deductionsSumNotRecorded', { expected: fmt(expected), health: fmt(health) }) }}</p>
+      <p v-if="mismatch" class="mt-2 text-sm text-amber-700">{{ t('metrics.healthBreakdown.deductionsSumNotRecorded', { expected: fmt(breakdown.expected), health: fmt(health) }) }}</p>
+      <ComplexFunctions v-if="breakdown.kind === 'functions'" :file="fileName" section-class="mt-5"/>
     </template>
     <p v-else class="mt-2 max-w-[70ch] text-base text-neutral-600">
       <I18nT k="metrics.healthBreakdown.linesNestingUpLevels"><template #lines>{{ fmtInt(lines) }}</template><template #maxNesting>{{ fmtInt(maxNesting) }}</template><template #avgNesting>{{ fmt(avgNesting) }}</template><template #span><span class="text-neutral-500">{{ t('metrics.healthBreakdown.snapshotDoesNotRecord') }}</span></template></I18nT>
@@ -54,13 +57,15 @@ import { computed } from "vue";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { filePath } from "~/features/navigation/routes";
-import { t, intlLocale } from "~/shared/i18n";
+import { t } from "~/shared/i18n";
 import I18nT from "~/shared/ui/I18nT";
+import ComplexFunctions from "~/features/metrics/components/ComplexFunctions.vue";
+import { healthBreakdown, fmt, fmtInt } from "~/features/metrics/healthBreakdown";
 
-// A file's health is 10 less three capped deductions, floored at 1. Revision
-// 2 snapshots store each deduction and threshold, so the score is shown with
-// its inputs rather than as a verdict; the rules come from the engine's
-// definitions, and no copy of the formula decides anything here.
+// A file's health with the deductions the engine stored for it, each with
+// its input and rule (healthBreakdown.ts reads which formula the snapshot
+// used). The score is shown with its inputs rather than as a verdict, and
+// for a parsed file with the functions behind its complex-code deduction.
 
 const props = defineProps<{ file: Record<string, any> }>();
 const store = useDataStore();
@@ -81,25 +86,12 @@ const commits = computed(() => num("git__commits__total"));
 const hotspot = computed(() => num("codesmells__hotspot_score") ?? 0);
 const raw = computed(() => num("codesmells__hotspot__raw") ?? Math.log2((commits.value ?? 0) + 1) * lines.value);
 
-const sizeD = computed(() => num("codesmells__health__deduction__size"));
-const maxD = computed(() => num("codesmells__health__deduction__max_nesting"));
-const avgD = computed(() => num("codesmells__health__deduction__avg_nesting"));
-const maxT = computed(() => num("codesmells__health__threshold__max_nesting"));
-const avgT = computed(() => num("codesmells__health__threshold__avg_nesting"));
-const hasDeductions = computed(() => sizeD.value !== null && maxD.value !== null && avgD.value !== null);
-
-const rows = computed(() => [
-  { label: t("metrics.healthBreakdown.size"), input: t("metrics.healthBreakdown.lines", { lines: fmtInt(lines.value) }), threshold: "over 500", rule: t("metrics.healthBreakdown.text001PerLine"), points: sizeD.value ?? 0 },
-  { label: t("metrics.healthBreakdown.deepestNesting"), input: t("metrics.healthBreakdown.levels", { maxNesting: fmtInt(maxNesting.value) }), threshold: maxT.value !== null ? t("metrics.healthBreakdown.over", { maxT: fmt(maxT.value) }) : "—", rule: t("metrics.healthBreakdown.text05PerLevel"), points: maxD.value ?? 0 },
-  { label: t("metrics.healthBreakdown.averageNesting"), input: t("metrics.healthBreakdown.levels2", { avgNesting: fmt(avgNesting.value) }), threshold: avgT.value !== null ? t("metrics.healthBreakdown.over2", { avgT: fmt(avgT.value) }) : "—", rule: t("metrics.healthBreakdown.text15PerLevel"), points: avgD.value ?? 0 },
-]);
-
-const expected = computed(() => Math.max(1, 10 - rows.value.reduce((s, r) => s + r.points, 0)));
-const mismatch = computed(() => health.value !== null && Math.abs(expected.value - health.value) > 0.05);
+const breakdown = computed(() => healthBreakdown(props.file ?? {}));
+const mismatch = computed(() => breakdown.value !== null && health.value !== null && Math.abs(breakdown.value.expected - health.value) > 0.05);
 const sumLine = computed(() => {
-  const terms = rows.value.map(r => ` − ${fmt(r.points)}`).join("");
-  const unfloored = 10 - rows.value.reduce((s, r) => s + r.points, 0);
-  return `10${terms} = ${fmt(unfloored)}${unfloored < 1 ? t("metrics.healthBreakdown.floored1") : ""}`;
+  const b = breakdown.value;
+  if (!b) return "";
+  return `10${b.rows.map(r => ` − ${fmt(r.points)}`).join("")} = ${fmt(b.unfloored)}${b.unfloored < 1 ? t("metrics.healthBreakdown.floored1") : ""}`;
 });
 
 const { data: hottest } = useAsyncQuery<{ name: string } | null>(
@@ -111,14 +103,6 @@ const { data: hottest } = useAsyncQuery<{ name: string } | null>(
   { initial: null },
 );
 
-function fmt(v: number | null): string {
-  if (v === null || !Number.isFinite(v)) return "—";
-  return v.toLocaleString(intlLocale, { maximumFractionDigits: 2 });
-}
-function fmtInt(v: number | null): string {
-  if (v === null || !Number.isFinite(v)) return "—";
-  return Math.round(v).toLocaleString(intlLocale);
-}
 function basename(p: string): string {
   return p.split("/").pop() || p;
 }

@@ -237,6 +237,13 @@
                 <span :class="levelTextClass(healthLevel(selectedUnit.codesmells__code_health))">{{ formatHealth(selectedUnit.codesmells__code_health) }}</span>
               </dd>
             </template>
+            <template v-if="grain !== 'files' && hasColumn('codesmells__code_health__worst_file') && selectedUnit.codesmells__code_health__worst_file !== null">
+              <dt>{{ t('pages.componentsHotspots.leastHealthyFile') }}</dt>
+              <dd class="flex items-center justify-end gap-1.5">
+                <span class="inline-block h-1.5 w-1.5 rounded-full" :class="levelDotClass(healthLevel(selectedUnit.codesmells__code_health__worst_file))"></span>
+                <span :class="levelTextClass(healthLevel(selectedUnit.codesmells__code_health__worst_file))">{{ formatHealth(selectedUnit.codesmells__code_health__worst_file) }}</span>
+              </dd>
+            </template>
             <template v-if="hasColumn('codesmells__hotspot_score')">
               <dt>{{ t('pages.componentsHotspots.hotspotScore') }}</dt>
               <dd class="flex items-center justify-end gap-1.5">
@@ -507,6 +514,18 @@ const presets = computed<HotspotPreset[]>(() => {
       colorMetric: LAST_CHANGED,
       labelHigh: t("pages.componentsHotspots.untouchedLongest"),
       labelLow: t("pages.componentsHotspots.changedRecently"),
+    })
+  }
+  if (hasColumn(lines) && hasColumn("complexity__lines__complex")) {
+    list.push({
+      id: "complex-code",
+      label: t("pages.componentsHotspots.complexCode"),
+      description: t("pages.componentsHotspots.linesInComplexFunctions"),
+      icon: "braces",
+      sizeMetric: lines,
+      colorMetric: "complexity__lines__complex",
+      labelHigh: t("pages.componentsHotspots.mostComplexCode"),
+      labelLow: t("pages.componentsHotspots.simplest"),
     })
   }
   if (hasColumn(lines) && hasColumn("complexity__indentation__max")) {

@@ -8,7 +8,18 @@
     "vueHtmlXml": "vue / html / xml",
     "bashShell": "bash / shell",
     "diffPatch": "diff / patch",
-    "iniToml": "ini / toml"
+    "iniToml": "ini / toml",
+    "complexity": "Complexity",
+    "complexityTitle": "Show what makes each complex function hard to follow",
+    "inComplexFunction": "In {name}, cognitive complexity {cognitive}",
+    "anonymous": "anonymous function",
+    "step": "+{points} for this {construct}",
+    "stepNested": "+{points}: this {construct} is nested {nesting} deep, 1 plus 1 per level",
+    "symbols": "Symbols",
+    "symbolsTitle": "Show the functions of this file",
+    "scopeTitle": "{name}: go to its first line",
+    "cognitive": "cognitive {cognitive}",
+    "selectLine": "Select this line; shift-click to select a range"
   },
   "openInEditor": {
     "open": "Open {basename}{value} in {editorLabel}",
@@ -28,5 +39,32 @@
     "changedSinceSnapshotLine": "Changed since this snapshot; the line may have moved.",
     "couldNotOpen": "Could not open: {value}",
     "couldNotReveal": "Could not reveal: {value}"
+  },
+  "fileNavigator": {
+    "files": "Files",
+    "goToFile": "Go to file",
+    "pressT": "Press t to search files",
+    "arrange": "Arrange files",
+    "tree": "Tree",
+    "ranked": "Ranked",
+    "rankBy": "Rank by",
+    "noMatch": "No file matches",
+    "noMatchText": "Nothing among the {files} files matches “{query}”.",
+    "health": "Health {health}"
+  },
+  "symbolsPane": {
+    "symbols": "Symbols",
+    "order": "Order",
+    "inOrder": "File",
+    "inOrderTitle": "In the order the file reads",
+    "mostComplex": "Complex",
+    "mostComplexTitle": "Hardest to follow first",
+    "filterSymbols": "Filter symbols",
+    "noFunctions": "No functions",
+    "noFunctionsText": "The language pack found no functions in this file.",
+    "noMatch": "No symbol matches",
+    "noMatchText": "Nothing here is named like “{filter}”.",
+    "rowTitle": "{name}, lines {begin}–{end}, cognitive complexity {cognitive}",
+    "anonymous": "anonymous, line {line}"
   }
 }

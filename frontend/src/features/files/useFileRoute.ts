@@ -6,7 +6,7 @@ import { sqlLiteral } from "~/shared/sql";
 // segment on the end. This is the one place that knows which trailing
 // segments are tabs and not part of the path; the frame and every tab page
 // resolve the file through it.
-const TAB_SEGMENTS = new Set(["source", "imports", "history", "java"]);
+const TAB_SEGMENTS = new Set(["source", "functions", "imports", "history", "java"]);
 
 export function useFileRoute() {
     const route = useRoute();
