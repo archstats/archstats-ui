@@ -2,7 +2,11 @@
   <!-- One exhibit, drawn from its spec on its own scan: the real figure in a host frame (its title row,
        export button and legend, as every figure in the app), or its table. -->
   <div class="ex" :class="`ex-${density}`" :data-exhibit="part.id">
-    <ExhibitFrame :title="caption || part.title" header-class="pb-1.5">
+    <ExhibitFrame :title="heading" header-class="pb-1.5">
+      <!-- The name keeps its case: a component or file is spelled as in the code. The kind before " · " is quieter. -->
+      <template #title>
+        <h3 class="ex-title" :title="heading"><template v-if="kindOf"><span class="ex-kind">{{ kindOf }}</span>{{ ' ' }}</template>{{ nameOf }}</h3>
+      </template>
       <template #aside>
         <span class="ex-id" :title="t('exhibits.exhibitView.computed', { partId: part.id, value: part.ranOn.commit.slice(0, 7) || t('exhibits.exhibitView.scan') })">{{ part.id }}</span>
         <button v-if="addable" type="button" class="ex-open" :title="t('exhibits.exhibitView.addConversationSReport')" @click="$emit('add')"><FilePlus2 :size="12" :stroke-width="1.75"/>{{ ' ' + t('exhibits.exhibitView.report') }}</button>
@@ -12,7 +16,7 @@
         <div v-if="figure && data" class="ex-figure" :style="def?.figure?.fill ? { height: `${reserve}px` } : undefined">
           <component :is="figure" v-bind="figureProps" v-on="listeners"/>
         </div>
-        <ExhibitTable v-else-if="data && table" :table="table"/>
+        <ExhibitTable v-else-if="data && table" :table="table" :highlight="opts.highlight"/>
         <ExhibitTable v-else-if="state !== 'loading' && part.table" :table="part.table"/>
         <div v-else-if="state === 'loading'" class="ex-wait" :style="{ height: `${reserve}px` }"><span class="ex-shimmer"/><span class="ex-hint"><Loader2 :size="12" class="animate-spin"/>{{ ' ' + t('exhibits.exhibitView.drawing') }}</span></div>
         <p v-if="state === 'absent' || state === 'error'" class="ex-hint ex-hint-static">{{ message }}</p>
@@ -45,6 +49,14 @@ const emit = defineEmits<{ (e: "open", to: ExhibitOpen): void; (e: "pick", eleme
 // What the figure registers for export stays with this exhibit: the page's Export menu never offers it.
 const exportables = shallowRef<Exportable[]>([])
 provide(EXPORT_SCOPE, { add(item) { exportables.value = [...exportables.value, item]; return () => { exportables.value = exportables.value.filter(x => x !== item) } } })
+
+const heading = computed(() => props.caption || props.part.title)
+const kindOf = computed(() => (heading.value.includes(" · ") ? heading.value.slice(0, heading.value.indexOf(" · ")) : ""))
+// A file goes by its own name; the folders are in the tooltip (and under the title, in a file's profile).
+const nameOf = computed(() => {
+  const name = kindOf.value ? heading.value.slice(kindOf.value.length + 3) : heading.value
+  return kindOf.value && /^[^\s]+\/[^\s/]+$/.test(name) ? name.slice(name.lastIndexOf("/") + 1) : name
+})
 
 const def = defOf(props.part.spec.kind)
 const state = ref<"loading" | "done" | "absent" | "error">("loading")
@@ -90,6 +102,8 @@ defineExpose({ exportables })
 @media (prefers-reduced-motion: reduce) { .ex-shimmer { animation: none; } }
 .ex-hint { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: rgb(var(--c-neutral-500)); }
 .ex-hint-static { display: block; padding: 4px 0 2px; }
+.ex-title { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; color: rgb(var(--c-neutral-900)); }
+.ex-kind { font-weight: 500; color: rgb(var(--c-neutral-500)); }
 .ex-id { display: inline-flex; align-items: center; height: 18px; font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(var(--c-neutral-700)); background: rgb(var(--c-neutral-100)); border-radius: 3px; padding: 0 5px; }
 .ex-open { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; color: rgb(var(--c-neutral-600)); white-space: nowrap; }
 .ex-open:hover { color: rgb(var(--c-neutral-900)); }

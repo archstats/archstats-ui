@@ -11,10 +11,11 @@ import { candidates } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, num, plural, sq } from "~/features/exhibits/words"
+import { ROLE_LABELS, type FileRole } from "~/features/snapshot/languages"
 import { t } from "~/shared/i18n"
 
 type Value = { label: string; value: number | string | null; key?: string }
-type List = { title: string; items: Array<{ name: string; label?: string; note?: string | number }> }
+type List = { title: string; items: Array<{ name: string; label?: string; note?: string | number }>; /** The note is a line number: it leads the row. */ lead?: boolean }
 
 export interface ProfileData {
     kind: "codebase" | "component" | "file"
@@ -39,7 +40,7 @@ export const profile = exhibit<ProfileData>()({
         of: s.string().optional().describe(t("exhibit-catalog.profile.componentFileWholeCodebase2")),
     }, { aliases: { component: "of", file: "of", name: "of", path: "of" } }),
 
-    title: (p, d) => (d ? (d.kind === "codebase" ? t("exhibit-catalog.profile.codebase") : `${d.kind === "file" ? t("exhibit-catalog.profile.file") : t("exhibit-catalog.profile.component")} · ${d.name}`) : p.of ?? t("exhibit-catalog.profile.codebase")),
+    title: (p, d) => (d ? (d.kind === "codebase" ? t("exhibit-catalog.profile.codebase") : `${d.kind === "file" ? t("exhibit-catalog.profile.file") : t("exhibit-catalog.profile.component")} · ${d.kind === "file" ? d.name.split("/").pop() : d.name}`) : p.of ?? t("exhibit-catalog.profile.codebase")),
 
     async resolve(p, { snap }): Promise<ProfileData | Absent> {
         if (!p.of) return codebase(snap)
@@ -67,8 +68,8 @@ export const profile = exhibit<ProfileData>()({
 
     figure: {
         load: () => import("~/features/exhibits/components/ExProfile.vue"),
-        props: (d, _p, o) => ({ values: d.values, lists: d.lists, path: d.kind === "file" ? d.name : "", highlight: o.highlight, density: o.density }),
-        height: (d, o) => 30 + Math.ceil(d.values.length / 2) * 24 + (d.lists.length ? (o.density === "inline" ? 6 : 14) * 20 + 30 : 0),
+        props: (d, _p, o) => ({ values: d.values.map(v => (v.key === "role" && typeof v.value === "string" ? { ...v, value: ROLE_LABELS[v.value as FileRole] ?? v.value } : v)), lists: d.lists, path: d.kind === "file" ? d.name : "", subject: d.kind === "component" ? d.name : "", highlight: o.highlight, density: o.density }),
+        height: (d, o) => 40 + Math.ceil(d.values.filter(v => typeof v.value === "number").length / 2) * 26 + (d.lists.length ? (o.density === "inline" ? 6 : 14) * 22 + 30 : 0),
         picks: { select: (name: string) => `item:${name}` },
     },
 
@@ -86,7 +87,7 @@ function component(snap: import("~/features/snapshot/snapshot").Snapshot, name: 
     const cycles = cycleCountsByComponent(snap.cycles()).get(name) ?? 0
     const v = (key: string, label: string, value: unknown): Value => ({ key, label, value: num(value) })
     const values = [
-        v("lines", t("exhibit-catalog.profile.linesCode"), c.complexity__lines), v("files", "Files", c.complexity__files),
+        v("lines", t("exhibit-catalog.profile.linesCode"), c.complexity__lines), v("files", t("exhibit-catalog.profile.files"), c.complexity__files),
         v("dependents", t("exhibit-catalog.profile.componentsDepend"), c.modularity__coupling__dependents), v("dependencies", t("exhibit-catalog.profile.componentsDepends"), c.modularity__coupling__dependencies),
         v("instability", t("exhibit-catalog.profile.instability0Stable1"), c.modularity__instability), { key: "cycles", label: t("exhibit-catalog.profile.cycles"), value: cycles },
         v("commits", t("exhibit-catalog.profile.commitsAllTime"), c.git__commits__total), v("commits_90", t("exhibit-catalog.profile.commitsLast90Days"), c.git__commits__last_90_days),
@@ -109,11 +110,11 @@ async function file(snap: import("~/features/snapshot/snapshot").Snapshot, path:
     const want = ["component", "role", "complexity__lines", "codesmells__code_health", "git__commits__total", "git__commits__last_90_days", "git__authors__total", "git__last_change_age_in_days"].filter(c => cols.includes(c))
     const row = (await snap.query(`SELECT ${want.join(", ")} FROM files WHERE name = ${sq(path)}`))[0] ?? {}
     const values: Value[] = ([
-        ["component", "Component", row.component ?? snap.fileComponent().get(path) ?? null],
-        ["role", "Role", row.role ?? snap.fileRole(path)],
-        ["lines", "Lines", num(row.complexity__lines)], ["health", t("exhibit-catalog.profile.codeHealth10Best"), num(row.codesmells__code_health)],
+        ["component", t("exhibit-catalog.profile.component"), row.component ?? snap.fileComponent().get(path) ?? null],
+        ["role", t("exhibit-catalog.profile.role"), row.role ?? snap.fileRole(path)],
+        ["lines", t("exhibit-catalog.profile.lines"), num(row.complexity__lines)], ["health", t("exhibit-catalog.profile.codeHealth10Best"), num(row.codesmells__code_health)],
         ["commits", t("exhibit-catalog.profile.commitsAllTime"), num(row.git__commits__total)], ["commits_90", t("exhibit-catalog.profile.commitsLast90Days"), num(row.git__commits__last_90_days)],
-        ["authors", "Authors", num(row.git__authors__total)], ["age", t("exhibit-catalog.profile.daysSinceLastChange"), num(row.git__last_change_age_in_days)],
+        ["authors", t("exhibit-catalog.profile.authors"), num(row.git__authors__total)], ["age", t("exhibit-catalog.profile.daysSinceLastChange"), num(row.git__last_change_age_in_days)],
     ] as Array<[string, string, number | string | null]>).filter(([, , x]) => x !== null).map(([key, label, value]) => ({ key, label, value }))
     const lists: List[] = []
     if ("snippets" in snap.columns) {
@@ -121,7 +122,7 @@ async function file(snap: import("~/features/snapshot/snapshot").Snapshot, path:
         const decl = snips.filter(x => isDeclaration(x.snippet_type))
             .map(x => ({ line: Number(String(x.begin_position).split(":")[0]) || 0, text: String(x.content).replace(/\s+/g, " ").slice(0, 80) }))
             .sort((a, b) => a.line - b.line).filter((x, i, all) => i === 0 || x.line !== all[i - 1].line).slice(0, 40)
-        lists.push({ title: t("exhibit-catalog.profile.declarationsLine"), items: decl.map(x => ({ name: `${path}:${x.line}`, label: x.text, note: x.line })) })
+        lists.push({ title: t("exhibit-catalog.profile.declarationsLine"), items: decl.map(x => ({ name: `${path}:${x.line}`, label: x.text, note: x.line })), lead: true })
     }
     if ("unit_connections" in snap.columns) {
         const by = (await snap.query<{ f: string }>(`SELECT DISTINCT from_file AS f FROM unit_connections WHERE to_file = ${sq(path)} AND from_file != to_file LIMIT 40`)).map(r => r.f)
