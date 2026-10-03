@@ -130,7 +130,7 @@ export const codeTools: Tool[] = [
             const id = nextId()
             return {
                 text: `[${id}] ${path}, lines ${from}–${to} of ${all.length}:\n${lines.map((l, i) => `${String(from + i).padStart(4)}  ${l}`).join("\n")}${to < all.length ? `\n(more: from ${to + 1})` : ""}`,
-                evidence: [{ id, kind: "code", title: `${path.split("/").pop()} · lines ${from}–${to}`, path, from, lines, ranOn, open: { route: filePath(path, "source"), label: "Open source" } }],
+                evidence: [{ id, kind: "code", title: `${path.split("/").pop()} · lines ${from}–${to}`, path, from, lines, ranOn, open: { route: `${filePath(path, "source")}#L${from}-L${to}`, label: "Open source" } }],
             }
         },
     },

@@ -17,8 +17,11 @@ export function useAskActions() {
     async function open(e: Evidence) {
         if (!e.open) return
         if (e.open.focus) scope.setFocus(e.open.focus)
-        const hl = e.open.hl?.length ? `${e.open.route.includes("?") ? "&" : "?"}hl=${encodeURIComponent(JSON.stringify(e.open.hl))}` : ""
-        await router.push(`${e.open.route}${hl}`)
+        // A line anchor ("#L12-L40") stays last: a query after it would be read as part of the anchor.
+        const at = e.open.route.indexOf("#")
+        const [path, anchor] = at >= 0 ? [e.open.route.slice(0, at), e.open.route.slice(at)] : [e.open.route, ""]
+        const hl = e.open.hl?.length ? `${path.includes("?") ? "&" : "?"}hl=${encodeURIComponent(JSON.stringify(e.open.hl))}` : ""
+        await router.push(`${path}${hl}${anchor}`)
     }
 
     /** Opens the view an exhibit points at, with the graph focus it names. */

@@ -393,7 +393,7 @@ import { useLensStore } from "~/features/groups/lens.store";
 import { useScopeStore } from "~/features/groups/scope.store";
 import { TRUSTED_PAIR_SQL } from "~/features/git/cochange";
 import { formatNumber } from "~/shared/format";
-import { componentPath } from "~/features/navigation/routes";
+import { componentPath, filePath } from "~/features/navigation/routes";
 import { sqlIn, sqlLiteral } from "~/shared/sql";
 import { passesFacet } from "~/features/snapshot/fileRole";
 import { scopeLabel } from "~/features/groups/scopeSql";
@@ -793,7 +793,7 @@ function toRanges(ns: number[]): string[] {
   }
   return out;
 }
-const fileSourcePath = (file: string, line: number | null) => `/views/files/${file}/source${line ? `#L${line}` : ""}`;
+const fileSourcePath = (file: string, line: number | null) => `${filePath(file, "source")}${line ? `#L${line}` : ""}`;
 
 const cyclesThroughEdge = computed(() => {
   const e = selectedEdge.value;

@@ -72,6 +72,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
 import { useDataStore } from "~/features/snapshot/data.store"
+import { filePath } from "~/features/navigation/routes"
 import hljs from "highlight.js"
 import { t } from "~/shared/i18n"
 import "highlight.js/styles/atom-one-dark.css"
@@ -276,7 +277,7 @@ function hidePopover() {
 }
 
 const goToFileUrl = computed(() => {
-  return `/views/files/${props.file}/source#L${targetStart.value}`
+  return `${filePath(props.file, "source")}#L${targetStart.value}`
 })
 </script>
 

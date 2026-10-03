@@ -13,7 +13,7 @@
               <template v-for="s in area.items" :key="s.label">
                 <dt class="!whitespace-normal !text-neutral-700">{{ s.label }}</dt>
                 <dd class="flex shrink-0 items-start justify-end gap-1">
-                  <kbd v-for="k in s.keys" :key="k" class="rounded border border-neutral-200 bg-neutral-50 px-1.5 font-mono text-xs text-neutral-800">{{ keyLabel(k, isMac) }}</kbd>
+                  <kbd v-for="(k, ki) in s.keys" :key="ki" class="rounded border border-neutral-200 bg-neutral-50 px-1.5 font-mono text-xs text-neutral-800">{{ keyLabel(k, isMac) }}</kbd>
                 </dd>
               </template>
             </dl>

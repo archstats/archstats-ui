@@ -59,7 +59,8 @@ export const excerpt = exhibit<ExcerptData>()({
         height: d => Math.min(390, 40 + d.lines.length * 18),
     },
 
-    open: (_p, d) => (d ? { route: filePath(d.path, "source"), label: t("exhibit-catalog.code.openSource") } : null),
+    // Opens at the lines the exhibit shows, not at the top of the file.
+    open: (_p, d) => (d ? { route: d.lines.length ? `${filePath(d.path, "source")}#L${d.from}-L${d.from + d.lines.length - 1}` : filePath(d.path, "source"), label: t("exhibit-catalog.code.openSource") } : null),
 
     samples: snap => {
         const f = [...snap.fileComponent().keys()].find(x => /\.(java|ts|py|go|kt|js|vue)$/.test(x))

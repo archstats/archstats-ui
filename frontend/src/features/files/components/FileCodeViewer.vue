@@ -38,7 +38,6 @@
           <a
             v-for="(line, i) in codeLines"
             :key="'num-' + line.number"
-            :ref="line.isHighlighted ? 'highlightedLineRef' : undefined"
             :href="`#L${line.number}`"
             class="gutter-line block text-right"
             :class="[line.isHighlighted ? 'text-neutral-900' : '', showComplexity && notes[i].fn ? 'in-complex' : '']"
@@ -111,7 +110,6 @@ const router = useRouter()
 const store = useDataStore()
 const copied = ref(false)
 const scrollContainerRef = ref<HTMLElement | null>(null)
-const highlightedLineRef = ref<HTMLElement[] | null>(null)
 
 const escapedPath = computed(() => props.filePath.replace(/'/g, "''"))
 
@@ -296,13 +294,16 @@ function rowHeight(): number {
 }
 function scrollToHighlighted() {
   nextTick(() => {
-    if (highlightedLineRef.value && highlightedLineRef.value.length > 0 && scrollContainerRef.value) {
-      // The first line of the range lands near the top, as GitHub puts it.
-      scrollContainerRef.value.scrollTop = Math.max(0, highlightedLineRef.value[0].offsetTop - rowHeight() * 3)
-    }
+    // Found by line number, not by a template ref: refs collected under a
+    // conditional name kept the previous line's element, so a second jump in
+    // the same file highlighted the new line and stayed on the old one.
+    const el = scrollContainerRef.value
+    const line = el?.querySelector<HTMLElement>("code.code-body")?.children[highlightStart.value - 1] as HTMLElement | undefined
+    if (!el || !line) return
+    // The first line of the range lands near the top, as GitHub puts it.
+    el.scrollTop = Math.max(0, line.offsetTop - rowHeight() * 3)
   })
 }
-
 onMounted(() => {
   if (highlightStart.value > 0) {
     scrollToHighlighted()
