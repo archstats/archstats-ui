@@ -1138,11 +1138,7 @@
     "chooseComponentParagraph": "Kies een component voor deze alinea.",
     "notSnapshot": "{name} staat niet in dit snapshot.",
     "has": "{name} heeft {files} en {value}.",
-    "production": "productie",
-    "directlyImports": " {d} {value}{componentsImport} hem direct, en hij importeert {otherComponents}.",
     "sitsTangleSoCannot": " Hij zit in een tangle van {components}, dus hij kan niet los van de rest veranderen.",
-    "codeHealthOut10": " De code health is {value} van de 10.",
-    "last180DaysChanged": " In de laatste 180 dagen is hij gewijzigd door {people}, in {commits}.",
     "spring": "Spring",
     "engineSSpringJpa": "De Spring- en JPA-aantallen van de engine (java__spring__*, java__jpa__entities) uit de summary, en de JAX-RS-resources (@Path-classes) in productiebestanden.",
     "thereNoSpringBeans": "Er zijn geen Spring beans in deze code.",
@@ -1249,8 +1245,7 @@
     "module": "{kind}-module",
     "modules": "{kind}-modules",
     "lines": "{lines} regels",
-    "lines2": "{total} regels",
-    "lines3": "{value} regels"
+    "lines2": "{total} regels"
   },
   "reportCells": {
     "hotspotComponents": "Hotspot-componenten",
@@ -1646,7 +1641,8 @@
     "whereCommitsLandWhere": "Waar de commits terechtkomen, en waar niet",
     "listsEveryPairComponents2": "Toont elk paar componenten dat elkaar importeert, de kleinste en goedkoopste vorm van een circular dependency, met hoeveel imports elke kant op lopen, en daarna de grootste tangle in levels met de cuts die hem ontwarren.",
     "whatHappenedCodeLast2": "Wat er de laatste 30 dagen in de code gebeurde: hoeveel er veranderde en waar, hoe het werk verschoof tegenover de twee jaar ervoor, welke bestanden het meest veranderden, welke hotspots het team aanraakte en welke bestanden nieuw zijn.",
-    "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen"
+    "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen",
+    "whereRiskSits": "Waar het risico zit"
   },
   "reportsStore": {
     "table": "Tabel",
@@ -1847,7 +1843,16 @@
     "eachBarBuildModule": "Elke balk is een build-module, zo lang als het aantal andere modules waarvan hij afhangt.",
     "codebaseFloors": "De codebase als lagen",
     "howFoldersLeanEach": "Hoe de mappen op elkaar leunen",
-    "foldersTheirImports": "De mappen en hun imports"
+    "foldersTheirImports": "De mappen en hun imports",
+    "closeLookTakesOne": "Een close-up neemt één component uit de ranglijst hierboven en beschrijft hem: de bestanden waaruit hij bestaat, waar hij aan vastzit, wie eraan werkte en welke tests hem bereiken.",
+    "upCloseTopHotspot": "Van dichtbij: de grootste hotspot",
+    "upCloseMostDependedOn": "Van dichtbij: de component waar het meest van afhangt",
+    "upCloseLeastHealthy": "Van dichtbij: de minst gezonde component",
+    "upCloseMostChanged": "Van dichtbij: waar het meeste werk heen ging",
+    "upCloseHotspot": "Van dichtbij: hotspot {rank}",
+    "upCloseDependents": "Van dichtbij: nummer {rank} op afhankelijken",
+    "upCloseHealth": "Van dichtbij: nummer {rank} van onderen op health",
+    "upCloseChanged": "Van dichtbij: nummer {rank} op wijzigingen"
   },
   "useSlotTaking": {
     "hasNothingTake": "{view} heeft niets om over te nemen: {why}",
@@ -1855,5 +1860,120 @@
     "seconds": " in {value} seconden",
     "secondsStillLoading": " in {value} seconden; hij laadt nog",
     "drewNothingTakeSet": "{view} tekende{value} niets om over te nemen. Stel de view zo in dat hij iets tekent en voeg het toe, of sla deze over."
+  },
+  "depth": {
+    "under1": "minder dan 1%",
+    "sizeTen": "De tien grootste componenten bevatten {share} van de productiecode.",
+    "sizeLargest": "De grootste component is {name}, met {lines} in {files}. Het grootste losse bestand is {file}, met {fileLines}.",
+    "commitsBy": "{commits} van {people}",
+    "noCommits": "geen commits",
+    "historyYears": "Zonder bots, en alleen met commits die code raakten die nog in de repository staat:\n\n- De laatste 12 maanden: {last}.\n- De 12 maanden daarvoor: {before}.\n- Het drukste jaar was {year}, met {busy}.\n\nVan de {people} mensen die ooit commitden, deden {active} dat in de laatste 12 maanden.",
+    "tangleLargest": "De grootste tangle bevat {share} van de code. De grootste onderdelen zijn {names}. Binnen de tangle importeren componenten elkaar {imports}, verdeeld over {pairs} paren.",
+    "graphTop": {
+      "one": "{count} component wordt door geen enkele andere geïmporteerd. Het is een startpunt, zoals een app of een script, of code die niemand gebruikt.",
+      "other": "{count} componenten worden door geen enkele andere geïmporteerd. Elk is een startpunt, zoals een app of een script, of code die niemand gebruikt."
+    },
+    "graphBottom": {
+      "one": "{count} component importeert geen andere component: hij gebruikt alleen externe libraries en de taal zelf.",
+      "other": "{count} componenten importeren geen andere component: ze gebruiken alleen externe libraries en de taal zelf."
+    },
+    "hotspotSpread": "Zo zijn de scores van alle {all} verdeeld:\n\n- 50 of hoger: {high}\n- 20 tot 50: {mid}\n- onder de 20: {low}",
+    "hotspotRecent": "{k} van de top {top} veranderen nog: ze zijn gewijzigd in de laatste 90 dagen.",
+    "hotspotQuiet": "Geen van de top {top} is gewijzigd in de laatste 90 dagen.",
+    "hotspotFile": "De bovenste, {name}, heeft {lines}{health}.",
+    "andHealth": " en een code health van {h}",
+    "changedBy": "Het is gewijzigd in {commits}, gemaakt door {people}.",
+    "lastChange": "De laatste wijziging was {days} vóór de nieuwste commit in de scan.",
+    "healthBands": "Gewogen naar regels code is de code zo verdeeld:\n\n- {good} scoort 8 of hoger: makkelijk te lezen en te wijzigen.\n- {mid} scoort tussen 4 en 8.\n- {low} scoort onder de 4: lastig om in te werken.",
+    "healthLow": "De bestanden onder de 4 zijn groot: gemiddeld {low} regels, tegen {rest} voor de andere bestanden. De grootste ervan is {name}: {lines}, code health {h}.",
+    "churnRoles": "Over alle bestanden, ook die buiten een component zoals configuratie en documentatie, veranderden {all}:\n\n- {prod} in productiecode\n- {test} in tests\n- {other} in andere bestanden",
+    "churnBefore90": "In de 90 dagen daarvoor veranderden {lines}.",
+    "churnBefore30": "In de 60 dagen daarvoor veranderden gemiddeld {lines} per 30 dagen.",
+    "churnTopFile": "Het productiebestand dat het meest veranderde is {name}, met {lines}.",
+    "changedLines": {
+      "one": "{count} gewijzigde regel",
+      "other": "{count} gewijzigde regels"
+    },
+    "knowledgeAlone": "Waar één persoon vier vijfde of meer schreef, zijn dit de grootste componenten:",
+    "knowledgeItem": "{name}: {person} schreef {share} van {lines}",
+    "addedLines": {
+      "one": "{count} toegevoegde regel",
+      "other": "{count} toegevoegde regels"
+    },
+    "knowledgeGone": "Bij {gone} van de {half} waar één persoon de helft of meer schreef, heeft die persoon de laatste 180 dagen niet gecommit.",
+    "knowledgeActive": "Iedereen die de helft of meer van een component schreef, heeft in de laatste 180 dagen nog gecommit.",
+    "couplingWide": "{components} door 10 of meer andere geïmporteerd. Samen bevatten ze {share} van de code.",
+    "componentsAre": {
+      "one": "{count} component wordt",
+      "other": "{count} componenten worden"
+    },
+    "couplingNoneWide": "Geen enkele component wordt door 10 of meer andere geïmporteerd.",
+    "couplingTop": "{name} importeert zelf {deps}.",
+    "changedIn180": "Hij is in de laatste 180 dagen gewijzigd in {commits}.",
+    "inTangle": "Hij zit in een tangle van {components}.",
+    "testsUntested": "De componenten die geen test bereikt, bevatten {share} van de productiecode. De grootste daarvan zijn {names}.",
+    "ageOld": "Code die al meer dan twee jaar niemand heeft gewijzigd, zit vooral in {names}.",
+    "ageNoneOld": "Er is geen productiecode die al meer dan twee jaar niet is aangeraakt.",
+    "ageFresh": "Code die in de laatste 90 dagen is gewijzigd, zit vooral in {names}.",
+    "libsSpread": "{single} gebruikt in één bestand, en {wide} gebruikt in 50 bestanden of meer.",
+    "libsSingle": {
+      "one": "{count} library wordt",
+      "other": "{count} libraries worden"
+    },
+    "libsWide": {
+      "one": "{count} wordt",
+      "other": "{count} worden"
+    },
+    "shareOfCode": "Dat is {share} van de productiecode.",
+    "inModule": "Hij hoort bij de build-module {module}.",
+    "health": "De code health is {h} van de 10.",
+    "largestFiles": "De grootste bestanden:",
+    "healthShort": "code health {h}",
+    "mostUsers": {
+      "one": "Hij wordt geïmporteerd door {names}.",
+      "other": "Hij wordt het meest geïmporteerd door {names}."
+    },
+    "history": "Hij is in zijn historie gewijzigd in {commits}, waarvan {recent} in de laatste 180 dagen.",
+    "people": "{people} hebben eraan gecommit. {top} maakte de meeste commits: {share} ervan.",
+    "tests": {
+      "one": "{count} testbestand bereikt hem: het zit erin of importeert hem.",
+      "other": "{count} testbestanden bereiken hem: ze zitten erin of importeren hem."
+    },
+    "noTests": "Geen enkel testbestand bereikt hem: er zit er geen in, en geen importeert hem.",
+    "noneRanked": "Er is geen component op nummer {rank} voor deze maatstaf.",
+    "spotlight": "Eén component van dichtbij",
+    "spotlightDescribe": "De component op een plaats in de ranglijst op hotspot-score, afhankelijken, lage code health of recente wijzigingen, beschreven: zijn bestanden, waar hij aan vastzit, zijn historie en de tests die hem bereiken (components, files, component_connections_direct, git_commits).",
+    "rankedBy": "Gerangschikt op",
+    "byHotspot": "Hotspot-score",
+    "byDependents": "Waar het meest van afhangt",
+    "byHealth": "Laagste code health",
+    "byChurn": "Meest gewijzigd",
+    "rank": "Plaats",
+    "leadHotspot": "{name} heeft de hoogste hotspot-score: {value} van de 100.",
+    "leadHotspotN": "{name} heeft de {place} hoogste hotspot-score: {value} van de 100.",
+    "leadDependents": "{name} is de component waar het meest van afhangt.",
+    "leadDependentsN": "{name} staat op de {place} plaats van componenten waar het meest van afhangt.",
+    "leadHealth": "{name} heeft de laagste code health van de componenten met 200 regels of meer: {value} van de 10.",
+    "leadHealthN": "{name} heeft de {place} laagste code health van de componenten met 200 regels of meer: {value} van de 10.",
+    "leadChurn": "{name} is in de laatste {days} dagen het meest gewijzigd: {value}.",
+    "leadChurnN": "{name} staat op de {place} plaats qua wijzigingen in de laatste {days} dagen: {value}.",
+    "hotspotAllRecent": "Alle {top} uit de top veranderen nog: elk is gewijzigd in de laatste 90 dagen.",
+    "lastChangeNewest": "De laatste wijziging zit in de nieuwste commit in de scan.",
+    "knowledgeAllGone": "Bij alle {half} waar één persoon de helft of meer schreef, heeft die persoon de laatste 180 dagen niet gecommit.",
+    "itHas": "Hij heeft {files} en {lines}.",
+    "seenAbove": "Hij wordt eerder in dit rapport van dichtbij beschreven.",
+    "notChanged180": "Hij is in de laatste 180 dagen niet gewijzigd.",
+    "changedIn": "gewijzigd in {commits}",
+    "importedBy": {
+      "one": "{n} productiecomponent importeert hem direct.",
+      "other": "{n} productiecomponenten importeren hem direct."
+    },
+    "notImported": "Geen enkele productiecomponent importeert hem direct.",
+    "importsOthers": {
+      "one": "Hij importeert {count} andere component.",
+      "other": "Hij importeert {count} andere componenten."
+    },
+    "importsNone": "Hij importeert geen andere component.",
+    "historyQuiet": "Hij is in zijn historie gewijzigd in {commits}, maar niet in de laatste 180 dagen."
   }
 }

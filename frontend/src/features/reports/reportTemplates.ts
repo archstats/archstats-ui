@@ -16,7 +16,7 @@ import { MOBILE } from "./mobileTemplates"
 import { isCell, newId, plainText, type Block, type Cell, type CellSpec, type TextBlock } from "./reportDoc"
 import { languageShare, prodFile, type Ecosystem, type EcosystemId, type SnapshotFacts } from "./readings"
 import {
-    ABOUT, age, churn, coupling, folderPicture, glance, hasModules, hasUnits, health, hotspots, knowledge, lanes, libraries, lit, modules, needs, opt, prod, REACHED, rules,
+    ABOUT, age, churn, closer, coupling, folderPicture, glance, hasModules, hasUnits, health, hotspots, knowledge, lanes, libraries, lit, modules, needs, opt, prod, REACHED, rules,
     SHOWS, slotOf, SQL, structure, tests, VIEWS, Writer, type ReportTemplate, type TemplateContext,
 } from "./templateKit"
 import { t } from "~/shared/i18n"
@@ -132,13 +132,13 @@ const GENERAL: ReportTemplate[] = [
             })
             w.section(t("reports.reportTemplates.dependencyRules"), needs.rules(f), () => rules(w))
             w.section(t("reports.reportTemplates.hotspotsComplicatedCodeChanges"), needs.git(f), () => {
-                hotspots(w, "files", 12)
+                hotspots(w, "files", 12, 2)
                 w.explainSlot(READ.churnTreemap)
                 slotOf(w, "figure", t("reports.reportTemplates.churnAgainstHealthComponent"), VIEWS.treemap("churn", "components", t("reports.reportTemplates.churnAgainstHealthComponents")))
                 if (f.componentColumns.has("codesmells__static_complexity_score")) { w.explainSlot(READ.plotChurnComplexity); slotOf(w, "figure", t("reports.reportTemplates.churnAgainstComplexity"), VIEWS.plot("churn-complexity", t("reports.reportTemplates.churnAgainstComplexity"))) }
             })
             w.section(t("reports.reportTemplates.codeHealth"), needs.health(f), () => {
-                health(w, "components", 10)
+                health(w, "components", 10, 1)
                 w.explainSlot(READ.foldersHealth)
                 w.exhibit("folders", { by: "health" }, t("reports.reportTemplates.codeHealthAcrossFolders"))
                 w.sql(t("reports.reportTemplates.largestProductionFiles"), QSQL.largestFiles(f), 12)
@@ -149,9 +149,19 @@ const GENERAL: ReportTemplate[] = [
                 slotOf(w, "figure", t("reports.reportTemplates.whereWorkMoved"), VIEWS.workMoved("365"))
                 w.explainSlot(READ.effort)
                 slotOf(w, "figure", t("reports.reportTemplates.whereEachMonthS"), VIEWS.effort)
+                closer(w, "churn", 1, { days: "180" })
                 w.prompt(t("reports.reportTemplates.doesWorkGoWhere"))
             })
-            w.section("Tests", needs.tests(f), () => tests(w))
+            w.section(t("reports.reportTemplates.whoKnowsWhat"), needs.git(f), () => {
+                knowledge(w, {})
+                w.explain(QABOUT.busFactor)
+                w.sql(t("reports.reportTemplates.componentsDependOnePerson"), QSQL.busFactor(f), 12)
+            })
+            w.section("Tests", needs.tests(f), () => {
+                tests(w)
+                if (needs.testFiles(f) === true) w.sql(t("reports.reportTemplates.productionComponentsNoTest"), QSQL.untested(f), 12)
+            })
+            w.section(t("reports.reportTemplates.thirdPartyLibraries"), needs.snippets(f), () => libraries(w, false))
             w.section("Findings", true, () => w.prompt(t("reports.reportTemplates.twoThreeThingsReader")))
             w.section("Recommendations", true, () => w.prompt(t("reports.reportTemplates.whatYouProposeMost")))
         },
@@ -181,6 +191,12 @@ const GENERAL: ReportTemplate[] = [
                 w.explainSlot(SHOWS.workMoved)
                 slotOf(w, "figure", t("reports.reportTemplates.whereWorkMovedYear"), VIEWS.workMoved("365"))
                 w.reading("knowledge", plain)
+            })
+            w.section(t("reports.reportTemplates.whereRiskSits"), needs.health(f), () => {
+                const plain = { plain: "1" }
+                if (f.commits && f.componentColumns.has("codesmells__hotspot_score")) w.reading("hotspots", plain)
+                w.reading("health", plain)
+                if (needs.tests(f) === true) w.reading("tests", plain)
             })
             w.section(t("reports.reportTemplates.whatMeans"), true, () => w.prompt(t("reports.reportTemplates.translateNumbersBusinessTerms")))
             w.section(t("reports.reportTemplates.whatWeAsk"), true, () => w.prompt(t("reports.reportTemplates.decisionInvestmentYouAsking")))
@@ -212,6 +228,7 @@ const GENERAL: ReportTemplate[] = [
             })
             w.section("Structure", true, () => {
                 structure(w, false)
+                coupling(w)
                 if (hasModules(f)) modules(w)
                 folderPicture(w, "chord", t("reports.reportTemplates.howFoldersLeanEach"))
                 mainSequence(w)
@@ -224,6 +241,8 @@ const GENERAL: ReportTemplate[] = [
                 if (f.fileColumns.has("git__last_change_age_in_days")) { w.explainSlot(READ.ageTreemap); slotOf(w, "figure", t("reports.reportTemplates.codeAge"), VIEWS.treemap("age", "components", t("reports.reportTemplates.codeAgeComponents"))) }
                 w.explainSlot(READ.largestTypes)
                 if (f.tables.has("units")) w.exhibit("recipe", { recipe: "largest-classes" }, t("reports.reportTemplates.largestClassesTypes"))
+                closer(w, "hotspot", 1)
+                closer(w, "health", 1)
             })
             w.section(t("reports.reportTemplates.thirdPartyDependencies"), needs.snippets(f), () => {
                 libraries(w)
@@ -261,7 +280,7 @@ const GENERAL: ReportTemplate[] = [
                 else { w.explainSlot(READ.outline); slotOf(w, "table", t("reports.reportTemplates.codebaseDirectory"), VIEWS.outline) }
             })
             w.section(t("reports.reportTemplates.howHangsTogether"), true, () => {
-                coupling(w)
+                coupling(w, 0, undefined, 0)
                 folderPicture(w, "graph", t("reports.reportTemplates.foldersTheirImports"))
                 w.prompt(t("reports.reportTemplates.areasNewcomerShouldKnow"))
             })
@@ -269,10 +288,11 @@ const GENERAL: ReportTemplate[] = [
                 w.explain(QABOUT.loadBearing)
                 w.exhibit("ranking", { measure: "most dependents" }, t("reports.reportTemplates.mostDependedComponents"))
                 if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, t("reports.reportTemplates.typesUsedMostPlaces"))
+                closer(w, "dependents", 2)
                 w.prompt(t("reports.reportTemplates.topFewWhatThey"))
             })
             w.section(t("reports.reportTemplates.whereWork"), needs.git(f), () => {
-                churn(w, "90")
+                churn(w, "90", 1)
                 w.explainSlot(SHOWS.workMoved)
                 slotOf(w, "figure", t("reports.reportTemplates.whereWorkMovedLast"), VIEWS.workMoved("90"))
                 w.table("f-churn", 10)
@@ -282,6 +302,7 @@ const GENERAL: ReportTemplate[] = [
                 w.explain(ABOUT.hotspots).reading("hotspots")
                 w.explainSlot(READ.hotspotFiles)
                 w.exhibit("ranking", { measure: "most hotspot", among: "files" }, t("reports.reportTemplates.hottestFiles"))
+                closer(w, "hotspot", 1)
                 w.prompt(t("reports.reportTemplates.partsTendBiteWhy"))
             })
         },
@@ -339,7 +360,7 @@ const GENERAL: ReportTemplate[] = [
             const f = w.facts
             w.prompt(t("reports.reportTemplates.howItemsWereChosen"))
             w.section("Hotspots", needs.git(f), () => {
-                hotspots(w, "files", 15)
+                hotspots(w, "files", 15, 3)
                 if (f.componentColumns.has("codesmells__code_health")) { w.explainSlot(READ.plotChurnHealth); slotOf(w, "figure", t("reports.reportTemplates.churnAgainstCodeHealth"), VIEWS.plot("churn-health", t("reports.reportTemplates.churnAgainstHealth"))) }
             })
             w.section(t("reports.reportTemplates.effortGoingUnhealthyCode"), needs.all(needs.git(f), needs.health(f)), () => {
@@ -349,7 +370,7 @@ const GENERAL: ReportTemplate[] = [
                 slotOf(w, "figure", t("reports.reportTemplates.whereEachMonthS"), VIEWS.effort)
             })
             w.section(t("reports.reportTemplates.hardChangeFiles"), needs.health(f), () => {
-                health(w, "files", 15)
+                health(w, "files", 15, 1)
                 w.explainSlot(READ.nesting)
                 slotOf(w, "figure", t("reports.reportTemplates.nestingDepth"), VIEWS.treemap("nesting", "files", t("reports.reportTemplates.nestingDepthFiles")))
                 if (f.tables.has("units")) { w.explainSlot(READ.largestTypes); w.exhibit("recipe", { recipe: "largest-classes" }, t("reports.reportTemplates.largestClassesTypes")) }
@@ -383,7 +404,7 @@ const GENERAL: ReportTemplate[] = [
                 slotOf(w, "figure", t("reports.reportTemplates.authorsAgainstChurn"), VIEWS.plot("authors-churn", t("reports.reportTemplates.authorsVsChurn")))
             })
             w.section(t("reports.reportTemplates.whereChangeLands"), needs.git(f), () => {
-                churn(w, "180")
+                churn(w, "180", 1)
                 w.explainSlot(READ.foldersChurn)
                 w.exhibit("folders", { by: "churn" }, t("reports.reportTemplates.whereCommitsLand"))
                 w.sql(t("reports.reportTemplates.changeComponentLast180"), SQL.churn("180"), 12)
@@ -619,6 +640,7 @@ const QUICK: ReportTemplate[] = [
                 w.exhibit("ranking", { measure: "most dependents" }, t("reports.reportTemplates.mostDependedComponents"))
                 w.sql(t("reports.reportTemplates.componentsHowManyOthers"), QSQL.loadBearing(f), 15)
                 if (f.tables.has("unit_connections")) w.exhibit("recipe", { recipe: "shared-types" }, t("reports.reportTemplates.typesUsedMostPlaces"))
+                closer(w, "dependents", 3)
             })
             w.section(t("reports.reportTemplates.loadBearingStillMoving"), f.componentColumns.has("modularity__instability") ? true : t("reports.reportTemplates.scanDidNotMeasure"), () => {
                 w.explain(QABOUT.unstableCore)
@@ -723,7 +745,7 @@ const QUICK: ReportTemplate[] = [
             w.prompt(t("reports.reportTemplates.periodCoversWhatTeam"))
             w.section(t("reports.reportTemplates.whereChangeWent"), needs.recent(f), () => {
                 w.explain(QABOUT.recent)
-                churn(w, "30")
+                churn(w, "30", 1)
                 w.explainSlot(SHOWS.workMoved)
                 slotOf(w, "figure", t("reports.reportTemplates.whereWorkMovedLast2"), VIEWS.workMoved("30"))
                 w.sql(t("reports.reportTemplates.filesChangedMostLast"), QSQL.recentFiles, 15)

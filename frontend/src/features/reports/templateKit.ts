@@ -229,6 +229,7 @@ export const ABOUT = {
     libraries: t("reports.templateKit.librariesCodeProjectUses"),
     modules: t("reports.templateKit.buildModulesPartsBuild"),
     trends: t("reports.templateKit.snapshotKeptEachTime"),
+    closer: t("reports.templateKit.closeLookTakesOne"),
 }
 
 // ── How to read the figures several templates share ───────────────────────
@@ -307,19 +308,49 @@ export function lanes(w: Writer, title = t("reports.templateKit.whereEachRoleLiv
     w.explainSlot(SHOWS.lanes)
     slotOf(w, "figure", title, VIEWS.lanes)
 }
-export function coupling(w: Writer, rows = 0, ext?: string) {
+/** What a close look ranks by. */
+export type CloseBy = "hotspot" | "dependents" | "health" | "churn"
+const closeTitle = (by: CloseBy, rank: number) => (rank === 1
+    ? { hotspot: t("reports.templateKit.upCloseTopHotspot"), dependents: t("reports.templateKit.upCloseMostDependedOn"), health: t("reports.templateKit.upCloseLeastHealthy"), churn: t("reports.templateKit.upCloseMostChanged") }[by]
+    : { hotspot: t("reports.templateKit.upCloseHotspot", { rank }), dependents: t("reports.templateKit.upCloseDependents", { rank }), health: t("reports.templateKit.upCloseHealth", { rank }), churn: t("reports.templateKit.upCloseChanged", { rank }) }[by])
+/**
+ * The top components of a ranking, each up close under its own heading: the
+ * files it is made of, what imports it, who worked on it and which tests reach
+ * it. Written once per report for each rank, and only when the snapshot can rank.
+ */
+export function closer(w: Writer, by: CloseBy, ranks = 1, params: Record<string, string> = {}) {
+    const f = w.facts
+    const can = { hotspot: f.componentColumns.has("codesmells__hotspot_score") && f.commits > 0, dependents: f.componentColumns.has("modularity__coupling__dependents"), health: f.componentColumns.has("codesmells__code_health"), churn: f.commits > 0 }[by]
+    if (!can || f.components < 2) return
+    for (let rank = 1; rank <= ranks; rank++) {
+        const key = `closer:${by}:${rank}:${params.days ?? params.ext ?? ""}`
+        if (w.used.has(key)) continue
+        w.h3(closeTitle(by, rank))
+        if (!w.used.has("closer")) w.explain(ABOUT.closer)
+        w.used.add(key).add("closer")
+        const shown = [...w.used].filter(k => k.startsWith("closer:") && k !== key).map(k => k.slice("closer:".length))
+        w.reading("spotlight", { by, rank: String(rank), ...params, ...(shown.length ? { shown: shown.join(",") } : {}) })
+    }
+}
+export function coupling(w: Writer, rows = 0, ext?: string, closeLook = 1) {
     w.explain(rows ? `${ABOUT.coupling} ${ABOUT.couplingTable}` : ABOUT.coupling).reading("coupling", ext ? { ext } : undefined)
     if (rows) w.table("c-coupling", rows)
+    closer(w, "dependents", closeLook, ext ? { ext } : {})
 }
-export function hotspots(w: Writer, grain: "components" | "files" = "components", rows = 10) {
+export function hotspots(w: Writer, grain: "components" | "files" = "components", rows = 10, closeLook = 1) {
     w.explain(ABOUT.hotspots).reading("hotspots", grain === "files" ? { grain } : undefined)
     w.table(grain === "files" ? "f-hotspots" : "c-hotspots", rows)
+    closer(w, "hotspot", closeLook)
 }
-export function health(w: Writer, grain: "components" | "files" | null = "files", rows = 10) {
+export function health(w: Writer, grain: "components" | "files" | null = "files", rows = 10, closeLook = 0) {
     w.explain(ABOUT.health).reading("health")
     if (grain) w.table(grain === "files" ? "f-health" : "c-health", rows)
+    closer(w, "health", closeLook)
 }
-export function churn(w: Writer, days: "30" | "90" | "180") { w.explain(ABOUT.churn).reading("churn", { days }) }
+export function churn(w: Writer, days: "30" | "90" | "180", closeLook = 0) {
+    w.explain(ABOUT.churn).reading("churn", { days })
+    closer(w, "churn", closeLook, { days })
+}
 /** The knowledge paragraph, then the map of who still knows the code, the table of it, both or neither. */
 export function knowledge(w: Writer, show: { map?: boolean; table?: boolean } = { table: true }) {
     w.explain(ABOUT.knowledge).reading("knowledge")

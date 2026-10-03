@@ -66,7 +66,7 @@ describe("templates", () => {
     it("leaves out what the snapshot cannot fill, and names it", () => {
         const t = TEMPLATES.find(x => x.id === "architecture-review")!
         const built = buildTemplate(t, { facts: facts({ commits: 0 }), ecosystems: [], params: {} })
-        expect(built.skipped.map(s => s.section)).toEqual(["Tangles and the cuts that undo them", "Dependency rules", "Hotspots: complicated code that changes often", "Where the work has gone"])
+        expect(built.skipped.map(s => s.section)).toEqual(["Tangles and the cuts that undo them", "Dependency rules", "Hotspots: complicated code that changes often", "Where the work has gone", "Who knows what"])
         expect(built.skipped[2].why).toBe("the scan has no git history")
         const withRules = buildTemplate(t, { facts: facts({ rules: { applicable: 2, violations: 1 }, tangles: 3 }), ecosystems: [], params: {} })
         expect(withRules.skipped).toEqual([])

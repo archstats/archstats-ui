@@ -1138,11 +1138,7 @@
     "chooseComponentParagraph": "Choose a component for this paragraph.",
     "notSnapshot": "{name} is not in this snapshot.",
     "has": "{name} has {files} and {value}.",
-    "production": "production ",
-    "directlyImports": " {d} {value}{componentsImport} it directly, and it imports {otherComponents}.",
     "sitsTangleSoCannot": " It sits in a tangle of {components}, so it cannot change on its own.",
-    "codeHealthOut10": " Its code health is {value} out of 10.",
-    "last180DaysChanged": " In the last 180 days, {people} changed it in {commits}.",
     "spring": "Spring",
     "engineSSpringJpa": "The engine's Spring and JPA counts (java__spring__*, java__jpa__entities) from the summary, and the JAX-RS resources (@Path classes) in production files.",
     "thereNoSpringBeans": "There are no Spring beans in this code.",
@@ -1249,8 +1245,7 @@
     "module": "{kind} module",
     "modules": "{kind} modules",
     "lines": "{lines} lines",
-    "lines2": "{total} lines",
-    "lines3": "{value} lines"
+    "lines2": "{total} lines"
   },
   "reportCells": {
     "hotspotComponents": "Hotspot components",
@@ -1646,7 +1641,8 @@
     "whereCommitsLandWhere": "Where the commits land, and where they do not",
     "listsEveryPairComponents2": "Lists every pair of components that import each other, the smallest and cheapest kind of circular dependency, with how many imports run each way, then the largest tangle in levels with the cuts that undo it.",
     "whatHappenedCodeLast2": "What happened in the code in the last 30 days: how much changed and where, how the work moved against the two years before, which files changed most, which hotspots the team touched and which files are new.",
-    "whereWorkMovedLast2": "Where the work moved in the last 30 days"
+    "whereWorkMovedLast2": "Where the work moved in the last 30 days",
+    "whereRiskSits": "Where the risk sits"
   },
   "reportsStore": {
     "table": "Table",
@@ -1847,7 +1843,16 @@
     "eachBarBuildModule": "Each bar is a build module, as long as the number of other modules it depends on.",
     "codebaseFloors": "The codebase as floors",
     "howFoldersLeanEach": "How the folders lean on each other",
-    "foldersTheirImports": "The folders and their imports"
+    "foldersTheirImports": "The folders and their imports",
+    "closeLookTakesOne": "A close look takes one component from the ranking above and describes it: the files it is made of, what it is tied to, who worked on it and which tests reach it.",
+    "upCloseTopHotspot": "Up close: the top hotspot",
+    "upCloseMostDependedOn": "Up close: the most depended-on component",
+    "upCloseLeastHealthy": "Up close: the least healthy component",
+    "upCloseMostChanged": "Up close: where the most work went",
+    "upCloseHotspot": "Up close: hotspot {rank}",
+    "upCloseDependents": "Up close: number {rank} by dependents",
+    "upCloseHealth": "Up close: number {rank} from the bottom by health",
+    "upCloseChanged": "Up close: number {rank} by change"
   },
   "useSlotTaking": {
     "hasNothingTake": "{view} has nothing to take: {why}",
@@ -1855,5 +1860,120 @@
     "seconds": " in {value} seconds",
     "secondsStillLoading": " in {value} seconds; it is still loading",
     "drewNothingTakeSet": "{view} drew nothing to take{value}. Set the view so it draws something and add it, or skip this one."
+  },
+  "depth": {
+    "under1": "under 1%",
+    "sizeTen": "The ten largest components hold {share} of the production code.",
+    "sizeLargest": "The largest component is {name}, with {lines} in {files}. The largest single file is {file}, with {fileLines}.",
+    "commitsBy": "{commits} by {people}",
+    "noCommits": "no commits",
+    "historyYears": "Leaving bots out, and counting only commits that touched code still in the repository:\n\n- In the last 12 months: {last}.\n- In the 12 months before: {before}.\n- The busiest year was {year}, with {busy}.\n\nOf the {people} people who ever committed, {active} did so in the last 12 months.",
+    "tangleLargest": "The largest tangle holds {share} of the code. Its biggest members are {names}. Inside it, components import each other {imports}, across {pairs} pairs.",
+    "graphTop": {
+      "one": "{count} component is not imported by any other. It is an entry point, such as an app or a script, or code nothing uses.",
+      "other": "{count} components are not imported by any other. Each is an entry point, such as an app or a script, or code nothing uses."
+    },
+    "graphBottom": {
+      "one": "{count} component imports no other component: it uses only outside libraries and the language itself.",
+      "other": "{count} components import no other component: they use only outside libraries and the language itself."
+    },
+    "hotspotSpread": "How the scores of all {all} are spread:\n\n- 50 or more: {high}\n- 20 to 50: {mid}\n- under 20: {low}",
+    "hotspotRecent": "{k} of the top {top} are still changing: they changed in the last 90 days.",
+    "hotspotQuiet": "None of the top {top} changed in the last 90 days.",
+    "hotspotFile": "The top one, {name}, has {lines}{health}.",
+    "andHealth": " and a code health of {h}",
+    "changedBy": "It has changed in {commits}, made by {people}.",
+    "lastChange": "Its last change was {days} before the newest commit in the scan.",
+    "healthBands": "Weighted by lines of code, the code splits like this:\n\n- {good} rates 8 or above: easy to read and change.\n- {mid} rates from 4 to 8.\n- {low} rates below 4: hard going.",
+    "healthLow": "The files below 4 are large: they average {low} lines, against {rest} for the other files. The largest of them is {name}: {lines}, code health {h}.",
+    "churnRoles": "Counting every file, also files outside any component such as configuration and documentation, {all} changed:\n\n- {prod} in production code\n- {test} in tests\n- {other} in other files",
+    "churnBefore90": "In the 90 days before that, {lines} changed.",
+    "churnBefore30": "In the 60 days before that, an average of {lines} changed per 30 days.",
+    "churnTopFile": "The production file that changed most is {name}, with {lines}.",
+    "changedLines": {
+      "one": "{count} changed line",
+      "other": "{count} changed lines"
+    },
+    "knowledgeAlone": "Where one person wrote four fifths or more, the largest components are:",
+    "knowledgeItem": "{name}: {person} wrote {share} of {lines}",
+    "addedLines": {
+      "one": "{count} added line",
+      "other": "{count} added lines"
+    },
+    "knowledgeGone": "In {gone} of the {half} where one person wrote half or more, that person has not committed in the last 180 days.",
+    "knowledgeActive": "Everyone who wrote half or more of a component has committed in the last 180 days.",
+    "couplingWide": "{components} imported by 10 or more others. Together they hold {share} of the code.",
+    "componentsAre": {
+      "one": "{count} component is",
+      "other": "{count} components are"
+    },
+    "couplingNoneWide": "No component is imported by 10 or more others.",
+    "couplingTop": "{name} itself imports {deps}.",
+    "changedIn180": "It changed in {commits} over the last 180 days.",
+    "inTangle": "It sits in a tangle of {components}.",
+    "testsUntested": "The components no test reaches hold {share} of the production code. The largest of them are {names}.",
+    "ageOld": "Code that nobody has changed for over two years sits mostly in {names}.",
+    "ageNoneOld": "No production code has gone untouched for over two years.",
+    "ageFresh": "Code changed in the last 90 days sits mostly in {names}.",
+    "libsSpread": "{single} used in a single file, and {wide} used in 50 files or more.",
+    "libsSingle": {
+      "one": "{count} library is",
+      "other": "{count} libraries are"
+    },
+    "libsWide": {
+      "one": "{count} is",
+      "other": "{count} are"
+    },
+    "shareOfCode": "That is {share} of the production code.",
+    "inModule": "It belongs to the build module {module}.",
+    "health": "Its code health is {h} out of 10.",
+    "largestFiles": "Its largest files:",
+    "healthShort": "code health {h}",
+    "mostUsers": {
+      "one": "The one that imports it is {names}.",
+      "other": "The ones that import it most are {names}."
+    },
+    "history": "It has changed in {commits} over its history, {recent} of them in the last 180 days.",
+    "people": "{people} have committed to it. {top} made the most commits: {share} of them.",
+    "tests": {
+      "one": "{count} test file reaches it: it sits inside it or imports it.",
+      "other": "{count} test files reach it: they sit inside it or import it."
+    },
+    "noTests": "No test file reaches it: none sits inside it, and none imports it.",
+    "noneRanked": "No component is number {rank} by this measure.",
+    "spotlight": "One component up close",
+    "spotlightDescribe": "The component at a rank by hotspot score, dependents, low code health or recent change, described: its files, what it is tied to, its history and the tests that reach it (components, files, component_connections_direct, git_commits).",
+    "rankedBy": "Ranked by",
+    "byHotspot": "Hotspot score",
+    "byDependents": "Most depended on",
+    "byHealth": "Lowest code health",
+    "byChurn": "Most changed",
+    "rank": "Rank",
+    "leadHotspot": "{name} has the highest hotspot score: {value} of 100.",
+    "leadHotspotN": "{name} has the {place} highest hotspot score: {value} of 100.",
+    "leadDependents": "{name} is the most depended-on component.",
+    "leadDependentsN": "{name} is the {place} most depended-on component.",
+    "leadHealth": "{name} has the lowest code health of the components with 200 lines or more: {value} out of 10.",
+    "leadHealthN": "{name} has the {place} lowest code health of the components with 200 lines or more: {value} out of 10.",
+    "leadChurn": "{name} changed most in the last {days} days: {value}.",
+    "leadChurnN": "{name} changed {place} most in the last {days} days: {value}.",
+    "hotspotAllRecent": "All of the top {top} are still changing: each changed in the last 90 days.",
+    "lastChangeNewest": "Its last change is in the newest commit in the scan.",
+    "knowledgeAllGone": "In all {half} where one person wrote half or more, that person has not committed in the last 180 days.",
+    "itHas": "It has {files} and {lines}.",
+    "seenAbove": "It is described up close earlier in this report.",
+    "notChanged180": "It has not changed in the last 180 days.",
+    "changedIn": "changed in {commits}",
+    "importedBy": {
+      "one": "{n} production component imports it directly.",
+      "other": "{n} production components import it directly."
+    },
+    "notImported": "No production component imports it directly.",
+    "importsOthers": {
+      "one": "It imports {count} other component.",
+      "other": "It imports {count} other components."
+    },
+    "importsNone": "It imports no other component.",
+    "historyQuiet": "It has changed in {commits} over its history, none of them in the last 180 days."
   }
 }
