@@ -57,7 +57,7 @@ function columnX(side: Side, width: number): number {
 function render() {
   const svg = svgRef.value
   if (!svg) return
-  const t = chartTheme()
+  const theme = chartTheme()
   const rect = svg.getBoundingClientRect()
   const width = rect.width || 700
   const height = rect.height || 320
@@ -97,7 +97,7 @@ function render() {
     .attr("orient", "auto")
     .append("path")
     .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", withAlpha(t.inkMuted, 0.7))
+    .attr("fill", withAlpha(theme.inkMuted, 0.7))
 
   const g = root.append("g")
   root.attr("width", width).attr("height", height)
@@ -112,7 +112,7 @@ function render() {
   const link = g.append("g").selectAll<SVGLineElement, SimEdge>("line")
     .data(edges)
     .join("line")
-    .attr("stroke", withAlpha(t.inkMuted, 0.5))
+    .attr("stroke", withAlpha(theme.inkMuted, 0.5))
     .attr("stroke-width", d => Math.min(3, 1 + Math.log2(Math.max(1, d.references))))
     .attr("marker-end", `url(#${markerId})`)
 
@@ -120,8 +120,8 @@ function render() {
     .data(nodes, d => d.id)
     .join("circle")
     .attr("r", d => d.side === "centre" ? 10 : 7)
-    .attr("fill", d => d.side === "centre" ? t.surface : roleColor(d.role))
-    .attr("stroke", d => d.side === "centre" ? roleColor(d.role) : t.surface)
+    .attr("fill", d => d.side === "centre" ? theme.surface : roleColor(d.role))
+    .attr("stroke", d => d.side === "centre" ? roleColor(d.role) : theme.surface)
     .attr("stroke-width", d => d.side === "centre" ? 3 : 1.5)
     .style("cursor", d => d.side === "centre" ? "default" : "pointer")
     .on("click", (_event, d) => { if (d.side !== "centre") emit("open", d.file) })
@@ -135,10 +135,10 @@ function render() {
     .data(nodes, d => d.id)
     .join("text")
     .text(d => d.label)
-    .attr("font-family", t.fontMono)
+    .attr("font-family", theme.fontMono)
     .attr("font-size", 11)
     .attr("font-weight", d => d.side === "centre" ? 500 : 400)
-    .attr("fill", d => d.side === "centre" ? t.ink : t.inkSecondary)
+    .attr("fill", d => d.side === "centre" ? theme.ink : theme.inkSecondary)
     .attr("text-anchor", "middle")
     .attr("dy", d => d.side === "centre" ? -15 : -11)
     .style("pointer-events", "none")

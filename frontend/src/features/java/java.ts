@@ -116,6 +116,8 @@ export interface StructuralFlag {
     from: { label: string; file: string };
     to: { label: string; file: string } | null;
     detail: string;
+    /** How far over the rule the flag is (imports, fields): worst first within a rule. */
+    weight: number;
 }
 
 export const STATEFUL_FIELD_THRESHOLD = 5;
@@ -131,20 +133,20 @@ export function structuralFlags(edges: FlagEdge[], beans: FlagBean[]): Structura
         const to = { label: e.to.label, file: e.to.file };
         const refs = e.references === 1 ? "1 import" : t("java.java.imports", { references: e.references });
         if (e.from.roles.has("Controller") && e.to.roles.has("Repository")) {
-            out.push({ key: `c-r:${e.from.file}:${e.to.file}`, rule: t("java.java.controllerImportsRepository"), from, to, detail: t("java.java.bypassesServiceLayer", { refs }) });
+            out.push({ key: `c-r:${e.from.file}:${e.to.file}`, rule: t("java.java.controllerImportsRepository"), from, to, detail: t("java.java.bypassesServiceLayer", { refs }), weight: e.references });
         }
         if (e.from.roles.has("Service") && e.to.roles.has("Controller")) {
-            out.push({ key: `s-c:${e.from.file}:${e.to.file}`, rule: t("java.java.serviceImportsController"), from, to, detail: t("java.java.reachesBackWebLayer", { refs }) });
+            out.push({ key: `s-c:${e.from.file}:${e.to.file}`, rule: t("java.java.serviceImportsController"), from, to, detail: t("java.java.reachesBackWebLayer", { refs }), weight: e.references });
         }
         if (e.from.roles.has("Repository") && (e.to.roles.has("Controller") || e.to.roles.has("Service"))) {
             const layer = e.to.roles.has("Controller") ? "controller" : "service";
-            out.push({ key: `r-up:${e.from.file}:${e.to.file}`, rule: t("java.java.repositoryImports", { layer }), from, to, detail: t("java.java.persistenceDependsLayerAbove", { refs }) });
+            out.push({ key: `r-up:${e.from.file}:${e.to.file}`, rule: t("java.java.repositoryImports", { layer }), from, to, detail: t("java.java.persistenceDependsLayerAbove", { refs }), weight: e.references });
         }
     }
     for (const b of beans) {
         const singleton = b.roles.has("Controller") || b.roles.has("Service") || b.roles.has("Component");
         if (singleton && b.fields >= STATEFUL_FIELD_THRESHOLD) {
-            out.push({ key: `fields:${b.file}`, rule: t("java.java.singletonManyFields"), from: { label: b.label, file: b.file }, to: null, detail: t("java.java.declaresFields", { fields: b.fields }) });
+            out.push({ key: `fields:${b.file}`, rule: t("java.java.singletonManyFields"), from: { label: b.label, file: b.file }, to: null, detail: t("java.java.declaresFields", { fields: b.fields }), weight: b.fields });
         }
     }
     return out.sort((a, b) => a.rule.localeCompare(b.rule) || a.from.label.localeCompare(b.from.label) || (a.to?.label ?? "").localeCompare(b.to?.label ?? ""));

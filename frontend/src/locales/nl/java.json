@@ -8,10 +8,6 @@
   },
   "componentWiring": {
     "structuralFlags": "Structurele flags",
-    "rule": "Regel",
-    "from": "Van",
-    "to": "Naar",
-    "detail": "Detail",
     "wiring": "Wiring",
     "busiestClassesNamedHover": "Drukste klassen met naam · hover over een node",
     "includeExternalWiring": "Externe wiring meenemen",
@@ -23,7 +19,11 @@
     "imports": "Imports",
     "importsNothingGraph": "Importeert niets in de graph.",
     "imported": "Geïmporteerd door",
-    "nothingGraphImports": "Niets in de graph importeert hem."
+    "nothingGraphImports": "Niets in de graph importeert hem.",
+    "showAll": {
+      "one": "Toon de {total} melding",
+      "other": "Toon alle {total}"
+    }
   },
   "componentWiringGraph": {
     "beanWiringInsideComponent": "Bean-wiring binnen de component",

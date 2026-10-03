@@ -474,7 +474,6 @@
     "whatShow": "What to show",
     "howComponentSOwn": "How this component's own classes import each other",
     "everyFileComponent": "Every file in this component",
-    "allRoles": "All roles",
     "xRayEveryFile": "X-ray {folder}: every file read and grouped into topics",
     "xRay": "X-ray",
     "openFile": "Open file",

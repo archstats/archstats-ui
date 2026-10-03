@@ -1,7 +1,7 @@
 <template>
-  <nav class="flex w-[320px] shrink-0 flex-col bg-surface hairline-r" :aria-label="t('files.fileNavigator.files')">
-    <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
-      <label class="relative flex min-w-0 grow items-center">
+  <nav class="flex w-[300px] shrink-0 flex-col bg-ground hairline-r" :aria-label="t('files.fileNavigator.files')">
+    <div class="shrink-0 px-2 pb-1 pt-2">
+      <label class="relative flex items-center">
         <Icon icon="search" :size="13" class="pointer-events-none absolute left-2 text-neutral-400"/>
         <input
           ref="searchRef"
@@ -15,37 +15,60 @@
           @keydown.enter.prevent="selected && emit('open', selected)"
           @keydown.esc="query = ''"
         />
-        <kbd v-if="!query" class="pointer-events-none absolute right-2 font-mono text-xs text-neutral-400" :title="t('files.fileNavigator.pressT')">t</kbd>
+        <kbd v-if="!query" class="key pointer-events-none absolute right-1.5" :title="t('files.fileNavigator.pressT')">t</kbd>
       </label>
     </div>
-    <div class="flex h-9 shrink-0 items-center gap-2 px-3 hairline-b">
-      <div class="ui-segmented" role="group" :aria-label="t('files.fileNavigator.arrange')">
-        <button type="button" :aria-pressed="mode === 'tree'" @click="mode = 'tree'">{{ t('files.fileNavigator.tree') }}</button>
-        <button type="button" :aria-pressed="mode === 'ranked'" @click="mode = 'ranked'">{{ t('files.fileNavigator.ranked') }}</button>
-      </div>
-      <SingleSelect v-if="mode === 'ranked'" v-model="rankLabel" :options="rankOptions" :aria-label="t('files.fileNavigator.rankBy')"/>
-      <span class="ml-auto flex items-center gap-1"><slot name="filters"/></span>
+
+    <!-- Files: the heading says how they are arranged; one menu changes it. -->
+    <div class="flex h-8 shrink-0 items-center gap-1.5 pl-3 pr-1.5">
+      <span class="overline">{{ t('files.fileNavigator.files') }}</span>
+      <span class="font-mono text-xs text-neutral-400">{{ query ? t('files.fileNavigator.nOfM', { n: formatNumber(rows.length), m: formatNumber(files.length) }) : formatNumber(files.length) }}</span>
+      <span class="min-w-0 truncate text-xs text-neutral-400">{{ arrangement }}</span>
+      <button ref="optionsRef" type="button" class="ui-btn ui-btn-sm ui-btn-quiet ml-auto shrink-0 gap-0.5 px-1.5" :aria-expanded="menuOpen" :title="t('files.fileNavigator.arrange')" :aria-label="t('files.fileNavigator.arrange')" @click.stop="menuOpen = !menuOpen">
+        <Icon :icon="mode === 'tree' ? 'list-tree' : 'list-ordered'" :size="13" class="text-neutral-600"/>
+        <Icon icon="chevron-down" :size="11" class="text-neutral-400"/>
+      </button>
     </div>
-    <div v-if="tree.root && mode === 'tree' && !query" class="flex h-7 shrink-0 items-center gap-1.5 px-3 hairline-b" :title="tree.root">
+    <Teleport to="body">
+      <div v-if="menuOpen" ref="menuRef" class="ui-menu animate-in w-[220px]" :style="menuStyle" @click.stop>
+        <div class="menu-title">{{ t('files.fileNavigator.arrange') }}</div>
+        <button type="button" class="ui-menu-item" :class="{ 'is-active': mode === 'tree' }" @click="choose('tree')">
+          <Icon icon="list-tree" :size="13" class="text-neutral-500"/><span class="grow">{{ t('files.fileNavigator.tree') }}</span><Icon v-if="mode === 'tree'" icon="check" :size="13"/>
+        </button>
+        <button v-for="r in rankings" :key="r.id" type="button" class="ui-menu-item" :class="{ 'is-active': mode === 'ranked' && rank.id === r.id }" @click="choose('ranked', r.id)">
+          <Icon icon="list-ordered" :size="13" class="text-neutral-500"/><span class="grow">{{ t('files.fileNavigator.rankedBy', { metric: r.label }) }}</span><Icon v-if="mode === 'ranked' && rank.id === r.id" icon="check" :size="13"/>
+        </button>
+        <template v-if="roles.length">
+          <div class="menu-title mt-1">{{ t('files.fileNavigator.show') }}</div>
+          <button type="button" class="ui-menu-item" :class="{ 'is-active': !role }" @click="emit('update:role', null); menuOpen = false">
+            <span class="grow">{{ t('files.fileNavigator.allRoles') }}</span><Icon v-if="!role" icon="check" :size="13"/>
+          </button>
+          <button v-for="r in roles" :key="r" type="button" class="ui-menu-item" :class="{ 'is-active': role === r }" @click="emit('update:role', r); menuOpen = false">
+            <span class="grow">{{ r }}</span><Icon v-if="role === r" icon="check" :size="13"/>
+          </button>
+        </template>
+      </div>
+    </Teleport>
+
+    <div v-if="tree.root && mode === 'tree' && !query" class="flex h-6 shrink-0 items-center gap-1.5 pl-3 pr-2" :title="tree.root">
       <Icon icon="folder" :size="13" class="shrink-0 text-neutral-400"/>
       <span class="root-path min-w-0 grow truncate font-mono text-xs text-neutral-500"><bdi>{{ tree.root }}/</bdi></span>
       <slot name="root-actions"/>
     </div>
 
-    <div ref="listRef" class="min-h-0 grow overflow-y-auto py-1" role="listbox" :aria-label="t('files.fileNavigator.files')" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)">
+    <div ref="listRef" class="min-h-0 grow overflow-y-auto pb-2" role="listbox" :aria-label="t('files.fileNavigator.files')" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)">
       <EmptyState v-if="!rows.length" icon="search" :title="t('files.fileNavigator.noMatch')" :text="t('files.fileNavigator.noMatchText', { query, files: formatNumber(files.length) })"/>
       <template v-for="row in rows" :key="row.key">
         <button
           v-if="row.kind === 'folder'"
           type="button"
           class="nav-row"
-          :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
+          :style="{ paddingLeft: `${10 + row.depth * 12}px` }"
           :aria-expanded="row.open"
           @click="toggle(row.key)"
         >
           <Icon :icon="row.open ? 'chevron-down' : 'chevron-right'" :size="12" class="shrink-0 text-neutral-400"/>
-          <Icon :icon="row.open ? 'folder' : 'folder-closed'" :size="13" class="shrink-0 text-neutral-400"/>
-          <span class="min-w-0 grow truncate font-mono text-sm text-neutral-800">{{ row.label }}</span>
+          <span class="min-w-0 grow truncate font-mono text-sm text-neutral-700">{{ row.label }}</span>
           <span v-if="!row.open" class="shrink-0 font-mono text-xs text-neutral-400">{{ row.fileCount }}</span>
         </button>
         <button
@@ -56,21 +79,22 @@
           :class="{ 'is-active': row.key === selected }"
           :aria-selected="row.key === selected"
           :data-file="row.key"
-          :style="{ paddingLeft: `${8 + row.depth * 14 + (mode === 'tree' && !query ? 16 : 0)}px` }"
+          :style="{ paddingLeft: `${10 + row.depth * 12 + (mode === 'tree' && !query ? 4 : 0)}px` }"
           :title="row.key"
           @click="emit('update:selected', row.key)"
           @dblclick="emit('open', row.key)"
         >
-          <Icon icon="file-code" :size="13" class="shrink-0" :class="row.file?.test ? 'text-neutral-300' : 'text-neutral-400'"/>
+          <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="row.file?.health === null || row.file?.health === undefined ? 'bg-neutral-300' : levelDotClass(healthLevel(row.file.health))" :title="row.file?.health === null || row.file?.health === undefined ? undefined : t('files.fileNavigator.health', { health: formatHealth(row.file.health) })"></span>
           <span class="min-w-0 grow truncate font-mono text-sm" :class="row.file?.test ? 'text-neutral-500' : 'text-neutral-900'">
             <template v-for="(part, i) in nameParts(row)" :key="i"><span :class="part.hit ? 'match' : ''">{{ part.text }}</span></template>
-            <span v-if="row.dir" class="ml-1.5 text-xs text-neutral-400">{{ row.dir }}</span>
           </span>
-          <span v-if="mode === 'ranked' && !query" class="shrink-0 font-mono text-xs tabular-nums" :class="rank.id === 'health' ? levelTextClass(healthLevel(row.file?.health ?? null)) : 'text-neutral-500'">{{ row.file ? rank.format(row.file) : '' }}</span>
-          <span v-else-if="row.file?.health !== null && row.file?.health !== undefined" class="h-1.5 w-1.5 shrink-0 rounded-full" :class="levelDotClass(healthLevel(row.file.health))" :title="t('files.fileNavigator.health', { health: formatHealth(row.file.health) })"></span>
+          <span v-if="row.dir" class="max-w-[96px] shrink-0 truncate font-mono text-xs text-neutral-400">{{ row.dir }}</span>
+          <span v-if="mode === 'ranked' && !query && row.file" class="w-8 shrink-0 text-right font-mono text-xs tabular-nums" :class="rank.id === 'health' ? levelTextClass(healthLevel(row.file.health)) : 'text-neutral-500'">{{ rank.format(row.file) }}</span>
         </button>
       </template>
     </div>
+
+    <slot name="below"/>
   </nav>
 </template>
 
@@ -79,14 +103,15 @@
 // the folder they share, folders first, single-child chains collapsed, and a
 // Go to file search that ranks by the file name. Ranked turns the same files
 // into one list, worst first by the reading chosen. Click selects;
-// double-click or Enter opens the file.
+// double-click or Enter opens the file. What sits below (the selected file's
+// neighbours) comes in through the slot.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { buildFileTree, foldersHolding, folderKeys, fuzzyMatch, visibleRows, type TreeRow } from "~/features/files/fileTree"
 import { healthLevel, levelDotClass, levelTextClass, formatHealth } from "~/features/metrics/useHealth"
+import { useAnchoredPanel } from "~/shared/ui/useAnchoredPanel"
 import { formatNumber } from "~/shared/format"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import Icon from "~/shared/ui/Icon.vue"
-import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import { t } from "~/shared/i18n"
 
 export interface NavFile {
@@ -104,12 +129,14 @@ export interface NavRanking<F extends NavFile = NavFile> {
   compare: (a: F, b: F) => number
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   files: NavFile[]
   selected: string | null
   rankings: NavRanking<any>[]
-}>()
-const emit = defineEmits<{ "update:selected": [name: string]; open: [name: string] }>()
+  roles?: string[]
+  role?: string | null
+}>(), { roles: () => [], role: null })
+const emit = defineEmits<{ "update:selected": [name: string]; open: [name: string]; "update:role": [role: string | null] }>()
 
 const MODE_KEY = "archstats.fileNavigator.mode"
 const RANK_KEY = "archstats.fileNavigator.rank"
@@ -124,14 +151,25 @@ const mode = ref<"tree" | "ranked">(recall(MODE_KEY, "tree") === "ranked" ? "ran
 watch(mode, m => remember(MODE_KEY, m))
 const rankId = ref(recall(RANK_KEY, "health"))
 const rank = computed(() => props.rankings.find(r => r.id === rankId.value) ?? props.rankings[0])
-const rankOptions = computed(() => props.rankings.map(r => r.label))
-const rankLabel = computed({
-  get: () => rank.value?.label ?? "",
-  set: label => {
-    const r = props.rankings.find(x => x.label === label)
-    if (r) { rankId.value = r.id; remember(RANK_KEY, r.id) }
-  },
-})
+
+const arrangement = computed(() => [
+  mode.value === "ranked" && rank.value ? t("files.fileNavigator.byMetric", { metric: rank.value.label.toLocaleLowerCase() }) : "",
+  props.role ?? "",
+].filter(Boolean).join(" · "))
+
+// ── The arrange menu ────────────────────────────────────────────
+const menuOpen = ref(false)
+const optionsRef = ref<HTMLElement | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
+const { style: menuStyle } = useAnchoredPanel(optionsRef, menuOpen, "right")
+function choose(m: "tree" | "ranked", id?: string) {
+  mode.value = m
+  if (id) { rankId.value = id; remember(RANK_KEY, id) }
+  menuOpen.value = false
+}
+function closeMenu(e: MouseEvent) {
+  if (menuOpen.value && !menuRef.value?.contains(e.target as Node)) menuOpen.value = false
+}
 
 const query = ref("")
 const searchRef = ref<HTMLInputElement | null>(null)
@@ -160,6 +198,12 @@ type Row = TreeRow<NavFile> & { dir?: string; hits?: number[] }
 const rows = computed<Row[]>(() => {
   const root = tree.value.root
   const relative = (name: string) => (root ? name.slice(root.length + 1) : name)
+  const fileRow = (f: NavFile, hits?: number[]): Row => {
+    const rel = relative(f.name)
+    const cut = rel.lastIndexOf("/") + 1
+    const dir = rel.slice(0, Math.max(0, cut - 1))
+    return { kind: "file", key: f.name, label: rel.slice(cut), depth: 0, open: false, fileCount: 1, file: f, dir: dir.split("/").slice(-1)[0], hits: hits?.filter(i => i >= cut).map(i => i - cut) }
+  }
   const q = query.value.trim()
   if (q) {
     return props.files
@@ -167,19 +211,11 @@ const rows = computed<Row[]>(() => {
       .filter(x => x.m)
       .sort((a, b) => b.m!.score - a.m!.score)
       .slice(0, 200)
-      .map(({ f, m }) => {
-        const rel = relative(f.name)
-        const cut = rel.lastIndexOf("/") + 1
-        return { kind: "file" as const, key: f.name, label: rel.slice(cut), depth: 0, open: false, fileCount: 1, file: f, dir: rel.slice(0, Math.max(0, cut - 1)), hits: m!.indices.filter(i => i >= cut).map(i => i - cut) }
-      })
+      .map(({ f, m }) => fileRow(f, m!.indices))
   }
-  if (mode.value === "ranked") {
+  if (mode.value === "ranked" && rank.value) {
     const r = rank.value
-    return [...props.files].sort((a, b) => r.compare(a, b) || a.name.localeCompare(b.name)).map(f => {
-      const rel = relative(f.name)
-      const cut = rel.lastIndexOf("/") + 1
-      return { kind: "file" as const, key: f.name, label: rel.slice(cut), depth: 0, open: false, fileCount: 1, file: f, dir: rel.slice(0, Math.max(0, cut - 1)).split("/").slice(-1)[0] }
-    })
+    return [...props.files].sort((a, b) => r.compare(a, b) || a.name.localeCompare(b.name)).map(f => fileRow(f))
   }
   return visibleRows<NavFile>(tree.value.nodes, k => openFolders.value.has(k))
 })
@@ -213,6 +249,7 @@ watch(query, q => {
 
 // t goes to the file search, as on GitHub.
 function onKey(e: KeyboardEvent) {
+  if (e.key === "Escape" && menuOpen.value) { menuOpen.value = false; return }
   if (e.key !== "t" || e.metaKey || e.ctrlKey || e.altKey) return
   const el = e.target as HTMLElement | null
   if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return
@@ -220,16 +257,25 @@ function onKey(e: KeyboardEvent) {
   searchRef.value?.focus()
   searchRef.value?.select()
 }
-onMounted(() => window.addEventListener("keydown", onKey))
-onBeforeUnmount(() => window.removeEventListener("keydown", onKey))
+onMounted(() => {
+  window.addEventListener("keydown", onKey)
+  document.addEventListener("click", closeMenu)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKey)
+  document.removeEventListener("click", closeMenu)
+})
 </script>
 
 <style scoped>
-.nav-row { display: flex; width: 100%; align-items: center; gap: 0.375rem; height: 1.625rem; padding-right: 0.75rem; text-align: left; }
+.overline { flex: none; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgb(var(--c-neutral-600)); }
+.key { display: inline-flex; height: 1rem; min-width: 1rem; align-items: center; justify-content: center; padding: 0 0.25rem; border-radius: 0.1875rem; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.6875rem; line-height: 1; color: rgb(var(--c-neutral-500)); box-shadow: inset 0 0 0 1px rgb(var(--c-neutral-300)); }
+.nav-row { display: flex; width: 100%; align-items: center; gap: 0.5rem; height: 1.5rem; padding-right: 0.75rem; text-align: left; }
 .nav-row:hover { background: rgb(var(--c-neutral-100)); }
 .nav-row:focus-visible { outline: 2px solid rgb(var(--c-accent-500)); outline-offset: -2px; }
 .nav-row.is-active { background: rgb(var(--c-accent-50)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500)); }
 .match { color: rgb(var(--c-neutral-900)); font-weight: 600; text-decoration: underline; text-decoration-color: rgb(var(--c-accent-500)); text-underline-offset: 2px; }
+.menu-title { padding: 0.25rem 0.5rem; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgb(var(--c-neutral-500)); }
 /* A long shared root keeps its end, the part that tells folders apart. */
 .root-path { direction: rtl; text-align: left; }
 </style>

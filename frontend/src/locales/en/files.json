@@ -46,11 +46,14 @@
     "pressT": "Press t to search files",
     "arrange": "Arrange files",
     "tree": "Tree",
-    "ranked": "Ranked",
-    "rankBy": "Rank by",
     "noMatch": "No file matches",
     "noMatchText": "Nothing among the {files} files matches “{query}”.",
-    "health": "Health {health}"
+    "health": "Health {health}",
+    "rankedBy": "Ranked by {metric}",
+    "byMetric": "by {metric}",
+    "show": "Show",
+    "allRoles": "All roles",
+    "nOfM": "{n} of {m}"
   },
   "symbolsPane": {
     "symbols": "Symbols",
@@ -66,5 +69,26 @@
     "noMatchText": "Nothing here is named like “{filter}”.",
     "rowTitle": "{name}, lines {begin}–{end}, cognitive complexity {cognitive}",
     "anonymous": "anonymous, line {line}"
+  },
+  "fileNeighbours": {
+    "neighbours": "Neighbours",
+    "reading": "Reading neighbours…",
+    "pickFile": "Select a file to see what it is wired to.",
+    "uses": "Uses",
+    "usesHint": "Files this one references, most references first",
+    "usesNothing": "References no file in the snapshot",
+    "usedBy": "Used by",
+    "usedByHint": "Files that reference this one, most references first",
+    "usedByNothing": "No file references it",
+    "changesWith": "Changes with",
+    "changesWithHint": "Files that changed in the same commits, most shared commits first",
+    "changesWithNothing": "Changes on its own",
+    "references": "references",
+    "sharedCommits": "shared commits",
+    "rowTitle": "{file}\nin {component} · {weight} {unit}",
+    "more": {
+      "one": "{more} more",
+      "other": "{more} more"
+    }
   }
 }

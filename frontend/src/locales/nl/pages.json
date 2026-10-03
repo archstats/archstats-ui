@@ -474,7 +474,6 @@
     "whatShow": "Wat te tonen",
     "howComponentSOwn": "Hoe de eigen classes van deze component elkaar importeren",
     "everyFileComponent": "Elk bestand in deze component",
-    "allRoles": "Alle rollen",
     "xRayEveryFile": "X-ray {folder}: elk bestand gelezen en gegroepeerd in topics",
     "xRay": "X-ray",
     "openFile": "Bestand openen",

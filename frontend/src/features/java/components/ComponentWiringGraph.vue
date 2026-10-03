@@ -76,7 +76,7 @@ function endId(v: string | SimNode): string {
 function render() {
   const svg = svgRef.value
   if (!svg) return
-  const t = chartTheme()
+  const theme = chartTheme()
   const rect = svg.getBoundingClientRect()
   const width = rect.width || 800
   const height = rect.height || 380
@@ -109,7 +109,7 @@ function render() {
     .attr("orient", "auto")
     .append("path")
     .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", withAlpha(t.inkMuted, 0.7))
+    .attr("fill", withAlpha(theme.inkMuted, 0.7))
 
   const g = root.append("g")
   root.attr("width", width).attr("height", height)
@@ -118,13 +118,17 @@ function render() {
     // An svg sized in CSS has a relative width, and d3-zoom's default extent
     // reads it: that throws whenever the pane is not rendered. State the box.
     .extent([[0, 0], [width, height]])
-    .on("zoom", event => { g.attr("transform", event.transform) })
+    .on("zoom", event => {
+      g.attr("transform", event.transform)
+      if (event.sourceEvent) userMoved = true
+    })
   root.call(zoom)
+  userMoved = false
 
   linkSel = g.append("g").selectAll<SVGLineElement, SimEdge>("line")
     .data(edges)
     .join("line")
-    .attr("stroke", withAlpha(t.inkMuted, 0.45))
+    .attr("stroke", withAlpha(theme.inkMuted, 0.45))
     .attr("stroke-width", d => Math.min(3, 1 + Math.log2(Math.max(1, d.references))))
     .attr("stroke-dasharray", d => d.external ? "3,3" : null)
     .attr("marker-end", `url(#${markerId})`)
@@ -133,8 +137,8 @@ function render() {
     .data(nodes, d => d.id)
     .join("circle")
     .attr("r", 7)
-    .attr("fill", d => d.external ? t.surface : roleColor(d.role))
-    .attr("stroke", d => d.external ? roleColor(d.role) : t.surface)
+    .attr("fill", d => d.external ? theme.surface : roleColor(d.role))
+    .attr("stroke", d => d.external ? roleColor(d.role) : theme.surface)
     .attr("stroke-width", 1.5)
     .attr("stroke-dasharray", d => d.external ? "2,2" : null)
     .style("cursor", "pointer")
@@ -162,9 +166,9 @@ function render() {
     .data(nodes, d => d.id)
     .join("text")
     .text(d => d.label)
-    .attr("font-family", t.fontMono)
+    .attr("font-family", theme.fontMono)
     .attr("font-size", 11)
-    .attr("fill", d => d.external ? t.inkMuted : t.inkSecondary)
+    .attr("fill", d => d.external ? theme.inkMuted : theme.inkSecondary)
     .attr("text-anchor", "middle")
     .attr("dy", -11)
     .style("pointer-events", "none")
@@ -183,6 +187,7 @@ function render() {
     })
   nodeSel.call(drag)
 
+  let ticks = 0
   simulation = d3.forceSimulation<SimNode>(nodes)
     .force("link", d3.forceLink<SimNode, SimEdge>(edges).id(d => d.id).distance(80))
     .force("charge", d3.forceManyBody().strength(-180))
@@ -190,6 +195,9 @@ function render() {
     .force("y", d3.forceY(height / 2).strength(columns.size > 1 ? 0.3 : 0.06))
     .force("collide", d3.forceCollide(22))
     .on("tick", () => {
+      // Frame the graph once it has mostly settled, not only at the very end:
+      // a throttled window can take many seconds to cool completely.
+      if (++ticks === 120 && !userMoved) fitToView(nodes, width, height)
       linkSel!
         .attr("x1", d => (d.source as SimNode).x ?? 0)
         .attr("y1", d => (d.source as SimNode).y ?? 0)
@@ -198,19 +206,35 @@ function render() {
       nodeSel!.attr("cx", d => d.x ?? 0).attr("cy", d => d.y ?? 0)
       labelSel!.attr("x", d => d.x ?? 0).attr("y", d => d.y ?? 0)
     })
+    // Once the layout settles, frame it: every class in view, none lost off
+    // an edge. A reader who has already zoomed keeps their view.
+    .on("end", () => { if (!userMoved) fitToView(nodes, width, height) })
 
   applySelection()
+}
+
+let userMoved = false
+function fitToView(nodes: SimNode[], width: number, height: number) {
+  const svg = svgRef.value
+  if (!svg || !zoom || !nodes.length) return
+  const pad = 36
+  const xs = nodes.map(n => n.x ?? 0), ys = nodes.map(n => n.y ?? 0)
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad
+  const y0 = Math.min(...ys) - pad - 12, y1 = Math.max(...ys) + pad
+  const k = Math.min(1.5, width / Math.max(1, x1 - x0), height / Math.max(1, y1 - y0))
+  const transform = d3.zoomIdentity.translate(width / 2 - k * (x0 + x1) / 2, height / 2 - k * (y0 + y1) / 2).scale(k)
+  d3.select(svg).transition().duration(300).call(zoom.transform, transform)
 }
 
 // Dim everything not touching the selected node; no rebuild.
 function applySelection() {
   if (!nodeSel || !labelSel || !linkSel) return
-  const t = chartTheme()
+  const theme = chartTheme()
   const selected = props.selected
   if (!selected) {
-    nodeSel.attr("r", 7).attr("opacity", 1).attr("stroke", d => d.external ? roleColor(d.role) : t.surface).attr("stroke-width", 1.5)
+    nodeSel.attr("r", 7).attr("opacity", 1).attr("stroke", d => d.external ? roleColor(d.role) : theme.surface).attr("stroke-width", 1.5)
     labelSel.attr("opacity", d => labelled.has(d.id) ? 1 : 0)
-    linkSel.attr("stroke", withAlpha(t.inkMuted, 0.45)).attr("opacity", 1)
+    linkSel.attr("stroke", withAlpha(theme.inkMuted, 0.45)).attr("opacity", 1)
     return
   }
   const near = new Set<string>([selected])
@@ -224,7 +248,7 @@ function applySelection() {
   nodeSel
     .attr("r", d => d.id === selected ? 10 : near.has(d.id) ? 8 : 7)
     .attr("opacity", d => d.id === selected ? 1 : near.has(d.id) ? 0.95 : 0.12)
-    .attr("stroke", d => d.id === selected ? t.ink : d.external ? roleColor(d.role) : t.surface)
+    .attr("stroke", d => d.id === selected ? theme.ink : d.external ? roleColor(d.role) : theme.surface)
     .attr("stroke-width", d => d.id === selected ? 3 : 1.5)
   labelSel.attr("opacity", d => near.has(d.id) ? 1 : labelled.has(d.id) ? 0.3 : 0)
   linkSel
@@ -234,7 +258,7 @@ function applySelection() {
     })
     .attr("stroke", d => {
       const s = endId(d.source as string | SimNode), tt = endId(d.target as string | SimNode)
-      return s === selected || tt === selected ? t.inkSecondary : withAlpha(t.inkMuted, 0.45)
+      return s === selected || tt === selected ? theme.inkSecondary : withAlpha(theme.inkMuted, 0.45)
     })
 }
 

@@ -46,11 +46,14 @@
     "pressT": "Druk op t om bestanden te zoeken",
     "arrange": "Bestanden ordenen",
     "tree": "Boom",
-    "ranked": "Gerangschikt",
-    "rankBy": "Rangschikken op",
     "noMatch": "Geen bestand gevonden",
     "noMatchText": "Niets van de {files} bestanden past bij “{query}”.",
-    "health": "Health {health}"
+    "health": "Health {health}",
+    "rankedBy": "Gerangschikt op {metric}",
+    "byMetric": "op {metric}",
+    "show": "Tonen",
+    "allRoles": "Alle rollen",
+    "nOfM": "{n} van {m}"
   },
   "symbolsPane": {
     "symbols": "Symbolen",
@@ -66,5 +69,26 @@
     "noMatchText": "Niets hier heet zoals “{filter}”.",
     "rowTitle": "{name}, regels {begin}–{end}, cognitieve complexiteit {cognitive}",
     "anonymous": "anoniem, regel {line}"
+  },
+  "fileNeighbours": {
+    "neighbours": "Buren",
+    "reading": "Buren lezen…",
+    "pickFile": "Kies een bestand om te zien waar het aan vastzit.",
+    "uses": "Gebruikt",
+    "usesHint": "Bestanden waar dit bestand naar verwijst, meeste verwijzingen eerst",
+    "usesNothing": "Verwijst naar geen bestand in de snapshot",
+    "usedBy": "Gebruikt door",
+    "usedByHint": "Bestanden die naar dit bestand verwijzen, meeste verwijzingen eerst",
+    "usedByNothing": "Geen bestand verwijst ernaar",
+    "changesWith": "Verandert samen met",
+    "changesWithHint": "Bestanden die in dezelfde commits veranderden, meeste gedeelde commits eerst",
+    "changesWithNothing": "Verandert op zichzelf",
+    "references": "verwijzingen",
+    "sharedCommits": "gedeelde commits",
+    "rowTitle": "{file}\nin {component} · {weight} {unit}",
+    "more": {
+      "one": "nog {more}",
+      "other": "nog {more}"
+    }
   }
 }

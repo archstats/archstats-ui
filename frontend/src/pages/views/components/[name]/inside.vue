@@ -17,12 +17,12 @@
 
     <div v-else class="flex min-h-0 grow overflow-hidden">
       <!-- Left: the files as a tree under the folder they share, or ranked. -->
-      <FileNavigator v-model:selected="selected" :files="navFiles" :rankings="rankings" @open="openFile">
-        <template #filters>
-          <SingleSelect v-if="roleFilterOptions.length > 1" v-model="roleFilter" :options="roleFilterOptions" :placeholder="t('pages.componentsInside.allRoles')"/>
-        </template>
+      <FileNavigator v-model:selected="selected" v-model:role="role" :files="navFiles" :rankings="rankings" :roles="roleOptions" @open="openFile">
         <template #root-actions>
-          <router-link v-if="folder" :to="xrayPath(folder)" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0" :title="t('pages.componentsInside.xRayEveryFile', { folder })">{{ t('pages.componentsInside.xRay') }}</router-link>
+          <router-link v-if="folder" :to="xrayPath(folder)" class="ui-btn ui-btn-sm ui-btn-quiet h-5 shrink-0 px-1.5 text-xs" :title="t('pages.componentsInside.xRayEveryFile', { folder })">{{ t('pages.componentsInside.xRay') }}</router-link>
+        </template>
+        <template #below>
+          <FileNeighbours :file="selected" :component="name" @select="selected = $event"/>
         </template>
       </FileNavigator>
 
@@ -76,9 +76,9 @@ import { formatNumber } from "~/shared/format"
 import FileCodeViewer from "~/features/files/components/FileCodeViewer.vue"
 import FileNavigator, { type NavRanking } from "~/features/files/components/FileNavigator.vue"
 import SymbolsPane from "~/features/files/components/SymbolsPane.vue"
+import FileNeighbours from "~/features/files/components/FileNeighbours.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
-import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import ComponentWiring from "~/features/java/components/ComponentWiring.vue"
 import Icon from "~/shared/ui/Icon.vue"
 import { t } from "~/shared/i18n"
@@ -170,15 +170,15 @@ const rankings = computed<NavRanking<InsideFile>[]>(() => [
   ...(hasCommits.value ? [{ id: "commits", label: t("pages.componentsInside.commits"), format: (f: InsideFile) => formatNumber(f.commits), compare: (a: InsideFile, b: InsideFile) => b.commits - a.commits }] : []),
 ])
 
-const ALL_ROLES = t("pages.componentsInside.allRoles")
-const roleFilter = ref<string>(ALL_ROLES)
-const roleFilterOptions = computed(() => {
+// Java roles narrow the files; null shows every file.
+const role = ref<string | null>(null)
+const roleOptions = computed(() => {
   const present = new Set<string>()
   for (const f of files.value) for (const r of f.roles) present.add(r)
-  return present.size > 0 ? [ALL_ROLES, ...Array.from(present).sort()] : []
+  return Array.from(present).sort()
 })
 
-const navFiles = computed(() => roleFilter.value === ALL_ROLES ? files.value : files.value.filter(f => f.roles.includes(roleFilter.value)))
+const navFiles = computed(() => role.value ? files.value.filter(f => f.roles.includes(role.value!)) : files.value)
 
 const selected = ref<string | null>(null)
 const annotations = useComplexityAnnotations(computed(() => selected.value ?? ""))
@@ -203,8 +203,13 @@ const selectedFile = computed(() => files.value.find(f => f.name === selected.va
 // healthy file, the one most worth reading (the largest when nothing is scored).
 watch(name, () => {
   selected.value = null
-  roleFilter.value = ALL_ROLES
+  role.value = null
 })
+// A neighbour opened from another component arrives as ?file=.
+const asked = computed(() => (typeof route.query.file === "string" ? route.query.file : null))
+watch([asked, files], ([file]) => {
+  if (file && files.value.some(f => f.name === file || f.name === `./${file}`)) selected.value = files.value.find(f => f.name === file || f.name === `./${file}`)!.name
+}, { immediate: true })
 watch(navFiles, rows => {
   if (rows.some(f => f.name === selected.value)) return
   const first = [...rows].sort((a, b) => (a.health ?? 99) - (b.health ?? 99) || b.lines - a.lines)[0]
