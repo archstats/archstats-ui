@@ -104,6 +104,12 @@ export interface LaneDef {
    * it"), so nothing depending on it is its definition, not a finding.
    */
   byReferences?: boolean
+  /**
+   * Wiring: configuration, dependency-injection modules, service providers.
+   * Its job is to reach into every layer, so it is drawn beside the stack
+   * and nothing it imports, or that imports it, points up or down.
+   */
+  beside?: boolean
   hint?: string
 }
 
@@ -190,7 +196,7 @@ export const SPRING: FrameworkProfile = {
     { id: "services", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", annotations: ["Service"], rule: anyAnnotation(["Component"]), legacy: ["java__spring__service", "java__spring__component"], hint: t("frameworks.frameworkProfiles.servicesPlainComponentsEverything") },
     // Wiring sits beside the layers, not in them: a configuration class
     // creating beans reaches into every layer, and that is its job.
-    { id: "config", label: t("frameworks.frameworkProfiles.configuration"), color: "neutral-deep", annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: t("frameworks.frameworkProfiles.configurationClassesApplication") },
+    { id: "config", label: t("frameworks.frameworkProfiles.configuration"), color: "neutral-deep", beside: true, annotations: ["Configuration", "SpringBootApplication", "AutoConfiguration", "ConfigurationProperties", "EnableAutoConfiguration"], legacy: ["java__spring__configuration"], rule: isMain, hint: t("frameworks.frameworkProfiles.configurationClassesApplication") },
     { id: "messaging", label: t("frameworks.frameworkProfiles.messaging"), color: "red", annotations: ["KafkaListener", "RabbitListener", "JmsListener", "SqsListener"], supertypes: ["MessageListener"], imports: ["org.springframework.kafka", "org.springframework.amqp", "org.springframework.jms", "org.springframework.cloud.stream", "org.springframework.integration", "org.springframework.messaging"], hint: t("frameworks.frameworkProfiles.listenersChannelsEntryPoints") },
     { id: "repositories", label: t("frameworks.frameworkProfiles.repositories"), color: "amber", annotations: ["Repository"], supertypes: ["JpaRepository", "CrudRepository", "PagingAndSortingRepository", "ListCrudRepository", "MongoRepository", "ReactiveCrudRepository", "R2dbcRepository", "ElasticsearchRepository", "JpaSpecificationExecutor"], legacy: ["java__spring__repository"], imports: ["org.springframework.data.repository", "org.springframework.jdbc", "org.springframework.r2dbc"], hint: t("frameworks.frameworkProfiles.dataAccess") },
     { id: "entities", label: t("frameworks.frameworkProfiles.entities"), color: "violet", annotations: ENTITY_ANNOTATIONS, legacy: ["java__jpa__entity"], hint: t("frameworks.frameworkProfiles.persistentModels") },
@@ -302,7 +308,7 @@ export const ANDROID: FrameworkProfile = {
     { id: "screens", label: t("frameworks.frameworkProfiles.screens"), color: "blue-deep", annotations: ["activity"], supertypes: ["Activity", "AppCompatActivity", "FragmentActivity", "ComponentActivity", "Fragment", "DialogFragment", "BottomSheetDialogFragment", "PreferenceFragmentCompat"], rule: isComposeScreen, ruleFirst: true, hint: t("frameworks.frameworkProfiles.activitiesFragmentsComposablesNamed") },
     { id: "ui", label: t("frameworks.frameworkProfiles.uiComponents"), color: "blue", annotations: ["Composable"], supertypes: ["View", "ViewGroup", "FrameLayout", "LinearLayout", "ConstraintLayout", "RecyclerView", "Adapter", "ViewHolder", "ListAdapter"], hint: t("frameworks.frameworkProfiles.composablesViewsBelowScreen") },
     { id: "viewmodels", label: t("frameworks.frameworkProfiles.viewmodelsOther"), color: "green", annotations: ["HiltViewModel"], supertypes: ["ViewModel", "AndroidViewModel"], nameSuffixes: ["ViewModel", "Presenter"], hint: t("frameworks.frameworkProfiles.stateHoldersEverythingUnclassified") },
-    { id: "di", label: t("frameworks.frameworkProfiles.dependencyInjection"), color: "neutral-deep", annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: t("frameworks.frameworkProfiles.hiltDaggerKoinModules") },
+    { id: "di", label: t("frameworks.frameworkProfiles.dependencyInjection"), color: "neutral-deep", beside: true, annotations: ["Module", "InstallIn", "Component", "Subcomponent", "HiltAndroidApp", "application"], supertypes: ["Application"], imports: ["org.koin"], hint: t("frameworks.frameworkProfiles.hiltDaggerKoinModules") },
     { id: "background", label: t("frameworks.frameworkProfiles.servicesReceivers"), color: "red", annotations: ["service", "receiver", "provider", "HiltWorker"], supertypes: ["Service", "IntentService", "JobIntentService", "LifecycleService", "BroadcastReceiver", "Worker", "CoroutineWorker", "ListenableWorker", "ContentProvider"], hint: t("frameworks.frameworkProfiles.workOffScreen") },
     { id: "data", label: t("frameworks.frameworkProfiles.data"), color: "amber", annotations: ["Dao", "Database"], supertypes: ["RoomDatabase"], imports: ["androidx.room", "retrofit2", "okhttp3", "io.ktor.client", "androidx.datastore", "android.database", "app.cash.sqldelight", "io.realm"], nameSuffixes: ["Repository", "DataSource", "Dao", "Api", "Service", "Client"], hint: t("frameworks.frameworkProfiles.roomNetworkStorage") },
     // A Kotlin `data class` is a data shape by declaration; the engine records
@@ -610,7 +616,7 @@ export const LARAVEL: FrameworkProfile = {
     { id: "models", label: t("frameworks.frameworkProfiles.eloquentModels"), color: "violet", supertypes: ["Model", "Authenticatable", "Pivot", "MorphPivot"], rule: under("Models"), hint: t("frameworks.frameworkProfiles.persistentState") },
     // A job or command is an entry point the queue or the terminal calls, not data access; it used to sit in "Repositories & Jobs" below the logic it calls.
     { id: "background", label: t("frameworks.frameworkProfiles.jobsEventsListeners"), color: "red", supertypes: ["ShouldQueue", "ShouldBroadcast", "Command", "Mailable", "Notification"], rule: under("Jobs", "Console/Commands", "Listeners", "Events", "Mail", "Notifications", "Observers"), nameSuffixes: ["Job", "Command", "Listener", "Event", "Mail", "Notification", "Observer"], hint: t("frameworks.frameworkProfiles.queuedWorkConsoleCommands") },
-    { id: "wiring", label: t("frameworks.frameworkProfiles.providersMiddlewarePolicies"), color: "neutral-deep", supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: t("frameworks.frameworkProfiles.registrationCrossCutting") },
+    { id: "wiring", label: t("frameworks.frameworkProfiles.providersMiddlewarePolicies"), color: "neutral-deep", beside: true, supertypes: ["ServiceProvider", "HttpKernel", "ConsoleKernel", "ExceptionHandler"], rule: under("Providers", "Http/Middleware", "Policies", "Exceptions"), nameSuffixes: ["ServiceProvider", "Middleware", "Kernel", "Policy", "Gate"], hint: t("frameworks.frameworkProfiles.registrationCrossCutting") },
     { id: "data", label: t("frameworks.frameworkProfiles.repositories"), color: "amber-deep", imports: ["Illuminate\\Support\\Facades\\DB", "Illuminate\\Support\\Facades\\Http", "Illuminate\\Database\\Query", "Illuminate\\Database\\ConnectionInterface"], rule: under("Repositories"), nameSuffixes: ["Repository", "Query", "Client", "Gateway"], hint: t("frameworks.frameworkProfiles.dataAccessOutboundCalls") },
     { id: "logic", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", rule: under("Services", "Actions"), nameSuffixes: ["Service", "Action", "Manager", "Handler"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
@@ -634,7 +640,7 @@ export const SYMFONY: FrameworkProfile = {
     // since every type hint in that code names the interface.
     { id: "models", label: t("frameworks.frameworkProfiles.entitiesModels"), color: "violet", annotations: ["Entity", "Embeddable", "MappedSuperclass", "Table"], supertypes: ["ResourceInterface", "TimestampableInterface", "Model", "Authenticatable", "UserInterface"], rule: under("Entity", "Model"), nameSuffixes: ["Entity"], hint: t("frameworks.frameworkProfiles.persistentState") },
     { id: "data", label: t("frameworks.frameworkProfiles.repositoriesProviders"), color: "amber-deep", supertypes: ["ServiceEntityRepository", "EntityRepository", "RepositoryInterface", "ObjectRepository"], rule: under("Repository"), nameSuffixes: ["Repository", "RepositoryInterface", "Provider", "Loader", "Client"], hint: t("frameworks.frameworkProfiles.dataAccess") },
-    { id: "wiring", label: t("frameworks.frameworkProfiles.bundlesSubscribersCompilerPasses"), color: "red", annotations: ["AsEventListener", "AsDecorator"], supertypes: ["Bundle", "AbstractBundle", "AbstractResourceBundle", "Extension", "AbstractExtension", "AbstractResourceExtension", "CompilerPassInterface", "EventSubscriberInterface", "ConfigurationInterface", "Voter", "Kernel"], rule: under("DependencyInjection", "EventSubscriber", "EventListener"), nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Pass", "Voter", "Kernel"], hint: t("frameworks.frameworkProfiles.registrationEvents") },
+    { id: "wiring", label: t("frameworks.frameworkProfiles.bundlesSubscribersCompilerPasses"), color: "red", beside: true, annotations: ["AsEventListener", "AsDecorator"], supertypes: ["Bundle", "AbstractBundle", "AbstractResourceBundle", "Extension", "AbstractExtension", "AbstractResourceExtension", "CompilerPassInterface", "EventSubscriberInterface", "ConfigurationInterface", "Voter", "Kernel"], rule: under("DependencyInjection", "EventSubscriber", "EventListener"), nameSuffixes: ["Bundle", "Extension", "Subscriber", "Listener", "Pass", "Voter", "Kernel"], hint: t("frameworks.frameworkProfiles.registrationEvents") },
     { id: "logic", label: t("frameworks.frameworkProfiles.servicesOther"), color: "green", rule: under("Service", "Services"), nameSuffixes: ["Service", "Manager", "Factory", "Handler", "Resolver", "Processor", "Calculator", "Checker", "Applicator", "Generator", "Assigner", "Modifier"], hint: t("frameworks.frameworkProfiles.everythingUnclassified") },
   ],
   fallback: "logic",
@@ -992,6 +998,60 @@ export function classify(profile: FrameworkProfile, facts: ClassFacts, signals: 
 }
 
 const packageQualified = (f: ClassFacts) => !!f.file && f.file.endsWith(".go")
+
+/**
+ * A type that matched nothing takes the lane its subtypes agree on.
+ *
+ * Code written against interfaces puts the role on the implementation:
+ * `CatalogServiceImpl` is the `@Service`, `OrderDaoImpl` the `@Repository`,
+ * `ProductImpl` the `@Entity`. Everything else imports `CatalogService`,
+ * `OrderDao` and `Product`, so with the interfaces unclassified nearly every
+ * reference ran from a lane into Unclassified: Broadleaf had 481 such
+ * interfaces, and its stack came out upside down. An abstract base whose
+ * subclasses are all `@Component` is a component in the same way.
+ *
+ * A subtype is a unit that references the type and names it as a supertype.
+ * More than half of the classified subtypes must agree, and the reading is
+ * repeated so a chain of interfaces settles from the implementation up.
+ * `lanes` is updated in place; the number of units that moved is returned.
+ */
+export function adoptSubtypeLanes(
+  lanes: Map<string, string>,
+  edges: Iterable<{ from: string; to: string }>,
+  factsOf: (id: string) => ClassFacts | undefined,
+): number {
+  const subtypes = new Map<string, Set<string>>()
+  for (const e of edges) {
+    if (e.from === e.to || lanes.get(e.to) !== UNCLASSIFIED) continue
+    const name = factsOf(e.to)?.name
+    if (!name || !factsOf(e.from)?.supertypes.has(name)) continue
+    let s = subtypes.get(e.to)
+    if (!s) subtypes.set(e.to, (s = new Set()))
+    s.add(e.from)
+  }
+  let moved = 0
+  for (let round = 0; round < 8; round++) {
+    const settled: Array<[string, string]> = []
+    for (const [id, subs] of subtypes) {
+      if (lanes.get(id) !== UNCLASSIFIED) continue
+      const votes = new Map<string, number>()
+      let classified = 0
+      for (const s of subs) {
+        const lane = lanes.get(s)
+        if (!lane || lane === UNCLASSIFIED) continue
+        classified++
+        votes.set(lane, (votes.get(lane) ?? 0) + 1)
+      }
+      let best = "", most = 0
+      for (const [lane, k] of votes) if (k > most || (k === most && lane < best)) { best = lane; most = k }
+      if (most * 2 > classified) settled.push([id, best])
+    }
+    if (!settled.length) break
+    for (const [id, lane] of settled) lanes.set(id, lane)
+    moved += settled.length
+  }
+  return moved
+}
 
 export function laneOf(profile: FrameworkProfile, laneId: string): LaneDef {
   return profile.lanes.find(l => l.id === laneId) ?? profile.lanes.find(l => l.id === profile.fallback) ?? profile.lanes[0]

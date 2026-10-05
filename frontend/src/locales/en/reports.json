@@ -1291,7 +1291,8 @@
     "sinceLastRun3": "Since the last run: {Boolean}.",
     "notIncludedTemplateAsked2": "Not included: {items}. The template asked for {them}, and {theyWere} not added from {theirViews}.",
     "firstRowsQueryReturned2": "The first {rowsLength} rows; the query returned more.",
-    "rows2": "{rowsLength} of {total} rows."
+    "rows2": "{rowsLength} of {total} rows.",
+    "of": " of {committed}"
   },
   "reportDoc": {
     "figure": "Figure {value}",

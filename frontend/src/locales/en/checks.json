@@ -39,7 +39,9 @@
     "importsUpStack": "Imports up the stack ({upLabel})",
     "breaksRuleInversionMutual": "Breaks the rule: an inversion, a mutual pair or a cycle",
     "eachFloorUsesFloors": "Each floor uses the floors below it. Line width is imports, on a square-root scale; the bar under a floor is its share of the files.",
-    "text": "{imports}"
+    "text": "{imports}",
+    "besideLayers": "Beside the layers",
+    "besideLayersNote": "Wiring and code that matched no lane stand beside the layers; their references are counted, not drawn."
   },
   "folders": {
     "whereCodeLivesEvery": "Where the code lives: every file by size in its folders, painted by role, health, churn or component.",

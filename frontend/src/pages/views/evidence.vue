@@ -367,7 +367,7 @@ const kernelLine = computed(() => {
   const k = reports.kernel;
   if (!k) return t("pages.evidence.noCompleteSnapshotRun");
   const cells = reports.cells.length;
-  return t("pages.evidence.snapshotAnalysisR", { kLabel: k.label, value: k.headCommit ? t("pages.evidence.commit2", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? ` of ${k.committed}` : "" }) : "", revision: k.revision, cells: t("common.count.cell", { count: cells }) });
+  return t("pages.evidence.snapshotAnalysisR", { kLabel: k.label, value: k.headCommit ? t("pages.evidence.commit2", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? t("pages.evidence.of", { committed: k.committed }) : "" }) : "", revision: k.revision, cells: t("common.count.cell", { count: cells }) });
 });
 const isStale = (b: CellBlock) => runnable(b.cell.spec) && (!b.cell.ranOn || b.cell.ranOn.scanId !== reports.kernel?.id);
 

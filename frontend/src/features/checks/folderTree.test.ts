@@ -42,3 +42,20 @@ describe("stackOrder", () => {
         expect(stackOrder(["a", "b", "c"], [])).toEqual(["a", "b", "c"])
     })
 })
+
+describe("stackOrder, weighed exactly", () => {
+    it("puts the callers on top even when the floor below sends more", () => {
+        // Broadleaf after interfaces join their lanes: volume is not direction.
+        const flows = [
+            { from: "services", to: "entities", count: 1143 }, { from: "repositories", to: "entities", count: 334 },
+            { from: "services", to: "repositories", count: 115 }, { from: "repositories", to: "services", count: 81 },
+            { from: "controllers", to: "services", count: 57 }, { from: "entities", to: "services", count: 43 },
+            { from: "controllers", to: "entities", count: 29 }, { from: "services", to: "controllers", count: 6 },
+        ]
+        expect(stackOrder(["services", "repositories", "controllers", "entities"], flows)).toEqual(["controllers", "services", "repositories", "entities"])
+    })
+
+    it("moves a floor only as far as an import asks", () => {
+        expect(stackOrder(["a", "b", "c", "d"], [{ from: "c", to: "b", count: 2 }])).toEqual(["a", "c", "b", "d"])
+    })
+})

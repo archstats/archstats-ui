@@ -59,6 +59,28 @@
           <rect :x="8" :y="FLOOR - 4" :width="Math.max(2, (floorW - 16) * f.share)" height="2" rx="1" :style="{ fill: f.color || 'rgb(var(--c-neutral-400))' }"/>
           <title>{{ f.label }}</title>
         </g>
+
+        <!-- Beside the layers: wiring and what matched no lane. They reach
+             everywhere by design, so their references are counted on the
+             floor, not drawn as arcs that would read as up or down. -->
+        <template v-if="asidePlaced.length">
+          <line :x1="ASIDE_X" :x2="w - ASIDE_X" :y1="asideTop - 16" :y2="asideTop - 16" class="stroke-neutral-200" stroke-dasharray="2 3"/>
+          <text :x="ASIDE_X" :y="asideTop - 4" class="fill-neutral-400 text-[11px]">{{ t('checks.stackDiagram.besideLayers') }}</text>
+          <g
+            v-for="f in asidePlaced" :key="f.id" :transform="`translate(${ASIDE_X},${f.y})`"
+            class="cursor-pointer" :class="{ 'opacity-40': dimmedFloor(f.id) }"
+            role="button" :aria-pressed="selected?.kind === 'floor' && selected.id === f.id" :aria-label="`${f.label}, ${f.sub}`"
+            @click.stop="emit('select', { kind: 'floor', id: f.id })"
+            @mouseenter="emit('hover', { kind: 'floor', id: f.id })" @mouseleave="emit('hover', null)"
+          >
+            <rect :width="asideW" :height="FLOOR" rx="4" stroke-dasharray="3 2"
+              :class="selected?.kind === 'floor' && selected.id === f.id ? 'fill-accent-50 stroke-accent-500' : 'fill-surface stroke-neutral-300 hover:stroke-neutral-500'"/>
+            <circle v-if="f.color" cx="12" :cy="compact ? FLOOR / 2 : FLOOR / 2 - 5" r="3.5" :style="{ fill: f.color }"/>
+            <text :x="f.color ? 21 : 10" :y="compact ? FLOOR / 2 + 4 : FLOOR / 2 - 1" class="fill-neutral-700 text-[12px] font-medium">{{ f.short }}</text>
+            <text v-if="!compact" :x="f.color ? 21 : 10" :y="FLOOR / 2 + 12" class="fill-neutral-500 font-mono text-[11px]">{{ f.subShort }}</text>
+            <title>{{ f.label }}: {{ f.sub }}</title>
+          </g>
+        </template>
       </svg>
     </div>
   </ExhibitFrame>
@@ -72,7 +94,8 @@ import type { LegendItem } from "~/features/export/figure"
 import { chartTheme } from "~/shared/ui/useChartTheme"
 import { t, intlLocale } from "~/shared/i18n"
 
-export interface Floor { id: string; label: string; sub: string; weight: number; color?: string }
+/** `aside`: drawn in a strip under the stack, outside its order, with no arcs. */
+export interface Floor { id: string; label: string; sub: string; weight: number; color?: string; aside?: boolean }
 export interface Flow { key: string; from: string; to: string; count: number; bad?: boolean; title?: string }
 export type StackSelection = { kind: "floor" | "flow"; id: string } | null
 
@@ -107,7 +130,7 @@ const figure = props.figure
         if (props.flows.some(f => f.bad)) items.push({ label: t("checks.stackDiagram.breaksRuleInversionMutual"), color: theme.red, mark: "line" })
         return {
           items,
-          notes: [t("checks.stackDiagram.eachFloorUsesFloors")],
+          notes: [t("checks.stackDiagram.eachFloorUsesFloors"), ...(props.floors.some(f => f.aside) ? [t("checks.stackDiagram.besideLayersNote")] : [])],
         }
       },
     })
@@ -126,8 +149,10 @@ onMounted(() => {
 })
 onBeforeUnmount(() => ro?.disconnect())
 
-const index = computed(() => new Map(props.floors.map((f, i) => [f.id, i])))
-const n = computed(() => props.floors.length)
+const stacked = computed(() => props.floors.filter(f => !f.aside))
+const asides = computed(() => props.floors.filter(f => f.aside))
+const index = computed(() => new Map(stacked.value.map((f, i) => [f.id, i])))
+const n = computed(() => stacked.value.length)
 // Past nine floors each takes one line, so a whole plan still fits a glance.
 const compact = computed(() => n.value > 9)
 const FLOOR = computed(() => (compact.value ? 28 : 44))
@@ -147,10 +172,15 @@ const squeeze = computed(() => {
 const GL = computed(() => Math.max(28, Math.round(gutter(maxSpan(false)) * squeeze.value)))
 const GR = computed(() => Math.max(28, Math.round(gutter(maxSpan(true)) * squeeze.value)))
 const floorW = computed(() => Math.max(80, w.value - GL.value - GR.value))
-const height = computed(() => TOP + n.value * FLOOR.value + Math.max(0, n.value - 1) * GAP.value + 8)
+const ASIDE_HEAD = 30
+const asideTop = computed(() => TOP + n.value * FLOOR.value + Math.max(0, n.value - 1) * GAP.value + ASIDE_HEAD)
+const ASIDE_GAP = 8
+const height = computed(() => asides.value.length
+  ? asideTop.value + 4 + asides.value.length * FLOOR.value + (asides.value.length - 1) * ASIDE_GAP + 8
+  : TOP + n.value * FLOOR.value + Math.max(0, n.value - 1) * GAP.value + 8)
 
 const maxWeight = computed(() => Math.max(1, ...props.floors.map(f => f.weight)))
-const placed = computed(() => props.floors.map((f, i) => {
+const placed = computed(() => stacked.value.map((f, i) => {
   const subW = compact.value ? f.sub.length * 6.7 + 12 : 0
   const room = Math.floor((floorW.value - (f.color ? 30 : 18) - subW) / 7)
   return {
@@ -160,6 +190,20 @@ const placed = computed(() => props.floors.map((f, i) => {
     share: f.weight / maxWeight.value,
   }
 }))
+
+// Under the stack, one row each. No arcs reach them, so they take the
+// gutters too and read as standing outside the stack.
+const ASIDE_X = 2
+const asideW = computed(() => Math.max(80, w.value - ASIDE_X * 2))
+const asidePlaced = computed(() => {
+  const clip = (s: string, room: number) => (s.length > room ? s.slice(0, Math.max(1, room - 1)) + "…" : s)
+  return asides.value.map((f, i) => ({
+    ...f,
+    y: asideTop.value + 4 + i * (FLOOR.value + ASIDE_GAP),
+    short: clip(f.label, Math.floor((asideW.value - (f.color ? 29 : 18)) / 7)),
+    subShort: clip(f.sub, Math.floor((asideW.value - 29) / 6.7)),
+  }))
+})
 
 const maxCount = computed(() => Math.max(1, ...props.flows.map(f => f.count)))
 const arcs = computed(() => {

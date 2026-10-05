@@ -39,7 +39,9 @@
     "importsUpStack": "Imports omhoog in de stack ({upLabel})",
     "breaksRuleInversionMutual": "Breekt de regel: een inversie, een wederzijds paar of een cycle",
     "eachFloorUsesFloors": "Elke laag gebruikt de lagen eronder. De lijndikte is het aantal imports, op een wortelschaal; de balk onder een laag is zijn aandeel in de bestanden.",
-    "text": "{imports}"
+    "text": "{imports}",
+    "besideLayers": "Naast de lagen",
+    "besideLayersNote": "Wiring en code die in geen lane past staan naast de lagen; hun referenties worden geteld, niet getekend."
   },
   "folders": {
     "whereCodeLivesEvery": "Waar de code staat: elk bestand op grootte in zijn mappen, gekleurd op rol, health, churn of component.",

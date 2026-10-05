@@ -75,7 +75,7 @@
                         :detected="model.detection.value.confident && model.profile.value.id !== 'structure'"
                         :profiles="model.offeredProfiles.value"
                         :files="landingFiles" :lines="landingLines" :paint="landingPaint" :describe="landingDescribe"
-                        :highlight-for="filesLitBy" :not-layers="notLayers"
+                        :highlight-for="filesLitBy" :not-layers="notLayers" :beside-layers="besideLayers"
                         :map-mode="mapMode" :legend="landingLegend"
                         :links-of="landingLinks" :bad-link="landingBad"
                         @update:map-mode="setMapMode" @evidence="openMapEvidence"
@@ -207,7 +207,7 @@ const router = useRouter()
 const extraRoots = computed(() => String(route.query.roots ?? "").split("\n").map((x) => x.trim()).filter(Boolean).map(globRegExp))
 const {
   model, graph, frameworkName, laneColor, laneLabel, laneBands, laneOfModule, flows,
-  referencesUnresolved, componentPairs, notLayers,
+  referencesUnresolved, componentPairs, notLayers, besideLayers,
   fileGraph, prodFiles, reach, dupNames, dupFiles, findings,
 } = useUnitsReading(() => extraRoots.value)
 

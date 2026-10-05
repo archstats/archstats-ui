@@ -1291,7 +1291,8 @@
     "sinceLastRun3": "Sinds de laatste run: {Boolean}.",
     "notIncludedTemplateAsked2": "Niet opgenomen: {items}. De template vroeg om {them}, en {theyWere} niet toegevoegd uit {theirViews}.",
     "firstRowsQueryReturned2": "De eerste {rowsLength} rijen; de query gaf er meer terug.",
-    "rows2": "{rowsLength} van {total} rijen."
+    "rows2": "{rowsLength} van {total} rijen.",
+    "of": " van {committed}"
   },
   "reportDoc": {
     "figure": "Figuur {value}",

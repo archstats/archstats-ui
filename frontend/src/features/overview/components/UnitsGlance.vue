@@ -48,11 +48,11 @@ const SHOWN = 4
 
 const data = useDataStore()
 const router = useRouter()
-const { model, graph, frameworkName, laneBands, flows, notLayers, referencesUnresolved, findings } = useUnitsReading()
+const { model, graph, frameworkName, laneBands, flows, notLayers, besideLayers, referencesUnresolved, findings } = useUnitsReading()
 
 const loading = computed(() => model.loading.value)
 const hasUnits = computed(() => model.hasUnits.value && !model.error.value)
-const stack = computed(() => laneStack(laneBands.value, flows.value, notLayers.value))
+const stack = computed(() => laneStack(laneBands.value, flows.value, notLayers.value, besideLayers.value))
 const shown = computed(() => findings.value.slice(0, SHOWN))
 
 const summary = computed(() => {
