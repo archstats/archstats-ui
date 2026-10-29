@@ -33,7 +33,6 @@
     "hiddenCoupling": "Hidden coupling",
     "folderXRay": "Folder X-ray",
     "units": "Units",
-    "deployables": "Deployables",
     "checks": "Checks",
     "libraries": "Libraries",
     "rules": "Rules",
@@ -43,7 +42,8 @@
     "evidence": "Evidence",
     "sqlConsole": "SQL console",
     "aboutSnapshot": "About this snapshot",
-    "metricReference": "Metric reference"
+    "metricReference": "Metric reference",
+    "cicd": "CI/CD"
   },
   "showIn": {
     "componentPage": "Component page",

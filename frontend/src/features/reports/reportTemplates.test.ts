@@ -235,7 +235,7 @@ describe("mobile", () => {
             expect(t, id).toBeTruthy()
             const old = buildTemplate(t, { facts: facts(), ecosystems: [], params: {} })
             expect(old.skipped.map(s => s.why).join(" "), id).toMatch(/scan again|classes|defines no modules/)
-            const full = buildTemplate(t, { facts: facts({ tables: new Set(["files", "components", "units", "unit_markers", "unit_connections", "app_declarations", "deployables", "deployable_dependencies", "modules"]), moduleKinds: { gradle: 3 }, mobileApps: [{ name: "app", platform: "android" }] }), ecosystems: [], params: {} })
+            const full = buildTemplate(t, { facts: facts({ tables: new Set(["files", "components", "units", "unit_markers", "unit_connections", "app_declarations", "deployables", "deployable_dependencies", "artifacts", "pipeline_jobs", "modules"]), moduleKinds: { gradle: 3 }, mobileApps: [{ name: "app", platform: "android" }] }), ecosystems: [], params: {} })
             expect(full.skipped.filter(s => s.section !== "Hotspots" && s.section !== "Objective-C"), id).toEqual([])
         }
     })
@@ -285,7 +285,7 @@ describe("figures", () => {
     })
 
     it("does not ask any report for the same picture twice", () => {
-        const f = facts({ tables: new Set([...facts().tables, "units", "unit_connections", "unit_markers", "git_component_shared_commits", "component_connections_indirect", "deployables"]), tangles: 4, rules: { applicable: 2, violations: 3 }, summary: { git__commits__last_30_days: 5 }, fileColumns: new Set([...facts().fileColumns, "codesmells__hotspot_score", "git__age_in_days"]) })
+        const f = facts({ tables: new Set([...facts().tables, "units", "unit_connections", "unit_markers", "git_component_shared_commits", "component_connections_indirect", "artifacts", "pipeline_jobs"]), tangles: 4, rules: { applicable: 2, violations: 3 }, summary: { git__commits__last_30_days: 5 }, fileColumns: new Set([...facts().fileColumns, "codesmells__hotspot_score", "git__age_in_days"]) })
         for (const t of TEMPLATES) {
             const { blocks } = buildTemplate(t, { facts: f, ecosystems: [], params: { component: "core" } })
             const seen = blocks.filter(isCell).flatMap(b => { const s: any = b.cell.spec; return s.type === "slot" ? [`${s.route}#${s.take ?? ""}`] : s.type === "exhibit" ? [`${s.kind}${JSON.stringify(s.params)}`] : [] })

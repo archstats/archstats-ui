@@ -144,11 +144,11 @@ export const INTENTS: Tool[] = [
         async run(_a, ctx) { return answered([await show("recipe", { recipe: "external-imports" }, ctx), await show("recipe", { recipe: "unresolved-imports" }, ctx)]) },
     }),
     intent({
-        name: "deployables",
-        description: "What ships from the code: services, apps and images, what builds them, the code each holds, and the pipelines. With a name: what ships that component.",
+        name: "cicd",
+        description: "How the code is built and shipped: the pipelines (GitHub Actions, GitLab, Jenkins, Rancher and others), the images and apps they build, where they deploy, and the hygiene flags in pipelines and Dockerfiles. With a name: what carries that component or artifact.",
         params: s.object({ of: OF }, { aliases: { component: "of" } }),
-        label: a => `Looked at what ships${a.of ? ` ${a.of}` : ""}`,
-        async run(a, ctx) { return answered([await show("deployables", { of: a.of }, ctx)]) },
+        label: a => `Looked at how it ships${a.of ? ` ${a.of}` : ""}`,
+        async run(a, ctx) { return answered(a.of ? [await show("cicd", { of: a.of }, ctx)] : [await show("cicd", {}, ctx), await show("cicd-flags", {}, ctx)]) },
     }),
     intent({
         name: "rules",

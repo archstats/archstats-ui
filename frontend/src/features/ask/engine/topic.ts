@@ -51,7 +51,7 @@ const SUBJECTS: Array<[RegExp, string, string[]]> = [
     [/\blayer(?:s|ed|ing)?\b|\bfloors?\b/i, "layering", ["stack", "tangle", "cycles"]],
     [/\btangle[sd]?\b|\bcycles?\b|\bcircular\b/i, "tangles and cycles", ["tangle", "cycles"]],
     [/\bwho (?:knows|owns|wrote|maintains)\b|\bbus factor\b|\bknowledge\b/i, "who knows the code", ["authors", "knowledge"]],
-    [/\bdeploy(?:s|ed|ment|ables?)?\b|\bpipelines?\b/i, "what ships", ["deployables"]],
+    [/\bdeploy(?:s|ed|ment|ables?)?\b|\bpipelines?\b|\bci\/?cd\b|\bdocker(?:file)?s?\b|\bjenkins\b|\bworkflows?\b|\bbuilds?\b/i, "how it ships", ["cicd"]],
     [/\brules?\b|\bviolations?\b/i, "the declared rules", ["rules"]],
 ]
 

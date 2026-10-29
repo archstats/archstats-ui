@@ -981,7 +981,8 @@
     "expectActual": "Expect and actual",
     "expectDeclarations": "Expect declarations",
     "whichPlatformDifferencesBelong": "Which platform differences belong behind an expect, and which have leaked into common code.",
-    "gradleModules": "Gradle modules"
+    "gradleModules": "Gradle modules",
+    "stackNotRecorded": "the libraries each app declares are not recorded from engine revision 16 on"
   },
   "readings": {
     "mavenModule": "Maven module",
@@ -1581,7 +1582,7 @@
     "largestClassesTypes": "The largest classes and types",
     "outsidePackagesImportedMost": "The outside packages imported most",
     "howShips": "How it ships",
-    "scanDidNotLook": "the scan did not look for deployables",
+    "scanDidNotLook": "the scan did not read pipelines and images (engine revision 16)",
     "whatShipsWhatBuilds": "What ships, and what builds it",
     "guidedTourSomeoneJoining2": "A guided tour for someone joining the team: what the codebase holds and where, how its main parts fit together, the code everything else leans on, where the day-to-day work happens, who knows which area, and which parts to handle with care. You add the names and context that numbers cannot give.",
     "topLevelAreas": "The top-level areas",
@@ -1646,7 +1647,8 @@
     "whereCommitsLandWhere": "Where the commits land, and where they do not",
     "listsEveryPairComponents2": "Lists every pair of components that import each other, the smallest and cheapest kind of circular dependency, with how many imports run each way, then the largest tangle in levels with the cuts that undo it.",
     "whatHappenedCodeLast2": "What happened in the code in the last 30 days: how much changed and where, how the work moved against the two years before, which files changed most, which hotspots the team touched and which files are new.",
-    "whereWorkMovedLast2": "Where the work moved in the last 30 days"
+    "whereWorkMovedLast2": "Where the work moved in the last 30 days",
+    "whatFlagsSay": "What the pipelines and Dockerfiles flag"
   },
   "reportsStore": {
     "table": "Table",

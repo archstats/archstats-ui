@@ -192,7 +192,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, Workflow,
   Sparkles, Settings,
 } from "lucide-vue-next";
 import { useAIStore } from "~/features/ai/ai.store";
@@ -244,10 +244,10 @@ const codeViews = computed(() => [
   ...(hasUnits.value ? [{ label: t("shell.navBar.units"), to: "/views/units", icon: Braces }] : []),
   ...(dataStore.hasView("snippets") ? [{ label: t("shell.navBar.libraries"), to: "/views/libraries", icon: Package }] : []),
 ]);
-// What the workspace builds and ships (engine revision 5 and later), and the
+// How the workspace builds and ships (engine revision 16 and later), and the
 // Rules that need declared rules. The structure checks are findings in Units.
 const architectureViews = computed(() => [
-  ...(dataStore.hasView("deployables") ? [{ label: t("shell.navBar.deployables"), to: "/views/deployables", icon: Container }] : []),
+  ...(dataStore.hasView("pipelines") || dataStore.hasView("artifacts") || dataStore.hasView("deployables") ? [{ label: t("shell.navBar.cicd"), to: "/views/cicd", icon: Workflow }] : []),
   ...(hasRules.value ? [{ label: t("shell.navBar.rules"), to: "/views/rules", icon: Scale }] : []),
 ]);
 // The engagement's own working files: what was pinned, and the tools to look further.

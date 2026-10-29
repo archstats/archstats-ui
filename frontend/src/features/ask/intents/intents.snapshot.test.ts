@@ -46,7 +46,7 @@ describe.skipIf(!snaps.length)("intents on real snapshots", () => {
                 ["change", {}], ["change", { of: big }], ["change", { kind: "hidden coupling" }], ["change", { kind: "hotspots" }], ["change", { since: "6 months" }],
                 ["people", {}], ["people", { of: big }],
                 ["rank", { measure: "most depended on" }], ["rank", { measure: "least healthy", among: "files" }], ["rank", { measure: "health", where: "dependents > 2" }], ["rank", { measure: "largest", among: "types" }],
-                ["libraries", {}], ["deployables", {}], ["rules", {}],
+                ["libraries", {}], ["cicd", {}], ["rules", {}],
                 ["code", { of: file }], ["code", { of: file, find: "import" }], ["code", { find: "import" }], ["code", { of: big }],
                 ["search", { text: big.slice(-4) }],
                 ["explain", { term: "instability" }], ["explain", { term: "health", of: big }],

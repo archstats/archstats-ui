@@ -210,19 +210,18 @@
         <ComplexFunctions :component="name" section-class="mt-6"/>
       </ReadingBand>
 
-      <!-- 6. What it ships in: the deployables that hold it, from the
-           build, pipeline and deployment files (engine revision 5). -->
-      <ReadingBand v-if="deployablesKnown" :title="t('pages.componentsIndex.ships')" :lede="shipsLede" to="/views/deployables" :link-label="t('pages.componentsIndex.deployables')">
-        <ul v-if="ships.length" class="flex flex-col gap-1">
-          <li v-for="s in ships" :key="s.deployable.id" class="flex items-baseline gap-3 text-sm">
-            <span class="font-mono text-neutral-800">{{ s.deployable.id }}</span>
-            <span class="text-neutral-500">{{ s.deployable.kind }}<template v-if="s.deployable.runtime"> · {{ s.deployable.runtime }}</template></span>
-            <span class="ml-auto tabular-nums text-neutral-500" :title="t('pages.componentsIndex.componentSFiles', { files: s.files })">{{ t('pages.componentsIndex.files', { files: formatNumber(s.files) }) }}</span>
+      <!-- 6. What it is built into: the images and apps that carry its
+           files, and the pipelines that build or deploy them (engine
+           revision 16). -->
+      <ReadingBand v-if="cicdKnown" :title="t('cicd.component.builtInto')" :lede="builtLede" to="/views/cicd" :link-label="t('cicd.component.open')">
+        <ul v-if="built.length" class="flex flex-col gap-1">
+          <li v-for="b in built" :key="b.artifact.id" class="flex items-baseline gap-3 text-sm">
+            <span class="font-mono text-neutral-800">{{ b.artifact.name || b.artifact.id }}</span>
+            <span class="text-neutral-500">{{ b.artifact.kind }}<template v-if="b.artifact.runtime"> · {{ b.artifact.runtime }}</template></span>
+            <span v-if="b.pipelines.length" class="truncate text-xs text-neutral-500" :title="b.pipelines.join(', ')">{{ t('cicd.component.pipelines', { count: b.pipelines.length }) }}</span>
+            <span class="ml-auto tabular-nums text-neutral-500">{{ t('cicd.component.files', { count: b.files }) }}</span>
           </li>
         </ul>
-        <p v-if="shipCalls.length" class="mt-3 text-sm text-neutral-600">
-          {{ t('pages.componentsIndex.runTime', { theyCall: t('common.noun.itCalls', { count: ships.length }), value: shipCalls.slice(0, 6).join(", ") }) }}<template v-if="shipCalls.length > 6">{{ ' ' + t('pages.componentsIndex.more2', { value: shipCalls.length - 6 }) }}</template>.
-        </p>
       </ReadingBand>
 
       <!-- The reference, kept but folded away. -->
@@ -276,8 +275,8 @@ import PercentileStrip, { type StandingRow } from "~/features/metrics/components
 import LoadingState from "~/shared/ui/LoadingState.vue"
 import SingleSelect from "~/shared/ui/SingleSelect.vue"
 import Icon from "~/shared/ui/Icon.vue"
-import { useDeployables } from "~/features/deployables/useDeployables"
-import { shipsIn } from "~/features/deployables/deployables"
+import { useCicd } from "~/features/cicd/useCicd"
+import { builtInto } from "~/features/cicd/cicd"
 import { hopsOf } from "~/features/snapshot/hops"
 import { fileCoChangeSql, sweepingLimit } from "~/features/snapshot/fileCoChange"
 import { implicitAbstractionLanguage } from "~/features/metrics/abstraction"
@@ -289,19 +288,11 @@ const groupsStore = useGroupsStore()
 
 const name = computed(() => String(route.params.name ?? ""))
 
-// Which deployables hold this component, and what those call.
-const { model: deployables, available: deployablesAvailable } = useDeployables()
-const deployablesKnown = computed(() => deployablesAvailable() && deployables.value.deployables.length > 0)
-const ships = computed(() => shipsIn(deployables.value, name.value))
-const shipCalls = computed(() => {
-  const mine = new Set(ships.value.map(s => s.deployable.id))
-  return [...new Set(deployables.value.links.filter(l => mine.has(l.from) && l.kind === "calls" && l.to_kind === "deployable" && !mine.has(l.to)).map(l => l.to))].sort()
-})
-const shipsLede = computed(() => {
-  if (!ships.value.length) return "No build file puts this component in a container, app or function."
-  if (ships.value.length === 1) return t("pages.componentsIndex.ships2", { deployableId: ships.value[0].deployable.id })
-  return t("pages.componentsIndex.shipsDeployablesChangeChange", { shipsLength: ships.value.length })
-})
+// What this component is built into, and what builds and deploys that.
+const { model: cicd, ix: cicdIx, state: cicdState } = useCicd()
+const cicdKnown = computed(() => cicdState.value === "ready" && cicd.value.artifacts.length > 0)
+const built = computed(() => builtInto(cicd.value, cicdIx.value, name.value))
+const builtLede = computed(() => (built.value.length ? t("cicd.component.builtIntoLede") : t("cicd.component.builtIntoNone")))
 const base = computed(() => componentPath(name.value))
 const component = computed<any>(() => store.allComponentsIndex.get(name.value))
 const total = computed(() => store.allComponents.length)

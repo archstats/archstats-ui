@@ -8,7 +8,7 @@ import { stack } from "~/features/checks/exhibits/stack"
 import { neighbours } from "~/features/connections/exhibits/neighbours"
 import { cycles } from "~/features/cycles/exhibits/cycles"
 import { tangle } from "~/features/cycles/exhibits/tangle"
-import { deployables } from "~/features/deployables/exhibits/deployables"
+import { cicd, cicdFlags, deployables } from "~/features/cicd/exhibits/cicd"
 import { activity } from "~/features/git/exhibits/activity"
 import { authors } from "~/features/git/exhibits/authors"
 import { cochange } from "~/features/git/exhibits/cochange"
@@ -25,7 +25,7 @@ export const CATALOG: readonly ExhibitDef[] = [
     profile, stack, tangle, cycles, neighbours, folders, ranking,
     activity, cochange, authors, knowledge,
     files, excerpt, matches, names,
-    deployables, rules, recipeExhibit,
+    cicd, cicdFlags, deployables, rules, recipeExhibit,
 ]
 
 registerExhibits(CATALOG)

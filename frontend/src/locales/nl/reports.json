@@ -981,7 +981,8 @@
     "expectActual": "Expect en actual",
     "expectDeclarations": "Expect-declaraties",
     "whichPlatformDifferencesBelong": "Welke platformverschillen achter een expect horen, en welke in common code zijn gelekt.",
-    "gradleModules": "Gradle-modules"
+    "gradleModules": "Gradle-modules",
+    "stackNotRecorded": "de bibliotheken die elke app declareert worden vanaf engine-revisie 16 niet meer vastgelegd"
   },
   "readings": {
     "mavenModule": "Maven-module",
@@ -1581,7 +1582,7 @@
     "largestClassesTypes": "De grootste classes en types",
     "outsidePackagesImportedMost": "De externe packages die het vaakst worden geïmporteerd",
     "howShips": "Hoe het wordt uitgerold",
-    "scanDidNotLook": "dit snapshot zocht niet naar deployables; scan opnieuw om ze mee te nemen",
+    "scanDidNotLook": "de scan las geen pipelines en images (engine-revisie 16)",
     "whatShipsWhatBuilds": "Wat er wordt uitgerold en wat het bouwt",
     "guidedTourSomeoneJoining2": "Een rondleiding voor iemand die bij het team komt: wat de codebase bevat en waar, hoe de belangrijkste onderdelen in elkaar passen, de code waar al het andere op leunt, waar het dagelijkse werk plaatsvindt, wie welk gebied kent en welke onderdelen je voorzichtig moet behandelen. Jij voegt de namen en context toe die cijfers niet kunnen geven.",
     "topLevelAreas": "De gebieden op het hoogste niveau",
@@ -1646,7 +1647,8 @@
     "whereCommitsLandWhere": "Waar de commits terechtkomen, en waar niet",
     "listsEveryPairComponents2": "Toont elk paar componenten dat elkaar importeert, de kleinste en goedkoopste vorm van een circular dependency, met hoeveel imports elke kant op lopen, en daarna de grootste tangle in levels met de cuts die hem ontwarren.",
     "whatHappenedCodeLast2": "Wat er de laatste 30 dagen in de code gebeurde: hoeveel er veranderde en waar, hoe het werk verschoof tegenover de twee jaar ervoor, welke bestanden het meest veranderden, welke hotspots het team aanraakte en welke bestanden nieuw zijn.",
-    "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen"
+    "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen",
+    "whatFlagsSay": "Wat de pipelines en Dockerfiles signaleren"
   },
   "reportsStore": {
     "table": "Tabel",

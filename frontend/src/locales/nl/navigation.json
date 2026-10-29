@@ -33,7 +33,6 @@
     "hiddenCoupling": "Verborgen koppeling",
     "folderXRay": "Map X-ray",
     "units": "Units",
-    "deployables": "Deployables",
     "checks": "Checks",
     "libraries": "Libraries",
     "rules": "Regels",
@@ -43,7 +42,8 @@
     "evidence": "Bewijs",
     "sqlConsole": "SQL-console",
     "aboutSnapshot": "Over dit snapshot",
-    "metricReference": "Metric-referentie"
+    "metricReference": "Metric-referentie",
+    "cicd": "CI/CD"
   },
   "showIn": {
     "componentPage": "Component-pagina",

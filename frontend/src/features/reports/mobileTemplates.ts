@@ -70,6 +70,8 @@ const MOBILE_SQL = {
 const hasTable = (f: SnapshotFacts, t: string, why: string): true | string => (f.tables.has(t) ? true : why)
 const mobileNeeds = {
     apps: (f: SnapshotFacts): true | string => (f.mobileApps.length ? true : t("reports.mobileTemplates.scanFoundNoMobile")),
+    /** The libraries each app declares were recorded up to engine revision 15. */
+    stack: (f: SnapshotFacts): true | string => (!f.tables.has("deployable_dependencies") ? t("reports.mobileTemplates.stackNotRecorded") : mobileNeeds.apps(f)),
     units: (f: SnapshotFacts): true | string => (f.tables.has("units") && f.tables.has("unit_markers") ? true : t("reports.mobileTemplates.scanDidNotRecord")),
     links: (f: SnapshotFacts): true | string => (f.tables.has("unit_connections") ? true : t("reports.mobileTemplates.scanDidNotRecord2")),
     declarations: (f: SnapshotFacts) => hasTable(f, "app_declarations", t("reports.mobileTemplates.scanOlderThanApp")),
@@ -93,7 +95,7 @@ export const MOBILE: ReportTemplate[] = [
             const f = w.facts
             w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
             w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("android"); w.reading("size") })
-            w.section("Stack", mobileNeeds.apps(f), () => stack(w))
+            w.section("Stack", mobileNeeds.stack(f), () => stack(w))
             w.section("Modules", needs.modules(f), () => {
                 w.sql(t("reports.mobileTemplates.gradleModulesAppsFirst"), MOBILE_SQL.gradleModules, 60)
                 w.sql(t("reports.mobileTemplates.featuresDependingOtherFeatures"), MOBILE_SQL.crossFeature, 30)
@@ -131,7 +133,7 @@ export const MOBILE: ReportTemplate[] = [
             const f = w.facts
             w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
             w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("ios"); w.reading("size") })
-            w.section("Stack", mobileNeeds.apps(f), () => stack(w))
+            w.section("Stack", mobileNeeds.stack(f), () => stack(w))
             w.section(t("reports.mobileTemplates.targetsPackages"), needs.modules(f), () => {
                 w.sql(t("reports.mobileTemplates.appTargetsSwiftPackages"), MOBILE_SQL.appleTargets, 60)
                 w.prompt(t("reports.mobileTemplates.whetherPackagesSplitApp"))
@@ -170,7 +172,7 @@ export const MOBILE: ReportTemplate[] = [
             const f = w.facts
             w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
             w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("flutter"); w.reading("size") })
-            w.section("Stack", mobileNeeds.apps(f), () => stack(w))
+            w.section("Stack", mobileNeeds.stack(f), () => stack(w))
             w.section("Packages", needs.modules(f), () => w.sql(t("reports.mobileTemplates.dartPackages"), MOBILE_SQL.pubPackages, 30))
             w.section(t("reports.mobileTemplates.screensWidgetsState"), mobileNeeds.units(f), () => {
                 w.sql(t("reports.mobileTemplates.folder"), MOBILE_SQL.flutterFolders, 40)
@@ -198,7 +200,7 @@ export const MOBILE: ReportTemplate[] = [
             const f = w.facts
             w.prompt(t("reports.mobileTemplates.whatAppDoesWho"))
             w.section(t("reports.mobileTemplates.app"), true, () => { w.reading("mobile-apps"); w.reading("node"); w.reading("size") })
-            w.section("Stack", mobileNeeds.apps(f), () => stack(w))
+            w.section("Stack", mobileNeeds.stack(f), () => stack(w))
             w.section("Screens", mobileNeeds.units(f), () => w.sql(t("reports.mobileTemplates.screensFolder"), MOBILE_SQL.rnScreens, 30))
             w.section(t("reports.mobileTemplates.nativeCode"), mobileNeeds.units(f), () => {
                 w.sql(t("reports.mobileTemplates.javascriptNativeSide"), MOBILE_SQL.nativeLines, 5)
@@ -227,7 +229,7 @@ export const MOBILE: ReportTemplate[] = [
                 w.prompt(t("reports.mobileTemplates.whichPlatformDifferencesBelong"))
             })
             w.section("Modules", needs.modules(f), () => w.sql(t("reports.mobileTemplates.gradleModules"), MOBILE_SQL.gradleModules, 60))
-            w.section("Stack", mobileNeeds.apps(f), () => stack(w))
+            w.section("Stack", mobileNeeds.stack(f), () => stack(w))
             w.section("Findings", true, () => w.prompt(t("reports.mobileTemplates.whatYouFoundEach")))
         },
     },
