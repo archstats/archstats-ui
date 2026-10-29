@@ -85,7 +85,7 @@ export async function present(spec: ExhibitSpec, ctx: ResolveContext & { id: str
     const data = await resolve(spec, ctx)
     if (isAbsent(data)) return data
     const title = def.title(spec.params, data)
-    const facts: Fact[] = def.facts(data, spec.params).slice(0, MAX_FACTS).map((f, i) => ({ ...f, id: `${ctx.id}.${i + 1}` }))
+    const facts: Fact[] = def.facts(data, spec.params).slice(0, def.maxFacts ?? MAX_FACTS).map((f, i) => ({ ...f, id: `${ctx.id}.${i + 1}` }))
     const table = def.table(data, spec.params)
     const part: ExhibitPart = {
         id: ctx.id, spec, title, ranOn: ctx.ranOn, facts,

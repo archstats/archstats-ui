@@ -1,5 +1,27 @@
 export namespace app {
 	
+	export class BlameLine {
+	    line: number;
+	    commit: string;
+	    time: string;
+	    author: string;
+	    summary: string;
+	    atHead: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new BlameLine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.line = source["line"];
+	        this.commit = source["commit"];
+	        this.time = source["time"];
+	        this.author = source["author"];
+	        this.summary = source["summary"];
+	        this.atHead = source["atHead"];
+	    }
+	}
 	export class BundleFile {
 	    name: string;
 	    text: string;
@@ -1249,6 +1271,54 @@ export namespace scan {
 
 export namespace store {
 	
+	export class Note {
+	    id: string;
+	    workspaceId: string;
+	    subjectKind: string;
+	    subject: string;
+	    text: string;
+	    author: string;
+	    scanId?: string;
+	    headCommit: string;
+	    createdAt: time.Time;
+	    updatedAt: time.Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new Note(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.workspaceId = source["workspaceId"];
+	        this.subjectKind = source["subjectKind"];
+	        this.subject = source["subject"];
+	        this.text = source["text"];
+	        this.author = source["author"];
+	        this.scanId = source["scanId"];
+	        this.headCommit = source["headCommit"];
+	        this.createdAt = this.convertValues(source["createdAt"], time.Time);
+	        this.updatedAt = this.convertValues(source["updatedAt"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Pin {
 	    id: string;
 	    workspaceId: string;

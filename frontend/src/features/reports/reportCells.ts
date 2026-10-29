@@ -287,7 +287,7 @@ export function fmtValue(v: unknown): string {
 
 export function provenanceLine(r: RanOn | null, workspace: string): string {
     if (!r) return t("reports.reportCells.notRunYet")
-    return [workspace, t("reports.reportCells.snapshot", { label: r.label }), r.commit ? t("reports.reportCells.commit", { commit: r.commit.slice(0, 7), value: r.committed ? ` of ${r.committed}` : "" }) : "", t("reports.reportCells.analysisR", { revision: r.revision }), r.lens ? t("reports.reportCells.lens", { lens: r.lens }) : "", r.scope ? t("reports.reportCells.scope", { scope: r.scope }) : "", r.role && r.role !== "all" ? t("reports.reportCells.files", { role: r.role }) : ""].filter(Boolean).join(" · ")
+    return [workspace, t("reports.reportCells.snapshot", { label: r.label }), r.commit ? t("reports.reportCells.commit", { commit: r.commit.slice(0, 7), value: r.committed ? t("reports.reportCells.of", { committed: r.committed }) : "" }) : "", t("reports.reportCells.analysisR", { revision: r.revision }), r.lens ? t("reports.reportCells.lens", { lens: r.lens }) : "", r.scope ? t("reports.reportCells.scope", { scope: r.scope }) : "", r.role && r.role !== "all" ? t("reports.reportCells.files", { role: r.role }) : ""].filter(Boolean).join(" · ")
 }
 
 /** The rows a cell shows: a pin as metric, pinned and now; a table as it is. */

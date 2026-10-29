@@ -15,6 +15,7 @@ export interface Shortcut {
 export const SHORTCUTS: Shortcut[] = [
     { area: t("shell.shortcuts.app"), keys: ["Mod", "R"], label: t("shell.shortcuts.scanAgain"), command: "scan:again" },
     { area: t("shell.shortcuts.app"), keys: ["Mod", "P"], label: t("shell.shortcuts.goAnything"), command: "goto" },
+    { area: t("shell.shortcuts.app"), keys: ["Shift", "Shift"], label: t("shell.shortcuts.goAnythingShift") },
     { area: t("shell.shortcuts.app"), keys: ["Mod", "E"], label: t("shell.shortcuts.exportCurrentView"), command: "export" },
     { area: t("shell.shortcuts.app"), keys: ["Mod", "O"], label: t("shell.shortcuts.importSnapshotFile"), command: "snapshot:import" },
     { area: t("shell.shortcuts.app"), keys: ["Mod", "N"], label: t("shell.shortcuts.addFolderWorkspace"), command: "workspace:new" },

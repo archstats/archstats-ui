@@ -123,6 +123,8 @@ const props = defineProps<{
   highlightFor: (on: { lane: string } | { a: string; b: string }) => Set<string>
   /** Lanes that are not layers (what matched no rule, what is defined by being referenced): never red. */
   notLayers: string[]
+  /** Lanes drawn beside the stack: wiring, and what matched no lane. */
+  besideLayers?: string[]
   mapMode: "lane" | "reach" | "dupes"
   /** A file's references, drawn when it is hovered on the map. */
   linksOf: (file: string) => { uses: string[]; usedBy: string[] }
@@ -148,7 +150,7 @@ const MAP_MODES = [
 ] as const
 const MAP_TITLE = { lane: t("units.shapeLanding.whereEachLaneLives"), reach: t("units.shapeLanding.whatEntryPointsReach"), dupes: t("units.shapeLanding.whatWrittenTwice") }
 
-const stack = computed(() => laneStack(props.lanes, props.flows, props.notLayers))
+const stack = computed(() => laneStack(props.lanes, props.flows, props.notLayers, props.besideLayers))
 const floors = computed(() => stack.value.floors)
 const stackFlows = computed(() => stack.value.flows)
 const toLit = (s: StackSelection) => {

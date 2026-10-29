@@ -5,8 +5,9 @@
 import { createRequire } from "node:module"
 import type { CyclePath } from "~/features/cycles/cycles"
 import type { ConnectionRow, Definition, World } from "../engine/types"
+import type { History, Notes } from "~/features/snapshot/snapshot"
 
-export function sqliteWorld(path: string, opts: { onScreen?: World["onScreen"] } = {}): World {
+export function sqliteWorld(path: string, opts: { onScreen?: World["onScreen"]; history?: History; notes?: Notes; workspace?: string } = {}): World {
     // Through require: Vite would resolve "node:sqlite" as a package called sqlite.
     const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite")
     const db = new DatabaseSync(path, { readOnly: true })
@@ -38,7 +39,7 @@ export function sqliteWorld(path: string, opts: { onScreen?: World["onScreen"] }
     return {
         scanId: path,
         info,
-        workspace: info.report_id ?? "test",
+        workspace: opts.workspace ?? info.report_id ?? "test",
         columns,
         components: () => components,
         connections: () => connections,
@@ -91,5 +92,7 @@ export function sqliteWorld(path: string, opts: { onScreen?: World["onScreen"] }
             return ((await res.json()) as any).embeddings
         },
         onScreen: opts.onScreen,
+        history: opts.history,
+        notes: opts.notes,
     }
 }

@@ -945,7 +945,8 @@
     "chooseFolderReport": "Choose a folder for the report",
     "reports": "Reports",
     "pins": "Pins",
-    "commit2": " · commit {headCommit}{value}"
+    "commit2": " · commit {headCommit}{value}",
+    "of": " of {committed}"
   },
   "files": {
     "open": "Open {component}",

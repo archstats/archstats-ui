@@ -6,7 +6,10 @@
 //     --config /path/to/archstats-ui/frontend/vitest.config.ts \
 //     /path/to/archstats-ui/frontend/scripts/ask-mcp.ts -- --workspace BroadleafCommerce
 //
-// Options: --workspace <name|id> (newest complete scan) or --db <snapshot.db>.
+// Options: --workspace <name|id> (newest complete scan) or --db <snapshot.db>
+// (with --repo <checkout> to let it date imports with git blame). Over a
+// workspace it can also blame (at the scanned commit) and keep notes in the
+// app's own store; everything else is read-only.
 
 import { createRequire } from "node:module"
 import { existsSync } from "node:fs"
@@ -14,6 +17,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { createInterface } from "node:readline"
 import { sqliteWorld } from "../src/features/ask/testing/sqliteWorld"
+import { nodeHistory, nodeNotes } from "../src/features/ask/testing/nodeWorkspace"
 import { INTENTS, TOOLS, useIntents } from "../src/features/ask/tools"
 import { buildCard } from "../src/features/ask/knowledge/card"
 import { PLAYBOOKS } from "../src/features/ask/knowledge/playbooks"
@@ -30,20 +34,27 @@ function appDataDir(): string {
     return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "archstats")
 }
 
-function resolveSnapshot(): { path: string; label: string } {
+interface Resolved { path: string; label: string; folder?: string; workspaceId?: string; scanId?: string; commit?: string; workspace?: string }
+
+function resolveSnapshot(): Resolved {
     const db = opt("db")
-    if (db) return { path: db, label: db.split("/").pop()! }
+    if (db) return { path: db, label: db.split("/").pop()!, folder: opt("repo") }
     const ws = opt("workspace")
     const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite")
     const app = new DatabaseSync(join(appDataDir(), "app.db"), { readOnly: true })
-    const rows = app.prepare(`SELECT w.name AS workspace, s.snapshot_path AS path, s.head_commit AS commit_, s.started_at AS at FROM scans s JOIN workspaces w ON w.id = s.workspace_id WHERE s.status = 'complete' ${ws ? "AND (w.name = ? OR w.id = ?)" : ""} ORDER BY s.started_at DESC LIMIT 1`).all(...(ws ? [ws, ws] : [])) as any[]
+    const rows = app.prepare(`SELECT w.id AS workspace_id, w.name AS workspace, w.folder_path AS folder, s.id AS scan_id, s.snapshot_path AS path, s.head_commit AS commit_, s.started_at AS at FROM scans s JOIN workspaces w ON w.id = s.workspace_id WHERE s.status = 'complete' ${ws ? "AND (w.name = ? OR w.id = ?)" : ""} ORDER BY s.started_at DESC LIMIT 1`).all(...(ws ? [ws, ws] : [])) as any[]
     if (!rows.length) throw new Error(ws ? `No complete scan for workspace "${ws}".` : "No complete scan in the app.")
-    return { path: rows[0].path, label: `${rows[0].workspace} @ ${String(rows[0].commit_ || "").slice(0, 7) || rows[0].at}` }
+    const r = rows[0]
+    return { path: r.path, label: `${r.workspace} @ ${String(r.commit_ || "").slice(0, 7) || r.at}`, folder: r.folder, workspaceId: r.workspace_id, scanId: r.scan_id, commit: String(r.commit_ ?? ""), workspace: r.workspace }
 }
 
 const snap = resolveSnapshot()
 if (!existsSync(snap.path)) throw new Error(`Snapshot not found: ${snap.path}`)
-const world = sqliteWorld(snap.path)
+const world = sqliteWorld(snap.path, {
+    workspace: snap.workspace,
+    history: snap.folder && existsSync(snap.folder) ? nodeHistory(snap.folder, snap.commit ?? "") : undefined,
+    notes: snap.workspaceId ? nodeNotes(join(appDataDir(), "app.db"), snap.workspaceId, snap.scanId ?? "", snap.commit ?? "") : undefined,
+})
 let seq = 0
 const texts = new Map<string, string>()
 const ctx: ToolContext = {
@@ -56,7 +67,9 @@ const ctx: ToolContext = {
 const tools = (useIntents() ? INTENTS : TOOLS).filter(t => !["on_screen", "look_at_view", "show", "ask_user", "load_tools"].includes(t.name))
 log(`serving ${tools.length} tools over ${snap.label}`)
 
-const INSTRUCTIONS = `Archstats measures the architecture of a codebase from a scan. These tools read one snapshot (${snap.label}), read-only. Each asks the codebase one kind of question (about, structure, dependencies, change, people, rank, libraries, deployables, rules, code, search, explain) and answers with facts, one per line, each with an id like [E3.4]; cite the ids. Start with the snapshot resource or "about" for an overview; "explain" says what a measure means. Traps:\n${TRAPS.map(t => `- ${t}`).join("\n")}`
+const INSTRUCTIONS = `Archstats measures the architecture of a codebase from a scan. These tools read one snapshot (${snap.label}). Each asks the codebase one kind of question and answers with facts, one per line, each with an id like [E3.4]; cite the ids.
+
+To find your way around: "about" for an overview; "rank" among units for the classes and functions the rest of the code leans on most (a map to read first); "flows" for the entry points, and with from, what one route or handler runs on down to its data; "data" for what is stored and which components share it; "contracts" for what a component exposes or what implements an interface; "rules" with kind kept for the conventions the code follows and their exceptions; "surprises" for what stands out; "why" for the documents and notes about a component, and with on, when and in which commit a dependency (or a cycle) appeared. Then: structure, dependencies, change, people, libraries, deployables, code, search, explain. "note" keeps a note for later sessions; use it only when asked to remember something. Traps:\n${TRAPS.map(t => `- ${t}`).join("\n")}`
 
 type Msg = { jsonrpc: "2.0"; id?: number | string; method?: string; params?: any }
 const send = (m: object) => process.stdout.write(`${JSON.stringify(m)}\n`)

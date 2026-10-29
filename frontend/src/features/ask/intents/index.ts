@@ -123,16 +123,17 @@ export const INTENTS: Tool[] = [
     }),
     intent({
         name: "rank",
-        description: `Which components or files are the most or least of something (for the cycles and tangles themselves, use structure), e.g. "most depended on", "least healthy", "largest", "most changed", "hotspot", "cycles". Optionally only in part of the code, or only those meeting a condition ("dependents > 5"). "Which component with more than 5 dependents has the lowest health?" is ONE call: measure "least healthy", where "dependents > 5"; never rank component by component. Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 26).join(", ")}.`,
+        description: `Which components, files or units are the most or least of something (for the cycles and tangles themselves, use structure), e.g. "most depended on", "least healthy", "largest", "most changed", "hotspot", "cycles". Among units (classes and functions), the ones the rest of the code leans on most, with their signatures: a map of the codebase to read first. Optionally only in part of the code, or only those meeting a condition ("dependents > 5"). "Which component with more than 5 dependents has the lowest health?" is ONE call: measure "least healthy", where "dependents > 5"; never rank component by component. Measures: ${[...new Set(Object.keys(METRIC_WORDS))].filter(k => !k.includes("_")).slice(0, 26).join(", ")}.`,
         params: s.object({
             measure: s.string().describe("What to rank by, in plain words, with most/least if it matters."),
-            among: s.enum(["components", "files", "types"]).optional().describe("Components (default), files, or types and classes."),
+            among: s.enum(["components", "files", "types", "units"]).optional().describe("Components (default), files, types and classes by size, or units by how many other components use them."),
             of: s.string().optional().describe("Only in this part of the code."),
             where: s.string().optional().describe("Only those meeting a condition, e.g. \"dependents > 5\"."),
         }, { aliases: { metric: "measure", by: "measure", grain: "among", within: "of", filter: "where" } }),
         label: a => `Ranked ${a.among ?? "components"} by ${a.measure}`,
         async run(a, ctx) {
             if (a.among === "types") return answered([await show("recipe", { recipe: "largest-classes" }, ctx)])
+            if (a.among === "units") return answered([await show("map", { of: a.of, limit: 25 }, ctx)], ["What does the most used one do?"])
             return answered([await show("ranking", { measure: a.measure, among: a.among ?? "components", of: a.of, where: a.where }, ctx)])
         },
     }),
@@ -152,10 +153,13 @@ export const INTENTS: Tool[] = [
     }),
     intent({
         name: "rules",
-        description: "The rules declared for this codebase (layering, forbidden imports) and what breaks them.",
-        params: s.object({ of: OF }, { aliases: { component: "of" } }),
-        label: () => "Looked at the declared rules",
-        async run(a, ctx) { return answered([await show("rules", { of: a.of }, ctx)]) },
+        description: "The rules declared for this codebase (layering, forbidden imports) and what breaks them. With kind \"kept\": the rules the code keeps without anyone having declared them (which way imports run between areas, where data and entry points live), and the exceptions that break each.",
+        params: s.object({ of: OF, kind: s.enum(["declared", "kept"]).optional().describe("The declared rules (default), or the rules the code keeps undeclared.") }, { aliases: { component: "of" } }),
+        label: a => (a.kind === "kept" ? "Read the rules the code keeps" : "Looked at the declared rules"),
+        async run(a, ctx) {
+            if (a.kind === "kept") return answered([await show("conventions", { of: a.of }, ctx)], ["When did the exceptions appear?"])
+            return answered([await show("rules", { of: a.of }, ctx)])
+        },
     }),
     intent({
         name: "code",
@@ -224,6 +228,81 @@ export const INTENTS: Tool[] = [
             const view = VIEWS.find(v => a.term.toLowerCase().includes(v.label.toLowerCase()))
             if (view) lines.push(`In the app: the ${view.label} view.`)
             return { text: lines.join("\n") || `No definition of "${a.term}" is known here.` }
+        },
+    }),
+    intent({
+        name: "flows",
+        description: "Where the outside world gets in, and what one use case runs on. Without from: the entry points (HTTP routes, pages, message consumers, schedules, commands, programs) and what handles each. With from (a route like \"GET /orders/{id}\" or \"/orders\", a handler, or a class): the trace, what it uses step by step, the implementations behind its interfaces, and the stored data it reads and writes.",
+        params: s.object({
+            from: s.string().optional().describe("Where to start a trace: a route, a handler or a class. Leave out to list the entry points."),
+            kind: s.enum(["all", "http", "page", "message", "event", "schedule", "cli", "main", "job"]).optional().describe("Which entry points to list (default all)."),
+            of: s.string().optional().describe("Only entry points handled in this component or area."),
+        }, { aliases: { route: "from", entry: "from", start: "from", trace: "from", component: "of" } }),
+        label: a => (a.from ? `Traced ${a.from}` : `Listed the ${a.kind && a.kind !== "all" ? a.kind : ""} entry points${a.of ? ` in ${a.of}` : ""}`.replace("  ", " ")),
+        async run(a, ctx) {
+            if (a.from) return answered([await show("trace", { from: a.from }, ctx)], ["Who else writes that data?"])
+            return answered([await show("entries", { kind: a.kind ?? "all", of: a.of }, ctx)], ["What does the busiest route run on?"])
+        },
+    }),
+    intent({
+        name: "data",
+        description: "What the code stores and who touches it: entities and tables, which components read and write each, and which are shared across components (coupling no import shows). With of: one entity or table (who reads and writes it, and where), or a component (what it touches, and who else does).",
+        params: s.object({ of: s.string().optional().describe("An entity, a table, or a component. Leave out for what is shared most widely.") }, { aliases: { entity: "of", table: "of", component: "of" } }),
+        label: a => (a.of ? `Looked at who touches ${a.of}` : "Looked at the stored data"),
+        async run(a, ctx) { return answered([await show("data", { of: a.of }, ctx)], ["Which of these could one component own?"]) },
+    }),
+    intent({
+        name: "contracts",
+        description: "What something really offers the rest of the code. For a component: which of its classes and functions other components use, and by whom, and what is used only inside (could be internal). For a type, such as an interface: what implements it, where a container wires each implementation, and who uses an implementation directly instead of the interface.",
+        params: s.object({ of: s.string().describe("A component, or a type such as an interface.") }, { aliases: { component: "of", type: "of", interface: "of" } }),
+        label: a => `Looked at what ${a.of} offers`,
+        async run(a, ctx) {
+            const r = resolveName(ctx.world, a.of, "component")
+            if ("kind" in r && r.kind === "component" && r.name.toLowerCase().endsWith(a.of.toLowerCase())) return answered([await show("surface", { of: r.name }, ctx)])
+            const impls = await show("implementations", { of: a.of }, ctx)
+            if ("part" in impls) return answered([impls])
+            const why = unresolved(a.of, r, ctx.world)
+            return why ? { text: `${impls.absent} ${why}` } : answered([await show("surface", { of: (r as any).name }, ctx)])
+        },
+    }),
+    intent({
+        name: "why",
+        description: "Why the code is the way it is: the documents about it (decision records, architecture notes, READMEs) and the notes kept from earlier conversations. With on, a second component: when and in which commit the first started importing it, and if the two are in a cycle, the commit that closed the cycle.",
+        params: s.object({
+            of: s.string().optional().describe("A component (or area). Leave out for every document and note."),
+            on: s.string().optional().describe("A component it imports: when and why it started to."),
+        }, { aliases: { component: "of", from: "of", to: "on" } }),
+        label: a => (a.on ? `Looked at when ${a.of} started using ${a.on}` : `Looked for what was written about ${a.of ?? "the code"}`),
+        async run(a, ctx) {
+            if (a.of && a.on) return answered([await show("origins", { from: a.of, to: a.on }, ctx), await show("docs", { of: a.of }, ctx)])
+            return answered([await show("docs", { of: a.of }, ctx), await show("notes", { of: a.of }, ctx)])
+        },
+    }),
+    intent({
+        name: "surprises",
+        description: "What is unusual in this codebase against its own norms, each with its evidence: a component many times the size of its siblings, imports against the direction an area otherwise keeps, components that change together without importing each other, young code already used from all sides, units most of the system uses, data written from many components. For \"what should I know\", \"anything odd\", \"what stands out\".",
+        params: s.object({}),
+        label: () => "Looked for what stands out",
+        async run(_a, ctx) { return answered([await show("surprises", {}, ctx)]) },
+    }),
+    intent({
+        name: "note",
+        description: "Keeps a short note for later conversations: something learned about part of the code that the scan cannot show (a decision, a convention, a caveat). Use only when the person asks to remember something.",
+        params: s.object({
+            about: s.string().optional().describe("What it is about: a component, file, class or table. Leave out for the codebase."),
+            text: s.string().describe("The note, one or two plain sentences."),
+        }, { aliases: { of: "about", subject: "about", note: "text" } }),
+        label: a => `Kept a note${a.about ? ` about ${a.about}` : ""}`,
+        async run(a, ctx) {
+            if (!ctx.world.notes) return { text: "Notes are kept per workspace, and this snapshot was opened on its own: nothing was saved. Say so." }
+            let kind: "codebase" | "component" | "file" | "unit" = "codebase"
+            let subject = ""
+            if (a.about) {
+                const r = resolveName(ctx.world, a.about)
+                if ("kind" in r) { kind = r.kind; subject = r.name } else { kind = "unit"; subject = a.about.trim() }
+            }
+            await ctx.world.notes.save({ subjectKind: kind, subject, text: a.text.trim(), author: "model" })
+            return answered([await show("notes", { of: subject || undefined }, ctx)])
         },
     }),
     ...coreTools.filter(t => t.name === "ask_user"),

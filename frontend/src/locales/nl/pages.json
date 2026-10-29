@@ -945,7 +945,8 @@
     "chooseFolderReport": "Kies een map voor het rapport",
     "reports": "Rapporten",
     "pins": "Pins",
-    "commit2": " · commit {headCommit}{value}"
+    "commit2": " · commit {headCommit}{value}",
+    "of": " van {committed}"
   },
   "files": {
     "open": "{component} openen",

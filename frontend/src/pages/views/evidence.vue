@@ -250,6 +250,9 @@
         @dragend="draggingPin = false; dropIndex = null"
       />
     </template>
+    <template #tab-notes>
+      <NotesPane :head-commit="headCommit"/>
+    </template>
     <template #tab-cell>
       <CellPane
         :block="selectedCell"
@@ -303,6 +306,8 @@ import { useAuthorsStore } from "~/features/git/authors.store";
 import { namesIn } from "~/features/reports/reportCells";
 import { useStateStore } from "~/platform/state.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
+import { useNotesStore } from "~/features/notes/notes.store";
+import NotesPane from "~/features/notes/components/NotesPane.vue";
 import { saveBundle } from "~/platform/files";
 import { cellNumbers, fromMarkdown, isCell, newId, plainText, runnable, type Block, type CellBlock, type CellSpec, type TextKind } from "~/features/reports/reportDoc";
 import { readBlocks, writeBlocks, type ClipboardContext } from "~/features/reports/blockClipboard";
@@ -324,12 +329,15 @@ const state = useStateStore();
 const tab = ref("pool");
 // The document gets the room; the pane opens for a selected cell, or for the pool when there is no report.
 const paneOpen = ref(false);
-const tabs = computed(() => [{ id: "pool", label: t("pages.evidence.pool") }, { id: "cell", label: t("pages.evidence.cell") }]);
+const tabs = computed(() => [{ id: "pool", label: t("pages.evidence.pool") }, { id: "cell", label: t("pages.evidence.cell") }, { id: "notes", label: t("notes.pane.tab") }]);
+const notes = useNotesStore();
+const headCommit = computed(() => String((data.snapshotInfo as Record<string, string>)?.git_head_commit ?? ""));
 
 watch(() => workspaces.active?.id, async (id) => {
   if (!id) return;
   await evidence.load(id);
   await reports.load(id);
+  await notes.load(id);
 }, { immediate: true });
 onBeforeUnmount(() => reports.flushSave());
 
@@ -359,7 +367,7 @@ const kernelLine = computed(() => {
   const k = reports.kernel;
   if (!k) return t("pages.evidence.noCompleteSnapshotRun");
   const cells = reports.cells.length;
-  return t("pages.evidence.snapshotAnalysisR", { kLabel: k.label, value: k.headCommit ? t("pages.evidence.commit2", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? ` of ${k.committed}` : "" }) : "", revision: k.revision, cells: t("common.count.cell", { count: cells }) });
+  return t("pages.evidence.snapshotAnalysisR", { kLabel: k.label, value: k.headCommit ? t("pages.evidence.commit2", { headCommit: k.headCommit.slice(0, 7), value: k.committed ? t("pages.evidence.of", { committed: k.committed }) : "" }) : "", revision: k.revision, cells: t("common.count.cell", { count: cells }) });
 });
 const isStale = (b: CellBlock) => runnable(b.cell.spec) && (!b.cell.ranOn || b.cell.ranOn.scanId !== reports.kernel?.id);
 

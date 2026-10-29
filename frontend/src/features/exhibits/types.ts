@@ -69,6 +69,11 @@ export interface ExhibitDef<P = any, D = any> {
     resolve(p: P, ctx: ResolveContext): Promise<D | Absent>
     /** The statements the model reads and cites, most important first. At most ~25. */
     facts(d: D, p: P): FactDraft[]
+    /**
+     * More facts than the usual cap, for an exhibit that is read whole rather
+     * than skimmed: a map of the codebase is as long as the budget asked for.
+     */
+    maxFacts?: number
     elements?(d: D): Element[]
     /** Every exhibit is also a table: its text fallback, CSV and report form. */
     table(d: D, p: P): ExhibitTable

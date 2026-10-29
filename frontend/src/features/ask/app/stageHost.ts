@@ -70,8 +70,10 @@ export async function stageTake(router: Router, route: string, opts: { focus?: s
                 src = await pngBase64(drawn, f.title, { light: false, legend }, 2)
             }
             const png = opts.vision && !out.figures.length ? (await pngBase64(drawn, f.title, { light: true, legend }, 1)).replace(/^data:image\/png;base64,/, "") : undefined
-            // For a report: the light page's PNG, at print resolution.
-            const reportPng = opts.report ? (await pngBase64(drawn, f.title, { light: true, legend }, 2)).replace(/^data:image\/png;base64,/, "") : undefined
+            // For a report: the light page's PNG, at print resolution, with no
+            // caption, since the report numbers and titles its figures and
+            // prints their provenance under them.
+            const reportPng = opts.report ? (await pngBase64(drawn, "", { light: true, legend }, 2)).replace(/^data:image\/png;base64,/, "") : undefined
             out.figures.push({ title: f.title, src: opts.report ? "" : src, png, reportPng, width, height, legend: legendText(legend) })
         } catch (e: any) { out.error = String(e?.message ?? e) }
     }
