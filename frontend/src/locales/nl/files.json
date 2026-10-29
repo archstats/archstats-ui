@@ -26,7 +26,6 @@
     "line": " op regel {line}",
     "openEditor": "Open {file}{value} in een editor",
     "didnTOpenChoose": "Niet geopend? Kies een andere editor.",
-    "openFiles": "Open bestanden in",
     "revealFinder": "Toon in Finder",
     "showFolder": "Toon in map",
     "visualStudioCode": "Visual Studio Code",
@@ -39,7 +38,11 @@
     "changedSinceSnapshotLine": "Gewijzigd sinds dit snapshot; de regel kan verschoven zijn.",
     "couldNotOpen": "Kon niet openen: {value}",
     "couldNotReveal": "Kon niet tonen: {value}",
-    "archstats": "Archstats"
+    "archstats": "Archstats-bron",
+    "choose": "Kies waar te openen",
+    "jumpTo": "Spring naar regel {line} in",
+    "openIn": "Openen in",
+    "filePage": "De pagina van het bestand in Archstats"
   },
   "fileNavigator": {
     "files": "Bestanden",

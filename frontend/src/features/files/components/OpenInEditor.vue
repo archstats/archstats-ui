@@ -1,5 +1,9 @@
 <template>
-  <span ref="root" class="relative inline-flex shrink-0">
+  <!-- Two intents. The button jumps to the line, in the place picked once
+       (Archstats' source view or an editor). The chevron opens the choices
+       at any time, with the ones that do not jump: the file's page, the
+       default app, the folder. -->
+  <span ref="root" class="relative inline-flex shrink-0 items-center">
     <button
       type="button"
       class="ui-btn ui-btn-sm ui-btn-icon ui-btn-quiet"
@@ -10,18 +14,36 @@
     >
       <Icon icon="external-link" :size="13"/>
     </button>
+    <button
+      type="button"
+      class="ui-btn ui-btn-sm ui-btn-quiet !w-3.5 !px-0"
+      :class="buttonClass"
+      :title="t('files.openInEditor.choose')"
+      :aria-label="t('files.openInEditor.choose')"
+      :aria-expanded="menuOpen"
+      aria-haspopup="menu"
+      @click.stop.prevent="openMenu"
+    >
+      <Icon icon="chevron-down" :size="11" class="text-neutral-500"/>
+    </button>
     <!-- On the top layer, placed from the button: a rail or a scrolling
          pane must not clip it. -->
     <Teleport v-if="menuOpen" to="body">
       <div class="fixed inset-0 z-40 cursor-default" @click.stop="menuOpen = false"></div>
-      <div class="ui-menu fixed z-50 flex w-60 flex-col animate-in" :style="menuStyle" role="menu" @click.stop @keydown.esc="menuOpen = false">
+      <div class="ui-menu fixed z-50 flex w-64 flex-col animate-in" :style="menuStyle" role="menu" @click.stop @keydown.esc="menuOpen = false">
         <p v-if="justLaunched" class="px-2 pb-1 pt-1.5 text-sm text-neutral-500">{{ t('files.openInEditor.didnTOpenChoose') }}</p>
-        <p v-else class="ui-menu-title">{{ t('files.openInEditor.openFiles') }}</p>
+        <p v-else class="ui-menu-title">{{ line ? t('files.openInEditor.jumpTo', { line }) : t('files.openInEditor.openIn') }}</p>
         <button v-for="e in EDITORS" :key="e.id" type="button" class="ui-menu-item" role="menuitemradio" :aria-checked="current === e.id" @click="choose(e.id)">
           <Icon :icon="current === e.id ? 'check' : 'minus'" :size="12" :class="current === e.id ? 'text-neutral-700' : 'text-transparent'"/>
           <span>{{ e.label }}</span>
         </button>
         <div class="my-1 h-px bg-neutral-100" role="separator"></div>
+        <button type="button" class="ui-menu-item" role="menuitem" @click="openPage">
+          <Icon icon="file-text" :size="12" class="text-neutral-500"/><span>{{ t('files.openInEditor.filePage') }}</span>
+        </button>
+        <button type="button" class="ui-menu-item" role="menuitem" @click="openOnce('system')">
+          <Icon icon="external-link" :size="12" class="text-neutral-500"/><span>{{ t('files.openInEditor.defaultAppNoLine') }}</span>
+        </button>
         <button type="button" class="ui-menu-item" role="menuitem" @click="revealFile">
           <Icon icon="folder" :size="12" class="text-neutral-500"/><span>{{ isMac ? t('files.openInEditor.revealFinder') : t('files.openInEditor.showFolder') }}</span>
         </button>
@@ -49,12 +71,11 @@ import { t } from "~/shared/i18n";
 const props = defineProps<{ file: string; line?: number; col?: number; buttonClass?: string }>();
 
 const EDITORS = [
-  // The file's own page in Archstats, at the line: no editor needed.
+  // The file's source in Archstats, at the line: no editor needed.
   { id: "archstats", label: t("files.openInEditor.archstats") },
   { id: "vscode", label: t("files.openInEditor.visualStudioCode") },
   { id: "cursor", label: t("files.openInEditor.cursor") },
   { id: "idea", label: t("files.openInEditor.jetbrainsIde") },
-  { id: "system", label: t("files.openInEditor.defaultAppNoLine") },
 ] as const;
 
 const state = useStateStore();
@@ -69,7 +90,8 @@ const note = ref("");
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 const current = computed(() => state.setting<string>("editor", ""));
-const editorLabel = computed(() => EDITORS.find(e => e.id === current.value)?.label ?? t("files.openInEditor.editor"));
+// "system" was a default before the menu split it off; it still names one.
+const editorLabel = computed(() => EDITORS.find(e => e.id === current.value)?.label ?? (current.value === "system" ? t("files.openInEditor.defaultAppNoLine") : t("files.openInEditor.editor")));
 const basename = computed(() => props.file.split("/").pop() ?? props.file);
 
 void state.loadSettings();
@@ -107,7 +129,7 @@ async function choose(id: string) {
 
 async function launch(editor: string) {
   if (editor === "archstats") {
-    await router.push({ path: filePath(props.file.replace(/^\.\//, "")), hash: props.line ? `#L${props.line}` : "" });
+    await router.push({ path: filePath(props.file.replace(/^\.\//, ""), "source"), hash: props.line ? `#L${props.line}` : "" });
     return;
   }
   const ws = workspaces.active;
@@ -121,6 +143,19 @@ async function launch(editor: string) {
   } catch (e) {
     flash(t("files.openInEditor.couldNotOpen", { value: e instanceof Error ? e.message : String(e) }));
   }
+}
+
+/** The file's page in Archstats: what it is, not where the line is. */
+async function openPage() {
+  menuOpen.value = false;
+  await router.push(filePath(props.file.replace(/^\.\//, "")));
+}
+
+/** Open once in a place without making it the button's default. */
+async function openOnce(editor: string) {
+  menuOpen.value = false;
+  justLaunched.value = false;
+  await launch(editor);
 }
 
 async function revealFile() {
