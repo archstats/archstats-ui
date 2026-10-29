@@ -1644,7 +1644,7 @@
     "listsEveryPairComponents2": "Toont elk paar componenten dat elkaar importeert, de kleinste en goedkoopste vorm van een circular dependency, met hoeveel imports elke kant op lopen, en daarna de grootste tangle in levels met de cuts die hem ontwarren.",
     "whatHappenedCodeLast2": "Wat er de laatste 30 dagen in de code gebeurde: hoeveel er veranderde en waar, hoe het werk verschoof tegenover de twee jaar ervoor, welke bestanden het meest veranderden, welke hotspots het team aanraakte en welke bestanden nieuw zijn.",
     "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen",
-    "whatFlagsSay": "Wat de pipelines en Dockerfiles signaleren",
+    "whatFlagsSay": "Issues in de pipelines en Dockerfiles",
     "whereRiskSits": "Waar het risico zit",
     "howItIsBuilt": "Hoe het gebouwd en gedeployd wordt",
     "pipelineFigureReads": "De tekening leest van links naar rechts: wat de pipeline start, de jobs in de volgorde waarin ze op elkaar wachten, de stappen in elke job (het gekleurde vierkantje zegt wat een stap doet), en wat er aan het eind uit komt. Gestippelde vakken geven werk door aan een andere pipeline, bibliotheek of sjabloon."
@@ -1742,7 +1742,7 @@
     "cicd": "CI/CD",
     "cicdPipelines": "Pipelines",
     "cicdImages": "Images",
-    "cicdFlags": "Signalen",
+    "cicdFlags": "Issues",
     "cicdPipeline": "Pipeline"
   },
   "templateKit": {

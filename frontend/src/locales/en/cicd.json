@@ -7,7 +7,7 @@
     "pipelinesTitle": "Every pipeline, drawn the way it runs",
     "images": "Images",
     "imagesTitle": "What the workspace builds: images, apps and functions, and what they are built from",
-    "flags": "Flags",
+    "flags": "Issues",
     "flagsTitle": "Facts in the pipelines and Dockerfiles that people read as risks",
     "statPipelines": "Pipelines",
     "statPartial": {
@@ -16,10 +16,9 @@
     },
     "statImages": "Artifacts",
     "statDockerfiles": "Dockerfiles",
-    "statFlags": "Flags",
     "reading": "Reading how the workspace builds and ships",
     "oldTitle": "Scanned before CI/CD was read",
-    "oldText": "This snapshot comes from an older engine. Rescan to see pipelines, images and flags.",
+    "oldText": "This snapshot comes from an older engine. Rescan to see pipelines, images and issues.",
     "rescan": "Rescan",
     "emptyTitle": "Nothing here builds or ships",
     "emptyText": "No pipeline file and no Dockerfile was found. Archstats reads GitHub Actions (.github/workflows), GitLab CI (.gitlab-ci.yml), Jenkinsfiles and Jenkins libraries (vars/*.groovy), Rancher (fleet.yaml, .rancher-pipeline.yml and rancher commands in any pipeline), Azure Pipelines, Bitbucket Pipelines and CircleCI. A workspace that ignores non-source files never reads them.",
@@ -44,7 +43,11 @@
     "lensCreated": "Lens “{name}” created.",
     "lensDefaultName": "Images",
     "lensDescription": "Components grouped by the image or app that carries their files, read from Dockerfiles and build files.",
-    "sharedGroup": "In several artifacts"
+    "sharedGroup": "In several artifacts",
+    "issueCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
   },
   "list": {
     "usedByOthers": "Used by other pipelines",
@@ -52,8 +55,8 @@
     "readInPart": "Read in part",
     "notRead": "Not read",
     "flagCount": {
-      "one": "{count} flag",
-      "other": "{count} flags"
+      "one": "{count} issue",
+      "other": "{count} issues"
     }
   },
   "graph": {
@@ -173,7 +176,7 @@
   },
   "inspector": {
     "evidence": "Evidence",
-    "flags": "Flags",
+    "flags": "Issues",
     "history": "History",
     "job": "Job",
     "step": "Step",
@@ -195,7 +198,7 @@
     "openFile": "Open file",
     "source": "Source",
     "noSource": "The snapshot holds no content for this file.",
-    "noFlags": "No flag on this.",
+    "noFlags": "No issue on this.",
     "historyYear": {
       "one": "Changed once in the year before the scanned commit.",
       "other": "Changed {count} times in the year before the scanned commit."
@@ -261,9 +264,9 @@
     "notes": "Read from Dockerfiles, compose, Skaffold, Jib, build plugins and pipelines"
   },
   "flags": {
-    "intro": "Each flag is a fact a file states, with the line it is on. Nothing is scored: whether it matters here is your call. Every rule has an assert template in docs/rules/cicd.yml.",
-    "none": "No flags.",
-    "noMatch": "No flag matches “{q}”.",
+    "intro": "Each issue is a fact a file states, with the line it is on. Nothing is scored: whether it matters here is your call. Every rule has an assert template in docs/rules/cicd.yml.",
+    "none": "No issues.",
+    "noMatch": "No issue matches “{q}”.",
     "count": {
       "one": "1 place",
       "other": "{count} places in {files} files"
@@ -369,7 +372,7 @@
     "components": "Components",
     "open": "Open CI/CD",
     "flagsSummary": "Facts in the pipelines and Dockerfiles that people read as risks, by rule, with how many and where.",
-    "flagsTitle": "CI/CD flags",
+    "flagsTitle": "CI/CD issues",
     "flagFact": "Fact",
     "flagCount": "Times",
     "flagFiles": "Files",

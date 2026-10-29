@@ -16,13 +16,19 @@
         <button type="button" class="hover:text-neutral-900" @click="mode = 'images'">{{ t('cicd.page.statImages') }} <span class="text-neutral-800">{{ fmt(model.artifacts.length) }}</span></button>
         <span class="text-neutral-400">·</span>
         <span>{{ t('cicd.page.statDockerfiles') }} <span class="text-neutral-800">{{ fmt(model.dockerfiles.length) }}</span></span>
-        <span class="text-neutral-400">·</span>
-        <button type="button" class="hover:text-neutral-900" @click="mode = 'flags'">{{ t('cicd.page.statFlags') }} <span class="text-neutral-800">{{ fmt(model.flags.length) }}</span></button>
       </template>
     </template>
     <template #switches>
       <div class="ui-segmented" role="group" :aria-label="t('cicd.page.modes')">
-        <button v-for="m in MODES" :key="m.id" type="button" :aria-pressed="mode === m.id" :title="m.title" @click="mode = m.id">{{ m.label }}</button>
+        <button v-for="m in MODES" :key="m.id" type="button" class="inline-flex items-center gap-1.5" :aria-pressed="mode === m.id" :title="m.title" @click="mode = m.id">
+          <span>{{ m.label }}</span>
+          <!-- How many issues, before the tab is opened. -->
+          <span
+            v-if="m.id === 'flags' && state === 'ready' && model.flags.length"
+            class="rounded-full bg-amber-100 px-1.5 font-mono text-[10.5px] leading-4 text-amber-800 tabular-nums"
+            :aria-label="t('cicd.page.issueCount', { count: model.flags.length })"
+          >{{ fmt(model.flags.length) }}</span>
+        </button>
       </div>
     </template>
     <template #actions>

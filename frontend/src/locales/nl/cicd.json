@@ -7,7 +7,7 @@
     "pipelinesTitle": "Elke pipeline, getekend zoals hij draait",
     "images": "Images",
     "imagesTitle": "Wat de workspace bouwt: images, apps en functies, en waarvan ze gebouwd worden",
-    "flags": "Signalen",
+    "flags": "Issues",
     "flagsTitle": "Feiten in de pipelines en Dockerfiles die mensen als risico lezen",
     "statPipelines": "Pipelines",
     "statPartial": {
@@ -16,10 +16,9 @@
     },
     "statImages": "Artefacten",
     "statDockerfiles": "Dockerfiles",
-    "statFlags": "Signalen",
     "reading": "Lezen hoe de workspace bouwt en levert",
     "oldTitle": "Gescand voordat CI/CD werd gelezen",
-    "oldText": "Deze snapshot komt van een oudere engine. Scan opnieuw om pipelines, images en signalen te zien.",
+    "oldText": "Deze snapshot komt van een oudere engine. Scan opnieuw om pipelines, images en issues te zien.",
     "rescan": "Opnieuw scannen",
     "emptyTitle": "Hier wordt niets gebouwd of geleverd",
     "emptyText": "Er is geen pipelinebestand en geen Dockerfile gevonden. Archstats leest GitHub Actions (.github/workflows), GitLab CI (.gitlab-ci.yml), Jenkinsfiles en Jenkins-bibliotheken (vars/*.groovy), Rancher (fleet.yaml, .rancher-pipeline.yml en rancher-commando's in elke pipeline), Azure Pipelines, Bitbucket Pipelines en CircleCI. Een workspace die niet-bronbestanden negeert, leest ze nooit.",
@@ -44,7 +43,11 @@
     "lensCreated": "Lens ‘{name}’ gemaakt.",
     "lensDefaultName": "Images",
     "lensDescription": "Componenten gegroepeerd naar de image of app die hun bestanden bevat, gelezen uit Dockerfiles en buildbestanden.",
-    "sharedGroup": "In meerdere artefacten"
+    "sharedGroup": "In meerdere artefacten",
+    "issueCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
   },
   "list": {
     "usedByOthers": "Gebruikt door andere pipelines",
@@ -52,8 +55,8 @@
     "readInPart": "Deels gelezen",
     "notRead": "Niet gelezen",
     "flagCount": {
-      "one": "{count} signaal",
-      "other": "{count} signalen"
+      "one": "{count} issue",
+      "other": "{count} issues"
     }
   },
   "graph": {
@@ -173,7 +176,7 @@
   },
   "inspector": {
     "evidence": "Bewijs",
-    "flags": "Signalen",
+    "flags": "Issues",
     "history": "Geschiedenis",
     "job": "Job",
     "step": "Stap",
@@ -195,7 +198,7 @@
     "openFile": "Bestand openen",
     "source": "Bron",
     "noSource": "De snapshot bevat geen inhoud voor dit bestand.",
-    "noFlags": "Geen signaal hierop.",
+    "noFlags": "Geen issue hierop.",
     "historyYear": {
       "one": "Eén keer gewijzigd in het jaar voor de gescande commit.",
       "other": "{count} keer gewijzigd in het jaar voor de gescande commit."
@@ -261,9 +264,9 @@
     "notes": "Gelezen uit Dockerfiles, compose, Skaffold, Jib, buildplugins en pipelines"
   },
   "flags": {
-    "intro": "Elk signaal is een feit dat een bestand vermeldt, met de regel waarop het staat. Er wordt niets gescoord: of het hier telt, beslis jij. Elke regel heeft een assert-sjabloon in docs/rules/cicd.yml.",
-    "none": "Geen signalen.",
-    "noMatch": "Geen signaal past bij ‘{q}’.",
+    "intro": "Elk issue is een feit dat een bestand vermeldt, met de regel waarop het staat. Er wordt niets gescoord: of het hier telt, beslis jij. Elke regel heeft een assert-sjabloon in docs/rules/cicd.yml.",
+    "none": "Geen issues.",
+    "noMatch": "Geen issue past bij ‘{q}’.",
     "count": {
       "one": "1 plek",
       "other": "{count} plekken in {files} bestanden"
@@ -369,7 +372,7 @@
     "components": "Componenten",
     "open": "CI/CD openen",
     "flagsSummary": "Feiten in de pipelines en Dockerfiles die mensen als risico lezen, per regel, met hoeveel en waar.",
-    "flagsTitle": "CI/CD-signalen",
+    "flagsTitle": "CI/CD-issues",
     "flagFact": "Feit",
     "flagCount": "Keer",
     "flagFiles": "Bestanden",
