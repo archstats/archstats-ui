@@ -7,7 +7,7 @@
     :tabs="inspectorTabs"
     v-model:active-tab="tab"
     :is-sidebar-open="!!sel"
-    sidebar-width="420px"
+    sidebar-width="380px"
   >
     <template #stats>
       <template v-if="state === 'ready' && hasAnything">
@@ -61,30 +61,37 @@
       </EmptyState>
       <EmptyState v-else-if="!hasAnything" :title="t('cicd.page.emptyTitle')" :text="t('cicd.page.emptyText')" icon="workflow"/>
 
-      <!-- Pipelines: the list, and the picked one drawn. -->
+      <!-- Pipelines: the list, and the picked one drawn. The drawing has the
+           room: the inspector opens only for something picked in it. -->
       <div v-else-if="mode === 'pipelines'" class="flex min-h-0 grow">
-        <PipelineList class="w-[300px] shrink-0 hairline-r" :groups="groups" :selected="current" :search="search" @pick="pickPipeline"/>
-        <div class="flex min-h-0 min-w-0 grow flex-col">
-          <template v-if="currentPipeline">
-            <header class="flex min-w-0 flex-col gap-1 px-5 pb-2 pt-3 hairline-b">
-              <div class="flex min-w-0 items-center gap-2">
-                <SystemMark :system="currentPipeline.system"/>
-                <h2 class="min-w-[6rem] max-w-[60%] shrink-0 truncate text-[15px] font-semibold text-neutral-900" :title="currentPipeline.name">{{ currentPipeline.name }}</h2>
-                <span class="min-w-0 truncate text-xs text-neutral-500">{{ t(`cicd.systems.${systemKey(currentPipeline.system)}`) }} · {{ t(`cicd.kinds.${kindKey(currentPipeline.kind)}`) }}</span>
-                <EvidenceLine class="ml-auto min-w-0" :file="currentPipeline.file" :line="currentPipeline.line"/>
-              </div>
-              <p v-for="(u, i) in currentUnread" :key="i" class="text-xs text-amber-800">
-                <Icon icon="circle-dashed" :size="12" class="mr-1 inline align-[-2px]"/>{{ u.reason === 'not_supported_system' ? t('cicd.graph.notReadSystem', { system: t(`cicd.systems.${systemKey(currentPipeline.system)}`) }) : t('cicd.graph.readPartly', { from: u.from_line, to: u.to_line, reason: t(`cicd.unread.${u.reason}`) }) }}
-              </p>
-              <p v-if="libraryOnly" class="text-xs text-neutral-600">{{ libraryOnly === 'resolved' ? t('cicd.graph.libraryResolved') : t('cicd.graph.libraryOnly') }}</p>
-              <p v-if="!currentOutputs.length && currentPipeline.read !== 'none' && runsOnItsOwn(currentPipeline)" class="text-xs text-neutral-500">{{ t('cicd.graph.noOutputs') }}</p>
-            </header>
-            <div :key="currentPipeline.id" class="min-h-0 grow overflow-auto px-3 pb-6 pt-3" @click.self="sel = null">
-              <PipelineGraph :ix="ix" :pipeline="currentPipeline.id" :name="currentPipeline.name" :selected="graphSelection" @select="selectInGraph"/>
+        <PipelineList class="w-[272px] shrink-0 hairline-r" :groups="groups" :selected="current" :search="search" @pick="pickPipeline"/>
+        <ExhibitFrame v-if="currentPipeline" :key="currentPipeline.id" header="custom" fill class="min-w-0 grow">
+          <header class="flex min-w-0 shrink-0 flex-col gap-1.5 px-6 pb-3 pt-4 hairline-b">
+            <div class="flex min-w-0 items-center gap-2.5">
+              <SystemMark :system="currentPipeline.system"/>
+              <h2 class="min-w-[6rem] max-w-[55%] shrink-0 truncate text-[15px] font-semibold text-neutral-900" :title="currentPipeline.name">{{ currentPipeline.name }}</h2>
+              <span class="min-w-0 truncate text-xs text-neutral-500">{{ t(`cicd.systems.${systemKey(currentPipeline.system)}`) }} · {{ t(`cicd.kinds.${kindKey(currentPipeline.kind)}`) }}</span>
+              <span class="ml-auto flex min-w-0 items-center gap-3">
+                <EvidenceLine class="min-w-0" :file="currentPipeline.file" :line="currentPipeline.line"/>
+                <ExhibitButton v-if="currentPipeline.read !== 'none'"/>
+              </span>
             </div>
-          </template>
-          <p v-else class="p-6 text-sm text-neutral-600">{{ t('cicd.page.pickPipeline') }}</p>
-        </div>
+            <p v-for="(u, i) in currentUnread" :key="i" class="flex items-start gap-1.5 text-xs text-amber-800">
+              <Icon icon="circle-dashed" :size="12" class="mt-px shrink-0"/>
+              <span>{{ u.reason === 'not_supported_system' ? t('cicd.graph.notReadSystem', { system: t(`cicd.systems.${systemKey(currentPipeline.system)}`) }) : t('cicd.graph.readPartly', { from: u.from_line, to: u.to_line, reason: t(`cicd.unread.${u.reason}`) }) }}</span>
+            </p>
+            <p v-if="libraryOnly" class="text-xs text-neutral-600">{{ libraryOnly === 'resolved' ? t('cicd.graph.libraryResolved') : t('cicd.graph.libraryOnly') }}</p>
+            <p v-if="!currentOutputs.length && currentPipeline.read !== 'none' && runsOnItsOwn(currentPipeline)" class="text-xs text-neutral-500">{{ t('cicd.graph.noOutputs') }}</p>
+          </header>
+          <!-- A file Archstats does not read is shown, not drawn. -->
+          <div v-if="currentPipeline.read === 'none'" class="min-h-0 grow overflow-auto px-6 py-5">
+            <SourceLines class="max-w-[880px]" :file="currentPipeline.file" :from="0" :around="40"/>
+          </div>
+          <div v-else class="min-h-0 grow overflow-auto px-6 pb-8 pt-5" @click.self="sel = null">
+            <PipelineGraph :ix="ix" :pipeline="currentPipeline.id" :name="currentPipeline.name" :selected="graphSelection" @select="selectInGraph"/>
+          </div>
+        </ExhibitFrame>
+        <p v-else class="p-6 text-sm text-neutral-600">{{ t('cicd.page.pickPipeline') }}</p>
       </div>
 
       <!-- Images: base images across the workspace, then every artifact. -->
@@ -217,6 +224,7 @@
 import { computed, ref, watch } from "vue"
 import { useRoute } from "vue-router"
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
+import ExhibitButton from "~/features/export/components/ExhibitButton.vue"
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
 import LoadingState from "~/shared/ui/LoadingState.vue"
@@ -303,7 +311,7 @@ const libraryOnly = computed<"" | "resolved" | "remote">(() => {
 
 function pickPipeline(id: string) {
   current.value = id
-  sel.value = { kind: "pipeline", id }
+  sel.value = null
 }
 function openPipeline(id: string) {
   mode.value = "pipelines"

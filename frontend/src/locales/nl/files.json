@@ -38,7 +38,8 @@
     "pathOutsideWorkspaceFolder": "Dat pad ligt buiten de workspace-map.",
     "changedSinceSnapshotLine": "Gewijzigd sinds dit snapshot; de regel kan verschoven zijn.",
     "couldNotOpen": "Kon niet openen: {value}",
-    "couldNotReveal": "Kon niet tonen: {value}"
+    "couldNotReveal": "Kon niet tonen: {value}",
+    "archstats": "Archstats"
   },
   "fileNavigator": {
     "files": "Bestanden",

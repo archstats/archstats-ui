@@ -3,7 +3,7 @@
        others they wait for, what each runs, and what comes out. One SVG in
        the theme's colours, so it exports as drawn. A click selects; the
        inspector says the rest. -->
-  <ExhibitFrame :exhibit="figure" header-class="pb-2">
+  <ExhibitFrame :exhibit="figure" header="custom">
     <svg
       ref="svg" :width="layout.width" :height="layout.height + HEAD" :viewBox="`0 0 ${layout.width} ${layout.height + HEAD}`"
       role="img" :aria-label="t('cicd.graph.figure', { name })" :font-family="th.fontSans" class="select-none"
@@ -14,7 +14,6 @@
           <line x1="0" y1="0" x2="0" y2="8" :stroke="th.amberSoft" stroke-width="4"/>
         </pattern>
       </defs>
-      <rect :width="layout.width" :height="layout.height + HEAD" :fill="th.ground"/>
 
       <text v-if="layout.triggers.length" :x="G.pad" y="13" font-size="10.5" font-weight="600" letter-spacing="0.4" :fill="th.inkMuted">{{ t('cicd.graph.starts').toUpperCase() }}</text>
       <text v-if="layout.outputs.length" :x="layout.outputs[0].x" y="13" font-size="10.5" font-weight="600" letter-spacing="0.4" :fill="th.inkMuted">{{ t('cicd.graph.produces').toUpperCase() }}</text>

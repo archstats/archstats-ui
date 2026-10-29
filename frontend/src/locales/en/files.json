@@ -38,7 +38,8 @@
     "pathOutsideWorkspaceFolder": "That path is outside the workspace folder.",
     "changedSinceSnapshotLine": "Changed since this snapshot; the line may have moved.",
     "couldNotOpen": "Could not open: {value}",
-    "couldNotReveal": "Could not reveal: {value}"
+    "couldNotReveal": "Could not reveal: {value}",
+    "archstats": "Archstats"
   },
   "fileNavigator": {
     "files": "Files",

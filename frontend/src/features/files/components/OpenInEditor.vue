@@ -10,9 +10,11 @@
     >
       <Icon icon="external-link" :size="13"/>
     </button>
-    <template v-if="menuOpen">
+    <!-- On the top layer, placed from the button: a rail or a scrolling
+         pane must not clip it. -->
+    <Teleport v-if="menuOpen" to="body">
       <div class="fixed inset-0 z-40 cursor-default" @click.stop="menuOpen = false"></div>
-      <div class="ui-menu absolute right-0 top-full z-50 mt-1 flex w-60 flex-col animate-in" role="menu" @click.stop>
+      <div class="ui-menu fixed z-50 flex w-60 flex-col animate-in" :style="menuStyle" role="menu" @click.stop @keydown.esc="menuOpen = false">
         <p v-if="justLaunched" class="px-2 pb-1 pt-1.5 text-sm text-neutral-500">{{ t('files.openInEditor.didnTOpenChoose') }}</p>
         <p v-else class="ui-menu-title">{{ t('files.openInEditor.openFiles') }}</p>
         <button v-for="e in EDITORS" :key="e.id" type="button" class="ui-menu-item" role="menuitemradio" :aria-checked="current === e.id" @click="choose(e.id)">
@@ -24,13 +26,15 @@
           <Icon icon="folder" :size="12" class="text-neutral-500"/><span>{{ isMac ? t('files.openInEditor.revealFinder') : t('files.openInEditor.showFolder') }}</span>
         </button>
       </div>
-    </template>
+    </Teleport>
     <span v-if="note && !menuOpen" class="ui-tooltip absolute right-0 top-full z-50 mt-1 w-max max-w-[260px] whitespace-normal" role="status">{{ note }}</span>
   </span>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from "vue";
+import { useRouter } from "vue-router";
+import { filePath } from "~/features/navigation/routes";
 import { OpenInEditor, RevealWorkspaceFile } from "wailsjs/go/app/WorkspaceService";
 import Icon from "~/shared/ui/Icon.vue";
 import { usePlatform } from "~/platform/usePlatform";
@@ -45,6 +49,8 @@ import { t } from "~/shared/i18n";
 const props = defineProps<{ file: string; line?: number; col?: number; buttonClass?: string }>();
 
 const EDITORS = [
+  // The file's own page in Archstats, at the line: no editor needed.
+  { id: "archstats", label: t("files.openInEditor.archstats") },
   { id: "vscode", label: t("files.openInEditor.visualStudioCode") },
   { id: "cursor", label: t("files.openInEditor.cursor") },
   { id: "idea", label: t("files.openInEditor.jetbrainsIde") },
@@ -52,6 +58,9 @@ const EDITORS = [
 ] as const;
 
 const state = useStateStore();
+const router = useRouter();
+const root = ref<HTMLElement | null>(null);
+const menuStyle = ref<Record<string, string>>({});
 const workspaces = useWorkspacesStore();
 const { isMac } = usePlatform();
 const menuOpen = ref(false);
@@ -71,8 +80,21 @@ function flash(text: string, ms = 4000) {
   timer = setTimeout(() => { note.value = ""; justLaunched.value = false; }, ms);
 }
 
+function openMenu() {
+  const r = root.value?.getBoundingClientRect();
+  if (r) {
+    const width = 240;
+    const left = Math.min(Math.max(8, r.right - width), window.innerWidth - width - 8);
+    const below = r.bottom + 4;
+    // Up when there is no room below for the six items.
+    const top = below + 260 > window.innerHeight ? Math.max(8, r.top - 264) : below;
+    menuStyle.value = { left: `${left}px`, top: `${top}px` };
+  }
+  menuOpen.value = true;
+}
+
 async function onClick() {
-  if (!current.value || justLaunched.value) { menuOpen.value = true; return; }
+  if (!current.value || justLaunched.value) { openMenu(); return; }
   await launch(current.value);
 }
 
@@ -84,6 +106,10 @@ async function choose(id: string) {
 }
 
 async function launch(editor: string) {
+  if (editor === "archstats") {
+    await router.push({ path: filePath(props.file.replace(/^\.\//, "")), hash: props.line ? `#L${props.line}` : "" });
+    return;
+  }
   const ws = workspaces.active;
   if (!ws) return;
   try {
