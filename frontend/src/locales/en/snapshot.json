@@ -133,7 +133,8 @@
     "kotlinAnnotationsMarkDeclaration": "Kotlin annotations mark the declaration they are written on, functions included, so composables are marked.",
     "whatAppDeclaresPlatform": "What an app declares to its platform (activities, permissions, URL schemes, entitlements) is recorded, and mobile apps are deployables with their stack.",
     "analysisRevisionChangedHow": "Analysis revision {r} changed how scans are read.",
-    "filePairsChangeTogether": "File pairs that change together are recorded with how much of each side they cover."
+    "filePairsChangeTogether": "File pairs that change together are recorded with how much of each side they cover.",
+    "httpRoutesContractsOutbound": "HTTP routes gain who may call them and the contract that describes them; each route is traced to the tables and systems it reaches; the systems the code calls are read from code and configuration, per environment."
   },
   "statNames": {
     "linesCode": "Lines of Code",

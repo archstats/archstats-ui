@@ -89,7 +89,8 @@
     "lens": "{dimMenu}-lens",
     "matchNothingScan": "{groupName}: niets gematcht in deze scan door {value}",
     "twoGroups": "{components} in twee groepen",
-    "queryNowMatchesMore": "{groupName}: de query matcht nu {extra} meer"
+    "queryNowMatchesMore": "{groupName}: de query matcht nu {extra} meer",
+    "http": "HTTP"
   },
   "paneHandle": {
     "dragResizeDoubleClick": "Sleep om het formaat aan te passen, dubbelklik om te resetten",

@@ -43,7 +43,8 @@
     "evidence": "Evidence",
     "sqlConsole": "SQL console",
     "aboutSnapshot": "About this snapshot",
-    "metricReference": "Metric reference"
+    "metricReference": "Metric reference",
+    "http": "HTTP"
   },
   "showIn": {
     "componentPage": "Component page",

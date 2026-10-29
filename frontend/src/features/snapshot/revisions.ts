@@ -36,6 +36,9 @@ export const REVISION_REASONS: Record<number, string[]> = {
         t("snapshot.revisions.kotlinAnnotationsMarkDeclaration"),
         t("snapshot.revisions.whatAppDeclaresPlatform"),
     ],
+    17: [
+        t("snapshot.revisions.httpRoutesContractsOutbound"),
+    ],
 }
 
 /** Every reason between the revision a snapshot was written with and the current one. */

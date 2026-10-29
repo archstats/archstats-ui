@@ -89,7 +89,8 @@
     "lens": "{dimMenu} lens",
     "matchNothingScan": "{groupName}: {value} match nothing in this scan",
     "twoGroups": "{components} in two groups",
-    "queryNowMatchesMore": "{groupName}: its query now matches {extra} more"
+    "queryNowMatchesMore": "{groupName}: its query now matches {extra} more",
+    "http": "HTTP"
   },
   "paneHandle": {
     "dragResizeDoubleClick": "Drag to resize, double-click to reset",

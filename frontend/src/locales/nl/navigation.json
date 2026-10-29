@@ -43,7 +43,8 @@
     "evidence": "Bewijs",
     "sqlConsole": "SQL-console",
     "aboutSnapshot": "Over dit snapshot",
-    "metricReference": "Metric-referentie"
+    "metricReference": "Metric-referentie",
+    "http": "HTTP"
   },
   "showIn": {
     "componentPage": "Component-pagina",
