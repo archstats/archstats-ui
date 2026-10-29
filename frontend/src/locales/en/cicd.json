@@ -79,7 +79,14 @@
       "environment": "Deploys to an environment, which may require approval in the CI system"
     },
     "figure": "Pipeline {name}",
-    "condition": "Runs when: {cond}"
+    "condition": "Runs when: {cond}",
+    "gateTag": {
+      "manual": "manual",
+      "approval": "approval",
+      "environment": "protected"
+    },
+    "legendNeeds": "Lines: a job waits for the one it starts from.",
+    "legendHandoff": "Dashed: work handed to another pipeline, library or template."
   },
   "verbs": {
     "checkout": "Check out",

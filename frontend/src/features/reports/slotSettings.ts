@@ -18,6 +18,13 @@ export interface SettingDef {
 interface ViewDef { name: string; settings: SettingDef[] }
 
 const VIEWS: Record<string, ViewDef> = {
+    "/views/cicd": {
+        name: t("reports.slotSettings.cicd"),
+        settings: [
+            { key: "mode", label: t("reports.slotSettings.shown"), fallback: "pipelines", always: true, values: { pipelines: t("reports.slotSettings.cicdPipelines"), images: t("reports.slotSettings.cicdImages"), flags: t("reports.slotSettings.cicdFlags") } },
+            { key: "pipeline", label: t("reports.slotSettings.cicdPipeline"), fallback: "", values: {} },
+        ],
+    },
     "/views/connections": {
         name: t("reports.slotSettings.connections"),
         settings: [

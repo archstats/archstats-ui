@@ -1645,7 +1645,9 @@
     "whatHappenedCodeLast2": "Wat er de laatste 30 dagen in de code gebeurde: hoeveel er veranderde en waar, hoe het werk verschoof tegenover de twee jaar ervoor, welke bestanden het meest veranderden, welke hotspots het team aanraakte en welke bestanden nieuw zijn.",
     "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen",
     "whatFlagsSay": "Wat de pipelines en Dockerfiles signaleren",
-    "whereRiskSits": "Waar het risico zit"
+    "whereRiskSits": "Waar het risico zit",
+    "howItIsBuilt": "Hoe het gebouwd en gedeployd wordt",
+    "pipelineFigureReads": "De tekening leest van links naar rechts: wat de pipeline start, de jobs in de volgorde waarin ze op elkaar wachten, de stappen in elke job (het gekleurde vierkantje zegt wat een stap doet), en wat er aan het eind uit komt. Gestippelde vakken geven werk door aan een andere pipeline, bibliotheek of sjabloon."
   },
   "reportsStore": {
     "table": "Tabel",
@@ -1736,7 +1738,12 @@
     "folders": "Mappen",
     "nothing": "Niets",
     "window": "Periode",
-    "lastChosen": "Zoals laatst gekozen"
+    "lastChosen": "Zoals laatst gekozen",
+    "cicd": "CI/CD",
+    "cicdPipelines": "Pipelines",
+    "cicdImages": "Images",
+    "cicdFlags": "Signalen",
+    "cicdPipeline": "Pipeline"
   },
   "templateKit": {
     "scanHasNoGit": "dit snapshot heeft geen git-historie",
@@ -1855,7 +1862,9 @@
     "upCloseHotspot": "Van dichtbij: hotspot {rank}",
     "upCloseDependents": "Van dichtbij: nummer {rank} op afhankelijken",
     "upCloseHealth": "Van dichtbij: nummer {rank} van onderen op health",
-    "upCloseChanged": "Van dichtbij: nummer {rank} op wijzigingen"
+    "upCloseChanged": "Van dichtbij: nummer {rank} op wijzigingen",
+    "cicd": "CI/CD",
+    "pickPipelineThatShips": "Kies de pipeline die het systeem bouwt en deployt, en neem de tekening over."
   },
   "useSlotTaking": {
     "hasNothingTake": "{view} heeft niets om over te nemen: {why}",

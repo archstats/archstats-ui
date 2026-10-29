@@ -1645,7 +1645,9 @@
     "whatHappenedCodeLast2": "What happened in the code in the last 30 days: how much changed and where, how the work moved against the two years before, which files changed most, which hotspots the team touched and which files are new.",
     "whereWorkMovedLast2": "Where the work moved in the last 30 days",
     "whatFlagsSay": "What the pipelines and Dockerfiles flag",
-    "whereRiskSits": "Where the risk sits"
+    "whereRiskSits": "Where the risk sits",
+    "howItIsBuilt": "How it is built and deployed",
+    "pipelineFigureReads": "The drawing reads left to right: what starts the pipeline, its jobs in the order they wait for each other, the steps inside each job (the coloured square says what a step does), and what comes out at the end. Dashed boxes hand work to another pipeline, library or template."
   },
   "reportsStore": {
     "table": "Table",
@@ -1736,7 +1738,12 @@
     "folders": "Folders",
     "nothing": "Nothing",
     "window": "Window",
-    "lastChosen": "As last chosen"
+    "lastChosen": "As last chosen",
+    "cicd": "CI/CD",
+    "cicdPipelines": "Pipelines",
+    "cicdImages": "Images",
+    "cicdFlags": "Flags",
+    "cicdPipeline": "Pipeline"
   },
   "templateKit": {
     "scanHasNoGit": "the scan has no git history",
@@ -1855,7 +1862,9 @@
     "upCloseHotspot": "Up close: hotspot {rank}",
     "upCloseDependents": "Up close: number {rank} by dependents",
     "upCloseHealth": "Up close: number {rank} from the bottom by health",
-    "upCloseChanged": "Up close: number {rank} by change"
+    "upCloseChanged": "Up close: number {rank} by change",
+    "cicd": "CI/CD",
+    "pickPipelineThatShips": "Pick the pipeline that builds and deploys the system, and take its drawing."
   },
   "useSlotTaking": {
     "hasNothingTake": "{view} has nothing to take: {why}",

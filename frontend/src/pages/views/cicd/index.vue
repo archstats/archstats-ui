@@ -215,6 +215,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
+import { useRoute } from "vue-router"
 import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue"
 import ViewWorkspaceLayout from "~/features/shell/components/ViewWorkspaceLayout.vue"
 import EmptyState from "~/shared/ui/EmptyState.vue"
@@ -281,6 +282,13 @@ const current = computed<string | null>({
   },
   set: v => store.set("cicd.pipeline", v),
 })
+// A link (a report slot, Go to anything) may name the mode and the pipeline.
+const route = useRoute()
+watch(() => [route.query.mode, route.query.pipeline] as const, ([m, p]) => {
+  if (m === "pipelines" || m === "images" || m === "flags") mode.value = m
+  if (typeof p === "string" && p) current.value = p
+}, { immediate: true })
+
 const currentPipeline = computed(() => (current.value ? ix.value.pipeline.get(current.value) ?? null : null))
 const currentUnread = computed(() => (current.value ? ix.value.unreadOf.get(current.value) ?? [] : []))
 const currentOutputs = computed(() => (current.value ? ix.value.outputsOf.get(current.value) ?? [] : []))

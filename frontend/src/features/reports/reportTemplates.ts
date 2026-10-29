@@ -27,6 +27,7 @@ export { Writer } from "./templateKit"
 // ── How to read the figures ───────────────────────────────────────────────
 
 const READ = {
+    pipeline: t("reports.reportTemplates.pipelineFigureReads"),
     matrix: t("reports.reportTemplates.dependencyMatrixEachRow"),
     dms: t("reports.reportTemplates.mainSequencePlotPlaces"),
     ageTreemap: t("reports.reportTemplates.treemapEachRectangleComponent"),
@@ -252,6 +253,8 @@ const GENERAL: ReportTemplate[] = [
             w.section(t("reports.reportTemplates.howShips"), f.tables.has("artifacts") && f.tables.has("pipeline_jobs") ? true : t("reports.reportTemplates.scanDidNotLook"), () => {
                 w.explain(QABOUT.ships)
                 w.exhibit("cicd", {}, t("reports.reportTemplates.whatShipsWhatBuilds"))
+                w.explainSlot(READ.pipeline)
+                slotOf(w, "figure", t("reports.reportTemplates.howItIsBuilt"), VIEWS.pipeline)
                 w.exhibit("cicd-flags", {}, t("reports.reportTemplates.whatFlagsSay"))
             })
             w.section("Tests", needs.tests(f), () => {

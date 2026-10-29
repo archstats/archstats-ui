@@ -79,7 +79,14 @@
       "environment": "Deployt naar een omgeving, waarvoor het CI-systeem goedkeuring kan eisen"
     },
     "figure": "Pipeline {name}",
-    "condition": "Draait als: {cond}"
+    "condition": "Draait als: {cond}",
+    "gateTag": {
+      "manual": "handmatig",
+      "approval": "goedkeuring",
+      "environment": "beschermd"
+    },
+    "legendNeeds": "Lijnen: een job wacht op de job waar de lijn begint.",
+    "legendHandoff": "Gestippeld: werk overgedragen aan een andere pipeline, bibliotheek of sjabloon."
   },
   "verbs": {
     "checkout": "Uitchecken",
