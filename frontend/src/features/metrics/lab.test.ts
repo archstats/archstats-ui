@@ -29,6 +29,27 @@ describe("spearman", () => {
   it("refuses fewer than five pairs", () => {
     expect(spearman(rows.slice(0, 4), "a", "b").rho).toBeNaN();
   });
+  it("matches Pearson over averaged ranks, with ties and missing readings", () => {
+    // Pearson's r of the averaged ranks, written the slow, obvious way.
+    const reference = (xs: number[], ys: number[]) => {
+      const rank = (v: number[]) => v.map((x) => v.filter((y) => y < x).length + (v.filter((y) => y === x).length + 1) / 2);
+      const rx = rank(xs), ry = rank(ys), mx = rx.reduce((a, b) => a + b) / rx.length, my = ry.reduce((a, b) => a + b) / ry.length;
+      let num = 0, dx = 0, dy = 0;
+      rx.forEach((_, i) => { num += (rx[i] - mx) * (ry[i] - my); dx += (rx[i] - mx) ** 2; dy += (ry[i] - my) ** 2; });
+      return num / Math.sqrt(dx * dy);
+    };
+    let seed = 7;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const data = Array.from({ length: 300 }, (_, i) => ({
+      name: `r${i}`,
+      a: rand() < 0.1 ? null : Math.floor(rand() * 20),
+      b: rand() < 0.1 ? undefined : Math.floor(rand() * 50) - 10,
+    }));
+    const both = data.filter((r) => r.a != null && r.b != null);
+    const got = spearman(data, "a", "b");
+    expect(got.n).toBe(both.length);
+    expect(got.rho).toBeCloseTo(reference(both.map((r) => r.a!), both.map((r) => r.b!)), 12);
+  });
   it("names strength in words", () => {
     expect(strengthWord(0.82)).toBe("strong");
     expect(strengthWord(-0.45)).toBe("moderate");

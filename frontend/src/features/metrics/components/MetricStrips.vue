@@ -1,8 +1,9 @@
 <template>
   <ExhibitFrame :exhibit="figure" legend-class="px-3 pb-2" fill>
     <div ref="box" class="relative h-full min-h-0 w-full select-none">
+      <canvas ref="canvas" class="pointer-events-none absolute inset-0"></canvas>
       <canvas
-          ref="canvas"
+          ref="overlay"
           class="absolute inset-0"
           :class="dragging ? 'cursor-ew-resize' : hoverName ? 'cursor-pointer' : 'cursor-crosshair'"
           @mousemove="onMove"
@@ -45,7 +46,7 @@ import { useChartTheme, withAlpha } from "~/shared/ui/useChartTheme";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { formatReading } from "~/shared/format";
 import { metricValue, median } from "~/features/metrics/plotReading";
-import { jitter, metricScale, passes, type Brushes, type MetricScale } from "~/features/metrics/lab";
+import { jitter, metricScale, passes, readings, type Brushes, type MetricScale } from "~/features/metrics/lab";
 import { useCanvas } from "~/features/metrics/useCanvas";
 import { useFigure } from "~/features/export/useExportables";
 import type { FigureOutput } from "~/features/export/figure";
@@ -57,6 +58,10 @@ import { t } from "~/shared/i18n";
 // right scale. Hovering a dot threads that row through every strip, so its
 // profile reads top to bottom. Dragging along a strip brushes a range; rows
 // outside any brush fade on every strip. Click selects, double-click opens.
+//
+// Two canvases: the strips and their dots below, redrawn only when the rows,
+// metrics, brushes or selection change; the hovered row's thread above, so
+// moving the mouse never repaints dots.
 
 type Row = { name: string; [key: string]: any };
 
@@ -85,7 +90,9 @@ const { theme, version } = useChartTheme();
 
 const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
-const { size, context, local } = useCanvas(box, canvas);
+const overlay = ref<HTMLCanvasElement | null>(null);
+const { size, context } = useCanvas(box, canvas);
+const { size: overlaySize, context: overlayContext, local } = useCanvas(box, overlay);
 const figure = useFigure({
   title: t("metrics.metricStrips.metricsStrips"),
   // Drawn for the page, not captured from the window: see printStrips.
@@ -142,16 +149,48 @@ const survivors = computed(() => {
 });
 const selectedSet = computed(() => new Set(props.selected));
 
+// ─── Indexes ───
+// Read once per row set, so a redraw or a pointer move walks arrays by row
+// index: each metric's 0..1 position on its axis, and each row's height
+// within a strip (its jitter, a hash of its name).
+const positions = computed(() => new Map(props.metrics.map((k) => {
+  const v = readings(props.rows, k), s = scales.value.get(k)!;
+  const at = new Float64Array(v.length);
+  for (let i = 0; i < v.length; i++) at[i] = s.at(v[i]);
+  return [k, at] as const;
+})));
+const jitters = computed(() => Float64Array.from(props.rows, (r) => jitter(r.name)));
+const domainByName = computed(() => new Map(props.domainRows.map((r) => [r.name, r] as const)));
+
+// Row indexes per layer, bottom to top: failing a brush, in play, selected.
+const layers = computed(() => {
+  const chosen = new Set(props.selected);
+  const faded: number[] = [], play: number[] = [], selected: number[] = [];
+  props.rows.forEach((row, i) => {
+    if (chosen.has(row.name)) selected.push(i);
+    else if (brushing.value && !passes(row, props.brushes)) faded.push(i);
+    else play.push(i);
+  });
+  return { faded, play, selected };
+});
+
 // ─── Drawing ───
+const dotRadius = () => (props.grain === "file" ? 1.7 : 2.6);
+
 function draw() {
   const ctx = context();
   if (!ctx) return;
   const t = theme.value;
   const { x0, x1, strips } = layout.value;
-  const r = props.grain === "file" ? 1.7 : 2.6;
-  const surv = survivors.value;
-  const sel = selectedSet.value;
-  const focus = hoverName.value ?? props.hovered;
+  const r = dotRadius();
+  const L = layers.value;
+  const jit = jitters.value;
+  // One fill per dot, not one path per layer: overlapping dots darken, which shows density.
+  const dots: Array<[number[], string, number]> = [
+    [L.faded, withAlpha(t.inkMuted, 0.1), r],
+    [L.play, withAlpha(t.inkSecondary, brushing.value ? 0.85 : 0.55), r],
+    [L.selected, t.blue, r + 1],
+  ];
 
   for (const [i, strip] of strips.entries()) {
     const s = strip.scale;
@@ -193,28 +232,34 @@ function draw() {
       ctx.fillRect(Math.round(mx), strip.top + strip.height - 8, 1, 5);
     }
 
-    // Dots: the faded first, then those in play, then the selection.
-    const drawn: Array<[Row, number, number]> = [];
-    for (const row of props.rows) {
-      const v = metricValue(row, strip.key);
-      if (!Number.isFinite(v)) continue;
-      drawn.push([row, xOf(s, v), yOf(strip, row.name)]);
+    // Dots: the faded first, then those in play, then the selection. The same
+    // arithmetic as xOf/yOf, over the position and jitter arrays.
+    const at = positions.value.get(strip.key)!;
+    const span = x1 - x0, y0 = strip.top + 7, rise = strip.height - 14;
+    for (const [rows, fill, rad] of dots) {
+      ctx.fillStyle = fill;
+      for (const k of rows) {
+        const tx = at[k];
+        if (tx !== tx) continue; // NaN: no reading
+        dot(ctx, x0 + tx * span, y0 + jit[k] * rise, rad);
+      }
     }
-    const pass = (n: string) => !surv || surv.has(n);
-    ctx.fillStyle = withAlpha(t.inkMuted, 0.1);
-    for (const [row, x, y] of drawn) if (!pass(row.name)) dot(ctx, x, y, r);
-    ctx.fillStyle = withAlpha(t.inkSecondary, surv ? 0.85 : 0.55);
-    for (const [row, x, y] of drawn) if (pass(row.name) && !sel.has(row.name)) dot(ctx, x, y, r);
-    ctx.fillStyle = t.blue;
-    for (const [row, x, y] of drawn) if (sel.has(row.name)) dot(ctx, x, y, r + 1);
   }
+}
+
+function drawOverlay() {
+  const ctx = overlayContext();
+  if (!ctx) return;
+  const t = theme.value;
+  const { x1, strips } = layout.value;
+  const focus = hoverName.value ?? props.hovered;
 
   // The focused row, threaded through its own dot in every strip. It was drawn
   // on each strip's centre line, but the dots are spread across the strip's
   // height, so the highlight sat on some other component's dot and never on
   // the one under the pointer.
   if (focus) {
-    const row = props.domainRows.find((r) => r.name === focus);
+    const row = domainByName.value.get(focus);
     if (row) {
       const pts = strips.map((strip) => {
         const v = metricValue(row, strip.key);
@@ -380,20 +425,25 @@ function stripAt(y: number) {
   return layout.value.strips.find((s) => y >= s.top && y < s.top + s.height) ?? null;
 }
 
+// A linear walk of the strip's position and jitter arrays: microseconds even
+// for every file of a large codebase, so no spatial index is worth keeping.
 function nearest(x: number, y: number): string | null {
   const strip = stripAt(y);
   if (!strip || x < layout.value.x0 - 6) return null;
-  let best: string | null = null;
+  const at = positions.value.get(strip.key)!, jit = jitters.value;
+  const { x0, x1 } = layout.value;
+  const left = x0 - x, span = x1 - x0, top = strip.top + 7 - y, rise = strip.height - 14;
+  let best = -1;
   let bestD = 64;
-  for (const row of props.rows) {
-    const v = metricValue(row, strip.key);
-    if (!Number.isFinite(v)) continue;
-    const dx = xOf(strip.scale, v) - x;
-    const dy = yOf(strip, row.name) - y;
+  for (let i = 0; i < at.length; i++) {
+    const tx = at[i];
+    if (tx !== tx) continue;
+    const dx = left + tx * span;
+    const dy = top + jit[i] * rise;
     const d = dx * dx + dy * dy;
-    if (d < bestD) { bestD = d; best = row.name; }
+    if (d < bestD) { bestD = d; best = i; }
   }
-  return best;
+  return best < 0 ? null : props.rows[best].name;
 }
 
 function onMove(e: MouseEvent) {
@@ -404,17 +454,21 @@ function onMove(e: MouseEvent) {
     if (dragging.value.moved) applyDrag();
     return;
   }
-  const name = nearest(p.x, p.y);
-  hoverName.value = name;
-  hoverPoint.value = name ? { x: e.clientX, y: e.clientY } : null;
-  emit("update:hovered", name);
+  setHover(nearest(p.x, p.y), e);
+}
+
+// Only a change of row repaints the overlay or tells the page; the tooltip follows every move.
+function setHover(name: string | null, e?: MouseEvent) {
+  if (name !== hoverName.value) {
+    hoverName.value = name;
+    emit("update:hovered", name);
+  }
+  hoverPoint.value = name && e ? { x: e.clientX, y: e.clientY } : null;
 }
 
 function onLeave() {
   if (dragging.value) return;
-  hoverName.value = null;
-  hoverPoint.value = null;
-  emit("update:hovered", null);
+  setHover(null);
 }
 
 function onDown(e: MouseEvent) {
@@ -472,10 +526,23 @@ function onDouble() {
 
 watch(() => props.metrics, () => { hoverName.value = null; });
 
-// Redraw whenever anything the drawing reads changes; declared last so every ref exists.
+// At most one paint per canvas per frame, however many changes arrive in it.
+function onEachFrame(paint: () => void): () => void {
+  let frame = 0;
+  return () => {
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; paint(); });
+  };
+}
+const paintBase = onEachFrame(draw);
+const paintOverlay = onEachFrame(drawOverlay);
+
+// Repaint a canvas whenever anything it reads changes; declared last so every ref exists.
 watchEffect(() => {
-  // Track everything draw() reads.
-  void [size.value, props.rows, props.metrics, props.brushes, props.selected, props.hovered, hoverName.value, version.value, layout.value];
-  requestAnimationFrame(draw);
+  void [size.value, layout.value, positions.value, jitters.value, layers.value, props.brushes, props.grain, version.value];
+  paintBase();
+});
+watchEffect(() => {
+  void [overlaySize.value, layout.value, hoverName.value, props.hovered, domainByName.value, version.value];
+  paintOverlay();
 });
 </script>

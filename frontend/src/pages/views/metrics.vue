@@ -140,7 +140,7 @@
                   ref="matrixRef"
                   :rows="filteredRows" :domain-rows="allRows" :metrics="matrixSet"
                   v-model:brushes="brushes" v-model:hovered="hoveredName" :selected="selectedNames" @update:selected="selectedNames = $event"
-                  :pair="[xAxis, yAxis]" :grain="grain === 'files' ? 'file' : 'component'"
+                  :pair="matrixPair" :grain="grain === 'files' ? 'file' : 'component'"
                   @pair="setPair" @open="openName"/>
             </ExhibitFrame>
           </div>
@@ -781,6 +781,9 @@ const profileSet = metricSet("profiles");
 const stripSort = ref("codesmells__hotspot_score");
 watch(stripSet, (keys) => { if (keys.length && !keys.includes(stripSort.value)) stripSort.value = keys[0]; }, { immediate: true });
 watch(grain, () => { brushes.value = {}; hoveredName.value = null; });
+
+// One array for the pair, so the matrix sees a new one only when an axis changes.
+const matrixPair = computed<[string | null, string | null]>(() => [xAxis.value, yAxis.value]);
 
 function setPair([x, y]: [string, string]) {
   xAxis.value = x;

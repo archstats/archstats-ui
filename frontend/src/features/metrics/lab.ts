@@ -76,8 +76,13 @@ export interface MetricScale {
 export function metricScale(rows: Row[], key: string): MetricScale {
   const values = rows.map((r) => metricValue(r, key)).filter((v) => Number.isFinite(v));
   const log = suggestLog(values);
-  let lo = values.length ? Math.min(...values) : 0;
-  let hi = values.length ? Math.max(...values) : 1;
+  // A loop, not Math.min(...values): spreading tens of thousands of files overflows the stack.
+  let lo = values.length ? Infinity : 0;
+  let hi = values.length ? -Infinity : 1;
+  for (const v of values) {
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
   if (lo > 0) lo = 0;
   if (hi <= lo) hi = lo + 1;
   const s = (log ? d3.scaleSymlog().constant(1) : d3.scaleLinear()).domain([lo, hi]).range([0, 1]).clamp(true);
@@ -96,18 +101,63 @@ function symlogTicks(hi: number): number[] {
   return out;
 }
 
+// ─── Indexes ───
+// A view that reads the same metrics many times (every pair, every redraw)
+// reads them once into arrays by row index instead of walking the rows.
+
+/** Every row's reading for a metric, by row index; NaN where it has none. */
+export function readings(rows: Row[], key: string): Float64Array {
+  const out = new Float64Array(rows.length);
+  for (let i = 0; i < rows.length; i++) out[i] = metricValue(rows[i], key);
+  return out;
+}
+
+/** The row indexes that have a reading, in ascending order of it: sorted once, walked for every pair. */
+export function rankOrder(values: Float64Array): Int32Array {
+  const idx: number[] = [];
+  for (let i = 0; i < values.length; i++) if (Number.isFinite(values[i])) idx.push(i);
+  idx.sort((a, b) => values[a] - values[b]);
+  return Int32Array.from(idx);
+}
+
 // ─── Correlation ───
-function ranks(values: number[]): number[] {
-  const order = values.map((v, i) => [v, i] as const).sort((a, b) => a[0] - b[0]);
-  const out = new Array(values.length);
-  for (let i = 0; i < order.length;) {
+/** Average 1-based ranks of the rows in `keep`, walking a metric's order; ties share their mean rank. */
+function ranksAlong(values: Float64Array, order: Int32Array, keep: Uint8Array, n: number): Float64Array {
+  const kept = new Int32Array(n);
+  let m = 0;
+  for (let k = 0; k < order.length; k++) if (keep[order[k]]) kept[m++] = order[k];
+  const out = new Float64Array(values.length);
+  for (let i = 0; i < m;) {
     let j = i;
-    while (j + 1 < order.length && order[j + 1][0] === order[i][0]) j++;
+    while (j + 1 < m && values[kept[j + 1]] === values[kept[i]]) j++;
     const rank = (i + j) / 2 + 1;
-    for (let k = i; k <= j; k++) out[order[k][1]] = rank;
+    for (let k = i; k <= j; k++) out[kept[k]] = rank;
     i = j + 1;
   }
   return out;
+}
+
+/**
+ * Spearman's rank correlation from two metrics' readings and rank orders
+ * (see readings and rankOrder), over the rows that have both. Each metric is
+ * sorted once however many pairs it joins; a pair only walks the orders.
+ */
+export function spearmanOf(xs: Float64Array, ys: Float64Array, ox: Int32Array, oy: Int32Array): { rho: number; n: number } {
+  const keep = new Uint8Array(xs.length);
+  let n = 0;
+  for (let i = 0; i < xs.length; i++) {
+    if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) { keep[i] = 1; n++; }
+  }
+  if (n < 5) return { rho: NaN, n };
+  const rx = ranksAlong(xs, ox, keep, n), ry = ranksAlong(ys, oy, keep, n);
+  const mean = (n + 1) / 2;
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < xs.length; i++) {
+    if (!keep[i]) continue;
+    const u = rx[i] - mean, v = ry[i] - mean;
+    num += u * v; dx += u * u; dy += v * v;
+  }
+  return { rho: dx && dy ? num / Math.sqrt(dx * dy) : NaN, n };
 }
 
 /**
@@ -116,21 +166,8 @@ function ranks(values: number[]): number[] {
  * fewer than five rows qualify or either metric is constant.
  */
 export function spearman(rows: Row[], a: string, b: string): { rho: number; n: number } {
-  const xs: number[] = [], ys: number[] = [];
-  for (const r of rows) {
-    const x = metricValue(r, a), y = metricValue(r, b);
-    if (Number.isFinite(x) && Number.isFinite(y)) { xs.push(x); ys.push(y); }
-  }
-  const n = xs.length;
-  if (n < 5) return { rho: NaN, n };
-  const rx = ranks(xs), ry = ranks(ys);
-  const mean = (n + 1) / 2;
-  let num = 0, dx = 0, dy = 0;
-  for (let i = 0; i < n; i++) {
-    const u = rx[i] - mean, v = ry[i] - mean;
-    num += u * v; dx += u * u; dy += v * v;
-  }
-  return { rho: dx && dy ? num / Math.sqrt(dx * dy) : NaN, n };
+  const xs = readings(rows, a), ys = readings(rows, b);
+  return spearmanOf(xs, ys, rankOrder(xs), rankOrder(ys));
 }
 
 /** Plain words for a correlation's strength, the way the Reading panel says it. */

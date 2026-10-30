@@ -1,8 +1,9 @@
 <template>
   <ExhibitFrame :exhibit="figure" legend-class="px-3 pb-2" fill>
     <div ref="box" class="relative h-full min-h-0 w-full select-none">
+      <canvas ref="canvas" class="pointer-events-none absolute inset-0"></canvas>
       <canvas
-          ref="canvas"
+          ref="overlay"
           class="absolute inset-0"
           :class="nearAxis ? 'cursor-ns-resize' : hoverName ? 'cursor-pointer' : 'cursor-default'"
           @mousemove="onMove"
@@ -61,6 +62,10 @@ import { t } from "~/shared/i18n";
 // profile. Lines take the heat of their hotspot score. Drag along an axis to
 // brush a range; lines outside any brush fade. Titles drag to reorder axes;
 // the arrows flip one. Click selects a line, double-click opens it.
+//
+// Two canvases: the axes and every line below, redrawn only when the rows,
+// axes, brushes or selection change; the hovered line above, so moving the
+// mouse never restrokes thousands of lines.
 
 type Row = { name: string; [key: string]: any };
 
@@ -89,7 +94,9 @@ const { theme, version } = useChartTheme();
 
 const box = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
-const { size, context, local } = useCanvas(box, canvas);
+const overlay = ref<HTMLCanvasElement | null>(null);
+const { size, context } = useCanvas(box, canvas);
+const { size: overlaySize, context: overlayContext, local } = useCanvas(box, overlay);
 const figure = useFigure({
   title: t("metrics.metricProfiles.metricsProfiles"),
   // Drawn for the page, not captured from the window: see printProfiles.
@@ -100,8 +107,10 @@ const figure = useFigure({
     const theme2 = theme.value;
     const key = props.colorKey;
     const values = key ? props.domainRows.map((r) => metricValue(r, key)).filter(Number.isFinite) : [];
+    // d3.extent, not Math.min(...values): spreading tens of thousands of files overflows the stack.
+    const [low, high] = d3.extent(values);
     const ramps: LegendRamp[] = key && values.length
-      ? [{ label: niceName(key), colors: /code_health/.test(key) ? [...theme2.heat].reverse() : theme2.heat, low: formatReading(Math.min(...values)), high: formatReading(Math.max(...values)) }]
+      ? [{ label: niceName(key), colors: /code_health/.test(key) ? [...theme2.heat].reverse() : theme2.heat, low: formatReading(low), high: formatReading(high) }]
       : [];
     const items: LegendItem[] = props.selected.length ? [{ label: t("metrics.metricProfiles.selected"), color: theme2.blue, mark: "line" }] : [];
     if (Object.keys(props.brushes).length) items.push({ label: t("metrics.metricProfiles.outsideBrushedRange"), color: withAlpha(theme2.inkMuted, 0.3), mark: "line" });
@@ -120,14 +129,19 @@ defineExpose({ figure });
 const TOP = 72, BOTTOM = 26, SIDE = 64;
 const flipped = reactive(new Set<string>());
 
+// Each axis's scale and median read every row, so they follow the rows, not the window's size.
+const readingsOf = computed(() => new Map(props.metrics.map((key) => [key, {
+  scale: metricScale(props.domainRows, key),
+  median: median(props.domainRows.map((r) => metricValue(r, key))),
+}] as const)));
+
 const axes = computed(() => {
   const n = props.metrics.length;
   const step = n > 1 ? (size.value.w - SIDE * 2) / (n - 1) : 0;
   return props.metrics.map((key, i) => ({
     key,
     x: n > 1 ? SIDE + i * step : size.value.w / 2,
-    scale: metricScale(props.domainRows, key),
-    median: median(props.domainRows.map((r) => metricValue(r, key))),
+    ...readingsOf.value.get(key)!,
   }));
 });
 const step = computed(() => (axes.value.length > 1 ? axes.value[1].x - axes.value[0].x : 1));
@@ -166,6 +180,31 @@ const lines = computed(() => props.rows.map((row) => ({
   hot: metricValue(row, props.colorKey ?? "") || 0,
 })).sort((a, b) => a.hot - b.hot));
 
+// ─── Indexes ───
+// By position in `lines`, read once per row set instead of once per redraw or
+// pointer move: each line's colour, which lines sit in each layer, and names
+// to lines for the focused one.
+const colors = computed(() => lines.value.map((l) => heat.value(l.row)));
+const lineByName = computed(() => new Map(lines.value.map((l) => [l.row.name, l] as const)));
+const domainByName = computed(() => new Map(props.domainRows.map((r) => [r.name, r] as const)));
+
+// Line indexes per layer, bottom to top: failing a brush, in play, selected.
+// `inPlay` marks every line inside the brushes, for hovering.
+const layers = computed(() => {
+  const brushed = Object.keys(props.brushes).length > 0;
+  const chosen = new Set(props.selected);
+  const inPlay = new Uint8Array(lines.value.length);
+  const faded: number[] = [], play: number[] = [], selected: number[] = [];
+  lines.value.forEach((l, i) => {
+    const pass = !brushed || passes(l.row, props.brushes);
+    if (pass) inPlay[i] = 1;
+    if (!pass) faded.push(i);
+    if (chosen.has(l.row.name)) selected.push(i);
+    else if (pass) play.push(i);
+  });
+  return { brushed, inPlay, faded, play, selected, any: chosen.size > 0 };
+});
+
 // ─── Drawing ───
 function stroke(ctx: CanvasRenderingContext2D, ys: number[]) {
   ctx.beginPath();
@@ -183,9 +222,8 @@ function draw() {
   const ctx = context();
   if (!ctx) return;
   const t = theme.value;
-  const surv = survivors.value;
-  const sel = selectedSet.value;
-  const focus = hoverName.value ?? props.hovered;
+  const L = layers.value;
+  const all = lines.value;
   const files = props.grain === "file";
   const H = size.value.h;
 
@@ -220,28 +258,37 @@ function draw() {
 
   // Lines: those outside a brush faint, those in play by heat (hottest on top), selection, focus.
   ctx.lineJoin = "round";
-  if (surv) {
+  if (L.brushed) {
     ctx.strokeStyle = withAlpha(t.inkMuted, files ? 0.04 : 0.08);
     ctx.lineWidth = 1;
-    for (const l of lines.value) if (!surv.has(l.row.name)) stroke(ctx, l.ys);
+    for (const i of L.faded) stroke(ctx, all[i].ys);
   }
   ctx.lineWidth = 1;
   // A selection leads; everything else recedes to a wash so the selected lines read.
-  ctx.globalAlpha = sel.size ? (files ? 0.05 : 0.12) : files ? (surv ? 0.35 : 0.14) : surv ? 0.85 : 0.45;
-  for (const l of lines.value) {
-    if (surv && !surv.has(l.row.name)) continue;
-    if (sel.has(l.row.name)) continue;
-    ctx.strokeStyle = heat.value(l.row);
-    stroke(ctx, l.ys);
+  ctx.globalAlpha = L.any ? (files ? 0.05 : 0.12) : files ? (L.brushed ? 0.35 : 0.14) : L.brushed ? 0.85 : 0.45;
+  // Lines run coolest to hottest, so the colour changes only a few times: set it only then.
+  const hue = colors.value;
+  let current = "";
+  for (const i of L.play) {
+    if (hue[i] !== current) ctx.strokeStyle = current = hue[i];
+    stroke(ctx, all[i].ys);
   }
   ctx.globalAlpha = 1;
   ctx.strokeStyle = t.blue;
   ctx.lineWidth = 1.75;
-  for (const l of lines.value) if (sel.has(l.row.name)) stroke(ctx, l.ys);
+  for (const i of L.selected) stroke(ctx, all[i].ys);
+}
+
+function drawOverlay() {
+  const ctx = overlayContext();
+  if (!ctx) return;
+  const t = theme.value;
+  const focus = hoverName.value ?? props.hovered;
+  ctx.lineJoin = "round";
 
   if (focus) {
-    const l = lines.value.find((q) => q.row.name === focus)
-      ?? (() => { const row = props.domainRows.find((r) => r.name === focus); return row ? { row, ys: axes.value.map((a) => yOf(a.key, a.scale.at(metricValue(row, a.key)))), hot: 0 } : null; })();
+    const l = lineByName.value.get(focus)
+      ?? (() => { const row = domainByName.value.get(focus); return row ? { row, ys: axes.value.map((a) => yOf(a.key, a.scale.at(metricValue(row, a.key)))), hot: 0 } : null; })();
     if (l) {
       ctx.strokeStyle = t.surface;
       ctx.lineWidth = 5;
@@ -413,14 +460,15 @@ function lineNear(x: number, y: number): string | null {
   let i = as.findIndex((a, k) => k < as.length - 1 && x >= a.x && x <= as[k + 1].x);
   if (i < 0) i = x < as[0].x ? 0 : as.length - 2;
   const f = Math.max(0, Math.min(1, (x - as[i].x) / (as[i + 1].x - as[i].x)));
-  const surv = survivors.value;
+  const inPlay = layers.value.inPlay;
+  const all = lines.value;
   let best: string | null = null, bestD = 5;
-  for (const l of lines.value) {
-    if (surv && !surv.has(l.row.name)) continue;
-    const a = l.ys[i], b = l.ys[i + 1];
+  for (let k = 0; k < all.length; k++) {
+    if (!inPlay[k]) continue;
+    const a = all[k].ys[i], b = all[k].ys[i + 1];
     if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
     const d = Math.abs(a + (b - a) * f - y);
-    if (d < bestD) { bestD = d; best = l.row.name; }
+    if (d < bestD) { bestD = d; best = all[k].row.name; }
   }
   return best;
 }
@@ -429,18 +477,22 @@ function onMove(e: MouseEvent) {
   if (brushDrag.value || moving.value) return;
   const p = local(e);
   nearAxis.value = axisNear(p.x, p.y);
-  const name = nearAxis.value ? null : lineNear(p.x, p.y);
-  hoverName.value = name;
-  hoverPoint.value = name ? { x: e.clientX, y: e.clientY } : null;
-  emit("update:hovered", name);
+  setHover(nearAxis.value ? null : lineNear(p.x, p.y), e);
+}
+
+// Only a change of line repaints the overlay or tells the page; the tooltip follows every move.
+function setHover(name: string | null, e?: MouseEvent) {
+  if (name !== hoverName.value) {
+    hoverName.value = name;
+    emit("update:hovered", name);
+  }
+  hoverPoint.value = name && e ? { x: e.clientX, y: e.clientY } : null;
 }
 
 function onLeave() {
   if (brushDrag.value) return;
-  hoverName.value = null;
-  hoverPoint.value = null;
   nearAxis.value = null;
-  emit("update:hovered", null);
+  setHover(null);
 }
 
 function onDown(e: MouseEvent) {
@@ -521,9 +573,23 @@ function startMove(e: PointerEvent, key: string) {
   window.addEventListener("pointerup", up, { once: true });
 }
 
-// Redraw whenever anything the drawing reads changes; declared last so every ref exists.
+// At most one paint per canvas per frame, however many changes arrive in it.
+function onEachFrame(paint: () => void): () => void {
+  let frame = 0;
+  return () => {
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; paint(); });
+  };
+}
+const paintBase = onEachFrame(draw);
+const paintOverlay = onEachFrame(drawOverlay);
+
+// Repaint a canvas whenever anything it reads changes; declared last so every ref exists.
 watchEffect(() => {
-  void [size.value, props.rows, props.metrics, props.brushes, props.selected, props.hovered, hoverName.value, version.value, lines.value, flipped.size];
-  requestAnimationFrame(draw);
+  void [size.value, axes.value, lines.value, colors.value, layers.value, props.brushes, props.grain, flipped.size, version.value];
+  paintBase();
+});
+watchEffect(() => {
+  void [overlaySize.value, axes.value, lines.value, hoverName.value, props.hovered, domainByName.value, flipped.size, version.value];
+  paintOverlay();
 });
 </script>
