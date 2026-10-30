@@ -85,7 +85,6 @@
     "activity": "Activiteit",
     "units": "Units",
     "libraries": "Libraries",
-    "deployables": "Deployables",
     "rules": "Regels",
     "evidence": "Bewijs",
     "sqlConsole": "SQL-console",
@@ -105,7 +104,8 @@
     "matchNothingScan": "{groupName}: niets gematcht in deze scan door {value}",
     "twoGroups": "{components} in twee groepen",
     "queryNowMatchesMore": "{groupName}: de query matcht nu {extra} meer",
-    "http": "HTTP"
+    "http": "HTTP",
+    "cicd": "CI/CD"
   },
   "paneHandle": {
     "dragResizeDoubleClick": "Sleep om het formaat aan te passen, dubbelklik om te resetten",

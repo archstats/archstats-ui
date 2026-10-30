@@ -1,0 +1,387 @@
+{
+  "common": {
+    "andMore": "{list} and {count} more",
+    "component": "Component",
+    "noComponent": "No component matches \"{name}\".",
+    "olderSnapshot": "This snapshot is from analysis revision {revision}; this needs revision {needed} or later. Scan again to see it.",
+    "openUnits": "Open Units",
+    "signature": "Signature",
+    "unit": "Unit",
+    "where": "Where"
+  },
+  "access": {
+    "read": "reads",
+    "write": "writes",
+    "read_write": "reads and writes"
+  },
+  "via": {
+    "repository": "a repository",
+    "orm": "the ORM",
+    "dbset": "an EF DbSet",
+    "jpql": "a JPQL query",
+    "sql": "SQL"
+  },
+  "mechanism": {
+    "bean": "a @Bean method",
+    "dagger": "a Dagger @Provides method",
+    "component_scan": "component scanning",
+    "spring_xml": "Spring XML",
+    "guice": "Guice",
+    "dotnet_di": ".NET dependency injection",
+    "autofac": "Autofac",
+    "laravel": "Laravel's container",
+    "symfony_php": "Symfony's service config",
+    "symfony_xml": "Symfony's service XML",
+    "symfony_alias": "a Symfony alias",
+    "angular": "an Angular provider",
+    "koin": "Koin",
+    "hilt": "Hilt",
+    "implements": "inheritance (no binding found)"
+  },
+  "map": {
+    "inOf": " in {of}",
+    "members": " Most used members: {list}.",
+    "note": "Ordered by how many other components use each unit, then how many units do. Rank is PageRank over who uses whom (members counted for their type, tests left out); 1 is the average unit.",
+    "paramKind": "Types, functions, or all (default).",
+    "paramLimit": "How many units, most leaned-on first (default 40, at most 150).",
+    "paramOf": "Only units in this component or area. Leave out for the whole codebase.",
+    "rank": "Rank",
+    "row": "{i}. {name}: {signature} ({at}). Used by {usedBy} units in {usedByComponents} other components.{members}",
+    "summary": "The units the rest of the code leans on most, with their signatures and most used members: a map of the codebase that fits in a few hundred lines.",
+    "title": "The units the code leans on most",
+    "titleOf": "The most leaned-on units in {of}",
+    "total": "The {shown} units the rest of the code leans on most{of}, of {ranked} ranked.",
+    "usedBy": "Used by",
+    "usedByComponents": "Other components"
+  },
+  "entries": {
+    "entry": "Entry point",
+    "framework": "Framework",
+    "handler": "Handled by",
+    "kindCount": "{kind}: {count} ({frameworks})",
+    "more": "{count} more are in the table.",
+    "none": "No entry points were found: no route, page, consumer, schedule, command or main written in a way this scan reads.",
+    "noneMatch": "No entry point matches \"{find}\".",
+    "paramFind": "Text in the route, handler or unit, such as \"/orders\".",
+    "paramKind": "Which kind: http, page, message, event, schedule, cli, main, job, or all (default).",
+    "paramOf": "Only those handled in this component or area.",
+    "row": "{entry} → {handler} ({at}).",
+    "summary": "The ways into the code: HTTP routes, pages, consumed messages and events, schedules, commands and programs, with what handles each.",
+    "title": "Entry points",
+    "titleOf": "{what} in {of}",
+    "total": {
+      "one": "1 entry point: {list}.",
+      "other": "{count} entry points: {list}."
+    },
+    "unknownHandler": "a handler the scan could not name",
+    "where": "They are handled mostly in: {list}.",
+    "kind": {
+      "http": "HTTP",
+      "page": "page",
+      "message": "message",
+      "event": "event",
+      "schedule": "schedule",
+      "cli": "command",
+      "main": "program",
+      "job": "job"
+    },
+    "plural": {
+      "http": "HTTP routes",
+      "page": "Pages",
+      "message": "Message consumers",
+      "event": "Event listeners",
+      "schedule": "Schedules",
+      "cli": "Commands",
+      "main": "Programs",
+      "job": "Jobs"
+    },
+    "totalOne": "{kind}: {count} ({frameworks})."
+  },
+  "trace": {
+    "also": "Also matched: {list}. Ask for one by its full route or name.",
+    "bound": "{iface} leads on to {impl} in {component}, bound by {mechanism}.",
+    "boundTo": "bound to {name}",
+    "cut": "The trace stops at {count} units; ask for fewer steps to see the nearest ones only.",
+    "data": {
+      "one": "It reaches 1 stored thing: {list}.",
+      "other": "It reaches {count} stored things: {list}."
+    },
+    "dataCol": "Stored data",
+    "handledBy": "{from} is handled by {handler} ({at}).",
+    "noData": "No unit on this trace reads or writes stored data that the scan saw.",
+    "noStart": "No entry point or unit matches \"{from}\".",
+    "order": "Components in the order the trace reaches them: {list}.",
+    "paramDepth": "How many steps to follow (default 5, at most 8).",
+    "paramFrom": "Where to start: a route (\"GET /orders/:id\" or \"/orders\"), a handler, a command, or a unit by name.",
+    "reachedFrom": "Reached from",
+    "readBy": "read by {list}",
+    "static": "The trace follows imports and bindings. A call made by reflection, by a name in a string, or through an event is not seen.",
+    "step": "Step {depth}: {list}.",
+    "stepCol": "Step",
+    "summary": "The slice of the codebase one use case runs on: from an entry point or unit, what it uses step by step, through interfaces to their implementations, down to the data it reads and writes.",
+    "title": "What {from} runs on",
+    "total": "From {from}, the code reaches {units} units in {components} components within {depth} steps.",
+    "writtenBy": "written by {list}"
+  },
+  "data": {
+    "access": "Access",
+    "alsoTouched": "also touched by {list}",
+    "declared": "declared by {framework} in {at}",
+    "mine": {
+      "one": "{of} touches 1 stored thing.",
+      "other": "{of} touches {count} stored things."
+    },
+    "mineRow": "{key}: {access}; {others}.",
+    "nothingNamed": "No entity, table or component matches \"{of}\".",
+    "one": "{key}{table}, {declared}: {both}.",
+    "onlyHere": "no other component touches it",
+    "paramOf": "An entity or table, to see who touches it; or a component, to see what it touches. Leave out for what is shared most widely.",
+    "readBy": {
+      "one": "read by 1 component ({list})",
+      "other": "read by {count} components ({list})"
+    },
+    "readers": "Read by",
+    "shared": {
+      "one": "1 of them is touched by more than one component.",
+      "other": "{count} of them are touched by more than one component."
+    },
+    "stored": "Stored",
+    "summary": "What the code stores and who touches it: entities and tables, which components read and write each, and which are shared.",
+    "table": " (table {table})",
+    "tableCol": "Table",
+    "title": "Stored data and who touches it",
+    "titleComponent": "What {of} reads and writes",
+    "titleStored": "Who touches {of}",
+    "total": "The code stores {stored} things: {entities} declared as entities, {tables} named only as tables in SQL.",
+    "touch": "{component}: {who} {access} it through {via} ({at}).",
+    "touches": "Places",
+    "undeclared": "not declared as an entity",
+    "untouched": "no code touches it",
+    "via": "Through",
+    "writers": "Written by",
+    "writtenBy": {
+      "one": "written by 1 component ({list})",
+      "other": "written by {count} components ({list})"
+    }
+  },
+  "surface": {
+    "caveat": "Used means imported by name. A unit used only by reflection, a string or a framework convention looks unused here.",
+    "framework": {
+      "one": "1 unit is reached by the framework rather than by imports (an entry point or a bound implementation): {list}.",
+      "other": "{count} units are reached by the framework rather than by imports (entry points or bound implementations): {list}."
+    },
+    "inside": {
+      "one": "1 unit is used only inside: {list}. It could be kept internal.",
+      "other": "{count} units are used only inside: {list}. They could be kept internal."
+    },
+    "noUnits": "{of} declares no units this scan could read.",
+    "paramOf": "The component.",
+    "row": {
+      "one": "{name} ({signature}): used by {users} units from 1 component: {list}.",
+      "other": "{name} ({signature}): used by {users} units from {count} components: {list}."
+    },
+    "summary": "What a component really exposes: which of its units other components use, and by whom, against those used only inside it.",
+    "testsOnly": {
+      "one": "1 unit is used from outside only by tests: {list}.",
+      "other": "{count} units are used from outside only by tests: {list}."
+    },
+    "testsOnlyCell": "tests only",
+    "title": "What {of} exposes",
+    "total": "{of} has {units} units: {exposed} used by other components ({components} of them), {inside} used only inside, {framework} reached by the framework.",
+    "usedFrom": "Used from",
+    "users": "Users"
+  },
+  "implementations": {
+    "aType": "a class",
+    "also": "Other types share the name: {list}.",
+    "anInterface": "an interface",
+    "bypass": {
+      "one": "1 unit outside its own component uses {impl} directly instead of {name}: {list}.",
+      "other": "{count} units outside its own component use {impl} directly instead of {name}: {list}."
+    },
+    "directly": "Directly",
+    "extends": "{name} itself extends {list}.",
+    "how": "How",
+    "implementation": "Implementation",
+    "noType": "No type is called \"{of}\".",
+    "noWiring": "No container binding names {name}: its implementations are chosen in code, or by something this scan does not read.",
+    "paramOf": "A type, usually an interface: by name, or by its full name when names repeat.",
+    "summary": "What implements a type, where a container wires each implementation, and who uses an implementation directly instead of the type.",
+    "throughSubtype": "Through a subtype",
+    "title": "Implementations of {of}",
+    "total": {
+      "one": "{name} is {kind} in {component} with 1 implementation{list}.",
+      "other": "{name} is {kind} in {component} with {count} implementations{list}."
+    },
+    "usedDirectly": "Used directly by",
+    "users": "Units using {name} itself: {units}, in {list}.",
+    "wired": "{impl} is bound to {name} by {mechanism} ({at})."
+  },
+  "origins": {
+    "atHead": "This file's repository is not the one the scan's commit belongs to, so its lines were dated at that repository's newest commit.",
+    "capped": "Only {dated} of the {files} files were dated; the rest are counted, not dated.",
+    "closed": "The cycle closed on {date}, when {from} started importing {to}: commit {commit} \"{summary}\" by {author}.",
+    "commit": "Commit",
+    "cycle": "The two are in the cycle {list}.",
+    "cycleEdge": "{from} → {to} since {date} (commit {commit}, \"{summary}\").",
+    "dependency": "Dependency",
+    "files": {
+      "one": "1 file in {from} imports {to} today; {recent} of the {dated} dated started in the last year.",
+      "other": "{count} files in {from} import {to} today; {recent} of the {dated} dated started in the last year."
+    },
+    "filesCol": "Files",
+    "lastWrote": "A line is dated by the commit that last wrote it: an import rewritten later (a move, a reformat) dates from the rewrite, so a date here is the latest the dependency can have started.",
+    "latest": "The newest file to start importing it: {file}, on {date} (commit {commit}, \"{summary}\", by {author}).",
+    "noGit": "Git is not reachable for this snapshot: its workspace folder is not a git checkout here.",
+    "noImport": "Neither {from} nor {to} imports the other.",
+    "noSnippets": "This snapshot does not keep where each import is written, so its imports cannot be dated.",
+    "paramFrom": "The component that imports.",
+    "paramTo": "The component it imports.",
+    "recentCol": "Started in the last year",
+    "since": "{from} has imported {to} since {date}: commit {commit} \"{summary}\" by {author}, in {file}.",
+    "sinceCol": "Since",
+    "summary": "When and why one component started importing another: the commit behind the oldest import still in place, the newest, and for a cycle, the commit that closed it.",
+    "title": "When {from} started importing {to}",
+    "undated": "{files} files in {from} import {to}, but git could not date their imports."
+  },
+  "docs": {
+    "about": " about {of}",
+    "aboutCol": "About",
+    "aboutList": "; about {list}",
+    "date": "Date",
+    "kindCol": "Kind",
+    "none": "This codebase has no documents: no README, decision record or guide.",
+    "noneAbout": "No document is about {of}: none sits in its folder, names its files or names its types.",
+    "paramOf": "A component, to see the documents about it. Leave out for every document.",
+    "read": "To read one, ask for the code of its file.",
+    "row": "{kind}: {title}{meta}, {file}{about}.",
+    "status": "Status",
+    "summary": "The written intent: decision records, architecture notes, READMEs and guides, and which code each is about.",
+    "title": "Documents",
+    "titleCol": "Title",
+    "titleOf": "Documents about {of}",
+    "total": {
+      "one": "1 document{of}: {list}.",
+      "other": "{count} documents{of}: {list}."
+    },
+    "kind": {
+      "adr": "Decision record",
+      "architecture": "Architecture note",
+      "readme": "README",
+      "guide": "Guide",
+      "contributing": "Contributing guide",
+      "note": "Note",
+      "changelog": "Changelog"
+    },
+    "kinds": {
+      "adr": {
+        "one": "1 decision record",
+        "other": "{count} decision records"
+      },
+      "architecture": {
+        "one": "1 architecture note",
+        "other": "{count} architecture notes"
+      },
+      "readme": {
+        "one": "1 README",
+        "other": "{count} READMEs"
+      },
+      "guide": {
+        "one": "1 guide",
+        "other": "{count} guides"
+      },
+      "contributing": {
+        "one": "1 contributing guide",
+        "other": "{count} contributing guides"
+      },
+      "note": {
+        "one": "1 other note",
+        "other": "{count} other notes"
+      },
+      "changelog": {
+        "one": "1 changelog",
+        "other": "{count} changelogs"
+      }
+    }
+  },
+  "conventions": {
+    "data": "Stored data is touched from {area}: {share} of {total} places.{elsewhere}",
+    "declare": "These are readings of what the code does, not rules anyone declared. A rule worth keeping can be declared in Rules, so a later scan says when it breaks.",
+    "elsewhere": " Elsewhere: {list}.",
+    "elsewhereItem": "{area} ({count}, such as {example})",
+    "entries": "Entry points live in {area}: {share} of {total}.{elsewhere}",
+    "exception": "{from} → {to} ({files})",
+    "exceptions": "Exceptions",
+    "held": {
+      "one": "1 direction holds without exception: {list}.",
+      "other": "{count} directions hold without exception: {list}."
+    },
+    "heldPair": "{lower} never imports {upper} ({references} references the other way)",
+    "kept": {
+      "one": "{lower} does not import {upper}, kept by {share} of {references} import references between them; 1 exception: {list}.",
+      "other": "{lower} does not import {upper}, kept by {share} of {references} import references between them; {count} exceptions: {list}."
+    },
+    "keptCol": "Kept by",
+    "none": "Between these areas, no direction is kept by 90% or more of at least 10 import references.",
+    "oneArea": "There is only one area here, so there are no directions between areas to read.",
+    "openRules": "Open Rules",
+    "paramOf": "Only the areas inside this component or area. Leave out for the whole codebase.",
+    "references": "Import references",
+    "rule": "Rule",
+    "ruleText": "{lower} does not import {upper}",
+    "summary": "The rules the code keeps without having declared them: which way imports run between areas, and where data and entry points live, with the exceptions.",
+    "title": "Rules the code keeps",
+    "titleOf": "Rules the code keeps inside {of}",
+    "total": "Between its {areas} areas, the code keeps {held} directions without exception and {kept} more with a few exceptions."
+  },
+  "surprises": {
+    "grain": "{from} imports {to} ({file}), although {lower} otherwise never imports {upper}: one of the few of {references} import references between them that run that way.",
+    "hidden": "{a} and {b} changed together in {commits} commits, but neither imports the other, directly or through anything else.",
+    "hub": "{name} in {component} is used from {count} of the {of} components ({users} units in all).",
+    "kind": "Kind",
+    "none": "Nothing stands out against this codebase's own norms. Looked at: {list}.",
+    "paramLimit": "How many (default 8).",
+    "shared": "{name} is written from {count} components: {list}.",
+    "size": "{name} has {lines} lines, {times} times the median of the {siblings} other components in {area}.",
+    "summary": "What is unusual here against this codebase's own norms, each with its evidence.",
+    "title": "What stands out",
+    "total": {
+      "one": "1 thing stands out. Looked at: {list}.",
+      "other": "{count} things stand out. Looked at: {list}."
+    },
+    "what": "What",
+    "young": "{name} is {days} days old but already used by {dependents} components.",
+    "kinds": {
+      "size": "size against siblings",
+      "grain": "imports against the grain",
+      "hidden": "change together without imports",
+      "young": "young but leaned on",
+      "hub": "units most of the system uses",
+      "shared": "data written from many places"
+    }
+  },
+  "notes": {
+    "author": "By",
+    "codebase": "the codebase",
+    "commit": "Commit",
+    "noWorkspace": "Notes belong to a workspace; this snapshot was opened on its own.",
+    "none": "No notes yet. A note keeps what was learned about part of the code for the next conversation.",
+    "noneAbout": "No note is about {of}.",
+    "older": " (written against commit {commit}; the code may have moved on)",
+    "paramOf": "A component, file, unit or table, to see the notes about it. Leave out for all.",
+    "row": "About {subject}, by {author}: {text}{older}",
+    "subject": "About",
+    "summary": "What a person or Ask wrote down about parts of the codebase in earlier sessions.",
+    "text": "Note",
+    "title": "Notes",
+    "titleOf": "Notes about {of}",
+    "total": {
+      "one": "1 note{of}.",
+      "other": "{count} notes{of}."
+    },
+    "by": {
+      "person": "a person",
+      "model": "Ask"
+    }
+  }
+}

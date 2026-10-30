@@ -181,6 +181,7 @@ func main() {
 			app.NewFilesService(func() context.Context { return appCtx }),
 			changesSvc,
 			app.NewEvidenceService(st),
+			app.NewNotesService(st),
 			app.NewAskService(askSvc),
 			app.NewAIService(askSvc),
 		},

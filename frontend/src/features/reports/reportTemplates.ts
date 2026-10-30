@@ -27,6 +27,7 @@ export { Writer } from "./templateKit"
 // ── How to read the figures ───────────────────────────────────────────────
 
 const READ = {
+    pipeline: t("reports.reportTemplates.pipelineFigureReads"),
     matrix: t("reports.reportTemplates.dependencyMatrixEachRow"),
     dms: t("reports.reportTemplates.mainSequencePlotPlaces"),
     ageTreemap: t("reports.reportTemplates.treemapEachRectangleComponent"),
@@ -249,9 +250,12 @@ const GENERAL: ReportTemplate[] = [
                 w.explainSlot(READ.externalImports)
                 w.exhibit("recipe", { recipe: "external-imports" }, t("reports.reportTemplates.outsidePackagesImportedMost"))
             })
-            w.section(t("reports.reportTemplates.howShips"), f.tables.has("deployables") ? true : t("reports.reportTemplates.scanDidNotLook"), () => {
+            w.section(t("reports.reportTemplates.howShips"), f.tables.has("artifacts") && f.tables.has("pipeline_jobs") ? true : t("reports.reportTemplates.scanDidNotLook"), () => {
                 w.explain(QABOUT.ships)
-                w.exhibit("deployables", {}, t("reports.reportTemplates.whatShipsWhatBuilds"))
+                w.exhibit("cicd", {}, t("reports.reportTemplates.whatShipsWhatBuilds"))
+                w.explainSlot(READ.pipeline)
+                slotOf(w, "figure", t("reports.reportTemplates.howItIsBuilt"), VIEWS.pipeline)
+                w.exhibit("cicd-flags", {}, t("reports.reportTemplates.whatFlagsSay"))
             })
             w.section("Tests", needs.tests(f), () => {
                 tests(w)
@@ -554,7 +558,7 @@ const QABOUT = {
     busFactor: t("reports.reportTemplates.tableListsComponentsLeast"),
     interest: t("reports.reportTemplates.effortGoesHardChange"),
     unresolved: t("reports.reportTemplates.someImportsPointCode"),
-    ships: "A *deployable* is something that ships on its own: a service, an app, a function, a library that is published. The table lists the ones the scan found, what builds each one, and how much of the code it holds.",
+    ships: "An *artifact* is something the workspace builds and ships on its own: an image, an app, a function. The first table lists the ones the scan found, which pipelines build and deploy each, and where to. The second lists facts in the pipelines and Dockerfiles that people read as risks, each with the line it is on.",
 }
 
 // ── Quick wins ────────────────────────────────────────────────────────────

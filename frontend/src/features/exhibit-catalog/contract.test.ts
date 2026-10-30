@@ -49,7 +49,7 @@ describe.skipIf(!snaps.length)("every exhibit on real snapshots", () => {
 
                         const facts = def.facts(data, checked.spec.params)
                         expect(facts.length, `${label} states something`).toBeGreaterThan(0)
-                        expect(facts.length, `${label} states at most ${MAX_FACTS} facts`).toBeLessThanOrEqual(MAX_FACTS)
+                        expect(facts.length, `${label} states at most ${def.maxFacts ?? MAX_FACTS} facts`).toBeLessThanOrEqual(def.maxFacts ?? MAX_FACTS)
                         const elements = new Set((def.elements?.(data) ?? []).map(e => e.id))
                         for (const f of facts) {
                             expect(f.text.trim().length, label).toBeGreaterThan(5)

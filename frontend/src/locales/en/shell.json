@@ -85,7 +85,6 @@
     "activity": "Activity",
     "units": "Units",
     "libraries": "Libraries",
-    "deployables": "Deployables",
     "rules": "Rules",
     "evidence": "Evidence",
     "sqlConsole": "SQL console",
@@ -105,7 +104,8 @@
     "matchNothingScan": "{groupName}: {value} match nothing in this scan",
     "twoGroups": "{components} in two groups",
     "queryNowMatchesMore": "{groupName}: its query now matches {extra} more",
-    "http": "HTTP"
+    "http": "HTTP",
+    "cicd": "CI/CD"
   },
   "paneHandle": {
     "dragResizeDoubleClick": "Drag to resize, double-click to reset",

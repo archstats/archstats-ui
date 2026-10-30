@@ -100,14 +100,6 @@
       "one": "{count} line matches",
       "other": "{count} lines match"
     },
-    "pipeline": {
-      "one": "{count} pipeline",
-      "other": "{count} pipelines"
-    },
-    "deployable": {
-      "one": "{count} deployable",
-      "other": "{count} deployables"
-    },
     "month": {
       "one": "{count} month",
       "other": "{count} months"
@@ -465,10 +457,6 @@
     "file": {
       "one": "file",
       "other": "files"
-    },
-    "itCalls": {
-      "one": "it calls",
-      "other": "they call"
     },
     "cycle": {
       "one": "cycle",

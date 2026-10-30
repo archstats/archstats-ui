@@ -63,7 +63,7 @@ export const queryTools: Tool[] = [
         name: "look_at_view", namespace: "view",
         description: "Open one of the app's views out of sight and read it: its tables (rows) and figures (with legends), exactly as the view shows them. Use it for what only a view computes (Units findings, Deployables, Checks, Activity, Knowledge) or to show the person a view's real figure. Example: {\"view\": \"units\"} or {\"view\": \"cycles\", \"component\": \"checkout\"}",
         params: {
-            view: { type: "string", description: "A view name (units, checks, deployables, activity, authors, hotspots, connections, cycles, metrics, overview…) or a component tab (reading, connections, cycles, inside, history)." },
+            view: { type: "string", description: "A view name (units, checks, cicd, activity, authors, hotspots, connections, cycles, metrics, overview…) or a component tab (reading, connections, cycles, inside, history)." },
             component: { type: "string", description: "Optional component the view is about." },
         },
         required: ["view"],

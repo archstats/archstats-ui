@@ -22,6 +22,40 @@ export interface ConnectionRow {
 
 export interface Definition { id: string; name: string; short: string; long: string }
 
+/** The commit that last wrote a line, as of the commit the scan read. */
+export interface BlameLine {
+    line: number
+    commit: string
+    /** RFC 3339. */
+    time: string
+    author: string
+    summary: string
+    /** Read at the repository's HEAD, not the scanned commit (a workspace of several repositories). */
+    atHead: boolean
+}
+
+/** What git can say about the scanned code, asked a few lines at a time. */
+export interface History {
+    blame(file: string, lines: number[]): Promise<BlameLine[]>
+}
+
+/** Something a person or Ask learned about part of the codebase, kept across sessions. */
+export interface WorkspaceNote {
+    id: string
+    subjectKind: "codebase" | "component" | "file" | "unit" | "entry" | "table"
+    subject: string
+    text: string
+    author: "person" | "model"
+    headCommit: string
+    updatedAt: string
+}
+
+/** The workspace's notes: read by every exhibit that names a subject, written by Ask and the person. */
+export interface Notes {
+    list(): Promise<WorkspaceNote[]>
+    save(note: Omit<WorkspaceNote, "id" | "updatedAt" | "headCommit"> & { id?: string }): Promise<WorkspaceNote>
+}
+
 export interface Snapshot {
     scanId: string
     /** The `_snapshot` table: commit, revision, extensions, ignore globs… */
@@ -45,4 +79,8 @@ export interface Snapshot {
     author(name: string): string
     /** Author aliases merged in the app (name → canonical name). */
     aliases?(): Record<string, string>
+    /** Git, on demand: absent where the workspace's checkout cannot be reached. */
+    history?: History
+    /** The workspace's notes: absent outside a workspace (a snapshot file read on its own). */
+    notes?: Notes
 }

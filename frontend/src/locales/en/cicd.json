@@ -1,0 +1,381 @@
+{
+  "page": {
+    "title": "CI/CD",
+    "search": "Find a pipeline, job, step, image or file",
+    "modes": "What to show",
+    "pipelines": "Pipelines",
+    "pipelinesTitle": "Every pipeline, drawn the way it runs",
+    "images": "Images",
+    "imagesTitle": "What the workspace builds: images, apps and functions, and what they are built from",
+    "flags": "Issues",
+    "flagsTitle": "Facts in the pipelines and Dockerfiles that people read as risks",
+    "statPipelines": "Pipelines",
+    "statPartial": {
+      "one": "{count} read in part",
+      "other": "{count} read in part"
+    },
+    "statImages": "Artifacts",
+    "statDockerfiles": "Dockerfiles",
+    "reading": "Reading how the workspace builds and ships",
+    "oldTitle": "Scanned before CI/CD was read",
+    "oldText": "This snapshot comes from an older engine. Rescan to see pipelines, images and issues.",
+    "rescan": "Rescan",
+    "emptyTitle": "Nothing here builds or ships",
+    "emptyText": "No pipeline file and no Dockerfile was found. Archstats reads GitHub Actions (.github/workflows), GitLab CI (.gitlab-ci.yml), Jenkinsfiles and Jenkins libraries (vars/*.groovy), Rancher (fleet.yaml, .rancher-pipeline.yml and rancher commands in any pipeline), Azure Pipelines, Bitbucket Pipelines and CircleCI. A workspace that ignores non-source files never reads them.",
+    "pickPipeline": "Pick a pipeline on the left to see it drawn the way it runs.",
+    "makeLens": "Make a lens",
+    "lensTitle": "From the images they're in",
+    "lensWhat": "One group per artifact, holding the components whose files it carries.",
+    "lensGroups": {
+      "one": "{count} group.",
+      "other": "{count} groups."
+    },
+    "lensShared": {
+      "one": "{count} component is in several artifacts and gets a group of its own.",
+      "other": "{count} components are in several artifacts and get a group of their own."
+    },
+    "lensUnshipped": {
+      "one": "{count} component is in none and stays out.",
+      "other": "{count} components are in none and stay out."
+    },
+    "lensName": "Lens name",
+    "lensCreate": "Create lens",
+    "lensCreated": "Lens “{name}” created.",
+    "lensDefaultName": "Images",
+    "lensDescription": "Components grouped by the image or app that carries their files, read from Dockerfiles and build files.",
+    "sharedGroup": "In several artifacts",
+    "issueCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
+  },
+  "list": {
+    "usedByOthers": "Used by other pipelines",
+    "noMatch": "No pipeline matches “{q}”.",
+    "readInPart": "Read in part",
+    "notRead": "Not read",
+    "flagCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
+  },
+  "graph": {
+    "readPartly": "Lines {from}–{to} not read: {reason}.",
+    "notReadSystem": "Archstats recognises this file but does not read {system}.",
+    "libraryOnly": "This pipeline hands all its work to a shared library; its steps are not in this workspace.",
+    "libraryResolved": "This pipeline hands its work to a shared library step this workspace holds: open it to see the steps.",
+    "starts": "Starts on",
+    "produces": "Produces",
+    "noOutputs": "Builds or deploys nothing this workspace can name.",
+    "more": {
+      "one": "+{count} step",
+      "other": "+{count} steps"
+    },
+    "notReadHere": "Not read",
+    "matrix": "×{count}",
+    "matrixEach": "× each",
+    "matrixEachTitle": "Repeated for each item of data the file does not hold",
+    "matrixTitle": "{count} combinations",
+    "gate": {
+      "manual": "Runs when someone starts it",
+      "approval": "Waits for an approval",
+      "environment": "Deploys to an environment, which may require approval in the CI system"
+    },
+    "figure": "Pipeline {name}",
+    "condition": "Runs when: {cond}",
+    "gateTag": {
+      "manual": "manual",
+      "approval": "approval",
+      "environment": "protected"
+    },
+    "legendNeeds": "Lines: a job waits for the one it starts from.",
+    "legendHandoff": "Dashed: work handed to another pipeline, library or template."
+  },
+  "verbs": {
+    "checkout": "Check out",
+    "setup": "Set up",
+    "build": "Build",
+    "test": "Test",
+    "scan": "Scan",
+    "package": "Package",
+    "publish": "Publish",
+    "deploy": "Deploy",
+    "approve": "Approve",
+    "other": "Other"
+  },
+  "events": {
+    "push": "push",
+    "pull_request": "PR",
+    "tag": "tag",
+    "schedule": "schedule",
+    "manual": "manual",
+    "called": "called",
+    "upstream": "after another",
+    "other": "other"
+  },
+  "systems": {
+    "github_actions": "GitHub Actions",
+    "gitlab": "GitLab CI",
+    "jenkins": "Jenkins",
+    "rancher_fleet": "Rancher Fleet",
+    "rancher_pipelines": "Rancher Pipelines",
+    "azure_pipelines": "Azure Pipelines",
+    "bitbucket": "Bitbucket Pipelines",
+    "circleci": "CircleCI",
+    "cloud_build": "Cloud Build",
+    "travis": "Travis CI",
+    "drone": "Drone",
+    "tekton": "Tekton",
+    "buildkite": "Buildkite",
+    "woodpecker": "Woodpecker",
+    "other": "Other"
+  },
+  "kinds": {
+    "workflow": "Workflow",
+    "reusable_workflow": "Reusable workflow",
+    "action": "Action",
+    "template": "Template",
+    "child": "Child pipeline",
+    "library": "Library step",
+    "gitops": "GitOps bundle",
+    "pipeline": "Pipeline"
+  },
+  "handoffs": {
+    "reusable_workflow": "Reusable workflow",
+    "action": "Action",
+    "shared_library": "Shared library",
+    "library_step": "Library step",
+    "load": "Loaded script",
+    "include": "Include",
+    "component": "CI/CD component",
+    "template": "Template",
+    "orb": "Orb",
+    "pipe": "Pipe",
+    "child_pipeline": "Child pipeline",
+    "starts_pipeline": "Starts pipeline",
+    "helm_chart": "Helm chart"
+  },
+  "pins": {
+    "sha": "pinned to a commit",
+    "version": "pinned to a version",
+    "branch": "follows a branch",
+    "none": "not pinned",
+    "implicit": "loaded by the server for every job"
+  },
+  "unread": {
+    "dynamic_stages": "stages are built at run time from data the file does not hold",
+    "unsupported_syntax": "the file does not parse",
+    "not_supported_system": "this CI system is not read"
+  },
+  "outputs": {
+    "image": "Image",
+    "build": "Build",
+    "package": "Package",
+    "release": "Release",
+    "deploy": "Deploy"
+  },
+  "inspector": {
+    "evidence": "Evidence",
+    "flags": "Issues",
+    "history": "History",
+    "job": "Job",
+    "step": "Step",
+    "handoff": "Hand-off",
+    "trigger": "Trigger",
+    "output": "Output",
+    "artifact": "Artifact",
+    "pipeline": "Pipeline",
+    "runner": "Runs on",
+    "needs": "Waits for",
+    "group": "Stage",
+    "environment": "Environment",
+    "gate": "Gate",
+    "condition": "Runs when",
+    "matrix": "Matrix",
+    "steps": "Steps",
+    "openPipeline": "Open this pipeline",
+    "openArtifact": "Show in Images",
+    "openFile": "Open file",
+    "source": "Source",
+    "noSource": "The snapshot holds no content for this file.",
+    "noFlags": "No issue on this.",
+    "historyYear": {
+      "one": "Changed once in the year before the scanned commit.",
+      "other": "Changed {count} times in the year before the scanned commit."
+    },
+    "historyNever": "Not changed in the year before the scanned commit.",
+    "historyLast": "Last changed {date}.",
+    "historyBy": "By {names}.",
+    "historyNone": "This snapshot has no history for this file.",
+    "ref": "Ref",
+    "pinned": "Pinned",
+    "via": "From library",
+    "local": "Resolves to",
+    "target": "Target",
+    "platform": "Platform",
+    "server": "Server",
+    "context": "Context",
+    "filter": "Filter",
+    "tool": "Tool",
+    "verb": "Does",
+    "builtBy": "Built by",
+    "deployedBy": "Deployed by",
+    "nothingBuilds": "Not built by any pipeline here",
+    "inside": "What goes in",
+    "components": "Components it carries",
+    "stages": "Stages",
+    "copiesFrom": "copies from {stage}",
+    "user": "runs as {user}",
+    "rootUser": "runs as root",
+    "ports": "exposes {ports}",
+    "entrypoint": "starts {cmd}",
+    "healthcheck": "has a health check",
+    "dockerignore": "has a .dockerignore",
+    "noDockerignore": "no .dockerignore",
+    "jobs": "Jobs"
+  },
+  "images": {
+    "artifact": "Artifact",
+    "kind": "Kind",
+    "base": "Base image",
+    "runtime": "Runtime",
+    "user": "User",
+    "builtBy": "Built by",
+    "environments": "Deployed to",
+    "files": "Files",
+    "pinnedDigest": "Pinned to a digest",
+    "pinnedTag": "Pinned to a version tag",
+    "pinnedFloating": "Floats: latest or no tag",
+    "baseTitle": "Base images",
+    "baseWhat": "Each Dockerfile's final base image, by family and version",
+    "baseNone": "No Dockerfile names a base image.",
+    "baseBar": {
+      "one": "{family} {version}: {count} Dockerfile",
+      "other": "{family} {version}: {count} Dockerfiles"
+    },
+    "legendWidth": "Bar width is the number of Dockerfiles",
+    "tableTitle": "Artifacts",
+    "emptyArtifacts": "No image, app or function is built in this workspace.",
+    "kindImage": "Image",
+    "kindApp": "App",
+    "kindFunction": "Function",
+    "kindDesktop": "Desktop app",
+    "kindMobile": "Mobile app",
+    "notes": "Read from Dockerfiles, compose, Skaffold, Jib, build plugins and pipelines"
+  },
+  "flags": {
+    "intro": "Each issue is a fact a file states, with the line it is on. Nothing is scored: whether it matters here is your call. Every rule has an assert template in docs/rules/cicd.yml.",
+    "none": "No issues.",
+    "noMatch": "No issue matches “{q}”.",
+    "count": {
+      "one": "1 place",
+      "other": "{count} places in {files} files"
+    },
+    "productionNames": "Counts as production: {names}",
+    "rules": {
+      "base_unpinned_tag": {
+        "fact": "Base image with no tag, or latest",
+        "why": "The build changes whenever the image's publisher pushes, with no change here."
+      },
+      "base_no_digest": {
+        "fact": "Base image not pinned to a digest",
+        "why": "A tag can be moved to other contents; a digest cannot."
+      },
+      "runs_as_root": {
+        "fact": "Image runs as root",
+        "why": "Without a USER in the final stage the container runs as the base image's user, root unless it sets one."
+      },
+      "add_remote_url": {
+        "fact": "ADD from a URL",
+        "why": "The build fetches whatever the URL serves at that moment, unchecked."
+      },
+      "secret_like_key": {
+        "fact": "Secret-looking ENV or ARG",
+        "why": "ENV and ARG values stay in the image's history, readable by anyone who can pull it. The value is never stored here."
+      },
+      "copy_all_no_dockerignore": {
+        "fact": "COPY of everything with no .dockerignore",
+        "why": "Every file in the build context goes into the image: .git, local env files, build output."
+      },
+      "handoff_unpinned": {
+        "fact": "Action, orb, pipe or component not pinned",
+        "why": "What runs is whatever its owner pushes next, in every pipeline that uses it."
+      },
+      "library_unpinned": {
+        "fact": "Jenkins shared library not pinned",
+        "why": "The library changes under every pipeline that loads it."
+      },
+      "remote_include_unpinned": {
+        "fact": "Remote include or template not pinned",
+        "why": "This pipeline changes when another project's default branch does."
+      },
+      "pr_target_checkout_head": {
+        "fact": "pull_request_target checks out the pull request",
+        "why": "It runs a stranger's code with the repository's secrets."
+      },
+      "no_permissions_block": {
+        "fact": "GitHub workflow without permissions",
+        "why": "Its token gets the repository's default, often write access to everything."
+      },
+      "curl_pipe_shell": {
+        "fact": "Download piped into a shell",
+        "why": "It runs whatever the server returns, unchecked."
+      },
+      "docker_privileged": {
+        "fact": "Privileged container",
+        "why": "docker run --privileged gives the container the host."
+      },
+      "tls_verify_off": {
+        "fact": "TLS verification switched off",
+        "why": "Any certificate is accepted, so the connection can be intercepted."
+      },
+      "token_literal": {
+        "fact": "Token or password written into a command",
+        "why": "Everyone who can read the repository can read it, and it stays in the history. The value is never stored here."
+      },
+      "ungated_prod_deploy": {
+        "fact": "Deploy to production with nothing in front of it",
+        "why": "No manual step, approval or deployment environment stands between a change and production."
+      },
+      "push_latest_only": {
+        "fact": "Image pushed only as latest",
+        "why": "Releases cannot be told apart, or rolled back to."
+      }
+    }
+  },
+  "component": {
+    "builtInto": "Built into",
+    "builtIntoLede": "The images and apps that carry this component's files, and the pipelines that build or deploy them.",
+    "builtIntoNone": "No image or app here carries this component's files.",
+    "files": {
+      "one": "{count} file",
+      "other": "{count} files"
+    },
+    "pipelines": {
+      "one": "{count} pipeline",
+      "other": "{count} pipelines"
+    },
+    "open": "CI/CD"
+  },
+  "exhibits": {
+    "summary": "What the workspace builds (images, apps, functions), which pipelines build and deploy each, and where to.",
+    "ofParam": "An artifact or a component: what carries it.",
+    "title": "What is built and shipped",
+    "titleOf": "What carries {value}",
+    "oldSnapshot": "This snapshot was read with analysis revision {value}; CI/CD needs revision 16. Rescan to see it.",
+    "nothing": "The scan found no pipeline and nothing built.",
+    "noMatch": "Nothing built and no component matches “{of}”.",
+    "noHolder": "No image or app carries {component}.",
+    "total": "{artifacts} artifacts and {pipelines} pipelines were found.",
+    "row": "{name} ({kind}): built by {built}; deployed to {deployed}.",
+    "partial": "{name} was read in part.",
+    "components": "Components",
+    "open": "Open CI/CD",
+    "flagsSummary": "Facts in the pipelines and Dockerfiles that people read as risks, by rule, with how many and where.",
+    "flagsTitle": "CI/CD issues",
+    "flagFact": "Fact",
+    "flagCount": "Times",
+    "flagFiles": "Files",
+    "flagAt": "Where (first three)"
+  }
+}

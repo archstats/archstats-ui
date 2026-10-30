@@ -20,7 +20,8 @@ import {
   Settings2, PanelRight, PanelRightClose, Filter, Maximize2, Minimize2, ZoomIn, ZoomOut, Plus, Minus, Trash2, FolderOpen,
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   ArrowLeftRight, ArrowDown, ArrowUpDown,
-  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share, Merge
+  Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share, Merge,
+  Container, Package, Rocket, ShieldAlert, Hand, Play, Clock, Tag, GitPullRequest, Hammer, Upload, Lock, CircleDashed
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -195,6 +196,32 @@ const iconComponent = computed(() => {
       return Workflow
     case "image":
       return ImageIcon
+    case "container":
+      return Container
+    case "package":
+      return Package
+    case "rocket":
+      return Rocket
+    case "shield-alert":
+      return ShieldAlert
+    case "hand":
+      return Hand
+    case "play":
+      return Play
+    case "clock":
+      return Clock
+    case "tag":
+      return Tag
+    case "git-pull-request":
+      return GitPullRequest
+    case "hammer":
+      return Hammer
+    case "upload":
+      return Upload
+    case "lock":
+      return Lock
+    case "circle-dashed":
+      return CircleDashed
     case "more-horizontal":
       return MoreHorizontal
     case "share":

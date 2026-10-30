@@ -5,13 +5,13 @@
 
 import type { CyclePath } from "./snapshot"
 import { localized } from "./definition"
-import type { ConnectionRow, Definition, Snapshot } from "./snapshot"
+import type { ConnectionRow, Definition, History, Notes, Snapshot } from "./snapshot"
 
 type Query = <T = any>(sql: string) => Promise<T[]>
 
 const loaded = new Map<string, Promise<Snapshot>>()
 
-export function scanSnapshot(scanId: string, query: Query, o: { workspace: string; author: (name: string) => string; aliases?: () => Record<string, string> }): Promise<Snapshot> {
+export function scanSnapshot(scanId: string, query: Query, o: { workspace: string; author: (name: string) => string; aliases?: () => Record<string, string>; history?: History; notes?: Notes }): Promise<Snapshot> {
     let hit = loaded.get(scanId)
     if (!hit) {
         hit = load(scanId, query, o)
@@ -22,7 +22,7 @@ export function scanSnapshot(scanId: string, query: Query, o: { workspace: strin
     return hit
 }
 
-async function load(scanId: string, query: Query, o: { workspace: string; author: (name: string) => string; aliases?: () => Record<string, string> }): Promise<Snapshot> {
+async function load(scanId: string, query: Query, o: { workspace: string; author: (name: string) => string; aliases?: () => Record<string, string>; history?: History; notes?: Notes }): Promise<Snapshot> {
     const tables = (await query<{ name: string }>("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')")).map(r => String(r.name))
     const columns: Record<string, string[]> = {}
     await Promise.all(tables.map(async t => { columns[t] = (await query<{ name: string }>(`SELECT name FROM pragma_table_info('${t.replace(/'/g, "''")}')`)).map(r => String(r.name)) }))
@@ -57,5 +57,7 @@ async function load(scanId: string, query: Query, o: { workspace: string; author
         query,
         author: o.author,
         aliases: o.aliases,
+        history: o.history,
+        notes: o.notes,
     }
 }

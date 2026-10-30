@@ -100,14 +100,6 @@
       "one": "{count} regel matcht",
       "other": "{count} regels matchen"
     },
-    "pipeline": {
-      "one": "{count} pipeline",
-      "other": "{count} pipelines"
-    },
-    "deployable": {
-      "one": "{count} deployable",
-      "other": "{count} deployables"
-    },
     "month": {
       "one": "{count} maand",
       "other": "{count} maanden"
@@ -465,10 +457,6 @@
     "file": {
       "one": "bestand",
       "other": "bestanden"
-    },
-    "itCalls": {
-      "one": "doet het calls naar",
-      "other": "doen ze calls naar"
     },
     "cycle": {
       "one": "cycle",

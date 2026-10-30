@@ -1,0 +1,381 @@
+{
+  "page": {
+    "title": "CI/CD",
+    "search": "Zoek een pipeline, job, stap, image of bestand",
+    "modes": "Wat te tonen",
+    "pipelines": "Pipelines",
+    "pipelinesTitle": "Elke pipeline, getekend zoals hij draait",
+    "images": "Images",
+    "imagesTitle": "Wat de workspace bouwt: images, apps en functies, en waarvan ze gebouwd worden",
+    "flags": "Issues",
+    "flagsTitle": "Feiten in de pipelines en Dockerfiles die mensen als risico lezen",
+    "statPipelines": "Pipelines",
+    "statPartial": {
+      "one": "{count} deels gelezen",
+      "other": "{count} deels gelezen"
+    },
+    "statImages": "Artefacten",
+    "statDockerfiles": "Dockerfiles",
+    "reading": "Lezen hoe de workspace bouwt en levert",
+    "oldTitle": "Gescand voordat CI/CD werd gelezen",
+    "oldText": "Deze snapshot komt van een oudere engine. Scan opnieuw om pipelines, images en issues te zien.",
+    "rescan": "Opnieuw scannen",
+    "emptyTitle": "Hier wordt niets gebouwd of geleverd",
+    "emptyText": "Er is geen pipelinebestand en geen Dockerfile gevonden. Archstats leest GitHub Actions (.github/workflows), GitLab CI (.gitlab-ci.yml), Jenkinsfiles en Jenkins-bibliotheken (vars/*.groovy), Rancher (fleet.yaml, .rancher-pipeline.yml en rancher-commando's in elke pipeline), Azure Pipelines, Bitbucket Pipelines en CircleCI. Een workspace die niet-bronbestanden negeert, leest ze nooit.",
+    "pickPipeline": "Kies links een pipeline om hem getekend te zien zoals hij draait.",
+    "makeLens": "Maak een lens",
+    "lensTitle": "Uit de images waarin ze zitten",
+    "lensWhat": "Eén groep per artefact, met de componenten waarvan het de bestanden bevat.",
+    "lensGroups": {
+      "one": "{count} groep.",
+      "other": "{count} groepen."
+    },
+    "lensShared": {
+      "one": "{count} component zit in meerdere artefacten en krijgt een eigen groep.",
+      "other": "{count} componenten zitten in meerdere artefacten en krijgen een eigen groep."
+    },
+    "lensUnshipped": {
+      "one": "{count} component zit nergens in en blijft erbuiten.",
+      "other": "{count} componenten zitten nergens in en blijven erbuiten."
+    },
+    "lensName": "Naam van de lens",
+    "lensCreate": "Lens maken",
+    "lensCreated": "Lens ‘{name}’ gemaakt.",
+    "lensDefaultName": "Images",
+    "lensDescription": "Componenten gegroepeerd naar de image of app die hun bestanden bevat, gelezen uit Dockerfiles en buildbestanden.",
+    "sharedGroup": "In meerdere artefacten",
+    "issueCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
+  },
+  "list": {
+    "usedByOthers": "Gebruikt door andere pipelines",
+    "noMatch": "Geen pipeline past bij ‘{q}’.",
+    "readInPart": "Deels gelezen",
+    "notRead": "Niet gelezen",
+    "flagCount": {
+      "one": "{count} issue",
+      "other": "{count} issues"
+    }
+  },
+  "graph": {
+    "readPartly": "Regels {from}–{to} niet gelezen: {reason}.",
+    "notReadSystem": "Archstats herkent dit bestand maar leest {system} niet.",
+    "libraryOnly": "Deze pipeline geeft al zijn werk aan een gedeelde bibliotheek; de stappen staan niet in deze workspace.",
+    "libraryResolved": "Deze pipeline geeft zijn werk aan een bibliotheekstap die in deze workspace staat: open die om de stappen te zien.",
+    "starts": "Start bij",
+    "produces": "Levert",
+    "noOutputs": "Bouwt of deployt niets dat deze workspace kan benoemen.",
+    "more": {
+      "one": "+{count} stap",
+      "other": "+{count} stappen"
+    },
+    "notReadHere": "Niet gelezen",
+    "matrix": "×{count}",
+    "matrixEach": "× elk",
+    "matrixEachTitle": "Herhaald voor elk item van gegevens die niet in het bestand staan",
+    "matrixTitle": "{count} combinaties",
+    "gate": {
+      "manual": "Draait als iemand hem start",
+      "approval": "Wacht op een goedkeuring",
+      "environment": "Deployt naar een omgeving, waarvoor het CI-systeem goedkeuring kan eisen"
+    },
+    "figure": "Pipeline {name}",
+    "condition": "Draait als: {cond}",
+    "gateTag": {
+      "manual": "handmatig",
+      "approval": "goedkeuring",
+      "environment": "beschermd"
+    },
+    "legendNeeds": "Lijnen: een job wacht op de job waar de lijn begint.",
+    "legendHandoff": "Gestippeld: werk overgedragen aan een andere pipeline, bibliotheek of sjabloon."
+  },
+  "verbs": {
+    "checkout": "Uitchecken",
+    "setup": "Voorbereiden",
+    "build": "Bouwen",
+    "test": "Testen",
+    "scan": "Scannen",
+    "package": "Verpakken",
+    "publish": "Publiceren",
+    "deploy": "Deployen",
+    "approve": "Goedkeuren",
+    "other": "Overig"
+  },
+  "events": {
+    "push": "push",
+    "pull_request": "PR",
+    "tag": "tag",
+    "schedule": "schema",
+    "manual": "handmatig",
+    "called": "aangeroepen",
+    "upstream": "na een andere",
+    "other": "overig"
+  },
+  "systems": {
+    "github_actions": "GitHub Actions",
+    "gitlab": "GitLab CI",
+    "jenkins": "Jenkins",
+    "rancher_fleet": "Rancher Fleet",
+    "rancher_pipelines": "Rancher Pipelines",
+    "azure_pipelines": "Azure Pipelines",
+    "bitbucket": "Bitbucket Pipelines",
+    "circleci": "CircleCI",
+    "cloud_build": "Cloud Build",
+    "travis": "Travis CI",
+    "drone": "Drone",
+    "tekton": "Tekton",
+    "buildkite": "Buildkite",
+    "woodpecker": "Woodpecker",
+    "other": "Overig"
+  },
+  "kinds": {
+    "workflow": "Workflow",
+    "reusable_workflow": "Herbruikbare workflow",
+    "action": "Action",
+    "template": "Sjabloon",
+    "child": "Child-pipeline",
+    "library": "Bibliotheekstap",
+    "gitops": "GitOps-bundel",
+    "pipeline": "Pipeline"
+  },
+  "handoffs": {
+    "reusable_workflow": "Herbruikbare workflow",
+    "action": "Action",
+    "shared_library": "Gedeelde bibliotheek",
+    "library_step": "Bibliotheekstap",
+    "load": "Geladen script",
+    "include": "Include",
+    "component": "CI/CD-component",
+    "template": "Sjabloon",
+    "orb": "Orb",
+    "pipe": "Pipe",
+    "child_pipeline": "Child-pipeline",
+    "starts_pipeline": "Start pipeline",
+    "helm_chart": "Helm-chart"
+  },
+  "pins": {
+    "sha": "vastgezet op een commit",
+    "version": "vastgezet op een versie",
+    "branch": "volgt een branch",
+    "none": "niet vastgezet",
+    "implicit": "door de server bij elke job geladen"
+  },
+  "unread": {
+    "dynamic_stages": "de stages worden tijdens het draaien opgebouwd uit gegevens die niet in het bestand staan",
+    "unsupported_syntax": "het bestand is niet te parsen",
+    "not_supported_system": "dit CI-systeem wordt niet gelezen"
+  },
+  "outputs": {
+    "image": "Image",
+    "build": "Build",
+    "package": "Pakket",
+    "release": "Release",
+    "deploy": "Deploy"
+  },
+  "inspector": {
+    "evidence": "Bewijs",
+    "flags": "Issues",
+    "history": "Geschiedenis",
+    "job": "Job",
+    "step": "Stap",
+    "handoff": "Overdracht",
+    "trigger": "Trigger",
+    "output": "Uitvoer",
+    "artifact": "Artefact",
+    "pipeline": "Pipeline",
+    "runner": "Draait op",
+    "needs": "Wacht op",
+    "group": "Stage",
+    "environment": "Omgeving",
+    "gate": "Poort",
+    "condition": "Draait als",
+    "matrix": "Matrix",
+    "steps": "Stappen",
+    "openPipeline": "Deze pipeline openen",
+    "openArtifact": "Tonen in Images",
+    "openFile": "Bestand openen",
+    "source": "Bron",
+    "noSource": "De snapshot bevat geen inhoud voor dit bestand.",
+    "noFlags": "Geen issue hierop.",
+    "historyYear": {
+      "one": "Eén keer gewijzigd in het jaar voor de gescande commit.",
+      "other": "{count} keer gewijzigd in het jaar voor de gescande commit."
+    },
+    "historyNever": "Niet gewijzigd in het jaar voor de gescande commit.",
+    "historyLast": "Laatst gewijzigd op {date}.",
+    "historyBy": "Door {names}.",
+    "historyNone": "Deze snapshot heeft geen geschiedenis voor dit bestand.",
+    "ref": "Ref",
+    "pinned": "Vastgezet",
+    "via": "Uit bibliotheek",
+    "local": "Verwijst naar",
+    "target": "Doel",
+    "platform": "Platform",
+    "server": "Server",
+    "context": "Context",
+    "filter": "Filter",
+    "tool": "Tool",
+    "verb": "Doet",
+    "builtBy": "Gebouwd door",
+    "deployedBy": "Gedeployd door",
+    "nothingBuilds": "Door geen pipeline hier gebouwd",
+    "inside": "Wat erin gaat",
+    "components": "Componenten die erin zitten",
+    "stages": "Stages",
+    "copiesFrom": "kopieert uit {stage}",
+    "user": "draait als {user}",
+    "rootUser": "draait als root",
+    "ports": "stelt {ports} open",
+    "entrypoint": "start {cmd}",
+    "healthcheck": "heeft een health check",
+    "dockerignore": "heeft een .dockerignore",
+    "noDockerignore": "geen .dockerignore",
+    "jobs": "Jobs"
+  },
+  "images": {
+    "artifact": "Artefact",
+    "kind": "Soort",
+    "base": "Basis-image",
+    "runtime": "Runtime",
+    "user": "Gebruiker",
+    "builtBy": "Gebouwd door",
+    "environments": "Gedeployd naar",
+    "files": "Bestanden",
+    "pinnedDigest": "Vastgezet op een digest",
+    "pinnedTag": "Vastgezet op een versietag",
+    "pinnedFloating": "Zwevend: latest of geen tag",
+    "baseTitle": "Basis-images",
+    "baseWhat": "De basis-image van elke Dockerfile, per familie en versie",
+    "baseNone": "Geen Dockerfile noemt een basis-image.",
+    "baseBar": {
+      "one": "{family} {version}: {count} Dockerfile",
+      "other": "{family} {version}: {count} Dockerfiles"
+    },
+    "legendWidth": "De lengte van een balk is het aantal Dockerfiles",
+    "tableTitle": "Artefacten",
+    "emptyArtifacts": "Er wordt in deze workspace geen image, app of functie gebouwd.",
+    "kindImage": "Image",
+    "kindApp": "App",
+    "kindFunction": "Functie",
+    "kindDesktop": "Desktop-app",
+    "kindMobile": "Mobiele app",
+    "notes": "Gelezen uit Dockerfiles, compose, Skaffold, Jib, buildplugins en pipelines"
+  },
+  "flags": {
+    "intro": "Elk issue is een feit dat een bestand vermeldt, met de regel waarop het staat. Er wordt niets gescoord: of het hier telt, beslis jij. Elke regel heeft een assert-sjabloon in docs/rules/cicd.yml.",
+    "none": "Geen issues.",
+    "noMatch": "Geen issue past bij ‘{q}’.",
+    "count": {
+      "one": "1 plek",
+      "other": "{count} plekken in {files} bestanden"
+    },
+    "productionNames": "Telt als productie: {names}",
+    "rules": {
+      "base_unpinned_tag": {
+        "fact": "Basis-image zonder tag, of latest",
+        "why": "De build verandert telkens als de maker van de image iets pusht, zonder wijziging hier."
+      },
+      "base_no_digest": {
+        "fact": "Basis-image niet vastgezet op een digest",
+        "why": "Een tag kan naar andere inhoud verplaatst worden; een digest niet."
+      },
+      "runs_as_root": {
+        "fact": "Image draait als root",
+        "why": "Zonder USER in de laatste stage draait de container als de gebruiker van de basis-image, root tenzij die er een zet."
+      },
+      "add_remote_url": {
+        "fact": "ADD vanaf een URL",
+        "why": "De build haalt op wat de URL op dat moment levert, ongecontroleerd."
+      },
+      "secret_like_key": {
+        "fact": "ENV of ARG die op een geheim lijkt",
+        "why": "Waarden van ENV en ARG blijven in de geschiedenis van de image, leesbaar voor iedereen die hem kan pullen. De waarde wordt hier nooit opgeslagen."
+      },
+      "copy_all_no_dockerignore": {
+        "fact": "COPY van alles zonder .dockerignore",
+        "why": "Elk bestand in de buildcontext gaat de image in: .git, lokale env-bestanden, builduitvoer."
+      },
+      "handoff_unpinned": {
+        "fact": "Action, orb, pipe of component niet vastgezet",
+        "why": "Wat draait is wat de eigenaar als volgende pusht, in elke pipeline die het gebruikt."
+      },
+      "library_unpinned": {
+        "fact": "Gedeelde Jenkins-bibliotheek niet vastgezet",
+        "why": "De bibliotheek verandert onder elke pipeline die hem laadt."
+      },
+      "remote_include_unpinned": {
+        "fact": "Include of sjabloon van elders niet vastgezet",
+        "why": "Deze pipeline verandert als de standaardbranch van een ander project verandert."
+      },
+      "pr_target_checkout_head": {
+        "fact": "pull_request_target checkt de pull request uit",
+        "why": "Hij draait code van een onbekende met de geheimen van de repository."
+      },
+      "no_permissions_block": {
+        "fact": "GitHub-workflow zonder permissions",
+        "why": "Zijn token krijgt de standaard van de repository, vaak schrijfrechten op alles."
+      },
+      "curl_pipe_shell": {
+        "fact": "Download doorgegeven aan een shell",
+        "why": "Hij draait wat de server teruggeeft, ongecontroleerd."
+      },
+      "docker_privileged": {
+        "fact": "Container met privileges",
+        "why": "docker run --privileged geeft de container de host."
+      },
+      "tls_verify_off": {
+        "fact": "TLS-controle uitgezet",
+        "why": "Elk certificaat wordt geaccepteerd, dus de verbinding kan onderschept worden."
+      },
+      "token_literal": {
+        "fact": "Token of wachtwoord in een commando geschreven",
+        "why": "Iedereen die de repository kan lezen, kan het lezen, en het blijft in de geschiedenis. De waarde wordt hier nooit opgeslagen."
+      },
+      "ungated_prod_deploy": {
+        "fact": "Deploy naar productie zonder iets ervoor",
+        "why": "Geen handmatige stap, goedkeuring of deploy-omgeving staat tussen een wijziging en productie."
+      },
+      "push_latest_only": {
+        "fact": "Image alleen als latest gepusht",
+        "why": "Releases zijn niet van elkaar te onderscheiden, en er is niet naar terug te gaan."
+      }
+    }
+  },
+  "component": {
+    "builtInto": "Gebouwd in",
+    "builtIntoLede": "De images en apps die de bestanden van dit component bevatten, en de pipelines die ze bouwen of deployen.",
+    "builtIntoNone": "Geen image of app hier bevat de bestanden van dit component.",
+    "files": {
+      "one": "{count} bestand",
+      "other": "{count} bestanden"
+    },
+    "pipelines": {
+      "one": "{count} pipeline",
+      "other": "{count} pipelines"
+    },
+    "open": "CI/CD"
+  },
+  "exhibits": {
+    "summary": "Wat de workspace bouwt (images, apps, functies), welke pipelines elk ervan bouwen en deployen, en waarheen.",
+    "ofParam": "Een artefact of een component: wat het bevat.",
+    "title": "Wat gebouwd en geleverd wordt",
+    "titleOf": "Wat {value} bevat",
+    "oldSnapshot": "Deze snapshot is gelezen met analyserevisie {value}; CI/CD vraagt revisie 16. Scan opnieuw om het te zien.",
+    "nothing": "De scan vond geen pipeline en niets dat gebouwd wordt.",
+    "noMatch": "Niets dat gebouwd wordt en geen component past bij ‘{of}’.",
+    "noHolder": "Geen image of app bevat {component}.",
+    "total": "{artifacts} artefacten en {pipelines} pipelines gevonden.",
+    "row": "{name} ({kind}): gebouwd door {built}; gedeployd naar {deployed}.",
+    "partial": "{name} is deels gelezen.",
+    "components": "Componenten",
+    "open": "CI/CD openen",
+    "flagsSummary": "Feiten in de pipelines en Dockerfiles die mensen als risico lezen, per regel, met hoeveel en waar.",
+    "flagsTitle": "CI/CD-issues",
+    "flagFact": "Feit",
+    "flagCount": "Keer",
+    "flagFiles": "Bestanden",
+    "flagAt": "Waar (eerste drie)"
+  }
+}

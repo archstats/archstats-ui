@@ -24,7 +24,7 @@ export function viewCall(ctx: ViewContext | null | undefined): ViewCall | null {
         case "/views/git/activity": return { name: "change", args: {} }
         case "/views/git/coupling": return { name: "change", args: { kind: "hidden coupling" } }
         case "/views/git/authors": return { name: "people", args: {} }
-        case "/views/deployables": return { name: "deployables", args: {} }
+        case "/views/cicd": case "/views/deployables": return { name: "cicd", args: {} }
         case "/views/rules": return { name: "rules", args: {} }
         case "/views/libraries": return { name: "libraries", args: {} }
         case "/views/connections": { const of = focusOf(ctx.focus); return of ? { name: "dependencies", args: { of } } : null }

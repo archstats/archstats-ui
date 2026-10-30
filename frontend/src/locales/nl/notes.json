@@ -1,0 +1,18 @@
+{
+  "pane": {
+    "tab": "Notities",
+    "subject": "Over",
+    "subjectPlaceholder": "Over (een component, bestand of class)",
+    "text": "Notitie",
+    "textPlaceholder": "Wat je leerde, in een zin of twee",
+    "add": "Notitie toevoegen",
+    "codebase": "de codebase",
+    "byAsk": "door Ask",
+    "byPerson": "door jou",
+    "older": "oudere code",
+    "olderTitle": "Geschreven tegen commit {commit}; de code kan sindsdien veranderd zijn.",
+    "remove": "Notitie verwijderen",
+    "none": "Nog geen notities.",
+    "noneHint": "Een notitie bewaart wat je over een deel van de code leerde. Ask leest ze terug in latere gesprekken, en kan er een bewaren als je vraagt iets te onthouden."
+  }
+}

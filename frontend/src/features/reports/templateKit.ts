@@ -184,6 +184,8 @@ export const VIEWS: Record<string, ViewAsk | ((...a: any[]) => ViewAsk)> & Recor
     rules: { view: t("reports.templateKit.rules"), route: "/views/rules", hint: t("reports.templateKit.findingsRule") },
     trends: { view: t("reports.templateKit.trends"), route: "/views/trends", hint: t("reports.templateKit.systemShapeAcrossSnapshots"), take: "Over time" },
     dirs: { view: t("reports.templateKit.metrics"), route: "/views/metrics?grain=directories", hint: t("reports.templateKit.directoriesGrain"), take: "Metrics: directories" },
+    // CI/CD: the pipeline that ships the system, drawn.
+    pipeline: { view: t("reports.templateKit.cicd"), route: "/views/cicd?mode=pipelines", hint: t("reports.templateKit.pickPipelineThatShips"), take: "Pipeline" },
 }
 /** A view to take from, and optionally which of its exportables (by the start of its title). */
 export interface ViewAsk { view: string; route: string; hint: string; take?: string }

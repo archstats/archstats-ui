@@ -981,7 +981,8 @@
     "expectActual": "Expect en actual",
     "expectDeclarations": "Expect-declaraties",
     "whichPlatformDifferencesBelong": "Welke platformverschillen achter een expect horen, en welke in common code zijn gelekt.",
-    "gradleModules": "Gradle-modules"
+    "gradleModules": "Gradle-modules",
+    "stackNotRecorded": "de bibliotheken die elke app declareert worden vanaf engine-revisie 16 niet meer vastgelegd"
   },
   "readings": {
     "mavenModule": "Maven-module",
@@ -1577,7 +1578,7 @@
     "largestClassesTypes": "De grootste classes en types",
     "outsidePackagesImportedMost": "De externe packages die het vaakst worden geïmporteerd",
     "howShips": "Hoe het wordt uitgerold",
-    "scanDidNotLook": "dit snapshot zocht niet naar deployables; scan opnieuw om ze mee te nemen",
+    "scanDidNotLook": "de scan las geen pipelines en images (engine-revisie 16)",
     "whatShipsWhatBuilds": "Wat er wordt uitgerold en wat het bouwt",
     "guidedTourSomeoneJoining2": "Een rondleiding voor iemand die bij het team komt: wat de codebase bevat en waar, hoe de belangrijkste onderdelen in elkaar passen, de code waar al het andere op leunt, waar het dagelijkse werk plaatsvindt, wie welk gebied kent en welke onderdelen je voorzichtig moet behandelen. Jij voegt de namen en context toe die cijfers niet kunnen geven.",
     "topLevelAreas": "De gebieden op het hoogste niveau",
@@ -1643,7 +1644,10 @@
     "listsEveryPairComponents2": "Toont elk paar componenten dat elkaar importeert, de kleinste en goedkoopste vorm van een circular dependency, met hoeveel imports elke kant op lopen, en daarna de grootste tangle in levels met de cuts die hem ontwarren.",
     "whatHappenedCodeLast2": "Wat er de laatste 30 dagen in de code gebeurde: hoeveel er veranderde en waar, hoe het werk verschoof tegenover de twee jaar ervoor, welke bestanden het meest veranderden, welke hotspots het team aanraakte en welke bestanden nieuw zijn.",
     "whereWorkMovedLast2": "Waar het werk heen ging in de laatste 30 dagen",
-    "whereRiskSits": "Waar het risico zit"
+    "whatFlagsSay": "Issues in de pipelines en Dockerfiles",
+    "whereRiskSits": "Waar het risico zit",
+    "howItIsBuilt": "Hoe het gebouwd en gedeployd wordt",
+    "pipelineFigureReads": "De tekening leest van links naar rechts: wat de pipeline start, de jobs in de volgorde waarin ze op elkaar wachten, de stappen in elke job (het gekleurde vierkantje zegt wat een stap doet), en wat er aan het eind uit komt. Gestippelde vakken geven werk door aan een andere pipeline, bibliotheek of sjabloon."
   },
   "reportsStore": {
     "table": "Tabel",
@@ -1734,7 +1738,12 @@
     "folders": "Mappen",
     "nothing": "Niets",
     "window": "Periode",
-    "lastChosen": "Zoals laatst gekozen"
+    "lastChosen": "Zoals laatst gekozen",
+    "cicd": "CI/CD",
+    "cicdPipelines": "Pipelines",
+    "cicdImages": "Images",
+    "cicdFlags": "Issues",
+    "cicdPipeline": "Pipeline"
   },
   "templateKit": {
     "scanHasNoGit": "dit snapshot heeft geen git-historie",
@@ -1853,7 +1862,9 @@
     "upCloseHotspot": "Van dichtbij: hotspot {rank}",
     "upCloseDependents": "Van dichtbij: nummer {rank} op afhankelijken",
     "upCloseHealth": "Van dichtbij: nummer {rank} van onderen op health",
-    "upCloseChanged": "Van dichtbij: nummer {rank} op wijzigingen"
+    "upCloseChanged": "Van dichtbij: nummer {rank} op wijzigingen",
+    "cicd": "CI/CD",
+    "pickPipelineThatShips": "Kies de pipeline die het systeem bouwt en deployt, en neem de tekening over."
   },
   "useSlotTaking": {
     "hasNothingTake": "{view} heeft niets om over te nemen: {why}",

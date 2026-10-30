@@ -202,7 +202,7 @@ export const coreTools: Tool[] = [
     },
     {
         name: "show", namespace: "core",
-        description: "Offer a view to open (the person clicks; the window does not move by itself). Views: overview, metrics, hotspots, connections, cycles, units, checks, changes, authors, activity, deployables, libraries, evidence, sql console. With a component: its page, or a tab (reading, connections, cycles, inside, history), or connections focused around it. With a file: its page. Example: {\"view\": \"cycles\", \"component\": \"checkout\"}",
+        description: "Offer a view to open (the person clicks; the window does not move by itself). Views: overview, metrics, hotspots, connections, cycles, units, checks, changes, authors, activity, cicd, libraries, evidence, sql console. With a component: its page, or a tab (reading, connections, cycles, inside, history), or connections focused around it. With a file: its page. Example: {\"view\": \"cycles\", \"component\": \"checkout\"}",
         params: {
             view: { type: "string", description: "A view name, or a component tab." },
             component: { type: "string", description: "Optional component." },
@@ -229,7 +229,7 @@ export const coreTools: Tool[] = [
             const v = VIEWS.find(x => x.label.toLowerCase() === view) ?? VIEWS.find(x => x.label.toLowerCase().includes(view) || (x.also ?? "").includes(view))
             if (!v) return { text: `No view "${a.view}". Known: ${VIEWS.map(x => x.label).join(", ")}.` }
             const rev = Number(world.info.analysis_revision ?? 0)
-            const needs = /deployables/i.test(v.label) && rev < 5 ? ` Note: this snapshot is analysis revision ${rev}; Deployables needs revision 5 or newer, so the view will be empty until the workspace is scanned again.` : ""
+            const needs = /ci\/cd/i.test(v.label) && rev < 16 ? ` Note: this snapshot is analysis revision ${rev}; CI/CD needs revision 16 or newer, so the view will be empty until the workspace is scanned again.` : ""
             const out = ev(v.to, `Open ${v.label}`)
             return { ...out, text: out.text + needs }
         },

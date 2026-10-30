@@ -11,7 +11,7 @@ const SIGNALS: Array<[Namespace, RegExp]> = [
     ["files", /\b(file|class|code|method|function|line|read|source|implement|declar|annotation|grep|search|mention|usage|inside|contain|what does .* do|explain)/i],
     ["history", /\b(chang|churn|commit|history|histor|author|who|know|owner|bus factor|recent|activ|over time|timeline|together|co-?change|hidden|stale|old|age|maintain)/i],
     ["query", /\b(sql|query|how many|count|list all|per (month|year|component|file)|total|average|ratio|language|extension|role|test|module|rule)/i],
-    ["view", /\b(this|these|here|on screen|figure|chart|table|view|looking at|show me|picture|visuali[sz]|draw|diagram|units|deployables|checks|findings)\b/i],
+    ["view", /\b(this|these|here|on screen|figure|chart|table|view|looking at|show me|picture|visuali[sz]|draw|diagram|units|cicd|pipelines?|checks|findings)\b/i],
 ]
 
 export function route(question: string, opts: { onScreen: boolean }): Namespace[] {

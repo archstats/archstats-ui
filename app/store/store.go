@@ -59,6 +59,7 @@ var migrations = []func(tx *sql.Tx) error{
 	migrate2,
 	migrate3,
 	migrate4,
+	migrate5,
 }
 
 func (s *Store) migrate() error {
@@ -236,5 +237,28 @@ CREATE TABLE reports (
 	updated_at   DATETIME NOT NULL
 );
 CREATE INDEX idx_reports_workspace ON reports(workspace_id, position);`)
+	return err
+}
+
+// migrate5 keeps notes: what a person or a model learned about part of the
+// codebase, kept across sessions so understanding builds up instead of
+// starting over with every conversation. A note names its subject by kind and
+// name, which outlive any one snapshot, and records the commit it was
+// written against so a reader can tell when the code has moved on.
+func migrate5(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+CREATE TABLE notes (
+	id           TEXT PRIMARY KEY,
+	workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+	subject_kind TEXT NOT NULL DEFAULT 'codebase',
+	subject      TEXT NOT NULL DEFAULT '',
+	text         TEXT NOT NULL,
+	author       TEXT NOT NULL DEFAULT 'person',
+	scan_id      TEXT REFERENCES scans(id) ON DELETE SET NULL,
+	head_commit  TEXT NOT NULL DEFAULT '',
+	created_at   DATETIME NOT NULL,
+	updated_at   DATETIME NOT NULL
+);
+CREATE INDEX idx_notes_subject ON notes(workspace_id, subject_kind, subject);`)
 	return err
 }

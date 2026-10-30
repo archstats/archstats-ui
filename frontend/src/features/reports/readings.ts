@@ -108,7 +108,7 @@ export interface SnapshotFacts {
     indirectColumns: Set<string>
     /** Modules by what they build (android-application, ios-application, flutter-app, kotlin-multiplatform…), from revision 7. */
     moduleTypes: Record<string, number>
-    /** The mobile apps the scan found as deployables, from revision 7. */
+    /** The mobile apps the scan found: deployables from revision 7, artifacts from 16. */
     mobileApps: Array<{ name: string; platform: string }>
     /** Components with any abstractness (interfaces, abstract classes); undefined when the scan has no such column. */
     abstractComponents?: number
@@ -166,8 +166,10 @@ async function readFacts(ctx: ReadingContext): Promise<SnapshotFacts> {
     if (tables.has("modules") && (await cols("modules")).has("type")) {
         for (const r of await q(`SELECT type, count(*) AS c FROM modules WHERE coalesce(type, '') <> '' GROUP BY type`)) moduleTypes[String(r.type)] = Number(r.c) || 0
     }
-    const mobileApps = tables.has("deployables") && (await cols("deployables")).has("platform")
-        ? (await q(`SELECT name, platform FROM deployables WHERE kind = 'mobile_app' ORDER BY name`)).map(r => ({ name: String(r.name), platform: String(r.platform) }))
+    // Mobile apps are artifacts from revision 16, deployables from 7 to 15.
+    const appTable = tables.has("artifacts") ? "artifacts" : tables.has("deployables") && (await cols("deployables")).has("platform") ? "deployables" : ""
+    const mobileApps = appTable
+        ? (await q(`SELECT name, platform FROM ${appTable} WHERE kind = 'mobile_app' ORDER BY name`)).map(r => ({ name: String(r.name), platform: String(r.platform) }))
         : []
     const [react] = tables.has("snippets") ? await q(`SELECT count(DISTINCT file) AS c FROM snippets WHERE snippet_type = 'modularity__component__imports' AND (content = 'react' OR content LIKE 'react/%')`) : [null]
     const [vue] = tables.has("unit_markers") && tables.has("units") ? await q(`SELECT count(DISTINCT u.id) AS c FROM units u JOIN unit_markers m ON m.unit = u.id WHERE m.source = 'filename' AND m.key = 'vue_component' AND u.file IN (SELECT name FROM files WHERE ${prodFile({ fileColumns })})`) : [null]
@@ -745,8 +747,10 @@ export const READINGS: ReadingDef[] = [
         async run(ctx) {
             const f = await probe(ctx)
             if (!f.mobileApps.length) return absent(t("reports.readings.scanFoundNoMobile"))
-            const deps = await ctx.query(`SELECT d.name AS app, dd.role, dd.name, dd.version FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role IN ('framework', 'runtime')`)
-            const libs = await ctx.query(`SELECT d.name AS app, count(*) AS c FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role = 'library' GROUP BY 1`)
+            // What each app's build declares was recorded up to revision 15 only.
+            const stack = f.tables.has("deployable_dependencies")
+            const deps = stack ? await ctx.query(`SELECT d.name AS app, dd.role, dd.name, dd.version FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role IN ('framework', 'runtime')`) : []
+            const libs = stack ? await ctx.query(`SELECT d.name AS app, count(*) AS c FROM deployable_dependencies dd JOIN deployables d ON d.id = dd.deployable WHERE d.kind = 'mobile_app' AND dd.role = 'library' GROUP BY 1`) : []
             const PLATFORM: Record<string, string> = { android: t("reports.readings.android"), ios: "iOS", flutter: t("reports.readings.flutter"), "react-native": t("reports.readings.reactNative") }
             const real = f.mobileApps.filter(a => !isSampleApp(a.name))
             const samples = f.mobileApps.filter(a => isSampleApp(a.name))

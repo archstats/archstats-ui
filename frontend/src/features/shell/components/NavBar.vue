@@ -194,7 +194,7 @@ import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   PanelLeftClose, Flame, Table2, RefreshCw, Network, GitCompare, Bookmark, Terminal,
-  Activity, Users, Braces, LayoutDashboard, Scale, Package, Container, Globe,
+  Activity, Users, Braces, LayoutDashboard, Scale, Package, Workflow, Globe,
   Sparkles, Settings,
 } from "lucide-vue-next";
 import { useAIStore } from "~/features/ai/ai.store";
@@ -234,10 +234,11 @@ const hasWorkspace = computed(() => workspaces.active !== null);
 // depend on each other, how each part measures, the code inside them, then
 // the history behind it all and the tools to dig further.
 //
-// What the workspace serves and ships (engine revision 5 and later).
+// What the workspace serves, and how it builds and ships (engine revision 16
+// and later).
 const systemViews = computed(() => [
   ...(dataStore.hasView("entry_points") ? [{ label: t("shell.navBar.http"), to: "/views/http", icon: Globe }] : []),
-  ...(dataStore.hasView("deployables") ? [{ label: t("shell.navBar.deployables"), to: "/views/deployables", icon: Container }] : []),
+  ...(dataStore.hasView("pipelines") || dataStore.hasView("artifacts") || dataStore.hasView("deployables") ? [{ label: t("shell.navBar.cicd"), to: "/views/cicd", icon: Workflow }] : []),
 ]);
 // How the parts depend on each other, and the Rules that need declared rules.
 const structureViews = computed(() => [
