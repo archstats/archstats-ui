@@ -1,11 +1,13 @@
 <template>
   <nav class="shell-rail flex h-full shrink-0 flex-col bg-ground hairline-r" :style="{ width: panes.sidebarWidth + 'px' }" :aria-label="t('shell.navBar.workspace')">
     <!-- Brand row with the collapse control. On macOS it also hosts the traffic lights and drags the window. -->
-    <div class="drag-region flex shrink-0 items-center justify-between pr-2" :class="isMac ? 'h-[52px] pl-[80px]' : 'h-11 pl-3.5'">
-      <router-link to="/" class="flex h-5 items-center gap-2" :aria-label="t('shell.navBar.archstatsHome')">
-        <img src="/img/archstats/Archstats-icon.png" alt="" class="h-5 w-5">
-        <img src="/img/archstats/archstats-text.png" :alt="t('shell.navBar.archstats')" class="h-3 object-contain object-left dark:hidden">
-        <img src="/img/archstats/archstats-text-white.png" :alt="t('shell.navBar.archstats')" class="hidden h-3 object-contain object-left dark:block">
+    <div class="drag-region flex shrink-0 items-center justify-between pr-2" :class="hasTrafficLights ? 'h-[52px] pl-[80px]' : 'h-11 pl-3.5'">
+      <!-- The dark mark swaps the navy disc for a light one: navy on the dark rail disappears. -->
+      <router-link to="/" class="flex items-center gap-2" :aria-label="t('shell.navBar.archstatsHome')">
+        <img src="/img/archstats/archstats-mark.png" alt="" class="h-[22px] w-[22px] select-none dark:hidden" draggable="false">
+        <img src="/img/archstats/archstats-mark-dark.png" alt="" class="hidden h-[22px] w-[22px] select-none dark:block" draggable="false">
+        <img src="/img/archstats/archstats-wordmark.png" :alt="t('shell.navBar.archstats')" class="h-[11px] w-auto select-none dark:hidden" draggable="false">
+        <img src="/img/archstats/archstats-wordmark-dark.png" :alt="t('shell.navBar.archstats')" class="hidden h-[11px] w-auto select-none dark:block" draggable="false">
       </router-link>
       <div class="flex items-center gap-0.5">
         <button
@@ -220,7 +222,7 @@ import { t, intlLocale } from "~/shared/i18n";
 const emit = defineEmits<{ (e: "collapse"): void }>();
 const panes = usePanesStore();
 const ai = useAIStore();
-const { isMac } = usePlatform();
+const { isMac, hasTrafficLights } = usePlatform();
 
 const { isJavaProject } = useJavaMetrics();
 const dataStore = useDataStore();
@@ -228,28 +230,34 @@ const workspaces = useWorkspacesStore();
 const hasData = computed(() => dataStore.hasData);
 const hasWorkspace = computed(() => workspaces.active !== null);
 
+// The sections zoom in: what the system serves and ships, how its parts
+// depend on each other, how each part measures, the code inside them, then
+// the history behind it all and the tools to dig further.
+//
+// What the workspace serves and ships (engine revision 5 and later).
+const systemViews = computed(() => [
+  ...(dataStore.hasView("entry_points") ? [{ label: t("shell.navBar.http"), to: "/views/http", icon: Globe }] : []),
+  ...(dataStore.hasView("deployables") ? [{ label: t("shell.navBar.deployables"), to: "/views/deployables", icon: Container }] : []),
+]);
+// How the parts depend on each other, and the Rules that need declared rules.
+const structureViews = computed(() => [
+  { label: t("shell.navBar.connections"), to: "/views/connections", icon: Network },
+  { label: t("shell.navBar.cycles"), to: "/views/components/cycles", icon: RefreshCw },
+  ...(hasRules.value ? [{ label: t("shell.navBar.rules"), to: "/views/rules", icon: Scale }] : []),
+]);
 const componentViews = [
   { label: t("shell.navBar.metrics"), to: "/views/metrics", icon: Table2 },
   { label: t("shell.navBar.hotspots"), to: "/views/components/hotspots", icon: Flame },
-  { label: t("shell.navBar.connections"), to: "/views/connections", icon: Network },
-  { label: t("shell.navBar.cycles"), to: "/views/components/cycles", icon: RefreshCw },
 ];
 const gitViews = [
-  { label: t("shell.navBar.authors"), to: "/views/git/authors", icon: Users },
   { label: t("shell.navBar.activity"), to: "/views/git/activity", icon: Activity },
+  { label: t("shell.navBar.authors"), to: "/views/git/authors", icon: Users },
 ];
 // Units, not classes: gin is 1,327 functions to 204 types and LibreChat
 // 3,241 to 294, so a section called Classes shows a fraction of either.
 const codeViews = computed(() => [
   ...(hasUnits.value ? [{ label: t("shell.navBar.units"), to: "/views/units", icon: Braces }] : []),
   ...(dataStore.hasView("snippets") ? [{ label: t("shell.navBar.libraries"), to: "/views/libraries", icon: Package }] : []),
-]);
-// What the workspace builds and ships (engine revision 5 and later), and the
-// Rules that need declared rules. The structure checks are findings in Units.
-const architectureViews = computed(() => [
-  ...(dataStore.hasView("entry_points") ? [{ label: t("shell.navBar.http"), to: "/views/http", icon: Globe }] : []),
-  ...(dataStore.hasView("deployables") ? [{ label: t("shell.navBar.deployables"), to: "/views/deployables", icon: Container }] : []),
-  ...(hasRules.value ? [{ label: t("shell.navBar.rules"), to: "/views/rules", icon: Scale }] : []),
 ]);
 // The engagement's own working files: what was pinned, and the tools to look further.
 const evidenceStore = useEvidenceStore();
@@ -367,12 +375,12 @@ const { data: hasGitHistory } = useAsyncQuery<boolean>(
 )
 
 const groups = computed(() => {
-  const list = [
-    { title: t("shell.navBar.components"), items: componentViews },
-    { title: t("shell.navBar.git"), items: gitViews, muted: !hasGitHistory.value, mutedWhy: t("shell.navBar.noGitHistorySnapshot") },
-  ] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
+  const list = [] as Array<{ title: string; items: typeof componentViews; muted?: boolean; mutedWhy?: string }>;
+  if (systemViews.value.length) list.push({ title: t("shell.navBar.system"), items: systemViews.value });
+  list.push({ title: t("shell.navBar.structure"), items: structureViews.value });
+  list.push({ title: t("shell.navBar.components"), items: componentViews });
   if (codeViews.value.length) list.push({ title: t("shell.navBar.code"), items: codeViews.value });
-  if (architectureViews.value.length) list.push({ title: t("shell.navBar.architecture"), items: architectureViews.value });
+  list.push({ title: t("shell.navBar.git"), items: gitViews, muted: !hasGitHistory.value, mutedWhy: t("shell.navBar.noGitHistorySnapshot") });
   list.push({ title: t("shell.navBar.tools"), items: toolViews.value as any });
   return list;
 });

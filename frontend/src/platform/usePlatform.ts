@@ -6,6 +6,11 @@ export type Platform = "darwin" | "windows" | "linux" | "web";
 // through its runtime; outside Wails (tests, headless captures) we fall back to
 // the navigator so macOS captures still show the macOS chrome.
 const platform = ref<Platform>(guess());
+// The macOS traffic lights sit over the sidebar only in the native window, and
+// macOS hides them in full screen. A browser on the dev server has none, so
+// the shell leaves no gap for them there.
+const nativeWindow = typeof window !== "undefined" && !!(window as any).webkit?.messageHandlers?.external;
+const fullscreen = ref(false);
 let resolved = false;
 
 function guess(): Platform {
@@ -26,11 +31,17 @@ export function usePlatform() {
         if (env?.platform === "darwin" || env?.platform === "windows" || env?.platform === "linux") platform.value = env.platform;
       }).catch(() => {});
     }
+    if (nativeWindow && rt?.WindowIsFullscreen) {
+      const check = () => rt.WindowIsFullscreen().then((v: boolean) => { fullscreen.value = !!v; }).catch(() => {});
+      check();
+      window.addEventListener("resize", check);
+    }
     watch(platform, (p) => { document.documentElement.dataset.platform = p; }, { immediate: true });
   }
   return {
     platform,
     isMac: computed(() => platform.value === "darwin"),
+    hasTrafficLights: computed(() => platform.value === "darwin" && nativeWindow && !fullscreen.value),
     isWindows: computed(() => platform.value === "windows"),
   };
 }

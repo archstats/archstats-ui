@@ -18,9 +18,9 @@
     <div
         v-show="!navExpanded"
         class="shell-rail relative flex h-full shrink-0 flex-col bg-ground hairline-r"
-        :class="isMac ? 'w-[80px]' : 'w-5'"
+        :class="hasTrafficLights ? 'w-[80px]' : 'w-5'"
     >
-      <div v-if="isMac" class="drag-region h-[52px] shrink-0" aria-hidden="true"></div>
+      <div v-if="hasTrafficLights" class="drag-region h-[52px] shrink-0" aria-hidden="true"></div>
       <button
           type="button"
           class="flex flex-1 flex-col items-center pt-3 text-neutral-400 transition-colors hover:text-neutral-800 outline-none focus-visible:text-neutral-900"
@@ -101,7 +101,7 @@ const ai = useAIStore();
 const dataStore = useDataStore();
 const workspaces = useWorkspacesStore();
 const panes = usePanesStore();
-const { isMac } = usePlatform();
+const { hasTrafficLights } = usePlatform();
 const hasData = computed(() => dataStore.hasData);
 const anyScanning = computed(() => workspaces.anyScanning);
 
