@@ -1,9 +1,7 @@
 {
   "page": {
     "title": "HTTP",
-    "findRoute": "Zoek een route, handler of component",
     "detail": "Detail",
-    "routes": "Routes",
     "traced": "Gevolgd",
     "tracedTitle": "Van alle calls die de handlers doen naar code waarvan het type bekend is, het deel dat de trace kon volgen",
     "contracts": "Contracten",
@@ -15,23 +13,16 @@
     "noRoutesText": "In de eigen code van deze workspace is geen HTTP-route, client of verbinding gevonden. Tests en vendored code tellen niet mee.",
     "scanAgain": "Deze snapshot heeft alleen routes. Scan opnieuw om contracten, de trace per route en de aangeroepen systemen te lezen.",
     "handler": "Handler",
-    "access": "Toegang",
     "contract": "Contract",
-    "reaches": "Bereikt",
     "nothingSays": "niets vastgelegd",
     "nothingSaysLong": "De code zegt niets: geen markering op de handler of zijn class, geen middleware, geen securityregel die dit pad dekt.",
     "notInContractTitle": "Een contract dekt het component van deze route, maar beschrijft deze route niet",
-    "routesTableTitle": "HTTP-routes",
     "method": "Methode",
     "path": "Pad",
     "component": "Component",
-    "units": "Units",
-    "tables": "Tabellen",
-    "callsOut": "Uitgaande calls",
     "file": "Bestand",
     "line": "Regel",
     "accessNote": "Gelezen uit de markeringen van de handler, zijn class en basisclasses, middleware en securityconfiguratie; leeg als niets het zegt.",
-    "unitsNote": "Units die de trace vanaf de handler bereikte. Calls op een variabele waarvan het type onbekend is, worden niet gevolgd.",
     "framework": "Framework",
     "documentedSpec": "Beschreven door een OpenAPI-contract",
     "documentedAnnotations": "Beschreven met annotaties voor een gegenereerd contract",
@@ -63,47 +54,12 @@
     "configuredBy": "Geconfigureerd met",
     "callSites": "Aanroepen",
     "confidenceTitle": "gedeclareerd: een clientinterface zegt het; herleid: het adres is gevolgd tot een host; deels: een configuratiesleutel of naam, geen host; niet herleid: het adres was niet te volgen",
-    "unitsTitle": "Units die de trace vanaf de handler bereikte; voor een resource het verst dat een van zijn routes komt",
-    "tablesTitle": "Tabellen die de trace bereikte; voor een resource al zijn routes samen",
-    "outTitle": "Calls naar buiten de workspace die de trace bereikte",
-    "followed": "Gevolgde calls",
-    "wholeApi": "Hele API",
     "contractsOpen": "De contracten in de workspace en de API-ontwerpregels",
     "systemsOpen": "Elk systeem dat de code aanroept of configureert",
-    "stackWords": "{routes} routes, beantwoord door {components} componenten, gevolgd de code in",
-    "zoomWords": "{routes} routes in {resources} resources",
-    "searchWords": {
-      "one": "{count} route komt overeen",
-      "other": "{count} routes komen overeen"
-    },
-    "untraced": {
-      "one": "{count} route niet gevolgd",
-      "other": "{count} routes niet gevolgd"
-    },
-    "untracedTitle": "Routes waarvan de handler niet als functie is gevonden; ze staan alleen op de API-verdieping",
-    "stackTitle": "Hoe de API de code in stroomt",
-    "stackAria": "De API-stapel voor {count} routes: de componenten die ze passeren, de data die ze raken en de systemen die ze aanroepen",
     "pathTitle": "Door de code",
     "reachedFromRoutes": {
       "one": "Bereikt vanuit {count} route",
       "other": "Bereikt vanuit {count} routes"
-    },
-    "foldedText": "De kleinere blokken op de verdieping {floor}, samengevouwen om het beeld leesbaar te houden.",
-    "sharedNote": "De meeste routes gaan door deze code, dus staat ze in de marge: de stapel volgt routes erin, maar er niet doorheen.",
-    "floor": "Verdieping",
-    "resourcesTitle": {
-      "one": "{count} resource",
-      "other": "{count} resources"
-    },
-    "openArea": "Open de resources",
-    "comesFrom": "Komt van",
-    "goesTo": "Gaat naar",
-    "classesTitle": "Bereikte klassen",
-    "partRoutesTitle": "Routes die het bereiken",
-    "andMore": "en nog {count}",
-    "passingRoutes": {
-      "one": "{count} route gaat erdoor",
-      "other": "{count} routes gaan erdoor"
     },
     "systemsTitle": "Systemen die de code aanroept",
     "unresolvedKind": "{kind}, adres niet gevolgd"
@@ -141,51 +97,234 @@
     "retry": "retry",
     "circuit_breaker": "circuit breaker"
   },
-  "stackFigure": {
-    "floorApi": "API",
-    "floorNear": "Eerst aangeroepen",
-    "floorMid": "Twee aanroepen diep",
-    "floorDeep": "Dieper",
+  "routeList": {
+    "showAll": "Toon alle {count}"
+  },
+  "trace": {
+    "shared": "gedeeld",
+    "sharedTitle": "De meeste routes bereiken deze code, dus hij staat er maar wordt niet gevolgd",
+    "writes": "wijzigt {name}",
+    "reads": "leest {name}",
+    "calls": "roept {name} aan",
+    "onlyEnds": "Alleen paden naar data en systemen",
+    "everyCall": "Elke aanroep ({count})",
+    "notFollowed": "De handler is niet als functie gevonden, dus zijn aanroepen zijn niet gevolgd.",
+    "noEnds": "Geen aanroep van deze route bereikt een tabel of een ander systeem.",
+    "cut": "De eerste {count} aanroepen; de rest is weggelaten.",
+    "followed": "{resolved} van {sites} aanroepplekken gevolgd",
+    "mayChange": "wijzigt mogelijk {name}",
+    "mayTitle": "zijn klasse houdt deze tabel vast; de naam van de methode zegt dat hij schrijft"
+  },
+  "catalog": {
+    "endpoints": "Endpoints",
+    "filter": {
+      "changes": {
+        "name": "Wijzigt data",
+        "title": "Zijn code schrijft, of schrijft mogelijk, naar minstens één tabel"
+      },
+      "noRule": {
+        "name": "Geen toegangsregel",
+        "title": "Niets in de code zegt wie hem mag aanroepen"
+      },
+      "open": {
+        "name": "Iedereen mag aanroepen",
+        "title": "Zijn regel laat anonieme aanroepers toe"
+      },
+      "calls": {
+        "name": "Roept ander systeem aan",
+        "title": "Zijn code roept een systeem buiten deze workspace aan"
+      },
+      "noTimeout": {
+        "name": "Geen time-out",
+        "title": "Hij wacht op een ander systeem zonder time-out of circuit breaker bij de aanroep"
+      },
+      "undocumented": {
+        "name": "Niet in een contract",
+        "title": "Geen OpenAPI-contract beschrijft hem"
+      },
+      "notFollowed": {
+        "name": "Niet gevolgd",
+        "title": "De handler is niet als functie gevonden, dus wat hij doet is onbekend"
+      }
+    },
+    "shown": {
+      "one": "{count} van {total} endpoints",
+      "other": "{count} van {total} endpoints"
+    },
+    "groups": {
+      "one": "{endpoints} endpoints in {count} klasse",
+      "other": "{endpoints} endpoints in {count} klassen"
+    },
+    "expandAll": "Alles uitklappen",
+    "collapseAll": "Alles inklappen",
+    "whoMayCall": "Wie mag aanroepen",
+    "changes": "Wijzigt",
+    "calls": "Roept aan",
+    "reads": "Leest",
+    "noMatch": "Geen endpoint past. Wis de zoekopdracht of een filter.",
+    "readsOnly": "leest alleen",
+    "notFollowedShort": "niet gevolgd",
+    "contractShort": {
+      "spec": "in spec",
+      "generated": "geannoteerd",
+      "missing": "ontbreekt",
+      "none": "—"
+    },
+    "copied": "Gekopieerd",
+    "copyPath": "Kopieer pad",
+    "copyMarkdown": "Kopieer als Markdown",
+    "copyMarkdownTitle": "Het endpoint als Markdown-sectie, voor een rapport of een ticket",
+    "parameters": "Parameters",
+    "operation": "Operatie",
+    "changesNone": "Zijn code schrijft naar geen gelezen tabel.",
+    "noTimeout": "geen time-out",
+    "none": "geen",
+    "inventoryTitle": "Inventaris HTTP-endpoints",
+    "class": "Klasse",
+    "accessRule": "Toegangsregel",
+    "accessKind": {
+      "rule": "Een rol of recht",
+      "signedIn": "Ingelogd",
+      "open": "Iedereen",
+      "other": "Een andere regel",
+      "none": "De code zegt niets"
+    },
+    "noTimeoutColumn": "Wacht zonder time-out",
+    "followedColumn": "Code gevolgd",
+    "yes": "ja",
+    "no": "nee",
+    "changesNote": "Tabellen waarnaar de eigen code van het endpoint schrijft; gedeelde code die de meeste endpoints bereiken telt niet mee.",
+    "followedNote": "nee: de handler is niet als functie gevonden, dus zijn wijzigingen en aanroepen zijn onbekend, niet nul.",
+    "mayChange": "Wijzigt mogelijk",
+    "mayShort": "mogelijk: {names}",
+    "mayChangeTitle": "Een service die hij aanroept houdt deze tabellen vast en de naam van de methode zegt dat hij schrijft, maar de code zegt niet welke hij wijzigt.",
+    "checked": {
+      "one": "{count} aangevinkt",
+      "other": "{count} aangevinkt"
+    },
+    "uncheck": "Alles uitvinken",
+    "layersTitle": "Toon of verberg hoe de endpoints door de lagen gaan",
+    "hideLayers": "Verberg lagen",
+    "showLayers": "Toon lagen",
+    "checkAll": "Vink elk getoond endpoint aan",
+    "checkGroup": "Vink elk endpoint van {name} aan",
+    "checkOne": "Vink {path} aan"
+  },
+  "search": {
+    "placeholder": "Zoek endpoints: woorden, een URL, een methode, een tabel, of een controle zoals Geen time-out",
+    "more": "Meer woorden, een URL of een methode…",
+    "clear": "Wis de zoekopdracht",
+    "removeToken": "Verwijder",
+    "endpoints": {
+      "one": "{count} endpoint",
+      "other": "{count} endpoints"
+    },
+    "suggestHint": "Enter of Tab kiest · Esc wist · ↓ naar de resultaten",
+    "try": "Probeer",
+    "kind": {
+      "method": "methode",
+      "table": "tabel",
+      "system": "systeem",
+      "class": "klasse",
+      "access": "toegang",
+      "filter": "controle"
+    },
+    "group": {
+      "checks": "Controles",
+      "methods": "Methodes",
+      "named": "Namen"
+    },
+    "facetHint": "Kies om te verfijnen · typ woorden of plak een URL · Enter gaat naar de resultaten"
+  },
+  "descent": {
+    "heading": {
+      "checked": {
+        "one": "Hoe het {count} aangevinkte endpoint door de lagen gaat",
+        "other": "Hoe de {count} aangevinkte endpoints door de lagen gaan"
+      },
+      "shown": {
+        "one": "Hoe het {count} gevonden endpoint door de lagen gaat",
+        "other": "Hoe de {count} gevonden endpoints door de lagen gaan"
+      },
+      "all": {
+        "one": "Hoe het {count} endpoint door de lagen gaat",
+        "other": "Hoe alle {count} endpoints door de lagen gaan"
+      }
+    },
+    "legend": {
+      "call": "aanroep",
+      "up": "aanroep omhoog",
+      "write": "wijzigt",
+      "may": "wijzigt mogelijk",
+      "read": "leest",
+      "out": "roept extern aan"
+    },
+    "empty": "Niets te tekenen: vink endpoints aan in de lijst, of zoek er een paar.",
+    "floorRoutes": "Endpoints",
     "floorData": "Data",
-    "floorOutside": "Buiten",
-    "hintApi": "beantwoordt de routes",
-    "hintNear": "de handlers roepen het aan",
-    "hintMid": "meestal twee aanroepen diep",
-    "hintDeep": "drie of meer aanroepen diep",
-    "hintData": "geraakte tabellen, per domein",
-    "hintOutside": "aangeroepen systemen",
-    "shared": "Door de meeste routes",
+    "floorOutside": "Andere systemen",
+    "otherLane": "Ongeclassificeerd",
+    "subRoutes": {
+      "one": "{count} endpoint",
+      "other": "{count} endpoints"
+    },
+    "subClasses": {
+      "one": "{count} klasse",
+      "other": "{count} klassen"
+    },
+    "subTables": {
+      "one": "{count} tabel",
+      "other": "{count} tabellen"
+    },
+    "subSystems": {
+      "one": "{count} systeem",
+      "other": "{count} systemen"
+    },
     "more": {
       "one": "+{count} meer",
       "other": "+{count} meer"
     },
-    "legendCode": "Code",
-    "legendData": "Data",
-    "legendOutside": "Aangeroepen systemen",
-    "noteBands": "Een band is de routes die van het ene blok naar het volgende gaan, zo breed als hun aandeel in wat het blok verlaat of binnenkomt.",
-    "noteFloors": "Een component staat op de verdieping van hoeveel aanroepen vanaf de handler het meestal wordt bereikt.",
-    "noteShared": "Code waar de meeste routes doorheen gaan staat in de marge en wordt gevolgd tot erin, niet erdoorheen.",
-    "boxRoutes": "{count} routes gaan erdoor · {share} van de API",
-    "boxLit": "{count} daarvan gekozen",
-    "boxTables": {
-      "one": "{count} tabel",
-      "other": "{count} tabellen"
+    "moreTitle": {
+      "one": "Nog {count}, waar minder endpoints doorheen gaan",
+      "other": "Nog {count}, waar minder endpoints doorheen gaan"
     },
-    "boxClasses": {
-      "one": "{count} klasse",
-      "other": "{count} klassen"
+    "sharedTitle": "De meeste endpoints bereiken deze code; getoond, niet verder gevolgd",
+    "linkTitle": {
+      "one": "{from} → {to}: {kind}, {count} endpoint",
+      "other": "{from} → {to}: {kind}, {count} endpoints"
     },
-    "sharedTip": "De meeste routes komen hier; erin gevolgd, niet erdoorheen",
-    "bandRoutes": {
-      "one": "{count} route",
-      "other": "{count} routes"
+    "note": "Verdiepingen zoals de Units-weergave de lagen van het framework stapelt; de endpoints bovenaan, de tabellen en andere systemen onderaan. {count} endpoints getekend.",
+    "folded": "Hierin samengevoegd",
+    "through": {
+      "one": "{count} endpoint gaat erdoor",
+      "other": "{count} endpoints gaan erdoor"
     },
-    "sharedCount": {
-      "one": "+{count} door de meeste",
-      "other": "+{count} door de meeste"
-    }
-  },
-  "routeList": {
-    "showAll": "Toon alle {count}"
+    "kindTable": "Tabel",
+    "copyName": "Naam kopiëren",
+    "findUsing": "Zoek endpoints die het gebruiken",
+    "drawnStat": "van de getekende endpoints",
+    "allStat": {
+      "one": "endpoint in totaal bereikt het",
+      "other": "endpoints in totaal bereiken het"
+    },
+    "allTableStat": {
+      "one": "endpoint in totaal gebruikt het",
+      "other": "endpoints in totaal gebruiken het"
+    },
+    "tableUse": "{changes} wijzigen het, {may} wijzigen het misschien, {reads} lezen het alleen",
+    "tickAll": {
+      "one": "Vink het aan en teken het",
+      "other": "Vink alle {count} aan en teken ze"
+    },
+    "runs": {
+      "one": "Methode die de endpoints uitvoeren",
+      "other": "Methodes die de endpoints uitvoeren ({count})"
+    },
+    "calledBy": "Aangeroepen door",
+    "usedBy": "Gebruikt door",
+    "callsTo": "Roept aan",
+    "callsNothing": "Roept niets verder aan dat gevolgd kon worden.",
+    "touches": "Eigen data en aanroepen naar buiten",
+    "upTag": "omhoog door de lagen"
   }
 }
