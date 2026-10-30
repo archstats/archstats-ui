@@ -10,7 +10,9 @@ import (
 	"github.com/archstats/archstats-ui/app"
 	"github.com/archstats/archstats-ui/app/ask"
 	"github.com/archstats/archstats-ui/app/clone"
+	"github.com/archstats/archstats-ui/app/diag"
 	"github.com/archstats/archstats-ui/app/query"
+	"github.com/archstats/archstats-ui/app/safe"
 	"github.com/archstats/archstats-ui/app/scan"
 	"github.com/archstats/archstats-ui/app/snapshot"
 	"github.com/archstats/archstats-ui/app/store"
@@ -30,6 +32,12 @@ var assets embed.FS
 var version = "dev"
 
 func main() {
+	// A scan runs in a child process started from this binary (app/scan/worker.go).
+	if scan.IsWorker(os.Args[1:]) {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		os.Exit(scan.RunWorker(os.Stdin, os.Stdout))
+	}
+
 	// Headless entry points used by the release pipeline to verify the
 	// packaged binary on every OS — handled before any window/webview init.
 	for _, arg := range os.Args[1:] {
@@ -55,6 +63,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("resolving app data dir: %v", err)
 	}
+	if f, err := diag.Setup(root); err != nil {
+		log.Printf("opening the log file: %v", err)
+	} else {
+		defer f.Close()
+	}
 	st, err := store.Open(root)
 	if err != nil {
 		log.Fatalf("opening registry at %s: %v", root, err)
@@ -72,16 +85,21 @@ func main() {
 
 	// Scans taken before the registry recorded identities get theirs read
 	// from their snapshots, once, off the startup path.
-	go func() {
+	safe.Go("reading scan identities", func() {
 		if n, err := snapshot.FillMissing(st); err != nil {
 			log.Printf("reading scan identities: %v", err)
 		} else if n > 0 {
 			log.Printf("read the identity of %d older scan(s)", n)
 		}
-	}()
+	})
 
 	scan.SweepBackfill(st)
 	scanSvc := scan.NewService(st)
+	if exe, err := os.Executable(); err == nil {
+		scanSvc.SetWorker(exe)
+	} else {
+		log.Printf("scans run in the app's process: %v", err)
+	}
 	cloneSvc := clone.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
@@ -90,10 +108,15 @@ func main() {
 	changesSvc := app.NewChangesService(st, querySvc)
 	release := func(scanID string) { changesSvc.ForgetScan(scanID); querySvc.Release(scanID) }
 	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
-	scanSvc.SetOnDone(func(scanID string) { go changesSvc.ComputeReadings(scanID) })
+	scanSvc.SetOnDone(func(scanID string) {
+		safe.Go("computing readings", func() { changesSvc.ComputeReadings(scanID) })
+	})
 
 	askSvc := ask.NewService(st)
-	appSvc := app.NewAppService(version)
+	watchdog := diag.NewWatchdog()
+	stopWatchdog := make(chan struct{})
+	defer close(stopWatchdog)
+	appSvc := app.NewAppService(version, watchdog, diag.LogPath(root))
 	if wd, err := os.Getwd(); err == nil {
 		appSvc.QueueSnapshots(os.Args[1:], wd)
 	}
@@ -133,6 +156,10 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			appCtx = ctx
+			// Reload keeps the page's address, so the window comes back on the view it was showing.
+			safe.Go("watching the window", func() {
+				watchdog.Run(stopWatchdog, func() { runtime.WindowReload(ctx) })
+			})
 			scanSvc.SetEmitter(func(event string, data ...any) {
 				runtime.EventsEmit(ctx, event, data...)
 			})

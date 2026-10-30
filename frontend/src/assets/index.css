@@ -460,13 +460,18 @@ textarea.nb-li { padding-left: 1.4em; }
     @apply text-xs font-semibold uppercase tracking-wider text-neutral-500;
   }
 
+  /* A menu is as wide as its longest item, so a label never wraps inside a
+     fixed-height row; a w-* on a menu is a floor (min-w-*), not a width.
+     Names that can run long truncate against the cap instead. */
   .ui-menu {
     @apply rounded-lg p-1;
+    width: max-content;
+    max-width: min(22rem, calc(100vw - 1rem));
     background: rgb(var(--c-surface));
     box-shadow: var(--shadow-float);
   }
   .ui-menu-item {
-    @apply flex h-7 w-full items-center gap-2 rounded px-2 text-left text-base text-neutral-800 transition-colors;
+    @apply flex h-7 w-full items-center gap-2 whitespace-nowrap rounded px-2 text-left text-base text-neutral-800 transition-colors;
   }
   .ui-menu-item:hover,
   .ui-menu-item:focus-visible {

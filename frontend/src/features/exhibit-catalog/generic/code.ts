@@ -6,6 +6,7 @@ import { candidates } from "~/features/snapshot/names"
 import { exhibit, type Absent, type FactDraft } from "~/features/exhibits/types"
 import { s } from "~/features/exhibits/schema"
 import { n, num, plural, sq } from "~/features/exhibits/words"
+import { ROLE_LABELS, type FileRole } from "~/features/snapshot/languages"
 import { t } from "~/shared/i18n"
 
 // ── Lines of a file ──────────────────────────────────────────────────────
@@ -59,7 +60,8 @@ export const excerpt = exhibit<ExcerptData>()({
         height: d => Math.min(390, 40 + d.lines.length * 18),
     },
 
-    open: (_p, d) => (d ? { route: filePath(d.path, "source"), label: t("exhibit-catalog.code.openSource") } : null),
+    // Opens at the lines the exhibit shows, not at the top of the file.
+    open: (_p, d) => (d ? { route: d.lines.length ? `${filePath(d.path, "source")}#L${d.from}-L${d.from + d.lines.length - 1}` : filePath(d.path, "source"), label: t("exhibit-catalog.code.openSource") } : null),
 
     samples: snap => {
         const f = [...snap.fileComponent().keys()].find(x => /\.(java|ts|py|go|kt|js|vue)$/.test(x))
@@ -144,7 +146,7 @@ export const files = exhibit<FilesData>()({
 
     elements: d => d.rows.map(r => ({ id: `row:${r.file}`, label: r.file })),
 
-    table: d => ({ columns: [{ id: "file", label: t("exhibit-catalog.code.file") }, { id: "lines", label: t("exhibit-catalog.code.lines3"), numeric: true }, { id: "commits", label: t("exhibit-catalog.code.commits"), numeric: true }, { id: "health", label: t("exhibit-catalog.code.health"), numeric: true }, { id: "role", label: t("exhibit-catalog.code.role") }], rows: d.rows, total: d.total }),
+    table: d => ({ columns: [{ id: "file", label: t("exhibit-catalog.code.file") }, { id: "lines", label: t("exhibit-catalog.code.lines3"), numeric: true }, { id: "commits", label: t("exhibit-catalog.code.commits"), numeric: true }, { id: "health", label: t("exhibit-catalog.code.health"), numeric: true }, { id: "role", label: t("exhibit-catalog.code.role") }], rows: d.rows.map(r => ({ ...r, role: ROLE_LABELS[r.role as FileRole] ?? r.role })), total: d.total }),
 
     open: (_p, d) => (d ? { route: componentPath(d.component, "inside"), label: t("exhibit-catalog.code.openInside") } : null),
 

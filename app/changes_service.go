@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"log"
 	"sort"
 	"sync"
@@ -28,7 +29,9 @@ func NewChangesService(st *store.Store, q *query.Service) *ChangesService {
 }
 
 // Compare returns what changed from the base scan to the head scan.
-func (c *ChangesService) Compare(baseID, headID string) (*changes.ChangeSet, error) {
+func (c *ChangesService) Compare(baseID, headID string) (_ *changes.ChangeSet, callErr error) {
+	defer safe.Guard("ChangesService.Compare", &callErr)
+
 	if baseID == "" || headID == "" {
 		return nil, fmt.Errorf("two snapshots are needed")
 	}
@@ -51,7 +54,9 @@ type TrendPoint struct {
 
 // Readings returns every complete scan's readings, computing (and caching)
 // the ones not read before. Snapshots that cannot be opened say why.
-func (c *ChangesService) Readings(workspaceID string) ([]TrendPoint, error) {
+func (c *ChangesService) Readings(workspaceID string) (_ []TrendPoint, callErr error) {
+	defer safe.Guard("ChangesService.Readings", &callErr)
+
 	scans, err := c.store.ListScans(workspaceID)
 	if err != nil {
 		return nil, err
@@ -98,13 +103,17 @@ func (c *ChangesService) ensureReadings(scanID string) (map[string]*float64, err
 }
 
 // ReadingsOf returns one scan's readings (computed once, then cached).
-func (c *ChangesService) ReadingsOf(scanID string) (map[string]*float64, error) {
+func (c *ChangesService) ReadingsOf(scanID string) (_ map[string]*float64, callErr error) {
+	defer safe.Guard("ChangesService.ReadingsOf", &callErr)
+
 	return c.ensureReadings(scanID)
 }
 
 // ComputeReadings is the post-scan hook: a new snapshot's readings are ready
 // before anyone opens Over time.
 func (c *ChangesService) ComputeReadings(scanID string) {
+	defer safe.Guard("ChangesService.ComputeReadings", nil)
+
 	if _, err := c.ensureReadings(scanID); err != nil {
 		log.Printf("readings of %s: %v", scanID, err)
 	}
@@ -112,5 +121,7 @@ func (c *ChangesService) ComputeReadings(scanID string) {
 
 // ForgetScan drops what is cached about a deleted scan.
 func (c *ChangesService) ForgetScan(scanID string) {
+	defer safe.Guard("ChangesService.ForgetScan", nil)
+
 	c.changes.Forget(scanID)
 }

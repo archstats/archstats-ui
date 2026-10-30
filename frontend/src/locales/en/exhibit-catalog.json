@@ -101,7 +101,9 @@
     "snapshotHasNoGit": "This snapshot has no git history.",
     "codebase2": "the codebase",
     "topLevelAreasLines": "Top-level areas (lines)",
-    "largestComponentsLines": "Largest components (lines)"
+    "largestComponentsLines": "Largest components (lines)",
+    "role": "Role",
+    "lines": "Lines"
   },
   "recipe": {
     "verifiedQueryCookbookRun": "A verified query from the cookbook, run on this snapshot, as a table or bars.",

@@ -402,5 +402,9 @@
     "snapshotRecordsNoBuild": "This snapshot records no build modules; scan again to read the manifests.",
     "noBuildModulesObserved": "No build modules; observed structure only.",
     "declaresOneModuleSo": "Declares one module ({modulesName}), so there is nothing to divide."
+  },
+  "suggestWorker": {
+    "stopped": "The suggester stopped unexpectedly.",
+    "noSnapshot": "The suggester has no snapshot to work on."
   }
 }

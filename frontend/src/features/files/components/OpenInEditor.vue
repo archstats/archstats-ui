@@ -12,7 +12,7 @@
     </button>
     <template v-if="menuOpen">
       <div class="fixed inset-0 z-40 cursor-default" @click.stop="menuOpen = false"></div>
-      <div class="ui-menu absolute right-0 top-full z-50 mt-1 flex w-60 flex-col animate-in" role="menu" @click.stop>
+      <div class="ui-menu absolute right-0 top-full z-50 mt-1 flex min-w-60 flex-col animate-in" role="menu" @click.stop>
         <p v-if="justLaunched" class="px-2 pb-1 pt-1.5 text-sm text-neutral-500">{{ t('files.openInEditor.didnTOpenChoose') }}</p>
         <p v-else class="ui-menu-title">{{ t('files.openInEditor.openFiles') }}</p>
         <button v-for="e in EDITORS" :key="e.id" type="button" class="ui-menu-item" role="menuitemradio" :aria-checked="current === e.id" @click="choose(e.id)">

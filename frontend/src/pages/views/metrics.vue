@@ -16,21 +16,27 @@
       </button>
     </template>
 
+    <!-- Two named choices: what one row is, then how the rows are drawn. Directories are only an outline, so they offer no drawing. -->
     <template #switches>
-      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.grain')">
-        <button type="button" :aria-pressed="grain === 'components'" @click="grain = 'components'">{{ t('pages.metrics.components') }}</button>
-        <button type="button" :aria-pressed="grain === 'files'" @click="grain = 'files'">{{ t('pages.metrics.files') }}</button>
-        <button type="button" :aria-pressed="grain === 'directories'" :title="t('pages.metrics.outlineDirectoryEveryNumber')" @click="grain = 'directories'">{{ t('pages.metrics.directories') }}</button>
+      <div class="flex shrink-0 items-center gap-2">
+        <span class="ui-label">{{ t('pages.metrics.grain') }}</span>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.grain')">
+          <button type="button" :aria-pressed="grain === 'components'" @click="grain = 'components'">{{ t('pages.metrics.components') }}</button>
+          <button type="button" :aria-pressed="grain === 'files'" @click="grain = 'files'">{{ t('pages.metrics.files') }}</button>
+          <button type="button" :aria-pressed="grain === 'directories'" :title="t('pages.metrics.outlineDirectoryEveryNumber')" @click="grain = 'directories'">{{ t('pages.metrics.directories') }}</button>
+        </div>
       </div>
-      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.view')">
-        <button type="button" :aria-pressed="view === 'summary' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.whatStandsOutWhere')" @click="view = 'summary'">{{ t('pages.metrics.summary') }}</button>
-        <button type="button" :aria-pressed="view === 'table' || grain === 'directories'" @click="view = 'table'">{{ t('pages.metrics.table') }}</button>
-        <button type="button" :aria-pressed="view === 'plot' && grain !== 'directories'" :disabled="grain === 'directories'" :title="grain === 'directories' ? t('pages.metrics.directoriesHaveNoPlot') : undefined" @click="view = 'plot'">{{ t('pages.metrics.plot') }}</button>
-      </div>
-      <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.overviewPrototypes')">
-        <button type="button" :aria-pressed="view === 'matrix' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryMetricPair')" @click="view = 'matrix'">{{ t('pages.metrics.matrix') }}</button>
-        <button type="button" :aria-pressed="view === 'strips' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryMetricStrip')" @click="view = 'strips'">{{ t('pages.metrics.strips') }}</button>
-        <button type="button" :aria-pressed="view === 'profiles' && grain !== 'directories'" :disabled="grain === 'directories'" :title="t('pages.metrics.prototypeEveryRowOne')" @click="view = 'profiles'">{{ t('pages.metrics.profiles') }}</button>
+      <div v-if="grain !== 'directories'" class="flex shrink-0 items-center gap-2 pl-2">
+        <span class="ui-label">{{ t('pages.metrics.view') }}</span>
+        <div class="ui-segmented" role="group" :aria-label="t('pages.metrics.view')">
+          <button type="button" :aria-pressed="view === 'summary'" :title="t('pages.metrics.whatStandsOutWhere')" @click="view = 'summary'">{{ t('pages.metrics.summary') }}</button>
+          <button type="button" :aria-pressed="view === 'table'" @click="view = 'table'">{{ t('pages.metrics.table') }}</button>
+          <button type="button" :aria-pressed="view === 'plot'" @click="view = 'plot'">{{ t('pages.metrics.plot') }}</button>
+          <span class="mx-1 h-3.5 w-px shrink-0 bg-neutral-300" aria-hidden="true"></span>
+          <button type="button" :aria-pressed="view === 'matrix'" :title="t('pages.metrics.prototypeEveryMetricPair')" @click="view = 'matrix'">{{ t('pages.metrics.matrix') }}</button>
+          <button type="button" :aria-pressed="view === 'strips'" :title="t('pages.metrics.prototypeEveryMetricStrip')" @click="view = 'strips'">{{ t('pages.metrics.strips') }}</button>
+          <button type="button" :aria-pressed="view === 'profiles'" :title="t('pages.metrics.prototypeEveryRowOne')" @click="view = 'profiles'">{{ t('pages.metrics.profiles') }}</button>
+        </div>
       </div>
     </template>
 
@@ -408,10 +414,10 @@ const HIDDEN_COLUMNS = new Set(["report_id", "report_timestamp", "timestamp", "n
 const filesRequested = ref(grain.value === "files");
 watch(grain, (g) => { if (g === "files") filesRequested.value = true; });
 
-const filesQuery = useAsyncQuery<{ rows: Row[]; columns: string[] }>(async () => {
+const filesQuery = useAsyncQuery<{ rows: Row[]; columns: string[] }>(async (signal) => {
   if (!filesRequested.value || !store.hasView("files")) return { rows: [], columns: [] };
-  const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files') ORDER BY 1");
-  const rows = await store.query<Row>("SELECT * FROM files");
+  const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files') ORDER BY 1", { signal });
+  const rows = await store.query<Row>("SELECT * FROM files", { signal });
   return { rows, columns: cols.map((c) => c.name).filter((c) => !HIDDEN_COLUMNS.has(c)) };
 }, [filesRequested], { initial: { rows: [], columns: [] } });
 

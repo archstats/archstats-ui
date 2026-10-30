@@ -16,7 +16,7 @@ import {
     SetBaseline,
     WorkingCopy,
 } from "wailsjs/go/app/WorkspaceService";
-import { Start, StartAt } from "wailsjs/go/app/ScanService";
+import { Cancel as CancelScan, Start, StartAt } from "wailsjs/go/app/ScanService";
 import type { app, store } from "wailsjs/go/models";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useGroupsStore } from "~/features/groups/groups.store";
@@ -24,6 +24,9 @@ import { useAuthorsStore } from "~/features/git/authors.store";
 import { useLensStore } from "~/features/groups/lens.store";
 import { useDraftStore } from "~/features/lens-builder/draft.store";
 import { useScopeStore } from "~/features/groups/scope.store";
+
+/** The error of a scan someone stopped (scan.ErrCancelled in Go). */
+const SCAN_CANCELLED = "cancelled";
 import { scanEstimate, shouldOpenResult, type ScanWatch } from "./scanFlow";
 
 // "updating" brings a clone the app made up to its upstream first;
@@ -228,8 +231,9 @@ export const useWorkspacesStore = defineStore("workspaces", {
             EventsOn("scan:failed", async (e: ScanEvent) => {
                 const watch = this.takeProgress(e);
                 // A failed rescan is reported by its own row and the backfill
-                // queue; only the working copy's failure needs the rail.
-                if (!watch?.ref) this.failed = { workspaceId: e.workspaceId, scanId: e.scanId, error: e.error };
+                // queue; only the working copy's failure needs the rail. A
+                // scan someone stopped did what they asked.
+                if (!watch?.ref && e.error !== SCAN_CANCELLED) this.failed = { workspaceId: e.workspaceId, scanId: e.scanId, error: e.error };
                 await this.refreshCounts();
                 await this.refreshScansIfActive(e.workspaceId);
             });
@@ -483,6 +487,17 @@ export const useWorkspacesStore = defineStore("workspaces", {
          * Scans the workspace as it was at one commit, in a clone; the
          * checkout is untouched. Tracked like any scan.
          */
+        /** Stops the workspace's running scan; it ends as a failed scan reading "cancelled". */
+        async cancelScan(workspaceId?: string) {
+            const id = workspaceId ?? this.activeWorkspaceId;
+            if (!id || !this.progress[id]) return;
+            try {
+                await CancelScan(id);
+            } catch (e) {
+                this.error = errorText(e);
+            }
+        },
+
         async startScanAt(rev: string) {
             const ws = this.active;
             if (!ws || this.progress[ws.id]) return;

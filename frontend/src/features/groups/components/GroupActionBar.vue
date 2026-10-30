@@ -80,7 +80,7 @@
             <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
           </button>
           <div v-if="addOpen" class="fixed inset-0 z-40" @click="addOpen = false"></div>
-          <div v-if="addOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 flex w-60 -translate-x-1/2 flex-col animate-in" role="menu">
+          <div v-if="addOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 flex min-w-60 -translate-x-1/2 flex-col animate-in" role="menu">
             <div class="max-h-64 overflow-y-auto">
               <template v-for="bucket in groupsStore.groupsByDimension" :key="bucket.dimension">
                 <div v-if="groupsStore.groupsByDimension.length > 1" class="ui-menu-title">{{ bucket.dimension }}</div>
@@ -109,7 +109,7 @@
               <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
             </button>
             <div v-if="growOpen" class="fixed inset-0 z-40" @click="growOpen = false"></div>
-            <div v-if="growOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 animate-in" role="menu">
+            <div v-if="growOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 min-w-64 -translate-x-1/2 animate-in" role="menu">
               <button v-for="g in growOptions" :key="g.id" type="button" class="ui-menu-item" role="menuitem" :disabled="g.adds === 0" @click="grow(g.id)">
                 <span class="flex-1">{{ g.label }}</span>
                 <span class="font-mono text-xs text-neutral-400">{{ g.adds > 0 ? `+${g.adds}` : "none" }}</span>
@@ -130,7 +130,7 @@
               <Icon icon="chevron-right" :size="12" class="-rotate-90 text-neutral-400"/>
             </button>
             <div v-if="focusOpen" class="fixed inset-0 z-40" @click="focusOpen = false"></div>
-            <div v-if="focusOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 animate-in" role="menu">
+            <div v-if="focusOpen" class="ui-menu absolute bottom-full left-1/2 z-50 mb-2 min-w-64 -translate-x-1/2 animate-in" role="menu">
               <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('only')">{{ t('groups.groupActionBar.onlySelection') }}</button>
               <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('around')">{{ t('groups.groupActionBar.selectionNeighbours') }}</button>
               <button type="button" class="ui-menu-item" role="menuitem" @click="focusOn('dependents')">{{ t('groups.groupActionBar.selectionWhatUses') }}</button>

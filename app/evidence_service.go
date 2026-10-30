@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,9 @@ func NewEvidenceService(st *store.Store) *EvidenceService {
 	return &EvidenceService{store: st}
 }
 
-func (e *EvidenceService) List(workspaceID string) ([]*store.Pin, error) {
+func (e *EvidenceService) List(workspaceID string) (_ []*store.Pin, callErr error) {
+	defer safe.Guard("EvidenceService.List", &callErr)
+
 	pins, err := e.store.Pins(workspaceID)
 	if pins == nil {
 		pins = []*store.Pin{}
@@ -33,7 +36,9 @@ func (e *EvidenceService) List(workspaceID string) ([]*store.Pin, error) {
 }
 
 // Upsert adds a pin (a new id is given when it has none) or updates its title, note or values.
-func (e *EvidenceService) Upsert(p store.Pin) (*store.Pin, error) {
+func (e *EvidenceService) Upsert(p store.Pin) (_ *store.Pin, callErr error) {
+	defer safe.Guard("EvidenceService.Upsert", &callErr)
+
 	if p.ID == "" {
 		p.ID = uuid.NewString()
 	}
@@ -43,11 +48,15 @@ func (e *EvidenceService) Upsert(p store.Pin) (*store.Pin, error) {
 	return &p, nil
 }
 
-func (e *EvidenceService) Reorder(workspaceID string, ids []string) error {
+func (e *EvidenceService) Reorder(workspaceID string, ids []string) (callErr error) {
+	defer safe.Guard("EvidenceService.Reorder", &callErr)
+
 	return e.store.ReorderPins(workspaceID, ids)
 }
 
-func (e *EvidenceService) Delete(id string) error {
+func (e *EvidenceService) Delete(id string) (callErr error) {
+	defer safe.Guard("EvidenceService.Delete", &callErr)
+
 	fig, err := e.store.DeletePin(id)
 	if err == nil && fig != "" && strings.HasPrefix(filepath.Clean(fig), e.dir()) {
 		_ = os.Remove(fig)
@@ -58,7 +67,9 @@ func (e *EvidenceService) Delete(id string) error {
 func (e *EvidenceService) dir() string { return filepath.Join(e.store.Root(), "evidence") }
 
 // SaveFigure writes a pin's PNG (base64) and returns its path.
-func (e *EvidenceService) SaveFigure(workspaceID, pinID, pngBase64 string) (string, error) {
+func (e *EvidenceService) SaveFigure(workspaceID, pinID, pngBase64 string) (_ string, callErr error) {
+	defer safe.Guard("EvidenceService.SaveFigure", &callErr)
+
 	data, err := base64.StdEncoding.DecodeString(pngBase64)
 	if err != nil {
 		return "", fmt.Errorf("figure is not base64: %w", err)
@@ -72,7 +83,9 @@ func (e *EvidenceService) SaveFigure(workspaceID, pinID, pngBase64 string) (stri
 }
 
 // Figure reads a pin's PNG back as base64, for a report bundle; "" when it has none.
-func (e *EvidenceService) Figure(path string) (string, error) {
+func (e *EvidenceService) Figure(path string) (_ string, callErr error) {
+	defer safe.Guard("EvidenceService.Figure", &callErr)
+
 	if path == "" || !strings.HasPrefix(filepath.Clean(path), e.dir()) {
 		return "", nil
 	}
@@ -84,7 +97,9 @@ func (e *EvidenceService) Figure(path string) (string, error) {
 }
 
 // Reports lists a workspace's report notebooks, in their order.
-func (e *EvidenceService) Reports(workspaceID string) ([]*store.Report, error) {
+func (e *EvidenceService) Reports(workspaceID string) (_ []*store.Report, callErr error) {
+	defer safe.Guard("EvidenceService.Reports", &callErr)
+
 	rs, err := e.store.Reports(workspaceID)
 	if rs == nil {
 		rs = []*store.Report{}
@@ -93,7 +108,9 @@ func (e *EvidenceService) Reports(workspaceID string) ([]*store.Report, error) {
 }
 
 // SaveReport inserts a report (a new id when it has none) or saves its title and body.
-func (e *EvidenceService) SaveReport(r store.Report) (*store.Report, error) {
+func (e *EvidenceService) SaveReport(r store.Report) (_ *store.Report, callErr error) {
+	defer safe.Guard("EvidenceService.SaveReport", &callErr)
+
 	if r.ID == "" {
 		r.ID = uuid.NewString()
 	}
@@ -103,17 +120,23 @@ func (e *EvidenceService) SaveReport(r store.Report) (*store.Report, error) {
 	return &r, nil
 }
 
-func (e *EvidenceService) ReorderReports(workspaceID string, ids []string) error {
+func (e *EvidenceService) ReorderReports(workspaceID string, ids []string) (callErr error) {
+	defer safe.Guard("EvidenceService.ReorderReports", &callErr)
+
 	return e.store.ReorderReports(workspaceID, ids)
 }
 
-func (e *EvidenceService) DeleteReport(id string) error {
+func (e *EvidenceService) DeleteReport(id string) (callErr error) {
+	defer safe.Guard("EvidenceService.DeleteReport", &callErr)
+
 	return e.store.DeleteReport(id)
 }
 
 // RenderPDF lays a report out as a PDF and returns it as base64, for the
 // files service to save where the user chooses.
-func (e *EvidenceService) RenderPDF(doc report.Doc) (string, error) {
+func (e *EvidenceService) RenderPDF(doc report.Doc) (_ string, callErr error) {
+	defer safe.Guard("EvidenceService.RenderPDF", &callErr)
+
 	out, err := report.Render(doc)
 	if err != nil {
 		return "", err
@@ -129,12 +152,17 @@ type PrintedPDF struct {
 
 // CanPrintPDF reports whether PrintPDF works here (macOS); elsewhere the
 // frontend asks RenderPDF to lay the report out instead.
-func (e *EvidenceService) CanPrintPDF() bool { return webprint.Supported() }
+func (e *EvidenceService) CanPrintPDF() bool {
+	defer safe.Guard("EvidenceService.CanPrintPDF", nil)
+	return webprint.Supported()
+}
 
 // PrintPDF prints the report the frontend has set out for print media, so the
 // PDF is the editor's own type: A4 or Letter, even 27 mm margins, 22 mm above
 // and 24 mm below the text, the footer stamped on every page.
-func (e *EvidenceService) PrintPDF(title, pageSize string) (*PrintedPDF, error) {
+func (e *EvidenceService) PrintPDF(title, pageSize string) (_ *PrintedPDF, callErr error) {
+	defer safe.Guard("EvidenceService.PrintPDF", &callErr)
+
 	w, h := 210.0, 297.0
 	if strings.EqualFold(pageSize, "Letter") {
 		w, h = 215.9, 279.4
@@ -153,7 +181,9 @@ func (e *EvidenceService) PrintPDF(title, pageSize string) (*PrintedPDF, error) 
 
 // OpenPDF writes a report's PDF to a temporary file and opens it in the
 // system's viewer, for reading it outside the app before saving.
-func (e *EvidenceService) OpenPDF(pdfBase64, name string) error {
+func (e *EvidenceService) OpenPDF(pdfBase64, name string) (callErr error) {
+	defer safe.Guard("EvidenceService.OpenPDF", &callErr)
+
 	data, err := base64.StdEncoding.DecodeString(pdfBase64)
 	if err != nil {
 		return fmt.Errorf("the PDF is not base64: %w", err)

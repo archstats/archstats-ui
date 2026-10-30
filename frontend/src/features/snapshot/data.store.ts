@@ -1,4 +1,5 @@
 import {acceptHMRUpdate, defineStore} from 'pinia'
+import { markRaw } from "vue";
 import { roleOf } from "./fileRole";
 import { derivedMetric } from "./derivedMetrics";
 import type { FileRole } from "./languages";
@@ -14,7 +15,7 @@ import {
 
 import { localized, type Definition } from "./definition";
 import {StatNameResolver, getNiceStatName} from "./statNames";
-import {WailsDb} from "~/platform/db";
+import {WailsDb, isAbort, type QueryOptions} from "~/platform/db";
 import { STAGE_SCAN } from "~/platform/stage";
 import {AnalysisRevision} from "wailsjs/go/app/QueryService";
 
@@ -25,6 +26,15 @@ import {AnalysisRevision} from "wailsjs/go/app/QueryService";
 // reactive store state (_openScanId) — that string is the reactivity
 // trigger, never this object.
 const _db = new WailsDb();
+
+/** How many times loading a snapshot asks again for a read another open cancelled. */
+const LOAD_ATTEMPTS = 5;
+
+// The big arrays read from a snapshot (components, files, edges, cycles) are
+// held markRaw: a snapshot never changes once written, so no view needs a
+// row's fields to be reactive, and deep proxies over tens of thousands of
+// rows cost memory and time on every read. Assigning a new array is still
+// reactive, and that is the only change they ever see.
 
 
 export const useDataStore = defineStore('data', {
@@ -223,19 +233,16 @@ export const useDataStore = defineStore('data', {
         },
     },
     actions: {
-        async query<T = any>(qryString: string): Promise<T[]> {
-            console.debug("Executing query:", qryString)
-            if (this._openScanId === null) {
-                console.debug("No scan open in store. Returning empty list.")
-                return []
-            }
-            return _db.query<T>(qryString);
+        /** Runs SQL on the open snapshot. Pass a signal to cancel it in Go when its answer is no longer wanted. */
+        async query<T = any>(qryString: string, options?: QueryOptions): Promise<T[]> {
+            if (this._openScanId === null) return []
+            return _db.query<T>(qryString, options);
         },
 
         /** The same choke point, aimed at an earlier snapshot of the same workspace. */
-        async queryIn<T = any>(scanId: string, qryString: string): Promise<T[]> {
+        async queryIn<T = any>(scanId: string, qryString: string, options?: QueryOptions): Promise<T[]> {
             if (!scanId) return []
-            return _db.queryIn<T>(scanId, qryString);
+            return _db.queryIn<T>(scanId, qryString, options);
         },
 
         async getView<T = any>(viewName: string): Promise<T[]> {
@@ -269,9 +276,25 @@ export const useDataStore = defineStore('data', {
         },
 
         async _initializeState() {
+            // Go cancels every query on the open snapshot whenever any window
+            // opens one, this window's next openScan included. Each read below
+            // used to catch that like any other failure and keep an empty
+            // list, so a load that overlapped an open kept the components but
+            // lost the file index or the edges, and every focus came out empty.
+            // A cancelled read is asked again; only a real failure is empty.
+            const read = async <T>(sql: string): Promise<T[]> => {
+                for (let attempt = 1; ; attempt++) {
+                    try {
+                        return await this.query<T>(sql);
+                    } catch (e) {
+                        if (!isAbort(e) || attempt >= LOAD_ATTEMPTS) throw e;
+                    }
+                }
+            };
+
             // Populate viewNames
             // Views count: git_commits is a view over two tables from revision 4.
-            const viewResults = await this.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')");
+            const viewResults = await read<{ name: string }>("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')");
             this._viewNames = viewResults.map(x => x.name);
 
             // Which analysis wrote this snapshot, against the one this build runs.
@@ -281,7 +304,7 @@ export const useDataStore = defineStore('data', {
             try {
                 const info: Record<string, string> = {};
                 if (this._viewNames.includes("_snapshot")) {
-                    for (const r of await this.query<{ key: string; value: string }>("SELECT key, value FROM _snapshot")) {
+                    for (const r of await read<{ key: string; value: string }>("SELECT key, value FROM _snapshot")) {
                         if (!(r.key in info)) info[r.key] = String(r.value ?? "");
                     }
                 }
@@ -294,7 +317,7 @@ export const useDataStore = defineStore('data', {
             try {
                 const cols: Record<string, string[]> = {};
                 await Promise.all(this._viewNames.map(async (t) => {
-                    const rows = await this.query<{ name: string }>(`SELECT name FROM pragma_table_info('${t.replace(/'/g, "''")}')`);
+                    const rows = await read<{ name: string }>(`SELECT name FROM pragma_table_info('${t.replace(/'/g, "''")}')`);
                     cols[t] = rows.map(r => r.name);
                 }));
                 this._columns = cols;
@@ -307,7 +330,7 @@ export const useDataStore = defineStore('data', {
 
             // Populate definitions
             try {
-                const defRows = await this.getView<any>("definitions");
+                const defRows = await read<any>("SELECT * FROM definitions");
                 this._definitions = defRows.reduce((acc: Map<string, Definition>, def: any) => {
                     acc.set(def.id, localized({
                         id: def.id,
@@ -326,7 +349,7 @@ export const useDataStore = defineStore('data', {
 
             // Populate distinct component columns
             try {
-                const colRows = await this.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('components') order by 1");
+                const colRows = await read<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('components') order by 1");
                 this._distinctComponentColumns = colRows
                     .map(x => x.name)
                     .filter(x => !["report_id", "report_timestamp", "name", "connections", "timestamp"].includes(x));
@@ -336,22 +359,22 @@ export const useDataStore = defineStore('data', {
 
             // Populate allRawComponents
             try {
-                this._allRawComponents = await this.getView<RawComponent>("components");
+                this._allRawComponents = markRaw(await read<RawComponent>("SELECT * FROM components"));
             } catch {
                 this._allRawComponents = [];
             }
 
             // Populate the file -> component index
             try {
-                this._fileComponents = await this.query<{ name: string; component: string | null; role?: string | null }>(
-                    `SELECT name, component${this.hasColumn("files", "role") ? ", role" : ""} FROM files`);
+                this._fileComponents = markRaw(await read<{ name: string; component: string | null; role?: string | null }>(
+                    `SELECT name, component${this.hasColumn("files", "role") ? ", role" : ""} FROM files`));
             } catch {
                 this._fileComponents = [];
             }
 
             // Populate componentConnections
             try {
-                this._componentConnections = await this.query<RawComponentConnection>("SELECT * FROM component_connections_direct");
+                this._componentConnections = markRaw(await read<RawComponentConnection>("SELECT * FROM component_connections_direct"));
             } catch {
                 this._componentConnections = [];
             }
@@ -359,7 +382,7 @@ export const useDataStore = defineStore('data', {
             // Populate allCyclesExpanded
             try {
                 if (this._viewNames.includes('component_cycles_shortest')) {
-                    const rawCycles = await this.query<{ cycle: string, cycle_size: number, shared_commits: number }>(`
+                    const rawCycles = await read<{ cycle: string, cycle_size: number, shared_commits: number }>(`
                         SELECT DISTINCT c.cycle, c.cycle_size, COALESCE(g.shared_commits, 0) as shared_commits
                         FROM (SELECT DISTINCT cycle, cycle_size FROM component_cycles_shortest) c
                         LEFT JOIN git_component_cycles_shortest_shared_commits g ON c.cycle = g.cycle
@@ -367,7 +390,7 @@ export const useDataStore = defineStore('data', {
                     `);
 
                     const compIndex = this.allComponentsIndex;
-                    this._allCyclesExpanded = rawCycles.map((c, index) => {
+                    this._allCyclesExpanded = markRaw(rawCycles.map((c, index) => {
                         const path = c.cycle.split('->').map(s => s.trim())
                         const nodesInCycle = [...path]
                         if (nodesInCycle.length > 1 && nodesInCycle[nodesInCycle.length - 1] === nodesInCycle[0]) {
@@ -405,7 +428,7 @@ export const useDataStore = defineStore('data', {
                             sharedCommits: c.shared_commits,
                             severity: Math.round(severity * 10) / 10
                         }
-                    });
+                    }));
                 } else {
                     this._allCyclesExpanded = [];
                 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"path/filepath"
 
@@ -19,7 +20,9 @@ type StorageWorkspace struct {
 
 // StorageSummary lists every workspace's snapshots and what they take up:
 // the answer to "9.9 GB of scans, and which can go".
-func (w *WorkspaceService) StorageSummary() ([]StorageWorkspace, error) {
+func (w *WorkspaceService) StorageSummary() (_ []StorageWorkspace, callErr error) {
+	defer safe.Guard("WorkspaceService.StorageSummary", &callErr)
+
 	list, err := w.store.ListWorkspaces()
 	if err != nil {
 		return nil, err
@@ -45,7 +48,9 @@ func (w *WorkspaceService) StorageSummary() ([]StorageWorkspace, error) {
 // DeleteScans deletes several snapshots, closing any open handle on each
 // first (Windows will not delete an open file). It stops at the first
 // failure and says which scan it was.
-func (w *WorkspaceService) DeleteScans(ids []string) error {
+func (w *WorkspaceService) DeleteScans(ids []string) (callErr error) {
+	defer safe.Guard("WorkspaceService.DeleteScans", &callErr)
+
 	for _, id := range ids {
 		w.release(id)
 		if err := w.store.DeleteScan(id); err != nil {

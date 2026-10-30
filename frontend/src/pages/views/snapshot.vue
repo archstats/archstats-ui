@@ -292,13 +292,13 @@ const compositionLede = computed(() => {
 // ── Repositories ────────────────────────────────────────────────────────
 interface Repo { name: string; head: string; branch: string; headTime: string; dirty: number | null; shallow: boolean; commits: number | null; first: string; last: string }
 const { data: repos } = useAsyncQuery<Repo[]>(
-  async () => {
+  async (signal) => {
     if (!data.hasView("git_repos")) return [];
     const has = (c: string) => data.hasColumn("git_repos", c);
     const rows = await data.query<any>(`SELECT name, ${has("git__head_commit") ? "git__head_commit" : "NULL"} AS head, ${has("git__branch") ? "git__branch" : "NULL"} AS branch,
       ${has("git__head_time") ? "git__head_time" : "NULL"} AS head_time, ${has("git__dirty_files") ? "git__dirty_files" : "NULL"} AS dirty,
-      ${has("git__shallow_clone") ? "git__shallow_clone" : "0"} AS shallow, git__commits__total AS commits FROM git_repos WHERE name <> 'Unknown'`);
-    const span = data.hasView("git_commits") ? await data.query<any>(`SELECT min(commit_time) AS first, max(commit_time) AS last FROM git_commits`) : [];
+      ${has("git__shallow_clone") ? "git__shallow_clone" : "0"} AS shallow, git__commits__total AS commits FROM git_repos WHERE name <> 'Unknown'`, { signal });
+    const span = data.hasView("git_commits") ? await data.query<any>(`SELECT min(commit_time) AS first, max(commit_time) AS last FROM git_commits`, { signal }) : [];
     const single = rows.length === 1;
     return rows.map(r => ({
       name: String(r.name),
@@ -377,12 +377,12 @@ const { data: frameworks, loading: frameworksLoading } = useAsyncQuery<Array<{ l
 
 // ── Dependency evidence ─────────────────────────────────────────────────
 const { data: evidence } = useAsyncQuery<{ importPairs: number; dynamicOnly: number; typeOnly: number; unresolved: number } | null>(
-  async () => {
+  async (signal) => {
     if (!data.hasColumn("component_connections_direct", "kind")) return null;
     const [p] = await data.query<any>(`WITH p AS (SELECT "from", "to", max(kind = 'import') AS s, max(kind = 'dynamic') AS d, max(kind = 'type_only') AS t
         FROM component_connections_direct WHERE "from" <> "to" GROUP BY 1, 2)
-      SELECT sum(s) AS import_pairs, sum(d = 1 AND s = 0) AS dynamic_only, sum(t = 1 AND s = 0 AND d = 0) AS type_only FROM p`);
-    const unresolved = data.hasView("unresolved_edges") ? Number((await data.query<any>("SELECT count(*) AS n FROM unresolved_edges"))[0]?.n ?? 0) : 0;
+      SELECT sum(s) AS import_pairs, sum(d = 1 AND s = 0) AS dynamic_only, sum(t = 1 AND s = 0 AND d = 0) AS type_only FROM p`, { signal });
+    const unresolved = data.hasView("unresolved_edges") ? Number((await data.query<any>("SELECT count(*) AS n FROM unresolved_edges", { signal }))[0]?.n ?? 0) : 0;
     const e = { importPairs: Number(p?.import_pairs ?? 0), dynamicOnly: Number(p?.dynamic_only ?? 0), typeOnly: Number(p?.type_only ?? 0), unresolved };
     return e.dynamicOnly || e.typeOnly || e.unresolved ? e : null;
   },

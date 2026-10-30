@@ -34,25 +34,25 @@ export function useComponentPosition(name: Ref<string>) {
     const store = useDataStore()
 
     const { data, loading } = useAsyncQuery<Position>(
-        async () => {
+        async (signal) => {
             const lit = sqlLiteral(name.value)
             if (!name.value) return EMPTY
 
             const community = store.hasView("component_communities")
                 ? (await store.query<CommunityRow>(
-                    `SELECT community_nr, community_size FROM component_communities WHERE component = ${lit} LIMIT 1`))[0] ?? null
+                    `SELECT community_nr, community_size FROM component_communities WHERE component = ${lit} LIMIT 1`, { signal }))[0] ?? null
                 : null
 
             let tangle: GroupRow | null = null
             let tangleMembers: string[] = []
             if (store.hasView("component_strongly_connected_groups")) {
                 const rows = await store.query<GroupRow>(
-                    `SELECT "group", group_size FROM component_strongly_connected_groups WHERE component = ${lit} LIMIT 1`)
+                    `SELECT "group", group_size FROM component_strongly_connected_groups WHERE component = ${lit} LIMIT 1`, { signal })
                 const row = rows[0] ?? null
                 if (row && Number(row.group_size) > 1) {
                     tangle = row
                     const members = await store.query<{ component: string }>(
-                        `SELECT component FROM component_strongly_connected_groups WHERE "group" = ${Number(row.group)} ORDER BY component`)
+                        `SELECT component FROM component_strongly_connected_groups WHERE "group" = ${Number(row.group)} ORDER BY component`, { signal })
                     tangleMembers = members.map(m => m.component).filter(c => c !== name.value)
                 }
             }
@@ -60,7 +60,7 @@ export function useComponentPosition(name: Ref<string>) {
             const furthest = store.hasView("component_connections_furthest")
                 ? (await store.query<FurthestRow>(
                     `SELECT furthest_component, furthest_component_distance, furthest_component_shortest_path
-                     FROM component_connections_furthest WHERE component = ${lit} LIMIT 1`))[0] ?? null
+                     FROM component_connections_furthest WHERE component = ${lit} LIMIT 1`, { signal }))[0] ?? null
                 : null
 
             return { community, tangle, furthest, tangleMembers }

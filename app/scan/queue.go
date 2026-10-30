@@ -2,6 +2,7 @@ package scan
 
 import (
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os/exec"
 	"strings"
 	"sync"
@@ -197,6 +198,7 @@ func (s *Service) drain(workspaceID string) {
 	// Idle is decided under the same lock Enqueue checks, so a revision queued
 	// while the last scan finishes is never left waiting for a drain that ended.
 	defer s.emitQueue(workspaceID)
+	defer safe.Recover("backfill", nil)
 	for {
 		q.mu.Lock()
 		idx := -1

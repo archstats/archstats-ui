@@ -6,6 +6,10 @@ export function AnalysisRevision() {
   return window['go']['app']['QueryService']['AnalysisRevision']();
 }
 
+export function Cancel(arg1) {
+  return window['go']['app']['QueryService']['Cancel'](arg1);
+}
+
 export function Console(arg1, arg2) {
   return window['go']['app']['QueryService']['Console'](arg1, arg2);
 }
@@ -40,4 +44,8 @@ export function QueryLimited(arg1, arg2, arg3, arg4) {
 
 export function ReportConsole(arg1, arg2) {
   return window['go']['app']['QueryService']['ReportConsole'](arg1, arg2);
+}
+
+export function Rows(arg1, arg2, arg3) {
+  return window['go']['app']['QueryService']['Rows'](arg1, arg2, arg3);
 }

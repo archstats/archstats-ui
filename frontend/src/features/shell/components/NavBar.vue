@@ -179,7 +179,7 @@
          clipped, and closed before an item could be reached. -->
     <Teleport to="body">
       <div v-if="dimMenu" class="fixed inset-0 z-[69]" @click="dimMenu = null"></div>
-      <div v-if="dimMenu" ref="dimMenuEl" class="ui-menu flex w-52 flex-col animate-in" role="menu" :aria-label="t('shell.navBar.lens', { dimMenu })" :style="dimMenuStyle" @keydown.esc.prevent="closeDimMenu" @keydown.down.prevent="stepDimMenu(1)" @keydown.up.prevent="stepDimMenu(-1)">
+      <div v-if="dimMenu" ref="dimMenuEl" class="ui-menu flex min-w-52 flex-col animate-in" role="menu" :aria-label="t('shell.navBar.lens', { dimMenu })" :style="dimMenuStyle" @keydown.esc.prevent="closeDimMenu" @keydown.down.prevent="stepDimMenu(1)" @keydown.up.prevent="stepDimMenu(-1)">
         <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('build')"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>{{ t('shell.navBar.editBuilder2') }}</span></button>
         <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('declare')"><Icon icon="scale" :size="12" class="text-neutral-500"/><span>{{ t('shell.navBar.declareDependencies') }}</span></button>
         <button type="button" class="ui-menu-item" role="menuitem" @click="dimAction('rename')"><Icon icon="pencil" :size="12" class="text-neutral-500"/><span>{{ t('shell.navBar.rename') }}</span></button>
@@ -365,9 +365,9 @@ watch(() => groupsStore.lastSaved, (saved) => {
 // A snapshot of a folder that is not a git checkout has no commits. The git
 // views say so when opened; the sidebar says so before anyone has to.
 const { data: hasGitHistory } = useAsyncQuery<boolean>(
-  async () => {
+  async (signal) => {
     if (!dataStore.hasData || !dataStore.hasView("git_commits")) return false
-    const rows = await dataStore.query<{ one: number }>("select 1 as one from git_commits limit 1")
+    const rows = await dataStore.query<{ one: number }>("select 1 as one from git_commits limit 1", { signal })
     return rows.length > 0
   },
   [() => dataStore.datasetKey],

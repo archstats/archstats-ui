@@ -544,9 +544,9 @@ const hottestFile = computed(() => {
 // its change is shown in this snapshot's points, and nothing is shown when
 // either side lacks it.
 const { data: maxRawHotspot } = useAsyncQuery<number | null>(
-  async () => {
+  async (signal) => {
     if (!store.hasColumn("files", "codesmells__hotspot__raw")) return null
-    const rows = await store.query<{ m: number | null }>("SELECT max(codesmells__hotspot__raw) AS m FROM files")
+    const rows = await store.query<{ m: number | null }>("SELECT max(codesmells__hotspot__raw) AS m FROM files", { signal })
     return rows[0]?.m ?? null
   },
   [() => store.datasetKey],
@@ -623,7 +623,7 @@ interface Loaded {
 const EMPTY_LOAD: Loaded = { incomingFiles: [], reachedBy: 0, files: [], cohesion: null }
 
 const { data: loaded } = useAsyncQuery<Loaded>(
-  async () => {
+  async (signal) => {
     if (!name.value) return EMPTY_LOAD
     const lit = sqlLiteral(name.value)
 
@@ -633,15 +633,15 @@ const { data: loaded } = useAsyncQuery<Loaded>(
       SELECT file, SUM(reference_count) AS "references"
       FROM ${store.runtimeComponentEdges}
       WHERE "to" = ${lit} AND "from" <> ${lit}
-      GROUP BY file ORDER BY "references" DESC LIMIT 8`)
+      GROUP BY file ORDER BY "references" DESC LIMIT 8`, { signal })
 
     const reached = store.hasView("component_connections_indirect")
-      ? await store.query<{ n: number }>(`SELECT COUNT(DISTINCT "from") AS n FROM component_connections_indirect WHERE "to" = ${lit} AND "from" <> ${lit}`)
+      ? await store.query<{ n: number }>(`SELECT COUNT(DISTINCT "from") AS n FROM component_connections_indirect WHERE "to" = ${lit} AND "from" <> ${lit}`, { signal })
       : []
 
     const files = await store.query<FileRow>(`
       SELECT name, directory, codesmells__code_health, complexity__lines${store.hasColumn("files", "codesmells__hotspot_score") ? ", codesmells__hotspot_score" : ", NULL AS codesmells__hotspot_score"}
-      FROM files WHERE component = ${lit}`)
+      FROM files WHERE component = ${lit}`, { signal })
 
     // Co-change that stays inside the component against co-change that leaves
     // it, over file pairs with at least one file here (one row per pair).

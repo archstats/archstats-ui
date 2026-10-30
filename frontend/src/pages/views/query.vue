@@ -188,7 +188,7 @@
                     <div class="relative">
                       <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet" :aria-expanded="copyOpen" @click="copyOpen = !copyOpen"><Copy :size="12" class="text-neutral-500"/>{{ ' ' + t('pages.query.copy') }} <ChevronDown :size="11" class="text-neutral-400"/></button>
                       <div v-if="copyOpen" class="fixed inset-0 z-40" @click="copyOpen = false"></div>
-                      <div v-if="copyOpen" class="ui-menu absolute right-0 z-50 mt-1 w-60 p-1 animate-in" role="menu">
+                      <div v-if="copyOpen" class="ui-menu absolute right-0 z-50 mt-1 min-w-60 p-1 animate-in" role="menu">
                         <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('tsv')">{{ t('pages.query.tabSeparatedSpreadsheet') }}</button>
                         <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('csv')">{{ t('pages.query.csv') }}</button>
                         <button type="button" class="ui-menu-item" role="menuitem" @click="copyAs('md')">{{ t('pages.query.markdownTable') }}</button>
@@ -313,7 +313,7 @@
       <!-- A tab's menu. -->
       <template v-if="menu">
         <div class="fixed inset-0 z-40" @mousedown="menu = null" @contextmenu.prevent="menu = null"></div>
-        <div class="ui-menu fixed z-50 w-52 p-1 animate-in" role="menu" :style="{ left: `${menu.x}px`, top: `${menu.y}px` }">
+        <div class="ui-menu fixed z-50 min-w-52 p-1 animate-in" role="menu" :style="{ left: `${menu.x}px`, top: `${menu.y}px` }">
           <button type="button" class="ui-menu-item" role="menuitem" @click="startRename(menu.tab); menu = null">{{ t('pages.query.rename') }}</button>
           <button type="button" class="ui-menu-item" role="menuitem" @click="con.open({ name: t('pages.query.copy2', { tabName: menu.tab.name }), sql: menu.tab.sql }); menu = null">{{ t('pages.query.duplicate') }}</button>
           <button v-if="menu.tab.cell" type="button" class="ui-menu-item" role="menuitem" @click="openReport(menu.tab.cell.reportId); menu = null">{{ t('pages.query.openReport') }}</button>

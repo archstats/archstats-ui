@@ -18,7 +18,7 @@
       <div class="fixed inset-0 z-40 cursor-default" @click="close"></div>
       <div
         ref="menuEl"
-        class="ui-menu absolute right-0 z-50 mt-1 flex max-h-[70vh] w-72 flex-col overflow-y-auto animate-in"
+        class="ui-menu absolute right-0 z-50 mt-1 flex max-h-[70vh] min-w-72 flex-col overflow-y-auto animate-in"
         role="menu"
         :aria-label="t('reports.exportMenu.export')"
         @keydown.esc.stop="close"

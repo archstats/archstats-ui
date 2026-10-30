@@ -20,6 +20,11 @@ export const LOCALE_NAMES: Record<Locale, string> = { en: "English", nl: "Nederl
 const STORAGE_KEY = "archstats.locale"
 
 function readLocale(): Locale {
+    // A worker has no storage; the window names it with its language ("… locale=nl").
+    if (typeof document === "undefined") {
+        const named = /\blocale=(\w+)/.exec(String((globalThis as any).name ?? ""))
+        if (named && (LOCALES as readonly string[]).includes(named[1])) return named[1] as Locale
+    }
     try {
         const saved = globalThis.localStorage?.getItem(STORAGE_KEY)
         if (saved && (LOCALES as readonly string[]).includes(saved)) return saved as Locale

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/archstats/archstats-ui/app/locale"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 
 	"github.com/archstats/archstats-ui/app/clone"
@@ -48,7 +49,9 @@ type FolderPick struct {
 // SelectFolder opens the OS folder picker and reports the choice together
 // with any workspace that already owns that folder, so the frontend can
 // refuse duplicates with a pointer instead of a bare error.
-func (w *WorkspaceService) SelectFolder() (*FolderPick, error) {
+func (w *WorkspaceService) SelectFolder() (_ *FolderPick, callErr error) {
+	defer safe.Guard("WorkspaceService.SelectFolder", &callErr)
+
 	ctx := w.ctx()
 	if ctx == nil {
 		return nil, errors.New("folder picker unavailable before startup")
@@ -74,25 +77,35 @@ func (w *WorkspaceService) SelectFolder() (*FolderPick, error) {
 	}, nil
 }
 
-func (w *WorkspaceService) Create(name, folderPath string) (*store.Workspace, error) {
+func (w *WorkspaceService) Create(name, folderPath string) (_ *store.Workspace, callErr error) {
+	defer safe.Guard("WorkspaceService.Create", &callErr)
+
 	return w.store.CreateWorkspace(name, folderPath)
 }
 
-func (w *WorkspaceService) Rename(id, name string) (*store.Workspace, error) {
+func (w *WorkspaceService) Rename(id, name string) (_ *store.Workspace, callErr error) {
+	defer safe.Guard("WorkspaceService.Rename", &callErr)
+
 	return w.store.RenameWorkspace(id, name)
 }
 
-func (w *WorkspaceService) Get(id string) (*store.Workspace, error) {
+func (w *WorkspaceService) Get(id string) (_ *store.Workspace, callErr error) {
+	defer safe.Guard("WorkspaceService.Get", &callErr)
+
 	return w.store.GetWorkspace(id)
 }
 
-func (w *WorkspaceService) List() ([]*store.Workspace, error) {
+func (w *WorkspaceService) List() (_ []*store.Workspace, callErr error) {
+	defer safe.Guard("WorkspaceService.List", &callErr)
+
 	return w.store.ListWorkspaces()
 }
 
 // Delete removes the workspace, its snapshots and, when the app cloned its
 // folder, the clone; a folder the user brought is never touched.
-func (w *WorkspaceService) Delete(id string) error {
+func (w *WorkspaceService) Delete(id string) (callErr error) {
+	defer safe.Guard("WorkspaceService.Delete", &callErr)
+
 	ws, err := w.store.GetWorkspace(id)
 	if err != nil {
 		return err
@@ -113,7 +126,9 @@ func (w *WorkspaceService) Delete(id string) error {
 // InspectFolder is SelectFolder for a path that arrived another way (a
 // folder dropped on the window): the same pick, or an error when it is not
 // a folder.
-func (w *WorkspaceService) InspectFolder(path string) (*FolderPick, error) {
+func (w *WorkspaceService) InspectFolder(path string) (_ *FolderPick, callErr error) {
+	defer safe.Guard("WorkspaceService.InspectFolder", &callErr)
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -128,22 +143,30 @@ func (w *WorkspaceService) InspectFolder(path string) (*FolderPick, error) {
 	return &FolderPick{Path: path, SuggestedName: filepath.Base(path), Existing: existing}, nil
 }
 
-func (w *WorkspaceService) ListScans(workspaceID string) ([]*store.Scan, error) {
+func (w *WorkspaceService) ListScans(workspaceID string) (_ []*store.Scan, callErr error) {
+	defer safe.Guard("WorkspaceService.ListScans", &callErr)
+
 	return w.store.ListScans(workspaceID)
 }
 
-func (w *WorkspaceService) DeleteScan(scanID string) error {
+func (w *WorkspaceService) DeleteScan(scanID string) (callErr error) {
+	defer safe.Guard("WorkspaceService.DeleteScan", &callErr)
+
 	w.release(scanID)
 	return w.store.DeleteScan(scanID)
 }
 
 // SetBaseline pins the scan a workspace compares against; "" unpins.
-func (w *WorkspaceService) SetBaseline(workspaceID, scanID string) error {
+func (w *WorkspaceService) SetBaseline(workspaceID, scanID string) (callErr error) {
+	defer safe.Guard("WorkspaceService.SetBaseline", &callErr)
+
 	return w.store.SetBaseline(workspaceID, scanID)
 }
 
 // LabelScan names a scan ("before the split"); "" clears the label.
-func (w *WorkspaceService) LabelScan(scanID, label string) error {
+func (w *WorkspaceService) LabelScan(scanID, label string) (callErr error) {
+	defer safe.Guard("WorkspaceService.LabelScan", &callErr)
+
 	return w.store.SetScanLabel(scanID, label)
 }
 
@@ -156,7 +179,9 @@ type IgnorePreview struct {
 
 // PreviewIgnore walks the workspace folder with and without the patterns and
 // says how many files they would leave out, with a few of them.
-func (w *WorkspaceService) PreviewIgnore(workspaceID string, patterns []string) (*IgnorePreview, error) {
+func (w *WorkspaceService) PreviewIgnore(workspaceID string, patterns []string) (_ *IgnorePreview, callErr error) {
+	defer safe.Guard("WorkspaceService.PreviewIgnore", &callErr)
+
 	ws, err := w.store.GetWorkspace(workspaceID)
 	if err != nil {
 		return nil, err

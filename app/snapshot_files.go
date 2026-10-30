@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/archstats/archstats-ui/app/locale"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,9 @@ import (
 
 // RevealSnapshot shows a scan's .db in the file manager: the snapshot is the
 // contract, and a person should be able to find it.
-func (w *WorkspaceService) RevealSnapshot(scanID string) error {
+func (w *WorkspaceService) RevealSnapshot(scanID string) (callErr error) {
+	defer safe.Guard("WorkspaceService.RevealSnapshot", &callErr)
+
 	scan, err := w.store.GetScan(scanID)
 	if err != nil {
 		return err
@@ -25,7 +28,9 @@ func (w *WorkspaceService) RevealSnapshot(scanID string) error {
 }
 
 // SnapshotPath returns where a scan's .db lives, for "Copy path".
-func (w *WorkspaceService) SnapshotPath(scanID string) (string, error) {
+func (w *WorkspaceService) SnapshotPath(scanID string) (_ string, callErr error) {
+	defer safe.Guard("WorkspaceService.SnapshotPath", &callErr)
+
 	scan, err := w.store.GetScan(scanID)
 	if err != nil {
 		return "", err
@@ -37,7 +42,9 @@ func (w *WorkspaceService) SnapshotPath(scanID string) (string, error) {
 // Without source, the copy has no file_contents -- the stored text of every
 // file -- and is vacuumed so it is actually smaller. Returns the path, or ""
 // when cancelled.
-func (w *WorkspaceService) SaveSnapshotCopy(scanID string, withSource bool) (string, error) {
+func (w *WorkspaceService) SaveSnapshotCopy(scanID string, withSource bool) (_ string, callErr error) {
+	defer safe.Guard("WorkspaceService.SaveSnapshotCopy", &callErr)
+
 	scan, err := w.store.GetScan(scanID)
 	if err != nil {
 		return "", err

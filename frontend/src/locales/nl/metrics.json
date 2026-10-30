@@ -176,7 +176,7 @@
     "open": "{n} · open"
   },
   "metricMatrix": {
-    "metricsMatrix": "Metrics-matrix",
+    "metricsMatrix": "Metrics, alle paren",
     "selected": "Geselecteerd",
     "riseTogetherPositive": "Stijgen samen (positieve ρ)",
     "oneRisesOtherFalls": "De een stijgt als de ander daalt (negatieve ρ)",
@@ -219,7 +219,7 @@
     "sortList": "Sorteer de lijst op {key}",
     "median": "mediaan {median}",
     "log": "· log",
-    "metricsStrips": "Metrics-strips",
+    "metricsStrips": "Spreiding van metrics",
     "insideEveryBrushedRange": "Binnen elk brush-bereik",
     "outsideBrushedRange": "Buiten een brush-bereik",
     "brushedRange": "Brush-bereik",
@@ -241,9 +241,9 @@
     "everyNumberEverySort": "Elk getal voor elke {o}. Sorteer, kies kolommen, exporteer.",
     "plot": "Plot",
     "twoMetricsAgainstEach": "Twee metrics tegen elkaar, bij de medianen verdeeld in benoemde hoeken.",
-    "matrix": "Matrix",
+    "matrix": "Alle paren",
     "everyPairMetricsOnce": "Elk paar metrics in één keer, en hoe sterk elk paar samen beweegt.",
-    "strips": "Strips",
+    "strips": "Spreiding",
     "eachMetricStripDots": "Elke metric als een strip van stippen. Volg één {o} over alle strips heen; brush om te verfijnen.",
     "profiles": "Profielen",
     "eachOneLineAcross": "Elke {o} als één lijn over alle metrics. Vergelijk vormen; filter op meerdere assen."
@@ -330,7 +330,7 @@
     "changeConcentrates": "Wijzigingen concentreren zich",
     "changeSpreadOut": "Wijzigingen zijn gespreid",
     "busiestCarryAllCommits": "De drukste {top} van {value} dragen {share} van alle commits.",
-    "showThemStrips": "Toon ze in Strips",
+    "showThemStrips": "Toon ze in Spreiding",
     "metricsMoveTogether": "Metrics die samen bewegen",
     "riseTogetherRank": "{first} en {b} stijgen samen: ρ {rho}, {rho2}, op rang.",
     "compareEveryPair": "Vergelijk elk paar",

@@ -48,6 +48,12 @@ describe("shouldOpenResult", () => {
     it("leaves a scan it did not see begin alone", () => {
         expect(shouldOpenResult(null, "s2")).toBe(false);
     });
+    it("says a long scan is ready instead of swapping the view", () => {
+        const now = 1_000_000;
+        expect(shouldOpenResult({ ref: "", openAtStart: "s2", startedAt: now - 20_000 }, "s2", now)).toBe(true);
+        expect(shouldOpenResult({ ref: "", openAtStart: "s2", startedAt: now - 5 * 60_000 }, "s2", now)).toBe(false);
+        expect(shouldOpenResult({ ref: "", openAtStart: null, startedAt: now - 5 * 60_000 }, null, now)).toBe(true);
+    });
 });
 
 describe("refLabel", () => {

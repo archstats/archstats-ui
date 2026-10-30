@@ -1,22 +1,20 @@
 package scan
 
 import (
+	"context"
 	"fmt"
 	snapshotinfo "github.com/archstats/archstats-ui/app/snapshot"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 	"sync"
 
 	"github.com/archstats/archstats-ui/app/store"
 	"github.com/archstats/archstats/cmd/common"
 	"github.com/archstats/archstats/cmd/config"
-	"github.com/archstats/archstats/cmd/export/sqlite"
 	"github.com/archstats/archstats/core"
+	"github.com/archstats/archstats/core/plugin"
 	"github.com/archstats/archstats/core/walker"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -27,16 +25,38 @@ const (
 )
 
 // Service orchestrates workspace scans: extension auto-detection, analysis,
-// and snapshot export. One scan per workspace at a time; scans are not
-// cancellable in v1 (the engine has no context support).
+// and snapshot export. One scan per workspace at a time. With a worker set,
+// each scan runs in a child process (see worker.go) and can be cancelled.
 type Service struct {
 	store *store.Store
 	emit  func(event string, data ...any)
 
 	mu      sync.Mutex
-	running map[string]bool // workspaceID → scan in flight
+	running map[string]bool               // workspaceID → scan in flight
+	cancels map[string]context.CancelFunc // workspaceID → stops its scan
 	onDone  func(scanID string)
 	queue   *backfillQueue
+	worker  string
+}
+
+// SetWorker runs every scan in a child process started from exe (the app's
+// own binary). Without one, scans run in this process and cannot be stopped.
+func (s *Service) SetWorker(exe string) { s.worker = exe }
+
+// Cancel stops the workspace's running scan. The scan is recorded as failed
+// with "cancelled"; a backfill moves on to its next revision.
+func (s *Service) Cancel(workspaceID string) error {
+	s.mu.Lock()
+	cancel := s.cancels[workspaceID]
+	s.mu.Unlock()
+	if cancel == nil {
+		return fmt.Errorf("no scan is running for this workspace")
+	}
+	if s.worker == "" {
+		return fmt.Errorf("this scan cannot be stopped")
+	}
+	cancel()
+	return nil
 }
 
 // SetOnDone runs after each scan is saved (in production: its readings are computed).
@@ -47,6 +67,7 @@ func NewService(st *store.Store) *Service {
 		store:   st,
 		emit:    func(string, ...any) {},
 		running: map[string]bool{},
+		cancels: map[string]context.CancelFunc{},
 		queue:   newBackfillQueue(),
 	}
 }
@@ -102,9 +123,15 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, d
 			done(ok)
 		}
 	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.mu.Lock()
+	s.cancels[ws.ID] = cancel
+	s.mu.Unlock()
 	defer func() {
+		cancel()
 		s.mu.Lock()
 		delete(s.running, ws.ID)
+		delete(s.cancels, ws.ID)
 		s.mu.Unlock()
 		if r := recover(); r != nil {
 			msg := fmt.Sprintf("panic during scan: %v", r)
@@ -125,60 +152,36 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, d
 		}
 	}
 
-	// The workspace's own exclusions, on top of the tree's ignore files.
-	ignore := s.store.IgnoreGlobs(ws.ID)
-	extensions, names, err := extensionsFor(root, ignore)
-	if err != nil {
-		s.fail(ws.ID, scan.ID, fmt.Sprintf("detecting extensions: %v", err))
-		return
-	}
-	s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{
-		"phase":      "analyzing",
-		"extensions": names,
-		"note":       note,
-	}))
-
-	results, err := core.New(&core.Config{
-		RootPath:       root,
-		Extensions:     extensions,
-		IgnorePatterns: ignore,
-	}).Analyze()
-	if err != nil {
-		s.fail(ws.ID, scan.ID, fmt.Sprintf("analyzing %s: %v", ws.Name, err))
-		return
-	}
-	// Which language packs read this code; two scans read by different
-	// packs are compared with a warning.
-	sortedNames := append([]string(nil), names...)
-	sort.Strings(sortedNames)
-	results.SetSnapshotInfo("extensions", strings.Join(sortedNames, ","))
-
-	s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{"phase": "rendering"}))
-	var views []*core.View
-	for _, vf := range results.GetViewFactories() {
-		view, err := results.RenderView(vf.Name)
-		if err != nil {
-			s.fail(ws.ID, scan.ID, fmt.Sprintf("rendering view %q: %v", vf.Name, err))
-			return
-		}
-		views = append(views, view)
-	}
-
-	s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{"phase": "saving"}))
 	snapshot := s.store.SnapshotPath(ws.ID, scan.ID)
 	if err := os.MkdirAll(filepath.Dir(snapshot), 0o755); err != nil {
 		s.fail(ws.ID, scan.ID, fmt.Sprintf("creating snapshot dir: %v", err))
 		return
 	}
-	err = sqlite.SaveToDB(&sqlite.SqlOptions{
-		DatabaseName: snapshot,
-		ReportId:     ws.Name,
-		ScanTime:     scan.StartedAt,
-		StoreContent: true,
-	}, results, views)
+	req := Request{
+		Root: root,
+		// The workspace's own exclusions, on top of the tree's ignore files.
+		Ignore:   s.store.IgnoreGlobs(ws.ID),
+		Snapshot: snapshot,
+		ReportID: ws.Name,
+		ScanTime: scan.StartedAt,
+	}
+	phase := func(name string, extensions []string) {
+		p := map[string]any{"phase": name}
+		if name == "analyzing" {
+			p["extensions"] = extensions
+			p["note"] = note
+		}
+		s.emit(EventScanPhase, payload(ws.ID, scan.ID, p))
+	}
+	var err error
+	if s.worker != "" {
+		err = inChild(ctx, s.worker, req, phase)
+	} else {
+		err = Analyze(req, phase)
+	}
 	if err != nil {
 		os.Remove(snapshot)
-		s.fail(ws.ID, scan.ID, fmt.Sprintf("saving snapshot: %v", err))
+		s.fail(ws.ID, scan.ID, err.Error())
 		return
 	}
 
@@ -239,7 +242,8 @@ func extensionsFor(rootDir string, ignore []string) ([]core.Extension, []string,
 		}
 	}
 
-	defaults := commandWithDefaults(configured)
+	// Every extension reads its arguments at their declared defaults.
+	defaults := plugin.Values(nil, configured)
 	extensions := make([]core.Extension, 0, len(configured))
 	for _, ce := range configured {
 		ext, err := ce.Initializer(defaults)
@@ -249,30 +253,4 @@ func extensionsFor(rootDir string, ignore []string) ([]core.Extension, []string,
 		extensions = append(extensions, ext)
 	}
 	return extensions, discovered, nil
-}
-
-// commandWithDefaults builds a throwaway cobra command carrying every
-// extension argument as a flag at its declared default, so Initializers can
-// read their configuration without the real CLI.
-func commandWithDefaults(configured []*config.CLIConfiguredExtension) *cobra.Command {
-	cmd := &cobra.Command{}
-	flags := cmd.Flags()
-	for _, ce := range configured {
-		for param, arg := range ce.Arguments {
-			if flags.Lookup(param) != nil {
-				continue
-			}
-			switch arg.Type {
-			case config.String:
-				flags.String(param, arg.Default.(string), arg.Description)
-			case config.Int:
-				flags.Int(param, arg.Default.(int), arg.Description)
-			case config.Bool:
-				flags.Bool(param, arg.Default.(bool), arg.Description)
-			case config.StringSlice:
-				flags.StringSlice(param, arg.Default.([]string), arg.Description)
-			}
-		}
-	}
-	return cmd
 }

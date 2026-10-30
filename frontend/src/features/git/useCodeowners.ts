@@ -15,10 +15,10 @@ export function useCodeowners() {
     const data = useDataStore()
     const authors = useAuthorsStore()
 
-    const { data: found, loading } = useAsyncQuery<{ path: string; text: string } | null>(async () => {
+    const { data: found, loading } = useAsyncQuery<{ path: string; text: string } | null>(async (signal) => {
         if (!data.hasView("file_contents")) return null
         const rows = await data.query<{ file: string; content: string }>(
-            `SELECT file, content FROM file_contents WHERE file IN (${CODEOWNERS_PATHS.map(sqlLiteral).join(", ")})`)
+            `SELECT file, content FROM file_contents WHERE file IN (${CODEOWNERS_PATHS.map(sqlLiteral).join(", ")})`, { signal })
         for (const p of CODEOWNERS_PATHS) {
             const r = rows.find(x => x.file === p)
             if (r) return { path: p, text: String(r.content ?? "") }

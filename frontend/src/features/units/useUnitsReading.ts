@@ -43,7 +43,9 @@ export function useUnitsReading(extraRoots: () => RegExp[] = () => []) {
   /** Distinct component pairs, the figure Connections shows, not import rows. */
   const componentPairs = computed(() => new Set((store.componentConnections as Array<{ from: string; to: string }>).filter((c) => c.from !== c.to).map((c) => c.from + "\u0000" + c.to)).size)
   /** Lanes that are not layers, so a reference climbing into or out of them breaks nothing. */
-  const notLayers = computed(() => [UNCLASSIFIED, ...model.profile.value.lanes.filter((l) => l.byReferences).map((l) => l.id)])
+  const notLayers = computed(() => [UNCLASSIFIED, ...model.profile.value.lanes.filter((l) => l.byReferences || l.beside).map((l) => l.id)])
+  /** Of those, the ones drawn beside the stack rather than at its foot: wiring, and what matched nothing. */
+  const besideLayers = computed(() => [UNCLASSIFIED, ...model.profile.value.lanes.filter((l) => l.beside).map((l) => l.id)])
 
   // The file import graph -- unit references plus resolved raw imports plus the
   // imports read from files the engine could not parse -- is the one the
@@ -71,7 +73,7 @@ export function useUnitsReading(extraRoots: () => RegExp[] = () => []) {
 
   return {
     model, graph, frameworkName, laneColor, laneLabel, laneBands, laneOfModule, flows,
-    referencesUnresolved, componentPairs, notLayers,
+    referencesUnresolved, componentPairs, notLayers, besideLayers,
     fileGraph, prodFiles, reach, dupNames, dupFiles, findings,
   }
 }

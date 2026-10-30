@@ -8,7 +8,7 @@
 // is what the profile's rules say, never a guess; what no rule matched is
 // counted apart as unclassified and left out of every claim about layers.
 
-import { classify, detectFramework, languageOf, languageOfFile, profileById, UNCLASSIFIED, type FrameworkProfile, type Language } from "~/features/frameworks/frameworkProfiles"
+import { adoptSubtypeLanes, classify, detectFramework, languageOf, languageOfFile, profileById, UNCLASSIFIED, type FrameworkProfile, type Language } from "~/features/frameworks/frameworkProfiles"
 import { isTestPath } from "~/features/snapshot/fileRole"
 import { loadUnits } from "~/features/units/units"
 import { proseName, proseNames, type ReadingOutput } from "./reportDoc"
@@ -156,6 +156,9 @@ async function readAnatomy(ctx: ReadingContext, profileId: string, only: string)
         kept.get(z)!.fanIn++
     }
     for (const u of kept.values()) u.lane = classify(profile, facts.get(u.id)!.facts, { inDegree: u.fanIn, outDegree: u.fanOut })
+    const lanes = new Map([...kept.values()].map(u => [u.id, u.lane]))
+    if (adoptSubtypeLanes(lanes, edges.map(([from, to]) => ({ from, to })), id => facts.get(id)?.facts))
+        for (const u of kept.values()) u.lane = lanes.get(u.id)!
     const best = detection.candidates.find(c => c.id === profile.id)
     return { profile, confident: !profileId && detection.confident, reason: detection.reason, evidence: { strong: best?.strong ?? 0, total: detection.total }, language, units: [...kept.values()], edges, linked: raw.length > 0 }
 }

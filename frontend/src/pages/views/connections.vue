@@ -157,7 +157,7 @@
           <span v-if="model.directed.value && cycleNodeCount" class="font-mono text-xs" :class="cycles !== 'off' ? 'text-red-600' : 'text-neutral-500'" :title="t('pages.connections.nodesSitGroupsWhere', { cycleNodeCount, tangles: t('common.count.tangle', { count: model.cycleSets.value.length }) })">{{ cycleNodeCount }}</span>
         </button>
         <div v-if="cyclesOpen" class="fixed inset-0 z-40" @click="cyclesOpen = false"></div>
-        <div v-if="cyclesOpen" class="ui-menu absolute right-0 z-50 mt-1 w-64 animate-in" role="menu">
+        <div v-if="cyclesOpen" class="ui-menu absolute right-0 z-50 mt-1 min-w-64 animate-in" role="menu">
           <div class="ui-menu-title">{{ t('pages.connections.cyclesLevel') }}</div>
           <button v-for="m in CYCLE_MODES" :key="m.id" type="button" class="ui-menu-item" role="menuitemradio" :aria-checked="cycles === m.id" :class="{ 'is-active': cycles === m.id }" @click="setState({ cycles: m.id }); cyclesOpen = false">
             <span class="w-3 text-accent-600">{{ cycles === m.id ? '•' : '' }}</span>
@@ -336,7 +336,7 @@
 
       <Teleport to="body">
         <div v-if="menu" class="fixed inset-0 z-40" @click="menu = null" @contextmenu.prevent="menu = null"></div>
-        <div v-if="menu" class="ui-menu fixed z-50 w-64 animate-in" :style="{ left: menu.x + 'px', top: menu.y + 'px' }" role="menu">
+        <div v-if="menu" class="ui-menu fixed z-50 min-w-64 animate-in" :style="{ left: menu.x + 'px', top: menu.y + 'px' }" role="menu">
           <div class="ui-menu-title truncate" :title="menuNode?.label">{{ menuNode?.label }}</div>
           <template v-if="menuMode === 'main'">
             <button v-if="menuOpenLabel" type="button" class="ui-menu-item" role="menuitem" @click="toggleOpenFromMenu">

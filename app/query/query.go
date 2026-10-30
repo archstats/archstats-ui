@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"runtime"
 	"sync"
 	"time"
 
@@ -21,10 +22,21 @@ const (
 	// altHandles is how many snapshots other than the open one stay open at
 	// once: a comparison reads two or three bases, and a fourth is cheap.
 	altHandles = 4
+	// MaxBytes bounds one result by the size of its values. Rows narrow
+	// enough to pass MaxRows can still be wide: each copy of the result the
+	// bridge makes (JSON, the escaped script, the parsed rows) is about this
+	// size again, and a window holding several of them is killed by the system.
+	MaxBytes = 64 << 20
 )
 
 // ErrTooManyRows is returned when a query would return more than MaxRows.
 var ErrTooManyRows = fmt.Errorf("the query returns more than %d rows; narrow it with WHERE, LIMIT or an aggregate", MaxRows)
+
+// ErrTooLarge is returned when a query's values would come to more than MaxBytes.
+var ErrTooLarge = fmt.Errorf("the query returns more than %d MB; select fewer columns, or narrow it with WHERE, LIMIT or an aggregate", MaxBytes>>20)
+
+// ErrCancelled is returned by a query its caller no longer wanted.
+var ErrCancelled = fmt.Errorf("cancelled")
 
 // Service executes read-only SQL against the currently selected scan
 // snapshot. It replaces the webapp's in-browser sql.js worker; the frontend
@@ -35,6 +47,13 @@ type Service struct {
 	mu     sync.Mutex
 	db     *sql.DB
 	scanID string
+
+	// Queries a caller can cancel, by the id it gave them. A view that is
+	// left, or reloads, cancels its queries instead of letting them run out
+	// their minute against everyone else's.
+	runMu   sync.Mutex
+	running map[string]runningQuery
+	anon    int64 // names queries started without an id
 
 	// Snapshots other than the open one, for comparisons: a small LRU keyed
 	// by scan id. The mutex guards the map only, never a running query.
@@ -49,7 +68,7 @@ type altHandle struct {
 }
 
 func NewService(st *store.Store) *Service {
-	return &Service{store: st, alt: map[string]*altHandle{}}
+	return &Service{store: st, alt: map[string]*altHandle{}, running: map[string]runningQuery{}}
 }
 
 // Open selects a completed scan's snapshot as the active database, closing
@@ -59,6 +78,9 @@ func (s *Service) Open(scanID string) error {
 	if err != nil {
 		return err
 	}
+
+	// Whatever was still reading the snapshot being closed has no reader left.
+	s.cancelWhere(func(q runningQuery) bool { return q.open })
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -144,6 +166,10 @@ func (s *Service) openSnapshot(scanID string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("opening snapshot %s: %w", scan.SnapshotPath, err)
 	}
+	// A view opens a dozen queries at once; past the cores they only slow
+	// each other down. A query waiting for a connection still honours its
+	// cancellation.
+	db.SetMaxOpenConns(max(4, runtime.NumCPU()))
 	return db, nil
 }
 
@@ -177,13 +203,11 @@ func (s *Service) Close() error {
 // Query runs raw SQL against the open snapshot and returns JSON-friendly
 // rows, mirroring sql.js' {column: value} row shape.
 func (s *Service) Query(sqlStr string) ([]map[string]any, error) {
-	s.mu.Lock()
-	db := s.db
-	s.mu.Unlock()
-	if db == nil {
-		return nil, fmt.Errorf("no scan open")
+	t, err := s.Rows("", "", sqlStr)
+	if err != nil {
+		return nil, err
 	}
-	return runQuery(db, sqlStr)
+	return t.maps(), nil
 }
 
 // QueryIn runs raw SQL against a completed snapshot that is not the open one,
@@ -282,9 +306,104 @@ func timeoutErr(ctx context.Context, err error) error {
 func runQuery(db *sql.DB, sqlStr string) ([]map[string]any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout)
 	defer cancel()
+	t, err := scanTable(ctx, db, sqlStr)
+	if err != nil {
+		return nil, err
+	}
+	return t.maps(), nil
+}
+
+// maps is the table as {column: value} rows, sql.js' shape.
+func (t *Table) maps() []map[string]any {
+	out := make([]map[string]any, len(t.Rows))
+	for r, values := range t.Rows {
+		row := make(map[string]any, len(t.Columns))
+		for i, col := range t.Columns {
+			row[col] = values[i]
+		}
+		out[r] = row
+	}
+	return out
+}
+
+// Table is a result as its column names once and its rows as values in that
+// order. Rows as maps repeat every column name in every row, which on a wide
+// table is most of what crosses the bridge.
+type Table struct {
+	Columns []string `json:"columns"`
+	Rows    [][]any  `json:"rows"`
+}
+
+type runningQuery struct {
+	cancel context.CancelFunc
+	// open is set when the query reads the open snapshot rather than a named one.
+	open bool
+}
+
+// Rows runs SQL on the open snapshot, or on scanID when given, as a Table.
+// id names the query for Cancel. Every query on the open snapshot is
+// cancelled when another snapshot is opened: closing a database waits for
+// the queries still running on it, and the window would wait with it.
+func (s *Service) Rows(id, scanID, sqlStr string) (*Table, error) {
+	var db *sql.DB
+	if scanID == "" {
+		s.mu.Lock()
+		db = s.db
+		s.mu.Unlock()
+		if db == nil {
+			return nil, fmt.Errorf("no scan open")
+		}
+	} else {
+		var err error
+		if db, err = s.OpenReadOnly(scanID); err != nil {
+			return nil, err
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout)
+	defer cancel()
+	if id == "" {
+		s.runMu.Lock()
+		s.anon++
+		id = fmt.Sprintf("~%d", s.anon)
+		s.runMu.Unlock()
+	}
+	s.runMu.Lock()
+	s.running[id] = runningQuery{cancel: cancel, open: scanID == ""}
+	s.runMu.Unlock()
+	defer func() {
+		s.runMu.Lock()
+		delete(s.running, id)
+		s.runMu.Unlock()
+	}()
+	return scanTable(ctx, db, sqlStr)
+}
+
+// Cancel stops the query started with this id, if it is still running.
+func (s *Service) Cancel(id string) {
+	s.cancelWhere(func(q runningQuery) bool { return false }, id)
+}
+
+// cancelWhere cancels the named queries and every running query match accepts.
+func (s *Service) cancelWhere(match func(runningQuery) bool, ids ...string) {
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
+	for _, id := range ids {
+		if q, ok := s.running[id]; ok {
+			q.cancel()
+		}
+	}
+	for _, q := range s.running {
+		if match(q) {
+			q.cancel()
+		}
+	}
+}
+
+// scanTable reads a query's rows within MaxRows and MaxBytes.
+func scanTable(ctx context.Context, db *sql.DB, sqlStr string) (*Table, error) {
 	rows, err := db.QueryContext(ctx, sqlStr)
 	if err != nil {
-		return nil, timeoutErr(ctx, err)
+		return nil, queryErr(ctx, err)
 	}
 	defer rows.Close()
 
@@ -292,30 +411,54 @@ func runQuery(db *sql.DB, sqlStr string) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	out := []map[string]any{}
+	out := &Table{Columns: columns, Rows: [][]any{}}
 	values := make([]any, len(columns))
 	pointers := make([]any, len(columns))
 	for i := range values {
 		pointers[i] = &values[i]
 	}
+	size := 0
 	for rows.Next() {
-		if len(out) >= MaxRows {
+		if len(out.Rows) >= MaxRows {
 			return nil, ErrTooManyRows
 		}
 		if err := rows.Scan(pointers...); err != nil {
-			return nil, err
+			return nil, queryErr(ctx, err)
 		}
-		row := make(map[string]any, len(columns))
-		for i, col := range columns {
-			row[col] = jsonValue(values[i])
+		row := make([]any, len(columns))
+		for i := range values {
+			row[i] = jsonValue(values[i])
+			size += valueSize(row[i])
 		}
-		out = append(out, row)
+		if size > MaxBytes {
+			return nil, ErrTooLarge
+		}
+		out.Rows = append(out.Rows, row)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, timeoutErr(ctx, err)
+		return nil, queryErr(ctx, err)
 	}
 	return out, nil
+}
+
+// queryErr says why a query stopped when its context stopped it.
+func queryErr(ctx context.Context, err error) error {
+	if ctx.Err() == context.Canceled {
+		return ErrCancelled
+	}
+	return timeoutErr(ctx, err)
+}
+
+// valueSize is roughly how many bytes a value takes as JSON.
+func valueSize(v any) int {
+	switch val := v.(type) {
+	case string:
+		return len(val) + 3
+	case nil:
+		return 5
+	default:
+		return 9
+	}
 }
 
 // jsonValue makes a scanned SQLite value safe for the Wails JSON bridge.

@@ -57,6 +57,7 @@
     <!-- Ask and ⌘J exist only while AI features are on (the stage draws views for Ask, so it keeps its door). -->
     <AskLauncher v-if="ai.enabled || STAGE_SCAN"/>
     <ExhibitRenderHost/>
+    <ProblemNotice/>
   </div>
 </template>
 
@@ -64,6 +65,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { PanelLeftOpen } from "lucide-vue-next";
 import NavBar from "~/features/shell/components/NavBar.vue";
+import ProblemNotice from "~/features/shell/components/ProblemNotice.vue";
 import PaneHandle from "~/features/shell/components/PaneHandle.vue";
 import WorkspaceEmptyState from "~/features/workspace/components/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapshotBar.vue";

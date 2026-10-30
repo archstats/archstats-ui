@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useWorkspacesStore } from "~/features/workspace/workspaces.store";
 import { queryFileImportEdges } from "~/features/connections/fileImports";
@@ -6,7 +6,8 @@ import { frameworkStorageKey, rememberedFramework } from "~/features/frameworks/
 import { loadUnits } from "~/features/units/units";
 import { fileCoChangePairs, sweepingLimit } from "~/features/snapshot/fileCoChange";
 import { classify, detectFramework, languageOf, profileById } from "~/features/frameworks/frameworkProfiles";
-import { EMPTY_SOURCES, buildSuggestInput, placeRest, suggest, type Constraints, type Grain, type Placement, type SignalSources, type SuggestInput, type SuggestSettings, type Suggestion , type GraphMetrics } from "./suggest";
+import { EMPTY_SOURCES, type Constraints, type Grain, type Placement, type SignalSources, type SuggestSettings, type Suggestion , type GraphMetrics } from "./suggest";
+import { runHints, runSuggest, type RunArgs } from "./suggestWorker";
 
 // Loads, once per snapshot and only when asked, every table the group
 // suggester reads, then runs the engine for a settings object. The pair
@@ -129,11 +130,12 @@ export async function loadSignalSources(
 export function useSuggestModel() {
   const store = useDataStore();
   const workspaces = useWorkspacesStore();
-  const sources = ref<SignalSources | null>(null);
+  // Shallow: the sources are replaced whole, and deep proxies over every
+  // edge of a large snapshot cost more than the clustering.
+  const sources = shallowRef<SignalSources | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let loadedFor: string | null = null;
-  const inputs = new Map<string, SuggestInput>();
 
   const hasGit = computed(() => store.hasData && store.hasView("git_component_shared_commits"));
   const hasJava = computed(() => store.hasData && store.hasView("java_class_connections_direct"));
@@ -150,7 +152,6 @@ export function useSuggestModel() {
   async function loadNow(key: string): Promise<SignalSources> {
     loading.value = true;
     error.value = null;
-    inputs.clear();
     try {
       sources.value = await loadSignalSources(
         (sql: string) => store.query<any>(sql),
@@ -171,31 +172,39 @@ export function useSuggestModel() {
     }
   }
 
-  /** The pair signals for a grain and scope, built once per snapshot. */
-  async function inputFor(settings: SuggestSettings, include: (component: string) => boolean, scopeKey: string): Promise<SuggestInput> {
+  /**
+   * What the suggester needs for a grain and scope. The pair signals are built
+   * once per snapshot, grain and scope, in the worker that runs the engine
+   * (suggestWorker.ts), so the window's thread never clusters.
+   */
+  async function argsFor(settings: SuggestSettings, include: (component: string) => boolean, scopeKey: string): Promise<RunArgs> {
     let src = await load();
     // The snapshot may have changed while loading; read the current one.
     if (loadedFor !== (store.datasetKey ?? "")) src = await load();
     const grain: Grain = settings.splitFiles ? "file" : "component";
-    const cacheKey = loadedFor + "|" + grain + "|" + scopeKey;
-    let input = inputs.get(cacheKey);
-    if (!input) { input = buildSuggestInput(src, grain, include); inputs.set(cacheKey, input); }
-    return input;
+    const all = src.components.every(include);
+    return {
+      key: loadedFor ?? "",
+      src,
+      grain,
+      include: all ? null : src.components.filter(include),
+      cacheKey: loadedFor + "|" + grain + "|" + scopeKey,
+      settings,
+    };
   }
 
   /** Runs the engine; `include` limits it to the scoped components; `constraints` reshuffle around a draft. */
   async function run(settings: SuggestSettings, include: (component: string) => boolean, taken: ReadonlySet<string>, scopeKey = "", constraints?: Constraints): Promise<Suggestion[]> {
-    const input = await inputFor(settings, include, scopeKey);
-    return suggest(input, settings, taken, constraints);
+    return runSuggest(await argsFor(settings, include, scopeKey), taken, constraints);
   }
 
   /** For every unplaced unit, the closest draft group. Keys are unit ids at the engine's grain. */
   async function hints(settings: SuggestSettings, include: (component: string) => boolean, placed: Map<string, string>, scopeKey = ""): Promise<{ grain: Grain; placements: Map<string, Placement> }> {
-    const input = await inputFor(settings, include, scopeKey);
-    return { grain: input.grain, placements: placeRest(input, settings, placed) };
+    const args = await argsFor(settings, include, scopeKey);
+    return { grain: args.grain, placements: await runHints(args, placed) };
   }
 
-  function reset() { sources.value = null; loadedFor = null; inputs.clear(); }
+  function reset() { sources.value = null; loadedFor = null; }
 
   return { sources, loading, error, hasGit, hasJava, load, run, hints, reset };
 }

@@ -6,7 +6,7 @@
       <Icon icon="chevron-right" :size="12" class="text-neutral-400" :class="up ? '-rotate-90' : 'rotate-90'"/>
     </button>
     <div v-if="open" class="fixed inset-0 z-40" @click="open = false"></div>
-    <div v-if="open" class="ui-menu absolute z-50 w-60 animate-in" :class="up ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-1'" role="menu">
+    <div v-if="open" class="ui-menu absolute z-50 min-w-60 animate-in" :class="up ? 'bottom-full left-1/2 mb-2 -translate-x-1/2' : 'right-0 top-full mt-1'" role="menu">
       <button v-for="target in targets" :key="target.id" type="button" class="ui-menu-item" role="menuitem" :title="target.focus ? t('groups.showInMenu.focusesEveryViewSelection') : ''" @click="go(target)">
         <Icon :icon="target.icon" :size="13" class="text-neutral-500"/>
         <span class="flex-1">{{ target.label }}</span>

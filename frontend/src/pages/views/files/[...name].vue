@@ -45,9 +45,9 @@ const { filePath, escapedPath, fileBasename } = useFileRoute()
 type FileRow = Record<string, any>
 
 const { data: file, loading } = useAsyncQuery<FileRow | null>(
-  async () => {
+  async (signal) => {
     if (!filePath.value) return null
-    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`)
+    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`, { signal })
     return rows[0] ?? null
   },
   [escapedPath],
@@ -96,9 +96,9 @@ const { data: hasJava } = useAsyncQuery<boolean>(
 
 // The Functions tab, from revision 11, when a pack measured this file's functions.
 const { data: hasFunctions } = useAsyncQuery<boolean>(
-  async () => {
+  async (signal) => {
     if (!filePath.value || !store.hasColumn("functions", "cognitive")) return false
-    const rows = await store.query<{ n: number }>(`SELECT count(*) AS n FROM functions WHERE file = ${sqlLiteral(filePath.value)}`)
+    const rows = await store.query<{ n: number }>(`SELECT count(*) AS n FROM functions WHERE file = ${sqlLiteral(filePath.value)}`, { signal })
     return Number(rows[0]?.n ?? 0) > 0
   },
   [filePath, () => store.datasetKey],

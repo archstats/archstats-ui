@@ -4,6 +4,8 @@ import {scan} from '../models';
 import {time} from '../models';
 import {store} from '../models';
 
+export function Cancel(arg1:string):Promise<void>;
+
 export function ClearFinished(arg1:string):Promise<scan.QueueState>;
 
 export function Enqueue(arg1:string,arg2:Array<scan.Revision>):Promise<scan.QueueState>;

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -242,6 +243,7 @@ func (s *Service) run(ctx context.Context, job *Job) {
 		})
 		s.emit(EventFailed, s.view(job))
 	}
+	defer safe.Recover("cloning "+job.Repo.URL, func(msg string) { fail(msg, false) })
 
 	if err := os.MkdirAll(filepath.Dir(job.Dest), 0o755); err != nil {
 		fail(fmt.Sprintf("Could not create %s: %v", filepath.Dir(job.Dest), err), false)

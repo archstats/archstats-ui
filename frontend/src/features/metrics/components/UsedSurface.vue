@@ -54,15 +54,15 @@ const callers = ref<Array<{ component: string; units: string[] }>>([]);
 
 interface Row { id: string; name: string; kind: string; callers: number; callerUnits: number }
 const { data: loaded } = useAsyncQuery<{ rows: Row[]; total: number; recorded: boolean }>(
-  async () => {
+  async (signal) => {
     if (!data.hasView("unit_connections") || !data.hasView("units")) return { rows: [], total: 0, recorded: false };
     const lit = sqlLiteral(props.name);
-    const [any] = await data.query<{ n: number }>(`SELECT count(*) AS n FROM (SELECT 1 FROM unit_connections LIMIT 1)`);
-    const [tot] = await data.query<{ n: number }>(`SELECT count(*) AS n FROM units WHERE component = ${lit}`);
+    const [any] = await data.query<{ n: number }>(`SELECT count(*) AS n FROM (SELECT 1 FROM unit_connections LIMIT 1)`, { signal });
+    const [tot] = await data.query<{ n: number }>(`SELECT count(*) AS n FROM units WHERE component = ${lit}`, { signal });
     const rows = await data.query<Row>(`SELECT u.id AS id, u.name AS name, u.kind AS kind, count(DISTINCT uc.from_component) AS callers, count(DISTINCT uc."from") AS callerUnits
       FROM unit_connections uc JOIN units u ON u.id = uc."to"
       WHERE uc.to_component = ${lit} AND uc.from_component <> uc.to_component
-      GROUP BY u.id ORDER BY callers DESC, callerUnits DESC, u.name`);
+      GROUP BY u.id ORDER BY callers DESC, callerUnits DESC, u.name`, { signal });
     return { rows, total: Number(tot?.n ?? 0), recorded: Number(any?.n ?? 0) > 0 };
   },
   [() => props.name],

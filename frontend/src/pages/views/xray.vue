@@ -131,8 +131,8 @@ watch(dir, d => { draft.value = d; topicFilter.value = null; selected.value = ne
 function open(d: string) { const v = d.trim().replace(/\/+$/, ""); if (v) void router.replace({ query: { ...route.query, dir: v } }); }
 
 // Every folder that holds files, for the picker.
-const { data: dirOptions } = useAsyncQuery<string[]>(async () => {
-  const rows = await store.query<{ name: string }>("SELECT name FROM files");
+const { data: dirOptions } = useAsyncQuery<string[]>(async (signal) => {
+  const rows = await store.query<{ name: string }>("SELECT name FROM files", { signal });
   const dirs = new Set<string>();
   for (const r of rows) { const p = String(r.name).split("/"); for (let i = 1; i < p.length; i++) dirs.add(p.slice(0, i).join("/")); }
   return [...dirs].sort();

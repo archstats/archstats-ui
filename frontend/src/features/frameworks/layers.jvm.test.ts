@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { EMPTY_FACTS, UNCLASSIFIED, classify, detectFramework, profileById, type ClassFacts, type Language } from "./frameworkProfiles"
+import { EMPTY_FACTS, UNCLASSIFIED, adoptSubtypeLanes, classify, detectFramework, profileById, type ClassFacts, type Language } from "./frameworkProfiles"
 import { layersOf } from "~/features/reports/anatomy"
 
 // The JVM server frameworks, end to end: the mini-applications in the
@@ -510,5 +510,57 @@ describe("the JVM profiles as a group", () => {
     // Tests are left out of the anatomy by file role; a test that slipped through is unclassified, not a configuration.
     const t = unit("OrderServiceTest", "src/test/java/com/acme/shop/service/OrderServiceTest.java", ["annotation:SpringBootTest"], ["org.springframework.boot.test.context.SpringBootTest"])
     expect(classify(profileById("spring"), t)).toBe(UNCLASSIFIED)
+  })
+})
+
+// ── Code written against interfaces ─────────────────────────────────────────
+
+describe("interfaces take their implementations' lane", () => {
+  // Broadleaf's shape: the role is on the Impl, every caller imports the interface.
+  const app: App = {
+    CartController: unit("CartController", "web/CartController.java", ["annotation:Controller"]),
+    CatalogService: unit("CatalogService", "service/CatalogService.java", ["supertype:interface"]),
+    CatalogServiceImpl: unit("CatalogServiceImpl", "service/CatalogServiceImpl.java", ["annotation:Service", "supertype:CatalogService"]),
+    OrderDao: unit("OrderDao", "dao/OrderDao.java", ["supertype:interface"]),
+    OrderDaoImpl: unit("OrderDaoImpl", "dao/OrderDaoImpl.java", ["annotation:Repository", "supertype:OrderDao"]),
+    Indexable: unit("Indexable", "domain/Indexable.java", ["supertype:interface"]),
+    Product: unit("Product", "domain/Product.java", ["supertype:interface", "supertype:Indexable"]),
+    ProductImpl: unit("ProductImpl", "domain/ProductImpl.java", ["annotation:Entity", "supertype:Product"]),
+    Status: unit("Status", "common/Status.java", ["supertype:interface"]),
+    Sku: unit("Sku", "domain/Sku.java", ["annotation:Entity", "supertype:Status"]),
+    Offer: unit("Offer", "offer/OfferServiceImpl.java", ["annotation:Service", "supertype:Status"]),
+    Helper: unit("Helper", "util/Helper.java", ["supertype:interface"]),
+  }
+  const edges = [
+    { from: "CartController", to: "CatalogService" },
+    { from: "CatalogServiceImpl", to: "CatalogService" },
+    { from: "CatalogServiceImpl", to: "OrderDao" },
+    { from: "OrderDaoImpl", to: "OrderDao" },
+    { from: "OrderDaoImpl", to: "Product" },
+    { from: "ProductImpl", to: "Product" },
+    { from: "Product", to: "Indexable" },
+    { from: "Sku", to: "Status" },
+    { from: "Offer", to: "Status" },
+    { from: "CatalogServiceImpl", to: "Helper" },
+  ]
+  const lanes = new Map(Object.entries(lanesOf("spring", app)))
+  const moved = adoptSubtypeLanes(lanes, edges, (id) => app[id])
+
+  it("moves an interface to the lane its implementation is in", () => {
+    expect(lanes.get("CatalogService")).toBe("services")
+    expect(lanes.get("OrderDao")).toBe("repositories")
+    expect(lanes.get("Product")).toBe("entities")
+  })
+  it("settles a chain of interfaces from the implementation up", () => {
+    expect(lanes.get("Indexable")).toBe("entities")
+    expect(moved).toBe(4)
+  })
+  it("leaves a type alone when its subtypes disagree, or when it is only used", () => {
+    expect(lanes.get("Status")).toBe(UNCLASSIFIED)
+    expect(lanes.get("Helper")).toBe(UNCLASSIFIED)
+  })
+  it("never moves a unit a rule already placed", () => {
+    expect(lanes.get("CartController")).toBe("controllers")
+    expect(lanes.get("Sku")).toBe("entities")
   })
 })

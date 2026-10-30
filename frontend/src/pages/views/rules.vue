@@ -220,9 +220,9 @@ import { t, intlLocale } from "~/shared/i18n"
 const store = useDataStore()
 
 const { data: rawFindings, loading, error } = useAsyncQuery<RuleFinding[]>(
-  async () => {
+  async (signal) => {
     if (!store.hasView("rules")) return []
-    const rows = await store.query<any>("SELECT rule, status, `from`, `to`, kind, file, line FROM rules")
+    const rows = await store.query<any>("SELECT rule, status, `from`, `to`, kind, file, line FROM rules", { signal })
     return rows.map(r => ({
       rule: String(r.rule ?? ""),
       status: String(r.status ?? ""),

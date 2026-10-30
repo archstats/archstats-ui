@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"net/url"
 	"os"
 	"os/exec"
@@ -27,7 +28,9 @@ type EditorOpened struct {
 var editorSchemes = map[string]bool{"vscode": true, "cursor": true, "idea": true, "system": true}
 
 // OpenInEditor opens a workspace file at a line in the chosen editor.
-func (w *WorkspaceService) OpenInEditor(workspaceID, scanID, relPath string, line, col int, editor string) (*EditorOpened, error) {
+func (w *WorkspaceService) OpenInEditor(workspaceID, scanID, relPath string, line, col int, editor string) (_ *EditorOpened, callErr error) {
+	defer safe.Guard("WorkspaceService.OpenInEditor", &callErr)
+
 	if !editorSchemes[editor] {
 		return nil, fmt.Errorf("unknown editor %q", editor)
 	}
@@ -55,7 +58,9 @@ func (w *WorkspaceService) OpenInEditor(workspaceID, scanID, relPath string, lin
 }
 
 // RevealWorkspaceFile selects a workspace file in the file manager.
-func (w *WorkspaceService) RevealWorkspaceFile(workspaceID, relPath string) error {
+func (w *WorkspaceService) RevealWorkspaceFile(workspaceID, relPath string) (callErr error) {
+	defer safe.Guard("WorkspaceService.RevealWorkspaceFile", &callErr)
+
 	ws, err := w.store.GetWorkspace(workspaceID)
 	if err != nil {
 		return err

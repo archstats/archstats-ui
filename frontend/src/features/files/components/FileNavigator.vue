@@ -30,7 +30,7 @@
       </button>
     </div>
     <Teleport to="body">
-      <div v-if="menuOpen" ref="menuRef" class="ui-menu animate-in w-[220px]" :style="menuStyle" @click.stop>
+      <div v-if="menuOpen" ref="menuRef" class="ui-menu animate-in min-w-[220px]" :style="menuStyle" @click.stop>
         <div class="menu-title">{{ t('files.fileNavigator.arrange') }}</div>
         <button type="button" class="ui-menu-item" :class="{ 'is-active': mode === 'tree' }" @click="choose('tree')">
           <Icon icon="list-tree" :size="13" class="text-neutral-500"/><span class="grow">{{ t('files.fileNavigator.tree') }}</span><Icon v-if="mode === 'tree'" icon="check" :size="13"/>

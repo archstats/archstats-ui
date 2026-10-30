@@ -8,6 +8,7 @@ import { knowledgeSql, type AliasMap } from "~/features/git/authors"
 import { languageOfPath } from "~/features/snapshot/languages"
 import { displayName, languageOf as importLanguage, libraries, ownPrefixes, type ImportRow } from "~/features/libraries/libraries"
 import { ANATOMY_READINGS } from "./anatomy"
+import { ageMore, churnMore, couplingMore, describeComponent, healthMore, historyMore, hotspotsMore, knowledgeMore, librariesMore, paras, sizeMore, SPOTLIGHT, structureMore, testsMore } from "./depth"
 import { guessRole, NON_PRODUCTION_GLOBS, TEST_GLOBS } from "~/features/snapshot/fileRole"
 import { proseName, proseNames, type ReadingOutput } from "./reportDoc"
 import { t, intlLocale } from "~/shared/i18n"
@@ -348,7 +349,7 @@ export const READINGS: ReadingDef[] = [
             const ROLE: Record<string, [string, string]> = { test: [t("reports.readings.testFile"), t("reports.readings.testFiles")], third_party: [t("reports.readings.thirdPartyFile"), t("reports.readings.thirdPartyFiles")], generated: [t("reports.readings.generatedFile"), t("reports.readings.generatedFiles")], non_code: [t("reports.readings.fileNotCode"), t("reports.readings.filesNotCode")] }
             const rest = other.length ? t("reports.readings.testsOtherFilesCounted", { value: listOf(other.map(([r, v]) => `${n(v.files)} ${v.files === 1 ? ROLE[r]?.[0] ?? r : ROLE[r]?.[1] ?? r}`)) }) : ""
             return {
-                text: t("reports.readings.productionCodeGrouped", { value: b(t("reports.readings.lines", { lines: n(f.production.lines) })), files: b(t("common.count.file", { count: f.production.files })), components: b(t("common.count.component", { count: f.components })), value2: p.language ? t("reports.readings.themHoldCode", { inLanguage: n(inLanguage), language: p.language }) : "", langs, mods, rest }),
+                text: paras(t("reports.readings.productionCodeGrouped", { value: b(t("reports.readings.lines", { lines: n(f.production.lines) })), files: b(t("common.count.file", { count: f.production.files })), components: b(t("common.count.component", { count: f.components })), value2: p.language ? t("reports.readings.themHoldCode", { inLanguage: n(inLanguage), language: p.language }) : "", langs, mods, rest }), p.language ? "" : await sizeMore(ctx, f)),
                 values: { "production files": f.production.files, "production lines": f.production.lines, components: f.components },
             }
         },
@@ -364,7 +365,7 @@ export const READINGS: ReadingDef[] = [
             const age = s.git__age_in_days ?? 0
             const recent = s.git__commits__last_90_days ?? 0
             return {
-                text: t("reports.readings.peopleHaveWorkedCode", { age: b(years(age)), commits: b(t("common.count.commit", { count: f.commits })), authors: b(t("common.count.author", { count: f.authors })), value: recent ? t("reports.readings.last90DaysChanged", { commits: b(t("common.count.commit", { count: recent })), authors: t("common.count.author", { count: s.git__authors__last_90_days ?? 0 }), files: t("common.count.file", { count: s.git__unique_file_changes__last_90_days ?? 0 }) }) : t("reports.readings.noCommitLandedLast") }),
+                text: paras(t("reports.readings.peopleHaveWorkedCode", { age: b(years(age)), commits: b(t("common.count.commit", { count: f.commits })), authors: b(t("common.count.author", { count: f.authors })), value: recent ? t("reports.readings.last90DaysChanged", { commits: b(t("common.count.commit", { count: recent })), authors: t("common.count.author", { count: s.git__authors__last_90_days ?? 0 }), files: t("common.count.file", { count: s.git__unique_file_changes__last_90_days ?? 0 }) }) : t("reports.readings.noCommitLandedLast") }), await historyMore(ctx, f)),
                 values: { commits: f.commits, authors: f.authors, "commits, last 90 days": recent },
             }
         },
@@ -399,7 +400,7 @@ export const READINGS: ReadingDef[] = [
                 : t("reports.readings.noComponentSitsTangle")
             const costText = cost === null ? "" : t("reports.readings.propagationCostAverageChange", { value: b(`${Math.round(cost * 100)}%`), value2: Math.round(cost * 100) })
             return {
-                text: t("reports.readings.countingEachTangleOne", { tangleText, costText, levels: b(t("common.count.level", { count: levels })) }),
+                text: paras(t("reports.readings.countingEachTangleOne", { tangleText, costText, levels: b(t("common.count.level", { count: levels })) }), await structureMore(ctx, f, groupOf, edges)),
                 values: { "components in tangles": members, tangles: sizes.size, "largest tangle": largest, "propagation cost %": cost === null ? 0 : Math.round(cost * 1000) / 10, "dependency levels": levels },
             }
         },
@@ -421,7 +422,7 @@ export const READINGS: ReadingDef[] = [
             const [item] = await ctx.query(`SELECT sum(CASE WHEN name IN (${names.map(lit).join(",")}) THEN coalesce(complexity__lines, 0) ELSE 0 END) AS l, sum(coalesce(complexity__lines, 0)) AS lt, sum(CASE WHEN name IN (${names.map(lit).join(",")}) THEN coalesce(git__commits__last_180_days, 0) ELSE 0 END) AS c, sum(coalesce(git__commits__last_180_days, 0)) AS ct FROM ${grain} WHERE ${where}`)
             const commits = Number(item?.ct) || 0
             return {
-                text: t("reports.readings.highestHotspotScoresTogether", { names: listOf(codes(names)), topLength: top.length, grain, value: pct(Number(item?.l) || 0, Number(item?.lt) || 0), value2: commits ? t("reports.readings.yetSawChangesLast", { value: pct(Number(item?.c) || 0, commits) }) : "" }),
+                text: paras(t("reports.readings.highestHotspotScoresTogether", { names: listOf(codes(names)), topLength: top.length, grain, value: pct(Number(item?.l) || 0, Number(item?.lt) || 0), value2: commits ? t("reports.readings.yetSawChangesLast", { value: pct(Number(item?.c) || 0, commits) }) : "" }), await hotspotsMore(ctx, f, grain, names)),
                 values: Object.fromEntries(top.map(r => [String(r.name), Math.round(Number(r.score) * 100) / 100])),
             }
         },
@@ -442,7 +443,7 @@ export const READINGS: ReadingDef[] = [
             if (r?.avg === null || r?.avg === undefined) return absent(t("reports.readings.noProductionFileHas"))
             const low = Number(r.low) || 0
             return {
-                text: t("reports.readings.codeHealthAveragesOut", { value: b((Number(r.avg)).toFixed(1)), value2: low ? t("reports.readings.code", { files: b(t("common.count.file", { count: low })), rateBelow4TogetherTheyHold: t("common.noun.ratesBelow4ItHolds", { count: low }), value: pct(Number(r.lowLines) || 0, Number(r.rated) || 0) }) : t("reports.readings.noFileRatesBelow"), value3: worst.length ? t("reports.readings.amongLargerComponents200", { value: listOf(codes(worst.map(w => String(w.name))).map((c, i) => `${c} (${Number(worst[i].health).toFixed(1)})`)) }) : "" }),
+                text: paras(t("reports.readings.codeHealthAveragesOut", { value: b((Number(r.avg)).toFixed(1)), value2: low ? t("reports.readings.code", { files: b(t("common.count.file", { count: low })), rateBelow4TogetherTheyHold: t("common.noun.ratesBelow4ItHolds", { count: low }), value: pct(Number(r.lowLines) || 0, Number(r.rated) || 0) }) : t("reports.readings.noFileRatesBelow"), value3: worst.length ? t("reports.readings.amongLargerComponents200", { value: listOf(codes(worst.map(w => String(w.name))).map((c, i) => `${c} (${Number(worst[i].health).toFixed(1)})`)) }) : "" }), await healthMore(ctx, f)),
                 values: { "average health": Math.round(Number(r.avg) * 10) / 10, "files below 4": low },
             }
         },
@@ -465,7 +466,7 @@ export const READINGS: ReadingDef[] = [
             for (const r of rows) { cum += Number(r.churn); k++; if (cum >= total / 2) break }
             const top = rows.slice(0, Math.min(3, rows.length))
             return {
-                text: t("reports.readings.lastDaysChangedAcross", { d, commits: b(t("common.count.commit", { count: commits })), value: b(t("reports.readings.lines2", { total: n(total) })), components: t("common.count.component", { count: rows.length }), value2: k <= Math.max(3, rows.length / 10) ? t("reports.readings.workWasConcentratedHalf", { components: b(t("common.count.component", { count: k })) }) : t("reports.readings.halfThoseLinesWent", { components: b(t("common.count.component", { count: k })) }), value3: listOf(codes(top.map(r => String(r.name))).map((c, i) => `${c} (${pct(Number(top[i].churn), total)})`)) }),
+                text: paras(t("reports.readings.lastDaysChangedAcross", { d, commits: b(t("common.count.commit", { count: commits })), value: b(t("reports.readings.lines2", { total: n(total) })), components: t("common.count.component", { count: rows.length }), value2: k <= Math.max(3, rows.length / 10) ? t("reports.readings.workWasConcentratedHalf", { components: b(t("common.count.component", { count: k })) }) : t("reports.readings.halfThoseLinesWent", { components: b(t("common.count.component", { count: k })) }), value3: listOf(codes(top.map(r => String(r.name))).map((c, i) => `${c} (${pct(Number(top[i].churn), total)})`)) }), await churnMore(ctx, f, d, total)),
                 values: { commits, "changed lines": total, "components changed": rows.length, "components with half": k },
             }
         },
@@ -485,7 +486,7 @@ export const READINGS: ReadingDef[] = [
             const biggest = [...kept].sort((a, b) => Number(b.added) - Number(a.added)).slice(0, 10)
             const bigOne = biggest.filter(r => Number(r.cover50) === 1).length
             return {
-                text: t("reports.readings.grew500LinesMore", { components: b(t("common.count.component", { count: kept.length })), one50: b(n(one50)), one80: b(n(one80)), value: bigOne === 0 ? t("reports.readings.noneTenGrewMost") : bigOne === 1 ? t("reports.readings.oneTenGrewMost") : t("reports.readings.tenGrewMostHave", { bigOne: n(bigOne) }), their: t("common.noun.its", { count: bigOne }) }),
+                text: paras(t("reports.readings.grew500LinesMore", { components: b(t("common.count.component", { count: kept.length })), one50: b(n(one50)), one80: b(n(one80)), value: bigOne === 0 ? t("reports.readings.noneTenGrewMost") : bigOne === 1 ? t("reports.readings.oneTenGrewMost") : t("reports.readings.tenGrewMostHave", { bigOne: n(bigOne) }), their: t("common.noun.its", { count: bigOne }) }), await knowledgeMore(ctx, kept)),
                 values: { components: kept.length, "one author covers half": one50, "one author covers 80%": one80 },
             }
         },
@@ -503,7 +504,7 @@ export const READINGS: ReadingDef[] = [
             const all = await ctx.query(`SELECT coalesce(modularity__coupling__dependents, 0) AS d, coalesce(modularity__coupling__dependencies, 0) AS e FROM components WHERE ${prodComponents(f)}${ext}`)
             if (!top.length) return absent(t("reports.readings.noComponentDependsAnother"))
             return {
-                text: t("reports.readings.mostDependedComponentOther", { name: code(String(top[0].name)), d: b(n(Number(top[0].d))), componentsImport: t("common.noun.componentImports", { count: Number(top[0].d) }), value: top.length > 1 ? t("reports.readings.nextCome", { value: listOf(top.slice(1).map(r => `${code(String(r.name))} (${n(Number(r.d))})`)) }) : "", others: t("common.count.other", { count: median(all.map(r => Number(r.d))) }), value2: median(all.map(r => Number(r.e))) === 0 ? t("reports.readings.none") : n(median(all.map(r => Number(r.e)))) }),
+                text: paras(t("reports.readings.mostDependedComponentOther", { name: code(String(top[0].name)), d: b(n(Number(top[0].d))), componentsImport: t("common.noun.componentImports", { count: Number(top[0].d) }), value: top.length > 1 ? t("reports.readings.nextCome", { value: listOf(top.slice(1).map(r => `${code(String(r.name))} (${n(Number(r.d))})`)) }) : "", others: t("common.count.other", { count: median(all.map(r => Number(r.d))) }), value2: median(all.map(r => Number(r.e))) === 0 ? t("reports.readings.none") : n(median(all.map(r => Number(r.e)))) }), await couplingMore(ctx, f, ext, String(top[0].name))),
                 values: Object.fromEntries(top.map(r => [String(r.name), Number(r.d)])),
             }
         },
@@ -562,7 +563,7 @@ export const READINGS: ReadingDef[] = [
             const total = Number(r?.total) || 0
             if (!total) return absent(t("reports.readings.noProductionFileHas2"))
             return {
-                text: t("reports.readings.productionCodeHasNot", { value: b(pct(Number(r.old) || 0, total)), value2: b(pct(Number(r.fresh) || 0, total)) }),
+                text: paras(t("reports.readings.productionCodeHasNot", { value: b(pct(Number(r.old) || 0, total)), value2: b(pct(Number(r.fresh) || 0, total)) }), await ageMore(ctx, f)),
                 values: { "% older than a year": Math.round((100 * (Number(r.old) || 0)) / total), "% changed in 90 days": Math.round((100 * (Number(r.fresh) || 0)) / total) },
             }
         },
@@ -582,7 +583,7 @@ export const READINGS: ReadingDef[] = [
             const [r] = await ctx.query(`SELECT count(*) AS c, sum(name NOT IN (SELECT component FROM files WHERE role = 'test' AND component IS NOT NULL UNION SELECT d."to" FROM component_connections_direct d JOIN files t ON t.name = d.file WHERE t.role = 'test')) AS u FROM components WHERE name IN (SELECT component FROM files WHERE role = 'production')`)
             const untested = Number(r?.u) || 0
             return {
-                text: t("reports.readings.testsLinesLinesTest", { files: b(t("common.count.file", { count: ratio2.files })), lines: n(ratio2.lines), ratio: ratio(ratio2.lines, f.production.lines), value: b(t("reports.readings.ofThe", { untested: n(untested), productionComponents: t("common.count.productionComponent", { count: Number(r?.c) || 0 }) })), are: t("common.noun.is", { count: untested }), them: t("common.noun.it", { count: untested }), them2: t("common.noun.it", { count: untested }), left }),
+                text: paras(t("reports.readings.testsLinesLinesTest", { files: b(t("common.count.file", { count: ratio2.files })), lines: n(ratio2.lines), ratio: ratio(ratio2.lines, f.production.lines), value: b(t("reports.readings.ofThe", { untested: n(untested), productionComponents: t("common.count.productionComponent", { count: Number(r?.c) || 0 }) })), are: t("common.noun.is", { count: untested }), them: t("common.noun.it", { count: untested }), them2: t("common.noun.it", { count: untested }), left }), await testsMore(ctx, f, untested, Number(r?.c) || 0)),
                 values: { "test files": ratio2.files, "components no test reaches": untested },
             }
         },
@@ -602,11 +603,12 @@ export const READINGS: ReadingDef[] = [
             const platform = libs.length - outside.length
             const top = [...outside].sort((a, b) => b.files - a.files || a.name.localeCompare(b.name)).slice(0, 3)
             return {
-                text: t("reports.readings.codeUses", { libraries: b(t("common.count.library", { count: outside.length })), value: platform ? t("reports.readings.notCountingLanguageS", { modules: t("common.count.module", { count: platform }) }) : "", value2: top.length ? t("reports.readings.mostWidelyUsed", { are: t("common.noun.is", { count: top.length }), value: listOf(top.map((l, i) => `\`${displayName(l.name, l.language)}\` (${i === 0 ? t("reports.readings.in", { t: t("common.count.file", { count: l.files }) }) : n(l.files)})`)) }) : "" }),
+                text: t("reports.readings.codeUses", { libraries: b(t("common.count.library", { count: outside.length })), value: platform ? t("reports.readings.notCountingLanguageS", { modules: t("common.count.module", { count: platform }) }) : "", value2: top.length ? t("reports.readings.mostWidelyUsed", { are: t("common.noun.is", { count: top.length }), value: listOf(top.map((l, i) => `\`${displayName(l.name, l.language)}\` (${i === 0 ? t("reports.readings.in", { t: t("common.count.file", { count: l.files }) }) : n(l.files)})`)) }) : "" }) + (outside.length > 3 ? ` ${librariesMore(outside)}` : ""),
                 values: { libraries: outside.length, "platform modules": libs.length - outside.length },
             }
         },
     },
+    SPOTLIGHT,
     {
         id: "focus",
         label: t("reports.readings.oneComponent"),
@@ -616,23 +618,7 @@ export const READINGS: ReadingDef[] = [
             const f = await probe(ctx)
             const name = p.component
             if (!name) return { ...absent(t("reports.readings.chooseComponentParagraph")), instruction: true }
-            const h = f.componentColumns.has("codesmells__code_health") ? `, ${healthCol(ctx.revision)} AS health` : ""
-            const git = f.componentColumns.has("git__commits__last_180_days") ? ", git__commits__last_180_days AS commits, git__authors__last_180_days AS authors" : ""
-            const [r] = await ctx.query(`SELECT complexity__files AS files, complexity__lines AS lines, modularity__coupling__dependents AS d, modularity__coupling__dependencies AS e${h}${git} FROM components WHERE name = ${lit(name)}`)
-            if (!r) return absent(t("reports.readings.notSnapshot", { name: code(name) }))
-            const [item] = f.tables.has("component_strongly_connected_groups") ? await ctx.query(`SELECT count(*) AS c FROM component_strongly_connected_groups WHERE "group" = (SELECT "group" FROM component_strongly_connected_groups WHERE component = ${lit(name)} LIMIT 1)`) : [null]
-            const tangle = Number(item?.c) || 0
-            // Counted like the report's dependents table: production components that import it.
-            const [dep] = f.tables.has("component_connections_direct") ? await ctx.query(`SELECT count(DISTINCT "from") AS c FROM component_connections_direct WHERE "to" = ${lit(name)} AND "from" <> ${lit(name)} AND ${prodComponents(f, `"from"`)}`) : [null]
-            const d = dep ? Number(dep.c) || 0 : Number(r.d) || 0
-            const parts = [
-                t("reports.readings.has", { name: code(name), files: b(t("common.count.file", { count: Number(r.files) || 0 })), value: b(t("reports.readings.lines3", { value: n(Number(r.lines) || 0) })) }),
-                t("reports.readings.directlyImports", { d: b(n(d)), value: dep ? t("reports.readings.production") : "", componentsImport: t("common.noun.componentImports", { count: d }), otherComponents: t("common.count.otherComponent", { count: Number(r.e) || 0 }) }),
-                tangle > 1 ? t("reports.readings.sitsTangleSoCannot", { components: t("common.count.component", { count: tangle }) }) : "",
-                r.health !== undefined && r.health !== null ? t("reports.readings.codeHealthOut10", { value: Number(r.health).toFixed(1) }) : "",
-                r.commits !== undefined ? t("reports.readings.last180DaysChanged", { people: t("common.count.person", { count: Number(r.authors) || 0 }), commits: t("common.count.commit", { count: Number(r.commits) || 0 }) }) : "",
-            ]
-            return { text: parts.join(""), values: { lines: Number(r.lines) || 0, dependents: d, dependencies: Number(r.e) || 0, "tangle size": tangle } }
+            return (await describeComponent(ctx, f, name)) ?? absent(t("reports.readings.notSnapshot", { name: code(name) }))
         },
     },
 

@@ -104,9 +104,9 @@ const { filePath, escapedPath } = useFileRoute()
 type FileRow = Record<string, any>
 
 const { data: file, loading, error } = useAsyncQuery<FileRow | null>(
-  async () => {
+  async (signal) => {
     if (!filePath.value) return null
-    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`)
+    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`, { signal })
     return rows[0] ?? null
   },
   [escapedPath],

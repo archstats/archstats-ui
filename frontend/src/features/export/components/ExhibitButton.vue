@@ -28,7 +28,7 @@
   <Teleport to="body">
     <template v-if="open && exhibit">
       <div class="fixed inset-0 z-[69] cursor-default" @click="close"></div>
-      <div class="ui-menu flex w-64 flex-col animate-in" :style="style" role="menu" :aria-label="exhibit.title" @keydown.esc.stop="close">
+      <div class="ui-menu flex min-w-64 flex-col animate-in" :style="style" role="menu" :aria-label="exhibit.title" @keydown.esc.stop="close">
         <p class="ui-menu-title truncate normal-case tracking-normal" :title="exhibit.title">{{ exhibit.title }}</p>
 
         <template v-if="exhibit.kind === 'figure'">

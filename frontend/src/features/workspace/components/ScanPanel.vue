@@ -45,6 +45,16 @@
           <span>{{ t('workspace.scanPanel.scan') }}</span>
         </template>
       </button>
+      <button
+          v-if="progress && progress.scanId"
+          type="button"
+          class="ui-btn ui-btn-icon shrink-0"
+          :title="t('workspace.scanPanel.stopScan')"
+          :aria-label="t('workspace.scanPanel.stopScan')"
+          @click="store.cancelScan()"
+      >
+        <Square :size="10" :stroke-width="2.4" fill="currentColor" aria-hidden="true"/>
+      </button>
     </div>
 
     <!-- One status line at most: what is running, what is waiting, what went wrong. -->
@@ -204,7 +214,7 @@
       <div
           v-if="menuScan"
           ref="menuEl"
-          class="ui-menu fixed z-[910] w-56 animate-in"
+          class="ui-menu fixed z-[910] min-w-56 animate-in"
           :style="menuStyle"
           role="menu"
           @keydown.esc.prevent.stop="closeMenu"
@@ -232,7 +242,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { AlertTriangle, ChevronDown, Flag, HardDrive, History, Loader2, MoreHorizontal, Play, X } from "lucide-vue-next";
+import { AlertTriangle, ChevronDown, Flag, HardDrive, History, Loader2, MoreHorizontal, Play, Square, X } from "lucide-vue-next";
 import { RevealSnapshot, SaveSnapshotCopy, SnapshotPath } from "wailsjs/go/app/WorkspaceService";
 import { copyText } from "~/platform/files";
 import { formatBytes } from "~/shared/format";

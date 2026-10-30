@@ -11,7 +11,7 @@
     ><Icon icon="arrow-right" :size="11"/></button>
 
     <div v-if="open" class="fixed inset-0 z-40" @click.stop="set(false)"></div>
-    <div v-if="open" class="ui-menu animate-in absolute right-0 top-6 z-50 flex w-56 flex-col" role="menu">
+    <div v-if="open" class="ui-menu animate-in absolute right-0 top-6 z-50 flex min-w-56 flex-col" role="menu">
       <div class="ui-menu-title">{{ t('lens-builder.memberMoveMenu.move') }}</div>
       <div class="max-h-64 overflow-y-auto">
         <!-- Named, not just coloured. This was a row of unlabelled swatches,

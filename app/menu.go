@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/archstats/archstats-ui/app/safe"
 	goruntime "runtime"
 	"sync"
 
@@ -98,6 +99,8 @@ type MenuState struct {
 // SetState enables and disables items to match the app: no Scan Again
 // without a workspace or while one runs, no Reveal without a snapshot.
 func (m *MenuService) SetState(state MenuState) {
+	defer safe.Guard("MenuService.SetState", nil)
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.menu == nil {

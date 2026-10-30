@@ -388,13 +388,13 @@ const { data: unplaced } = useAsyncQuery<Array<{ file: string; line: number; nam
 )
 
 const { data, loading } = useAsyncQuery(
-  async () => {
+  async (signal) => {
     const lit = sqlLiteral(current.value)
     const direct = await store.query<DirectRow>(`
       select "from", "to", sum(reference_count) as "references"
       from ${store.runtimeComponentEdges}
       where "from" = ${lit} or "to" = ${lit}
-      group by 1, 2`)
+      group by 1, 2`, { signal })
     // Hops from the path itself: older engines stored the components on the
     // path, current ones the steps, and subtracting one here was only right
     // for the first.
@@ -402,14 +402,14 @@ const { data, loading } = useAsyncQuery(
       ? (await store.query<{ from: string; to: string; shortest_path?: string | null; shortest_path_length: number }>(`
           select "from", "to", ${storedPaths.value ? "shortest_path, " : ""}shortest_path_length
           from component_connections_indirect
-          where "from" = ${lit} or "to" = ${lit}`))
+          where "from" = ${lit} or "to" = ${lit}`, { signal }))
           .map(r => ({ from: r.from, to: r.to, hops: hopsOf(r.shortest_path, r.shortest_path_length) }))
       : []
     const matrix = store.hasView("component_matrix")
-      ? await store.query<MatrixRow>(`select "from", "to", git_co_changes from component_matrix where "from" = ${lit} or "to" = ${lit}`)
+      ? await store.query<MatrixRow>(`select "from", "to", git_co_changes from component_matrix where "from" = ${lit} or "to" = ${lit}`, { signal })
       : []
     const shared = store.hasView("git_component_shared_commits")
-      ? await store.query<SharedRow>(`select pair_1, pair_2, shared_commits, percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2 from git_component_shared_commits where (pair_1 = ${lit} or pair_2 = ${lit}) and ${TRUSTED_PAIR_SQL}`)
+      ? await store.query<SharedRow>(`select pair_1, pair_2, shared_commits, percentage_of_all_commits_pair_1, percentage_of_all_commits_pair_2 from git_component_shared_commits where (pair_1 = ${lit} or pair_2 = ${lit}) and ${TRUSTED_PAIR_SQL}`, { signal })
       : []
     return { direct, indirect, matrix, shared }
   },
@@ -674,7 +674,7 @@ interface EvidenceLoad { out: EvidenceFile[]; in: EvidenceFile[]; outPath: strin
 const EMPTY_EVIDENCE: EvidenceLoad = { out: [], in: [], outPath: [], inPath: [] }
 
 const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>(
-  async () => {
+  async (signal) => {
     const other = selectedName.value
     if (!other) return EMPTY_EVIDENCE
     const me = sqlLiteral(current.value)
@@ -685,7 +685,7 @@ const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>
       FROM ${store.runtimeComponentEdges}
       WHERE ("from" = ${me} AND "to" = ${them}) OR ("from" = ${them} AND "to" = ${me})
       GROUP BY "from", "to", file
-      ORDER BY "references" DESC LIMIT 40`)
+      ORDER BY "references" DESC LIMIT 40`, { signal })
 
     const mine = current.value
     let outPath: string[] = [], inPath: string[] = []
@@ -693,12 +693,12 @@ const { data: evidence, loading: evidenceLoading } = useAsyncQuery<EvidenceLoad>
       const paths = await store.query<{ from: string; to: string; shortest_path: string | null }>(`
           SELECT "from", "to", shortest_path
           FROM component_connections_indirect
-          WHERE ("from" = ${me} AND "to" = ${them}) OR ("from" = ${them} AND "to" = ${me})`)
+          WHERE ("from" = ${me} AND "to" = ${them}) OR ("from" = ${them} AND "to" = ${me})`, { signal })
       outPath = pathSteps(paths.find(p => p.from === mine)?.shortest_path)
       inPath = pathSteps(paths.find(p => p.to === mine)?.shortest_path)
     } else if (hasIndirect.value) {
       const hops = await store.query<{ from: string; to: string; next_hop: string }>(`
-          SELECT "from", "to", next_hop FROM component_connections_indirect WHERE "to" IN (${me}, ${them})`)
+          SELECT "from", "to", next_hop FROM component_connections_indirect WHERE "to" IN (${me}, ${them})`, { signal })
       const towards = (target: string) => new Map(hops.filter(h => h.to === target).map(h => [h.from, h.next_hop]))
       outPath = walkNextHops(towards(other), mine, other)
       inPath = walkNextHops(towards(mine), other, mine)

@@ -4,6 +4,8 @@ import {query} from '../models';
 
 export function AnalysisRevision():Promise<number>;
 
+export function Cancel(arg1:string):Promise<void>;
+
 export function Console(arg1:string,arg2:string):Promise<query.Limited>;
 
 export function CurrentScan():Promise<string>;
@@ -21,3 +23,5 @@ export function QueryIn(arg1:string,arg2:string):Promise<Array<Record<string, an
 export function QueryLimited(arg1:string,arg2:string,arg3:number,arg4:number):Promise<query.Limited>;
 
 export function ReportConsole(arg1:string,arg2:string):Promise<query.Limited>;
+
+export function Rows(arg1:string,arg2:string,arg3:string):Promise<query.Table>;

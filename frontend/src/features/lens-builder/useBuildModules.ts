@@ -11,8 +11,8 @@ import { t } from "~/shared/i18n"
 export function useBuildModules() {
     const data = useDataStore()
     const { data: rows, loading } = useAsyncQuery<BuildModule[]>(
-        async () => (data.hasView("modules")
-            ? parseModules(await data.query("SELECT name, kind, directory, manifest, depends_on FROM modules"))
+        async (signal) => (data.hasView("modules")
+            ? parseModules(await data.query("SELECT name, kind, directory, manifest, depends_on FROM modules", { signal }))
             : []),
         [() => data.datasetKey],
         { initial: [] },

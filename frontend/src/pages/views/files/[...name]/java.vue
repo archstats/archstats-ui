@@ -183,10 +183,10 @@ const ANNOTATION_TYPES = ROLE_SNIPPET_TYPE_LIST.filter(t => t.startsWith("java__
 // connections touching its class. Without the connections view, one
 // class-to-file map resolves the file's own imports instead.
 const { data, loading, error } = useAsyncQuery<Loaded>(
-  async () => {
+  async (signal) => {
     const empty: Loaded = { row: null, snippets: [], connections: [], classMap: new Map(), hasConnectionsView: false }
     if (!filePath.value) return empty
-    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`)
+    const rows = await store.query<FileRow>(`SELECT * FROM files WHERE name = ${escapedPath.value} LIMIT 1`, { signal })
     const row = rows[0] ?? null
     if (!row) return empty
 
@@ -194,7 +194,7 @@ const { data, loading, error } = useAsyncQuery<Loaded>(
       ? await store.query<SnippetRow>(`
           SELECT file, snippet_type, content FROM snippets
           WHERE (file = ${escapedPath.value} AND snippet_type LIKE 'java__%')
-             OR snippet_type IN ${sqlIn(ANNOTATION_TYPES)}`)
+             OR snippet_type IN ${sqlIn(ANNOTATION_TYPES)}`, { signal })
       : []
 
     const hasFullClass = "java_full_class" in row
@@ -206,13 +206,13 @@ const { data, loading, error } = useAsyncQuery<Loaded>(
         SELECT c."from", c."to", c.file, c.reference_count, f.name AS to_file
         FROM java_class_connections_direct c
         LEFT JOIN files f ON f.java_full_class = c."to"
-        WHERE c."from" = ${lit} OR c."to" = ${lit}`)
+        WHERE c."from" = ${lit} OR c."to" = ${lit}`, { signal })
       return { row, snippets, connections, classMap: new Map(), hasConnectionsView }
     }
     const classMap = new Map<string, string>()
     if (hasFullClass) {
       const files = await store.query<{ name: string; java_full_class: string }>(
-        "SELECT name, java_full_class FROM files WHERE java_full_class IS NOT NULL AND java_full_class != ''",
+        "SELECT name, java_full_class FROM files WHERE java_full_class IS NOT NULL AND java_full_class != ''", { signal },
       )
       for (const f of files) classMap.set(f.java_full_class, f.name)
     }

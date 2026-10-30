@@ -317,11 +317,11 @@ const avgLinesPerFile = computed(() => {
 const authorsStore = useAuthorsStore()
 watch(() => workspaces.active?.id, (id) => { if (id) authorsStore.load(id) }, { immediate: true })
 const { data: people } = useAsyncQuery<{ commits: number; authors: number } | null>(
-  async () => {
+  async (signal) => {
     if (!store.hasView("git_commits")) return null
     const rows = await store.query<{ commits: number; authors: number }>(
       `SELECT count(DISTINCT commit_hash) AS commits, count(DISTINCT ${canonicalAuthorSql(authorsStore.aliases)}) AS authors
-       FROM git_commits WHERE ${IN_SNAPSHOT}${authorsStore.showBots ? "" : ` AND ${NOT_BOT_SQL}`}`)
+       FROM git_commits WHERE ${IN_SNAPSHOT}${authorsStore.showBots ? "" : ` AND ${NOT_BOT_SQL}`}`, { signal })
     return rows[0] ?? null
   },
   [() => store.datasetKey, () => authorsStore.aliases, () => authorsStore.showBots],

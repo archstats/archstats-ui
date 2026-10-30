@@ -176,7 +176,7 @@
     "open": "{n} · open"
   },
   "metricMatrix": {
-    "metricsMatrix": "Metrics matrix",
+    "metricsMatrix": "Metrics, all pairs",
     "selected": "Selected",
     "riseTogetherPositive": "Rise together (positive ρ)",
     "oneRisesOtherFalls": "One rises as the other falls (negative ρ)",
@@ -219,7 +219,7 @@
     "sortList": "Sort the list by {key}",
     "median": "median {median}",
     "log": "· log",
-    "metricsStrips": "Metrics strips",
+    "metricsStrips": "Metrics spread",
     "insideEveryBrushedRange": "Inside every brushed range",
     "outsideBrushedRange": "Outside a brushed range",
     "brushedRange": "Brushed range",
@@ -241,9 +241,9 @@
     "everyNumberEverySort": "Every number for every {o}. Sort, pick columns, export.",
     "plot": "Plot",
     "twoMetricsAgainstEach": "Two metrics against each other, split at the medians into named corners.",
-    "matrix": "Matrix",
+    "matrix": "All pairs",
     "everyPairMetricsOnce": "Every pair of metrics at once, and how strongly each pair moves together.",
-    "strips": "Strips",
+    "strips": "Spread",
     "eachMetricStripDots": "Each metric as a strip of dots. Follow one {o} across all of them; brush to narrow.",
     "profiles": "Profiles",
     "eachOneLineAcross": "Each {o} as one line across every metric. Compare shapes; filter on several axes."
@@ -330,7 +330,7 @@
     "changeConcentrates": "Change concentrates",
     "changeSpreadOut": "Change is spread out",
     "busiestCarryAllCommits": "The busiest {top} of {value} carry {share} of all commits.",
-    "showThemStrips": "Show them in Strips",
+    "showThemStrips": "Show them in Spread",
     "metricsMoveTogether": "Metrics that move together",
     "riseTogetherRank": "{first} and {b} rise together: ρ {rho}, {rho2}, by rank.",
     "compareEveryPair": "Compare every pair",

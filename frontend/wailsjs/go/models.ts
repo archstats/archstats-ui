@@ -989,6 +989,20 @@ export namespace query {
 	        this.elapsedMs = source["elapsedMs"];
 	    }
 	}
+	export class Table {
+	    columns: string[];
+	    rows: any[][];
+	
+	    static createFrom(source: any = {}) {
+	        return new Table(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.columns = source["columns"];
+	        this.rows = source["rows"];
+	    }
+	}
 
 }
 

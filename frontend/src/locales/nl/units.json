@@ -268,6 +268,7 @@
   "stack": {
     "againstGrain": ", tegen de richting in",
     "uses": "{from} gebruikt {to}: {references}{value}",
-    "text": "{modules}"
+    "text": "{modules}",
+    "asideSub": "{modules} · {into} erin, {out} eruit"
   }
 }

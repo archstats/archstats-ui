@@ -32,7 +32,7 @@ export function samePath(path: string): string {
 export function useFileNeighbours(filePath: Ref<string>) {
     const store = useDataStore()
     const { data } = useAsyncQuery<Neighbours | null>(
-        async () => {
+        async (signal) => {
             if (!filePath.value) return null
             const file = sqlLiteral(samePath(filePath.value))
             const hasRefs = store.hasColumn("unit_connections", "from_file")
@@ -53,7 +53,7 @@ export function useFileNeighbours(filePath: Ref<string>) {
             if (names.length && store.hasColumn("files", "codesmells__code_health")) {
                 const list = names.map(n => sqlLiteral(n)).join(", ")
                 const dotted = names.map(n => sqlLiteral(`./${n}`)).join(", ")
-                for (const r of await store.query<{ name: string; h: number | null }>(`SELECT name, codesmells__code_health AS h FROM files WHERE name IN (${list}) OR name IN (${dotted})`)) {
+                for (const r of await store.query<{ name: string; h: number | null }>(`SELECT name, codesmells__code_health AS h FROM files WHERE name IN (${list}) OR name IN (${dotted})`, { signal })) {
                     health.set(samePath(r.name), r.h === null ? null : Number(r.h))
                 }
             }

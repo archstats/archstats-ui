@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/archstats/archstats-ui/app/locale"
+	"github.com/archstats/archstats-ui/app/safe"
 	"net/http"
 	"os"
 	"strings"
@@ -400,6 +401,8 @@ func (s *Service) Models() (ModelList, error) {
 	results := make(chan result, len(ready))
 	for i, ps := range ready {
 		go func(i int, ps ProviderStatus) {
+			// A panic still answers, or the loop below waits for ever.
+			defer safe.Recover("listing models", func(msg string) { results <- result{at: i, err: errors.New(msg), ps: ps} })
 			ms, err := s.listOf(ps)
 			results <- result{at: i, models: ms, err: err, ps: ps}
 		}(i, ps)

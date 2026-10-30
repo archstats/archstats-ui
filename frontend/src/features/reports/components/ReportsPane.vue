@@ -51,7 +51,7 @@
         ><Icon icon="more-horizontal" :size="13"/></button>
         <template v-if="menu === r.id">
           <div class="fixed inset-0 z-40" @click="menu = null"></div>
-          <div class="ui-menu absolute right-0 top-8 z-50 w-44 animate-in" role="menu">
+          <div class="ui-menu absolute right-0 top-8 z-50 min-w-44 animate-in" role="menu">
             <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; startRename(r)">{{ t('reports.reportsPane.rename') }}</button>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; $emit('duplicate', r.id)">{{ t('reports.reportsPane.duplicate') }}</button>
             <button type="button" class="ui-menu-item" role="menuitem" @click="menu = null; $emit('saveTemplate', r.id)">{{ t('reports.reportsPane.saveTemplate') }}</button>

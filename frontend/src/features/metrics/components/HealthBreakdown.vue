@@ -95,8 +95,8 @@ const sumLine = computed(() => {
 });
 
 const { data: hottest } = useAsyncQuery<{ name: string } | null>(
-  async () => {
-    const rows = await store.query<{ name: string }>("SELECT name FROM files WHERE codesmells__hotspot_score IS NOT NULL ORDER BY codesmells__hotspot_score DESC LIMIT 1");
+  async (signal) => {
+    const rows = await store.query<{ name: string }>("SELECT name FROM files WHERE codesmells__hotspot_score IS NOT NULL ORDER BY codesmells__hotspot_score DESC LIMIT 1", { signal });
     return rows[0] ?? null;
   },
   [() => store.datasetKey],

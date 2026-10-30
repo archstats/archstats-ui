@@ -96,7 +96,11 @@ func TestScanEndToEnd(t *testing.T) {
 		t.Fatalf("snapshot missing: %v", err)
 	}
 
+	// The store says complete a moment before scan:done goes out.
 	events := rec.names()
+	for deadline := time.Now().Add(5 * time.Second); events[len(events)-1] != EventScanDone && time.Now().Before(deadline); events = rec.names() {
+		time.Sleep(10 * time.Millisecond)
+	}
 	if events[0] != EventScanStarted || events[len(events)-1] != EventScanDone {
 		t.Errorf("events = %v, want started-first done-last", events)
 	}

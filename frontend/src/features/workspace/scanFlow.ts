@@ -41,17 +41,26 @@ export interface ScanWatch {
     ref: string;
     /** The snapshot that was open when the scan began. */
     openAtStart: string | null;
+    /** When the scan began (ms); a scan the shell saw begin knows it. */
+    startedAt?: number;
 }
+
+/** A scan that ran longer than this is not waited on: the person has gone back to work. */
+export const WAITED_ON_MS = 60_000;
 
 // The auto-open rule. A scan of the working copy opens its result when it
 // finishes, unless the user opened another snapshot while it ran: moving on
 // is the only thing that keeps the view where it is. A rescan reads older
 // code and never takes the view over, except when nothing is open at all.
 // A scan the shell did not see begin (started before a reload) opens only
-// into an empty view.
-export function shouldOpenResult(watch: ScanWatch | null, openNow: string | null): boolean {
+// into an empty view. Nor does a long one take the view over: after a minute
+// the person is working in the open snapshot, and swapping it under them
+// re-runs every view and drops what they were in the middle of. It says it
+// is ready instead.
+export function shouldOpenResult(watch: ScanWatch | null, openNow: string | null, now = Date.now()): boolean {
     if (openNow === null) return true;
     if (!watch || watch.ref) return false;
+    if (watch.startedAt !== undefined && now - watch.startedAt > WAITED_ON_MS) return false;
     return watch.openAtStart === openNow;
 }
 

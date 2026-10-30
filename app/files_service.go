@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,9 @@ type SaveRequest struct {
 
 // SaveFile asks where to save and writes the content. It returns the path
 // written, or "" when the user cancelled.
-func (f *FilesService) SaveFile(req SaveRequest) (string, error) {
+func (f *FilesService) SaveFile(req SaveRequest) (_ string, callErr error) {
+	defer safe.Guard("FilesService.SaveFile", &callErr)
+
 	path, err := runtime.SaveFileDialog(f.ctx(), runtime.SaveDialogOptions{
 		DefaultFilename: req.DefaultName,
 		Title:           req.Title,
@@ -64,7 +67,9 @@ type BundleFile struct {
 
 // SaveBundle asks for a folder and writes several files into it: a report
 // with its figures, say. It returns the folder, or "" when cancelled.
-func (f *FilesService) SaveBundle(title string, files []BundleFile) (string, error) {
+func (f *FilesService) SaveBundle(title string, files []BundleFile) (_ string, callErr error) {
+	defer safe.Guard("FilesService.SaveBundle", &callErr)
+
 	dir, err := runtime.OpenDirectoryDialog(f.ctx(), runtime.OpenDialogOptions{Title: title, CanCreateDirectories: true})
 	if err != nil || dir == "" {
 		return "", err
@@ -86,12 +91,16 @@ func (f *FilesService) SaveBundle(title string, files []BundleFile) (string, err
 }
 
 // OpenFile asks for one file and returns its path, or "" when cancelled.
-func (f *FilesService) OpenFile(title string, filters []FileFilter) (string, error) {
+func (f *FilesService) OpenFile(title string, filters []FileFilter) (_ string, callErr error) {
+	defer safe.Guard("FilesService.OpenFile", &callErr)
+
 	return runtime.OpenFileDialog(f.ctx(), runtime.OpenDialogOptions{Title: title, Filters: toFilters(filters)})
 }
 
 // Reveal shows a file or folder in the OS file manager.
-func (f *FilesService) Reveal(path string) error {
+func (f *FilesService) Reveal(path string) (callErr error) {
+	defer safe.Guard("FilesService.Reveal", &callErr)
+
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
@@ -99,7 +108,9 @@ func (f *FilesService) Reveal(path string) error {
 }
 
 // CopyText puts text on the system clipboard.
-func (f *FilesService) CopyText(text string) error {
+func (f *FilesService) CopyText(text string) (callErr error) {
+	defer safe.Guard("FilesService.CopyText", &callErr)
+
 	return runtime.ClipboardSetText(f.ctx(), text)
 }
 

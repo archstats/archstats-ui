@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +51,9 @@ func tableExists(db *sql.DB, name string) bool {
 }
 
 // InspectSnapshot reads a .db without taking it in, and says whether it can be.
-func (w *WorkspaceService) InspectSnapshot(path string) (*SnapshotInfo, error) {
+func (w *WorkspaceService) InspectSnapshot(path string) (_ *SnapshotInfo, callErr error) {
+	defer safe.Guard("WorkspaceService.InspectSnapshot", &callErr)
+
 	info := &SnapshotInfo{Path: path}
 	st, err := os.Stat(path)
 	if err != nil {
@@ -202,7 +205,9 @@ func (w *WorkspaceService) suggestWorkspace(db *sql.DB, info *SnapshotInfo) {
 // ImportSnapshot copies a snapshot into a workspace's scans through SQLite
 // itself (VACUUM INTO), so a CLI export whose write-ahead log was never
 // merged arrives whole. The original is not touched.
-func (w *WorkspaceService) ImportSnapshot(path, workspaceID string) (*store.Scan, error) {
+func (w *WorkspaceService) ImportSnapshot(path, workspaceID string) (_ *store.Scan, callErr error) {
+	defer safe.Guard("WorkspaceService.ImportSnapshot", &callErr)
+
 	info, err := w.InspectSnapshot(path)
 	if err != nil {
 		return nil, err
@@ -244,7 +249,9 @@ func (w *WorkspaceService) ImportSnapshot(path, workspaceID string) (*store.Scan
 }
 
 // PickSnapshot asks for a .db to import; "" when cancelled.
-func (w *WorkspaceService) PickSnapshot() (string, error) {
+func (w *WorkspaceService) PickSnapshot() (_ string, callErr error) {
+	defer safe.Guard("WorkspaceService.PickSnapshot", &callErr)
+
 	return pickFile(w.ctx(), "Import a snapshot", "Archstats snapshot", "*.db")
 }
 

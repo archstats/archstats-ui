@@ -28,6 +28,14 @@
     {
       "files": "src/features/libraries/libraries.ts",
       "why": "Standard-library module names."
+    },
+    {
+      "files": "src/platform/diagnostics.ts",
+      "why": "Lines for the app's log file, read by whoever debugs a crash; the notice a person sees is a message (shell.problemNotice)."
+    },
+    {
+      "files": "src/plugins/diagnostics.client.ts",
+      "why": "Where an error was caught, written to the app's log next to it."
     }
   ],
   "texts": [
@@ -275,6 +283,21 @@
       "file": "src/pages/views/search.vue",
       "text": "(no component)",
       "why": "The row key for files outside every component; the label is a message."
+    },
+    {
+      "file": "src/platform/db.ts",
+      "text": "The query was cancelled",
+      "why": "The AbortError of a query its view gave up on; views ignore it and nobody sees it."
+    },
+    {
+      "file": "src/features/lens-builder/suggestWorker.ts",
+      "text": "suggest locale=nl",
+      "why": "The worker's name, which carries the app's language to it; never shown."
+    },
+    {
+      "file": "src/features/lens-builder/suggestWorker.ts",
+      "text": "suggest locale=en",
+      "why": "The worker's name, which carries the app's language to it; never shown."
     }
   ]
 }

@@ -20,15 +20,6 @@
     "scansIgnoredDifferentPaths": "The scans ignored different paths, so they did not read the same code.",
     "differentLanguagePacksRan": "Different language packs ran ({extensions} and {extensions2}); counts that depend on them may shift."
   },
-  "comparabilityGate": {
-    "theseTwoSnapshotsWere": "These two snapshots were not read the same way",
-    "differencesBetweenThemMay": "Differences between them may come from the scan, not the code. Rebuild the baseline at its own commit with this build's analysis, and the two compare number for number.",
-    "rescanBaselineCommit": "Rescan baseline commit {slice}",
-    "rescanBaselineSCommit": "Rescan the baseline's commit…",
-    "r": " at r{revision}",
-    "compareAnyway": "Compare anyway",
-    "scanRunningGateClears": "A scan is running; the gate clears when the rescan is done."
-  },
   "trendRows": {
     "readingsSnapshotsOverTime": "Readings of {pointsLength} snapshots over time",
     "commitTime": "by commit time",
@@ -66,5 +57,117 @@
     "medianDistance": "Median distance",
     "analysisR": "analysis r{analysisRevision}",
     "ignoreRulesChanged": "ignore rules changed"
+  },
+  "areas": {
+    "otherAreas": "Other"
+  },
+  "changeMatrix": {
+    "cellTitle": "{from} → {to}: {links} now, {refs}. {change}",
+    "changedLink": "+{added} started, −{removed} stopped.",
+    "commits": "Commits",
+    "goneLink": "Every dependency between them is gone.",
+    "legendChanged": "Dependencies started or stopped on a link that held",
+    "legendCommits": "Commits counts the commits in the range that touched each area.",
+    "legendGone": "Link gone",
+    "legendNew": "New link between areas",
+    "legendOrder": "Row imports column. Rows run from the areas that depend most to the areas depended on most; the diagonal is inside one area.",
+    "legendSame": "Link that held (darker: more references)",
+    "links": {
+      "one": "{count} dependency",
+      "other": "{count} dependencies"
+    },
+    "newLink": "New: no dependency between them before.",
+    "sameLink": "Unchanged."
+  },
+  "reading": {
+    "commits": {
+      "one": "{count} commit",
+      "other": "{count} commits"
+    },
+    "componentsAdded": {
+      "one": "{count} component added, most in:",
+      "other": "{count} components added, most in:"
+    },
+    "componentsRemoved": {
+      "one": "{count} component removed, most in:",
+      "other": "{count} components removed, most in:"
+    },
+    "linksGone": {
+      "one": "{count} link between areas is gone:",
+      "other": "{count} links between areas are gone:"
+    },
+    "linksNew": {
+      "one": "{count} new link between areas that had none:",
+      "other": "{count} new links between areas that had none:"
+    },
+    "moreDependents": {
+      "one": "{count} component is depended on by many more components:",
+      "other": "{count} components are depended on by many more components:"
+    },
+    "people": {
+      "one": "{count} person",
+      "other": "{count} people"
+    },
+    "rulesGone": {
+      "one": "{count} rule finding is gone:",
+      "other": "{count} rule findings are gone:"
+    },
+    "rulesNew": {
+      "one": "{count} new rule finding:",
+      "other": "{count} new rule findings:"
+    },
+    "tangleDissolved": {
+      "one": "A tangle of {count} component came apart:",
+      "other": "A tangle of {count} components came apart:"
+    },
+    "tangleFormed": {
+      "one": "A new tangle formed: {count} component now import each other in a loop:",
+      "other": "A new tangle formed: {count} components now import each other in a loop:"
+    },
+    "tangleGrew": "A tangle grew from {before} to {after} components; joined:",
+    "tangleShrank": "A tangle shrank from {before} to {after} components; left:",
+    "work": "{commits} by {authors}, most in:"
+  },
+  "sinceBar": {
+    "monthsAgo": {
+      "one": "{count} month",
+      "other": "{count} months"
+    },
+    "noTags": "No tags in this history. Type a commit, tag or branch.",
+    "openSnapshot": "The open snapshot",
+    "pickPoint": "Pick a point in history",
+    "pickSnapshots": "Pick snapshots",
+    "pickSnapshotsTitle": "Compare two snapshots picked by hand",
+    "previous": "Previous · {date}",
+    "previousTitle": "The newest snapshot of an earlier commit, read the same way as the open one",
+    "readingTags": "Reading tags…",
+    "refPlaceholder": "Commit, tag or branch",
+    "since": "Since",
+    "snapshot": "Snapshot",
+    "snapshots": "Snapshots",
+    "tagOrCommit": "Tag or commit",
+    "tags": "Tags",
+    "workingCopy": "working copy"
+  },
+  "sincePanel": {
+    "anywayTitle": "Differences may come from the analysis, not the code",
+    "commit": "Commit",
+    "committed": "Committed",
+    "compareAnyway": "Compare with the r{revision} snapshot anyway",
+    "headOutdated": "The open snapshot was read by an older analysis (r{head}) than this build (r{engine}). A new scan of this commit would not compare with it, so scan the working copy again first.",
+    "minutes": "{value} min",
+    "noCommitsText": "The commit {point} is {sha}, the one the open snapshot read. Pick a longer period or a tag.",
+    "noCommitsTitle": "No commits in that period",
+    "otherScanRunning": "A scan is running; this one can start when it ends.",
+    "readAsItWas": "Read the code as it was {point}",
+    "sameCommitText": "Both sides read commit {sha}, so the code did not change. Pick another point.",
+    "sameCommitTitle": "That is the open snapshot's own commit",
+    "scanAndCompare": "Scan {sha} and compare",
+    "scanExplain": "No snapshot of this commit reads the same way as the open one. Archstats scans a clean checkout of it in a temporary clone, with this build's analysis (r{revision}); your working copy is not touched.",
+    "scanWorkingCopy": "Scan the working copy again",
+    "scanning": "Scanning {sha}, the code as it was on {date}…",
+    "starting": "Starting…",
+    "subject": "Subject",
+    "takesAbout": "It takes about {estimate}."
   }
 }

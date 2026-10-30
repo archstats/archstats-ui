@@ -101,7 +101,9 @@
     "snapshotHasNoGit": "Dit snapshot heeft geen git-historie.",
     "codebase2": "de codebase",
     "topLevelAreasLines": "Gebieden op het hoogste niveau (regels)",
-    "largestComponentsLines": "Grootste componenten (regels)"
+    "largestComponentsLines": "Grootste componenten (regels)",
+    "role": "Rol",
+    "lines": "Regels"
   },
   "recipe": {
     "verifiedQueryCookbookRun": "Een geverifieerde query uit het cookbook, uitgevoerd op dit snapshot, als tabel of balken.",

@@ -92,11 +92,11 @@ function stripExtension(name: string): string {
 // extension, plus the Java class names when the engine recorded them.
 interface FileIndex { byBasename: Map<string, string[]>; byClass: Map<string, string>; byPath: Set<string>; ownClass: string | null }
 const { data: index } = useAsyncQuery<FileIndex>(
-  async () => {
-    const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')")
+  async (signal) => {
+    const cols = await store.query<{ name: string }>("SELECT name FROM PRAGMA_TABLE_INFO('files')", { signal })
     const hasClass = cols.some(c => c.name === "java_full_class")
     const rows = await store.query<{ name: string; java_full_class?: string | null }>(
-      hasClass ? "SELECT name, java_full_class FROM files" : "SELECT name FROM files",
+      hasClass ? "SELECT name, java_full_class FROM files" : "SELECT name FROM files", { signal },
     )
     const byBasename = new Map<string, string[]>()
     const byClass = new Map<string, string>()
@@ -130,7 +130,7 @@ function resolveTarget(target: string): string | null {
 
 interface OutgoingRow { target: string; count: number }
 const { data: outgoingRaw, loading: outgoingLoading, error: outgoingError } = useAsyncQuery<OutgoingRow[]>(
-  async () => {
+  async (signal) => {
     if (!filePath.value || !store.hasView("snippets")) return []
     // One row per import statement. Every language records its imports as
     // modularity__import__raw; the other import snippet types are the same
@@ -139,7 +139,7 @@ const { data: outgoingRaw, loading: outgoingLoading, error: outgoingError } = us
     // targets with counts summing to 61. The broad match is kept only for a
     // file whose language never recorded the raw form.
     const raw = await store.query<OutgoingRow>(
-      `SELECT content AS target, count(*) AS count FROM snippets WHERE file = ${escapedPath.value} AND snippet_type = 'modularity__import__raw' GROUP BY content ORDER BY count DESC, content ASC`,
+      `SELECT content AS target, count(*) AS count FROM snippets WHERE file = ${escapedPath.value} AND snippet_type = 'modularity__import__raw' GROUP BY content ORDER BY count DESC, content ASC`, { signal },
     )
     if (raw.length > 0) return raw
     return store.query<OutgoingRow>(

@@ -20,15 +20,6 @@
     "scansIgnoredDifferentPaths": "De scans negeerden verschillende paden, dus ze lazen niet dezelfde code.",
     "differentLanguagePacksRan": "Er draaiden verschillende language packs ({extensions} en {extensions2}); tellingen die ervan afhangen kunnen verschuiven."
   },
-  "comparabilityGate": {
-    "theseTwoSnapshotsWere": "Deze twee snapshots zijn niet op dezelfde manier gelezen",
-    "differencesBetweenThemMay": "Verschillen ertussen kunnen uit de scan komen, niet uit de code. Bouw de baseline opnieuw op bij zijn eigen commit met de analyse van deze build, dan zijn de twee getal voor getal te vergelijken.",
-    "rescanBaselineCommit": "Baseline-commit {slice} opnieuw scannen",
-    "rescanBaselineSCommit": "Commit van de baseline opnieuw scannen…",
-    "r": " op r{revision}",
-    "compareAnyway": "Toch vergelijken",
-    "scanRunningGateClears": "Er loopt een scan; de blokkade verdwijnt zodra de nieuwe scan klaar is."
-  },
   "trendRows": {
     "readingsSnapshotsOverTime": "Metingen van {pointsLength} snapshots in de tijd",
     "commitTime": "op commit-tijd",
@@ -66,5 +57,117 @@
     "medianDistance": "Mediane afstand",
     "analysisR": "analyse r{analysisRevision}",
     "ignoreRulesChanged": "negeerregels gewijzigd"
+  },
+  "areas": {
+    "otherAreas": "Overig"
+  },
+  "changeMatrix": {
+    "cellTitle": "{from} → {to}: nu {links}, {refs}. {change}",
+    "changedLink": "+{added} bijgekomen, −{removed} verdwenen.",
+    "commits": "Commits",
+    "goneLink": "Alle dependencies tussen deze twee zijn weg.",
+    "legendChanged": "Dependencies bijgekomen of verdwenen op een bestaande koppeling",
+    "legendCommits": "Commits telt de commits in deze periode die het gebied raakten.",
+    "legendGone": "Koppeling weg",
+    "legendNew": "Nieuwe koppeling tussen gebieden",
+    "legendOrder": "De rij importeert de kolom. Rijen lopen van de gebieden die het meest afhangen naar de gebieden waar het meest van afgehangen wordt; de diagonaal is binnen één gebied.",
+    "legendSame": "Bestaande koppeling (donkerder: meer references)",
+    "links": {
+      "one": "{count} dependency",
+      "other": "{count} dependencies"
+    },
+    "newLink": "Nieuw: eerder geen dependency tussen deze twee.",
+    "sameLink": "Ongewijzigd."
+  },
+  "reading": {
+    "commits": {
+      "one": "{count} commit",
+      "other": "{count} commits"
+    },
+    "componentsAdded": {
+      "one": "{count} component toegevoegd, vooral in:",
+      "other": "{count} componenten toegevoegd, vooral in:"
+    },
+    "componentsRemoved": {
+      "one": "{count} component verwijderd, vooral in:",
+      "other": "{count} componenten verwijderd, vooral in:"
+    },
+    "linksGone": {
+      "one": "{count} koppeling tussen gebieden is weg:",
+      "other": "{count} koppelingen tussen gebieden zijn weg:"
+    },
+    "linksNew": {
+      "one": "{count} nieuwe koppeling tussen gebieden die er eerder geen hadden:",
+      "other": "{count} nieuwe koppelingen tussen gebieden die er eerder geen hadden:"
+    },
+    "moreDependents": {
+      "one": "Van {count} component hangen veel meer componenten af:",
+      "other": "Van {count} componenten hangen veel meer componenten af:"
+    },
+    "people": {
+      "one": "{count} persoon",
+      "other": "{count} personen"
+    },
+    "rulesGone": {
+      "one": "{count} regelbevinding is verdwenen:",
+      "other": "{count} regelbevindingen zijn verdwenen:"
+    },
+    "rulesNew": {
+      "one": "{count} nieuwe regelbevinding:",
+      "other": "{count} nieuwe regelbevindingen:"
+    },
+    "tangleDissolved": {
+      "one": "Een tangle van {count} component is uit elkaar gevallen:",
+      "other": "Een tangle van {count} componenten is uit elkaar gevallen:"
+    },
+    "tangleFormed": {
+      "one": "Een nieuwe tangle: {count} component importeert elkaar nu in een lus:",
+      "other": "Een nieuwe tangle: {count} componenten importeren elkaar nu in een lus:"
+    },
+    "tangleGrew": "Een tangle groeide van {before} naar {after} componenten; erbij gekomen:",
+    "tangleShrank": "Een tangle kromp van {before} naar {after} componenten; eruit gegaan:",
+    "work": "{commits} door {authors}, vooral in:"
+  },
+  "sinceBar": {
+    "monthsAgo": {
+      "one": "{count} maand",
+      "other": "{count} maanden"
+    },
+    "noTags": "Geen tags in deze historie. Typ een commit, tag of branch.",
+    "openSnapshot": "Het geopende snapshot",
+    "pickPoint": "Kies een punt in de historie",
+    "pickSnapshots": "Snapshots kiezen",
+    "pickSnapshotsTitle": "Twee zelf gekozen snapshots vergelijken",
+    "previous": "Vorige · {date}",
+    "previousTitle": "Het nieuwste snapshot van een eerdere commit, op dezelfde manier gelezen als het geopende",
+    "readingTags": "Tags lezen…",
+    "refPlaceholder": "Commit, tag of branch",
+    "since": "Sinds",
+    "snapshot": "Snapshot",
+    "snapshots": "Snapshots",
+    "tagOrCommit": "Tag of commit",
+    "tags": "Tags",
+    "workingCopy": "working copy"
+  },
+  "sincePanel": {
+    "anywayTitle": "Verschillen kunnen uit de analyse komen, niet uit de code",
+    "commit": "Commit",
+    "committed": "Gecommit",
+    "compareAnyway": "Toch vergelijken met het r{revision}-snapshot",
+    "headOutdated": "Het geopende snapshot is gelezen met een oudere analyse (r{head}) dan deze build (r{engine}). Een nieuwe scan van deze commit is daar niet mee te vergelijken; scan eerst de working copy opnieuw.",
+    "minutes": "{value} min",
+    "noCommitsText": "De commit {point} is {sha}, dezelfde die het geopende snapshot las. Kies een langere periode of een tag.",
+    "noCommitsTitle": "Geen commits in die periode",
+    "otherScanRunning": "Er loopt een scan; deze kan starten als die klaar is.",
+    "readAsItWas": "De code lezen zoals die was: {point}",
+    "sameCommitText": "Beide kanten lezen commit {sha}, dus de code is niet veranderd. Kies een ander punt.",
+    "sameCommitTitle": "Dat is de commit van het geopende snapshot zelf",
+    "scanAndCompare": "{sha} scannen en vergelijken",
+    "scanExplain": "Geen snapshot van deze commit is op dezelfde manier gelezen als het geopende. Archstats scant een schone checkout ervan in een tijdelijke clone, met de analyse van deze build (r{revision}); je working copy blijft onaangeroerd.",
+    "scanWorkingCopy": "Working copy opnieuw scannen",
+    "scanning": "{sha} scannen, de code zoals die was op {date}…",
+    "starting": "Starten…",
+    "subject": "Onderwerp",
+    "takesAbout": "Dat duurt ongeveer {estimate}."
   }
 }

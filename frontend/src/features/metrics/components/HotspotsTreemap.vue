@@ -879,9 +879,14 @@ function leafOf(unit: HotspotUnit, sizeKey: string, colorKey: string, shortName:
   }
 }
 
+// A path keeps its file name, extension and all; only a dotted name such as
+// `org.foo.Bar` is cut at its last dot.
 function shortNameOf(name: string): string {
-  const lastDelim = Math.max(name.lastIndexOf("/"), name.lastIndexOf("."), name.lastIndexOf("\\"))
-  return lastDelim !== -1 ? name.substring(lastDelim + 1) : name
+  const lastSlash = Math.max(name.lastIndexOf("/"), name.lastIndexOf("\\"))
+  if (lastSlash !== -1) return name.substring(lastSlash + 1)
+  if (props.grain === "files") return name
+  const lastDot = name.lastIndexOf(".")
+  return lastDot !== -1 ? name.substring(lastDot + 1) : name
 }
 
 function visibleGroupOf(name: string): SavedGroup | undefined {
@@ -922,7 +927,7 @@ function buildHierarchy(units: HotspotUnit[], sizeKey: string, colorKey: string)
     let sep = "."
     if (name.includes("\\")) { parts = name.split("\\").filter(x => x); sep = "\\" }
     else if (name.includes("/")) { parts = name.split("/").filter(x => x); sep = "/" }
-    else if (name.includes(".")) parts = name.split(".")
+    else if (name.includes(".") && props.grain !== "files") parts = name.split(".")
     if (parts.length === 0) parts = [name]
 
     let current = unassignedNode

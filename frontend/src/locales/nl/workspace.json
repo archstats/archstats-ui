@@ -181,7 +181,8 @@
     "snapshotOpen": "Snapshot van {when}, open{size}",
     "openSnapshot": "Snapshot van {when} openen{size}",
     "scanned": "Gescand op {formatScanTime}",
-    "baselineChanges": "Baseline voor Wijzigingen"
+    "baselineChanges": "Baseline voor Wijzigingen",
+    "stopScan": "Scan stoppen"
   },
   "scanTagsSheet": {
     "scanTags": "Tags scannen",

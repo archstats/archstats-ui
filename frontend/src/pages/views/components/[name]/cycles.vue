@@ -462,7 +462,7 @@ const EMPTY_DETAIL: CutDetail = { symbols: [], sites: [] }
 const componentNames = computed(() => new Set(store.allComponents.map((c: any) => c.name as string)))
 
 const { data: cutDetail, loading: cutFilesLoading } = useAsyncQuery<CutDetail>(
-  async () => {
+  async (signal) => {
     const cut = selectedCut.value
     if (!cut) return EMPTY_DETAIL
 
@@ -470,14 +470,14 @@ const { data: cutDetail, loading: cutFilesLoading } = useAsyncQuery<CutDetail>(
       SELECT file, SUM(reference_count) AS "references"
       FROM ${store.runtimeComponentEdges}
       WHERE "from" = ${sqlLiteral(cut.from)} AND "to" = ${sqlLiteral(cut.to)}
-      GROUP BY file ORDER BY "references" DESC LIMIT 40`)
+      GROUP BY file ORDER BY "references" DESC LIMIT 40`, { signal })
     if (files.length === 0 || !store.hasView("snippets")) {
       return { symbols: [], sites: files.map(f => ({ file: f.file, line: null, references: Number(f.references) || 0 })) }
     }
 
     const snippets = await store.query<{ file: string; content: string; snippet_type: string; begin_position: string }>(`
       SELECT file, content, snippet_type, begin_position FROM snippets
-      WHERE file IN ${sqlIn(files.map(f => f.file))} AND snippet_type LIKE '%import%'`)
+      WHERE file IN ${sqlIn(files.map(f => f.file))} AND snippet_type LIKE '%import%'`, { signal })
 
     const lines = new Map<string, number>()
     const symbolFiles = new Map<string, Set<string>>()

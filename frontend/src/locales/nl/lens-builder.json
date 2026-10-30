@@ -402,5 +402,9 @@
     "snapshotRecordsNoBuild": "Dit snapshot bevat geen build-modules; scan opnieuw om de manifests te lezen.",
     "noBuildModulesObserved": "Geen build-modules; alleen waargenomen structuur.",
     "declaresOneModuleSo": "Declareert één module ({modulesName}), dus er valt niets te verdelen."
+  },
+  "suggestWorker": {
+    "stopped": "De groepsvoorsteller stopte onverwacht.",
+    "noSnapshot": "De groepsvoorsteller heeft geen snapshot om mee te werken."
   }
 }

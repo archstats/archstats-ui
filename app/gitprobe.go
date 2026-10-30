@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/archstats/archstats-ui/app/safe"
 	"os"
 	"os/exec"
 	"strconv"
@@ -21,7 +22,9 @@ type HeadDrift struct {
 }
 
 // HeadDrift compares the checkout's HEAD with the commit the given scan read.
-func (w *WorkspaceService) HeadDrift(workspaceID, scanID string) (*HeadDrift, error) {
+func (w *WorkspaceService) HeadDrift(workspaceID, scanID string) (_ *HeadDrift, callErr error) {
+	defer safe.Guard("WorkspaceService.HeadDrift", &callErr)
+
 	ws, err := w.store.GetWorkspace(workspaceID)
 	if err != nil {
 		return nil, err
@@ -79,7 +82,9 @@ type WorkingCopy struct {
 
 // WorkingCopy reads the workspace folder's git state, and how far HEAD is
 // past sinceSha (the newest snapshot's commit) when one is given.
-func (w *WorkspaceService) WorkingCopy(workspaceID, sinceSha string) (*WorkingCopy, error) {
+func (w *WorkspaceService) WorkingCopy(workspaceID, sinceSha string) (_ *WorkingCopy, callErr error) {
+	defer safe.Guard("WorkspaceService.WorkingCopy", &callErr)
+
 	ws, err := w.store.GetWorkspace(workspaceID)
 	if err != nil {
 		return nil, err

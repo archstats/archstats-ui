@@ -361,11 +361,11 @@ const activeSidebarTab = ref("perspectives")
 // The rows carry the grain they were read for, so the columns of the grain
 // being left are never taken for the new one's.
 const { data: queried, loading, error } = useAsyncQuery<{ grain: HotspotGrain | null; rows: HotspotUnit[] }>(
-  async () => {
+  async (signal) => {
     const g = grain.value
     if (g === "components") return { grain: g, rows: [] }
     const table = g === "directories" ? "directories" : "files"
-    return { grain: g, rows: await store.query<HotspotUnit>(`SELECT * FROM ${table} ORDER BY name`) }
+    return { grain: g, rows: await store.query<HotspotUnit>(`SELECT * FROM ${table} ORDER BY name`, { signal }) }
   },
   [grain],
   { initial: { grain: null, rows: [] } },

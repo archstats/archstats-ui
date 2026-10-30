@@ -47,10 +47,10 @@ export function useComponentJava(name: Ref<string>) {
     const store = useDataStore()
 
     const { data, loading, error } = useAsyncQuery<Loaded>(
-        async () => {
+        async (signal) => {
             if (!name.value) return EMPTY
             const lit = sqlLiteral(name.value)
-            const all = await store.query<FileRow>(`SELECT * FROM files WHERE component = ${lit} ORDER BY name`)
+            const all = await store.query<FileRow>(`SELECT * FROM files WHERE component = ${lit} ORDER BY name`, { signal })
             const files = all.filter(f => /\.java$/i.test(f.name) || num(f.java__class__declarations) > 0)
             if (files.length === 0) return { ...EMPTY, files }
 
@@ -59,7 +59,7 @@ export function useComponentJava(name: Ref<string>) {
                 ? await store.query<SnippetRow>(`
                     SELECT file, snippet_type, content FROM snippets
                     WHERE snippet_type IN ${sqlIn(ANNOTATION_TYPES)}
-                       OR (file IN ${sqlIn(fileNames)} AND snippet_type IN ${sqlIn([...ROLE_SNIPPET_TYPE_LIST, IMPORT_SNIPPET_TYPE])})`)
+                       OR (file IN ${sqlIn(fileNames)} AND snippet_type IN ${sqlIn([...ROLE_SNIPPET_TYPE_LIST, IMPORT_SNIPPET_TYPE])})`, { signal })
                 : []
 
             const hasFullClass = files.some(f => "java_full_class" in f)
@@ -70,7 +70,7 @@ export function useComponentJava(name: Ref<string>) {
                     SELECT c."from", c."to", c.file, c.reference_count, f.name AS to_file
                     FROM java_class_connections_direct c
                     LEFT JOIN files f ON f.java_full_class = c."to"
-                    WHERE c."from" IN ${sqlIn(classNames)} OR c."to" IN ${sqlIn(classNames)}`)
+                    WHERE c."from" IN ${sqlIn(classNames)} OR c."to" IN ${sqlIn(classNames)}`, { signal })
                 : []
             return { files, snippets, connections, hasConnectionsView }
         },

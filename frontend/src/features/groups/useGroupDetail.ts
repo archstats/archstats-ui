@@ -59,10 +59,10 @@ export function useGroupDetail(id: Ref<string>) {
 
     /** Refs of imports that stay inside the group, and all refs its files make. */
     const { data: insideShare } = useAsyncQuery<number | null>(
-        async () => {
+        async (signal) => {
             if (!files.value.size) return null
             const comps = components.value.map(sqlLiteral).join(", ")
-            const rows = await data.query<{ inside: number; total: number }>(`SELECT sum(CASE WHEN "to" IN (${comps || "''"}) THEN reference_count ELSE 0 END) AS inside, sum(reference_count) AS total FROM ${data.runtimeComponentEdges} WHERE ${fileSql.value} AND "from" <> "to"`)
+            const rows = await data.query<{ inside: number; total: number }>(`SELECT sum(CASE WHEN "to" IN (${comps || "''"}) THEN reference_count ELSE 0 END) AS inside, sum(reference_count) AS total FROM ${data.runtimeComponentEdges} WHERE ${fileSql.value} AND "from" <> "to"`, { signal })
             const r = rows[0]
             return r && Number(r.total) ? Number(r.inside) / Number(r.total) : null
         },

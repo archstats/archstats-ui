@@ -3,7 +3,7 @@ import { useDataStore } from "~/features/snapshot/data.store"
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery"
 import { loadUnits } from "./units"
 import {
-    AUTO, classify, detectFramework, languageOf, profileById, profilesFor,
+    adoptSubtypeLanes, AUTO, classify, detectFramework, languageOf, profileById, profilesFor,
     type FrameworkProfile, type Language,
 } from "~/features/frameworks/frameworkProfiles"
 import { frameworkStorageKey, rememberedFramework } from "~/features/frameworks/classFacts"
@@ -190,6 +190,10 @@ export function useUnitsModel() {
                 weight: weightOf(r.file || fact?.file || "", lines, unitsPerFile),
             })
         }
+        // Interfaces and base types matched nothing on their own; they take
+        // the lane their implementations agree on.
+        if (adoptSubtypeLanes(laneCache, edges, (id) => facts.get(id)?.facts))
+            for (const u of out) u.lane = laneCache.get(u.id) ?? u.lane
         return out
     })
 
