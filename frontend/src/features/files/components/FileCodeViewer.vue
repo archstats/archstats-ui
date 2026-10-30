@@ -34,7 +34,7 @@
         <span v-if="stickyScope.cognitive > 15" class="cx-fn">{{ t('files.fileCodeViewer.cognitive', { cognitive: stickyScope.cognitive }) }}</span>
       </button>
       <div ref="scrollContainerRef" class="code-scroll relative flex min-h-0 grow items-start overflow-auto" @scroll.passive="onScroll">
-        <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 pl-3 pr-2 font-mono text-xs leading-5 text-neutral-400 hairline-r">
+        <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 pl-3 font-mono text-xs leading-5 text-neutral-400 hairline-r">
           <a
             v-for="(line, i) in codeLines"
             :key="'num-' + line.number"
@@ -374,7 +374,9 @@ function copyToClipboard() {
    lines by the end of a Broadleaf file. */
 .code-line { height: 1.25rem; line-height: 1.25rem; margin: 0 -1.5rem 0 -1rem; padding: 0 1.5rem 0 1rem; }
 .code-line.is-highlighted { background: rgb(var(--c-accent-50)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500)); }
-.gutter-line { height: 1.25rem; line-height: 1.25rem; cursor: pointer; text-decoration: none; color: inherit; }
+/* The padding sits on the number, not the column, so the complexity bar
+   runs along the divider instead of over the last digit. */
+.gutter-line { height: 1.25rem; line-height: 1.25rem; padding-right: 0.5rem; cursor: pointer; text-decoration: none; color: inherit; }
 .gutter-line:hover { color: rgb(var(--c-neutral-900)); }
 .gutter-line.text-neutral-900 { color: rgb(var(--c-neutral-900)); }
 .gutter-line.in-complex { box-shadow: inset -2px 0 0 rgb(var(--c-red-500)); }
