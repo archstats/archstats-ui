@@ -23,6 +23,19 @@ provideGraph(() => useDataStore().componentConnections);
 
 const TRAIL = 30;
 
+/**
+ * Every component the snapshot names, for query and focus lines to find. The
+ * components table counts as well as the file index: a focus pointed at a
+ * component from the graph must find it even if the files are still loading,
+ * or failed to, rather than scope every view to nothing.
+ */
+function knownComponents(): string[] {
+    const data = useDataStore();
+    const out = new Set<string>(data.componentFilesIndex.keys());
+    for (const c of data.allRawComponents) if (c?.name) out.add(c.name);
+    return Array.from(out);
+}
+
 export const useScopeStore = defineStore("scope", {
     state: (): { groupIds: string[]; query: string; recents: string[]; focus: string; focusBack: string[]; focusAhead: string[] } =>
         ({ groupIds: [], query: "", recents: [], focus: "", focusBack: [], focusAhead: [] }),
@@ -59,7 +72,7 @@ export const useScopeStore = defineStore("scope", {
         queryMatches(state): { components: Set<string>; files: Set<string>; direct: Set<string> } | null {
             if (!state.query.trim()) return null;
             const data = useDataStore();
-            const components = Array.from(data.componentFilesIndex.keys());
+            const components = knownComponents();
             const files = Array.from(data.fileComponentIndex.keys());
             if (!components.length) return null;
             const groups = useGroupsStore();
@@ -90,8 +103,7 @@ export const useScopeStore = defineStore("scope", {
         /** The components the focus holds; null with no focus. */
         focusMatches(state): Set<string> | null {
             if (!state.focus.trim()) return null;
-            const data = useDataStore();
-            const components = Array.from(data.componentFilesIndex.keys()) as string[];
+            const components = knownComponents();
             if (!components.length) return null;
             return new Set(runQuery(parseQuery(state.focus), { components, files: [], componentSep: detectSeparator(components) }).components);
         },

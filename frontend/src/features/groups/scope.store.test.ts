@@ -122,6 +122,37 @@ describe("scope", () => {
       expect(scope.focus).toBe("billing");
     });
 
+    it("holds the neighbourhood, and the whole blast radius", () => {
+      const scope = useScopeStore();
+      scope.setFocus("around audit");
+      expect(Array.from(scope.focusMatches ?? []).sort()).toEqual(["audit", "billing", "shipping"]);
+      scope.setFocus("dependents of shipping");
+      expect(Array.from(scope.focusMatches ?? []).sort()).toEqual(["audit", "shipping"]);
+      scope.setFocus("dependents of shipping depth all");
+      expect(Array.from(scope.focusMatches ?? []).sort()).toEqual(["audit", "billing", "shipping"]);
+    });
+
+    // The focus once read its components from the file index alone. A load
+    // that lost that index kept the graph on screen, and Neighbours or Blast
+    // radius on any node then said 0 components and blanked every view.
+    it("finds the neighbourhood from the components when the file index is empty", () => {
+      const data = useDataStore() as any;
+      data._fileComponents = [];
+      data._allRawComponents = [{ name: "audit" }, { name: "billing" }, { name: "shipping" }];
+      const scope = useScopeStore();
+      scope.setFocus("around audit");
+      expect(Array.from(scope.componentNames ?? []).sort()).toEqual(["audit", "billing", "shipping"]);
+    });
+
+    it("finds a component the file index does not hold", () => {
+      const data = useDataStore() as any;
+      data._allRawComponents = [{ name: "audit" }, { name: "billing" }, { name: "shipping" }, { name: "ledger" }];
+      data._componentConnections = [...data._componentConnections, { from: "ledger", to: "billing", count: 1 }];
+      const scope = useScopeStore();
+      scope.setFocus("dependencies of ledger depth all");
+      expect(Array.from(scope.componentNames ?? []).sort()).toEqual(["audit", "billing", "ledger", "shipping"]);
+    });
+
     it("is cleared with the rest of the scope, and the clear can be undone", () => {
       const scope = useScopeStore();
       scope.setFocus("around billing");
