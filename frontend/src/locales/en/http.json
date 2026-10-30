@@ -2,59 +2,25 @@
   "page": {
     "title": "HTTP",
     "findRoute": "Find a route, handler or component",
-    "findSystem": "Find a system or host",
     "detail": "Detail",
     "routes": "Routes",
     "traced": "Traced",
     "tracedTitle": "Of all the calls the handlers make into code whose type could be told, the share the trace followed",
     "contracts": "Contracts",
     "systems": "Systems",
-    "whatShow": "What to show",
-    "modeRoutes": "Routes",
-    "modeRoutesTitle": "Every route by its path, with who may call it and what it reaches",
-    "modeFlow": "Flow",
-    "modeFlowTitle": "What the routes reach, in lanes from handler to tables and systems",
-    "modeContract": "Contract",
-    "modeContractTitle": "OpenAPI contracts against the routes, and the API design rules",
-    "modeOutbound": "Outbound",
-    "modeOutboundTitle": "Every system the code calls, per environment",
     "reading": "Reading routes, contracts and outbound calls…",
     "predates": "This snapshot predates routes",
     "predatesText": "Routes are read from engine revision 13 on. Scan the workspace again to see them.",
     "noRoutes": "No routes or outbound calls",
     "noRoutesText": "No HTTP route, client or connection was found in this workspace's own code. Tests and vendored code are left out.",
     "scanAgain": "This snapshot has routes only. Scan again to read contracts, the trace from each route and the systems the code calls.",
-    "route": "Route",
     "handler": "Handler",
     "access": "Access",
     "contract": "Contract",
     "reaches": "Reaches",
-    "reachesTitle": "What the route's handler reaches through the calls the trace could follow",
     "nothingSays": "nothing says",
     "nothingSaysLong": "Nothing in the code says: no mark on the handler or its class, no middleware, no security rule that covers this path.",
-    "inContract": "in contract",
-    "notInContract": "not in contract",
     "notInContractTitle": "A contract covers this route's component but does not describe this route",
-    "notTraced": "not traced",
-    "collapse": "Collapse",
-    "expand": "Expand",
-    "showMore": "Show {count} more",
-    "routeCount": {
-      "one": "{count} route",
-      "other": "{count} routes"
-    },
-    "unitCount": {
-      "one": "{count} unit",
-      "other": "{count} units"
-    },
-    "tableCount": {
-      "one": "{count} table",
-      "other": "{count} tables"
-    },
-    "callOutCount": {
-      "one": "{count} call out",
-      "other": "{count} calls out"
-    },
     "routesTableTitle": "HTTP routes",
     "method": "Method",
     "path": "Path",
@@ -71,80 +37,76 @@
     "documentedAnnotations": "Described by annotations for a generated contract",
     "documentedFramework": "Described by the framework, which publishes its own contract",
     "documentedNone": "No contract describes it",
-    "traceShare": "{resolved} of {sites} call sites followed; {unknown} on a receiver whose type could not be told.",
-    "showFlow": "Show the flow",
     "selectReached": {
       "one": "Select its component",
       "other": "Select its {count} components"
     },
     "selectReachedTitle": "Select the components the routes reach, to make a group of them",
-    "noFlow": "No routes to follow",
-    "noFlowText": "Pick a route, a path prefix or a system, or clear the search.",
-    "flowOneRoute": "What {route} reaches.",
-    "flowPrefix": "What the {count} routes under {prefix} reach.",
-    "flowSystem": "The {count} routes that reach {system}.",
-    "flowFirst": "What the first {count} of {total} routes reach. Pick a prefix or a route to narrow it.",
-    "flowAll": "What the {count} routes shown reach.",
-    "noContracts": "No contract in the workspace",
     "noContractsText": "No OpenAPI 3 or Swagger 2 document was found, and no route breaks a design rule that can be read from its path. A contract generated at run time (springdoc, Swashbuckle) is not a file and is not read.",
     "sideProvided": "served",
     "sideConsumed": "called",
     "sideUnknown": "no route matches",
     "providedWords": "{matched} of {total} operations answered by a route; {specOnly} without one; {codeOnly} routes in the same components it does not describe.",
     "consumedWords": "A client is generated from this contract: {count} operations the code can call.",
-    "operation": "Operation",
-    "answeredBy": "Answered by",
-    "calledNotServed": "called, not served",
     "noRoute": "no route",
-    "contractTableTitle": "Contract operations and routes",
     "routeRules": "Routes and the API design rules",
     "routeRulesText": "Routes under /api, or in a component a contract covers, checked against the NLGov REST API Design Rules that can be read from a path.",
-    "system": "System",
-    "kind": "Kind",
     "hosts": "Hosts",
-    "host": "Host",
-    "environment": "Environment",
-    "calls": "Calls",
-    "routesReachingTitle": "Routes whose trace reaches a call to this system",
     "resilience": "Resilience",
     "configOnly": "configured",
     "configOnlyTitle": "Named in configuration; no call in the code was found",
-    "noHost": "no host",
     "noneRead": "none",
     "everyEnvironment": "every environment",
     "outboundWords": "{calls} calls · {unresolved} unresolved",
-    "systemsTableTitle": "Systems the code calls",
-    "hostNote": "One row per environment, from configuration file names and folders; empty is every environment.",
-    "callsNote": "Call sites in the workspace's own code; an unresolved one names a call whose address could not be followed.",
-    "noSystems": "No systems",
     "selfCalls": "Calls to this workspace's own routes",
     "selfCallsText": "A call whose path matches a route here: a frontend calling its backend, or one scanned service calling another.",
     "configuredBy": "Configured by",
     "callSites": "Call sites",
     "confidenceTitle": "declared: a client interface says it; resolved: the address was followed to a host; partial: a configuration key or name, no host; unresolved: the address could not be followed",
-    "reachedFrom": "Reached from",
-    "flowPrefixFirst": "What the first {count} of the {total} routes under {prefix} reach. Pick a deeper prefix or a route to narrow it.",
-    "flowFigureTitle": "What the routes reach",
-    "unresolvedSystem": "address not followed ({clients})"
-  },
-  "flowLanes": {
-    "ariaLabel": "Lanes from routes to handlers, services, data and systems",
-    "routes": "Routes",
-    "handlers": "Handlers",
-    "services": "Services",
-    "data": "Data and clients",
-    "systems": "Tables and systems",
-    "more": "+{count} more",
-    "reachedBy": {
-      "one": "reached by {count} route",
-      "other": "reached by {count} routes"
+    "unitsTitle": "Units the trace reached from the handler; for a resource, the furthest any of its routes reaches",
+    "tablesTitle": "Tables the trace reached; for a resource, all its routes together",
+    "outTitle": "Calls out of the workspace the trace reached",
+    "followed": "Calls followed",
+    "wholeApi": "Whole API",
+    "contractsOpen": "The contracts in the workspace and the API design rules",
+    "systemsOpen": "Every system the code calls or configures",
+    "stackWords": "{routes} routes, answered by {components} components, followed into the code",
+    "zoomWords": "{routes} routes in {resources} resources",
+    "searchWords": {
+      "one": "{count} route matches",
+      "other": "{count} routes match"
     },
-    "call": "Call the trace followed",
-    "implementation": "Call to an interface's implementation",
-    "table": "Table",
-    "system": "System called out to",
-    "lanesNote": "A unit is in Data and clients when it touches stored data or calls out, or its name says so (Repository, Dao, Client); otherwise in Services.",
-    "countNote": "The number on a box is how many of the routes reach it. Each lane shows the most-reached first."
+    "untraced": {
+      "one": "{count} route not followed",
+      "other": "{count} routes not followed"
+    },
+    "untracedTitle": "Routes whose handler could not be found as a function; they show on the API floor only",
+    "stackTitle": "How the API flows into the code",
+    "stackAria": "The API stack for {count} routes: the components they pass, the data they touch and the systems they call",
+    "pathTitle": "Through the code",
+    "reachedFromRoutes": {
+      "one": "Reached from {count} route",
+      "other": "Reached from {count} routes"
+    },
+    "foldedText": "The smaller boxes on the {floor} floor, folded to keep the picture readable.",
+    "sharedNote": "Most routes pass through this code, so it stands in the margin: the stack follows routes into it but not through it.",
+    "floor": "Floor",
+    "resourcesTitle": {
+      "one": "{count} resource",
+      "other": "{count} resources"
+    },
+    "openArea": "Open its resources",
+    "comesFrom": "Comes from",
+    "goesTo": "Goes to",
+    "classesTitle": "Classes reached",
+    "partRoutesTitle": "Routes that reach it",
+    "andMore": "and {count} more",
+    "passingRoutes": {
+      "one": "{count} route passes",
+      "other": "{count} routes pass"
+    },
+    "systemsTitle": "Systems the code calls",
+    "unresolvedKind": "{kind}, address not followed"
   },
   "findingList": {
     "must": "must",
@@ -178,5 +140,52 @@
     "timeout": "timeout",
     "retry": "retry",
     "circuit_breaker": "circuit breaker"
+  },
+  "stackFigure": {
+    "floorApi": "API",
+    "floorNear": "Called first",
+    "floorMid": "Two calls in",
+    "floorDeep": "Deeper",
+    "floorData": "Data",
+    "floorOutside": "Outside",
+    "hintApi": "answers the routes",
+    "hintNear": "the handlers call it",
+    "hintMid": "most often two calls in",
+    "hintDeep": "three or more calls in",
+    "hintData": "tables touched, by domain",
+    "hintOutside": "systems called",
+    "shared": "Passed by most routes",
+    "more": {
+      "one": "+{count} more",
+      "other": "+{count} more"
+    },
+    "legendCode": "Code",
+    "legendData": "Data",
+    "legendOutside": "Systems called",
+    "noteBands": "A band is the routes that pass from one box to the next, as wide as their share of what leaves or enters the box.",
+    "noteFloors": "A component sits on the floor of how many calls from the handler it is most often reached.",
+    "noteShared": "Code most routes pass through is named in the margin and followed into but not through.",
+    "boxRoutes": "{count} routes pass · {share} of the API",
+    "boxLit": "{count} of them picked",
+    "boxTables": {
+      "one": "{count} table",
+      "other": "{count} tables"
+    },
+    "boxClasses": {
+      "one": "{count} class",
+      "other": "{count} classes"
+    },
+    "sharedTip": "Most routes pass here; followed into, not through",
+    "bandRoutes": {
+      "one": "{count} route",
+      "other": "{count} routes"
+    },
+    "sharedCount": {
+      "one": "+{count} passed by most",
+      "other": "+{count} passed by most"
+    }
+  },
+  "routeList": {
+    "showAll": "Show all {count}"
   }
 }

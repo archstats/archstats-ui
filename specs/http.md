@@ -43,14 +43,18 @@ New and changed tables. Every row carries `file` and `line`.
 
 ## What the UI shows: `/views/http`
 
-One view, four tabs, all on the same selection model (click, shift-click, cmd-click; "Create group" in the tray; cmd/ctrl+G).
+One screen, the **API stack** (rebuilt 2026-10-30; it replaced a Routes table, a Flow tab, a Contract tab and an Outbound tab). It answers how the routes flow into the code, as floors read top to bottom:
 
-1. **Routes.** A tree of the route paths by segment (`/api` → `/v1` → `/orders` → `{id}`). Each leaf is method + path, framework, handler (`Class.method`), component, auth, and a contract state chip: `in contract`, `not in contract` (code only), `only in contract`. A route opens a sidebar: handler at file:line, auth, contract operation, the reach counts, and links to Flow and the file.
-2. **Flow.** The layers picture rooted at routes. Lanes: **Routes → Handlers → Services → Data and clients → Stores and systems**. A unit's lane is read from its role (controller/handler, service, repository/DAO, client) and from where it sits in the trace when it has no role. Pick a route, a prefix (`/orders/**`) or a component and the picture narrows to what it reaches; "Make a group" turns the reached units into a group. Edges carry the call site.
-3. **Contract.** Per spec: operations matched to routes, operations without a route, routes without an operation (for the component the spec serves), and the API design rule findings with file:line. Consumed specs (generated clients) list which operations the code calls.
-4. **Outbound.** Systems first: each system with kind, host per environment, the clients that reach it, the call sites (with confidence) and the routes that reach it. Unresolved call sites are counted and listed, never hidden. A self call links to the route it reaches.
+1. **API**: the components that answer the routes (`Web.Areas.Admin`, a plugin), sized by routes. Zoomed in to one, its resources.
+2. **Called first, Two calls in, Deeper**: the code components the routes reach, each on the floor of how many calls from the handler it is most often reached (`features/http/stack.ts`, a walk of `calls` per route).
+3. **Data**: the tables touched, by data domain (entity namespace).
+4. **Outside**: the systems called; an address the engine could not follow is "HTTP, address not followed".
 
-Older snapshots (revision < 17) show the routes they have and a "Scan again to read contracts, traces and outbound calls" bar.
+A band is the routes passing from one box to the next. At rest bands are a faint texture; hovering a box lights its routes' own share of every band, a pick keeps it lit. Code most routes reach (a base controller, a work context, caching: more than half of the routes) is plumbing: named in a margin, walked into but not through, so a route reaches what its own code reaches. Floors keep what fits and fold the rest into "+N more".
+
+The inspector answers every pick: a box (where its routes come from and go to, its classes or tables, its routes), a band, a route (handler, access, contract, its path through the code class by class, reach), a system (hosts per environment, call sites). The toolbar's Contracts and Systems open the contracts with the design rule findings, and every system including configured ones. "Select its components" hands the code a pick passes to the group tray. The route table stays in the toolbar's Export.
+
+Older snapshots (revision < 17) show the API floor only, with "Scan again to read contracts, traces and outbound calls".
 
 ## Not in scope
 

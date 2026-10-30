@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { contracts, contractState, EMPTY_MODEL, flow, routeTree, systemSummaries, traced, treeRows, underPrefix, type HttpModel, type Route } from "./http"
+import { accessClass, accessLabel, componentLabels, contracts, domainLabels, contractState, EMPTY_MODEL, resourceGroups, systemSummaries, traced, underPrefix, type HttpModel, type Route } from "./http"
 
 const route = (id: number, method: string, path: string, extra: Partial<Route> = {}): Route => ({
   id, kind: "http", method, path, template: path.replace(/\{[^}]*\}/g, "{}"), framework: "spring", handler: "", unit: "", function: "",
@@ -10,40 +10,67 @@ function model(over: Partial<HttpModel>): HttpModel {
   return { ...EMPTY_MODEL, reach: new Map(), units: new Map(), complete: true, ...over }
 }
 
-describe("routeTree", () => {
-  it("folds a chain of single segments into one row and keeps branches apart", () => {
-    const tree = routeTree([
-      route(1, "GET", "/api/v1/orders"),
-      route(2, "POST", "/api/v1/orders"),
-      route(3, "GET", "/api/v1/orders/{id}"),
-      route(4, "GET", "/api/v1/customers/{id}"),
-      route(5, "GET", "/health"),
+describe("resourceGroups", () => {
+  it("groups by resource after the shared base and versions, and says the controller once", () => {
+    const groups = resourceGroups([
+      route(1, "GET", "/api/v1/orders", { function: "OrderController.list" }),
+      route(2, "POST", "/api/v1/orders", { function: "OrderController.create" }),
+      route(3, "GET", "/api/v1/orders/{id}", { function: "OrderController.get" }),
+      route(4, "POST", "/api/v1/orders/{id}/cancel", { function: "Refunds.cancel" }),
+      route(5, "GET", "/api/v1/customers/{id}", { function: "CustomerController.get" }),
     ])
-    expect(tree.count).toBe(5)
-    const rows = treeRows(tree, new Set())
-    expect(rows.map(r => r.kind === "node" ? `${"  ".repeat(r.node.depth)}${r.node.segment} (${r.node.count})` : `${"  ".repeat(r.depth + 1)}${r.route.method}`)).toEqual([
-      "  api/v1 (4)",
-      "    customers/{id} (1)",
-      "      GET",
-      "    orders (3)",
-      "      GET",
-      "      POST",
-      "      {id} (1)",
-      "        GET",
-      "  health (1)",
-      "    GET",
+    expect(groups.map(g => `${g.base}|${g.resource} ${g.controller} ${g.routes.length}`)).toEqual([
+      "/api/v1|customers CustomerController 1",
+      "/api/v1|orders OrderController 4",
+    ])
+    expect(groups[1].routes.map(r => `${r.route.method} ${r.rest || "·"} ${r.member}`)).toEqual([
+      "GET · list",
+      "POST · create",
+      "GET /{id} get",
+      "POST /{id}/cancel Refunds.cancel",
     ])
   })
 
-  it("hides what is under a closed prefix", () => {
-    const tree = routeTree([route(1, "GET", "/a/x"), route(2, "GET", "/a/y"), route(3, "GET", "/b")])
-    const rows = treeRows(tree, new Set(["/a"]))
-    expect(rows.filter(r => r.kind === "route")).toHaveLength(1)
+  it("keeps the resource of a single-resource API and groups parameter-led paths under the base", () => {
+    const groups = resourceGroups([route(1, "GET", "/orders"), route(2, "GET", "/orders/{id}"), route(3, "GET", "/{tenant}/health")])
+    expect(groups.map(g => g.key)).toEqual(["/", "/orders"])
   })
 
-  it("selects routes under a prefix by whole segments", () => {
+  it("says access once when every route shares it, and per route when they differ", () => {
+    const same = resourceGroups([route(1, "GET", "/a", { auth: "AuthorizeAdmin" }), route(2, "GET", "/a/y", { auth: "AuthorizeAdmin" })])
+    expect(same[0].access).toBe("AuthorizeAdmin")
+    expect(same[0].accessMixed).toBe(false)
+    const mixed = resourceGroups([route(1, "GET", "/a", { auth: "AuthorizeAdmin" }), route(2, "GET", "/a/y")])
+    expect(mixed[0].access).toBeNull()
+    expect(mixed[0].accessMixed).toBe(true)
+  })
+
+  it("adds up what the group's routes reach", () => {
+    const reach = new Map([[1, { entry: 1, callSites: 4, resolved: 4, unknown: 0, units: 9, functions: 4, tables: 2, outbound: 0, depth: 2 }]])
+    const [g] = resourceGroups([route(1, "GET", "/a"), route(2, "GET", "/a/b")], reach, [
+      { entry: 1, kind: "table", target: "orders", depth: 2 },
+      { entry: 2, kind: "table", target: "orders", depth: 1 },
+      { entry: 2, kind: "outbound", target: "7", depth: 3 },
+    ])
+    expect([g.units, g.tables, g.outbound, g.traced]).toEqual([9, 1, 1, true])
+  })
+
+  it("selects routes under a group's key by whole segments", () => {
     const rs = [route(1, "GET", "/orders"), route(2, "GET", "/orders/{id}"), route(3, "GET", "/orders-archive")]
     expect(underPrefix(rs, "/orders").map(r => r.id)).toEqual([1, 2])
+  })
+})
+
+describe("accessLabel", () => {
+  it("names a rule by the word that tells it apart", () => {
+    expect(accessLabel("CheckPermission(StandardPermission.Customers.ACTIVITY_LOG_DELETE)")).toBe("ACTIVITY_LOG_DELETE")
+    expect(accessLabel("AuthorizeAdmin")).toBe("AuthorizeAdmin")
+    expect(accessLabel(`PreAuthorize("hasRole('ADMIN')")`)).toBe("hasRole ADMIN")
+    expect(accessLabel(`Authorize(Roles = "Clerk")`)).toBe("Authorize Clerk")
+    expect(accessLabel(`hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_MEETING")`)).toBe("READ_MEETING")
+    expect(accessLabel("access(allOfRequestManagers(authorizationManagers))")).toBe("access(…)")
+    expect(accessLabel("permitAll")).toBe("permitAll")
+    expect(accessLabel("")).toBeNull()
   })
 })
 
@@ -89,44 +116,41 @@ describe("systemSummaries", () => {
   })
 })
 
-describe("flow", () => {
-  it("lays a route out from handler to services, data and the tables and systems at the end", () => {
-    const m = model({
-      routes: [route(1, "GET", "/orders/{id}", { unit: "acme.OrderController", function: "OrderController.get" })],
-      calls: [
-        { fromUnit: "acme.OrderController", fromFunction: "OrderController.get", toUnit: "acme.OrderService", toFunction: "OrderService.find", via: "field", file: "", line: 1 },
-        { fromUnit: "acme.OrderService", fromFunction: "OrderService.find", toUnit: "acme.DefaultOrderService", toFunction: "DefaultOrderService.find", via: "implementation", file: "", line: 1 },
-        { fromUnit: "acme.DefaultOrderService", fromFunction: "DefaultOrderService.find", toUnit: "acme.OrderRepository", toFunction: "OrderRepository.findById", via: "field", file: "", line: 1 },
-      ],
-      access: [{ unit: "acme.OrderRepository", function: "", target: "Order", entity: "acme.Order", access: "read_write" }],
-      units: new Map([
-        ["acme.OrderController", { id: "acme.OrderController", name: "OrderController", component: "web", markers: "" }],
-        ["acme.OrderService", { id: "acme.OrderService", name: "OrderService", component: "orders", markers: "" }],
-        ["acme.DefaultOrderService", { id: "acme.DefaultOrderService", name: "DefaultOrderService", component: "orders", markers: "" }],
-        ["acme.OrderRepository", { id: "acme.OrderRepository", name: "OrderRepository", component: "orders", markers: "" }],
-      ]),
-    })
-    const f = flow(m, [1])
-    expect(f.lanes.routes.map(n => n.label)).toEqual(["GET /orders/{id}"])
-    expect(f.lanes.handlers.map(n => n.label)).toEqual(["OrderController"])
-    expect(f.lanes.services.map(n => n.label)).toEqual(["DefaultOrderService", "OrderService"])
-    expect(f.lanes.data.map(n => n.label)).toEqual(["OrderRepository"])
-    expect(f.lanes.systems.map(n => n.label)).toEqual(["Order"])
-    expect(f.edges.some(e => e.kind === "implementation")).toBe(true)
-    expect(f.components).toEqual(["orders", "web"])
-  })
-
-  it("keeps a lane readable and says how much it left out", () => {
-    const routes = Array.from({ length: 30 }, (_, i) => route(i + 1, "GET", `/r${i}`))
-    const f = flow(model({ routes }), routes.map(r => r.id), 10)
-    expect(f.lanes.routes).toHaveLength(10)
-    expect(f.hidden.routes).toBe(20)
-  })
-})
-
 describe("traced", () => {
   it("is the share of call sites followed", () => {
     expect(traced({ entry: 1, callSites: 4, resolved: 3, unknown: 1, units: 1, functions: 1, tables: 0, outbound: 0, depth: 1 })).toBe(0.75)
     expect(traced(undefined)).toBeNull()
+  })
+})
+
+describe("accessClass", () => {
+  it("reads what a rule asks for from its words", () => {
+    expect(accessClass("")).toBe("none")
+    expect(accessClass("AllowAnonymous")).toBe("open")
+    expect(accessClass("permitAll")).toBe("open")
+    expect(accessClass("CheckAccessPublicStore")).toBe("open")
+    expect(accessClass("CheckPermission(StandardPermission.Customers.ACTIVITY_LOG_DELETE)")).toBe("rule")
+    expect(accessClass("AuthorizeAdmin")).toBe("rule")
+    expect(accessClass(`hasAnyAuthority(ALL_FUNCTIONS, ALL_FUNCTIONS_READ, "READ_MEETING")`)).toBe("rule")
+    expect(accessClass("Authorize")).toBe("signedIn")
+    expect(accessClass("requireJwtAuth")).toBe("signedIn")
+    expect(accessClass("permission_classes = [IsAuthenticated]")).toBe("signedIn")
+    expect(accessClass("loginLimiter")).toBe("signedIn")
+    expect(accessClass("verifyEmailLimiter")).toBe("other")
+  })
+})
+
+describe("componentLabels", () => {
+  it("drops the shared front and the word every component ends in", () => {
+    const m = componentLabels(["org.apache.fineract.portfolio.loanaccount.api", "org.apache.fineract.portfolio.savings.api", "org.apache.fineract.useradministration.api"])
+    expect([...m.values()]).toEqual(["portfolio.loanaccount", "portfolio.savings", "useradministration"])
+  })
+})
+
+describe("domainLabels", () => {
+  it("names a data namespace by what tells it apart", () => {
+    expect([...domainLabels(["Nop.Core.Domain.Catalog", "Nop.Core.Domain.Orders"]).values()]).toEqual(["Catalog", "Orders"])
+    expect([...domainLabels(["org.apache.fineract.portfolio.loanaccount.domain", "org.apache.fineract.portfolio.client.domain"]).values()]).toEqual(["loanaccount", "client"])
+    expect([...domainLabels(["Nop.Core.Domain.Catalog", "Nop.Plugin.Tax.Avalara.Domain", "a.billing.Orders", "b.shop.Orders"]).values()]).toEqual(["Catalog", "Avalara", "billing.Orders", "shop.Orders"])
   })
 })
