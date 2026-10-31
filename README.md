@@ -16,7 +16,7 @@ wails build                       # macOS and Windows
 wails build -tags webkit2_41      # Linux
 ```
 
-The app is in `build/bin/`. `archstats-desktop --selfcheck` scans a generated fixture through the embedded engine and exits non-zero when anything fails.
+`wails build` writes the app to build/bin. `archstats-desktop --selfcheck` scans a generated fixture through the embedded engine and exits non-zero when anything fails.
 
 ## Develop
 
