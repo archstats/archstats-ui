@@ -108,9 +108,9 @@ export interface Call {
 
 export interface Target { entry: number; kind: string; target: string; depth: number }
 
-export interface Access { unit: string; function: string; target: string; entity: string; access: string }
+export interface Access { unit: string; function: string; target: string; entity: string; access: string; via: string }
 
-export interface UnitInfo { id: string; name: string; component: string; markers: string }
+export interface UnitInfo { id: string; name: string; component: string; markers: string; file: string; line: number }
 
 export interface HttpModel {
   routes: Route[]
@@ -153,8 +153,8 @@ export async function loadModel(query: Query, hasView: (v: string) => boolean): 
     pick("outbound_systems", `SELECT * FROM outbound_systems`, r => ({ system: str(r.system), kind: str(r.kind), environment: str(r.environment), host: str(r.host), source: str(r.source), configKey: str(r.config_key), file: str(r.file), line: num(r.line) })),
     pick("calls", `SELECT from_unit, from_function, to_unit, to_function, via, file, line FROM calls`, r => ({ fromUnit: str(r.from_unit), fromFunction: str(r.from_function), toUnit: str(r.to_unit), toFunction: str(r.to_function), via: str(r.via), file: str(r.file), line: num(r.line) })),
     pick("route_targets", `SELECT entry, kind, target, depth FROM route_targets`, r => ({ entry: num(r.entry), kind: str(r.kind), target: str(r.target), depth: num(r.depth) })),
-    pick("data_access", `SELECT unit, function, target, entity, access FROM data_access`, r => ({ unit: str(r.unit), function: str(r.function), target: str(r.target), entity: str(r.entity), access: str(r.access) })),
-    pick("units", `SELECT id, name, component, markers FROM units WHERE id IN (SELECT unit FROM entry_points UNION SELECT from_unit FROM calls UNION SELECT to_unit FROM calls)`, r => ({ id: str(r.id), name: str(r.name), component: str(r.component), markers: str(r.markers) })),
+    pick("data_access", `SELECT unit, function, target, entity, access, via FROM data_access`, r => ({ unit: str(r.unit), function: str(r.function), target: str(r.target), entity: str(r.entity), access: str(r.access), via: str(r.via) })),
+    pick("units", `SELECT id, name, component, markers, file, line FROM units WHERE id IN (SELECT unit FROM entry_points UNION SELECT from_unit FROM calls UNION SELECT to_unit FROM calls UNION SELECT entity FROM data_access)`, r => ({ id: str(r.id), name: str(r.name), component: str(r.component), markers: str(r.markers), file: str(r.file), line: num(r.line) })),
   ])
   return {
     routes, operations, findings, outbound, systems, calls, targets, access, complete,
@@ -332,7 +332,7 @@ export function accessClass(auth: string): AccessClass {
   return "other"
 }
 
-const ENTITY_TAIL = /^(domain|domains|model|models|entity|entities|data|core|po|pojo|orm|schema|schemas)$/i
+const ENTITY_TAIL = /^(domain|domains|model|models|entity|entities|data|core|po|pojo|orm|schema|schemas|repository|repositories)$/i
 
 /** A table's namespace: everything before its last name. */
 export function namespaceOf(table: string): string {

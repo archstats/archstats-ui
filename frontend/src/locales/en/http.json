@@ -1,9 +1,7 @@
 {
   "page": {
     "title": "HTTP",
-    "findRoute": "Find a route, handler or component",
     "detail": "Detail",
-    "routes": "Routes",
     "traced": "Traced",
     "tracedTitle": "Of all the calls the handlers make into code whose type could be told, the share the trace followed",
     "contracts": "Contracts",
@@ -15,23 +13,16 @@
     "noRoutesText": "No HTTP route, client or connection was found in this workspace's own code. Tests and vendored code are left out.",
     "scanAgain": "This snapshot has routes only. Scan again to read contracts, the trace from each route and the systems the code calls.",
     "handler": "Handler",
-    "access": "Access",
     "contract": "Contract",
-    "reaches": "Reaches",
     "nothingSays": "nothing says",
     "nothingSaysLong": "Nothing in the code says: no mark on the handler or its class, no middleware, no security rule that covers this path.",
     "notInContractTitle": "A contract covers this route's component but does not describe this route",
-    "routesTableTitle": "HTTP routes",
     "method": "Method",
     "path": "Path",
     "component": "Component",
-    "units": "Units",
-    "tables": "Tables",
-    "callsOut": "Calls out",
     "file": "File",
     "line": "Line",
     "accessNote": "Read from the handler's marks, its class and base classes, middleware, and security configuration; empty when nothing says.",
-    "unitsNote": "Units the trace reached from the handler. Calls on a variable whose type could not be told are not followed.",
     "framework": "Framework",
     "documentedSpec": "Described by an OpenAPI contract",
     "documentedAnnotations": "Described by annotations for a generated contract",
@@ -63,47 +54,12 @@
     "configuredBy": "Configured by",
     "callSites": "Call sites",
     "confidenceTitle": "declared: a client interface says it; resolved: the address was followed to a host; partial: a configuration key or name, no host; unresolved: the address could not be followed",
-    "unitsTitle": "Units the trace reached from the handler; for a resource, the furthest any of its routes reaches",
-    "tablesTitle": "Tables the trace reached; for a resource, all its routes together",
-    "outTitle": "Calls out of the workspace the trace reached",
-    "followed": "Calls followed",
-    "wholeApi": "Whole API",
     "contractsOpen": "The contracts in the workspace and the API design rules",
     "systemsOpen": "Every system the code calls or configures",
-    "stackWords": "{routes} routes, answered by {components} components, followed into the code",
-    "zoomWords": "{routes} routes in {resources} resources",
-    "searchWords": {
-      "one": "{count} route matches",
-      "other": "{count} routes match"
-    },
-    "untraced": {
-      "one": "{count} route not followed",
-      "other": "{count} routes not followed"
-    },
-    "untracedTitle": "Routes whose handler could not be found as a function; they show on the API floor only",
-    "stackTitle": "How the API flows into the code",
-    "stackAria": "The API stack for {count} routes: the components they pass, the data they touch and the systems they call",
     "pathTitle": "Through the code",
     "reachedFromRoutes": {
       "one": "Reached from {count} route",
       "other": "Reached from {count} routes"
-    },
-    "foldedText": "The smaller boxes on the {floor} floor, folded to keep the picture readable.",
-    "sharedNote": "Most routes pass through this code, so it stands in the margin: the stack follows routes into it but not through it.",
-    "floor": "Floor",
-    "resourcesTitle": {
-      "one": "{count} resource",
-      "other": "{count} resources"
-    },
-    "openArea": "Open its resources",
-    "comesFrom": "Comes from",
-    "goesTo": "Goes to",
-    "classesTitle": "Classes reached",
-    "partRoutesTitle": "Routes that reach it",
-    "andMore": "and {count} more",
-    "passingRoutes": {
-      "one": "{count} route passes",
-      "other": "{count} routes pass"
     },
     "systemsTitle": "Systems the code calls",
     "unresolvedKind": "{kind}, address not followed"
@@ -141,51 +97,234 @@
     "retry": "retry",
     "circuit_breaker": "circuit breaker"
   },
-  "stackFigure": {
-    "floorApi": "API",
-    "floorNear": "Called first",
-    "floorMid": "Two calls in",
-    "floorDeep": "Deeper",
+  "routeList": {
+    "showAll": "Show all {count}"
+  },
+  "trace": {
+    "shared": "shared",
+    "sharedTitle": "Most routes reach this code, so it is shown but not followed",
+    "writes": "changes {name}",
+    "reads": "reads {name}",
+    "calls": "calls {name}",
+    "onlyEnds": "Only paths to data and systems",
+    "everyCall": "Every call ({count})",
+    "notFollowed": "The handler could not be found as a function, so its calls were not followed.",
+    "noEnds": "No call from this route reaches a table or another system.",
+    "cut": "The first {count} calls; the rest are left out.",
+    "followed": "{resolved} of {sites} call sites followed",
+    "mayChange": "may change {name}",
+    "mayTitle": "its class holds this table; the method's name says it writes"
+  },
+  "catalog": {
+    "endpoints": "Endpoints",
+    "filter": {
+      "changes": {
+        "name": "Changes data",
+        "title": "Its code writes, or may write, to at least one table"
+      },
+      "noRule": {
+        "name": "No access rule",
+        "title": "Nothing in the code says who may call it"
+      },
+      "open": {
+        "name": "Anyone may call",
+        "title": "Its rule lets anonymous callers in"
+      },
+      "calls": {
+        "name": "Calls another system",
+        "title": "Its code calls a system outside this workspace"
+      },
+      "noTimeout": {
+        "name": "No timeout",
+        "title": "It waits on another system with no timeout or circuit breaker set at the call"
+      },
+      "undocumented": {
+        "name": "Not in a contract",
+        "title": "No OpenAPI contract describes it"
+      },
+      "notFollowed": {
+        "name": "Not followed",
+        "title": "The handler could not be found as a function, so what it does is unknown"
+      }
+    },
+    "shown": {
+      "one": "{count} of {total} endpoints",
+      "other": "{count} of {total} endpoints"
+    },
+    "groups": {
+      "one": "{endpoints} endpoints in {count} class",
+      "other": "{endpoints} endpoints in {count} classes"
+    },
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "whoMayCall": "Who may call",
+    "changes": "Changes",
+    "calls": "Calls",
+    "reads": "Reads",
+    "noMatch": "No endpoint matches. Clear the search or a filter.",
+    "readsOnly": "reads only",
+    "notFollowedShort": "not followed",
+    "contractShort": {
+      "spec": "in spec",
+      "generated": "annotated",
+      "missing": "missing",
+      "none": "—"
+    },
+    "copied": "Copied",
+    "copyPath": "Copy path",
+    "copyMarkdown": "Copy as Markdown",
+    "copyMarkdownTitle": "The endpoint as a Markdown section, for a report or a ticket",
+    "parameters": "Parameters",
+    "operation": "Operation",
+    "changesNone": "Its code writes to no table that was read.",
+    "noTimeout": "no timeout",
+    "none": "none",
+    "inventoryTitle": "HTTP endpoint inventory",
+    "class": "Class",
+    "accessRule": "Access rule",
+    "accessKind": {
+      "rule": "A role or permission",
+      "signedIn": "Signed in",
+      "open": "Anyone",
+      "other": "Another rule",
+      "none": "Nothing in the code says"
+    },
+    "noTimeoutColumn": "Waits with no timeout",
+    "followedColumn": "Code followed",
+    "yes": "yes",
+    "no": "no",
+    "changesNote": "Tables the endpoint's own code writes to; shared code most endpoints reach is left out.",
+    "followedNote": "no: the handler was not found as a function, so its changes and calls are unknown, not none.",
+    "mayChange": "May change",
+    "mayShort": "may: {names}",
+    "mayChangeTitle": "A service it calls holds these tables and the method's name says it writes, but the code does not say which of them it changes.",
+    "checked": {
+      "one": "{count} ticked",
+      "other": "{count} ticked"
+    },
+    "uncheck": "Untick all",
+    "layersTitle": "Show or hide how the endpoints go down the layers",
+    "hideLayers": "Hide layers",
+    "showLayers": "Show layers",
+    "checkAll": "Tick every endpoint shown",
+    "checkGroup": "Tick every endpoint of {name}",
+    "checkOne": "Tick {path}"
+  },
+  "search": {
+    "placeholder": "Search endpoints: words, a URL, a method, a table, or a check like No timeout",
+    "more": "More words, a URL or a method…",
+    "clear": "Clear the search",
+    "removeToken": "Remove",
+    "endpoints": {
+      "one": "{count} endpoint",
+      "other": "{count} endpoints"
+    },
+    "suggestHint": "Enter or Tab picks it · Esc clears · ↓ to the results",
+    "try": "Try",
+    "kind": {
+      "method": "method",
+      "table": "table",
+      "system": "system",
+      "class": "class",
+      "access": "access",
+      "filter": "check"
+    },
+    "group": {
+      "checks": "Checks",
+      "methods": "Methods",
+      "named": "Names"
+    },
+    "facetHint": "Pick to narrow · type words or paste a URL · Enter goes to the results"
+  },
+  "descent": {
+    "heading": {
+      "checked": {
+        "one": "How the {count} ticked endpoint goes down the layers",
+        "other": "How the {count} ticked endpoints go down the layers"
+      },
+      "shown": {
+        "one": "How the {count} matching endpoint goes down the layers",
+        "other": "How the {count} matching endpoints go down the layers"
+      },
+      "all": {
+        "one": "How the {count} endpoint goes down the layers",
+        "other": "How all {count} endpoints go down the layers"
+      }
+    },
+    "legend": {
+      "call": "call",
+      "up": "call up the layers",
+      "write": "changes",
+      "may": "may change",
+      "read": "reads",
+      "out": "calls out"
+    },
+    "empty": "Nothing to draw: tick endpoints in the list, or search for some.",
+    "floorRoutes": "Endpoints",
     "floorData": "Data",
-    "floorOutside": "Outside",
-    "hintApi": "answers the routes",
-    "hintNear": "the handlers call it",
-    "hintMid": "most often two calls in",
-    "hintDeep": "three or more calls in",
-    "hintData": "tables touched, by domain",
-    "hintOutside": "systems called",
-    "shared": "Passed by most routes",
+    "floorOutside": "Other systems",
+    "otherLane": "Unclassified",
+    "subRoutes": {
+      "one": "{count} endpoint",
+      "other": "{count} endpoints"
+    },
+    "subClasses": {
+      "one": "{count} class",
+      "other": "{count} classes"
+    },
+    "subTables": {
+      "one": "{count} table",
+      "other": "{count} tables"
+    },
+    "subSystems": {
+      "one": "{count} system",
+      "other": "{count} systems"
+    },
     "more": {
       "one": "+{count} more",
       "other": "+{count} more"
     },
-    "legendCode": "Code",
-    "legendData": "Data",
-    "legendOutside": "Systems called",
-    "noteBands": "A band is the routes that pass from one box to the next, as wide as their share of what leaves or enters the box.",
-    "noteFloors": "A component sits on the floor of how many calls from the handler it is most often reached.",
-    "noteShared": "Code most routes pass through is named in the margin and followed into but not through.",
-    "boxRoutes": "{count} routes pass · {share} of the API",
-    "boxLit": "{count} of them picked",
-    "boxTables": {
-      "one": "{count} table",
-      "other": "{count} tables"
+    "moreTitle": {
+      "one": "{count} more, fewer endpoints pass each",
+      "other": "{count} more, fewer endpoints pass each"
     },
-    "boxClasses": {
-      "one": "{count} class",
-      "other": "{count} classes"
+    "sharedTitle": "Most endpoints reach this code; shown, not followed further",
+    "linkTitle": {
+      "one": "{from} → {to}: {kind}, {count} endpoint",
+      "other": "{from} → {to}: {kind}, {count} endpoints"
     },
-    "sharedTip": "Most routes pass here; followed into, not through",
-    "bandRoutes": {
-      "one": "{count} route",
-      "other": "{count} routes"
+    "note": "Floors as the Units view stacks the framework's layers; the endpoints on top, the tables and other systems at the foot. {count} endpoints drawn.",
+    "folded": "Folded into this",
+    "through": {
+      "one": "{count} endpoint passes it",
+      "other": "{count} endpoints pass it"
     },
-    "sharedCount": {
-      "one": "+{count} passed by most",
-      "other": "+{count} passed by most"
-    }
-  },
-  "routeList": {
-    "showAll": "Show all {count}"
+    "kindTable": "Table",
+    "copyName": "Copy name",
+    "findUsing": "Search endpoints that use it",
+    "drawnStat": "of the endpoints drawn",
+    "allStat": {
+      "one": "endpoint in all reaches it",
+      "other": "endpoints in all reach it"
+    },
+    "allTableStat": {
+      "one": "endpoint in all uses it",
+      "other": "endpoints in all use it"
+    },
+    "tableUse": "{changes} change it, {may} may change it, {reads} only read it",
+    "tickAll": {
+      "one": "Tick it and draw it",
+      "other": "Tick all {count} and draw them"
+    },
+    "runs": {
+      "one": "Method the endpoints run",
+      "other": "Methods the endpoints run ({count})"
+    },
+    "calledBy": "Called by",
+    "usedBy": "Used by",
+    "callsTo": "Calls",
+    "callsNothing": "Calls nothing further that could be followed.",
+    "touches": "Its own data and calls out",
+    "upTag": "up the layers"
   }
 }

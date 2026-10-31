@@ -39,6 +39,9 @@ export const REVISION_REASONS: Record<number, string[]> = {
     17: [
         t("snapshot.revisions.httpRoutesContractsOutbound"),
     ],
+    20: [
+        t("snapshot.revisions.routeMethodsFromNames"),
+    ],
 }
 
 /** Every reason between the revision a snapshot was written with and the current one. */

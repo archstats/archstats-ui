@@ -11,6 +11,7 @@
           <div class="flex min-h-0 grow flex-col gap-6 overflow-y-auto px-5 pb-6 pt-5">
             <LanguageSettings/>
             <AISettings/>
+            <AboutSettings/>
           </div>
         </div>
       </div>
@@ -24,6 +25,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from "vue"
 import Icon from "~/shared/ui/Icon.vue"
 import AISettings from "~/features/ai/components/AISettings.vue"
+import AboutSettings from "~/features/updates/components/AboutSettings.vue"
 import LanguageSettings from "./LanguageSettings.vue"
 import { usePlatform } from "~/platform/usePlatform"
 import { t } from "~/shared/i18n"

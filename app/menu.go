@@ -65,6 +65,10 @@ func ApplicationMenu(m *MenuService) *menu.Menu {
 	help := m.submenu(root, "menu:help", "Help")
 	m.add(help, "help:shortcuts", "Keyboard Shortcuts", nil)
 	m.add(help, "help:metrics", "Metric Reference", nil)
+	help.AddSeparator()
+	m.add(help, "help:docs", "Archstats Documentation", nil)
+	m.add(help, "help:whatsnew", "What's New", nil)
+	m.add(help, "help:updates", "Check for Updates…", nil)
 
 	m.menu = root
 	return root

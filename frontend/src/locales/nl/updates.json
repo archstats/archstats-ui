@@ -1,0 +1,35 @@
+{
+  "aboutSettings": {
+    "title": "Archstats Desktop {version}",
+    "engine": "Engine",
+    "analysisRevision": "Analyse-revisie",
+    "platform": "Platform",
+    "whatsNew": "Wat is er nieuw",
+    "documentation": "Documentatie",
+    "showLog": "Log tonen",
+    "checkForUpdates": "Zoeken naar updates",
+    "checkExplained": "Vraagt GitHub bij het starten en één keer per dag naar de nieuwste release. Er gaat niets over jou of je code mee.",
+    "notARelease": "Deze build is geen release, dus er wordt nooit een update aangeboden.",
+    "checking": "Bezig met zoeken…",
+    "couldNotCheck": "GitHub was niet bereikbaar: {error}",
+    "newerOut": "{version} is uit, sinds {date}.",
+    "download": "Downloaden",
+    "upToDate": "Dit is de nieuwste release. Gecontroleerd om {time}.",
+    "off": "Uit. Zet het aan, of zoek nu.",
+    "checkNow": "Nu zoeken"
+  },
+  "updateNotice": {
+    "title": "Archstats Desktop {version} is uit",
+    "youHave": "Uitgebracht op {date}. Jij hebt {version}.",
+    "download": "Downloaden",
+    "notNow": "Niet nu"
+  },
+  "whatsNewSheet": {
+    "title": "Wat is er nieuw",
+    "sinceLastTime": "Nieuw sinds je Archstats laatst opende ({version})",
+    "close": "Sluiten",
+    "noNotes": "Deze build heeft geen release notes.",
+    "allReleases": "Alle releases op GitHub",
+    "done": "Klaar"
+  }
+}
