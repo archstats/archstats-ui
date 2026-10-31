@@ -3,13 +3,14 @@ module github.com/archstats/archstats-ui
 go 1.25.4
 
 require (
-	github.com/archstats/archstats v0.11.1-0.20261030101740-f818da9d0b07
+	github.com/archstats/archstats v0.11.1-0.20261031123115-711709cdcb90
 	github.com/go-pdf/fpdf v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/rs/zerolog v1.33.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/zalando/go-keyring v0.2.8
+	golang.org/x/mod v0.23.0
 )
 
 require (
