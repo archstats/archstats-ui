@@ -2,29 +2,49 @@
   <div class="flex min-h-0 flex-col overflow-hidden bg-surface" :class="fill ? 'h-full' : 'rounded-lg hairline'">
     <!-- One header: where the file is, what it is, what to do with it. -->
     <div class="flex h-10 shrink-0 items-center gap-2 px-3 hairline-b">
+      <span v-if="!beside && (canBack || canForward)" class="-ml-1 flex shrink-0 items-center">
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet px-1" :disabled="!canBack" :aria-label="t('files.fileCodeViewer.back')" :title="t('files.fileCodeViewer.backTitle')" @click="router.back()">
+          <Icon icon="arrow-left" :size="13" class="text-neutral-500"/>
+        </button>
+        <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet px-1" :disabled="!canForward" :aria-label="t('files.fileCodeViewer.forward')" :title="t('files.fileCodeViewer.forwardTitle')" @click="router.forward()">
+          <Icon icon="arrow-right" :size="13" class="text-neutral-500"/>
+        </button>
+      </span>
       <span class="flex min-w-[6rem] shrink items-baseline overflow-hidden font-mono text-sm" :title="filePath">
         <span v-if="crumbDir" class="min-w-0 truncate text-neutral-500">{{ crumbDir }}/</span>
         <span class="min-w-0 truncate font-semibold text-neutral-900">{{ fileBasename }}</span>
       </span>
       <span v-if="detectedLanguageLabel && !fileBasename.includes('.')" class="ui-tag shrink-0">{{ detectedLanguageLabel }}</span>
       <slot name="tags"/>
-      <span class="ml-auto flex shrink-0 items-center gap-2">
+      <span v-if="!beside" class="ml-auto flex shrink-0 items-center gap-2">
         <slot name="meta"><span class="ui-toolbar-meta">{{ t('files.fileCodeViewer.lines', { codeLinesLength: formatNumber(codeLines.length) }) }}</span></slot>
       </span>
-      <span class="h-4 w-px shrink-0 bg-neutral-200"></span>
-      <button v-if="annotations" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :class="{ 'bg-neutral-100': showComplexity }" :aria-pressed="showComplexity" :aria-label="t('files.fileCodeViewer.complexity')" :title="t('files.fileCodeViewer.complexityTitle')" @click="showComplexity = !showComplexity">
+      <span v-if="!beside" class="h-4 w-px shrink-0 bg-neutral-200"></span>
+      <span v-else class="ml-auto"></span>
+      <button v-if="annotations && !beside" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :class="{ 'bg-neutral-100': showComplexity }" :aria-pressed="showComplexity" :aria-label="t('files.fileCodeViewer.complexity')" :title="t('files.fileCodeViewer.complexityTitle')" @click="showComplexity = !showComplexity">
         <Icon icon="braces" :size="13" :class="showComplexity ? 'text-neutral-900' : 'text-neutral-500'"/>
       </button>
-      <button v-if="symbols && symbols.length" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :class="{ 'bg-neutral-100': symbolsOpen }" :aria-pressed="symbolsOpen" :aria-label="t('files.fileCodeViewer.symbols')" :title="t('files.fileCodeViewer.symbolsTitle')" @click="emit('update:symbolsOpen', !symbolsOpen)">
+      <button v-if="intel" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :class="{ 'bg-neutral-100': showArch }" :aria-pressed="showArch" :aria-label="t('files.fileCodeViewer.architecture')" :title="t('files.fileCodeViewer.architectureTitle')" @click="showArch = !showArch">
+        <Icon icon="layers" :size="13" :class="showArch ? 'text-neutral-900' : 'text-neutral-500'"/>
+      </button>
+      <button v-if="symbols && symbols.length && !beside" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :class="{ 'bg-neutral-100': symbolsOpen }" :aria-pressed="symbolsOpen" :aria-label="t('files.fileCodeViewer.symbols')" :title="t('files.fileCodeViewer.symbolsTitle')" @click="emit('update:symbolsOpen', !symbolsOpen)">
         <Icon icon="layout-list" :size="13" :class="symbolsOpen ? 'text-neutral-900' : 'text-neutral-500'"/>
       </button>
       <OpenInEditor :file="filePath" :line="highlightStart > 0 ? highlightStart : undefined"/>
-      <button type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :disabled="!fileContents" :title="copied ? t('files.fileCodeViewer.copied') : t('files.fileCodeViewer.copy')" :aria-label="t('files.fileCodeViewer.copy')" @click="copyToClipboard">
+      <button v-if="!beside" type="button" class="ui-btn ui-btn-sm ui-btn-quiet shrink-0 px-1.5" :disabled="!fileContents" :title="copied ? t('files.fileCodeViewer.copied') : t('files.fileCodeViewer.copy')" :aria-label="t('files.fileCodeViewer.copy')" @click="copyToClipboard">
         <Icon :icon="copied ? 'check' : 'copy'" :size="13" class="text-neutral-500"/>
       </button>
       <slot name="actions"/>
     </div>
 
+    <div v-if="intel && showArch && fileContents" class="legend hairline-b">
+      <span class="legend-item" :title="t('files.fileCodeViewer.legendComponentTitle')"><span class="legend-swatch is-component"></span>{{ t('files.fileCodeViewer.legendComponent', { count: crossings.component }) }}</span>
+      <span class="legend-item" :title="t('files.fileCodeViewer.legendModuleTitle')"><span class="legend-swatch is-module"></span>{{ t('files.fileCodeViewer.legendModule', { count: crossings.module }) }}</span>
+      <span v-if="forbidden" class="legend-item" :title="t('files.fileCodeViewer.legendForbiddenTitle')"><span class="legend-swatch is-forbidden"></span>{{ t('files.fileCodeViewer.legendForbidden', { count: crossings.forbidden }) }}</span>
+      <span class="ml-auto flex items-center gap-2.5">
+        <span v-for="k in markKinds" :key="k.kind" class="legend-item" :title="k.title"><Icon :icon="MARK_ICON[k.kind]" :size="11" :class="`mark-${k.kind}`"/>{{ formatNumber(k.count) }}</span>
+      </span>
+    </div>
     <EmptyState v-if="!fileContents" :title="t('files.fileCodeViewer.noSourceStored')" :text="t('files.fileCodeViewer.snapshotDoesNotInclude')" icon="file-text" class="grow"/>
     <div v-else class="relative flex min-h-0 grow flex-col" :class="fill ? '' : 'max-h-[600px]'">
       <!-- Sticky scope: the signature of the function being read, once it has scrolled away. -->
@@ -34,20 +54,39 @@
         <span v-if="stickyScope.cognitive > 15" class="cx-fn">{{ t('files.fileCodeViewer.cognitive', { cognitive: stickyScope.cognitive }) }}</span>
       </button>
       <div ref="scrollContainerRef" class="code-scroll relative flex min-h-0 grow items-start overflow-auto" @scroll.passive="onScroll">
-        <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 pl-3 font-mono text-xs leading-5 text-neutral-400 hairline-r">
-          <a
-            v-for="(line, i) in codeLines"
-            :key="'num-' + line.number"
-            :href="`#L${line.number}`"
-            class="gutter-line block text-right"
-            :class="[line.isHighlighted ? 'text-neutral-900' : '', showComplexity && notes[i].fn ? 'in-complex' : '']"
-            :title="showComplexity && notes[i].fn ? t('files.fileCodeViewer.inComplexFunction', { name: notes[i].fn!.name, cognitive: notes[i].fn!.cognitive }) : t('files.fileCodeViewer.selectLine')"
-            @click.prevent="selectLine(line.number, $event)"
-          >{{ line.number }}</a>
+        <div class="sticky left-0 z-10 flex min-w-[3.5rem] shrink-0 select-none flex-col bg-ground py-3 font-mono text-xs leading-5 text-neutral-400 hairline-r" :class="showMarks ? 'pl-1' : 'pl-3'">
+          <div v-for="(line, i) in codeLines" :key="'num-' + line.number" class="gutter-row">
+            <template v-if="showMarks">
+              <button v-if="leads[i]" type="button" class="mark-btn" :class="`mark-${leads[i]!.kind}`" :aria-label="markTitle(leads[i]!)" @pointerenter="hoverMarks(line.number, $event)" @pointerleave="scheduleHide" @click="clickMark(line.number, $event)">
+                <Icon :icon="MARK_ICON[leads[i]!.kind]" :size="11"/>
+              </button>
+              <span v-else class="mark-btn"></span>
+            </template>
+            <a
+              :href="`#L${line.number}`"
+              class="gutter-line block grow text-right"
+              :class="[line.isHighlighted ? 'text-neutral-900' : '', showComplexity && notes[i].fn ? 'in-complex' : '']"
+              :title="showComplexity && notes[i].fn ? t('files.fileCodeViewer.inComplexFunction', { name: notes[i].fn!.name, cognitive: notes[i].fn!.cognitive }) : t('files.fileCodeViewer.selectLine')"
+              @click.prevent="selectLine(line.number, $event)"
+            >{{ line.number }}</a>
+          </div>
         </div>
-        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body block whitespace-pre text-left"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }"><span v-html="line.html || ' '"></span><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
+        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body block whitespace-pre text-left" :class="{ 'arch-on': showArch }" @pointerover="onPointerOver" @pointerout="onPointerOut" @click="onCodeClick"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" :data-line="line.number"><span v-html="line.html || ' '"></span><template v-if="showArch && lensOf(line.number)"><button v-if="lensOf(line.number)!.usages > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.usagesTitle')" @click.stop="inquire({ kind: 'usages', unit: lensOf(line.number)!.target.unit, fn: lensOf(line.number)!.target.kind === 'function' ? lensOf(line.number)!.target.fn : null, entry: null })">{{ lensOf(line.number)!.target.kind === 'function' ? t('files.fileCodeViewer.callSites', { count: lensOf(line.number)!.usages }) : t('files.fileCodeViewer.usedBy', { count: lensOf(line.number)!.usages }) }}</button><button v-if="lensOf(line.number)!.implementations > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.implementationsTitle')" @click.stop="inquire({ kind: 'types', unit: lensOf(line.number)!.target.unit, fn: null, entry: null })">{{ t('files.fileCodeViewer.implementations', { count: lensOf(line.number)!.implementations }) }}</button></template><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
       </div>
     </div>
+    <SymbolCard
+      :rect="card.rect"
+      :target="card.target"
+      :declaration="card.declaration"
+      :marks="card.marks"
+      :boundary="card.boundary"
+      :forbidden-by="card.forbiddenBy"
+      :here="filePath"
+      @go="go"
+      @inquire="inquire"
+      @enter="cardHover = true; cancelHide()"
+      @leave="cardHover = false; scheduleHide()"
+    />
   </div>
 </template>
 
@@ -56,9 +95,21 @@
 // numbers that select a line or (with shift) a range, the signature of the
 // function being read pinned at the top once it scrolls away, and, when the
 // snapshot has them, the steps that make each complex function complex.
+// Names in the code are links where the snapshot resolved them: a type to
+// its unit, a call to the function it reaches, a declaration to its usages.
+// With Architecture on, a reference that leaves the file's component is
+// tinted by how far it goes, declarations carry their usage counts, and the
+// gutter marks routes, outbound calls, data access and configuration.
 import OpenInEditor from "./OpenInEditor.vue"
+import SymbolCard from "./SymbolCard.vue"
+import { splitHighlighted } from "~/features/files/highlightLines"
+import { boundaryOf, linkLine, type Boundary, type Declaration, type LineMark, type MarkKind, type SymbolTarget } from "~/features/files/codeIntel"
+import { useCodeIntel, useForbiddenCrossing } from "~/features/files/useCodeIntel"
+import { MARK_ICON, MARK_ORDER, leadMark, markTitle } from "~/features/files/codeMarks"
+import { encodeInquiry, type Inquiry } from "~/features/files/codeInquiry"
+import { filePath as fileRoute } from "~/features/navigation/routes"
 import { copyText } from '~/platform/files'
-import { ref, computed, watch, onMounted, nextTick, type PropType } from "vue"
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick, type PropType } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useDataStore } from "~/features/snapshot/data.store"
 import Icon from "~/shared/ui/Icon.vue"
@@ -99,6 +150,20 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Shown beside another file: the selection is these props, not the URL's
+  // hash, and following a link replaces what is beside.
+  beside: {
+    type: Boolean,
+    default: false,
+  },
+  besideLine: {
+    type: Number,
+    default: 0,
+  },
+  besideEnd: {
+    type: Number,
+    default: 0,
+  },
 })
 const emit = defineEmits<{ "update:symbolsOpen": [open: boolean]; scope: [symbol: FileSymbol | null] }>()
 
@@ -125,6 +190,7 @@ const crumbDir = computed(() => {
 
 // ── Parse hash for line highlighting ────────────────────────────
 const highlightStart = computed(() => {
+  if (props.beside) return props.besideLine
   const hash = route.hash || ''
   // Matches #L23 or #L23-L25 or #L23-25
   const match = hash.match(/^#L(\d+)/)
@@ -132,6 +198,7 @@ const highlightStart = computed(() => {
 })
 
 const highlightEnd = computed(() => {
+  if (props.beside) return Math.max(props.besideLine, props.besideEnd)
   const hash = route.hash || ''
   const rangeMatch = hash.match(/^#L\d+[-–]L?(\d+)/)
   if (rangeMatch) return parseInt(rangeMatch[1])
@@ -258,7 +325,56 @@ const htmlLines = computed(() => {
   } catch {
     highlightedHtml = fileContents.value
   }
-  return highlightedHtml.split('\n')
+  return splitHighlighted(highlightedHtml)
+})
+
+// ── Code intelligence: what each name points at ─────────────────
+const intel = useCodeIntel(computed(() => props.filePath), fileContents)
+const forbidden = useForbiddenCrossing(computed(() => props.filePath))
+const linkedLines = computed(() => {
+  const html = htmlLines.value
+  const i = intel.value
+  if (!i) return html
+  return html.map((h, idx) => linkLine(h, idx + 1, i, forbidden.value))
+})
+
+const ARCH_KEY = "archstats.codeArchitecture"
+const showArch = ref(true)
+try { showArch.value = localStorage.getItem(ARCH_KEY) !== "0" } catch { /* on by default */ }
+watch(showArch, on => { try { localStorage.setItem(ARCH_KEY, on ? "1" : "0") } catch { /* a preference */ } })
+
+const showMarks = computed(() => showArch.value && !!intel.value?.marks.size)
+const leads = computed(() => {
+  const marks = intel.value?.marks
+  return Array.from({ length: codeLines.value.length }, (_, i) => leadMark(marks?.get(i + 1)))
+})
+const lensOf = (line: number): Declaration | null => intel.value?.declarations.get(line) ?? null
+
+// How many distinct places this file reaches, by how far.
+const crossings = computed(() => {
+  const out: Record<Boundary, number> = { same: 0, component: 0, module: 0, forbidden: 0 }
+  const i = intel.value
+  if (!i) return out
+  const seen = new Set<string>()
+  const count = (t: SymbolTarget) => {
+    const k = t.kind === "function" ? `unit:${t.unit}` : t.key
+    if (seen.has(k)) return
+    seen.add(k)
+    out[boundaryOf(i, t, forbidden.value)]++
+  }
+  for (const t of i.types.values()) count(t)
+  for (const at of i.sites.values()) for (const t of at.values()) count(t)
+  return out
+})
+const markKinds = computed(() => {
+  const by = new Map<MarkKind, number>()
+  for (const list of intel.value?.marks.values() ?? []) for (const m of list) by.set(m.kind, (by.get(m.kind) ?? 0) + 1)
+  const titles: Record<MarkKind, string> = {
+    entry: t("files.fileCodeViewer.marksEntry"), outbound: t("files.fileCodeViewer.marksOutbound"), data: t("files.fileCodeViewer.marksData"),
+    config: t("files.fileCodeViewer.marksConfig"), binding: t("files.fileCodeViewer.marksBinding"), flag: t("files.fileCodeViewer.marksFlag"),
+    unresolved: t("files.fileCodeViewer.marksUnresolved"),
+  }
+  return MARK_ORDER.filter(k => by.has(k)).map(kind => ({ kind, count: by.get(kind)!, title: titles[kind] }))
 })
 
 const codeLines = computed(() => {
@@ -271,7 +387,7 @@ const codeLines = computed(() => {
   const html = htmlLines.value
   return Array.from({ length: count }, (_, idx) => ({
     number: idx + 1,
-    html: html[idx] ?? '',
+    html: linkedLines.value[idx] ?? html[idx] ?? '',
     isHighlighted: hStart > 0 && (idx + 1) >= hStart && (idx + 1) <= hEnd
   }))
 })
@@ -281,12 +397,151 @@ let scrollOnHash = true
 function selectLine(line: number, event: MouseEvent) {
   const from = event.shiftKey && highlightStart.value > 0 ? highlightStart.value : line
   const [a, b] = from <= line ? [from, line] : [line, from]
+  if (props.beside) {
+    showBeside(props.filePath, a, b, false)
+    return
+  }
   scrollOnHash = false
   router.replace({ path: route.path, query: route.query, hash: a === b ? `#L${a}` : `#L${a}-L${b}` })
 }
 function jumpTo(symbol: FileSymbol) {
+  if (props.beside) {
+    showBeside(props.filePath, symbol.begin, symbol.end, true)
+    return
+  }
   router.replace({ path: route.path, query: route.query, hash: `#L${symbol.begin}-L${symbol.end}` })
 }
+
+// ── Going places: definitions, beside, inquiries ────────────────
+// A definition opens in the source tab as a new history entry, so Back
+// returns to the call. Beside replaces what is beside and keeps the hash.
+const onSourcePage = computed(() => route.path === fileRoute(props.filePath, "source"))
+function showBeside(file: string, line: number, end: number, scroll: boolean) {
+  if (!scroll) skipBesideScroll = true
+  router.replace({ path: route.path, query: { ...route.query, beside: `${file}:${line}:${end || line}` }, hash: route.hash })
+}
+function go(target: SymbolTarget, beside: boolean) {
+  hideCard()
+  if (!target.file) return
+  const line = target.line ?? 1
+  const end = target.end && target.end > line ? target.end : line
+  if (beside || props.beside) {
+    showBeside(target.file, line, end, true)
+    return
+  }
+  const query: Record<string, any> = {}
+  if (route.query.beside) query.beside = route.query.beside
+  if (route.query.look) query.look = route.query.look
+  router.push({ path: fileRoute(target.file, "source"), query, hash: end > line ? `#L${line}-L${end}` : `#L${line}` })
+}
+function inquire(inquiry: Inquiry) {
+  hideCard()
+  const look = encodeInquiry(inquiry)
+  if (onSourcePage.value || props.beside) {
+    router.replace({ path: route.path, query: { ...route.query, look }, hash: route.hash })
+  } else {
+    router.push({ path: fileRoute(props.filePath, "source"), query: { look }, hash: route.hash })
+  }
+}
+
+// Back and forward through the places followed, from the router's own history.
+const canBack = ref(false)
+const canForward = ref(false)
+function readHistory() {
+  const state = typeof window !== "undefined" ? (window.history.state as { back?: string | null; forward?: string | null } | null) : null
+  canBack.value = !!state?.back
+  canForward.value = !!state?.forward
+}
+watch(() => route.fullPath, () => nextTick(readHistory), { immediate: true })
+
+// ── The card under the pointer ──────────────────────────────────
+const card = reactive<{ rect: { left: number; top: number; bottom: number } | null; target: SymbolTarget | null; declaration: Declaration | null; marks: LineMark[] | null; boundary: Boundary; forbiddenBy: string | null }>({
+  rect: null, target: null, declaration: null, marks: null, boundary: "same", forbiddenBy: null,
+})
+const cardHover = ref(false)
+let showTimer = 0
+let hideTimer = 0
+function cancelHide() { clearTimeout(hideTimer) }
+function hideCard() {
+  clearTimeout(showTimer)
+  clearTimeout(hideTimer)
+  cardHover.value = false
+  card.rect = null
+  card.target = null
+  card.marks = null
+}
+function scheduleHide() {
+  clearTimeout(showTimer)
+  clearTimeout(hideTimer)
+  hideTimer = window.setTimeout(() => { if (!cardHover.value) hideCard() }, 220)
+}
+function rectOf(el: Element) {
+  const r = el.getBoundingClientRect()
+  return { left: r.left, top: r.top, bottom: r.bottom }
+}
+function refAt(el: EventTarget | null): { el: HTMLElement; target: SymbolTarget; line: number; declaration: boolean } | null {
+  const span = (el as HTMLElement | null)?.closest?.<HTMLElement>(".ref")
+  const key = span?.dataset.ref
+  const target = key ? intel.value?.targets.get(key) : undefined
+  const line = Number(span?.closest<HTMLElement>(".code-line")?.dataset.line)
+  return span && target && line ? { el: span, target, line, declaration: span.dataset.decl === "1" } : null
+}
+function onPointerOver(e: PointerEvent) {
+  const hit = refAt(e.target)
+  if (!hit) return
+  cancelHide()
+  clearTimeout(showTimer)
+  showTimer = window.setTimeout(() => {
+    const i = intel.value
+    if (!i) return
+    const lensName = forbidden.value && hit.target.file ? forbidden.value(hit.target.file) : null
+    card.rect = rectOf(hit.el)
+    card.target = hit.target
+    card.declaration = hit.declaration ? i.declarations.get(hit.line) ?? null : null
+    card.marks = null
+    card.boundary = boundaryOf(i, hit.target, forbidden.value)
+    card.forbiddenBy = lensName
+  }, card.rect ? 60 : 350)
+}
+function onPointerOut(e: PointerEvent) {
+  if (refAt(e.target) && !refAt(e.relatedTarget)) scheduleHide()
+}
+function hoverMarks(line: number, e: PointerEvent) {
+  cancelHide()
+  clearTimeout(showTimer)
+  const el = e.currentTarget as HTMLElement
+  showTimer = window.setTimeout(() => {
+    card.rect = rectOf(el)
+    card.target = null
+    card.declaration = null
+    card.marks = intel.value?.marks.get(line) ?? null
+    card.boundary = "same"
+  }, 120)
+}
+function clickMark(line: number, e: MouseEvent) {
+  const entry = intel.value?.marks.get(line)?.find(m => m.kind === "entry" && m.data.id !== null && m.data.id !== undefined)
+  if (entry) inquire({ kind: "reach", unit: "", fn: null, entry: Number(entry.data.id) })
+  else hoverMarks(line, e as PointerEvent)
+}
+function onCodeClick(e: MouseEvent) {
+  const hit = refAt(e.target)
+  if (!hit) return
+  // A reader selecting text is not following a link.
+  if (window.getSelection()?.toString()) return
+  e.preventDefault()
+  if (hit.declaration) inquire({ kind: "usages", unit: hit.target.unit, fn: hit.target.kind === "function" ? hit.target.fn : null, entry: null })
+  else go(hit.target, e.metaKey || e.ctrlKey)
+}
+function onKey(e: KeyboardEvent) {
+  if (e.key === "Escape" && card.rect) hideCard()
+}
+onMounted(() => window.addEventListener("keydown", onKey))
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKey)
+  clearTimeout(showTimer)
+  clearTimeout(hideTimer)
+})
+watch(() => props.filePath, hideCard)
 
 // ── Scroll to highlighted line ──────────────────────────────────
 function rowHeight(): number {
@@ -311,10 +566,16 @@ onMounted(() => {
 })
 
 watch(() => route.hash, () => {
+  if (props.beside) return
   if (highlightStart.value > 0 && scrollOnHash) {
     scrollToHighlighted()
   }
   scrollOnHash = true
+})
+let skipBesideScroll = false
+watch(() => [props.besideLine, props.filePath], () => {
+  if (props.beside && highlightStart.value > 0 && !skipBesideScroll) scrollToHighlighted()
+  skipBesideScroll = false
 })
 
 // The contents arrive after the viewer mounts, so a link that opens the file
@@ -329,6 +590,7 @@ watch(() => codeLines.value.length, (count) => {
 const topLine = ref(1)
 let frame = 0
 function onScroll() {
+  if (card.rect && !cardHover.value) hideCard()
   if (frame) return
   frame = requestAnimationFrame(() => {
     frame = 0
@@ -376,6 +638,33 @@ function copyToClipboard() {
 .code-line.is-highlighted { background: rgb(var(--c-accent-50)); box-shadow: inset 2px 0 0 rgb(var(--c-accent-500)); }
 /* The padding sits on the number, not the column, so the complexity bar
    runs along the divider instead of over the last digit. */
+.gutter-row { display: flex; align-items: center; height: 1.25rem; }
+.mark-btn { display: grid; place-items: center; width: 1rem; height: 1rem; margin-right: 0.125rem; flex: none; border-radius: 0.1875rem; }
+button.mark-btn:hover { background: rgb(var(--c-neutral-200)); }
+.mark-entry { color: rgb(var(--c-violet-700)); }
+.mark-outbound { color: rgb(var(--c-blue-700)); }
+.mark-data { color: rgb(var(--c-green-700)); }
+.mark-config, .mark-binding, .mark-unresolved { color: rgb(var(--c-neutral-500)); }
+.mark-flag { color: rgb(var(--c-red-700)); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.875rem; min-height: 1.75rem; padding: 0.25rem 0.75rem; font-size: 0.6875rem; color: rgb(var(--c-neutral-600)); background: rgb(var(--c-ground)); }
+.legend-item { display: inline-flex; align-items: center; gap: 0.3125rem; white-space: nowrap; }
+.legend-swatch { width: 0.875rem; height: 0; border-bottom: 2px dotted; }
+.legend-swatch.is-component { border-color: rgb(var(--c-blue-500)); }
+.legend-swatch.is-module { border-color: rgb(var(--c-amber-600)); }
+.legend-swatch.is-forbidden { border-bottom-style: solid; border-color: rgb(var(--c-red-600)); }
+.lens-chip { display: inline-block; margin-left: 0.75rem; padding: 0 0.375rem; border-radius: 0.25rem; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.6875rem; line-height: 1rem; vertical-align: 1px; white-space: nowrap; color: rgb(var(--c-neutral-600)); background: rgb(var(--c-neutral-100)); }
+.lens-chip:hover { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-200)); }
+.lens-chip + .lens-chip { margin-left: 0.25rem; }
+
+/* Names the snapshot resolved. A link reads as code until the pointer is on
+   it; with Architecture on, one that leaves the component is underlined by
+   how far it goes. */
+.code-body :deep(.ref) { cursor: pointer; border-radius: 2px; }
+.code-body :deep(.ref:hover) { text-decoration: underline; text-underline-offset: 2px; background: rgb(var(--c-neutral-100)); }
+.code-body.arch-on :deep(.ref-component) { text-decoration: underline dotted rgb(var(--c-blue-500)); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.code-body.arch-on :deep(.ref-module) { text-decoration: underline dotted rgb(var(--c-amber-600)); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.code-body.arch-on :deep(.ref-forbidden) { text-decoration: underline wavy rgb(var(--c-red-600)); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.code-body :deep(.ref-decl:hover) { background: rgb(var(--c-accent-50)); }
 .gutter-line { height: 1.25rem; line-height: 1.25rem; padding-right: 0.5rem; cursor: pointer; text-decoration: none; color: inherit; }
 .gutter-line:hover { color: rgb(var(--c-neutral-900)); }
 .gutter-line.text-neutral-900 { color: rgb(var(--c-neutral-900)); }

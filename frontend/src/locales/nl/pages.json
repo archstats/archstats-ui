@@ -2076,5 +2076,9 @@
       "one": "{functions} functie, geen boven cognitieve complexiteit {threshold}.",
       "other": "{functions} functies, geen boven cognitieve complexiteit {threshold}."
     }
+  },
+  "filesSource": {
+    "openHere": "Lees dit bestand hier",
+    "closeBeside": "Sluit het bestand ernaast"
   }
 }

@@ -19,7 +19,49 @@
     "symbolsTitle": "Show the functions of this file",
     "scopeTitle": "{name}: go to its first line",
     "cognitive": "cognitive {cognitive}",
-    "selectLine": "Select this line; shift-click to select a range"
+    "selectLine": "Select this line; shift-click to select a range",
+    "back": "Back",
+    "backTitle": "Back to where you were",
+    "forward": "Forward",
+    "forwardTitle": "Forward again",
+    "architecture": "Architecture",
+    "architectureTitle": "Show boundary crossings, usage counts and what each line touches (routes, outbound calls, data, config)",
+    "legendComponent": {
+      "one": "{count} other component",
+      "other": "{count} other components"
+    },
+    "legendComponentTitle": "References into another component of the same module",
+    "legendModule": {
+      "one": "{count} other module",
+      "other": "{count} other modules"
+    },
+    "legendModuleTitle": "References into another module",
+    "legendForbidden": {
+      "one": "{count} breaks a lens rule",
+      "other": "{count} break a lens rule"
+    },
+    "legendForbiddenTitle": "References a lens's declared layers forbid",
+    "usagesTitle": "Show where this is used",
+    "callSites": {
+      "one": "{count} call site",
+      "other": "{count} call sites"
+    },
+    "usedBy": {
+      "one": "used by {count}",
+      "other": "used by {count}"
+    },
+    "implementationsTitle": "Show what implements or extends this",
+    "implementations": {
+      "one": "{count} implementation",
+      "other": "{count} implementations"
+    },
+    "marksEntry": "Routes and entry points",
+    "marksOutbound": "Outbound calls",
+    "marksData": "Data access",
+    "marksConfig": "Configuration keys",
+    "marksBinding": "Bindings",
+    "marksFlag": "Flags",
+    "marksUnresolved": "References the scan could not resolve"
   },
   "openInEditor": {
     "open": "Open {basename}{value} in {editorLabel}",
@@ -94,5 +136,98 @@
       "one": "{more} more",
       "other": "{more} more"
     }
+  },
+  "codeMarks": {
+    "outboundTo": "→ {target}",
+    "writes": "Writes {target}",
+    "readsWrites": "Reads and writes {target}",
+    "reads": "Reads {target}",
+    "binds": "{iface} → {impl}",
+    "unresolved": "Not resolved",
+    "reach": "Reaches {functions} functions, {tables} tables, {outbound} outbound calls",
+    "readBy": {
+      "one": "read by {count} call",
+      "other": "read by {count} calls"
+    }
+  },
+  "symbolCard": {
+    "lineFacts": "What this line touches",
+    "openDefinition": "Open the definition",
+    "outsideSnapshot": "Defined outside this snapshot.",
+    "runsAs": {
+      "one": "Runs as",
+      "other": "Runs as one of {count}"
+    },
+    "usages": {
+      "one": "{count} call site",
+      "other": "{count} call sites"
+    },
+    "usedBy": {
+      "one": "Used by {count} unit",
+      "other": "Used by {count} units"
+    },
+    "implementations": {
+      "one": "{count} implementation",
+      "other": "{count} implementations"
+    },
+    "goToDefinition": "Go to definition",
+    "besideTitle": "Open beside this file (⌘-click)",
+    "beside": "Beside",
+    "findUsages": "Usages",
+    "hierarchy": "Hierarchy",
+    "calls": "Calls",
+    "whatItReaches": "What it reaches",
+    "function": "function",
+    "type": "type",
+    "otherComponent": "other component",
+    "otherModule": "other module",
+    "forbidden": "forbidden",
+    "forbiddenTitle": "The lens {lens} forbids this dependency",
+    "crossingTitle": "This reference leaves the file's component",
+    "viaImplementation": "resolved to an implementation",
+    "viaField": "through a field",
+    "viaStatic": "static call"
+  },
+  "callTree": {
+    "expand": "Expand",
+    "implementationTitle": "Reached through an interface, resolved to this implementation",
+    "impl": "impl",
+    "otherComponent": "In {component}",
+    "loading": "Loading…",
+    "noCallers": "No callers",
+    "noCallees": "Calls nothing the scan resolved"
+  },
+  "codeInsightPane": {
+    "close": "Close",
+    "direction": "Direction",
+    "callers": "Callers",
+    "callees": "Callees",
+    "failed": "Could not load this",
+    "noUsages": "No usages found",
+    "noUsagesText": "Nothing in this snapshot calls or references it.",
+    "capped": "Showing the first {limit}.",
+    "noComponent": "No component",
+    "inFiles": {
+      "one": "{count} file",
+      "other": "{count} files"
+    },
+    "references": "references it",
+    "extends": "Extends or implements",
+    "nothing": "Nothing",
+    "external": "outside",
+    "implementedBy": "Implemented or extended by",
+    "noCallers": "No callers",
+    "noCallees": "No callees",
+    "callsText": "The scan resolved no calls for this function.",
+    "depthTitle": "Calls between the handler and this",
+    "depth": "depth {depth}",
+    "followCalls": "Follow the calls",
+    "functions": "Functions",
+    "tables": "Tables",
+    "outbound": "Outbound",
+    "usages": "Usages",
+    "typeHierarchy": "Type hierarchy",
+    "callHierarchy": "Call hierarchy",
+    "reach": "What this route reaches"
   }
 }

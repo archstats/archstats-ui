@@ -21,7 +21,8 @@ import {
   Layers, Network, GitBranch, Table2, Eye, EyeOff, Focus, Boxes, Milestone, HelpCircle, AlertTriangle, Bookmark, Download,
   ArrowLeftRight, ArrowDown, ArrowUpDown,
   Copy, ArrowUpRight, FileText, FileCode2, History, User, Users, GitCommit, Link2, ExternalLink, ListTree, Flame, Scale, RefreshCw, Component, Folder, Braces, Workflow, Image as ImageIcon, MoreHorizontal, LayoutList, ScanLine, Share, Merge,
-  Container, Package, Rocket, ShieldAlert, Hand, Play, Clock, Tag, GitPullRequest, Hammer, Upload, Lock, CircleDashed
+  Container, Package, Rocket, ShieldAlert, Hand, Play, Clock, Tag, GitPullRequest, Hammer, Upload, Lock, CircleDashed,
+  Database, LogIn, Plug, SlidersHorizontal, Flag, Columns, CornerDownRight
 } from 'lucide-vue-next';
 
 const props = defineProps(
@@ -220,6 +221,20 @@ const iconComponent = computed(() => {
       return Upload
     case "lock":
       return Lock
+    case "database":
+      return Database
+    case "log-in":
+      return LogIn
+    case "plug":
+      return Plug
+    case "sliders":
+      return SlidersHorizontal
+    case "flag":
+      return Flag
+    case "columns":
+      return Columns
+    case "corner-down-right":
+      return CornerDownRight
     case "circle-dashed":
       return CircleDashed
     case "more-horizontal":

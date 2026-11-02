@@ -2076,5 +2076,9 @@
       "one": "{functions} function, none over cognitive complexity {threshold}.",
       "other": "{functions} functions, none over cognitive complexity {threshold}."
     }
+  },
+  "filesSource": {
+    "openHere": "Read this file here instead",
+    "closeBeside": "Close the file beside"
   }
 }

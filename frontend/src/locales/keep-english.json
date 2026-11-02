@@ -298,6 +298,31 @@
       "file": "src/features/lens-builder/suggestWorker.ts",
       "text": "suggest locale=en",
       "why": "The worker's name, which carries the app's language to it; never shown."
+    },
+    {
+      "file": "src/features/files/codeInquiry.ts",
+      "text": " AND c.to_function = {fn}",
+      "why": "SQL the snapshot runs, not text a person reads."
+    },
+    {
+      "file": "src/features/files/codeInquiry.ts",
+      "text": ", r.call_sites, r.resolved, r.units, r.functions, r.tables, r.outbound, r.depth",
+      "why": "SQL the snapshot runs, not text a person reads."
+    },
+    {
+      "file": "src/features/files/useCodeIntel.ts",
+      "text": ", r.units, r.functions, r.tables, r.outbound, r.depth",
+      "why": "SQL the snapshot runs, not text a person reads."
+    },
+    {
+      "file": "src/features/files/codeIntel.ts",
+      "text": "ref ref-{b}{value}{value2}",
+      "why": "CSS class names on linked code; the view styles them."
+    },
+    {
+      "file": "src/features/files/components/CallTree.vue",
+      "text": "CallTree",
+      "why": "The component's own name, used to render itself recursively."
     }
   ]
 }

@@ -19,7 +19,49 @@
     "symbolsTitle": "Laat de functies van dit bestand zien",
     "scopeTitle": "{name}: ga naar de eerste regel",
     "cognitive": "cognitief {cognitive}",
-    "selectLine": "Selecteer deze regel; shift-klik selecteert een bereik"
+    "selectLine": "Selecteer deze regel; shift-klik selecteert een bereik",
+    "back": "Terug",
+    "backTitle": "Terug naar waar je was",
+    "forward": "Vooruit",
+    "forwardTitle": "Weer vooruit",
+    "architecture": "Architectuur",
+    "architectureTitle": "Toon grensoverschrijdingen, gebruik en wat elke regel raakt (routes, uitgaande calls, data, config)",
+    "legendComponent": {
+      "one": "{count} andere component",
+      "other": "{count} andere componenten"
+    },
+    "legendComponentTitle": "Verwijzingen naar een andere component in dezelfde module",
+    "legendModule": {
+      "one": "{count} andere module",
+      "other": "{count} andere modules"
+    },
+    "legendModuleTitle": "Verwijzingen naar een andere module",
+    "legendForbidden": {
+      "one": "{count} breekt een lens-regel",
+      "other": "{count} breken een lens-regel"
+    },
+    "legendForbiddenTitle": "Verwijzingen die de lagen van een lens verbieden",
+    "usagesTitle": "Toon waar dit gebruikt wordt",
+    "callSites": {
+      "one": "{count} aanroep",
+      "other": "{count} aanroepen"
+    },
+    "usedBy": {
+      "one": "gebruikt door {count}",
+      "other": "gebruikt door {count}"
+    },
+    "implementationsTitle": "Toon wat dit implementeert of uitbreidt",
+    "implementations": {
+      "one": "{count} implementatie",
+      "other": "{count} implementaties"
+    },
+    "marksEntry": "Routes en entry points",
+    "marksOutbound": "Uitgaande calls",
+    "marksData": "Datatoegang",
+    "marksConfig": "Config-keys",
+    "marksBinding": "Bindings",
+    "marksFlag": "Flags",
+    "marksUnresolved": "Verwijzingen die de scan niet kon oplossen"
   },
   "openInEditor": {
     "open": "Open {basename}{value} in {editorLabel}",
@@ -94,5 +136,98 @@
       "one": "nog {more}",
       "other": "nog {more}"
     }
+  },
+  "codeMarks": {
+    "outboundTo": "→ {target}",
+    "writes": "Schrijft {target}",
+    "readsWrites": "Leest en schrijft {target}",
+    "reads": "Leest {target}",
+    "binds": "{iface} → {impl}",
+    "unresolved": "Niet opgelost",
+    "reach": "Bereikt {functions} functies, {tables} tabellen, {outbound} uitgaande calls",
+    "readBy": {
+      "one": "gelezen door {count} call",
+      "other": "gelezen door {count} calls"
+    }
+  },
+  "symbolCard": {
+    "lineFacts": "Wat deze regel raakt",
+    "openDefinition": "Open de definitie",
+    "outsideSnapshot": "Gedefinieerd buiten dit snapshot.",
+    "runsAs": {
+      "one": "Draait als",
+      "other": "Draait als een van {count}"
+    },
+    "usages": {
+      "one": "{count} aanroep",
+      "other": "{count} aanroepen"
+    },
+    "usedBy": {
+      "one": "Gebruikt door {count} unit",
+      "other": "Gebruikt door {count} units"
+    },
+    "implementations": {
+      "one": "{count} implementatie",
+      "other": "{count} implementaties"
+    },
+    "goToDefinition": "Naar definitie",
+    "besideTitle": "Open naast dit bestand (⌘-klik)",
+    "beside": "Ernaast",
+    "findUsages": "Gebruik",
+    "hierarchy": "Hiërarchie",
+    "calls": "Calls",
+    "whatItReaches": "Wat het bereikt",
+    "function": "functie",
+    "type": "type",
+    "otherComponent": "andere component",
+    "otherModule": "andere module",
+    "forbidden": "verboden",
+    "forbiddenTitle": "De lens {lens} verbiedt deze dependency",
+    "crossingTitle": "Deze verwijzing verlaat de component van het bestand",
+    "viaImplementation": "opgelost naar een implementatie",
+    "viaField": "via een veld",
+    "viaStatic": "statische call"
+  },
+  "callTree": {
+    "expand": "Uitklappen",
+    "implementationTitle": "Bereikt via een interface, opgelost naar deze implementatie",
+    "impl": "impl",
+    "otherComponent": "In {component}",
+    "loading": "Laden…",
+    "noCallers": "Geen aanroepers",
+    "noCallees": "Roept niets aan dat de scan kon oplossen"
+  },
+  "codeInsightPane": {
+    "close": "Sluiten",
+    "direction": "Richting",
+    "callers": "Aanroepers",
+    "callees": "Aangeroepen",
+    "failed": "Kon dit niet laden",
+    "noUsages": "Geen gebruik gevonden",
+    "noUsagesText": "Niets in dit snapshot roept het aan of verwijst ernaar.",
+    "capped": "De eerste {limit} worden getoond.",
+    "noComponent": "Geen component",
+    "inFiles": {
+      "one": "{count} bestand",
+      "other": "{count} bestanden"
+    },
+    "references": "verwijst ernaar",
+    "extends": "Breidt uit of implementeert",
+    "nothing": "Niets",
+    "external": "extern",
+    "implementedBy": "Geïmplementeerd of uitgebreid door",
+    "noCallers": "Geen aanroepers",
+    "noCallees": "Roept niets aan",
+    "callsText": "De scan vond geen calls voor deze functie.",
+    "depthTitle": "Calls tussen de handler en dit",
+    "depth": "diepte {depth}",
+    "followCalls": "Volg de calls",
+    "functions": "Functies",
+    "tables": "Tabellen",
+    "outbound": "Uitgaand",
+    "usages": "Gebruik",
+    "typeHierarchy": "Typehiërarchie",
+    "callHierarchy": "Call-hiërarchie",
+    "reach": "Wat deze route bereikt"
   }
 }
