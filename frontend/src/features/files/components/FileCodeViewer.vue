@@ -38,9 +38,18 @@
     </div>
 
     <div v-if="intel && showArch && fileContents" class="legend hairline-b">
-      <span class="legend-item" :title="t('files.fileCodeViewer.legendComponentTitle')"><span class="legend-swatch is-component"></span>{{ t('files.fileCodeViewer.legendComponent', { count: crossings.component }) }}</span>
-      <span class="legend-item" :title="t('files.fileCodeViewer.legendModuleTitle')"><span class="legend-swatch is-module"></span>{{ t('files.fileCodeViewer.legendModule', { count: crossings.module }) }}</span>
-      <span v-if="forbidden" class="legend-item" :title="t('files.fileCodeViewer.legendForbiddenTitle')"><span class="legend-swatch is-forbidden"></span>{{ t('files.fileCodeViewer.legendForbidden', { count: crossings.forbidden }) }}</span>
+      <button
+        v-for="b in legendBoundaries"
+        :key="b.kind"
+        type="button"
+        class="legend-item legend-toggle"
+        :class="{ 'is-on': pinnedBoundary === b.kind }"
+        :aria-pressed="pinnedBoundary === b.kind"
+        :title="b.title"
+        @pointerenter="hoverBoundary = b.kind"
+        @pointerleave="hoverBoundary = null"
+        @click="pinnedBoundary = pinnedBoundary === b.kind ? null : b.kind"
+      ><span class="legend-swatch" :class="`is-${b.kind}`"></span>{{ b.label }}</button>
       <span class="ml-auto flex items-center gap-2.5">
         <span v-for="k in markKinds" :key="k.kind" class="legend-item" :title="k.title"><Icon :icon="MARK_ICON[k.kind]" :size="11" :class="`mark-${k.kind}`"/>{{ formatNumber(k.count) }}</span>
       </span>
@@ -71,7 +80,7 @@
             >{{ line.number }}</a>
           </div>
         </div>
-        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body code-colours block whitespace-pre text-left" :class="{ 'arch-on': showArch }" @pointerover="onPointerOver" @pointerout="onPointerOut" @click="onCodeClick"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" :data-line="line.number"><span v-html="line.html || ' '"></span><template v-if="showArch && lensOf(line.number)"><button v-if="lensOf(line.number)!.usages > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.usagesTitle')" @click.stop="inquire({ kind: 'usages', unit: lensOf(line.number)!.target.unit, fn: lensOf(line.number)!.target.kind === 'function' ? lensOf(line.number)!.target.fn : null, entry: null })">{{ lensOf(line.number)!.target.kind === 'function' ? t('files.fileCodeViewer.callSites', { count: lensOf(line.number)!.usages }) : t('files.fileCodeViewer.usedBy', { count: lensOf(line.number)!.usages }) }}</button><button v-if="lensOf(line.number)!.implementations > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.implementationsTitle')" @click.stop="inquire({ kind: 'types', unit: lensOf(line.number)!.target.unit, fn: null, entry: null })">{{ t('files.fileCodeViewer.implementations', { count: lensOf(line.number)!.implementations }) }}</button></template><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
+        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body code-colours block whitespace-pre text-left" :class="{ 'arch-on': showArch, [`focus-${focusBoundary}`]: showArch && !!focusBoundary }" @pointerover="onPointerOver" @pointerout="onPointerOut" @click="onCodeClick"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" :data-line="line.number"><span v-html="line.html || ' '"></span><template v-if="showArch && lensOf(line.number)"><button v-if="lensOf(line.number)!.usages > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.usagesTitle')" @click.stop="inquire({ kind: 'usages', unit: lensOf(line.number)!.target.unit, fn: lensOf(line.number)!.target.kind === 'function' ? lensOf(line.number)!.target.fn : null, entry: null })">{{ lensOf(line.number)!.target.kind === 'function' ? t('files.fileCodeViewer.callSites', { count: lensOf(line.number)!.usages }) : t('files.fileCodeViewer.usedBy', { count: lensOf(line.number)!.usages }) }}</button><button v-if="lensOf(line.number)!.implementations > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.implementationsTitle')" @click.stop="inquire({ kind: 'types', unit: lensOf(line.number)!.target.unit, fn: null, entry: null })">{{ t('files.fileCodeViewer.implementations', { count: lensOf(line.number)!.implementations }) }}</button></template><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
       </div>
     </div>
     <SymbolCard
@@ -322,6 +331,19 @@ const crossings = computed(() => {
   }
   for (const t of i.types.values()) count(t)
   for (const at of i.sites.values()) for (const t of at.values()) count(t)
+  return out
+})
+// The legend brings one kind of crossing forward: hovered for a look,
+// clicked to keep it while reading.
+const hoverBoundary = ref<Boundary | null>(null)
+const pinnedBoundary = ref<Boundary | null>(null)
+const focusBoundary = computed(() => hoverBoundary.value ?? pinnedBoundary.value)
+const legendBoundaries = computed(() => {
+  const out: Array<{ kind: Boundary; label: string; title: string }> = [
+    { kind: "component", label: t("files.fileCodeViewer.legendComponent", { count: crossings.value.component }), title: t("files.fileCodeViewer.legendComponentTitle") },
+    { kind: "module", label: t("files.fileCodeViewer.legendModule", { count: crossings.value.module }), title: t("files.fileCodeViewer.legendModuleTitle") },
+  ]
+  if (forbidden.value) out.push({ kind: "forbidden", label: t("files.fileCodeViewer.legendForbidden", { count: crossings.value.forbidden }), title: t("files.fileCodeViewer.legendForbiddenTitle") })
   return out
 })
 const markKinds = computed(() => {
@@ -606,7 +628,10 @@ button.mark-btn:hover { background: rgb(var(--c-neutral-200)); }
 .mark-flag { color: rgb(var(--c-red-700)); }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.875rem; min-height: 1.75rem; padding: 0.25rem 0.75rem; font-size: 0.6875rem; color: rgb(var(--c-neutral-600)); background: rgb(var(--c-ground)); }
 .legend-item { display: inline-flex; align-items: center; gap: 0.3125rem; white-space: nowrap; }
-.legend-swatch { width: 0.875rem; height: 0; border-bottom: 2px dotted; }
+.legend-toggle { height: 1.25rem; margin: 0 -0.375rem; padding: 0 0.375rem; border-radius: 0.25rem; color: inherit; }
+.legend-toggle:hover { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-100)); }
+.legend-toggle.is-on { color: rgb(var(--c-neutral-900)); background: rgb(var(--c-neutral-200)); }
+.legend-swatch { width: 0.875rem; height: 0; border-bottom: 1.5px dotted; }
 .legend-swatch.is-component { border-color: rgb(var(--c-blue-500)); }
 .legend-swatch.is-module { border-color: rgb(var(--c-amber-600)); }
 .legend-swatch.is-forbidden { border-bottom-style: solid; border-color: rgb(var(--c-red-600)); }
@@ -615,13 +640,21 @@ button.mark-btn:hover { background: rgb(var(--c-neutral-200)); }
 .lens-chip + .lens-chip { margin-left: 0.25rem; }
 
 /* Names the snapshot resolved. A link reads as code until the pointer is on
-   it; with Architecture on, one that leaves the component is underlined by
-   how far it goes. */
+   it; with Architecture on, one that leaves the component carries a faint
+   underline by how far it goes, there to be noticed, not read: in a file
+   that talks to forty services it is most names. Only a forbidden crossing
+   is loud. A legend entry brings its kind forward and lets the rest go. */
 .code-body :deep(.ref) { cursor: pointer; border-radius: 2px; }
 .code-body :deep(.ref:hover) { text-decoration: underline; text-underline-offset: 2px; background: rgb(var(--c-neutral-100)); }
-.code-body.arch-on :deep(.ref-component) { text-decoration: underline dotted rgb(var(--c-blue-500)); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
-.code-body.arch-on :deep(.ref-module) { text-decoration: underline dotted rgb(var(--c-amber-600)); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.code-body.arch-on :deep(.ref-component) { text-decoration: underline dotted rgb(var(--c-blue-500) / 0.3); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.code-body.arch-on :deep(.ref-module) { text-decoration: underline dotted rgb(var(--c-amber-600) / 0.3); text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .code-body.arch-on :deep(.ref-forbidden) { text-decoration: underline wavy rgb(var(--c-red-600)); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.code-body.focus-component :deep(.ref:not(.ref-component)),
+.code-body.focus-module :deep(.ref:not(.ref-module)),
+.code-body.focus-forbidden :deep(.ref:not(.ref-forbidden)) { text-decoration: none; }
+.code-body.focus-component :deep(.ref-component) { text-decoration: underline solid rgb(var(--c-blue-500)); text-decoration-thickness: 1.5px; background: rgb(var(--c-blue-500) / 0.12); }
+.code-body.focus-module :deep(.ref-module) { text-decoration: underline solid rgb(var(--c-amber-600)); text-decoration-thickness: 1.5px; background: rgb(var(--c-amber-600) / 0.12); }
+.code-body.focus-forbidden :deep(.ref-forbidden) { background: rgb(var(--c-red-600) / 0.12); }
 .code-body :deep(.ref-decl:hover) { background: rgb(var(--c-accent-50)); }
 .gutter-line { height: 1.25rem; line-height: 1.25rem; padding-right: 0.5rem; cursor: pointer; text-decoration: none; color: inherit; }
 .gutter-line:hover { color: rgb(var(--c-neutral-900)); }
