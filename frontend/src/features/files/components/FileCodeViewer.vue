@@ -50,7 +50,7 @@
       <!-- Sticky scope: the signature of the function being read, once it has scrolled away. -->
       <button v-if="stickyScope" type="button" class="scope-bar" :title="t('files.fileCodeViewer.scopeTitle', { name: stickyScope.name || t('files.fileCodeViewer.anonymous') })" @click="jumpTo(stickyScope)">
         <span class="scope-num">{{ signatureLine(stickyScope) }}</span>
-        <code class="scope-code code-body" v-html="codeLines[signatureLine(stickyScope) - 1]?.html || ' '"></code>
+        <code class="scope-code code-body code-colours" v-html="codeLines[signatureLine(stickyScope) - 1]?.html || ' '"></code>
         <span v-if="stickyScope.cognitive > 15" class="cx-fn">{{ t('files.fileCodeViewer.cognitive', { cognitive: stickyScope.cognitive }) }}</span>
       </button>
       <div ref="scrollContainerRef" class="code-scroll relative flex min-h-0 grow items-start overflow-auto" @scroll.passive="onScroll">
@@ -71,7 +71,7 @@
             >{{ line.number }}</a>
           </div>
         </div>
-        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body block whitespace-pre text-left" :class="{ 'arch-on': showArch }" @pointerover="onPointerOver" @pointerout="onPointerOut" @click="onCodeClick"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" :data-line="line.number"><span v-html="line.html || ' '"></span><template v-if="showArch && lensOf(line.number)"><button v-if="lensOf(line.number)!.usages > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.usagesTitle')" @click.stop="inquire({ kind: 'usages', unit: lensOf(line.number)!.target.unit, fn: lensOf(line.number)!.target.kind === 'function' ? lensOf(line.number)!.target.fn : null, entry: null })">{{ lensOf(line.number)!.target.kind === 'function' ? t('files.fileCodeViewer.callSites', { count: lensOf(line.number)!.usages }) : t('files.fileCodeViewer.usedBy', { count: lensOf(line.number)!.usages }) }}</button><button v-if="lensOf(line.number)!.implementations > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.implementationsTitle')" @click.stop="inquire({ kind: 'types', unit: lensOf(line.number)!.target.unit, fn: null, entry: null })">{{ t('files.fileCodeViewer.implementations', { count: lensOf(line.number)!.implementations }) }}</button></template><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
+        <pre class="m-0 min-w-0 grow py-3 pl-4 pr-6 font-mono text-xs leading-5 text-neutral-800"><code class="code-body code-colours block whitespace-pre text-left" :class="{ 'arch-on': showArch }" @pointerover="onPointerOver" @pointerout="onPointerOut" @click="onCodeClick"><div v-for="(line, i) in codeLines" :key="'code-' + line.number" class="code-line" :class="{ 'is-highlighted': line.isHighlighted }" :data-line="line.number"><span v-html="line.html || ' '"></span><template v-if="showArch && lensOf(line.number)"><button v-if="lensOf(line.number)!.usages > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.usagesTitle')" @click.stop="inquire({ kind: 'usages', unit: lensOf(line.number)!.target.unit, fn: lensOf(line.number)!.target.kind === 'function' ? lensOf(line.number)!.target.fn : null, entry: null })">{{ lensOf(line.number)!.target.kind === 'function' ? t('files.fileCodeViewer.callSites', { count: lensOf(line.number)!.usages }) : t('files.fileCodeViewer.usedBy', { count: lensOf(line.number)!.usages }) }}</button><button v-if="lensOf(line.number)!.implementations > 0" type="button" class="lens-chip" :title="t('files.fileCodeViewer.implementationsTitle')" @click.stop="inquire({ kind: 'types', unit: lensOf(line.number)!.target.unit, fn: null, entry: null })">{{ t('files.fileCodeViewer.implementations', { count: lensOf(line.number)!.implementations }) }}</button></template><template v-if="showComplexity && notes[i].steps.length"><span v-for="(step, j) in notes[i].steps" :key="j" class="cx-step" :class="step.points >= 3 ? 'is-heavy' : step.points === 2 ? 'is-nested' : ''" :title="step.nesting > 0 ? t('files.fileCodeViewer.stepNested', { points: step.points, construct: step.construct, nesting: step.nesting }) : t('files.fileCodeViewer.step', { points: step.points, construct: step.construct })">+{{ step.points }} {{ step.construct }}</span></template></div></code></pre>
       </div>
     </div>
     <SymbolCard
@@ -81,7 +81,6 @@
       :marks="card.marks"
       :boundary="card.boundary"
       :forbidden-by="card.forbiddenBy"
-      :here="filePath"
       @go="go"
       @inquire="inquire"
       @enter="cardHover = true; cancelHide()"
@@ -103,6 +102,8 @@
 import OpenInEditor from "./OpenInEditor.vue"
 import SymbolCard from "./SymbolCard.vue"
 import { splitHighlighted } from "~/features/files/highlightLines"
+import { detectLanguage } from "~/features/files/language"
+import "./codeColours.css"
 import { boundaryOf, linkLine, type Boundary, type Declaration, type LineMark, type MarkKind, type SymbolTarget } from "~/features/files/codeIntel"
 import { useCodeIntel, useForbiddenCrossing } from "~/features/files/useCodeIntel"
 import { MARK_ICON, MARK_ORDER, leadMark, markTitle } from "~/features/files/codeMarks"
@@ -225,49 +226,6 @@ watch(
   },
   { immediate: true }
 )
-
-// ── Language Detection ──────────────────────────────────────────
-function detectLanguage(filename: string): string {
-  const lowercaseFilename = filename.toLowerCase()
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
-  
-  if (lowercaseFilename === 'makefile' || ext === 'mk') return 'makefile'
-  if (lowercaseFilename === 'dockerfile' || ext === 'dockerfile') return 'dockerfile'
-  
-  if (ext === 'java') return 'java'
-  if (['js', 'mjs', 'cjs', 'jsx'].includes(ext)) return 'javascript'
-  if (['ts', 'mts', 'cts', 'tsx'].includes(ext)) return 'typescript'
-  if (ext === 'vue') return 'xml'
-  if (ext === 'xml') return 'xml'
-  if (ext === 'json') return 'json'
-  if (['md', 'markdown'].includes(ext)) return 'markdown'
-  if (['html', 'htm', 'xhtml'].includes(ext)) return 'xml'
-  if (ext === 'py') return 'python'
-  if (ext === 'go') return 'go'
-  if (ext === 'sql') return 'sql'
-  if (['yaml', 'yml'].includes(ext)) return 'yaml'
-  if (['sh', 'bash', 'zsh'].includes(ext)) return 'bash'
-  if (['cpp', 'cc', 'cxx', 'hpp', 'h'].includes(ext)) return 'cpp'
-  if (ext === 'c') return 'c'
-  if (ext === 'cs') return 'csharp'
-  if (ext === 'rs') return 'rust'
-  if (ext === 'rb') return 'ruby'
-  if (ext === 'php') return 'php'
-  if (ext === 'swift') return 'swift'
-  if (['kt', 'kts'].includes(ext)) return 'kotlin'
-  if (ext === 'scala') return 'scala'
-  if (ext === 'css') return 'css'
-  if (ext === 'scss') return 'scss'
-  if (ext === 'less') return 'less'
-  if (['diff', 'patch'].includes(ext)) return 'diff'
-  if (['toml', 'ini'].includes(ext)) return 'ini'
-  if (ext === 'proto') return 'protobuf'
-  if (['graphql', 'gql'].includes(ext)) return 'graphql'
-  if (ext === 'pl' || ext === 'pm') return 'perl'
-  if (ext === 'r') return 'r'
-  
-  return ''
-}
 
 const detectedLang = computed(() => detectLanguage(fileBasename.value))
 
@@ -679,17 +637,4 @@ button.mark-btn:hover { background: rgb(var(--c-neutral-200)); }
 .cx-step + .cx-step { margin-left: 0.25rem; }
 .cx-step.is-nested { color: rgb(var(--c-amber-800)); background: rgb(var(--c-amber-50)); }
 .cx-step.is-heavy { color: rgb(var(--c-red-700)); background: rgb(var(--c-red-50)); }
-
-/* Syntax colours from the data ramps; the accent stays out of the code. */
-.code-body :deep(.hljs-comment), .code-body :deep(.hljs-quote) { color: rgb(var(--c-neutral-500)); font-style: italic; }
-.code-body :deep(.hljs-keyword), .code-body :deep(.hljs-selector-tag), .code-body :deep(.hljs-literal), .code-body :deep(.hljs-doctag), .code-body :deep(.hljs-formula) { color: rgb(var(--c-violet-700)); }
-.code-body :deep(.hljs-string), .code-body :deep(.hljs-regexp), .code-body :deep(.hljs-addition), .code-body :deep(.hljs-meta .hljs-string) { color: rgb(var(--c-green-700)); }
-.code-body :deep(.hljs-number), .code-body :deep(.hljs-symbol), .code-body :deep(.hljs-bullet), .code-body :deep(.hljs-link), .code-body :deep(.hljs-selector-attr), .code-body :deep(.hljs-selector-pseudo) { color: rgb(var(--c-amber-700)); }
-.code-body :deep(.hljs-title), .code-body :deep(.hljs-title.function_), .code-body :deep(.hljs-section), .code-body :deep(.hljs-name) { color: rgb(var(--c-blue-700)); }
-.code-body :deep(.hljs-title.class_), .code-body :deep(.hljs-type), .code-body :deep(.hljs-built_in), .code-body :deep(.hljs-class .hljs-title) { color: rgb(var(--c-blue-800)); }
-.code-body :deep(.hljs-attr), .code-body :deep(.hljs-attribute), .code-body :deep(.hljs-variable), .code-body :deep(.hljs-template-variable), .code-body :deep(.hljs-params) { color: rgb(var(--c-neutral-800)); }
-.code-body :deep(.hljs-meta), .code-body :deep(.hljs-selector-id), .code-body :deep(.hljs-selector-class) { color: rgb(var(--c-amber-800)); }
-.code-body :deep(.hljs-deletion) { color: rgb(var(--c-red-700)); }
-.code-body :deep(.hljs-emphasis) { font-style: italic; }
-.code-body :deep(.hljs-strong) { font-weight: 600; }
 </style>

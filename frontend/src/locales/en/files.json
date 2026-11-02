@@ -170,7 +170,6 @@
       "one": "{count} implementation",
       "other": "{count} implementations"
     },
-    "goToDefinition": "Go to definition",
     "besideTitle": "Open beside this file (⌘-click)",
     "beside": "Beside",
     "findUsages": "Usages",
@@ -178,15 +177,18 @@
     "calls": "Calls",
     "whatItReaches": "What it reaches",
     "function": "function",
-    "type": "type",
     "otherComponent": "other component",
     "otherModule": "other module",
     "forbidden": "forbidden",
     "forbiddenTitle": "The lens {lens} forbids this dependency",
     "crossingTitle": "This reference leaves the file's component",
-    "viaImplementation": "resolved to an implementation",
-    "viaField": "through a field",
-    "viaStatic": "static call"
+    "in": "in",
+    "openComponent": "Open this component",
+    "method": "method",
+    "go": "Go to",
+    "goTitle": "Go to the definition (click the name)",
+    "hierarchyTitle": "What it extends and what implements it",
+    "callsTitle": "Who calls it and what it calls"
   },
   "callTree": {
     "expand": "Expand",

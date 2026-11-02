@@ -1,0 +1,12 @@
+/* Syntax colours from the data ramps; the accent stays out of the code. */
+.code-colours .hljs-comment, .code-colours .hljs-quote { color: rgb(var(--c-neutral-500)); font-style: italic; }
+.code-colours .hljs-keyword, .code-colours .hljs-selector-tag, .code-colours .hljs-literal, .code-colours .hljs-doctag, .code-colours .hljs-formula { color: rgb(var(--c-violet-700)); }
+.code-colours .hljs-string, .code-colours .hljs-regexp, .code-colours .hljs-addition, .code-colours .hljs-meta .hljs-string { color: rgb(var(--c-green-700)); }
+.code-colours .hljs-number, .code-colours .hljs-symbol, .code-colours .hljs-bullet, .code-colours .hljs-link, .code-colours .hljs-selector-attr, .code-colours .hljs-selector-pseudo { color: rgb(var(--c-amber-700)); }
+.code-colours .hljs-title, .code-colours .hljs-title.function_, .code-colours .hljs-section, .code-colours .hljs-name { color: rgb(var(--c-blue-700)); }
+.code-colours .hljs-title.class_, .code-colours .hljs-type, .code-colours .hljs-built_in, .code-colours .hljs-class .hljs-title { color: rgb(var(--c-blue-800)); }
+.code-colours .hljs-attr, .code-colours .hljs-attribute, .code-colours .hljs-variable, .code-colours .hljs-template-variable, .code-colours .hljs-params { color: rgb(var(--c-neutral-800)); }
+.code-colours .hljs-meta, .code-colours .hljs-selector-id, .code-colours .hljs-selector-class { color: rgb(var(--c-amber-800)); }
+.code-colours .hljs-deletion { color: rgb(var(--c-red-700)); }
+.code-colours .hljs-emphasis { font-style: italic; }
+.code-colours .hljs-strong { font-weight: 600; }

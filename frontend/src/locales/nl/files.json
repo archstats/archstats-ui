@@ -170,7 +170,6 @@
       "one": "{count} implementatie",
       "other": "{count} implementaties"
     },
-    "goToDefinition": "Naar definitie",
     "besideTitle": "Open naast dit bestand (⌘-klik)",
     "beside": "Ernaast",
     "findUsages": "Gebruik",
@@ -178,15 +177,18 @@
     "calls": "Calls",
     "whatItReaches": "Wat het bereikt",
     "function": "functie",
-    "type": "type",
     "otherComponent": "andere component",
     "otherModule": "andere module",
     "forbidden": "verboden",
     "forbiddenTitle": "De lens {lens} verbiedt deze dependency",
     "crossingTitle": "Deze verwijzing verlaat de component van het bestand",
-    "viaImplementation": "opgelost naar een implementatie",
-    "viaField": "via een veld",
-    "viaStatic": "statische call"
+    "in": "in",
+    "openComponent": "Open deze component",
+    "method": "methode",
+    "go": "Ga naar",
+    "goTitle": "Ga naar de definitie (klik op de naam)",
+    "hierarchyTitle": "Wat het uitbreidt en wat het implementeert",
+    "callsTitle": "Wie het aanroept en wat het aanroept"
   },
   "callTree": {
     "expand": "Uitklappen",
