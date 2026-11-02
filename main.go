@@ -27,6 +27,15 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// changelog is what the app shows under What's New: the notes of every
+// release up to this one, readable offline.
+//
+//go:embed CHANGELOG.md
+var changelog string
+
+//go:embed build/appicon.png
+var appIcon []byte
+
 // version is stamped by the release workflow via
 // -ldflags "-X main.version=vX.Y.Z"; local builds report "dev".
 var version = "dev"
@@ -116,7 +125,7 @@ func main() {
 	watchdog := diag.NewWatchdog()
 	stopWatchdog := make(chan struct{})
 	defer close(stopWatchdog)
-	appSvc := app.NewAppService(version, watchdog, diag.LogPath(root))
+	appSvc := app.NewAppService(version, changelog, watchdog, diag.LogPath(root))
 	if wd, err := os.Getwd(); err == nil {
 		appSvc.QueueSnapshots(os.Args[1:], wd)
 	}
@@ -153,6 +162,12 @@ func main() {
 		EnableDefaultContextMenu: true,
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHiddenInset(),
+			// The App menu's About item: which build, and which engine reads the code.
+			About: &mac.AboutInfo{
+				Title:   "Archstats Desktop " + version,
+				Message: aboutMessage(appSvc.About()),
+				Icon:    appIcon,
+			},
 		},
 		OnStartup: func(ctx context.Context) {
 			appCtx = ctx
@@ -189,4 +204,8 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+func aboutMessage(a app.About) string {
+	return fmt.Sprintf("Engine %s, analysis revision %d\n%s\n\n%s", a.Engine, a.AnalysisRevision, a.Platform, a.Docs)
 }

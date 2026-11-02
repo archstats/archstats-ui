@@ -134,7 +134,8 @@
     "whatAppDeclaresPlatform": "Wat een app aan zijn platform declareert (activities, permissions, URL-schema's, entitlements) wordt vastgelegd, en mobiele apps zijn deployables met hun stack.",
     "analysisRevisionChangedHow": "Analyse-revisie {r} wijzigde hoe scans worden gelezen.",
     "filePairsChangeTogether": "Bestandsparen die samen wijzigen worden vastgelegd met hoeveel van elke kant ze beslaan.",
-    "httpRoutesContractsOutbound": "HTTP-routes krijgen wie ze mag aanroepen en het contract dat ze beschrijft; elke route wordt gevolgd tot de tabellen en systemen die hij bereikt; de systemen die de code aanroept worden uit code en configuratie gelezen, per omgeving."
+    "httpRoutesContractsOutbound": "HTTP-routes krijgen wie ze mag aanroepen en het contract dat ze beschrijft; elke route wordt gevolgd tot de tabellen en systemen die hij bereikt; de systemen die de code aanroept worden uit code en configuratie gelezen, per omgeving.",
+    "routeMethodsFromNames": "HTTP-routes lezen hun methodes waar het framework die aan namen of standaarden overlaat: Django class views en @api_view, Next.js- en SvelteKit-routebestanden, ASP.NET Web API-acties, Laravel-resources."
   },
   "statNames": {
     "linesCode": "Regels code",

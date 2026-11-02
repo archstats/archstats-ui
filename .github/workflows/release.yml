@@ -9,8 +9,12 @@ name: Release Archstats Desktop
 # verify and only upload workflow artifacts: a canary that catches runner
 # image drift before release day.
 #
-# All builds are currently UNSIGNED (see tasks/release-pipeline.md): macOS
-# users must right-click → Open; Windows shows a SmartScreen warning.
+# scripts/release.sh cuts the tag; the notes are that version's section of
+# CHANGELOG.md, and a tag whose go.mod pins the engine by commit is refused.
+#
+# All builds are currently UNSIGNED (see tasks/release-pipeline.md): on macOS
+# 15 and later the first launch needs System Settings → Privacy & Security →
+# Open Anyway; Windows shows a SmartScreen warning. The install guide says so.
 on:
   push:
     tags: ["v*"]
@@ -246,6 +250,32 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the notes fall back to the commits since the last tag
+
+      # A release names the engine it carries; a pseudo-version names nothing
+      # anyone can install or read the notes of.
+      - name: Engine pinned to a tag
+        run: |
+          pinned="$(awk '$1 == "github.com/archstats/archstats" { print $2; exit }' go.mod)"
+          echo "engine: $pinned"
+          if [[ "$pinned" =~ -[0-9]{14}-[0-9a-f]{12}$ ]]; then
+            echo "go.mod pins the engine at a commit; release the engine and pin its tag (scripts/release.sh --engine)"
+            exit 1
+          fi
+
+      - name: Release notes
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          scripts/changelog.sh section "$tag" > notes.md
+          if [ ! -s notes.md ]; then
+            previous="$(git describe --tags --abbrev=0 --match 'v*' "$tag^" 2>/dev/null || true)"
+            if [ -n "$previous" ]; then scripts/changelog.sh commits "$previous" "$tag" > notes.md; fi
+          fi
+          printf '\n---\n\nInstall, including opening an unsigned build: https://archstats.github.io/archstats/install/\n' >> notes.md
+          cat notes.md
+
       - uses: actions/download-artifact@v4
         with:
           path: out
@@ -267,5 +297,5 @@ jobs:
           gh release create "$tag" out/* \
             --repo "${{ github.repository }}" \
             --title "Archstats Desktop $tag" \
-            --generate-notes \
+            --notes-file notes.md \
             --draft

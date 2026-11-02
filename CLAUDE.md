@@ -32,6 +32,8 @@ Groups are a first-class concept: they are how the architect or developer cuts t
 - Text a person reads is a message, never a literal: `t("<namespace>.<area>.<name>")` from `~/shared/i18n`, `<I18nT>` for a sentence with markup, `listOf()` for lists, `intlLocale`/`fixed()` for numbers. Add the key to `src/locales/en/` and its Dutch to `src/locales/nl/` (developer Dutch, see `src/locales/GLOSSARY.md`). `npm test` and `npm run i18n:check` enforce it; details in `frontend/src/locales/README.md`.
 - SQL against the snapshot goes through `sqlLiteral`/`sqlIn`/`sqlLikeLiteral` in `src/shared/sql.ts`. `component_connections_indirect.shortest_path_length` counts nodes (hops = length − 1).
 - `grep` on this machine is ugrep; use `/usr/bin/grep`. Quote zsh globs.
+- A change a user would notice gets a line under **Unreleased** in `CHANGELOG.md`, written for the person using the app: it is what Help → What's New shows after an update. Releases go through `scripts/release.sh` (README, "Release").
+- `go test .` fails on a dead link or source path in README.md, DESCRIPTION.md, CHANGELOG.md, this file or `frontend/src/README.md`.
 - No commits or pushes unless asked. Never add AI attribution anywhere.
 
 ## Token budget for design and UI work

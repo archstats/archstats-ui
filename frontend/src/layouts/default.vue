@@ -58,6 +58,8 @@
     <AskLauncher v-if="ai.enabled || STAGE_SCAN"/>
     <ExhibitRenderHost/>
     <ProblemNotice/>
+    <UpdateNotice/>
+    <WhatsNewSheet/>
   </div>
 </template>
 
@@ -66,6 +68,8 @@ import { computed, onMounted, ref, watch } from "vue";
 import { PanelLeftOpen } from "lucide-vue-next";
 import NavBar from "~/features/shell/components/NavBar.vue";
 import ProblemNotice from "~/features/shell/components/ProblemNotice.vue";
+import UpdateNotice from "~/features/updates/components/UpdateNotice.vue";
+import WhatsNewSheet from "~/features/updates/components/WhatsNewSheet.vue";
 import PaneHandle from "~/features/shell/components/PaneHandle.vue";
 import WorkspaceEmptyState from "~/features/workspace/components/WorkspaceEmptyState.vue";
 import OutdatedSnapshotBar from "~/features/workspace/components/OutdatedSnapshotBar.vue";

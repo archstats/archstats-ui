@@ -134,7 +134,8 @@
     "whatAppDeclaresPlatform": "What an app declares to its platform (activities, permissions, URL schemes, entitlements) is recorded, and mobile apps are deployables with their stack.",
     "analysisRevisionChangedHow": "Analysis revision {r} changed how scans are read.",
     "filePairsChangeTogether": "File pairs that change together are recorded with how much of each side they cover.",
-    "httpRoutesContractsOutbound": "HTTP routes gain who may call them and the contract that describes them; each route is traced to the tables and systems it reaches; the systems the code calls are read from code and configuration, per environment."
+    "httpRoutesContractsOutbound": "HTTP routes gain who may call them and the contract that describes them; each route is traced to the tables and systems it reaches; the systems the code calls are read from code and configuration, per environment.",
+    "routeMethodsFromNames": "HTTP routes read their methods where the framework leaves them to names or defaults: Django class views and @api_view, Next.js and SvelteKit route files, ASP.NET Web API actions, Laravel resources."
   },
   "statNames": {
     "linesCode": "Lines of Code",

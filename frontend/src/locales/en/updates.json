@@ -1,0 +1,35 @@
+{
+  "aboutSettings": {
+    "title": "Archstats Desktop {version}",
+    "engine": "Engine",
+    "analysisRevision": "Analysis revision",
+    "platform": "Platform",
+    "whatsNew": "What's new",
+    "documentation": "Documentation",
+    "showLog": "Show the log",
+    "checkForUpdates": "Check for updates",
+    "checkExplained": "Asks GitHub for the latest release when the app starts and once a day. Nothing about you or your code is sent.",
+    "notARelease": "This build is not a release, so it is never offered one.",
+    "checking": "Checking…",
+    "couldNotCheck": "Could not reach GitHub: {error}",
+    "newerOut": "{version} is out, released {date}.",
+    "download": "Download",
+    "upToDate": "This is the latest release. Checked at {time}.",
+    "off": "Off. Turn it on, or check now.",
+    "checkNow": "Check now"
+  },
+  "updateNotice": {
+    "title": "Archstats Desktop {version} is out",
+    "youHave": "Released {date}. You have {version}.",
+    "download": "Download",
+    "notNow": "Not now"
+  },
+  "whatsNewSheet": {
+    "title": "What's new",
+    "sinceLastTime": "What's new since you last opened Archstats ({version})",
+    "close": "Close",
+    "noNotes": "This build carries no release notes.",
+    "allReleases": "All releases on GitHub",
+    "done": "Done"
+  }
+}
