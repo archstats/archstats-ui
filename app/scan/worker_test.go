@@ -58,7 +58,11 @@ func TestScanInAWorker(t *testing.T) {
 	if _, err := os.Stat(scan.SnapshotPath); err != nil {
 		t.Fatalf("snapshot missing: %v", err)
 	}
+	// The store says complete a moment before scan:done goes out.
 	events := strings.Join(rec.names(), ",")
+	for deadline := time.Now().Add(5 * time.Second); !strings.HasSuffix(events, EventScanDone) && time.Now().Before(deadline); events = strings.Join(rec.names(), ",") {
+		time.Sleep(10 * time.Millisecond)
+	}
 	if strings.Count(events, EventScanPhase) < 3 || !strings.HasSuffix(events, EventScanDone) {
 		t.Fatalf("events = %s, want the worker's phases then done", events)
 	}
