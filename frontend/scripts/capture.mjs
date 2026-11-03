@@ -1,6 +1,7 @@
 // Screenshots hash routes of the running app through headless Chrome (CDP, no deps).
 // Usage: node scripts/capture.mjs --out DIR [--routes name=/path,name2=/path2] [--scheme light|dark|both]
 //        [--workspace NAME] [--scan ID] [--size 1440x900] [--wait MS] [--pin false] [--url http://localhost:34115]
+//        [--sql http://127.0.0.1:PORT]
 // Defaults: the 12 primary views, both schemes, workspace eai-3540597-qp-common.
 // Requires `wails dev` to be running (see scripts/dev-check.mjs).
 //
@@ -8,6 +9,9 @@
 // native window, and any other capture, to it, and reads could mix two
 // snapshots. By default the page is pinned instead: Open only remembers the
 // scan and every Query runs through QueryIn on it. --pin false opens for real.
+// --sql URL answers every read from a server instead: POST {sql}, back
+// {columns, rows}. It shows a snapshot the app has not scanned, such as one
+// from a newer engine, without adding a scan to a workspace.
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -39,20 +43,38 @@ mkdirSync(out, { recursive: true });
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Patches the Wails bindings whenever the page reads window.go.
+// Wraps the Wails bindings whenever the page reads window.go. Against
+// `wails dev` the binding objects ignore assignment, so patching them in
+// place silently left every read on the backend's open snapshot; each level
+// is a proxy over a fresh object instead, the bindings' own invariants untouched.
 const PIN = `(() => {
-  let pinned = null, real;
-  const patch = (go) => {
+  let pinned = null, real = null, wrapped = null, from = null;
+  const sqlUrl = ${JSON.stringify(args.sql ?? null)};
+  // Writes go through: Wails adds the services one by one after the first read.
+  const over = (target, own) => new Proxy({}, {
+    get: (_, k) => (k in own ? own[k] : target[k]),
+    set: (_, k, v) => { target[k] = v; return true; },
+    has: (_, k) => k in own || k in target,
+  });
+  const wrap = (go) => {
     const q = go && go.app && go.app.QueryService;
-    if (!q || q.__pinned) return go;
-    const queryIn = q.QueryIn;
-    q.Open = async (id) => { pinned = id; return null; };
-    q.Query = (sql) => (pinned ? queryIn(pinned, sql) : Promise.reject(new Error("no scan pinned yet")));
-    q.CurrentScan = async () => pinned ?? "";
-    q.__pinned = true;
-    return go;
+    if (!q) return go;
+    if (from === go) return wrapped;
+    const queryIn = q.QueryIn, rows = q.Rows;
+    const qs = over(q, {
+      Open: async (id) => { pinned = id; return null; },
+      // Reads cross as Rows(queryId, scanId, sql); an empty scan id means the backend's open snapshot.
+      Rows: sqlUrl
+        ? async (_id, _scan, sql) => { const b = await (await fetch(sqlUrl, { method: "POST", body: JSON.stringify({ sql }) })).json(); if (b.error) throw new Error(b.error); return b; }
+        : (id, scan, sql) => rows(id, scan || pinned || "", sql),
+      Query: (sql) => (pinned ? queryIn(pinned, sql) : Promise.reject(new Error("no scan pinned yet"))),
+      CurrentScan: async () => pinned ?? "",
+    });
+    from = go;
+    wrapped = over(go, { app: over(go.app, { QueryService: qs }) });
+    return wrapped;
   };
-  Object.defineProperty(window, "go", { configurable: true, get() { return patch(real); }, set(v) { real = v; } });
+  Object.defineProperty(window, "go", { configurable: true, get() { return wrap(real); }, set(v) { real = v; } });
 })()`;
 
 async function session(scheme) {
