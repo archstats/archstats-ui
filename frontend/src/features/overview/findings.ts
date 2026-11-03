@@ -97,17 +97,40 @@ export const pct = (v: number) => `${(v * 100).toLocaleString(intlLocale, { maxi
 const days = (a: string, b: string) => Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
 const byDesc = (values: number[]) => values.filter((v) => v > 0).sort((a, b) => b - a);
 
-/** Production code: written in a programming language, not a test, generated or vendored. */
-export const isCode = (f: FileFact) => f.role === "production" && isCodePath(f.name);
+/** Production code: written in a programming language, not a test, generated or vendored. Read once per file. */
+const codeFiles = new WeakMap<FileFact, boolean>();
+export const isCode = (f: FileFact) => {
+  let code = codeFiles.get(f);
+  if (code === undefined) codeFiles.set(f, (code = f.role === "production" && isCodePath(f.name)));
+  return code;
+};
+
+/**
+ * A reading of the file list, worked out once per list. The panels and the
+ * findings read the same few, and the facts are put together again each time
+ * one of their queries lands, so each was worked out a dozen times a visit.
+ * Callers must not change what it returns.
+ */
+function perFiles<A extends unknown[], R>(read: (files: FileFact[], ...rest: A) => R): (files: FileFact[], ...rest: A) => R {
+  const cache = new WeakMap<FileFact[], Map<string, R>>();
+  return (files, ...rest) => {
+    let byArgs = cache.get(files);
+    if (!byArgs) cache.set(files, (byArgs = new Map()));
+    const key = rest.join("\u0000");
+    if (!byArgs.has(key)) byArgs.set(key, read(files, ...rest));
+    return byArgs.get(key)!;
+  };
+}
 
 // ── Shared readings of the facts ────────────────────────────────────────
 
 /** Lines per role, over every file. */
-export function roleLines(files: FileFact[]): Record<FileRole, number> {
+function readRoleLines(files: FileFact[]): Record<FileRole, number> {
   const out: Record<FileRole, number> = { production: 0, test: 0, generated: 0, third_party: 0, non_code: 0 };
   for (const f of files) out[f.role] += f.lines;
   return out;
 }
+export const roleLines = perFiles(readRoleLines);
 
 export interface HealthReading {
   /** Mean code health of production code, weighted by lines. */
@@ -124,7 +147,7 @@ export interface HealthReading {
 }
 
 /** Code health over production code, by lines. Unscored files are left out. */
-export function healthReading(files: FileFact[]): HealthReading {
+function readHealth(files: FileFact[]): HealthReading {
   let good = 0, warn = 0, bad = 0, weighted = 0, work = 0, workWeighted = 0;
   for (const f of files) {
     if (!isCode(f) || f.health === null || f.health < 1 || f.lines <= 0) continue;
@@ -139,6 +162,7 @@ export function healthReading(files: FileFact[]): HealthReading {
   const scored = good + warn + bad;
   return { mean: scored ? weighted / scored : null, worked: work ? workWeighted / work : null, good, warn, bad, scored };
 }
+export const healthReading = perFiles(readHealth);
 
 export interface HealthDistribution {
   /** Half-point buckets from 1 to 10: the share of production lines, and of work (lines × commits), in each. */
@@ -148,7 +172,7 @@ export interface HealthDistribution {
 }
 
 /** Where the code sits on the health scale, and where the work sits. */
-export function healthDistribution(files: FileFact[], step = 0.5): HealthDistribution {
+function readHealthDistribution(files: FileFact[], step = 0.5): HealthDistribution {
   const count = Math.round(9 / step);
   const code = Array.from({ length: count }, () => 0), work = Array.from({ length: count }, () => 0);
   const bands = { bad: { code: 0, work: 0 }, warn: { code: 0, work: 0 }, good: { code: 0, work: 0 } };
@@ -165,6 +189,7 @@ export function healthDistribution(files: FileFact[], step = 0.5): HealthDistrib
   for (const b of Object.values(bands)) { b.code = of(b.code, lines); b.work = of(b.work, effort); }
   return { buckets: code.map((c, i) => ({ from: 1 + i * step, code: of(c, lines), work: of(work[i], effort) })), bands };
 }
+export const healthDistribution = perFiles(readHealthDistribution);
 
 export interface HealthDetail {
   /** Components by their mean health over production code, lowest first; small ones left out. */
@@ -176,7 +201,7 @@ export interface HealthDetail {
 }
 
 /** The lowest-scoring components and files, and whether the unhealthy code changes. */
-export function healthDetail(files: FileFact[], minComponentLines = 1000, minFileLines = 100): HealthDetail {
+function readHealthDetail(files: FileFact[], minComponentLines = 1000, minFileLines = 100): HealthDetail {
   const by = new Map<string, { weighted: number; lines: number }>();
   const scored: FileFact[] = [];
   let bad = 0, badHot = 0, anyHotspot = false;
@@ -199,6 +224,7 @@ export function healthDetail(files: FileFact[], minComponentLines = 1000, minFil
   const low = scored.filter((f) => f.lines >= minFileLines).sort((a, b) => (a.health ?? 0) - (b.health ?? 0) || b.lines - a.lines);
   return { components, files: low, inHotspots: bad && anyHotspot ? badHot / bad : null };
 }
+export const healthDetail = perFiles(readHealthDetail);
 
 export interface InterestRanked { name: string; interest: number; share: number }
 
@@ -229,7 +255,7 @@ const toHalf = (ranked: InterestRanked[]) => {
  * across codebases is how few files and components carry most of it: those
  * are where refactoring pays back first. Null when the snapshot has none.
  */
-export function interestReading(files: FileFact[]): InterestReading | null {
+function readInterest(files: FileFact[]): InterestReading | null {
   const read = files.filter((f) => isCode(f) && f.interest !== null);
   const rows = read.filter((f) => (f.interest ?? 0) > 0);
   const total = rows.reduce((s, f) => s + (f.interest ?? 0), 0);
@@ -243,9 +269,10 @@ export function interestReading(files: FileFact[]): InterestReading | null {
   const components = ranked([...by.entries()]);
   return { total, files: out, components, halfFiles: toHalf(out), halfComponents: toHalf(components), fileCount: read.length, componentCount };
 }
+export const interestReading = perFiles(readInterest);
 
 /** Production code lines by component, largest first. */
-function componentLines(files: FileFact[]): Array<{ name: string; lines: number; files: FileFact[] }> {
+function readComponentLines(files: FileFact[]): Array<{ name: string; lines: number; files: FileFact[] }> {
   const by = new Map<string, { name: string; lines: number; files: FileFact[] }>();
   for (const f of files) {
     if (!isCode(f) || !f.component) continue;
@@ -256,6 +283,7 @@ function componentLines(files: FileFact[]): Array<{ name: string; lines: number;
   }
   return [...by.values()].sort((a, b) => b.lines - a.lines);
 }
+const componentLines = perFiles(readComponentLines);
 
 // ── Detectors ───────────────────────────────────────────────────────────
 
@@ -486,7 +514,7 @@ export function findings(facts: OverviewFacts): Finding[] {
 }
 
 /** Programming languages of the project's own code by lines, the few largest by name and the rest as one. Data, markup, config, vendored and generated code are left out. */
-export function languageShares(files: FileFact[], keep = 4): Array<{ language: string; lines: number; share: number; other?: number }> {
+function readLanguageShares(files: FileFact[], keep = 4): Array<{ language: string; lines: number; share: number; other?: number }> {
   const rows = composition(files.filter((f) => (f.role === "production" || f.role === "test") && isCodePath(f.name)));
   const total = rows.reduce((s, r) => s + r.lines, 0);
   if (!total) return [];
@@ -495,3 +523,4 @@ export function languageShares(files: FileFact[], keep = 4): Array<{ language: s
   const restLines = rest.reduce((s, r) => s + r.lines, 0);
   return restLines ? [...head, { language: "", lines: restLines, share: restLines / total, other: rest.length }] : head;
 }
+export const languageShares = perFiles(readLanguageShares);

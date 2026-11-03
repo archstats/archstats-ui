@@ -60,14 +60,15 @@ const PIN = `(() => {
     const q = go && go.app && go.app.QueryService;
     if (!q) return go;
     if (from === go) return wrapped;
-    const queryIn = q.QueryIn, rows = q.Rows;
+    // Looked up at call time: Wails adds a service's methods after its first read.
+    const live = () => real.app.QueryService;
     const qs = over(q, {
       Open: async (id) => { pinned = id; return null; },
       // Reads cross as Rows(queryId, scanId, sql); an empty scan id means the backend's open snapshot.
       Rows: sqlUrl
         ? async (_id, _scan, sql) => { const b = await (await fetch(sqlUrl, { method: "POST", body: JSON.stringify({ sql }) })).json(); if (b.error) throw new Error(b.error); return b; }
-        : (id, scan, sql) => rows(id, scan || pinned || "", sql),
-      Query: (sql) => (pinned ? queryIn(pinned, sql) : Promise.reject(new Error("no scan pinned yet"))),
+        : (id, scan, sql) => live().Rows(id, scan || pinned || "", sql),
+      Query: (sql) => (pinned ? live().QueryIn(pinned, sql) : Promise.reject(new Error("no scan pinned yet"))),
       CurrentScan: async () => pinned ?? "",
     });
     from = go;

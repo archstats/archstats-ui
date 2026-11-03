@@ -60,6 +60,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useJavaMetrics } from "~/features/java/useJavaMetrics";
 import { t } from "~/shared/i18n";
 
+// app.vue keeps this page alive by this name while another view is open.
+defineOptions({ name: "OverviewPage" });
+
 const store = useDataStore();
 const { facts, loading: factsLoading, recentAuthors } = useOverviewFacts();
 const items = computed(() => findings(facts.value));

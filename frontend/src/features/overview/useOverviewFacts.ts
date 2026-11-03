@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, markRaw } from "vue";
 import { ReadingsOf } from "wailsjs/go/app/ChangesService";
 import { useDataStore } from "~/features/snapshot/data.store";
 import { useAsyncQuery } from "~/features/snapshot/useAsyncQuery";
@@ -31,7 +31,9 @@ export function useOverviewFacts() {
       ${col("codesmells__code_health")} AS health, ${col("codesmells__hotspot_score")} AS hotspot,
       component, ${col("git__commits__total")} AS commits, ${col("codesmells__debt_interest")} AS interest FROM files`, { signal });
     const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
-    return rows.map((r) => ({
+    // Read-only and thousands long: as a reactive array every reading went
+    // through a proxy per file per field, and the cached readings are keyed on it.
+    return markRaw(rows.map((r) => ({
       name: String(r.name),
       lines: Number(r.lines) || 0,
       role: (r.role || roleOf({ name: String(r.name) })) as FileRole,
@@ -40,7 +42,7 @@ export function useOverviewFacts() {
       component: r.component ? String(r.component) : null,
       commits: num(r.commits),
       interest: num(r.interest),
-    }));
+    })));
     // The columns arrive with the snapshot's schema; read before them, every file fell back to "production".
   }, [key, () => data.hasColumn("files", "role"), () => data.hasColumn("files", "codesmells__code_health"),
     () => data.hasColumn("files", "codesmells__debt_interest")], { initial: [] });
