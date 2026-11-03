@@ -84,7 +84,17 @@
     "filesTitle": "Lowest-scoring files",
     "filesNote": "Code files of 100 lines or more",
     "showMore": "Show more",
-    "showFewer": "Show fewer"
+    "showFewer": "Show fewer",
+    "openInterest": "Files by debt interest →",
+    "costs": {
+      "one": "{n} of {total} files carries half of the debt interest.",
+      "other": "{n} of {total} files carry half of the debt interest."
+    },
+    "interestNote": "Debt interest is bad code times how often it changes now. Code nobody touches costs nothing yet.",
+    "componentsFirst": "Components to fix first",
+    "filesFirst": "Files to fix first",
+    "healthColumn": "Health",
+    "shareColumn": "Interest"
   },
   "healthFigure": {
     "rowTitle": "The code, and the effort of changing it",
@@ -97,46 +107,6 @@
     "alert": "Alert, below {threshold}",
     "watch": "Watch, {warn}–{good}",
     "healthy": "Healthy, {threshold}+"
-  },
-  "interestPanel": {
-    "title": "Debt interest",
-    "lede": "Where refactoring pays back first",
-    "open": "Files by debt interest →",
-    "componentsTitle": "Components carrying the most",
-    "filesTitle": "Files carrying the most",
-    "shareNote": "Share of all debt interest"
-  },
-  "interestFigure": {
-    "rowTitle": "Where the debt interest sits",
-    "title": "Debt interest: how few files and components carry half of it",
-    "filesSentence": {
-      "one": "{n} of {total} files carries half of the debt interest.",
-      "other": "{n} of {total} files carry half of the debt interest."
-    },
-    "componentsSentence": {
-      "one": "{n} of {total} components carries half of the debt interest.",
-      "other": "{n} of {total} components carry half of the debt interest."
-    },
-    "headFiles": {
-      "one": "{n} file",
-      "other": "{n} files"
-    },
-    "headComponents": {
-      "one": "{n} component",
-      "other": "{n} components"
-    },
-    "restFiles": {
-      "one": "{n} more file",
-      "other": "The other {n} files"
-    },
-    "restComponents": {
-      "one": "{n} more component",
-      "other": "The other {n} components"
-    },
-    "half": "half",
-    "note": "Debt interest is what bad code costs while it is being worked on: a file's health deductions times how often it changes now. Bad code nobody touches costs nothing yet. A component's is the sum of its files'.",
-    "legendHalf": "The files or components carrying half, largest first",
-    "legendRest": "The rest"
   },
   "findings": {
     "title": "Findings",

@@ -96,7 +96,6 @@
     </div>
 
     <HealthPanel :facts="facts"/>
-    <InterestPanel :facts="facts"/>
 
     <slot name="findings"></slot>
 
@@ -118,7 +117,6 @@ import { formatHealth, healthLevel, levelTextClass } from "~/features/metrics/us
 import { ROLE_LABELS, languageLabel, type FileRole } from "~/features/snapshot/languages"
 import { healthReading, languageShares, pct, roleLines, type OverviewFacts } from "~/features/overview/findings"
 import HealthPanel from "./HealthPanel.vue"
-import InterestPanel from "./InterestPanel.vue"
 import { t, intlLocale } from "~/shared/i18n"
 
 const props = defineProps<{ facts: OverviewFacts; recentAuthors: number }>()
