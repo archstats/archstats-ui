@@ -121,15 +121,23 @@ function draw(at: number | null = null) {
   // A month past the scale is cut at its edge, marked with a break, and its total written beside it.
   if (top.clipped) {
     const cut = data.filter(d => d.additions > hi || d.deletions > -lo)
+    // Totals are written only where they fit: on a long history many months
+    // are cut, and every label written ran over its neighbours.
+    const freeFrom = { up: -Infinity, down: -Infinity }
     for (const d of cut) {
       const cx = x(d.key)! + x.bandwidth() / 2
       for (const [v, edge, dy] of [[d.additions, hi, -1], [d.deletions, -lo, 1]] as const) {
         if (v <= edge) continue
         const yy = dy < 0 ? y(hi) + 5 : y(lo) - 5
         g.append("line").attr("x1", cx - 4).attr("x2", cx + 4).attr("y1", yy + 2).attr("y2", yy - 2).attr("stroke", t.surface).attr("stroke-width", 2)
-        g.append("text").attr("x", cx + x.bandwidth() / 2 + 3).attr("y", dy < 0 ? y(hi) + 9 : y(lo) - 2)
+        const label = d3.format(".2~s")(v)
+        const lx = cx + x.bandwidth() / 2 + 3
+        const side = dy < 0 ? "up" : "down"
+        if (lx < freeFrom[side] || lx + label.length * 6 > innerW) continue
+        freeFrom[side] = lx + label.length * 6 + 4
+        g.append("text").attr("x", lx).attr("y", dy < 0 ? y(hi) + 9 : y(lo) - 2)
           .attr("font-size", "10px").attr("font-family", t.fontMono).attr("fill", t.inkSecondary)
-          .text(d3.format("~s")(v))
+          .text(label)
       }
     }
   }

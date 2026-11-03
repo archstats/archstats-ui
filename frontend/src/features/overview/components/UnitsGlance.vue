@@ -1,5 +1,5 @@
 <template>
-  <section v-if="data.hasData && (loading || hasUnits)" class="ui-panel mt-8 overflow-hidden" aria-labelledby="units-glance-title">
+  <section v-if="data.hasData && (loading || hasUnits)" class="ui-panel mt-6 overflow-hidden" aria-labelledby="units-glance-title">
     <div class="flex items-baseline gap-3 px-4 pb-2 pt-3 hairline-b">
       <h2 id="units-glance-title" class="ui-panel-title">{{ t('overview.unitsGlance.howCodeLayered') }}</h2>
       <span v-if="!loading" class="min-w-0 truncate text-sm text-neutral-500">{{ summary }}</span>

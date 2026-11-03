@@ -121,7 +121,8 @@
             :name-column="grain === 'files' ? t('pages.metrics.file') : t('pages.metrics.component')"
             :export-title="grain === 'files' ? t('pages.metrics.metricsFiles') : t('pages.metrics.metricsComponents')"
             :initial-sort="tableSort ?? (visibleColumns?.includes('codesmells__hotspot_score') ? 'codesmells__hotspot_score' : 'name')"
-            :key="`${grain}:${tableSort ?? ''}`"
+            :initial-ascending="tableSort ? tableAscending : undefined"
+            :key="`${grain}:${tableSort ?? ''}:${tableAscending}`"
             :selected-elements="selectedNames"
             @update:selected-elements="selectedNames = $event"
             @clicked-element="openRow"
@@ -523,11 +524,12 @@ const visibleColumns = computed<string[]>({
 // A link can ask for the table sorted on one metric; that metric joins the
 // columns until the grain changes, even when the chosen columns leave it out.
 const tableSort = ref<string | null>(null);
+const tableAscending = ref(false);
 const tableColumns = computed<string[]>(() => {
   const s = tableSort.value;
   return s && !visibleColumns.value.includes(s) && columnOptions.value.includes(s) ? [...visibleColumns.value, s] : visibleColumns.value;
 });
-watch(grain, () => { tableSort.value = null; });
+watch(grain, () => { tableSort.value = null; tableAscending.value = false; });
 
 const pickerReset = ref(0);
 // StatSelectMulti reads its model once, so re-key it when the grain, the
@@ -844,7 +846,7 @@ function arrive(q: typeof route.query) {
   const a = arrivalFrom(q);
   if (!a) return;
   if (a.pair) { pendingPreset = null; setPair(a.pair); }
-  if (a.sort) { stripSort.value = a.sort; if (view.value === "table") tableSort.value = a.sort; }
+  if (a.sort) { stripSort.value = a.sort; if (view.value === "table") { tableSort.value = a.sort; tableAscending.value = !!a.ascending; } }
   if (a.brushes) brushes.value = a.brushes;
   const rest = { ...q };
   for (const k of ARRIVAL_KEYS) delete rest[k];

@@ -1,6 +1,6 @@
 // Screenshots hash routes of the running app through headless Chrome (CDP, no deps).
 // Usage: node scripts/capture.mjs --out DIR [--routes name=/path,name2=/path2] [--scheme light|dark|both]
-//        [--workspace NAME] [--size 1440x900] [--wait MS] [--pin false] [--url http://localhost:34115]
+//        [--workspace NAME] [--scan ID] [--size 1440x900] [--wait MS] [--pin false] [--url http://localhost:34115]
 // Defaults: the 12 primary views, both schemes, workspace eai-3540597-qp-common.
 // Requires `wails dev` to be running (see scripts/dev-check.mjs).
 //
@@ -95,6 +95,12 @@ async function session(scheme) {
     if (!ready) await sleep(500);
   }
   if (!ready) console.warn(`warning: workspace "${workspace}" did not load; capturing anyway`);
+  // --scan ID: capture that snapshot of the workspace instead of the one it opens on.
+  if (args.scan) {
+    await evaluate(`(async () => { const p = document.getElementById('__nuxt').__vue_app__.config.globalProperties.$pinia;
+      await p._s.get('workspaces').openSnapshot(${JSON.stringify(args.scan)}); return true; })()`).catch((e) => console.warn("warning: --scan", e));
+    await sleep(2000);
+  }
   await sleep(1000);
 
   for (const [name, route] of routes) {

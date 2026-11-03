@@ -1,53 +1,4 @@
 {
-  "extremes": {
-    "extremesSnapshot": "Uitschieters in dit snapshot",
-    "sortedEvidenceOneSort": "Gesorteerd bewijs, één sortering per rij. Waar je het eerst kunt kijken; wat het betekent beoordeel je zelf.",
-    "mostDependedAmongComponents": "Meest gebruikt door anderen, bij componenten met I >",
-    "instabilityThreshold": "Drempel voor instabiliteit",
-    "fewestAuthorsCovering80": "Minste auteurs voor 80% van de regels, bij componenten met ≥",
-    "linesAddedFloor": "Ondergrens voor toegevoegde regels",
-    "linesAdded": "regels toegevoegd",
-    "open": "Openen in {openLabel} →",
-    "within": "Binnen {scopeLabel}",
-    "highestHotspotProductionFiles": "Hoogste hotspot · productiebestanden",
-    "scores100ChangesMost": "{pop} scoort {hotspot} van de 100: dit bestand verandert het meest, gewogen naar zijn grootte.",
-    "noProductionFileHas": "Geen enkel productiebestand heeft hier een hotspot-score.",
-    "hotspot": "{name} · hotspot {hotspot}",
-    "hotspots": "Hotspots",
-    "largestTangle": "Grootste tangle",
-    "smallerTangleBesides": "; daarnaast nog {value} kleinere tangle{value2}",
-    "componentsFormOneTangle": "{size} componenten vormen samen één tangle{value}.",
-    "noTangleEveryDependency": "Geen tangle: elke dependency loopt één kant op.",
-    "cycles": "Cycles",
-    "usedOther": "wordt gebruikt door {value} andere {components}",
-    "imported": "wordt geïmporteerd vanuit {files}",
-    "instability": "{name} {value} bij instabiliteit {value2}.",
-    "noComponentAboveInstability": "Van geen enkele component met een instabiliteit boven {caThreshold} hangt iets af.",
-    "dependents": "Dependents",
-    "ca": "Ca",
-    "metrics": "Metrics",
-    "mostRuleFindings": "Meeste regelbevindingen",
-    "rulesWereNotChecked": "De regels zijn in dit snapshot niet gecontroleerd.",
-    "startsForbidden": "{component} start {n} verboden {imports}.",
-    "noModuleRuleBroken": "Er is geen modulregel geschonden.",
-    "findings": "{n} bevindingen",
-    "rules": "Regels",
-    "noGitHistorySnapshot": "Geen git-historie in dit snapshot.",
-    "authors": "{cover80} van {authors} auteurs",
-    "oneAuthor": "één auteur ({main})",
-    "added80Lines": "{component}: 80% van de {added} toegevoegde regels komt van {value}.",
-    "noComponentHasLines": "Geen enkele component heeft {knowledgeFloor} toegevoegde regels.",
-    "authorsCover80Lines": "{cover80} van {authors} auteurs dekken 80% van de {added} regels",
-    "authors2": "Auteurs",
-    "testsGeneratedThirdParty": "Tests, gegenereerde bestanden, code van derden en bestanden die geen code zijn, weggelaten",
-    "testsStylesheetsDataVendored": "Tests, stylesheets, data en vendored libraries weggelaten op basis van padconventie; scan opnieuw voor vastgelegde rollen",
-    "componentsCanEachReach": "Componenten die elkaar allemaal via imports kunnen bereiken",
-    "dependedMostComponentsWhile": "Waar de meeste componenten van afhangen, terwijl het zelf van meer afhangt dan er van hem afhangt",
-    "importedMostFilesWhile": "Door de meeste bestanden geïmporteerd, terwijl het zelf van meer afhangt dan er van hem afhangt",
-    "importsModuleRuleForbids": "Imports die een module-regel verbiedt, per component waar ze beginnen",
-    "mostlyProductionFilesLines": "Vooral productiebestanden · toegevoegde regels, geen blame · bots verborgen · aliassen samengevoegd",
-    "mostlyProductionFilesPath": "Vooral productiebestanden op padconventie · toegevoegde regels, geen blame · bots verborgen · aliassen samengevoegd"
-  },
   "metricsGlance": {
     "whatMetricsSay": "Wat de metrics zeggen",
     "componentsMetrics": "{value} componenten, {metricsLength} metrics",
@@ -65,28 +16,13 @@
     "shallowClone": "shallow clone",
     "aboutSnapshot": "Over dit snapshot",
     "structure": "Structuur",
-    "abstractTypes": "Abstracte types",
-    "shareAbstractTypesAmong": "Aandeel abstracte types in alle gedeclareerde types.",
-    "averageIndentation": "Gemiddelde inspringing",
-    "componentImports": "Component-imports",
-    "packageNamespaceStatementsOne": "package- en namespace-statements, één per bestand dat er een heeft",
-    "packageDeclarations": "Package-declaraties",
     "componentDependencies": "Component-dependencies",
     "howDependenciesWereFound": "Hoe de dependencies zijn gevonden: een import noemt zijn doel; een runtime-lookup noemt het in een string; een type-only import verdwijnt bij het compileren en telt niet mee voor coupling",
     "dependencyEvidence": "Bewijs voor dependencies",
-    "individualImportsCrossOne": "losse imports die van de ene component naar een andere gaan",
-    "crossComponentImports": "Imports tussen componenten",
-    "filesPerComponent": "Bestanden per component",
-    "linesPerFile": "Regels per bestand",
     "activity": "Activiteit",
-    "additions": "Toevoegingen {value}%",
-    "deletions": "Verwijderingen {value}%",
-    "added": "+{value} toegevoegd",
-    "removed": "−{value} verwijderd",
     "components": "Componenten",
     "files": "Bestanden",
     "lines": "Regels",
-    "directories": "Mappen",
     "commits": "Commits",
     "shallowCloneHistoryCut": "shallow clone: de historie is afgekapt",
     "filesSnapshot": "naar bestanden in het snapshot",
@@ -114,7 +50,262 @@
     "uncommitted": "{dirty} {files} niet gecommit",
     "onlyRuntimeLookup": "{dynamicOnly} van {total} alleen via runtime-lookup",
     "unresolved": "{unresolved} {lookups} niet opgelost",
-    "typesOnlyLeftOut": "{typeOnly} alleen types, buiten de coupling gelaten"
+    "typesOnlyLeftOut": "{typeOnly} alleen types, buiten de coupling gelaten",
+    "code": "Code",
+    "languages": "Talen",
+    "composition": "Samenstelling →",
+    "otherLanguages": {
+      "one": "{count} andere taal",
+      "other": "{count} andere talen"
+    },
+    "codeHealth": "Code health",
+    "healthOutOf": "van 10, gewogen naar regels",
+    "history": "Historie",
+    "years": "{years} jaar",
+    "lastCommit": "Laatste commit",
+    "lastCommitDayOfScan": "de dag van de scan",
+    "lastCommitBefore": "{span} voor de scan",
+    "activeLately": "Recent actief",
+    "activeLatelySub": "in de laatste 90 dagen van de historie",
+    "endpoints": "HTTP-endpoints",
+    "propagationSub": "gemiddeld bereik van een wijziging",
+    "ofAllLines": "van alle regels",
+    "ofComponents": "van {n} componenten ({share})",
+    "levelsSub": "langste keten van imports",
+    "dependenciesSub": "importerende paren",
+    "healthWorked": "{worked} naar wijzigingsmoeite"
+  },
+  "healthPanel": {
+    "title": "Code health",
+    "lede": "Productiecode",
+    "open": "Minst gezonde bestanden →",
+    "componentsTitle": "Laagst scorende componenten",
+    "componentsNote": "Gemiddelde health van hun code, gewogen naar regels",
+    "filesTitle": "Laagst scorende bestanden",
+    "filesNote": "Codebestanden van 100 regels of meer",
+    "showMore": "Meer tonen",
+    "showFewer": "Minder tonen"
+  },
+  "healthFigure": {
+    "rowTitle": "De code, en de moeite om hem te veranderen",
+    "title": "Code health: de code, en de moeite om hem te veranderen",
+    "codeSentence": "{share} van de code is gezond.",
+    "effortSentence": "{share} van de wijzigingsmoeite gaat naar ongezonde code.",
+    "average": "gemiddeld",
+    "effortNote": "Wijzigingsmoeite telt de regels van een bestand één keer per commit die het veranderde: een groot bestand dat vaak verandert kost het meest.",
+    "legendScore": "Het getal aan het eind van elke balk is de gemiddelde code health van 10.",
+    "alert": "Alarm, onder {threshold}",
+    "watch": "Opletten, {warn}–{good}",
+    "healthy": "Gezond, {threshold}+"
+  },
+  "findings": {
+    "title": "Bevindingen",
+    "lede": "Waar je eerst kijkt: het meest afwijkende bovenaan, elk met waar het op rust.",
+    "reading": "Snapshot wordt gelezen…",
+    "none": "Niets in dit snapshot springt eruit.",
+    "open": "Openen in {label}",
+    "showMore": "Nog {count} tonen",
+    "showFewer": "Minder tonen",
+    "snapshot": "Snapshot",
+    "cycles": "Cycles",
+    "metrics": "Metrics",
+    "hotspots": "Hotspots",
+    "connections": "Connections",
+    "authors": "Auteurs",
+    "activity": "Activiteit",
+    "rules": "Regels",
+    "ofLines": "van alle regels",
+    "ofCodeLines": "van de productiecode",
+    "ofComponents": "van de componenten",
+    "ofLinesAreTests": "van de regels is test",
+    "testLines": "regels tests",
+    "monthsBeforeScan": {
+      "one": "maand voor de scan",
+      "other": "maanden voor de scan"
+    },
+    "shallowTitle": "De historie is ingekort",
+    "shallowCaption": "shallow clone",
+    "shallowBody": "De repository is gecloned met --depth. Commits, contributors en leeftijden gaan alleen over de opgehaalde historie.",
+    "noTestsTitle": "Geen tests",
+    "fewTestsTitle": "Nauwelijks tests",
+    "testsBody": "{test} tests tegenover {production} regels productiecode.",
+    "tanglesTitle": "Code vast in tangles",
+    "tanglesBody": {
+      "one": "{share} van de regels zit in componenten die elkaar via imports bereiken, allemaal in één tangle van {size} componenten.",
+      "other": "{share} van de regels zit in componenten die elkaar via imports bereiken. De grootste van {count} tangles bevat {size} componenten."
+    },
+    "hotspotTitle": "Eén bestand verandert het vaakst",
+    "hotspotBody": "{name} ({lines} regels) heeft {commits} en de hoogste hotspot-score: het verandert het vaakst, gewogen naar zijn omvang.",
+    "concentrationTitle": "Eén component bevat veel van de code",
+    "concentrationBody": "{component} bevat {share} van de productiecode: {lines} regels in {files} bestanden.",
+    "concentrationGenerated": {
+      "one": "Het grootste bestand heeft hooguit twee commits; zo veel code die nooit verandert is meestal gegenereerd.",
+      "other": "De {count} grootste bestanden hebben elk hooguit twee commits; zo veel code die nooit verandert is meestal gegenereerd."
+    },
+    "bigFilesTitle": "Zeer grote bestanden",
+    "bigFilesBody": {
+      "one": "Eén codebestand heeft meer dan 5.000 regels: {name}, met {lines} regels.",
+      "other": "{count} codebestanden hebben meer dan 5.000 regels. Het grootste is {name}, met {lines} regels."
+    },
+    "linesEvidence": "{name}: {lines} regels",
+    "hubTitle": "Veel code leunt op één component",
+    "hubBody": "{component} wordt gebruikt door {count} componenten, {share} van allemaal.",
+    "hubUnstable": "{component} wordt gebruikt door {count} componenten, {share} van allemaal, maar hangt van meer af dan er van hem afhangt (instabiliteit {instability}).",
+    "usedBy": {
+      "one": "Gebruikt door {count} component",
+      "other": "Gebruikt door {count} componenten"
+    },
+    "knowledgeTitle": "Code die op één persoon rust",
+    "knowledgeBody": {
+      "one": "{share} van de productiecode zit in één component waarin één persoon 90% of meer van de regels heeft toegevoegd.",
+      "other": "{share} van de productiecode zit in {count} componenten waarin één persoon 90% of meer van de regels heeft toegevoegd."
+    },
+    "mainShare": "{share} door één persoon",
+    "arrivalTitle": "Code die in één keer binnenkwam",
+    "arrivalBody": "{share} van de huidige regels verschijnt voor het eerst op {date}, dus hun historie van daarvoor staat ergens anders.",
+    "dormantTitle": "De historie stopt lang voor de scan",
+    "dormantBody": "De laatste commit is van {date}. Periodes als \"de laatste 90 dagen\" tellen daarvandaan terug, niet vanaf de scan.",
+    "recentTitle": "Recent werk zit op één plek",
+    "recentBody": "{component} kreeg {share} van de {total} commits in de laatste 90 dagen van de historie.",
+    "rulesTitle": "Moduleregels worden overtreden",
+    "rulesValue": {
+      "one": "{count} bevinding",
+      "other": "{count} bevindingen"
+    },
+    "rulesBody": {
+      "one": "Eén import overtreedt een moduleregel; hij begint in {components}.",
+      "other": "{count} imports overtreden een moduleregel; de meeste beginnen in {components}."
+    },
+    "propagationTitle": "Een wijziging kan ver reiken",
+    "propagationBody": "Via imports bereikt een wijziging in één component gemiddeld {share} van de andere.",
+    "units": "Units",
+    "http": "HTTP"
+  },
+  "architectureFindings": {
+    "zonePainTitle": "Concrete code waar alles op leunt",
+    "zonePainBody": {
+      "one": "Eén component is concreet, stabiel en gebruikt door {floor} of meer andere. Elke wijziging raakt ze allemaal, en er zit niets abstracts tussen.",
+      "other": "{count} componenten zijn concreet, stabiel en elk gebruikt door {floor} of meer andere. Elke wijziging raakt die allemaal, en er zit niets abstracts tussen."
+    },
+    "usedByInstability": {
+      "one": "Gebruikt door {count} component, instabiliteit {instability}",
+      "other": "Gebruikt door {count} componenten, instabiliteit {instability}"
+    },
+    "zoneUselessTitle": "Abstracties waar weinig van afhangt",
+    "zoneUselessBody": {
+      "one": "Eén component bestaat vooral uit interfaces en abstracte types, maar hangt van meer af dan er van hem afhangt. Abstracties die niemand gebruikt kosten zonder op te leveren.",
+      "other": "{count} componenten bestaan vooral uit interfaces en abstracte types, maar hangen van meer af dan er van hen afhangt. Abstracties die niemand gebruikt kosten zonder op te leveren."
+    },
+    "unstableDepsTitle": "Stabiele code hangt af van vluchtige code",
+    "unstableDepsBody": {
+      "one": "Eén component waar vijf of meer andere op leunen hangt af van een veel minder stabiele. Verandert die, dan reist de wijziging omhoog door alles wat erop gebouwd is.",
+      "other": "{count} keer hangt een component waar vijf of meer andere op leunen af van een veel minder stabiele. Veranderen die, dan reist de wijziging omhoog door alles wat erop gebouwd is."
+    },
+    "dependencies": {
+      "one": "dependency",
+      "other": "dependencies"
+    },
+    "instabilityPair": "Instabiliteit {from} → {to}",
+    "mutualTitle": "Componenten die elkaar importeren",
+    "mutualBody": {
+      "one": "Eén paar componenten importeert elkaar direct. Geen van beide kan veranderen, getest of verplaatst worden zonder de ander.",
+      "other": "{count} paren componenten importeren elkaar direct. Geen kant van een paar kan veranderen, getest of verplaatst worden zonder de ander."
+    },
+    "pairs": {
+      "one": "paar",
+      "other": "paren"
+    },
+    "fanOutTitle": "Eén component hangt van heel veel af",
+    "fanOutBody": "{component} hangt af van {count} componenten, {share} van allemaal. Hij moet mee veranderen zodra een van hen verandert.",
+    "dependsOn": {
+      "one": "Hangt af van {count} component",
+      "other": "Hangt af van {count} componenten"
+    },
+    "bottleneckTitle": "De meeste dependency-paden lopen door één component",
+    "bottleneckBody": "{component} ligt op {share} van de kortste paden tussen andere componenten. Een wijziging daar reikt het verst.",
+    "orphansTitle": "Code die niets bereikt",
+    "orphansBody": {
+      "one": "Eén component wordt door niets geïmporteerd en heeft geen entry point: dode code, of alleen bereikt via framework-wiring.",
+      "other": "{count} componenten, {share} van de productiecode, worden door niets geïmporteerd en hebben geen entry point: dode code, of alleen bereikt via framework-wiring."
+    },
+    "ofProductionCode": "van de productiecode",
+    "moduleCyclesTitle": "Build-modules hangen in een kring van elkaar af",
+    "moduleCyclesBody": {
+      "one": "Eén kring van {size} build-modules, waaronder {modules}. Ze kunnen alleen samen gebouwd en gereleased worden.",
+      "other": "{count} kringen van build-modules; de grootste bevat {size}, waaronder {modules}. Modules in een kring kunnen alleen samen gebouwd en gereleased worden."
+    },
+    "modulesInCircle": "modules in één kring",
+    "hiddenTitle": "Veranderen samen zonder elkaar te importeren",
+    "hiddenBody": {
+      "one": "Eén paar componenten verandert in dezelfde commits zonder dat een van beide de ander importeert: {a} en {b}, {shared} commits samen. Iets verbindt ze dat de code niet laat zien.",
+      "other": "{count} paren componenten veranderen in dezelfde commits zonder dat een van beide de ander importeert. {a} en {b} veranderden {shared} keer samen. Iets verbindt ze dat de code niet laat zien: een gedeeld formaat, een databasetabel, een kopie."
+    },
+    "sharedCommits": {
+      "one": "{count} commit samen, {share} van die van één kant",
+      "other": "{count} commits samen, {share} van die van één kant"
+    },
+    "shotgunTitle": "Wijzigingen verspreid over veel componenten",
+    "shotgunBody": "{share} van de commits, {wide} van {commits}, raakt vijf componenten of meer. Eén wijziging op veel plekken betekent dat de delen niet gesneden zijn langs de lijnen waarop het werk loopt.",
+    "ofCommits": "van de commits",
+    "abandonedTitle": "Code waarvan de hoofdauteur weg is",
+    "abandonedBody": {
+      "one": "In één component heeft de persoon die het meeste schreef in het laatste jaar van de historie niet meer gecommit.",
+      "other": "In {count} componenten, {share} van de productiecode, heeft de persoon die het meeste schreef in het laatste jaar van de historie niet meer gecommit."
+    },
+    "mainShare": "{share} door één persoon",
+    "frozenTitle": "Code die twee jaar niet veranderde",
+    "frozenBody": "{share} van de productiecode is in de twee jaar voor de laatste commit niet veranderd. Stabiel, of vermeden; hoe dan ook heeft niemand het vers in het hoofd.",
+    "growthTitle": "Waar de code groeit",
+    "growthBody": "{component} groeide met {lines} regels in de laatste 180 dagen van de historie, {share} van alle groei.",
+    "netLines": "+{lines} regels",
+    "complexTitle": "Functies te complex om te volgen",
+    "complexBody": {
+      "one": "Eén functie scoort 25 of meer op cognitieve complexiteit.",
+      "other": "{count} van {total} functies scoren 25 of meer op cognitieve complexiteit; {top} daarvan staan in slechts vijf bestanden."
+    },
+    "functionsInFile": {
+      "one": "{name}: {count} functie",
+      "other": "{name}: {count} functies"
+    },
+    "longTitle": "Zeer lange functies",
+    "longBody": {
+      "one": "Eén functie is 150 regels of langer: meerdere taken op één plek.",
+      "other": "{count} functies zijn 150 regels of langer: meerdere taken op één plek, lastig los te testen."
+    },
+    "vendoredTitle": "Third-party code ingecheckt",
+    "vendoredBody": "{share} van alle regels, {lines}, is ingecheckte third-party code. Het veroudert zonder updates en blaast elke telling op die het niet weglaat.",
+    "ofAllLines": "van alle regels",
+    "generatedTitle": "Gegenereerde code ingecheckt",
+    "generatedBody": "{share} van alle regels, {lines}, is gegenereerd. Reviews en diffs lezen het alsof iemand het schreef.",
+    "sameNamesTitle": "Dezelfde typenaam in veel componenten",
+    "sameNamesBody": {
+      "one": "Eén typenaam wordt in drie componenten of meer gedeclareerd.",
+      "other": "{count} typenamen worden in drie componenten of meer gedeclareerd; {name} in {components}. Kopieën van één idee, of een idee zonder thuis."
+    },
+    "entitiesTitle": "Data gedeeld door veel componenten",
+    "entitiesBody": {
+      "one": "{entity} wordt gelezen of geschreven door {components} componenten. Ze zijn via de database gekoppeld, wat de imports ook zeggen.",
+      "other": "{entity} wordt gelezen of geschreven door {components} componenten, en {count} entiteiten door drie of meer. Componenten die tabellen delen zijn via de database gekoppeld, wat de imports ook zeggen."
+    },
+    "endpointsDataTitle": "Endpoints die direct naar de database gaan",
+    "endpointsDataBody": {
+      "one": "Eén component bedient HTTP en leest of schrijft zelf de database, zonder laag ertussen.",
+      "other": "{count} componenten bedienen HTTP en lezen of schrijven zelf de database, zonder laag ertussen."
+    },
+    "outboundUnprotectedTitle": "Externe calls zonder zichtbare bescherming",
+    "outboundTitle": "Calls naar externe systemen",
+    "outboundUnprotectedBody": "{calls} calls naar {systems} externe systemen vanuit {components} componenten, en de scan vond op geen ervan een retry, timeout of circuit breaker.",
+    "outboundBody": "{calls} calls naar {systems} externe systemen, vanuit {components} componenten.",
+    "calls": {
+      "one": "{count} externe call",
+      "other": "{count} externe calls"
+    },
+    "openEndpointsTitle": "Endpoints zonder zichtbare toegangscontrole",
+    "openEndpointsAll": "Geen van de {count} HTTP-endpoints declareert toegangscontrole in de code. Die kan in een filter of gateway zitten; controleer dat.",
+    "openEndpointsBody": "{open} van {count} HTTP-endpoints declareren geen toegangscontrole in de code.",
+    "ofEndpoints": "van de HTTP-endpoints",
+    "undocumentedTitle": "Ongedocumenteerde HTTP-endpoints",
+    "undocumentedBody": "Maar {documented} van {count} HTTP-endpoints hebben documentatie die de scan kon vinden."
   },
   "unitsGlance": {
     "howCodeLayered": "Hoe de code in lagen is opgebouwd",

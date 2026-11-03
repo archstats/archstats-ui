@@ -1,5 +1,5 @@
 <template>
-  <section v-if="data.hasData && findings.length" class="ui-panel mt-8 overflow-hidden" aria-labelledby="metrics-glance-title">
+  <section v-if="data.hasData && findings.length" class="ui-panel mt-6 overflow-hidden" aria-labelledby="metrics-glance-title">
     <div class="flex items-baseline gap-3 px-4 pb-2 pt-3 hairline-b">
       <h2 id="metrics-glance-title" class="ui-panel-title">{{ t('overview.metricsGlance.whatMetricsSay') }}</h2>
       <span class="min-w-0 truncate text-sm text-neutral-500">{{ t('overview.metricsGlance.componentsMetrics', { value: rows.length.toLocaleString(intlLocale), metricsLength: metrics.length }) }}<template v-if="scope.isActive">{{ ' ' + t('overview.metricsGlance.within', { scopeLabel: scopeLabel() }) }}</template>{{ t('overview.metricsGlance.factsAboutNumbersWhat') }}</span>

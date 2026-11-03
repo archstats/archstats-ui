@@ -1,30 +1,33 @@
 <template>
   <div class="mx-auto w-full max-w-[1200px] px-8 pb-16 pt-7">
-    <SummarySection>
+    <SummarySection :facts="facts" :recent-authors="recentAuthors">
       <template #activity>
         <template v-if="gitCommits.length">
           <!-- Small figures in a card: no rows of their own, the export appears over each on hover. -->
-          <ExhibitFrame header="overlay">
-            <GitActivityChart :end-date="calendarEnd" :start-date="calendarStart" :commits="gitCommits"/>
-          </ExhibitFrame>
+          <div ref="calendarHost">
+            <ExhibitFrame header="overlay">
+              <GitActivityChart :end-date="calendarEnd" :start-date="calendarStart" :commits="gitCommits"/>
+            </ExhibitFrame>
+          </div>
           <ExhibitFrame header="overlay" class="mt-3">
-            <MonthlyChangesChart :commits="gitCommits" :height="96"/>
+            <MonthlyChangesChart :commits="gitCommits" :height="110"/>
           </ExhibitFrame>
         </template>
         <p v-else class="py-6 text-sm text-neutral-500">{{ t('pages.index.noGitHistorySnapshot') }}</p>
       </template>
+      <template #findings>
+        <Findings :items="items" :loading="factsLoading"/>
+      </template>
     </SummarySection>
-
-    <Extremes/>
-
-    <MetricsGlance/>
 
     <!-- Every language declares units now; older snapshots only for Java. -->
     <UnitsGlance v-if="store.hasView('units') || isJavaProject"/>
 
-    <section class="mt-8" aria-labelledby="views-title">
+    <MetricsGlance/>
+
+    <section class="mt-10" aria-labelledby="views-title">
       <h2 id="views-title" class="text-lg font-semibold text-neutral-900">{{ t('pages.index.views') }}</h2>
-      <div class="mt-3 grid gap-5 lg:grid-cols-2">
+      <div class="mt-3 grid gap-6 lg:grid-cols-2">
         <div v-for="family in families" :key="family.title" class="ui-panel overflow-hidden">
           <h3 class="ui-section-title px-3 pb-1.5 pt-2.5 hairline-b">{{ family.title }}</h3>
           <div class="divide-y divide-neutral-100">
@@ -33,35 +36,54 @@
         </div>
       </div>
     </section>
+
+    <MoreMetrics class="mt-6"/>
   </div>
 </template>
 
 <script setup lang="ts">
-import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
-import Extremes from "~/features/overview/components/Extremes.vue";
+import Findings from "~/features/overview/components/Findings.vue";
+import { findings } from "~/features/overview/findings";
+import { useOverviewFacts } from "~/features/overview/useOverviewFacts";
 import MetricsGlance from "~/features/overview/components/MetricsGlance.vue";
 import UnitsGlance from "~/features/overview/components/UnitsGlance.vue";
-import { historyAnchor } from "~/features/git/history";
 import ViewCard from "~/features/overview/components/ViewCard.vue";
 import SummarySection from "~/features/overview/components/SummarySection.vue";
 import { useDataStore } from "~/features/snapshot/data.store";
 import type { GitCommit } from "~/features/git/git";
+import ExhibitFrame from "~/features/export/components/ExhibitFrame.vue";
 import GitActivityChart from "~/features/git/components/GitActivityChart.vue";
 import MonthlyChangesChart from "~/features/git/components/MonthlyChangesChart.vue";
-import { computed, ref, watch } from "vue";
+import { historyAnchor } from "~/features/git/history";
+import MoreMetrics from "~/features/overview/components/MoreMetrics.vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useJavaMetrics } from "~/features/java/useJavaMetrics";
 import { t } from "~/shared/i18n";
 
 const store = useDataStore();
+const { facts, loading: factsLoading, recentAuthors } = useOverviewFacts();
+const items = computed(() => findings(facts.value));
 const gitCommits = ref<GitCommit[]>([]);
-// The calendar shows the year of work before the last commit. Ending it
-// today left a repository that went quiet in 2023 an empty grid.
+// The calendar ends at the last commit: ending it today left a repository
+// that went quiet in 2023 an empty grid. It shows as many weeks as the panel
+// has room for, at most a year; a full year of 16px weeks is wider than the
+// panel and scrolled sideways.
 const calendarEnd = computed(() => {
   let last = 0;
   for (const c of gitCommits.value) { const t = new Date(c.commit_time).getTime(); if (t > last) last = t; }
   return last ? new Date(last) : historyAnchor().date;
 });
-const calendarStart = computed(() => new Date(calendarEnd.value.getTime() - 365 * 86400000));
+const WEEK_PX = 16, DAY_LABELS_PX = 48;
+const calendarHost = ref<HTMLElement | null>(null);
+const calendarWidth = ref(0);
+const calendarWeeks = computed(() => (calendarWidth.value ? Math.max(8, Math.min(53, Math.floor((calendarWidth.value - DAY_LABELS_PX) / WEEK_PX))) : 26));
+const calendarStart = computed(() => new Date(calendarEnd.value.getTime() - (calendarWeeks.value * 7 - 1) * 86400000));
+let calendarObserver: ResizeObserver | null = null;
+onMounted(() => {
+  calendarObserver = new ResizeObserver(([entry]) => { calendarWidth.value = Math.floor(entry.contentRect.width); });
+  watch(calendarHost, (el, old) => { if (old) calendarObserver?.unobserve(old); if (el) calendarObserver?.observe(el); }, { immediate: true });
+});
+onBeforeUnmount(() => calendarObserver?.disconnect());
 watch(
   () => [store.hasData, store.datasetKey] as const,
   async ([hasData]) => {
@@ -69,18 +91,25 @@ watch(
       gitCommits.value = [];
       return;
     }
-    gitCommits.value = await store.query<GitCommit>(
-      `select commit_hash,
-              commit_time,
-              commit_message,
-              author_name,
-              author_email,
-              count(file)         as files_changed,
-              sum(file_additions) as additions,
-              sum(file_deletions) as deletions
-       from git_commits
-       group by commit_hash`
-    );
+    // While one snapshot replaces another, the table list can be the new
+    // one's and the data the old one's; a failed read leaves the charts empty
+    // rather than raising "Something went wrong".
+    try {
+      gitCommits.value = await store.query<GitCommit>(
+        `select commit_hash,
+                commit_time,
+                commit_message,
+                author_name,
+                author_email,
+                count(file)         as files_changed,
+                sum(file_additions) as additions,
+                sum(file_deletions) as deletions
+         from git_commits
+         group by commit_hash`
+      );
+    } catch {
+      gitCommits.value = [];
+    }
   },
   { immediate: true }
 );

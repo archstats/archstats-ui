@@ -1,53 +1,4 @@
 {
-  "extremes": {
-    "extremesSnapshot": "Extremes in this snapshot",
-    "sortedEvidenceOneSort": "Sorted evidence, one sort per row. Where to look first; what it means is yours to judge.",
-    "mostDependedAmongComponents": "Most depended on among components with I >",
-    "instabilityThreshold": "Instability threshold",
-    "fewestAuthorsCovering80": "Fewest authors covering 80% of lines, among components with ≥",
-    "linesAddedFloor": "Lines added floor",
-    "linesAdded": "lines added",
-    "open": "Open in {openLabel} →",
-    "within": "Within {scopeLabel}",
-    "highestHotspotProductionFiles": "Highest hotspot · production files",
-    "scores100ChangesMost": "{pop} scores {hotspot} of 100: it changes most, weighted by its size.",
-    "noProductionFileHas": "No production file has a hotspot score here.",
-    "hotspot": "{name} · hotspot {hotspot}",
-    "hotspots": "Hotspots",
-    "largestTangle": "Largest tangle",
-    "smallerTangleBesides": "; {value} smaller tangle{value2} besides",
-    "componentsFormOneTangle": "{size} components form one tangle{value}.",
-    "noTangleEveryDependency": "No tangle: every dependency runs one way.",
-    "cycles": "Cycles",
-    "usedOther": "is used by {value} other {components}",
-    "imported": "is imported from {files}",
-    "instability": "{name} {value} at instability {value2}.",
-    "noComponentAboveInstability": "No component above instability {caThreshold} is depended on.",
-    "dependents": "Dependents",
-    "ca": "Ca",
-    "metrics": "Metrics",
-    "mostRuleFindings": "Most rule findings",
-    "rulesWereNotChecked": "Rules were not checked in this snapshot.",
-    "startsForbidden": "{component} starts {n} forbidden {imports}.",
-    "noModuleRuleBroken": "No module rule is broken.",
-    "findings": "{n} findings",
-    "rules": "Rules",
-    "noGitHistorySnapshot": "No git history in this snapshot.",
-    "authors": "{cover80} of {authors} authors",
-    "oneAuthor": "one author, {main},",
-    "added80Lines": "{component}: {value} added 80% of its {added} lines.",
-    "noComponentHasLines": "No component has {knowledgeFloor} lines added.",
-    "authorsCover80Lines": "{cover80} of {authors} authors cover 80% of {added} lines",
-    "authors2": "Authors",
-    "testsGeneratedThirdParty": "Tests, generated, third-party and non-code files left out",
-    "testsStylesheetsDataVendored": "Tests, stylesheets, data and vendored libraries left out by path convention; scan again for recorded roles",
-    "componentsCanEachReach": "Components that can each reach every other by imports",
-    "dependedMostComponentsWhile": "Depended on by the most components while depending more than it is depended on",
-    "importedMostFilesWhile": "Imported from the most files while depending more than it is depended on",
-    "importsModuleRuleForbids": "Imports a module rule forbids, by the component they start in",
-    "mostlyProductionFilesLines": "Mostly production files · lines added, not blame · bots hidden · aliases merged",
-    "mostlyProductionFilesPath": "Mostly production files by path convention · lines added, not blame · bots hidden · aliases merged"
-  },
   "metricsGlance": {
     "whatMetricsSay": "What the metrics say",
     "componentsMetrics": "{value} components, {metricsLength} metrics",
@@ -65,28 +16,13 @@
     "shallowClone": "shallow clone",
     "aboutSnapshot": "About this snapshot",
     "structure": "Structure",
-    "abstractTypes": "Abstract types",
-    "shareAbstractTypesAmong": "Share of abstract types among all declared types.",
-    "averageIndentation": "Average indentation",
-    "componentImports": "Component imports",
-    "packageNamespaceStatementsOne": "package and namespace statements, one per file that has one",
-    "packageDeclarations": "Package declarations",
     "componentDependencies": "Component dependencies",
     "howDependenciesWereFound": "How the dependencies were found: an import names its target; a runtime lookup names it in a string; a type-only import is erased by the compiler and left out of coupling",
     "dependencyEvidence": "Dependency evidence",
-    "individualImportsCrossOne": "individual imports that cross from one component into another",
-    "crossComponentImports": "Cross-component imports",
-    "filesPerComponent": "Files per component",
-    "linesPerFile": "Lines per file",
     "activity": "Activity",
-    "additions": "Additions {value}%",
-    "deletions": "Deletions {value}%",
-    "added": "+{value} added",
-    "removed": "−{value} removed",
     "components": "Components",
     "files": "Files",
     "lines": "Lines",
-    "directories": "Directories",
     "commits": "Commits",
     "shallowCloneHistoryCut": "shallow clone: history is cut short",
     "filesSnapshot": "to files in the snapshot",
@@ -114,7 +50,262 @@
     "uncommitted": "{dirty} uncommitted {files}",
     "onlyRuntimeLookup": "{dynamicOnly} of {total} only by runtime lookup",
     "unresolved": "{unresolved} {lookups} unresolved",
-    "typesOnlyLeftOut": "{typeOnly} types only, left out of coupling"
+    "typesOnlyLeftOut": "{typeOnly} types only, left out of coupling",
+    "code": "Code",
+    "languages": "Languages",
+    "composition": "Composition →",
+    "otherLanguages": {
+      "one": "{count} other language",
+      "other": "{count} other languages"
+    },
+    "codeHealth": "Code health",
+    "healthOutOf": "of 10, weighted by lines",
+    "history": "History",
+    "years": "{years} years",
+    "lastCommit": "Last commit",
+    "lastCommitDayOfScan": "the day of the scan",
+    "lastCommitBefore": "{span} before the scan",
+    "activeLately": "Active lately",
+    "activeLatelySub": "in the last 90 days of history",
+    "endpoints": "HTTP endpoints",
+    "propagationSub": "average reach of a change",
+    "ofAllLines": "of all lines",
+    "ofComponents": "of {n} components ({share})",
+    "levelsSub": "longest chain of imports",
+    "dependenciesSub": "importing pairs",
+    "healthWorked": "{worked} by change effort"
+  },
+  "healthPanel": {
+    "title": "Code health",
+    "lede": "Production code",
+    "open": "Least healthy files →",
+    "componentsTitle": "Lowest-scoring components",
+    "componentsNote": "Mean health of their code, weighted by lines",
+    "filesTitle": "Lowest-scoring files",
+    "filesNote": "Code files of 100 lines or more",
+    "showMore": "Show more",
+    "showFewer": "Show fewer"
+  },
+  "healthFigure": {
+    "rowTitle": "The code, and the effort of changing it",
+    "title": "Code health: the code, and the effort of changing it",
+    "codeSentence": "{share} of the code is healthy.",
+    "effortSentence": "{share} of the change effort goes into unhealthy code.",
+    "average": "average",
+    "effortNote": "Change effort counts a file's lines once for every commit that changed it: a large file changed often costs the most.",
+    "legendScore": "The number at the end of each bar is the average code health out of 10.",
+    "alert": "Alert, below {threshold}",
+    "watch": "Watch, {warn}–{good}",
+    "healthy": "Healthy, {threshold}+"
+  },
+  "findings": {
+    "title": "Findings",
+    "lede": "Where to look first: the most out of the ordinary on top, each with what it rests on.",
+    "reading": "Reading the snapshot…",
+    "none": "Nothing stands out in this snapshot.",
+    "open": "Open in {label}",
+    "showMore": "Show {count} more",
+    "showFewer": "Show fewer",
+    "snapshot": "Snapshot",
+    "cycles": "Cycles",
+    "metrics": "Metrics",
+    "hotspots": "Hotspots",
+    "connections": "Connections",
+    "authors": "Authors",
+    "activity": "Activity",
+    "rules": "Rules",
+    "ofLines": "of all lines",
+    "ofCodeLines": "of production code",
+    "ofComponents": "of components",
+    "ofLinesAreTests": "of lines are tests",
+    "testLines": "lines of tests",
+    "monthsBeforeScan": {
+      "one": "month before the scan",
+      "other": "months before the scan"
+    },
+    "shallowTitle": "History is cut short",
+    "shallowCaption": "shallow clone",
+    "shallowBody": "The repository was cloned with --depth. Commits, contributors and ages cover only the history that was fetched.",
+    "noTestsTitle": "No tests",
+    "fewTestsTitle": "Hardly any tests",
+    "testsBody": "{test} of tests against {production} lines of production code.",
+    "tanglesTitle": "Code caught in tangles",
+    "tanglesBody": {
+      "one": "{share} of the lines are in components that reach each other through imports, all in one tangle of {size} components.",
+      "other": "{share} of the lines are in components that reach each other through imports. The largest of {count} tangles holds {size} components."
+    },
+    "hotspotTitle": "One file changes most",
+    "hotspotBody": "{name} ({lines} lines) has {commits} and the highest hotspot score: it changes most, weighted by its size.",
+    "concentrationTitle": "One component holds much of the code",
+    "concentrationBody": "{component} holds {share} of the production code: {lines} lines in {files} files.",
+    "concentrationGenerated": {
+      "one": "Its largest file has at most two commits; code that large that never changes is usually generated.",
+      "other": "Its {count} largest files have at most two commits each; code that large that never changes is usually generated."
+    },
+    "bigFilesTitle": "Very large files",
+    "bigFilesBody": {
+      "one": "One code file is over 5,000 lines: {name}, at {lines} lines.",
+      "other": "{count} code files are over 5,000 lines. The largest is {name}, at {lines} lines."
+    },
+    "linesEvidence": "{name}: {lines} lines",
+    "hubTitle": "Much of the code leans on one component",
+    "hubBody": "{component} is used by {count} components, {share} of all of them.",
+    "hubUnstable": "{component} is used by {count} components, {share} of all of them, yet depends on more than depends on it (instability {instability}).",
+    "usedBy": {
+      "one": "Used by {count} component",
+      "other": "Used by {count} components"
+    },
+    "knowledgeTitle": "Code that rests on one person",
+    "knowledgeBody": {
+      "one": "{share} of the production code is in one component where a single person added 90% or more of the lines.",
+      "other": "{share} of the production code is in {count} components where a single person added 90% or more of the lines."
+    },
+    "mainShare": "{share} by one person",
+    "arrivalTitle": "Code that arrived in bulk",
+    "arrivalBody": "{share} of today's lines first appear on {date}, so their history before that day lives somewhere else.",
+    "dormantTitle": "History stops long before the scan",
+    "dormantBody": "The last commit is from {date}. Periods such as \"the last 90 days\" count back from it, not from the scan.",
+    "recentTitle": "Recent work is in one place",
+    "recentBody": "{component} took {share} of the {total} commits in the last 90 days of history.",
+    "rulesTitle": "Module rules are broken",
+    "rulesValue": {
+      "one": "{count} finding",
+      "other": "{count} findings"
+    },
+    "rulesBody": {
+      "one": "One import breaks a module rule; it starts in {components}.",
+      "other": "{count} imports break a module rule; most start in {components}."
+    },
+    "propagationTitle": "A change can travel far",
+    "propagationBody": "Through imports, a change in one component can reach {share} of the others on average.",
+    "units": "Units",
+    "http": "HTTP"
+  },
+  "architectureFindings": {
+    "zonePainTitle": "Concrete code everything depends on",
+    "zonePainBody": {
+      "one": "One component is concrete, stable and used by {floor} or more others. Every change to it reaches them all, and nothing abstract stands between.",
+      "other": "{count} components are concrete, stable and each used by {floor} or more others. Every change to them reaches all of those, and nothing abstract stands between."
+    },
+    "usedByInstability": {
+      "one": "Used by {count} component, instability {instability}",
+      "other": "Used by {count} components, instability {instability}"
+    },
+    "zoneUselessTitle": "Abstractions little depends on",
+    "zoneUselessBody": {
+      "one": "One component is mostly interfaces and abstract types, yet depends on more than depends on it. Abstractions nobody uses are cost without benefit.",
+      "other": "{count} components are mostly interfaces and abstract types, yet depend on more than depends on them. Abstractions nobody uses are cost without benefit."
+    },
+    "unstableDepsTitle": "Stable code depends on volatile code",
+    "unstableDepsBody": {
+      "one": "One component that five or more others rely on depends on a far less stable one. When that one changes, the change travels up through everything built on top.",
+      "other": "{count} times a component that five or more others rely on depends on a far less stable one. When those change, the change travels up through everything built on top."
+    },
+    "dependencies": {
+      "one": "dependency",
+      "other": "dependencies"
+    },
+    "instabilityPair": "Instability {from} → {to}",
+    "mutualTitle": "Components that import each other",
+    "mutualBody": {
+      "one": "One pair of components imports each other directly. Neither can be changed, tested or moved without the other.",
+      "other": "{count} pairs of components import each other directly. Neither side of a pair can be changed, tested or moved without the other."
+    },
+    "pairs": {
+      "one": "pair",
+      "other": "pairs"
+    },
+    "fanOutTitle": "One component depends on very many",
+    "fanOutBody": "{component} depends on {count} components, {share} of all of them. It has to change whenever any of them does.",
+    "dependsOn": {
+      "one": "Depends on {count} component",
+      "other": "Depends on {count} components"
+    },
+    "bottleneckTitle": "Most dependency paths run through one component",
+    "bottleneckBody": "{component} sits on {share} of the shortest paths between other components. A change there travels furthest.",
+    "orphansTitle": "Code nothing reaches",
+    "orphansBody": {
+      "one": "One component is imported by nothing and declares no entry point: dead code, or reached only by framework wiring.",
+      "other": "{count} components, {share} of the production code, are imported by nothing and declare no entry point: dead code, or reached only by framework wiring."
+    },
+    "ofProductionCode": "of production code",
+    "moduleCyclesTitle": "Build modules depend on each other in a circle",
+    "moduleCyclesBody": {
+      "one": "One circle of {size} build modules, among them {modules}. They can only be built and released together.",
+      "other": "{count} circles of build modules; the largest holds {size}, among them {modules}. Modules in a circle can only be built and released together."
+    },
+    "modulesInCircle": "modules in one circle",
+    "hiddenTitle": "Change together without importing each other",
+    "hiddenBody": {
+      "one": "One pair of components changes in the same commits without either importing the other: {a} and {b}, {shared} commits together. Something ties them the code does not show.",
+      "other": "{count} pairs of components change in the same commits without either importing the other. {a} and {b} changed together {shared} times. Something ties them the code does not show: a shared format, a database table, a copy."
+    },
+    "sharedCommits": {
+      "one": "{count} commit together, {share} of one side's",
+      "other": "{count} commits together, {share} of one side's"
+    },
+    "shotgunTitle": "Changes spread over many components",
+    "shotgunBody": "{share} of the commits, {wide} of {commits}, touch five components or more. One change that must be made in many places means the parts are not cut along the lines the work runs.",
+    "ofCommits": "of commits",
+    "abandonedTitle": "Code whose main author has gone",
+    "abandonedBody": {
+      "one": "In one component the person who wrote most of it has made no commit in the last year of history.",
+      "other": "In {count} components, {share} of the production code, the person who wrote most of it has made no commit in the last year of history."
+    },
+    "mainShare": "{share} by one person",
+    "frozenTitle": "Code that has not changed in two years",
+    "frozenBody": "{share} of the production code has not changed in the two years before the last commit. Stable, or avoided; either way nobody has it fresh in mind.",
+    "growthTitle": "Where the code is growing",
+    "growthBody": "{component} grew by {lines} lines in the last 180 days of history, {share} of all growth.",
+    "netLines": "+{lines} lines",
+    "complexTitle": "Functions too complex to follow",
+    "complexBody": {
+      "one": "One function scores 25 or more for cognitive complexity.",
+      "other": "{count} of {total} functions score 25 or more for cognitive complexity; {top} of them sit in just five files."
+    },
+    "functionsInFile": {
+      "one": "{name}: {count} function",
+      "other": "{name}: {count} functions"
+    },
+    "longTitle": "Very long functions",
+    "longBody": {
+      "one": "One function is 150 lines or longer: several jobs in one place.",
+      "other": "{count} functions are 150 lines or longer: several jobs in one place, hard to test on their own."
+    },
+    "vendoredTitle": "Third-party code committed",
+    "vendoredBody": "{share} of all lines, {lines}, is vendored third-party code. It ages without updates and inflates every count that does not leave it out.",
+    "ofAllLines": "of all lines",
+    "generatedTitle": "Generated code committed",
+    "generatedBody": "{share} of all lines, {lines}, is generated. Reviews and diffs read it as if someone wrote it.",
+    "sameNamesTitle": "The same type name in many components",
+    "sameNamesBody": {
+      "one": "One type name is declared in three components or more.",
+      "other": "{count} type names are declared in three components or more; {name} in {components}. Copies of one idea, or an idea with no home."
+    },
+    "entitiesTitle": "Data shared by many components",
+    "entitiesBody": {
+      "one": "{entity} is read or written by {components} components. They are coupled through the database, whatever the imports say.",
+      "other": "{entity} is read or written by {components} components, and {count} entities by three or more. Components that share tables are coupled through the database, whatever the imports say."
+    },
+    "endpointsDataTitle": "Endpoints that go straight to the database",
+    "endpointsDataBody": {
+      "one": "One component serves HTTP and reads or writes the database itself, with no layer in between.",
+      "other": "{count} components serve HTTP and read or write the database themselves, with no layer in between."
+    },
+    "outboundUnprotectedTitle": "Outside calls with no visible protection",
+    "outboundTitle": "Calls to outside systems",
+    "outboundUnprotectedBody": "{calls} calls to {systems} outside systems from {components} components, and the scan found no retry, timeout or circuit breaker on any of them.",
+    "outboundBody": "{calls} calls to {systems} outside systems, made from {components} components.",
+    "calls": {
+      "one": "{count} outside call",
+      "other": "{count} outside calls"
+    },
+    "openEndpointsTitle": "Endpoints with no visible access control",
+    "openEndpointsAll": "None of the {count} HTTP endpoints declares access control in code. It may sit in a filter or a gateway; check that it does.",
+    "openEndpointsBody": "{open} of {count} HTTP endpoints declare no access control in code.",
+    "ofEndpoints": "of HTTP endpoints",
+    "undocumentedTitle": "Undocumented HTTP endpoints",
+    "undocumentedBody": "Only {documented} of {count} HTTP endpoints carry documentation the scan could find."
   },
   "unitsGlance": {
     "howCodeLayered": "How the code is layered",

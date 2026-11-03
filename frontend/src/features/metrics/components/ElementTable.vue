@@ -149,6 +149,11 @@ const props = defineProps({
     type: String,
     default: "name",
   },
+  /** Opens the sort lowest first ("least healthy"); unset, it follows initialSort's rule. */
+  initialAscending: {
+    type: Boolean,
+    default: undefined,
+  },
   /** Registers the table with the Export menu under this title: every row, in the table's sort. */
   exportTitle: {
     type: String,
@@ -186,7 +191,7 @@ const emit = defineEmits(["update:selected-elements", "clicked-element"])
 
 const sortSettings = ref({
   column: props.initialSort,
-  ascending: props.initialSort === "name",
+  ascending: props.initialAscending ?? props.initialSort === "name",
 })
 
 const currentPage = ref(1)
@@ -200,6 +205,11 @@ const sortedElements = computed(() => {
     const aValue = a[sortSettings.value.column]
     const bValue = b[sortSettings.value.column]
     const multiplier = sortSettings.value.ascending ? 1 : -1
+    // A row with no value goes last either way: lowest first put every
+    // unscored file above the least healthy one.
+    const aNone = aValue === null || aValue === undefined || aValue === ""
+    const bNone = bValue === null || bValue === undefined || bValue === ""
+    if (aNone || bNone) return aNone === bNone ? 0 : aNone ? 1 : -1
     if (aValue < bValue) {
       return -1 * multiplier
     } else if (aValue > bValue) {

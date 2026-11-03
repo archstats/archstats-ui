@@ -1,4 +1,4 @@
-// Links into Metrics that open already set up. A finding, a row of Extremes or
+// Links into Metrics that open already set up. A finding, a metric reading or
 // a metric's definition means one question: the view, the pair on its axes,
 // the ranges brushed, the metric sorted on and the rows selected ride in the
 // link. Without them every link landed on the Summary and the reader had to
@@ -9,7 +9,8 @@ import type { Go } from "./summary";
 
 export type MetricsGrain = "components" | "files" | "directories";
 
-export type MetricsLink = Partial<Go> & { grain?: MetricsGrain };
+/** `ascending`: the sorted metric's lowest first, for a question like "least healthy". */
+export type MetricsLink = Partial<Go> & { grain?: MetricsGrain; ascending?: boolean };
 
 export function metricsPath(link: MetricsLink = {}): string {
   const q = new URLSearchParams();
@@ -21,6 +22,7 @@ export function metricsPath(link: MetricsLink = {}): string {
     q.set("y", link.pair[1]);
   }
   if (link.sort) q.set("sort", link.sort);
+  if (link.sort && link.ascending) q.set("order", "asc");
   if (link.brushes && Object.keys(link.brushes).length) q.set("brush", JSON.stringify(link.brushes));
   // Selection travels the way Show in sends it, so both arrive the same way.
   if (link.selected?.length) q.set("hl", JSON.stringify(link.selected));
@@ -32,10 +34,12 @@ export function metricsPath(link: MetricsLink = {}): string {
 export interface Arrival {
   pair?: [string, string];
   sort?: string;
+  /** The sort runs lowest first. */
+  ascending?: boolean;
   brushes?: Brushes;
 }
 
-export const ARRIVAL_KEYS = ["x", "y", "sort", "brush"] as const;
+export const ARRIVAL_KEYS = ["x", "y", "sort", "order", "brush"] as const;
 
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 
@@ -43,7 +47,10 @@ export function arrivalFrom(query: Record<string, unknown>): Arrival | null {
   const out: Arrival = {};
   const x = one(query.x), y = one(query.y), sort = one(query.sort), brush = one(query.brush);
   if (typeof x === "string" && x && typeof y === "string" && y) out.pair = [x, y];
-  if (typeof sort === "string" && sort) out.sort = sort;
+  if (typeof sort === "string" && sort) {
+    out.sort = sort;
+    if (one(query.order) === "asc") out.ascending = true;
+  }
   if (typeof brush === "string" && brush) {
     try {
       const parsed = JSON.parse(brush);
