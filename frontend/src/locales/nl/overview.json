@@ -98,6 +98,46 @@
     "watch": "Opletten, {warn}–{good}",
     "healthy": "Gezond, {threshold}+"
   },
+  "interestPanel": {
+    "title": "Schuldrente",
+    "lede": "Waar refactoren zich het eerst terugbetaalt",
+    "open": "Bestanden op schuldrente →",
+    "componentsTitle": "Componenten met de meeste",
+    "filesTitle": "Bestanden met de meeste",
+    "shareNote": "Aandeel in alle schuldrente"
+  },
+  "interestFigure": {
+    "rowTitle": "Waar de schuldrente zit",
+    "title": "Schuldrente: hoe weinig bestanden en componenten de helft dragen",
+    "filesSentence": {
+      "one": "{n} van de {total} bestanden draagt de helft van de schuldrente.",
+      "other": "{n} van de {total} bestanden dragen de helft van de schuldrente."
+    },
+    "componentsSentence": {
+      "one": "{n} van de {total} componenten draagt de helft van de schuldrente.",
+      "other": "{n} van de {total} componenten dragen de helft van de schuldrente."
+    },
+    "headFiles": {
+      "one": "{n} bestand",
+      "other": "{n} bestanden"
+    },
+    "headComponents": {
+      "one": "{n} component",
+      "other": "{n} componenten"
+    },
+    "restFiles": {
+      "one": "Nog {n} bestand",
+      "other": "De overige {n} bestanden"
+    },
+    "restComponents": {
+      "one": "Nog {n} component",
+      "other": "De overige {n} componenten"
+    },
+    "half": "helft",
+    "note": "Schuldrente is wat slechte code kost zolang eraan gewerkt wordt: de health-aftrek van een bestand maal hoe vaak het nu verandert. Slechte code die niemand aanraakt kost nog niets. Die van een component is de som van die van zijn bestanden.",
+    "legendHalf": "De bestanden of componenten die de helft dragen, grootste eerst",
+    "legendRest": "De rest"
+  },
   "findings": {
     "title": "Bevindingen",
     "lede": "Waar je eerst kijkt: het meest afwijkende bovenaan, elk met waar het op rust.",

@@ -21,6 +21,8 @@ export interface FileFact {
   hotspot: number | null;
   component: string | null;
   commits: number | null;
+  /** Debt interest: (1 + health deductions) × log2(1 + recent commits). Null for tests and files without history. */
+  interest: number | null;
 }
 
 export interface OverviewFacts {
@@ -196,6 +198,50 @@ export function healthDetail(files: FileFact[], minComponentLines = 1000, minFil
     .sort((a, b) => a.health - b.health || b.lines - a.lines);
   const low = scored.filter((f) => f.lines >= minFileLines).sort((a, b) => (a.health ?? 0) - (b.health ?? 0) || b.lines - a.lines);
   return { components, files: low, inHotspots: bad && anyHotspot ? badHot / bad : null };
+}
+
+export interface InterestRanked { name: string; interest: number; share: number }
+
+export interface InterestReading {
+  /** Debt interest over production code: the sum of its files'. */
+  total: number;
+  /** Production files with debt interest, most first, each with its share of the total. */
+  files: InterestRanked[];
+  /** Components by the sum of their files' debt interest, most first. */
+  components: InterestRanked[];
+  /** How many of the files, and of the components, carry half of it. */
+  halfFiles: number;
+  halfComponents: number;
+  /** Production files with a debt interest reading, nothing yet included, and the components holding them. */
+  fileCount: number;
+  componentCount: number;
+}
+
+/** How many of `ranked`, most first, it takes to reach half of the total. */
+const toHalf = (ranked: InterestRanked[]) => {
+  let sum = 0;
+  for (let i = 0; i < ranked.length; i++) { sum += ranked[i].share; if (sum >= 0.5) return i + 1; }
+  return ranked.length;
+};
+
+/**
+ * Where the debt interest sits. It has no scale of its own, so what reads
+ * across codebases is how few files and components carry most of it: those
+ * are where refactoring pays back first. Null when the snapshot has none.
+ */
+export function interestReading(files: FileFact[]): InterestReading | null {
+  const read = files.filter((f) => isCode(f) && f.interest !== null);
+  const rows = read.filter((f) => (f.interest ?? 0) > 0);
+  const total = rows.reduce((s, f) => s + (f.interest ?? 0), 0);
+  if (!total) return null;
+  const by = new Map<string, number>();
+  for (const f of rows) if (f.component) by.set(f.component, (by.get(f.component) ?? 0) + (f.interest ?? 0));
+  const componentCount = new Set(read.map((f) => f.component).filter(Boolean)).size;
+  const ranked = (entries: Array<[string, number]>) =>
+    entries.map(([name, interest]) => ({ name, interest, share: interest / total })).sort((a, b) => b.interest - a.interest || a.name.localeCompare(b.name));
+  const out = ranked(rows.map((f) => [f.name, f.interest ?? 0]));
+  const components = ranked([...by.entries()]);
+  return { total, files: out, components, halfFiles: toHalf(out), halfComponents: toHalf(components), fileCount: read.length, componentCount };
 }
 
 /** Production code lines by component, largest first. */

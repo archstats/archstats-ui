@@ -29,7 +29,7 @@ export function useOverviewFacts() {
     const col = (c: string) => (data.hasColumn("files", c) ? c : "NULL");
     const rows = await data.query<any>(`SELECT name, coalesce(complexity__lines, 0) AS lines, ${col("role")} AS role,
       ${col("codesmells__code_health")} AS health, ${col("codesmells__hotspot_score")} AS hotspot,
-      component, ${col("git__commits__total")} AS commits FROM files`, { signal });
+      component, ${col("git__commits__total")} AS commits, ${col("codesmells__debt_interest")} AS interest FROM files`, { signal });
     const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
     return rows.map((r) => ({
       name: String(r.name),
@@ -39,9 +39,11 @@ export function useOverviewFacts() {
       hotspot: num(r.hotspot),
       component: r.component ? String(r.component) : null,
       commits: num(r.commits),
+      interest: num(r.interest),
     }));
     // The columns arrive with the snapshot's schema; read before them, every file fell back to "production".
-  }, [key, () => data.hasColumn("files", "role"), () => data.hasColumn("files", "codesmells__code_health")], { initial: [] });
+  }, [key, () => data.hasColumn("files", "role"), () => data.hasColumn("files", "codesmells__code_health"),
+    () => data.hasColumn("files", "codesmells__debt_interest")], { initial: [] });
 
   // The app's readings of this scan, computed once per scan in Go.
   const { data: readings } = useAsyncQuery<Record<string, number | null>>(async () => {

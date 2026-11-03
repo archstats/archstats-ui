@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { findings, healthDetail, healthDistribution, healthReading, languageShares, type FileFact, type OverviewFacts } from "./findings";
+import { findings, healthDetail, healthDistribution, healthReading, interestReading, languageShares, type FileFact, type OverviewFacts } from "./findings";
 
 const file = (name: string, lines: number, more: Partial<FileFact> = {}): FileFact =>
-  ({ name, lines, role: "production", health: 9, hotspot: 1, component: name.split("/")[1] ?? null, commits: 10, ...more });
+  ({ name, lines, role: "production", health: 9, hotspot: 1, component: name.split("/")[1] ?? null, commits: 10, interest: null, ...more });
 
 const empty: OverviewFacts = {
   files: [], readings: {}, components: [], tangles: [], knowledge: [], rules: [],
@@ -127,5 +127,31 @@ describe("healthDistribution", () => {
     expect(d.buckets.find((b) => b.from === 2)!.work).toBeCloseTo(8100 / 9000);
     expect(d.bands.good).toEqual({ code: 0.9, work: 0.1 });
     expect(d.bands.bad.work).toBeCloseTo(0.9);
+  });
+});
+
+describe("interestReading", () => {
+  it("counts how few files and components carry half of the debt interest", () => {
+    const r = interestReading([
+      file("src/svc/A.java", 100, { interest: 60 }),
+      file("src/svc/B.java", 100, { interest: 20 }),
+      file("src/web/C.java", 100, { interest: 15 }),
+      file("src/web/D.java", 100, { interest: 5 }),
+      file("src/web/E.java", 100, { interest: 0 }),
+      file("src/web/ET.java", 100, { role: "test", interest: 40 }),
+      file("src/dao/F.java", 100),
+    ])!;
+    expect(r.total).toBe(100);
+    expect(r.files.map((f) => f.name)).toEqual(["src/svc/A.java", "src/svc/B.java", "src/web/C.java", "src/web/D.java"]);
+    expect(r.halfFiles).toBe(1);
+    // Untouched files count among the whole; files without a reading do not.
+    expect(r.fileCount).toBe(5);
+    expect(r.components).toEqual([{ name: "svc", interest: 80, share: 0.8 }, { name: "web", interest: 20, share: 0.2 }]);
+    expect(r.halfComponents).toBe(1);
+    expect(r.componentCount).toBe(2);
+  });
+
+  it("has nothing to say about a snapshot without debt interest", () => {
+    expect(interestReading([file("src/a/A.java", 100)])).toBeNull();
   });
 });
