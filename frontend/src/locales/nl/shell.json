@@ -258,7 +258,10 @@
     "forward": "Vooruit",
     "help": "Help",
     "keyboardShortcuts": "Sneltoetsen",
-    "metricReference": "Metric-referentie"
+    "metricReference": "Metric-referentie",
+    "documentation": "Archstats-documentatie",
+    "whatsNew": "Wat is er nieuw",
+    "checkForUpdates": "Zoeken naar updates…"
   },
   "problemNotice": {
     "errorTitle": "Er ging iets mis",

@@ -17,6 +17,7 @@ const MENU_LABELS: Record<string, string> = {
     "snapshot:reveal": "revealSnapshot", "snapshot:save": "saveSnapshotCopy", "snapshot:import": "importSnapshot",
     "export": "export", "settings:open": "settings", "menu:view": "view", "goto": "goToAnything",
     "nav:back": "back", "nav:forward": "forward", "menu:help": "help", "help:shortcuts": "keyboardShortcuts", "help:metrics": "metricReference",
+    "help:docs": "documentation", "help:whatsnew": "whatsNew", "help:updates": "checkForUpdates",
 }
 
 // The shell's commands: registered once in the layout, run from the native

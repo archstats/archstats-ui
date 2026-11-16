@@ -258,7 +258,10 @@
     "forward": "Forward",
     "help": "Help",
     "keyboardShortcuts": "Keyboard Shortcuts",
-    "metricReference": "Metric Reference"
+    "metricReference": "Metric Reference",
+    "documentation": "Archstats Documentation",
+    "whatsNew": "What's New",
+    "checkForUpdates": "Check for Updates…"
   },
   "problemNotice": {
     "errorTitle": "Something went wrong",
