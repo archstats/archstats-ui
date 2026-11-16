@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,7 +26,12 @@ type CommitInfo struct {
 }
 
 func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	return gitCtx(context.Background(), dir, args...)
+}
+
+// gitCtx is git, stopped when ctx is.
+func gitCtx(ctx context.Context, dir string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
@@ -94,14 +100,19 @@ func (s *Service) startAt(workspaceID, rev, label string, finished func(ok bool)
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	if s.running[ws.ID] {
-		s.mu.Unlock()
-		return nil, fmt.Errorf("a scan is already running for workspace %s", ws.Name)
+	j, err := s.claim(ws)
+	if err != nil {
+		return nil, err
 	}
-	s.running[ws.ID] = true
-	s.mu.Unlock()
-	release := func() { s.mu.Lock(); delete(s.running, ws.ID); s.mu.Unlock() }
+	// Until run takes the job over, a failure here ends it. A cancelled
+	// clone or checkout says so rather than what git made of being killed.
+	release := func() { s.finish(ws.ID, j) }
+	cancelled := func(err error) error {
+		if j.ctx.Err() != nil {
+			return ErrCancelled
+		}
+		return err
+	}
 
 	dir := filepath.Join(backfillRoot(s.store), ws.ID, info.Sha)
 	_ = os.RemoveAll(dir)
@@ -109,15 +120,15 @@ func (s *Service) startAt(workspaceID, rev, label string, finished func(ok bool)
 		release()
 		return nil, err
 	}
-	if _, err := git(ws.FolderPath, "clone", "--quiet", "--shared", "--no-checkout", ws.FolderPath, dir); err != nil {
+	if _, err := gitCtx(j.ctx, ws.FolderPath, "clone", "--quiet", "--shared", "--no-checkout", ws.FolderPath, dir); err != nil {
 		os.RemoveAll(dir)
 		release()
-		return nil, fmt.Errorf("cloning for the rescan: %w", err)
+		return nil, cancelled(fmt.Errorf("cloning for the rescan: %w", err))
 	}
-	if _, err := git(dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", info.Sha); err != nil {
+	if _, err := gitCtx(j.ctx, dir, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", info.Sha); err != nil {
 		os.RemoveAll(dir)
 		release()
-		return nil, fmt.Errorf("checking out %s: %w", info.Sha[:12], err)
+		return nil, cancelled(fmt.Errorf("checking out %s: %w", info.Sha[:12], err))
 	}
 
 	scan, err := s.store.CreateScan(ws.ID)
@@ -131,7 +142,7 @@ func (s *Service) startAt(workspaceID, rev, label string, finished func(ok bool)
 		ref = info.Sha
 	}
 	_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
-	go s.run(ws, scan, dir, ref, func(ok bool) {
+	go s.run(j, ws, scan, dir, ref, func(ok bool) {
 		// The identity read after saving overwrote the ref; the commit is what this scan is.
 		_ = s.store.SetScanOrigin(scan.ID, "backfill", ref)
 		if err := os.RemoveAll(dir); err != nil {

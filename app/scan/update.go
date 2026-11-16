@@ -16,8 +16,8 @@ import (
 
 // updateClone fast-forwards a managed clone to its upstream; it returns
 // what went wrong, or "" when the clone is current.
-func updateClone(dir string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+func updateClone(ctx context.Context, dir string) string {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	run := func(args ...string) error {
 		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)

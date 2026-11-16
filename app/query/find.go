@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"sort"
@@ -124,10 +125,12 @@ func (s *Service) FindInCode(scanID, needle string, opt FindOptions) (*FindResul
 	if err != nil {
 		return nil, err
 	}
-	db, err := s.OpenReadOnly(scanID)
+	h, err := s.acquire(scanID)
 	if err != nil {
 		return nil, err
 	}
+	defer s.release(h)
+	db := h.db
 	ctx, cancel := context.WithTimeout(context.Background(), FindTimeout)
 	defer cancel()
 	started := time.Now()
@@ -172,12 +175,10 @@ func (s *Service) FindLines(scanID, file, needle string, opt FindOptions) ([]Hit
 	if err != nil {
 		return nil, err
 	}
-	db, err := s.OpenReadOnly(scanID)
-	if err != nil {
-		return nil, err
-	}
 	var content string
-	if err := db.QueryRow(`SELECT content FROM file_contents WHERE file = ?`, file).Scan(&content); err != nil {
+	if err := s.Read(scanID, func(db *sql.DB) error {
+		return db.QueryRow(`SELECT content FROM file_contents WHERE file = ?`, file).Scan(&content)
+	}); err != nil {
 		return nil, fmt.Errorf("no source kept for %s", file)
 	}
 	return hitLines(content, re, FindMaxLines), nil

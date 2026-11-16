@@ -2,6 +2,7 @@ package scan
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -93,11 +94,34 @@ func TestBackfillScansEachTagInTurn(t *testing.T) {
 func TestStopAfterCurrentDropsTheRest(t *testing.T) {
 	svc := NewService(nil)
 	svc.queue.items["w"] = []QueueItem{{Ref: "a", State: "running"}, {Ref: "b", State: "queued"}}
+	svc.queue.drains["w"] = draining
 	q := svc.StopAfterCurrent("w")
 	if q.Items[0].State != "running" || q.Items[1].State != "stopped" || !q.Stopping {
 		t.Fatalf("%+v", q)
 	}
 	if got := svc.ClearFinished("w").Items; len(got) != 1 || got[0].Ref != "a" {
 		t.Fatalf("%+v", got)
+	}
+}
+
+// A drain that panics leaves the queue idle, so the next Enqueue starts one.
+// It used to stay "active" for good, with its row running for ever.
+func TestDrainThatPanicsFreesTheQueue(t *testing.T) {
+	svc := NewService(nil) // no store: startAt panics on it
+	svc.queue.items["w"] = []QueueItem{{Ref: "a", Sha: "x", State: ItemQueued}}
+	svc.queue.drains["w"] = draining
+	svc.drain("w")
+	q := svc.Queue("w")
+	if svc.queue.drains["w"] != idle || q.Items[0].State != ItemFailed {
+		t.Fatalf("drain = %v, items %+v", svc.queue.drains["w"], q.Items)
+	}
+}
+
+// Shutdown stops a scan in its clone step and refuses the next one.
+func TestShutdownRefusesNewScans(t *testing.T) {
+	svc := NewService(nil)
+	svc.Shutdown(0)
+	if _, err := svc.claim(&store.Workspace{ID: "w"}); !errors.Is(err, errShuttingDown) {
+		t.Fatalf("err = %v", err)
 	}
 }

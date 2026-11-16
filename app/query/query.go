@@ -44,105 +44,72 @@ var ErrCancelled = fmt.Errorf("cancelled")
 type Service struct {
 	store *store.Store
 
-	mu     sync.Mutex
-	db     *sql.DB
-	scanID string
+	// mu guards the handles and the running queries, never a query itself.
+	mu sync.Mutex
+	// open is the snapshot the window shows.
+	open *handle
+	// Snapshots other than the open one, for comparisons: a small LRU keyed
+	// by scan id.
+	alt  map[string]*handle
+	tick int64
 
 	// Queries a caller can cancel, by the id it gave them. A view that is
 	// left, or reloads, cancels its queries instead of letting them run out
 	// their minute against everyone else's.
-	runMu   sync.Mutex
 	running map[string]runningQuery
 	anon    int64 // names queries started without an id
-
-	// Snapshots other than the open one, for comparisons: a small LRU keyed
-	// by scan id. The mutex guards the map only, never a running query.
-	altMu sync.Mutex
-	alt   map[string]*altHandle
-	tick  int64
-}
-
-type altHandle struct {
-	db   *sql.DB
-	used int64
 }
 
 func NewService(st *store.Store) *Service {
-	return &Service{store: st, alt: map[string]*altHandle{}, running: map[string]runningQuery{}}
+	return &Service{store: st, alt: map[string]*handle{}, running: map[string]runningQuery{}}
 }
 
-// Open selects a completed scan's snapshot as the active database, closing
-// any previously open snapshot.
+// Open selects a completed scan's snapshot as the active database. Queries
+// asked of the snapshot it replaces are cancelled: they were for the view
+// being left. The old database closes once nothing reads it.
 func (s *Service) Open(scanID string) error {
 	db, err := s.openSnapshot(scanID)
 	if err != nil {
 		return err
 	}
-
-	// Whatever was still reading the snapshot being closed has no reader left.
-	s.cancelWhere(func(q runningQuery) bool { return q.open })
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.db != nil {
-		s.db.Close()
+	if old := s.open; old != nil {
+		s.cancelWhere(func(q runningQuery) bool { return q.h == old && q.followsOpen })
+		s.retire(old)
 	}
-	s.db = db
-	s.scanID = scanID
+	s.open = s.newHandle(scanID, db)
 	return nil
 }
 
-// OpenReadOnly returns a handle on any completed snapshot, shared with
-// QueryIn's cache. Callers must not close it.
-func (s *Service) OpenReadOnly(scanID string) (*sql.DB, error) {
+// Release closes every handle on a scan's snapshot, cancelling what still
+// reads it, and returns once the file is closed. Call it before deleting the
+// file: Windows refuses to delete a file that is open.
+func (s *Service) Release(scanID string) {
 	s.mu.Lock()
-	current, db := s.scanID, s.db
+	var gone []*handle
+	if h := s.alt[scanID]; h != nil {
+		delete(s.alt, scanID)
+		gone = append(gone, h)
+	}
+	if h := s.open; h != nil && h.scanID == scanID {
+		s.open = nil
+		gone = append(gone, h)
+	}
+	s.retireAll(gone)
 	s.mu.Unlock()
-	if scanID == current && db != nil {
-		return db, nil
+	for _, h := range gone {
+		<-h.done
 	}
-	s.altMu.Lock()
-	defer s.altMu.Unlock()
-	s.tick++
-	if h, ok := s.alt[scanID]; ok {
-		h.used = s.tick
-		return h.db, nil
-	}
-	opened, err := s.openSnapshot(scanID)
-	if err != nil {
-		return nil, err
-	}
-	if len(s.alt) >= altHandles {
-		var oldest string
-		var min int64 = -1
-		for id, h := range s.alt {
-			if min < 0 || h.used < min {
-				oldest, min = id, h.used
-			}
-		}
-		// Close waits for queries already running on the handle.
-		s.alt[oldest].db.Close()
-		delete(s.alt, oldest)
-	}
-	s.alt[scanID] = &altHandle{db: opened, used: s.tick}
-	return opened, nil
 }
 
-// Release closes every handle on a scan's snapshot. Call it before deleting
-// the file: Windows refuses to delete a file that is open.
-func (s *Service) Release(scanID string) {
-	s.altMu.Lock()
-	if h, ok := s.alt[scanID]; ok {
-		h.db.Close()
-		delete(s.alt, scanID)
+// retireAll cancels the queries reading hs and retires them. The caller
+// holds s.mu.
+func (s *Service) retireAll(hs []*handle) {
+	for _, h := range hs {
+		s.cancelWhere(func(q runningQuery) bool { return q.h == h })
+		s.retire(h)
 	}
-	s.altMu.Unlock()
-	s.mu.Lock()
-	if s.scanID == scanID && s.db != nil {
-		s.db.Close()
-		s.db, s.scanID = nil, ""
-	}
-	s.mu.Unlock()
 }
 
 // openSnapshot opens a completed scan's snapshot read-only.
@@ -177,27 +144,31 @@ func (s *Service) openSnapshot(scanID string) (*sql.DB, error) {
 func (s *Service) CurrentScan() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.scanID
+	if s.open == nil {
+		return ""
+	}
+	return s.open.scanID
 }
 
-// Close releases the active snapshot and every baseline.
+// Close releases the active snapshot and every baseline, once what reads
+// them has stopped.
 func (s *Service) Close() error {
-	s.altMu.Lock()
-	for id, h := range s.alt {
-		h.db.Close()
-		delete(s.alt, id)
-	}
-	s.altMu.Unlock()
-
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.db == nil {
-		return nil
+	var gone []*handle
+	for id, h := range s.alt {
+		delete(s.alt, id)
+		gone = append(gone, h)
 	}
-	err := s.db.Close()
-	s.db = nil
-	s.scanID = ""
-	return err
+	if s.open != nil {
+		gone = append(gone, s.open)
+		s.open = nil
+	}
+	s.retireAll(gone)
+	s.mu.Unlock()
+	for _, h := range gone {
+		<-h.done
+	}
+	return nil
 }
 
 // Query runs raw SQL against the open snapshot and returns JSON-friendly
@@ -217,11 +188,12 @@ func (s *Service) QueryIn(scanID string, sqlStr string) ([]map[string]any, error
 	if scanID == "" {
 		return nil, fmt.Errorf("no scan given")
 	}
-	db, err := s.OpenReadOnly(scanID)
-	if err != nil {
-		return nil, err
-	}
-	return runQuery(db, sqlStr)
+	var out []map[string]any
+	err := s.Read(scanID, func(db *sql.DB) (err error) {
+		out, err = runQuery(db, sqlStr)
+		return err
+	})
+	return out, err
 }
 
 // Limited is a result with its column order and whether it was cut short:
@@ -236,20 +208,12 @@ type Limited struct {
 // QueryLimited runs SQL on the open snapshot (or scanID when given), keeping
 // at most maxRows and stopping after timeoutMs.
 func (s *Service) QueryLimited(scanID, sqlStr string, maxRows, timeoutMs int) (*Limited, error) {
-	var db *sql.DB
-	if scanID == "" {
-		s.mu.Lock()
-		db = s.db
-		s.mu.Unlock()
-		if db == nil {
-			return nil, fmt.Errorf("no scan open")
-		}
-	} else {
-		var err error
-		if db, err = s.OpenReadOnly(scanID); err != nil {
-			return nil, err
-		}
+	h, err := s.acquire(scanID)
+	if err != nil {
+		return nil, err
 	}
+	defer s.release(h)
+	db := h.db
 	if maxRows <= 0 || maxRows > MaxRows {
 		maxRows = MaxRows
 	}
@@ -336,62 +300,63 @@ type Table struct {
 
 type runningQuery struct {
 	cancel context.CancelFunc
-	// open is set when the query reads the open snapshot rather than a named one.
-	open bool
+	// The handle it reads, and whether it asked for the open snapshot rather
+	// than naming one.
+	h           *handle
+	followsOpen bool
 }
 
 // Rows runs SQL on the open snapshot, or on scanID when given, as a Table.
-// id names the query for Cancel. Every query on the open snapshot is
-// cancelled when another snapshot is opened: closing a database waits for
-// the queries still running on it, and the window would wait with it.
+// id names the query for Cancel. A query on the open snapshot is cancelled
+// when another snapshot is opened.
 func (s *Service) Rows(id, scanID, sqlStr string) (*Table, error) {
-	var db *sql.DB
-	if scanID == "" {
-		s.mu.Lock()
-		db = s.db
-		s.mu.Unlock()
-		if db == nil {
-			return nil, fmt.Errorf("no scan open")
-		}
-	} else {
-		var err error
-		if db, err = s.OpenReadOnly(scanID); err != nil {
-			return nil, err
-		}
+	h, err := s.acquire(scanID)
+	if err != nil {
+		return nil, err
 	}
+	defer s.release(h)
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout)
 	defer cancel()
+	id = s.track(id, runningQuery{cancel: cancel, h: h, followsOpen: scanID == ""})
+	defer s.untrack(id)
+	return scanTable(ctx, h.db, sqlStr)
+}
+
+// track registers a running query under id, naming it when id is "". A
+// query whose handle was retired between acquire and here is cancelled
+// straight away, as it would have been had it registered first.
+func (s *Service) track(id string, q runningQuery) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if id == "" {
-		s.runMu.Lock()
 		s.anon++
 		id = fmt.Sprintf("~%d", s.anon)
-		s.runMu.Unlock()
 	}
-	s.runMu.Lock()
-	s.running[id] = runningQuery{cancel: cancel, open: scanID == ""}
-	s.runMu.Unlock()
-	defer func() {
-		s.runMu.Lock()
-		delete(s.running, id)
-		s.runMu.Unlock()
-	}()
-	return scanTable(ctx, db, sqlStr)
+	if q.h.state != live && q.followsOpen {
+		q.cancel()
+	}
+	s.running[id] = q
+	return id
+}
+
+func (s *Service) untrack(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.running, id)
 }
 
 // Cancel stops the query started with this id, if it is still running.
 func (s *Service) Cancel(id string) {
-	s.cancelWhere(func(q runningQuery) bool { return false }, id)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if q, ok := s.running[id]; ok {
+		q.cancel()
+	}
 }
 
-// cancelWhere cancels the named queries and every running query match accepts.
-func (s *Service) cancelWhere(match func(runningQuery) bool, ids ...string) {
-	s.runMu.Lock()
-	defer s.runMu.Unlock()
-	for _, id := range ids {
-		if q, ok := s.running[id]; ok {
-			q.cancel()
-		}
-	}
+// cancelWhere cancels every running query match accepts. The caller holds
+// s.mu.
+func (s *Service) cancelWhere(match func(runningQuery) bool) {
 	for _, q := range s.running {
 		if match(q) {
 			q.cancel()

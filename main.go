@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync/atomic"
+	"time"
 
 	"github.com/archstats/archstats-ui/app"
 	"github.com/archstats/archstats-ui/app/ask"
@@ -103,11 +105,19 @@ func main() {
 	cloneSvc := clone.NewService(st)
 	querySvc := query.NewService(st)
 	defer querySvc.Close()
-	var appCtx context.Context
-	menuSvc := app.NewMenuService(func() context.Context { return appCtx })
+	// The window's context, set once it has started; nil before. Menu,
+	// picker and second-instance callbacks read it from other goroutines.
+	var started atomic.Pointer[context.Context]
+	appCtx := func() context.Context {
+		if c := started.Load(); c != nil {
+			return *c
+		}
+		return nil
+	}
+	menuSvc := app.NewMenuService(appCtx)
 	changesSvc := app.NewChangesService(st, querySvc)
 	release := func(scanID string) { changesSvc.ForgetScan(scanID); querySvc.Release(scanID) }
-	workspaceSvc := app.NewWorkspaceService(st, func() context.Context { return appCtx }, release)
+	workspaceSvc := app.NewWorkspaceService(st, appCtx, release)
 	scanSvc.SetOnDone(func(scanID string) {
 		safe.Go("computing readings", func() { changesSvc.ComputeReadings(scanID) })
 	})
@@ -141,13 +151,15 @@ func main() {
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "dev.archstats.desktop",
 			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
-				if appSvc.QueueSnapshots(data.Args, data.WorkingDirectory) && appCtx != nil {
-					runtime.EventsEmit(appCtx, "import:pending")
+				ctx := appCtx()
+				if ctx == nil {
+					return
 				}
-				if appCtx != nil {
-					runtime.WindowUnminimise(appCtx)
-					runtime.WindowShow(appCtx)
+				if appSvc.QueueSnapshots(data.Args, data.WorkingDirectory) {
+					runtime.EventsEmit(ctx, "import:pending")
 				}
+				runtime.WindowUnminimise(ctx)
+				runtime.WindowShow(ctx)
 			},
 		},
 		EnableDefaultContextMenu: true,
@@ -155,7 +167,6 @@ func main() {
 			TitleBar: mac.TitleBarHiddenInset(),
 		},
 		OnStartup: func(ctx context.Context) {
-			appCtx = ctx
 			// Reload keeps the page's address, so the window comes back on the view it was showing.
 			safe.Go("watching the window", func() {
 				watchdog.Run(stopWatchdog, func() { runtime.WindowReload(ctx) })
@@ -169,16 +180,25 @@ func main() {
 			askSvc.SetEmitter(func(event string, data ...any) {
 				runtime.EventsEmit(ctx, event, data...)
 			})
+			// Published last: whatever reads the context finds the services
+			// emitting to it.
+			started.Store(&ctx)
+		},
+		// Scans and clones run in their own processes; quitting stops them,
+		// and a scan records itself as cancelled before the app goes.
+		OnShutdown: func(context.Context) {
+			cloneSvc.CancelAll()
+			scanSvc.Shutdown(5 * time.Second)
 		},
 		Bind: []interface{}{
 			workspaceSvc,
 			app.NewScanService(scanSvc),
-			app.NewCloneService(cloneSvc, func() context.Context { return appCtx }),
+			app.NewCloneService(cloneSvc, appCtx),
 			app.NewQueryService(querySvc),
 			app.NewStateService(st),
 			menuSvc,
 			appSvc,
-			app.NewFilesService(func() context.Context { return appCtx }),
+			app.NewFilesService(appCtx),
 			changesSvc,
 			app.NewEvidenceService(st),
 			app.NewNotesService(st),

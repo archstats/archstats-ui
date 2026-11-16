@@ -1,7 +1,6 @@
 package scan
 
 import (
-	"context"
 	"fmt"
 	snapshotinfo "github.com/archstats/archstats-ui/app/snapshot"
 	"os"
@@ -32,8 +31,8 @@ type Service struct {
 	emit  func(event string, data ...any)
 
 	mu      sync.Mutex
-	running map[string]bool               // workspaceID → scan in flight
-	cancels map[string]context.CancelFunc // workspaceID → stops its scan
+	jobs    map[string]*job // workspaceID → its scan in flight
+	closing bool            // set by Shutdown: no scan starts after it
 	onDone  func(scanID string)
 	queue   *backfillQueue
 	worker  string
@@ -43,32 +42,15 @@ type Service struct {
 // own binary). Without one, scans run in this process and cannot be stopped.
 func (s *Service) SetWorker(exe string) { s.worker = exe }
 
-// Cancel stops the workspace's running scan. The scan is recorded as failed
-// with "cancelled"; a backfill moves on to its next revision.
-func (s *Service) Cancel(workspaceID string) error {
-	s.mu.Lock()
-	cancel := s.cancels[workspaceID]
-	s.mu.Unlock()
-	if cancel == nil {
-		return fmt.Errorf("no scan is running for this workspace")
-	}
-	if s.worker == "" {
-		return fmt.Errorf("this scan cannot be stopped")
-	}
-	cancel()
-	return nil
-}
-
 // SetOnDone runs after each scan is saved (in production: its readings are computed).
 func (s *Service) SetOnDone(fn func(scanID string)) { s.onDone = fn }
 
 func NewService(st *store.Store) *Service {
 	return &Service{
-		store:   st,
-		emit:    func(string, ...any) {},
-		running: map[string]bool{},
-		cancels: map[string]context.CancelFunc{},
-		queue:   newBackfillQueue(),
+		store: st,
+		emit:  func(string, ...any) {},
+		jobs:  map[string]*job{},
+		queue: newBackfillQueue(),
 	}
 }
 
@@ -85,54 +67,35 @@ func (s *Service) StartScan(workspaceID string) (*store.Scan, error) {
 		return nil, err
 	}
 
-	s.mu.Lock()
-	if s.running[ws.ID] {
-		s.mu.Unlock()
-		return nil, fmt.Errorf("a scan is already running for workspace %s", ws.Name)
+	j, err := s.claim(ws)
+	if err != nil {
+		return nil, err
 	}
-	s.running[ws.ID] = true
-	s.mu.Unlock()
-
 	scan, err := s.store.CreateScan(ws.ID)
 	if err != nil {
-		s.mu.Lock()
-		delete(s.running, ws.ID)
-		s.mu.Unlock()
+		s.finish(ws.ID, j)
 		return nil, err
 	}
 
-	go s.run(ws, scan, ws.FolderPath, "", nil)
+	go s.run(j, ws, scan, ws.FolderPath, "", nil)
 	return scan, nil
-}
-
-// IsRunning reports whether a scan is in flight for the workspace.
-func (s *Service) IsRunning(workspaceID string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.running[workspaceID]
 }
 
 // run analyses root (the workspace folder, or a clone of it at one commit)
 // and saves the snapshot; done, when set, runs once the scan has finished
 // either way. ref names the commit or tag a rescan reads, and is empty for
-// a scan of the working copy; the UI tells the two apart by it.
-func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, done func(ok bool)) {
+// a scan of the working copy; the UI tells the two apart by it. run ends
+// the job it was given.
+func (s *Service) run(j *job, ws *store.Workspace, scan *store.Scan, root, ref string, done func(ok bool)) {
 	ok := false
 	defer func() {
 		if done != nil {
 			done(ok)
 		}
 	}()
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	s.cancels[ws.ID] = cancel
-	s.mu.Unlock()
+	ctx := j.ctx
 	defer func() {
-		cancel()
-		s.mu.Lock()
-		delete(s.running, ws.ID)
-		delete(s.cancels, ws.ID)
-		s.mu.Unlock()
+		s.finish(ws.ID, j)
 		if r := recover(); r != nil {
 			msg := fmt.Sprintf("panic during scan: %v", r)
 			log.Error().Str("workspace", ws.ID).Msg(msg)
@@ -146,7 +109,7 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, d
 	note := ""
 	if ref == "" && s.store.IsManagedFolder(root) {
 		s.emit(EventScanPhase, payload(ws.ID, scan.ID, map[string]any{"phase": "updating"}))
-		note = updateClone(root)
+		note = updateClone(ctx, root)
 		if note != "" {
 			log.Warn().Str("workspace", ws.ID).Msg(note)
 		}
@@ -174,9 +137,12 @@ func (s *Service) run(ws *store.Workspace, scan *store.Scan, root, ref string, d
 		s.emit(EventScanPhase, payload(ws.ID, scan.ID, p))
 	}
 	var err error
-	if s.worker != "" {
+	switch {
+	case ctx.Err() != nil:
+		err = ErrCancelled
+	case s.worker != "":
 		err = inChild(ctx, s.worker, req, phase)
-	} else {
+	default:
 		err = Analyze(req, phase)
 	}
 	if err != nil {

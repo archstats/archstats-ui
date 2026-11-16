@@ -181,6 +181,16 @@ func (s *Service) Cancel(id string) {
 	}
 }
 
+// CancelAll stops every running clone; the app calls it on quit, so no git
+// process outlives it.
+func (s *Service) CancelAll() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, cancel := range s.cancels {
+		cancel()
+	}
+}
+
 // Jobs lists this session's clones, newest first, so a reloaded window
 // finds the one still running.
 func (s *Service) Jobs() []Job {

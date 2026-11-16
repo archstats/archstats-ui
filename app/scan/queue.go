@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"errors"
 	"fmt"
 	"github.com/archstats/archstats-ui/app/safe"
 	"os/exec"
@@ -27,12 +28,27 @@ type Revision struct {
 	Unavailable string `json:"unavailable"`
 }
 
+// ItemState is where a revision is in the queue: queued, then running, then
+// done or failed; or stopped while still queued.
+type ItemState string
+
+const (
+	ItemQueued  ItemState = "queued"
+	ItemRunning ItemState = "running"
+	ItemDone    ItemState = "done"
+	ItemFailed  ItemState = "failed"
+	ItemStopped ItemState = "stopped"
+)
+
+// pending says whether the item has yet to finish.
+func (st ItemState) pending() bool { return st == ItemQueued || st == ItemRunning }
+
 type QueueItem struct {
-	Ref    string `json:"ref"`
-	Sha    string `json:"sha"`
-	State  string `json:"state"` // queued, running, done, failed, stopped
-	ScanID string `json:"scanId"`
-	Error  string `json:"error"`
+	Ref    string    `json:"ref"`
+	Sha    string    `json:"sha"`
+	State  ItemState `json:"state"`
+	ScanID string    `json:"scanId"`
+	Error  string    `json:"error"`
 }
 
 type QueueState struct {
@@ -40,15 +56,24 @@ type QueueState struct {
 	Stopping bool        `json:"stopping"`
 }
 
+// drainState is what a workspace's queue is doing. Idle is the zero value:
+// no drain goroutine runs.
+type drainState int
+
+const (
+	idle     drainState = iota
+	draining            // a goroutine scans queued revisions in turn
+	stopping            // it ends after the current scan
+)
+
 type backfillQueue struct {
-	mu       sync.Mutex
-	items    map[string][]QueueItem
-	stopping map[string]bool
-	active   map[string]bool
+	mu     sync.Mutex
+	items  map[string][]QueueItem
+	drains map[string]drainState
 }
 
 func newBackfillQueue() *backfillQueue {
-	return &backfillQueue{items: map[string][]QueueItem{}, stopping: map[string]bool{}, active: map[string]bool{}}
+	return &backfillQueue{items: map[string][]QueueItem{}, drains: map[string]drainState{}}
 }
 
 // Tags lists the repository's tags, newest first, each with its commit. One
@@ -127,19 +152,17 @@ func (s *Service) Enqueue(workspaceID string, revs []Revision) (*QueueState, err
 	for _, r := range revs {
 		dup := false
 		for _, it := range q.items[workspaceID] {
-			if it.Sha == r.Sha && (it.State == "queued" || it.State == "running") {
+			if it.Sha == r.Sha && it.State.pending() {
 				dup = true
 			}
 		}
 		if !dup {
-			q.items[workspaceID] = append(q.items[workspaceID], QueueItem{Ref: r.Ref, Sha: r.Sha, State: "queued"})
+			q.items[workspaceID] = append(q.items[workspaceID], QueueItem{Ref: r.Ref, Sha: r.Sha, State: ItemQueued})
 		}
 	}
-	q.stopping[workspaceID] = false
-	start := !q.active[workspaceID]
-	if start {
-		q.active[workspaceID] = true
-	}
+	// A drain that was stopping takes the new revisions on instead.
+	start := q.drains[workspaceID] == idle
+	q.drains[workspaceID] = draining
 	q.mu.Unlock()
 	s.emitQueue(workspaceID)
 	if start {
@@ -154,17 +177,19 @@ func (s *Service) Queue(workspaceID string) *QueueState {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	items := append([]QueueItem(nil), q.items[workspaceID]...)
-	return &QueueState{Items: items, Stopping: q.stopping[workspaceID]}
+	return &QueueState{Items: items, Stopping: q.drains[workspaceID] == stopping}
 }
 
 // StopAfterCurrent lets the running scan finish and drops what is still queued.
 func (s *Service) StopAfterCurrent(workspaceID string) *QueueState {
 	q := s.queue
 	q.mu.Lock()
-	q.stopping[workspaceID] = true
+	if q.drains[workspaceID] == draining {
+		q.drains[workspaceID] = stopping
+	}
 	for i, it := range q.items[workspaceID] {
-		if it.State == "queued" {
-			q.items[workspaceID][i].State = "stopped"
+		if it.State == ItemQueued {
+			q.items[workspaceID][i].State = ItemStopped
 		}
 	}
 	q.mu.Unlock()
@@ -178,7 +203,7 @@ func (s *Service) ClearFinished(workspaceID string) *QueueState {
 	q.mu.Lock()
 	var keep []QueueItem
 	for _, it := range q.items[workspaceID] {
-		if it.State == "queued" || it.State == "running" {
+		if it.State.pending() {
 			keep = append(keep, it)
 		}
 	}
@@ -192,62 +217,79 @@ func (s *Service) emitQueue(workspaceID string) {
 	s.emit(EventBackfillQueue, map[string]any{"workspaceId": workspaceID})
 }
 
-// drain scans queued revisions one at a time until none is left or a stop is asked.
+// drain scans queued revisions one at a time until none is left or a stop
+// is asked. However it ends, even by a panic, the workspace's queue is idle
+// again and no row is left running.
 func (s *Service) drain(workspaceID string) {
 	q := s.queue
-	// Idle is decided under the same lock Enqueue checks, so a revision queued
-	// while the last scan finishes is never left waiting for a drain that ended.
 	defer s.emitQueue(workspaceID)
-	defer safe.Recover("backfill", nil)
+	defer safe.Recover("backfill", func(msg string) {
+		q.mu.Lock()
+		q.drains[workspaceID] = idle
+		q.settle(workspaceID, ItemRunning, ItemFailed, msg, "")
+		q.mu.Unlock()
+	})
 	for {
+		// A scan the user started by hand goes first; the queue waits for it
+		// before taking a revision, so a stop asked meanwhile still applies.
+		for s.IsRunning(workspaceID) {
+			time.Sleep(500 * time.Millisecond)
+		}
+		// Idle is decided under the same lock Enqueue checks, so a revision
+		// queued while the last scan finishes is never left waiting for a
+		// drain that ended.
 		q.mu.Lock()
 		idx := -1
 		for i, it := range q.items[workspaceID] {
-			if it.State == "queued" {
+			if it.State == ItemQueued {
 				idx = i
 				break
 			}
 		}
-		if idx < 0 || q.stopping[workspaceID] {
-			q.active[workspaceID] = false
+		if idx < 0 || q.drains[workspaceID] == stopping {
+			q.drains[workspaceID] = idle
 			q.mu.Unlock()
 			return
 		}
 		item := q.items[workspaceID][idx]
-		q.items[workspaceID][idx].State = "running"
+		q.items[workspaceID][idx].State = ItemRunning
 		q.mu.Unlock()
 		s.emitQueue(workspaceID)
 
-		// A scan the user started by hand goes first; the queue waits for it.
-		for s.IsRunning(workspaceID) {
-			time.Sleep(500 * time.Millisecond)
-		}
 		finished := make(chan bool, 1)
 		scan, err := s.startAt(workspaceID, item.Sha, item.Ref, func(ok bool) { finished <- ok })
-		state, msg, scanID := "failed", "", ""
+		state, msg, scanID := ItemFailed, "", ""
 		if err != nil {
 			msg = err.Error()
 		} else {
 			scanID = scan.ID
 			if <-finished {
-				state = "done"
-			} else {
-				state = "failed"
-				if sc, err := s.store.GetScan(scan.ID); err == nil {
-					msg = sc.Error
-				}
+				state = ItemDone
+			} else if sc, err := s.store.GetScan(scan.ID); err == nil {
+				msg = sc.Error
 			}
 		}
 		if msg != "" {
 			log.Warn().Str("workspace", workspaceID).Str("ref", item.Ref).Msg(msg)
 		}
 		q.mu.Lock()
-		for i, it := range q.items[workspaceID] {
-			if it.Sha == item.Sha && it.State == "running" {
-				q.items[workspaceID][i].State, q.items[workspaceID][i].Error, q.items[workspaceID][i].ScanID = state, msg, scanID
-			}
+		q.settle(workspaceID, ItemRunning, state, msg, scanID)
+		if errors.Is(err, errShuttingDown) {
+			q.drains[workspaceID] = idle
+			q.mu.Unlock()
+			return
 		}
 		q.mu.Unlock()
 		s.emitQueue(workspaceID)
+	}
+}
+
+// settle moves the workspace's items in state from to state to. The caller
+// holds q.mu; one item runs at a time, so from = running names one row.
+func (q *backfillQueue) settle(workspaceID string, from, to ItemState, msg, scanID string) {
+	for i, it := range q.items[workspaceID] {
+		if it.State == from {
+			q.items[workspaceID][i].State, q.items[workspaceID][i].Error, q.items[workspaceID][i].ScanID = to, msg, scanID
+		}
 	}
 }

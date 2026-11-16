@@ -31,7 +31,7 @@ type Service struct {
 
 	mu      sync.Mutex
 	cfg     Config
-	cancels map[string]context.CancelFunc
+	cancels map[string]*chatRun // running chats, by the id the window gave them
 	// stored holds keys read from the keychain once (reading it runs a
 	// system tool); "" is a known absence.
 	stored map[string]string
@@ -59,7 +59,7 @@ const (
 
 // NewService reads the stored settings; keys stay in the system keychain.
 func NewService(s Settings) *Service {
-	return &Service{settings: s, keys: keychain{}, client: &http.Client{Transport: requestLog{http.DefaultTransport}}, policy: readPolicy, cfg: loadConfig(s), cancels: map[string]context.CancelFunc{}, stored: map[string]string{}, lists: map[string]*modelList{}}
+	return &Service{settings: s, keys: keychain{}, client: &http.Client{Transport: requestLog{http.DefaultTransport}}, policy: readPolicy, cfg: loadConfig(s), cancels: map[string]*chatRun{}, stored: map[string]string{}, lists: map[string]*modelList{}}
 }
 
 // SetEmitter wires event emission (in production: Wails runtime.EventsEmit).
@@ -451,14 +451,18 @@ func (s *Service) listOf(ps ProviderStatus) ([]Model, error) {
 	s.lists[ps.ID] = l
 	s.mu.Unlock()
 
+	// Whatever happens while asking, even a panic, the callers waiting on
+	// this list are let go: an entry left in flight would hold them for good.
+	defer close(l.done)
+	l.err = fmt.Errorf("listing the models of %s failed", ps.Label)
+	l.at = time.Now()
 	p, _, err := s.ready(ps.ID)
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		l.models, err = p.models(ctx)
-		cancel()
 	}
 	l.err, l.at = err, time.Now()
-	close(l.done)
 	return l.models, l.err
 }
 
@@ -477,23 +481,32 @@ func (s *Service) Chat(id, requestJSON string) (string, error) {
 	if err := json.Unmarshal([]byte(requestJSON), &req); err != nil {
 		return "", fmt.Errorf("reading the request: %w", err)
 	}
+	// Registered first, so a Cancel that arrives while the provider is
+	// still being made ready is not lost. A request that reuses an id
+	// replaces the earlier one, and only its own end removes it.
+	ctx, cancel := context.WithCancel(context.Background())
+	run := &chatRun{cancel: cancel}
+	s.mu.Lock()
+	s.cancels[id] = run
+	s.mu.Unlock()
+	defer func() {
+		cancel()
+		s.mu.Lock()
+		if s.cancels[id] == run {
+			delete(s.cancels, id)
+		}
+		s.mu.Unlock()
+	}()
+
 	provID, name := splitModelID(req.Model)
 	p, _, err := s.ready(provID)
 	if err != nil {
 		return "", err
 	}
 	req.Model = name
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	s.cancels[id] = cancel
-	s.mu.Unlock()
-	defer func() {
-		cancel()
-		s.mu.Lock()
-		delete(s.cancels, id)
-		s.mu.Unlock()
-	}()
+	if ctx.Err() != nil {
+		return `{"stopped":true}`, nil
+	}
 
 	reply, err := p.chat(ctx, req, func(d Delta) {
 		if s.emit != nil && (d.Content != "" || d.Thinking != "") {
@@ -538,7 +551,10 @@ func (s *Service) Embed(model string, texts []string) ([][]float64, error) {
 func (s *Service) Cancel(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if c, ok := s.cancels[id]; ok {
-		c()
+	if r, ok := s.cancels[id]; ok {
+		r.cancel()
 	}
 }
+
+// chatRun is one Chat in flight, for Cancel to stop.
+type chatRun struct{ cancel context.CancelFunc }

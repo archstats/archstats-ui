@@ -12,9 +12,9 @@ import (
 	"sync"
 )
 
-// Opener returns a read-only handle on a scan's snapshot. The handle is
-// shared and must not be closed by the caller.
-type Opener func(scanID string) (*sql.DB, error)
+// Reader lends fn a read-only handle on a scan's snapshot, open until fn
+// returns. fn must not close it.
+type Reader func(scanID string, fn func(*sql.DB) error) error
 
 // MovedMetrics are the readings "Largest moves" compares. No composite: each
 // is shown as itself.
@@ -89,13 +89,13 @@ type ChangeSet struct {
 
 // Service compares snapshots and remembers what it compared.
 type Service struct {
-	open  Opener
+	read  Reader
 	mu    sync.Mutex
 	cache map[string]*ChangeSet
 }
 
-func NewService(open Opener) *Service {
-	return &Service{open: open, cache: map[string]*ChangeSet{}}
+func NewService(read Reader) *Service {
+	return &Service{read: read, cache: map[string]*ChangeSet{}}
 }
 
 // Compare returns what changed from base to head.
@@ -147,11 +147,12 @@ type Snapshot struct {
 }
 
 func (s *Service) load(scanID string) (*Snapshot, error) {
-	db, err := s.open(scanID)
-	if err != nil {
-		return nil, err
-	}
-	return Load(db)
+	var snap *Snapshot
+	err := s.read(scanID, func(db *sql.DB) (err error) {
+		snap, err = Load(db)
+		return err
+	})
+	return snap, err
 }
 
 func columns(db *sql.DB, table string) (map[string]bool, error) {

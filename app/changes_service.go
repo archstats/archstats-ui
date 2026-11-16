@@ -1,6 +1,7 @@
 package app
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/archstats/archstats-ui/app/safe"
 	"log"
@@ -25,7 +26,7 @@ type ChangesService struct {
 }
 
 func NewChangesService(st *store.Store, q *query.Service) *ChangesService {
-	return &ChangesService{store: st, query: q, changes: changes.NewService(q.OpenReadOnly)}
+	return &ChangesService{store: st, query: q, changes: changes.NewService(q.Read)}
 }
 
 // Compare returns what changed from the base scan to the head scan.
@@ -88,11 +89,11 @@ func (c *ChangesService) ensureReadings(scanID string) (map[string]*float64, err
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	db, err := c.query.OpenReadOnly(scanID)
-	if err != nil {
-		return nil, err
-	}
-	r, err := trends.Compute(db)
+	var r map[string]*float64
+	err = c.query.Read(scanID, func(db *sql.DB) (err error) {
+		r, err = trends.Compute(db)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -81,3 +81,35 @@ func TestComparisonHandlesStayBoundedAndRelease(t *testing.T) {
 		t.Fatal("released handle still open")
 	}
 }
+
+// A query on the open snapshot that names its scan is not cancelled when
+// another snapshot opens, and the old database closes only after it ends.
+// It was registered as reading "a named snapshot", so Open missed it and
+// closed the database under it.
+func TestOpenWaitsForNoOneAndClosesTheOldSnapshotAfterItsLastReader(t *testing.T) {
+	svc, ids := setup(t, 2)
+	if err := svc.Open(ids[0]); err != nil {
+		t.Fatal(err)
+	}
+	var old *handle
+	err := svc.Read(ids[0], func(db *sql.DB) error {
+		old = svc.open
+		if err := svc.Open(ids[1]); err != nil {
+			return err
+		}
+		if old.state != retired {
+			t.Errorf("state while read = %v, want retired", old.state)
+		}
+		var n int
+		return db.QueryRow(`SELECT count(*) FROM t`).Scan(&n)
+	})
+	if err != nil {
+		t.Fatalf("the reader lost its database: %v", err)
+	}
+	if old.state != closed {
+		t.Fatalf("state after the last reader = %v, want closed", old.state)
+	}
+	if svc.CurrentScan() != ids[1] {
+		t.Fatalf("open = %q", svc.CurrentScan())
+	}
+}
