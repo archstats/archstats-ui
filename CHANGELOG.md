@@ -11,6 +11,7 @@ Write a line under **Unreleased** when a change lands that a user would notice: 
 - The first time you open a new version, **What's new** lists what changed since the one you ran before. **Help → What's New** shows it again.
 - **Help → Archstats Documentation** opens the guide at archstats.github.io/archstats.
 - Exports and reports name the real engine version; they used to say v0.3.1.
+- Fewer stuck and lost states. Quitting stops running scans and clones instead of leaving them behind; Stop works while a rescan is still cloning; a backfill queue that hit an error starts again on the next revision; switching snapshots no longer waits on, or cuts off, a query still reading the old one. Undoing a dropped group in a lens draft no longer deletes it on save, typing in raw Markdown never lands in the report you switched to, and asking again right after Stop no longer breaks the new answer.
 
 ## v0.12.0 (2026-10-29)
 
