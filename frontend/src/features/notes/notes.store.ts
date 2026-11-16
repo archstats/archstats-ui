@@ -12,7 +12,13 @@ export const useNotesStore = defineStore("notes", {
         async load(workspaceId: string) {
             this.workspaceId = workspaceId
             this.loading = true
-            try { this.notes = ((await List(workspaceId)) ?? []).map(toNote) } finally { this.loading = false }
+            try {
+                const notes = ((await List(workspaceId)) ?? []).map(toNote)
+                // Another workspace chosen meanwhile loads its own.
+                if (this.workspaceId === workspaceId) this.notes = notes
+            } finally {
+                if (this.workspaceId === workspaceId) this.loading = false
+            }
         },
         async add(subject: string, text: string, headCommit: string) {
             if (!this.workspaceId || !text.trim()) return

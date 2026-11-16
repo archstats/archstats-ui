@@ -27,10 +27,13 @@ export function useStructureCompare(ids: Ref<{ base: string; head: string } | nu
     const error = ref("")
     const name = (id: string) => groups.getGroupById(id)?.name ?? id
 
-    watch([ids, available, () => lens.active, () => groups.groups], async () => {
+    watch([ids, available, () => lens.active, () => groups.groups], async (_now, _before, onCleanup) => {
         diff.value = null; error.value = ""
         const s = ids.value
-        if (!s || !available.value) return
+        if (!s || !available.value) { loading.value = false; return }
+        // A comparison asked for after this one answers instead of it.
+        let stale = false
+        onCleanup(() => { stale = true })
         loading.value = true
         try {
             const [b, h] = await Promise.all([graphOf(s.base, sql => queryIn(s.base, sql)), graphOf(s.head, sql => queryIn(s.head, sql))])
@@ -45,12 +48,13 @@ export function useStructureCompare(ids: Ref<{ base: string; head: string } | nu
                 for (const f of g.code) { if (of.has(f)) continue; const c = g.data.component.get(f); if (c && whole.has(c)) of.set(f, whole.get(c)!) }
                 return { of, unplaced: [...g.production].filter(f => !of.has(f)).length }
             }
+            if (stale) return
             const pb = placeOn(b), ph = placeOn(h)
             diff.value = compareStructure(evaluate(pb.of, b.edges, b.production), evaluate(ph.of, h.edges, h.production), [pb.unplaced, ph.unplaced])
         } catch (e) {
-            error.value = e instanceof Error ? e.message : String(e)
+            if (!stale) error.value = e instanceof Error ? e.message : String(e)
         } finally {
-            loading.value = false
+            if (!stale) loading.value = false
         }
     }, { immediate: true })
 

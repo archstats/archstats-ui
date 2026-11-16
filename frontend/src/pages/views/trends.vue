@@ -94,11 +94,21 @@ const selected = ref<number[]>([]);
 const chart = ref<InstanceType<typeof TrendRows> | null>(null);
 
 const complete = computed(() => workspaces.scans.filter((s: any) => s.status === "complete").length);
-watch([() => workspaces.activeWorkspaceId, complete], async ([ws]) => {
+watch([() => workspaces.activeWorkspaceId, complete], async ([ws], _, onCleanup) => {
   selected.value = [];
-  if (!ws) { raw.value = []; return; }
+  if (!ws) { raw.value = []; loading.value = false; return; }
+  // Readings asked for after these (another workspace, a new scan) answer instead.
+  let stale = false;
+  onCleanup(() => { stale = true; });
   loading.value = true; error.value = "";
-  try { raw.value = ((await Readings(ws)) ?? []) as any; } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
+  try {
+    const out = ((await Readings(ws)) ?? []) as any;
+    if (!stale) raw.value = out;
+  } catch (e) {
+    if (!stale) error.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    if (!stale) loading.value = false;
+  }
 }, { immediate: true });
 
 const failed = computed(() => raw.value.filter(p => p.error));

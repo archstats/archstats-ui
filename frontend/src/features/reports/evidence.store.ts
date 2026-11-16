@@ -43,6 +43,9 @@ export interface PinInput {
     figure?: string | null
 }
 
+/** Numbers each recheck, so only the newest one's answer is kept. */
+let rechecks = 0
+
 export const useEvidenceStore = defineStore("evidence", {
     state: () => ({
         workspace: "" as string,
@@ -114,6 +117,7 @@ export const useEvidenceStore = defineStore("evidence", {
             const data = useDataStore()
             const newest: any = newestFirst(ws.scans.filter((s: any) => s.status === "complete"))[0]
             if (!newest) return
+            const asked = ++rechecks
             this.checkedAgainst = newest.id
             const q = (sql: string) => QueryIn(newest.id, sql) as Promise<any[]>
             const now: Record<string, PinValues | null> = {}
@@ -129,6 +133,8 @@ export const useEvidenceStore = defineStore("evidence", {
                 now[p.id] = values
                 statuses[p.id] = pinStatus({ pinned: this.valuesOf(p), now: values, blocked, deleted: !p.scanId, label: id => data.statNiceName(id) || id })
             }
+            // A recheck started after this one (a new scan, another pin) answers instead.
+            if (this.checkedAgainst !== newest.id || asked !== rechecks) return
             this.now = now
             this.statuses = statuses
         },

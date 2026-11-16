@@ -83,6 +83,18 @@ describe("draft store", () => {
     expect(fileMembers(payments)).toEqual(["pay/P1.java"]);
   });
 
+  it("keeps a saved group that was dropped and brought back by undo", () => {
+    const groups = useGroupsStore();
+    const kept = groups.createGroup("Payments", units("component", ["pay"]), "Domain");
+    const draft = useDraftStore();
+    draft.load("ws");
+    draft.fromDimension("Domain");
+    draft.dropGroup("g:" + kept.id);
+    draft.undo();
+    draft.commit();
+    expect(groups.getGroupById(kept.id)?.name).toBe("Payments");
+  });
+
   it("keeps locks across a refresh from suggestions and survives a reload", () => {
     const draft = useDraftStore();
     draft.load("ws");

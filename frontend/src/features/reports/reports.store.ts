@@ -176,6 +176,9 @@ export const useReportsStore = defineStore("reports", {
     actions: {
         async load(workspaceId: string, force = false) {
             if (this.workspace === workspaceId && this.loaded && !force) return
+            // An edit still waiting to be saved belongs to the report open now,
+            // which the new list may not hold.
+            this.flushSave()
             this.workspace = workspaceId
             try { this.list = ((await Reports(workspaceId)) ?? []) as any } catch { this.list = [] }
             // The first visit after the board became notebooks: the board's order
@@ -410,13 +413,15 @@ export const useReportsStore = defineStore("reports", {
             const h = this.doc.blocks.find(b => !isCell(b) && b.kind === "h1" && b.text.trim()) as any
             if ((r.title === t("reports.reportsStore.untitledReport") || r.title === "Untitled report") && h) r.title = h.text.trim().slice(0, 80)
             const body = JSON.stringify({ version: 1, blocks: this.doc.blocks.map(stripSession), kernel: this.doc.kernel })
+            // Saving until the last save in flight has answered, not the first.
+            savesInFlight++
             this.saving = true
             try {
                 const saved = (await SaveReport({ ...r, body } as any)) as any
                 r.body = body
                 r.updatedAt = saved?.updatedAt ?? new Date().toISOString()
             } finally {
-                this.saving = false
+                if (--savesInFlight === 0) this.saving = false
             }
         },
 
@@ -689,6 +694,7 @@ export const useReportsStore = defineStore("reports", {
 })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
+let savesInFlight = 0
 let readingCache: { key: string; ctx: ReadingContext } | null = null
 
 /** The session's comparison output is not saved. */

@@ -30,6 +30,17 @@ const _db = new WailsDb();
 /** How many times loading a snapshot asks again for a read another open cancelled. */
 const LOAD_ATTEMPTS = 5;
 
+// Opening a snapshot is one load at a time: two loads of different
+// snapshots would interleave their writes, and the first to finish would
+// mark the store ready over a half-written second. `wanted` is the snapshot
+// the latest openScan asked for; an open that is overtaken while it waits
+// leaves the load to the one that overtook it. `generation` changes when
+// the store is closed, so a load that was running then does not mark the
+// closed store ready.
+let wanted: string | null = null;
+let loading: Promise<void> | null = null;
+let generation = 0;
+
 // The big arrays read from a snapshot (components, files, edges, cycles) are
 // held markRaw: a snapshot never changes once written, so no view needs a
 // row's fields to be reactive, and deep proxies over tens of thousands of
@@ -252,17 +263,36 @@ export const useDataStore = defineStore('data', {
         // Selects a scan snapshot as the active dataset. Flips hasData
         // false→true across the switch so every view watching it re-queries.
         async openScan(scanId: string) {
+            wanted = scanId;
+            while (loading) await loading;
+            if (wanted !== scanId) return;
+            loading = this._load(scanId).finally(() => { loading = null; });
+            await loading;
+        },
+
+        async _load(scanId: string) {
+            const gen = generation;
             this._initialized = false;
-            await _db.open(scanId);
+            try {
+                await _db.open(scanId);
+            } catch (e) {
+                // Nothing is open rather than the last snapshot's id over no data.
+                this.closeScan();
+                throw e;
+            }
             this._openScanId = STAGE_SCAN ?? scanId;
             await this._initializeState();
+            if (gen === generation) this._initialized = true;
         },
 
         // Leaves no snapshot open: the shell shows its empty/scanning panel
         // and every view watching hasData tears down. Used when the active
         // workspace has nothing to show yet.
         closeScan() {
+            generation++;
+            wanted = null;
             this._snapshotInfo = {};
+            this._snapshotRevision = null;
             this._columns = {};
             this._openScanId = null;
             this._initialized = false;
@@ -435,8 +465,6 @@ export const useDataStore = defineStore('data', {
             } catch {
                 this._allCyclesExpanded = [];
             }
-
-            this._initialized = true;
         },
     },
 })

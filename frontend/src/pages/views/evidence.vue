@@ -774,9 +774,23 @@ function onDrop(e: DragEvent) {
 const raw = ref(false);
 const rawText = ref("");
 const rawEl = ref<HTMLTextAreaElement | null>(null);
-let rawTimer: ReturnType<typeof setTimeout> | null = null;
+// Typing is applied half a second after it stops, to the report it was typed
+// in. Leaving the mode, or the report, applies what is still pending first.
+let rawPending: { reportId: string | undefined; timer: ReturnType<typeof setTimeout> } | null = null;
+function applyRaw() {
+  if (!rawPending) return;
+  clearTimeout(rawPending.timer);
+  const { reportId } = rawPending;
+  rawPending = null;
+  if (reports.current?.id === reportId) reports.setMarkdown(rawText.value);
+}
+function leaveRaw() {
+  applyRaw();
+  raw.value = false;
+}
+onBeforeUnmount(() => { applyRaw(); reports.flushSave(); });
 function toggleRaw() {
-  if (raw.value) { if (rawTimer) { clearTimeout(rawTimer); reports.setMarkdown(rawText.value); } raw.value = false; return; }
+  if (raw.value) { leaveRaw(); return; }
   rawText.value = reports.markdown();
   raw.value = true;
   editingId.value = null;
@@ -788,13 +802,13 @@ function onRawInput(e: Event) {
   const el = e.target as HTMLTextAreaElement;
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
-  if (rawTimer) clearTimeout(rawTimer);
-  rawTimer = setTimeout(() => { rawTimer = null; reports.setMarkdown(rawText.value); }, 500);
+  if (rawPending) clearTimeout(rawPending.timer);
+  rawPending = { reportId: reports.current?.id, timer: setTimeout(applyRaw, 500) };
 }
 
 // ── Report switching ────────────────────────────────────────────────────
 function openReport(id: string) {
-  raw.value = false;
+  leaveRaw();
   editingId.value = null;
   selectedId.value = null;
   reports.open(id);
@@ -804,21 +818,21 @@ function createReport() {
   reports.choosingTemplate = true;
 }
 async function createBlank() {
-  raw.value = false;
+  leaveRaw();
   selectedId.value = null;
   await reports.create();
   await nextTick();
   editFirst();
 }
 function afterTemplate() {
-  raw.value = false;
+  leaveRaw();
   editingId.value = null;
   selectedId.value = null;
   scroller.value?.scrollTo({ top: 0 });
 }
 const savingTemplate = ref<ReportRecord | null>(null);
 async function mergeReports(ids: string[], title: string, removeOriginals: boolean) {
-  raw.value = false;
+  leaveRaw();
   editingId.value = null;
   selectedId.value = null;
   await reports.merge(ids, { title, removeOriginals });

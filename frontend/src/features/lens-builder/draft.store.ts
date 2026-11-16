@@ -84,6 +84,9 @@ export function isPlaceholderName(name: string): boolean {
   return /^(New group|Group [A-Z]\d*)( \d+)?$/.test(name.trim());
 }
 
+/** What undo brings back: every part of the draft an edit changes. */
+type Undoable = Pick<DraftState, "groups" | "later" | "out" | "refused" | "grain" | "removedIds">;
+
 export const useDraftStore = defineStore("draft", {
   state: (): DraftState => ({ dimension: "", cut: "free", grain: "component", grainByHand: false, round: 1, later: [], out: [], refused: {}, past: [], groups: [], origin: null, removedIds: [], dirty: false, storageKey: null, justMade: null }),
 
@@ -310,13 +313,14 @@ export const useDraftStore = defineStore("draft", {
 
     /** Every act that changes the draft keeps a way back. */
     _snapshot() {
-      this.past.push(JSON.stringify({ groups: this.groups, later: this.later, out: this.out, refused: this.refused, grain: this.grain }));
+      const state: Undoable = { groups: this.groups, later: this.later, out: this.out, refused: this.refused, grain: this.grain, removedIds: this.removedIds };
+      this.past.push(JSON.stringify(state));
       if (this.past.length > 60) this.past.shift();
     },
     undo() {
       const last = this.past.pop();
       if (!last) return;
-      const state = JSON.parse(last) as Pick<DraftState, "groups" | "later" | "out" | "refused" | "grain">;
+      const state = JSON.parse(last) as Undoable;
       this.groups = state.groups;
       this.later = state.later;
       this.out = state.out;
@@ -324,6 +328,8 @@ export const useDraftStore = defineStore("draft", {
       // Undoing a rejoin has to bring the grain back with the parts, or the
       // parts would reappear in a dimension that says it cannot hold them.
       this.grain = state.grain ?? this.grain;
+      // A dropped group that comes back is no longer to be deleted on save.
+      this.removedIds = state.removedIds ?? this.removedIds;
       this._persist();
     },
 

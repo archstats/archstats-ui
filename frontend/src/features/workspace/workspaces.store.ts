@@ -67,6 +67,9 @@ interface ScanEvent {
 }
 
 const LAST_WORKSPACE_KEY = "archstats.shell.activeWorkspace";
+
+/** Numbers each scan-list request, so only the newest one's answer is kept. */
+let scansAsked = 0;
 const openScanKey = (workspaceId: string) => `archstats.shell.openScan.${workspaceId}`;
 
 function remember(key: string, value: string | null) {
@@ -216,27 +219,35 @@ export const useWorkspacesStore = defineStore("workspaces", {
                     p.phase = e.phase;
                 }
             });
-            EventsOn("scan:done", async (e: ScanEvent) => {
-                const watch = this.takeProgress(e);
-                await this.refreshCounts();
-                if (this.activeWorkspaceId !== e.workspaceId) return;
-                await this.refreshScans();
-                void this.refreshWorkingCopy();
-                if (shouldOpenResult(watch, this.openScanId)) {
-                    await this.openSnapshot(e.scanId);
-                } else if (watch && !watch.ref) {
-                    this.ready = { workspaceId: e.workspaceId, scanId: e.scanId };
-                }
-            });
-            EventsOn("scan:failed", async (e: ScanEvent) => {
-                const watch = this.takeProgress(e);
+            EventsOn("scan:done", (e: ScanEvent) => this.scanEnded(e, "complete"));
+            EventsOn("scan:failed", (e: ScanEvent) => this.scanEnded(e, "failed"));
+        },
+
+        /**
+         * A scan ended. Heard from its event, or found settled in the registry
+         * by reconcile when the event was missed or has yet to arrive: the
+         * first takes the progress and acts, the second finds none.
+         */
+        async scanEnded(e: ScanEvent, status: "complete" | "failed") {
+            const watch = this.takeProgress(e);
+            if (status === "failed") {
                 // A failed rescan is reported by its own row and the backfill
                 // queue; only the working copy's failure needs the rail. A
                 // scan someone stopped did what they asked.
                 if (!watch?.ref && e.error !== SCAN_CANCELLED) this.failed = { workspaceId: e.workspaceId, scanId: e.scanId, error: e.error };
                 await this.refreshCounts();
                 await this.refreshScansIfActive(e.workspaceId);
-            });
+                return;
+            }
+            await this.refreshCounts();
+            if (this.activeWorkspaceId !== e.workspaceId) return;
+            await this.refreshScans();
+            void this.refreshWorkingCopy();
+            if (shouldOpenResult(watch, this.openScanId)) {
+                await this.openSnapshot(e.scanId);
+            } else if (watch && !watch.ref) {
+                this.ready = { workspaceId: e.workspaceId, scanId: e.scanId };
+            }
         },
 
         /** Clears the workspace's progress and returns what it knew, when it belongs to this scan. */
@@ -282,14 +293,19 @@ export const useWorkspacesStore = defineStore("workspaces", {
                 return;
             }
             const workspaceId = this.activeWorkspaceId;
+            const asked = ++scansAsked;
+            let scans: store.Scan[];
             try {
                 // Ordered by the code each scan read, then by when it ran.
-                this.scans = newestFirst((await ListScans(workspaceId)) ?? []);
+                scans = newestFirst((await ListScans(workspaceId)) ?? []);
             } catch (e) {
                 this.error = errorText(e);
                 return;
             }
-            if (this.activeWorkspaceId === workspaceId) this.reconcile(workspaceId);
+            // A later request, or another workspace, answers instead.
+            if (asked !== scansAsked || this.activeWorkspaceId !== workspaceId) return;
+            this.scans = scans;
+            this.reconcile(workspaceId);
         },
 
         // The registry is the truth about what is running. Events can be
@@ -309,10 +325,12 @@ export const useWorkspacesStore = defineStore("workspaces", {
                     ref: r.origin === "backfill" ? String(r.revisionRef ?? "") : "",
                     openAtStart: null,
                 };
-            } else if (!running && p?.scanId && this.scans.some((s) => s.id === p.scanId)) {
-                // Only a claim the registry has already settled is dropped; a
-                // claim still waiting for its row (scanId empty) is kept.
-                delete this.progress[workspaceId];
+            } else if (!running && p?.scanId) {
+                // A claim the registry has settled ends as its event would
+                // have ended it; a claim still waiting for its row (scanId
+                // empty) is kept.
+                const row = this.scans.find((s) => s.id === p.scanId);
+                if (row) void this.scanEnded({ workspaceId, scanId: row.id, error: row.error }, row.status === "complete" ? "complete" : "failed");
             }
         },
 

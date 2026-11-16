@@ -24,7 +24,17 @@ import { pointsAtView } from "./deixis"
 import { t } from "~/shared/i18n"
 
 const embedLocal = async (texts: string[]) => (await Embed("nomic-embed-text", texts)) as number[][]
-let writeController: AbortController | null = null
+
+/**
+ * What Ask is doing: answering a turn, or writing a report. One at a time;
+ * none when null. Every run starts with begin and ends with end, and a run
+ * that was stopped ends nothing when it finally returns: by then the next
+ * one may be running.
+ */
+type Run =
+    | { kind: "turn"; threadId: string; turnId: string; abort: AbortController }
+    | { kind: "write"; abort: AbortController }
+let run: Run | null = null
 
 // Ask: conversations with a model about the open snapshot. A
 // conversation belongs to one snapshot; questions about another start a new
@@ -133,7 +143,6 @@ const PREFERRED = [...["qwen3.6:35b-a3b", "qwen3-vl:30b", "gemma4:26b", "qwen3:3
 /** Tokens of history kept whole before older tool results are shortened. */
 const HISTORY_BUDGET = 9000
 
-let controller: AbortController | null = null
 let modelsLoading: Promise<void> | null = null
 const cards = new Map<string, Promise<SnapshotCard>>()
 
@@ -309,11 +318,26 @@ export const useAskStore = defineStore("ask", {
             const t = this.threads.find(x => x.id === id)
             if (t && title.trim()) { t.title = title.trim().slice(0, 80); this.save() }
         },
-        /** Stops the running turn. The view is released at once, whatever the model or a tool is still doing. */
+        /** Stops what is running. The view is released at once, whatever the model or a tool is still doing. */
         stop() {
-            controller?.abort()
-            const t = this.threads.flatMap(x => x.turns).find(x => x.status === "running")
-            if (t) { t.status = "stopped"; t.phase = undefined }
+            const r = run
+            if (!r) return
+            r.abort.abort()
+            if (r.kind === "turn") {
+                const t = this.threads.find(x => x.id === r.threadId)?.turns.find(x => x.id === r.turnId)
+                if (t?.status === "running") { t.status = "stopped"; t.phase = undefined }
+            }
+            this.end(r)
+        },
+        begin(r: Run) {
+            run = r
+            this.running = true
+            this.runningThreadId = r.kind === "turn" ? r.threadId : null
+        },
+        /** Ends r, unless it already ended: a stopped run's late return leaves the next run alone. */
+        end(r: Run) {
+            if (run !== r) return
+            run = null
             this.running = false
             this.runningThreadId = null
         },
@@ -360,11 +384,10 @@ export const useAskStore = defineStore("ask", {
             const ranOn: RanOn = { scanId: world.scanId, commit: info.git_head_commit ?? "", revision: Number(info.analysis_revision ?? 0), workspace: ws.active?.name ?? "" }
             const here = `Workspace ${ranOn.workspace}; snapshot of commit ${ranOn.commit.slice(0, 7) || "?"} (analysis revision ${ranOn.revision}). They are in the Ask view.`
 
-            this.running = true
-            this.runningThreadId = thread.id
+            const r: Run = { kind: "turn", threadId: thread.id, turnId: turn.id, abort: new AbortController() }
+            this.begin(r)
             turn.phase = t("ask.askStore.readingSnapshot")
-            controller = new AbortController()
-            const signal = controller.signal
+            const signal = r.abort.signal
             const thr = thread
             try {
                 const card = await withTimeout(cardFor(world.scanId, () => buildCard(world)), 30_000, t("ask.askStore.readingSnapshotTookToo"))
@@ -393,6 +416,8 @@ export const useAskStore = defineStore("ask", {
                     think: this.think,
                     images: model.vision && context?.images?.length ? context.images.map(i => i.png) : undefined,
                     emit: e => {
+                        // A stopped turn stays as it was stopped.
+                        if (signal.aborted) return
                         switch (e.type) {
                             case "route": turn.namespaces = e.namespaces; break
                             case "plan": turn.plan = e.steps; turn.claims = e.steps.map(() => ({ status: "waiting" })); turn.phase = t("ask.askStore.testingClaims"); break
@@ -445,8 +470,7 @@ export const useAskStore = defineStore("ask", {
                 }
             } finally {
                 turn.phase = undefined
-                if (this.runningThreadId === thr.id) { this.running = false; this.runningThreadId = null }
-                controller = null
+                this.end(r)
                 thr.updatedAt = new Date().toISOString()
                 this.save()
             }
@@ -626,28 +650,30 @@ export const useAskStore = defineStore("ask", {
             if (!thread) { this.writeup.error = t("ask.askStore.thereNoConversationWrite"); return null }
             if (!model) { this.writeup.error = t("ask.askStore.noModelSelectedChoose"); return null }
             if (this.running) { this.writeup.error = t("ask.askStore.answerStillBeingWritten"); return null }
-            writeController = new AbortController()
+            const r: Run = { kind: "write", abort: new AbortController() }
+            const signal = r.abort.signal
             this.writeup.error = ""
             this.writeup.progress = { phase: "planning", sections: [], message: t("ask.askStore.layingOutReport") }
-            this.running = true
+            this.begin(r)
             try {
-                const r = await writeReport({ thread, templateId, params, model: modelClient(model), embed: embedLocal, signal: writeController.signal, progress: p => (this.writeup.progress = p) })
-                this.writeup.reportId = r.reportId
-                this.writeup.title = r.title
-                thread.reportId = r.reportId
+                const out = await writeReport({ thread, templateId, params, model: modelClient(model), embed: embedLocal, signal, progress: p => { if (!signal.aborted) this.writeup.progress = p } })
+                this.writeup.reportId = out.reportId
+                this.writeup.title = out.title
+                thread.reportId = out.reportId
                 this.save()
-                return r.reportId
+                return out.reportId
             } catch (e: any) {
+                if (signal.aborted) return null
                 this.writeup.error = String(e?.message ?? e)
                 if (this.writeup.progress) this.writeup.progress.phase = "error"
                 return null
             } finally {
-                this.running = false
-                writeController = null
+                this.end(r)
             }
         },
         cancelWriteUp() {
-            writeController?.abort()
+            if (run?.kind === "write") this.stop()
+            this.writeup.progress = null
             this.writeup.open = false
         },
 

@@ -471,13 +471,23 @@ const expanded = ref<string | null>(null);
 const changeSet = ref<ChangeSet | null>(null);
 const loading = ref(false);
 const error = ref("");
-watch([() => baseScan.value?.id, () => head.value?.id, stage], async ([b, hd, st]) => {
+watch([() => baseScan.value?.id, () => head.value?.id, stage], async ([b, hd, st], _, onCleanup) => {
   if (changeSet.value && changeSet.value.baseId === b && changeSet.value.headId === hd) return;
   changeSet.value = null; error.value = "";
   pickedCell.value = null; pickedArea.value = null; expanded.value = null;
-  if (!b || !hd || st !== "ready") return;
+  if (!b || !hd || st !== "ready") { loading.value = false; return; }
+  // A comparison asked for after this one answers instead of it.
+  let stale = false;
+  onCleanup(() => { stale = true; });
   loading.value = true;
-  try { changeSet.value = normalizeChangeSet((await Compare(b, hd)) as any); } catch (e) { error.value = e instanceof Error ? e.message : String(e); } finally { loading.value = false; }
+  try {
+    const out = normalizeChangeSet((await Compare(b, hd)) as any);
+    if (!stale) changeSet.value = out;
+  } catch (e) {
+    if (!stale) error.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    if (!stale) loading.value = false;
+  }
 }, { immediate: true });
 
 const counts = computed(() => (changeSet.value ? countChanges(changeSet.value) : null));

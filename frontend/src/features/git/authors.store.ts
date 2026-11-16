@@ -91,6 +91,9 @@ export const useAuthorsStore = defineStore("authors", {
             if (!force && key === this.labelsFor) return
             if (!data.hasData || !data.hasView("git_commits")) { this.labels = {}; this.labelsFor = key; return }
             const rows = await data.query<{ name: string; first: string | null }>("SELECT author_name AS name, min(commit_time) AS first FROM git_commits GROUP BY author_name")
+            // Asked about one snapshot and its merges; if either changed while
+            // the query ran, the labels are for neither and the next load reads.
+            if (key !== `${data._openScanId ?? ""}:${JSON.stringify(this.aliases)}`) return
             this.labels = pseudonymLabels(rows, this.aliases)
             this.labelsFor = key
         },

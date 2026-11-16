@@ -59,8 +59,11 @@ export function useDimensionStudio() {
     loading.value = true;
     try {
       const src = await suggest.load();
+      const own = await ownLines();
+      // Read from a snapshot that has since been swapped: the next load reads.
+      if ((store.datasetKey ?? "") !== key) return;
       input.value = buildSuggestInput(src, "component");
-      lines.value = await ownLines();
+      lines.value = own;
       rawEdges.value = normalizeEdges("static", directedReferenceEdges(src.componentRefs.map(e => ({ from: e.from, to: e.to, references: e.references }))));
       loadedFor = key;
     } finally {

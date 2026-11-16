@@ -73,6 +73,29 @@ describe("data store over Wails bindings", () => {
         expect(store.hasData).toBe(true);
     });
 
+    it("loads one snapshot at a time, and only the last one asked for", async () => {
+        const store = useDataStore();
+        let release!: () => void;
+        openMock.mockImplementationOnce(() => new Promise<void>(r => { release = r; }));
+        const first = store.openScan("scan-1");
+        const second = store.openScan("scan-2");
+        const third = store.openScan("scan-3");
+        release();
+        await Promise.all([first, second, third]);
+        expect(openMock.mock.calls.map(c => c[0])).toEqual(["scan-1", "scan-3"]);
+        expect(store.datasetKey).toBe("scan-3");
+        expect(store.hasData).toBe(true);
+    });
+
+    it("has nothing open after a snapshot fails to open", async () => {
+        const store = useDataStore();
+        await store.openScan("scan-1");
+        openMock.mockRejectedValueOnce(new Error("gone"));
+        await expect(store.openScan("scan-2")).rejects.toThrow("gone");
+        expect(store.datasetKey).toBeNull();
+        expect(store.hasData).toBe(false);
+    });
+
     describe("a load another open cancels part of", () => {
         // Go cancels every query on the open snapshot when any window opens
         // one. A load that overlapped such an open kept its components but lost
