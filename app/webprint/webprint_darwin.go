@@ -23,8 +23,16 @@ import (
 // Supported reports whether Print works on this platform.
 func Supported() bool { return true }
 
+// What the native side reports when a print ends.
+const (
+	printed   = 1
+	noWebView = -1
+)
+
 var (
-	// One print at a time: the web view has one print layout.
+	// One print at a time: the web view has one print layout. It is held
+	// until the native print has ended, which can be after Print gave up
+	// waiting for it.
 	printMu sync.Mutex
 	waitMu  sync.Mutex
 	waiting = map[int]chan int{}
@@ -46,13 +54,15 @@ func webprintDone(id C.int, status C.int) {
 // the PDF and its page count.
 func Print(o Options) ([]byte, int, error) {
 	printMu.Lock()
-	defer printMu.Unlock()
-
 	dir, err := os.MkdirTemp("", "archstats-print-")
 	if err != nil {
+		printMu.Unlock()
 		return nil, 0, err
 	}
-	defer os.RemoveAll(dir)
+	release := func() {
+		os.RemoveAll(dir)
+		printMu.Unlock()
+	}
 	raw, out := filepath.Join(dir, "page.pdf"), filepath.Join(dir, "report.pdf")
 
 	waitMu.Lock()
@@ -68,17 +78,28 @@ func Print(o Options) ([]byte, int, error) {
 
 	select {
 	case status := <-ch:
+		defer release()
 		switch status {
-		case 1:
-		case -1:
+		case printed:
+		case noWebView:
 			return nil, 0, errors.New("the app's web view was not found")
 		default:
 			return nil, 0, errors.New("the web view did not print")
 		}
 	case <-time.After(90 * time.Second):
-		waitMu.Lock()
-		delete(waiting, id)
-		waitMu.Unlock()
+		// The native print is still running and owns the web view's print
+		// layout and the file it writes. The next print waits for it to end,
+		// or for a few minutes more if it never says so.
+		go func() {
+			select {
+			case <-ch:
+			case <-time.After(5 * time.Minute):
+				waitMu.Lock()
+				delete(waiting, id)
+				waitMu.Unlock()
+			}
+			release()
+		}()
 		return nil, 0, errors.New("the web view took too long to print")
 	}
 

@@ -165,6 +165,13 @@ func (s *Store) ListWorkspaces() ([]*Workspace, error) {
 // DeleteWorkspace removes the workspace row (scans cascade) and its snapshot
 // directory on disk.
 func (s *Store) DeleteWorkspace(id string) error {
+	var running int
+	if err := s.db.QueryRow(`SELECT count(*) FROM scans WHERE workspace_id = ? AND status = ?`, id, ScanStatusRunning).Scan(&running); err != nil {
+		return err
+	}
+	if running > 0 {
+		return ErrScanRunning
+	}
 	res, err := s.db.Exec(`DELETE FROM workspaces WHERE id = ?`, id)
 	if err != nil {
 		return err

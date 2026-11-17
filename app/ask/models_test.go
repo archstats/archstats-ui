@@ -39,6 +39,8 @@ func manyModels(s *Service, n int) {
 }
 
 func TestModelsAsksAProviderOnceHoweverOftenCalled(t *testing.T) {
+	// An Ollama running on the machine would add its own models.
+	t.Setenv("OLLAMA_HOST", "http://127.0.0.1:1")
 	srv, calls := countingModels(0)
 	defer srv.Close()
 	s, _, _ := newTestService(Policy{})

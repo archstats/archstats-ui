@@ -59,12 +59,24 @@ type Job struct {
 	Dest        string    `json:"dest"`
 	Name        string    `json:"name"`
 	History     string    `json:"history"`
-	State       string    `json:"state"` // running, done, failed, cancelled
+	State       JobState  `json:"state"`
 	Progress    Progress  `json:"progress"`
 	Error       string    `json:"error"`
 	WorkspaceID string    `json:"workspaceId"`
 	StartedAt   time.Time `json:"startedAt"`
 }
+
+// JobState is where a clone is: running until it ends done, failed or
+// cancelled. Only a running job can be cancelled, and only until git has
+// finished: from then on the clone is whole and becomes a workspace.
+type JobState string
+
+const (
+	JobRunning   JobState = "running"
+	JobDone      JobState = "done"
+	JobFailed    JobState = "failed"
+	JobCancelled JobState = "cancelled"
+)
 
 type Service struct {
 	store *store.Store
@@ -73,7 +85,9 @@ type Service struct {
 	now func() time.Time
 
 	mu      sync.Mutex
-	jobs    map[string]*Job
+	jobs map[string]*Job
+	// The jobs that can still be cancelled: running ones whose git has not
+	// finished.
 	cancels map[string]context.CancelFunc
 }
 
@@ -138,7 +152,7 @@ func (s *Service) Start(req Request) (*Job, error) {
 	}
 	s.mu.Lock()
 	for _, j := range s.jobs {
-		if j.State == "running" && j.Dest == plan.Dest {
+		if j.State == JobRunning && j.Dest == plan.Dest {
 			s.mu.Unlock()
 			return nil, fmt.Errorf("%s is already being cloned there", plan.Repo.Slug())
 		}
@@ -157,7 +171,7 @@ func (s *Service) Start(req Request) (*Job, error) {
 		Dest:      plan.Dest,
 		Name:      name,
 		History:   history,
-		State:     "running",
+		State:     JobRunning,
 		Progress:  Progress{Phase: "connecting", Percent: -1},
 		StartedAt: s.now().UTC(),
 	}
@@ -212,9 +226,8 @@ func (s *Service) Jobs() []Job {
 func (s *Service) Forget(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if j := s.jobs[id]; j != nil && j.State != "running" {
+	if j := s.jobs[id]; j != nil && j.State != JobRunning {
 		delete(s.jobs, id)
-		delete(s.cancels, id)
 	}
 }
 
@@ -242,13 +255,14 @@ func Env() []string {
 
 func (s *Service) run(ctx context.Context, job *Job) {
 	fail := func(msg string, cancelled bool) {
+		s.uncancellable(job.ID)
 		_ = os.RemoveAll(job.Dest)
 		pruneEmptyParents(filepath.Dir(job.Dest), s.store.ReposRoot())
 		s.update(job, func(j *Job) {
 			j.Error = msg
-			j.State = "failed"
+			j.State = JobFailed
 			if cancelled {
-				j.State = "cancelled"
+				j.State = JobCancelled
 			}
 		})
 		s.emit(EventFailed, s.view(job))
@@ -300,6 +314,9 @@ func (s *Service) run(ctx context.Context, job *Job) {
 		s.emit(EventProgress, s.view(job))
 	}
 	err = cmd.Wait()
+	// From here the job cannot be cancelled: a Cancel that came first is
+	// honoured below, one that comes later finds nothing to stop.
+	s.uncancellable(job.ID)
 	if ctx.Err() != nil {
 		fail("Cancelled.", true)
 		return
@@ -316,7 +333,7 @@ func (s *Service) run(ctx context.Context, job *Job) {
 		return
 	}
 	s.update(job, func(j *Job) {
-		j.State = "done"
+		j.State = JobDone
 		j.WorkspaceID = ws.ID
 		j.Progress = Progress{Phase: "checkout", Percent: 100, Received: j.Progress.Received}
 	})
@@ -330,6 +347,13 @@ func keepTransfer(prev, next Progress) Progress {
 		next.Received = prev.Received
 	}
 	return next
+}
+
+// uncancellable takes a job out of the set Cancel and CancelAll reach.
+func (s *Service) uncancellable(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.cancels, id)
 }
 
 func (s *Service) update(job *Job, fn func(*Job)) {

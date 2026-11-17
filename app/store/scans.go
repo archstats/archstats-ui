@@ -164,11 +164,18 @@ func (s *Store) ListScans(workspaceID string) ([]*Scan, error) {
 	return scans, rows.Err()
 }
 
+// ErrScanRunning refuses to delete a scan, or its workspace, while the scan
+// still runs: its worker would go on writing a snapshot no row owns.
+var ErrScanRunning = errors.New("a scan is still running; stop it first")
+
 // DeleteScan removes the scan row and its snapshot file, if any.
 func (s *Store) DeleteScan(id string) error {
 	scan, err := s.GetScan(id)
 	if err != nil {
 		return err
+	}
+	if scan.Status == ScanStatusRunning {
+		return ErrScanRunning
 	}
 	if _, err := s.db.Exec(`DELETE FROM scans WHERE id = ?`, id); err != nil {
 		return err

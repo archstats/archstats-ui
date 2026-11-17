@@ -98,6 +98,9 @@ func TestBaselineClearsWhenItsScanGoes(t *testing.T) {
 	s := openTestStore(t)
 	w, _ := s.CreateWorkspace("w", t.TempDir())
 	scan, _ := s.CreateScan(w.ID)
+	if err := s.FailScan(scan.ID, "stopped"); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.SetBaseline(w.ID, scan.ID); err != nil {
 		t.Fatal(err)
 	}

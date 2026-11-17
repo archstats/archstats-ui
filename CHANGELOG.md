@@ -12,6 +12,7 @@ Write a line under **Unreleased** when a change lands that a user would notice: 
 - **Help → Archstats Documentation** opens the guide at archstats.github.io/archstats.
 - Exports and reports name the real engine version; they used to say v0.3.1.
 - Fewer stuck and lost states. Quitting stops running scans and clones instead of leaving them behind; Stop works while a rescan is still cloning; a backfill queue that hit an error starts again on the next revision; switching snapshots no longer waits on, or cuts off, a query still reading the old one. Undoing a dropped group in a lens draft no longer deletes it on save, typing in raw Markdown never lands in the report you switched to, and asking again right after Stop no longer breaks the new answer.
+- A scan that is still running cannot be deleted, nor its workspace; stop it first. A PDF that fails to save says why beside the preview instead of hiding it, a failed print no longer lets the next one start on top of it, and a setting changed while a workspace is still opening is kept.
 
 ## v0.12.0 (2026-10-29)
 

@@ -304,3 +304,23 @@ func TestPersistenceAcrossReopen(t *testing.T) {
 		t.Errorf("Name = %q", got.Name)
 	}
 }
+
+// A running scan is not deleted from under its worker, and nor is its
+// workspace: the snapshot it is still writing would belong to no row.
+func TestRunningScanIsNotDeleted(t *testing.T) {
+	s := openTestStore(t)
+	w, _ := s.CreateWorkspace("ws", t.TempDir())
+	scan, _ := s.CreateScan(w.ID)
+	if err := s.DeleteScan(scan.ID); !errors.Is(err, ErrScanRunning) {
+		t.Fatalf("delete scan: err = %v", err)
+	}
+	if err := s.DeleteWorkspace(w.ID); !errors.Is(err, ErrScanRunning) {
+		t.Fatalf("delete workspace: err = %v", err)
+	}
+	if err := s.FailScan(scan.ID, "stopped"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteWorkspace(w.ID); err != nil {
+		t.Fatal(err)
+	}
+}
