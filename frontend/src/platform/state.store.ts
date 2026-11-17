@@ -29,12 +29,21 @@ export const useStateStore = defineStore("state", {
             if (this.workspace === workspaceId && this.hydrated) return;
             this.hydrated = false;
             this.workspace = workspaceId;
+            this.values = {};
+            written.clear();
             let raw: Record<string, string> = {};
             try { raw = (await Workspace(workspaceId)) ?? {}; } catch { raw = {}; }
             // A stale response for a workspace no longer selected is dropped.
             if (this.workspace !== workspaceId) return;
             const values: Record<string, Json> = {};
             for (const [k, v] of Object.entries(raw)) values[k] = parse(v);
+            // What was set while the stored values were on their way is newer
+            // than they are.
+            for (const k of written) {
+                if (k in this.values) values[k] = this.values[k];
+                else delete values[k];
+            }
+            written.clear();
             this.values = values;
             this.hydrated = true;
         },
@@ -57,6 +66,7 @@ export const useStateStore = defineStore("state", {
             if (value === undefined || value === null) delete next[key];
             else next[key] = value;
             this.values = next;
+            if (!this.hydrated) written.add(key);
             // The stage keeps state in memory only: what it does must not be seen outside it.
             if (STAGE_SCAN) return;
             pending.set(key, value === undefined || value === null ? "" : JSON.stringify(value));
@@ -80,12 +90,22 @@ export const useStateStore = defineStore("state", {
             const batch = Object.fromEntries(pending);
             const ws = pendingWorkspace;
             pending.clear();
-            try { await PutMany(ws, batch); } catch { /* the next write retries the key */ }
+            try {
+                await PutMany(ws, batch);
+            } catch {
+                // Kept for the next flush, unless written again since or the
+                // pending writes are another workspace's by now.
+                if (pending.size && pendingWorkspace !== ws) return;
+                pendingWorkspace = ws;
+                for (const [k, v] of Object.entries(batch)) if (!pending.has(k)) pending.set(k, v);
+            }
         },
     },
 });
 
 const pending = new Map<string, string>();
+/** Keys set while the workspace's stored values were still loading. */
+const written = new Set<string>();
 let pendingWorkspace = "";
 let timer: ReturnType<typeof setTimeout> | null = null;
 function schedule(fn: () => void) {

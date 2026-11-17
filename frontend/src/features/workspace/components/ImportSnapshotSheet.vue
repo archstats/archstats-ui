@@ -68,17 +68,22 @@ const target = computed(() => options.value.find(o => o.id === targetId.value) ?
 const lowOverlap = computed(() => !!info.value && targetId.value === info.value.suggestedWorkspaceId && info.value.overlap < 0.3);
 const canImport = computed(() => !!info.value?.valid && !info.value.alreadyImportedScanId && !!targetId.value);
 
-watch(path, async (p) => {
+watch(path, async (p, _, onCleanup) => {
   info.value = null; error.value = "";
-  if (!p) return;
+  if (!p) { loading.value = false; return; }
+  // A file dropped or offered after this one is inspected instead.
+  let stale = false;
+  onCleanup(() => { stale = true; });
   loading.value = true;
   try {
-    info.value = await InspectSnapshot(p);
+    const got = await InspectSnapshot(p);
+    if (stale) return;
+    info.value = got;
     targetId.value = info.value?.suggestedWorkspaceId || workspaces.activeWorkspaceId || "";
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    if (!stale) error.value = e instanceof Error ? e.message : String(e);
   } finally {
-    loading.value = false;
+    if (!stale) loading.value = false;
   }
 }, { immediate: true });
 

@@ -163,9 +163,11 @@ export function useSuggestModel() {
       loadedFor = key;
       return sources.value;
     } catch (e) {
+      // Shown empty, but not remembered as this snapshot's sources: the
+      // next load asks again instead of keeping the failure.
       error.value = e instanceof Error ? e.message : String(e);
       sources.value = EMPTY_SOURCES;
-      loadedFor = key;
+      loadedFor = null;
       return sources.value;
     } finally {
       loading.value = false;

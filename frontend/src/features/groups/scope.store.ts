@@ -214,6 +214,8 @@ export const useScopeStore = defineStore("scope", {
         },
         clearQuery() { this.query = ""; },
         clear() { this.groupIds = []; this.query = ""; if (this.focus) this.setFocus(""); },
+        /** Another workspace: nothing of this one's scope, its focus or its trail carries over. */
+        reset() { this.groupIds = []; this.query = ""; this.focus = ""; this.focusBack = []; this.focusAhead = []; },
         /**
          * Point the views somewhere. The focus it replaces goes on the trail,
          * so Back returns to it; a new focus drops whatever was ahead, the

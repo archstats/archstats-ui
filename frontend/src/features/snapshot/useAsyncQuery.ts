@@ -23,12 +23,16 @@ export function useAsyncQuery<T>(
     const error = ref<string | null>(null);
     let token = 0;
     let running: AbortController | null = null;
+    // The snapshot data was read from: rows of another one are cleared as
+    // soon as a run for this one starts, never shown while it loads.
+    let readFrom: string | null = null;
 
     async function reload() {
         const mine = ++token;
         running?.abort();
         running = null;
         if (!store.hasData) {
+            readFrom = null;
             data.value = options.initial;
             loading.value = false;
             error.value = null;
@@ -36,12 +40,15 @@ export function useAsyncQuery<T>(
         }
         const controller = new AbortController();
         running = controller;
+        if (readFrom !== store.datasetKey) data.value = options.initial;
+        const key = store.datasetKey;
         loading.value = true;
         error.value = null;
         try {
             const result = await load(controller.signal);
             if (mine !== token) return;
             data.value = result;
+            readFrom = key;
         } catch (e: any) {
             if (mine !== token || isAbort(e)) return;
             data.value = options.initial;

@@ -153,7 +153,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 function replan() {
   if (timer) clearTimeout(timer);
   const text = input.value.trim();
-  if (!text) { plan.value = null; return; }
+  // An emptied field also outdates a plan still on its way.
+  if (!text) { seq++; plan.value = null; return; }
   timer = setTimeout(async () => {
     const mine = ++seq;
     try {

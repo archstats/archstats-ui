@@ -726,16 +726,23 @@ const compareOptions = computed(() => {
 });
 const compareName = computed(() => scanOptions.value.find(o => o.id === compareId.value)?.name ?? "");
 watch(scanId, id => { if (compareId.value === id) compareId.value = null; });
+// Numbers each tab's baseline runs: only the newest one's answer is shown,
+// so a slow baseline of an earlier statement never sits beside a newer result.
+const baselineAsked = new Map<string, number>();
 async function runBaseline(tabId: string, sql: string) {
   const id = compareId.value;
   if (!id) return;
+  const asked = (baselineAsked.get(tabId) ?? 0) + 1;
+  baselineAsked.set(tabId, asked);
   const r = con.run(tabId);
   r.baseline = { result: null, error: "", running: true };
   const label = scanOptions.value.find(o => o.id === id)?.name ?? "";
   try {
     const res: any = await Console(id, sql);
+    if (baselineAsked.get(tabId) !== asked) return;
     r.baseline = { result: markRaw({ columns: res?.columns ?? [], rows: res?.rows ?? [], truncated: !!res?.truncated, elapsedMs: Number(res?.elapsedMs) || 0, sql, scanId: id, scan: label, at: new Date().toISOString() }), error: "", running: false };
   } catch (e) {
+    if (baselineAsked.get(tabId) !== asked) return;
     r.baseline = { result: null, error: e instanceof Error ? e.message : String(e), running: false };
   }
 }

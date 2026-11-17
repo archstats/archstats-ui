@@ -35,6 +35,9 @@
           <span class="min-w-0 truncate">{{ t('reports.pdfPreviewSheet.saved') }} <span class="font-mono">{{ savedPath }}</span></span>
           <button type="button" class="ml-auto shrink-0 font-medium text-accent-700 hover:underline" @click="reveal(savedPath)">{{ t('reports.pdfPreviewSheet.reveal') }}</button>
         </p>
+        <p v-if="actionError" class="flex shrink-0 items-center gap-2 bg-red-50 px-4 py-1.5 text-[12.5px] text-red-700 hairline-b" role="alert">
+          <span class="min-w-0 truncate font-mono">{{ actionError }}</span>
+        </p>
 
         <div class="relative min-h-0 flex-1 bg-neutral-200/70">
           <!-- The system's PDF view: the file itself, not a rendering of it. -->
@@ -90,6 +93,9 @@ const pages = ref(0);
 const bytes = ref(0);
 const saving = ref(false);
 const savedPath = ref("");
+// What went wrong saving or opening the PDF. The PDF itself is still fine, so
+// this is told beside it rather than in place of it, as a render error is.
+const actionError = ref("");
 const title = computed(() => reports.current?.title || t("reports.pdfPreviewSheet.report"));
 const cellCount = computed(() => reports.cells.length);
 const stale = computed(() => reports.stale.length);
@@ -111,6 +117,7 @@ async function render() {
   state.value = "rendering";
   error.value = "";
   savedPath.value = "";
+  actionError.value = "";
   try {
     reports.flushSave();
     const out = await reports.pdfBase64({ pageSize: pageSize.value });
@@ -151,18 +158,20 @@ onBeforeUnmount(() => setUrl(""));
 async function save() {
   if (!b64.value) return;
   saving.value = true;
+  actionError.value = "";
   try {
     const path = await saveBase64(`${title.value}.pdf`, b64.value, [FILTERS.pdf], t("reports.pdfPreviewSheet.saveReportPdf"));
     if (path) savedPath.value = path;
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    actionError.value = e instanceof Error ? e.message : String(e);
   } finally {
     saving.value = false;
   }
 }
 async function openOutside() {
   if (!b64.value) return;
-  try { await OpenPDF(b64.value, title.value); } catch (e) { error.value = e instanceof Error ? e.message : String(e); state.value = "error"; }
+  actionError.value = "";
+  try { await OpenPDF(b64.value, title.value); } catch (e) { actionError.value = e instanceof Error ? e.message : String(e); }
 }
 function close() { open.value = false; }
 function onKey(e: KeyboardEvent) {

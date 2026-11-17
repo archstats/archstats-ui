@@ -349,7 +349,7 @@ export const useWorkspacesStore = defineStore("workspaces", {
             remember(LAST_WORKSPACE_KEY, workspaceId);
             // Another workspace is another world: nothing scoped, drafted or
             // looked through carries over.
-            useScopeStore().clear();
+            useScopeStore().reset();
             // Durable state first: lenses, merges and facets read it as they load.
             await useStateStore().hydrate(workspaceId);
             if (this.activeWorkspaceId !== workspaceId) return;

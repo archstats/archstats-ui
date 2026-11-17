@@ -45,6 +45,8 @@ export interface ProviderInput { on: boolean; baseUrl: string; name: string; sha
 
 const OFF: AIStatus = { enabled: false, switch: false, locked: false, policy: "", policyPath: "", providers: [] }
 
+let refreshes = 0
+
 export const useAIStore = defineStore("ai", {
     state: () => ({
         status: OFF as AIStatus,
@@ -65,12 +67,18 @@ export const useAIStore = defineStore("ai", {
             return this.loading
         },
         async refresh() {
+            // Two changes in a row (a switch, then a key) each refresh; the
+            // answer to the later one stands even if the earlier comes last.
+            const mine = ++refreshes
+            let status: AIStatus
             try {
-                this.status = ((await Status()) ?? OFF) as unknown as AIStatus
+                status = ((await Status()) ?? OFF) as unknown as AIStatus
             } catch {
                 // Outside the desktop shell: no backend, so no AI.
-                this.status = OFF
+                status = OFF
             }
+            if (mine !== refreshes) return
+            this.status = status
             this.loaded = true
         },
         async setEnabled(on: boolean) {

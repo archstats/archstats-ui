@@ -74,13 +74,19 @@ const detail = computed(() => outdated.value
   : t("workspace.outdatedSnapshotBar.checkoutSHeadDiffers"));
 
 // Drift only matters for the newest scan: an older one is old on purpose.
+// Each check is numbered: a slow answer about an earlier snapshot never
+// replaces the answer about the one open now.
+let checks = 0;
 async function checkDrift() {
+  const mine = ++checks;
   drift.value = null;
   const ws = workspaces.active;
   const id = scanId.value;
   const newest: any = workspaces.newestComplete;
   if (!ws || !id || !newest || newest.id !== id || !newest.headCommit) return;
-  try { drift.value = (await HeadDrift(ws.id, id)) as any; } catch { drift.value = null; }
+  let got: any = null;
+  try { got = await HeadDrift(ws.id, id); } catch { got = null; }
+  if (mine === checks) drift.value = got;
 }
 watch(scanId, () => { void checkDrift(); }, { immediate: true });
 const onFocus = () => { void checkDrift(); };
