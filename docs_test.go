@@ -21,7 +21,7 @@ var (
 	trailings = regexp.MustCompile(`(:\d+(-\d+)?|[.,;:])$`)
 )
 
-var documents = []string{"README.md", "DESCRIPTION.md", "CHANGELOG.md", "CLAUDE.md", "frontend/src/README.md"}
+var documents = []string{"README.md", "DESCRIPTION.md", "CHANGELOG.md", "CLAUDE.md", "AGENTS.md", "app/AGENTS.md", "frontend/AGENTS.md", "frontend/src/README.md", ".agents/skills/cross-repo-feature/SKILL.md"}
 
 // tracked lists the files git tracks and the folders that hold them. A
 // document points at those, or at a place git ignores on purpose because a
@@ -29,7 +29,10 @@ var documents = []string{"README.md", "DESCRIPTION.md", "CHANGELOG.md", "CLAUDE.
 // passed locally on folders that exist only on the machine that made them.
 func tracked(t *testing.T) map[string]bool {
 	t.Helper()
-	out, err := exec.Command("git", "ls-files").Output()
+	// Untracked files that are not ignored count too: a new file and the
+	// document naming it land together. CI checks out only what was
+	// committed, so a file left out of the commit still fails there.
+	out, err := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard").Output()
 	if err != nil {
 		t.Skip("git ls-files: ", err)
 	}

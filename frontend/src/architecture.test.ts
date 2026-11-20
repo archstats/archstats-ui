@@ -68,4 +68,46 @@ describe("module rules", () => {
         const mutual = [...deps].flatMap(([a, bs]) => [...bs].filter(b => a < b && deps.get(b)?.has(a)).map(b => `${a}|${b}`))
         expect(mutual.filter(p => !KNOWN.has(p))).toEqual([])
     })
+
+    // The Wails bindings (wailsjs/, generated from the Go services) are the
+    // IPC seam. A component asks a store, composable or module in its feature
+    // (or platform/) and that file calls Go, so the call has one place to be
+    // typed, guarded and faked in tests.
+    const BINDING = /(?:from\s+|import\(\s*)["']wailsjs\//
+    const callsGo = walk(SRC).filter(f => !f.endsWith(".test.ts") && BINDING.test(readFileSync(join(SRC, f), "utf8")))
+
+    it("keeps shared free of the Go bindings", () => {
+        expect(callsGo.filter(f => f.startsWith("shared/"))).toEqual([])
+    })
+
+    it("adds no .vue file that calls the Go bindings itself", () => {
+        // Files that did before this rule. Move the call into the feature's
+        // store or module when you next change one, then delete it here.
+        const KNOWN = new Set([
+            "features/ai/components/AISettings.vue",
+            "features/files/components/OpenInEditor.vue",
+            "features/reports/components/AddToReportSheet.vue",
+            "features/reports/components/PdfPreviewSheet.vue",
+            "features/rules/components/DriftBar.vue",
+            "features/sql/components/SchemaExplorer.vue",
+            "features/trends/components/SinceBar.vue",
+            "features/workspace/components/BackfillQueue.vue",
+            "features/workspace/components/CloneSheet.vue",
+            "features/workspace/components/ImportSnapshotSheet.vue",
+            "features/workspace/components/OutdatedSnapshotBar.vue",
+            "features/workspace/components/RescanCommitSheet.vue",
+            "features/workspace/components/ScanPanel.vue",
+            "features/workspace/components/ScanTagsSheet.vue",
+            "features/workspace/components/StorageSheet.vue",
+            "features/workspace/components/WorkspaceSettingsSheet.vue",
+            "features/workspace/components/WorkspaceSwitcher.vue",
+            "pages/views/changes.vue",
+            "pages/views/evidence.vue",
+            "pages/views/query.vue",
+            "pages/views/trends.vue",
+        ])
+        const vue = callsGo.filter(f => f.endsWith(".vue"))
+        expect(vue.filter(f => !KNOWN.has(f)), "call Go from the feature's store or module, not the component").toEqual([])
+        expect([...KNOWN].filter(f => !vue.includes(f)), "no longer calls Go: delete it from KNOWN").toEqual([])
+    })
 })

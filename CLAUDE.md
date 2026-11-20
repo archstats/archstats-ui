@@ -1,5 +1,7 @@
 # Archstats Desktop (archstats-ui)
 
+@AGENTS.md
+
 Wails v2 shell around a Nuxt 3 SPA in `frontend/` (hash routing, `srcDir: src/`, Pinia, Tailwind on token ramps, D3). Design contract: `DESIGN.md`, product context: `PRODUCT.md`, current work plan: `tasks/views-plan.md`.
 
 ## Dev server (read before touching the frontend)

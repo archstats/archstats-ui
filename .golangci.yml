@@ -1,0 +1,74 @@
+# golangci-lint v2. Only the boundary rules run here: the package split
+# AGENTS.md and app/AGENTS.md describe, held by depguard. Run from the repo
+# root: golangci-lint run ./...  (scripts/verify-harness.sh does).
+#
+# Package prefixes end in "/" because depguard matches by prefix, and
+# github.com/archstats/archstats would also match github.com/archstats/archstats-ui.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # The engine's analysis (extensions, the CLI's export, engine.Analyze)
+        # runs in app/scan and nowhere else. The rest of the app may read the
+        # engine's constants and its file walker, never run an analysis.
+        engine-runs-only-in-scan:
+          files:
+            - "$all"
+            - "!**/app/scan/**"
+            - "!**/app/contract/**"
+          deny:
+            - pkg: github.com/archstats/archstats/cmd/
+              desc: the engine's CLI and export run in app/scan only
+            - pkg: github.com/archstats/archstats/extensions/
+              desc: extensions are chosen and run by app/scan (extensionsFor); new metrics belong in the engine repo
+            - pkg: github.com/archstats/archstats/engine
+              desc: analysis runs in app/scan only
+            - pkg: github.com/archstats/archstats/core/plugin
+              desc: extension wiring is app/scan's
+
+        # Snapshot readers read the SQLite contract by table and column name.
+        # They never import engine Go types (the snapshot is the interface),
+        # never start a scan, and know nothing of Wails.
+        snapshot-readers:
+          files:
+            - "**/app/query/**"
+            - "**/app/changes/**"
+            - "**/app/trends/**"
+            - "**/app/snapshot/**"
+          deny:
+            - pkg: github.com/archstats/archstats/
+              desc: readers depend on the snapshot's tables, not on engine Go types
+            - pkg: github.com/archstats/archstats-ui/app/scan
+              desc: reading a snapshot never starts or waits on a scan
+            - pkg: github.com/wailsapp/wails/
+              desc: Wails is the IPC seam; only main and package app use it
+
+        # The scan writes snapshots; it does not read them back for the UI.
+        scan-writes-only:
+          files:
+            - "**/app/scan/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/archstats/archstats-ui/app/query
+              desc: app/scan writes snapshots; reading them is app/query's
+            - pkg: github.com/archstats/archstats-ui/app/changes
+              desc: app/scan writes snapshots; comparing them is app/changes'
+            - pkg: github.com/archstats/archstats-ui/app/trends
+              desc: app/scan writes snapshots; readings are app/trends'
+
+        # Wails is the IPC seam: bound services in package app, wired in
+        # main.go. Domain packages under app/ stay testable without it.
+        wails-only-at-the-seam:
+          files:
+            - "**/app/*/**"
+          deny:
+            - pkg: github.com/wailsapp/wails/
+              desc: only main and package app (the bound services) use Wails
+
+run:
+  tests: true

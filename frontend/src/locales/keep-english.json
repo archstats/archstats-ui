@@ -323,6 +323,21 @@
       "file": "src/features/files/components/CallTree.vue",
       "text": "CallTree",
       "why": "The component's own name, used to render itself recursively."
+    },
+    {
+      "file": "src/pages/views/http.vue",
+      "text": "customer delete",
+      "why": "A fallback example search when the scan has no deep route: words from a route path, which the search matches as written in the code."
+    },
+    {
+      "file": "src/pages/views/http.vue",
+      "text": "https://host/orders/42",
+      "why": "A fallback example URL to paste into the search; a URL, not prose."
+    },
+    {
+      "file": "src/pages/index.vue",
+      "text": "OverviewPage",
+      "why": "The component's name, which app.vue's keep-alive matches to keep the page alive."
     }
   ]
 }

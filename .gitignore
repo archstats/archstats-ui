@@ -37,3 +37,6 @@ frontend/components.d.ts
 # Impeccable review captures are scratch, regenerated each round. Anchored
 # nowhere: the frontend keeps its own, and the root rule did not reach it.
 **/.impeccable/review/
+
+# The snapshot scripts/verify-harness.sh scans for the frontend contract test.
+testdata/archstats-fixture.db

@@ -62,7 +62,7 @@ func (c *ChangesService) Readings(workspaceID string) (_ []TrendPoint, callErr e
 	if err != nil {
 		return nil, err
 	}
-	var out []TrendPoint
+	out := []TrendPoint{} // never null over IPC
 	for _, s := range scans {
 		if s.Status != "complete" {
 			continue
